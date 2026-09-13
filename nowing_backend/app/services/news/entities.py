@@ -101,7 +101,7 @@ class NewsEntityList(BaseModel):
         for idx, item in enumerate(raw_entities):
             try:
                 valid.append(NewsEntity.model_validate(item, strict=strict))
-            except Exception:
+            except Exception:  # best-effort entity validation; skip invalid item
                 logger.warning(
                     "news_entity_dropped index=%s item=%s",
                     idx,

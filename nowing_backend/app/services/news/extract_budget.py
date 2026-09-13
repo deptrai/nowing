@@ -114,7 +114,7 @@ async def _wallet_spendable_micros(session: AsyncSession, user_id: Any) -> int:
         spendable = await wallet_credit.spendable_micros(session, user_id)
     except ValueError:
         return 0
-    except Exception:
+    except Exception:  # re-raise unexpected wallet balance query failure
         raise
     return max(0, int(spendable))
 
@@ -151,7 +151,7 @@ def _rate_count_sync(workspace_id: int) -> int:
     try:
         raw = _redis_client().get(key)
         return int(raw) if raw is not None else 0
-    except Exception:
+    except Exception:  # fallback to in-memory rate tracking on Redis error
         logger.warning(
             "news_entity_extract_rate_count_redis_unavailable workspace_id=%s fallback=in_memory",
             workspace_id,
@@ -171,7 +171,7 @@ def _record_extraction_sync(workspace_id: int) -> int:
     try:
         client = _redis_client()
         return int(client.eval(_INCR_EXPIRE_LUA, 1, key, window))
-    except Exception:
+    except Exception:  # fallback to in-memory rate tracking on Redis error
         logger.warning(
             "news_entity_extract_rate_increment_redis_unavailable workspace_id=%s fallback=in_memory",
             workspace_id,
@@ -225,7 +225,7 @@ async def check_news_entity_extraction_allowed(
         if wallet_pre_check and min_reserve > 0 and effective_user_id is not None:
             try:
                 spendable = await _wallet_spendable_micros(session, effective_user_id)
-            except Exception:
+            except Exception:  # treat wallet lookup failure as blocked / insufficient balance
                 logger.warning(
                     "news_entity_extraction_insufficient_wallet workspace_id=%s wallet_lookup_failed=true",
                     resolved_workspace_id,
@@ -260,7 +260,7 @@ async def check_news_entity_extraction_allowed(
         if budget_cap is not None and budget_cap > 0:
             try:
                 spent = await _period_spend_micros(session, resolved_workspace_id)
-            except Exception:
+            except Exception:  # treat budget query failure as blocked / cap exceeded
                 logger.warning(
                     "news_entity_extraction_budget_exceeded workspace_id=%s budget_query_failed=true",
                     resolved_workspace_id,
@@ -291,7 +291,7 @@ async def check_news_entity_extraction_allowed(
         if rate_max is not None and rate_max > 0:
             try:
                 rate = await _rate_count(resolved_workspace_id)
-            except Exception:
+            except Exception:  # treat rate limit query failure as rate limited
                 logger.warning(
                     "news_entity_extraction_rate_limited workspace_id=%s rate_lookup_failed=true",
                     resolved_workspace_id,
@@ -309,7 +309,7 @@ async def check_news_entity_extraction_allowed(
 
         return ExtractGateResult(allowed=True, reason=None)
 
-    except Exception:
+    except Exception:  # fail-closed: reject extraction on unexpected gate error
         logger.warning(
             "news_entity_extraction_gate_error workspace_id=%s",
             workspace_id,
@@ -390,7 +390,7 @@ async def record_news_entity_extraction(
                 model_breakdown=model_breakdown,
                 call_details=call_details,
             )
-        except Exception:
+        except Exception:  # best-effort token usage recording; never fail the extraction result
             logger.warning(
                 "failed_to_record_news_entity_token_usage workspace_id=%s",
                 resolved_workspace_id,

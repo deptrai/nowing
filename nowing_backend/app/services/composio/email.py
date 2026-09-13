@@ -36,7 +36,7 @@ async def get_connected_account_email(
 
         return email
 
-    except Exception as e:
+    except Exception as e:  # catch Composio get email error and return None
         logger.error(f"Failed to get email for {toolkit_id} connector: {e!s}")
         return None
 

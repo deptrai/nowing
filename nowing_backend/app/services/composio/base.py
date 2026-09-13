@@ -74,7 +74,7 @@ class ComposioClientMixin:
                 logger.warning(f"  - {auth_config.id}: toolkit={config_toolkit}")
 
             return None
-        except Exception as e:
+        except Exception as e:  # catch Composio list auth configs error and return None
             logger.error(f"Failed to list auth configs: {e!s}")
             return None
 
@@ -116,7 +116,7 @@ class ComposioClientMixin:
                 "connection_id": getattr(connection_request, "id", None),
             }
 
-        except Exception as e:
+        except Exception as e:  # log error and re-raise connection initiation failure
             logger.error(f"Failed to initiate Composio connection: {e!s}")
             raise
 
@@ -128,7 +128,7 @@ class ComposioClientMixin:
                 f"Successfully deleted Composio connected account: {connected_account_id}"
             )
             return True
-        except Exception as e:
+        except Exception as e:  # catch Composio account deletion error and return False
             logger.error(
                 f"Failed to delete Composio connected account {connected_account_id}: {e!s}"
             )
@@ -167,7 +167,7 @@ class ComposioClientMixin:
             status = getattr(account, "status", "UNKNOWN")
             logger.info(f"Composio account {connected_account_id} is now {status}")
             return status
-        except Exception as e:
+        except Exception as e:  # log error and re-raise connection status check failure
             logger.error(
                 f"Timeout/error waiting for Composio account {connected_account_id}: {e!s}"
             )
@@ -209,7 +209,7 @@ class ComposioClientMixin:
                 dangerously_skip_version_check=True,
             )
             return {"success": True, "data": result}
-        except Exception as e:
+        except Exception as e:  # catch Composio tool execution error and return error dict
             logger.error(f"Failed to execute tool {tool_name}: {e!s}")
             return {"success": False, "error": str(e)}
 
