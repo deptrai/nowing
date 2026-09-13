@@ -77,7 +77,7 @@ class _LLMRouterServiceImpl:
                 router_kwargs.get("context_window_fallbacks") or "none",
                 router_kwargs.get("fallbacks") or "none",
             )
-        except Exception as e:
+        except Exception as e:  # log error and set _router to None on init failure
             logger.error("Failed to initialize LLM Router: %s", e)
             self._router = None
 

@@ -112,7 +112,7 @@ def _parse_error_payload(message: str) -> dict[str, Any] | None:
             parsed = json.loads(candidate)
             if isinstance(parsed, dict):
                 return parsed
-        except Exception as exc:
+        except Exception as exc:  # best-effort JSON parsing candidate from error text; try next candidate
             logger.debug("Suppressed %r", exc)
             continue
     return None
@@ -142,7 +142,7 @@ def _extract_provider_status_code(parsed: dict[str, Any] | None) -> int | None:
             if value is None:
                 continue
             return int(value)
-        except Exception as exc:
+        except Exception as exc:  # best-effort status code parsing; try next candidate
             logger.debug("Suppressed %r", exc)
             continue
     return None

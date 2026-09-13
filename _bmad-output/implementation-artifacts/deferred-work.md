@@ -1530,12 +1530,23 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
     critical path rollback/re-raise vs fail-closed security.
     Fix patch target trong test_contact_unlock_billing.py. 94 unit tests pass 100%.
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-nowingerror-batch-2.md`
+  summary: NowingError & Exception Narrowing — Batch 2 (40 sites across 12 LLM & Model Routing services)
+  resolved: >-
+    2026-09-13 — Refactor 40 call-sites `except Exception` trên 12 files LLM & Model Routing:
+    hybrid_llm_router (10), openrouter_integration_service (8), auto_model_pin_service (4),
+    llm_service (3), llm_error_adapter (2), model_list_service (2), global_model_catalog (1),
+    model_connection_service (1), llm_router (9: chat_model 5, config_builder 2, model_resolver 1, service 1).
+    Phân loại rõ ràng: fallback tier chain, fail-safe PII detection, best-effort Redis cooldown/catalog refresh,
+    fail-open quota checks, tool conversion fallback.
+    101 unit tests + 13 integration tests pass 100%. Ruff clean.
+
 - source_spec: none
-  summary: Migrate remaining ~1.747 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
+  summary: Migrate remaining ~1.707 `except Exception` toàn app sang typed exceptions / NowingError hierarchy — theo từng domain
   evidence: >-
-    Đã hoàn thành Batch 1 (47 sites financial/credits/verification).
+    Đã hoàn thành Batch 1 (47 sites financial/credits/verification) + Batch 2 (40 sites LLM/Model Routing).
+    Tổng đã giải quyết: 87 sites trong app/services/.
     Các domain tiếp theo:
-    - LLM & Model Routing (~40 sites in app/services/llm_router, openrouter, hybrid_llm)
     - External Integrations & Connectors (~90 sites in app/services/composio, news, google_*, etc.)
     - Core services còn lại (~150 sites in app/services/health, web_builder, memory, etc.)
     - Routes (~331 sites) và Tasks (~277 sites)

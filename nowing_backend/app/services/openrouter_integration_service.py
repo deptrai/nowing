@@ -208,7 +208,7 @@ def _fetch_models_sync() -> list[dict] | None:
             response.raise_for_status()
             data = response.json()
             return data.get("data", [])
-    except Exception as e:
+    except Exception as e:  # sync OpenRouter HTTP fetch error; return None to trigger fallback
         logger.warning("Failed to fetch OpenRouter models (sync): %s", e)
         return None
 
@@ -221,7 +221,7 @@ async def _fetch_models_async() -> list[dict] | None:
             response.raise_for_status()
             data = response.json()
             return data.get("data", [])
-    except Exception as e:
+    except Exception as e:  # async OpenRouter HTTP fetch error; return None to trigger fallback
         logger.warning("Failed to fetch OpenRouter models (async): %s", e)
         return None
 
@@ -570,7 +570,7 @@ class OpenRouterIntegrationService:
             from app.services.auto_model_pin_service import clear_healthy
 
             clear_healthy()
-        except Exception:
+        except Exception:  # best-effort runtime cooldown cache eviction on refresh
             logger.debug(
                 "OpenRouter refresh: clear_healthy import skipped", exc_info=True
             )
@@ -598,7 +598,7 @@ class OpenRouterIntegrationService:
             )
 
             register_pricing_from_global_configs()
-        except Exception as exc:
+        except Exception as exc:  # best-effort pricing re-registration on model catalog refresh
             logger.warning(
                 "OpenRouter refresh: pricing re-registration skipped (%s)", exc
             )
@@ -619,7 +619,7 @@ class OpenRouterIntegrationService:
                 getattr(_app_config, "ROUTER_SETTINGS", None),
             )
             _chat_router_cache.clear()
-        except Exception as exc:
+        except Exception as exc:  # best-effort chat router cache rebuild on refresh
             logger.warning("OpenRouter refresh: router rebuild skipped (%s)", exc)
 
     @staticmethod
@@ -645,7 +645,7 @@ class OpenRouterIntegrationService:
         """
         try:
             await self._enrich_health(configs, log_summary=log_summary)
-        except Exception:
+        except Exception:  # best-effort health enrichment; catalog remains valid without live health
             logger.exception("OpenRouter health enrichment failed")
 
     async def _enrich_health(
@@ -787,7 +787,7 @@ class OpenRouterIntegrationService:
                 resp = await client.get(url, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
-            except Exception as exc:
+            except Exception as exc:  # single model health probe failure; return exception to record in results
                 return cfg, None, exc
 
         payload = data.get("data") if isinstance(data, dict) else None
@@ -804,7 +804,7 @@ class OpenRouterIntegrationService:
             await asyncio.sleep(interval_sec)
             try:
                 await self.refresh()
-            except Exception:
+            except Exception:  # background catalog refresh loop error; log and wait for next interval
                 logger.exception("OpenRouter background refresh failed")
 
     def start_background_refresh(self, interval_hours: float) -> None:
