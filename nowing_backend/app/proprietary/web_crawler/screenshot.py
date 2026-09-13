@@ -36,7 +36,7 @@ def maybe_capture_screenshot(
     try:
         # Playwright / patchright page.screenshot supports ``type="png"``.
         data: bytes = page.screenshot(type="png")
-    except Exception as exc:
+    except Exception as exc:  # best-effort screenshot capture; doesn't fail scrape
         logger.warning("[webcrawler] screenshot capture failed: %s", exc)
         metrics.record_anti_bot_screenshot_failure(reason="capture")
         return None
