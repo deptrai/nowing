@@ -139,11 +139,11 @@ async def record_run(
         await _maybe_cleanup(session, "runs", RUNS_RETENTION_DAYS)
         await session.commit()
         return run_id
-    except Exception:  # capability executor failure; return structured error
+    except Exception:  # run persistence error; rollback session and return None
         logger.exception("record_run failed for capability=%s", capability)
         try:
             await session.rollback()
-        except Exception:  # capability executor failure; return structured error
+        except Exception:  # db rollback failure; suppress secondary error
             logger.exception("record_run rollback failed")
         return None
 
@@ -189,11 +189,11 @@ async def create_pending_run(
         run_id = str(run.id)
         await session.commit()
         return run_id
-    except Exception:  # capability executor failure; return structured error
+    except Exception:  # pending run persistence error; rollback session and return None
         logger.exception("create_pending_run failed for capability=%s", capability)
         try:
             await session.rollback()
-        except Exception:  # capability executor failure; return structured error
+        except Exception:  # db rollback failure; suppress secondary error
             logger.exception("create_pending_run rollback failed")
         return None
 
