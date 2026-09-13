@@ -111,7 +111,7 @@ def dropped_currency_amounts(raw_html: str, markdown: str) -> bool:
         return False
     try:
         return bool(_CURRENCY_AMOUNT_RE.search(_visible_text(raw_html)))
-    except Exception:
+    except Exception:  # HTML parse or regex search failure; assume no currency dropped
         return False
 
 
@@ -128,7 +128,7 @@ def markdown_of_whole_body(raw_html: str) -> str | None:
         md = markdownify(lxml_html.tostring(root, encoding="unicode"))
         md = re.sub(r"\n{3,}", "\n\n", md).strip()
         return md or None
-    except Exception:
+    except Exception:  # DOM parse or markdownify failure; fallback to None
         return None
 
 
@@ -158,7 +158,7 @@ def scroll_to_bottom(page: Any) -> Any:
             last_height = height
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             page.wait_for_timeout(_SCROLL_SETTLE_MS)
-    except Exception as exc:
+    except Exception as exc:  # browser auto-scroll aborted; keep partial render
         logger.debug("[webcrawler] auto-scroll aborted: %s", exc)
     return page
 
@@ -302,7 +302,7 @@ class WebCrawlerConnector:
                     reached_without_content = True
                     errors.append("Scrapling static: empty extraction")
                     self._log_tier_outcome("scrapling-static", url, tier_start, "empty")
-            except Exception as exc:
+            except Exception as exc:  # scrapling static fetcher failure; continue to dynamic tier
                 errors.append(f"Scrapling static: {exc!s}")
                 self._log_tier_outcome(
                     "scrapling-static", url, tier_start, "error", exc
@@ -363,7 +363,7 @@ class WebCrawlerConnector:
                 self._log_tier_outcome(
                     "scrapling-dynamic", url, tier_start, "unavailable"
                 )
-            except Exception as exc:
+            except Exception as exc:  # scrapling dynamic browser tier failure; continue to stealthy tier
                 errors.append(f"Scrapling dynamic: {exc!s}")
                 self._log_tier_outcome(
                     "scrapling-dynamic", url, tier_start, "error", exc
@@ -423,7 +423,7 @@ class WebCrawlerConnector:
                 self._log_tier_outcome(
                     "scrapling-stealthy", url, tier_start, "unavailable"
                 )
-            except Exception as exc:
+            except Exception as exc:  # scrapling stealthy anti-bot tier failure; check thin static fallback
                 errors.append(f"Scrapling stealthy: {exc!s}")
                 self._log_tier_outcome(
                     "scrapling-stealthy", url, tier_start, "error", exc
@@ -462,7 +462,7 @@ class WebCrawlerConnector:
                 screenshot_png=screenshot_state["png"],
             )
 
-        except Exception as e:
+        except Exception as e:  # unexpected top-level crawl exception; return failed outcome
             self._log_total(url, "error", total_start)
             return CrawlOutcome(
                 status=CrawlOutcomeStatus.FAILED,
@@ -492,7 +492,7 @@ class WebCrawlerConnector:
         """
         try:
             return await attempt()
-        except Exception as exc:
+        except Exception as exc:  # tier execution failure; check proxy rotation retry
             if is_proxy_error(exc) and is_pool_backed():
                 logger.warning(
                     "%s tier=%s proxy error; rotating endpoint, retrying once: %s",
@@ -651,7 +651,7 @@ class WebCrawlerConnector:
             page = scroll_to_bottom(page)
             try:
                 html = page.content()
-            except Exception:
+            except Exception:  # dynamic page content read failure; fallback html=None
                 html = None
             if html and classify_block(None, html) not in (
                 BlockType.OK,
@@ -754,7 +754,7 @@ class WebCrawlerConnector:
             page = scroll_to_bottom(page)
             try:
                 html = page.content()
-            except Exception:
+            except Exception:  # stealthy page content read failure; fallback html=None
                 html = None
             if html and classify_block(None, html) not in (
                 BlockType.OK,
@@ -858,7 +858,7 @@ class WebCrawlerConnector:
 
             if extracted_content and len(extracted_content.strip()) == 0:
                 extracted_content = None
-        except Exception:
+        except Exception:  # trafilatura extraction or metadata extraction failure; fallback None
             extracted_content = None
 
         # Repair chain for provably lossy extraction: trafilatura sometimes
@@ -877,7 +877,7 @@ class WebCrawlerConnector:
                     include_links=True,
                     favor_recall=True,
                 )
-            except Exception:
+            except Exception:  # trafilatura recall extraction failure; fallback to whole body
                 recall = None
             if recall and _CURRENCY_AMOUNT_RE.search(recall):
                 extracted_content = recall

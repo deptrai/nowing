@@ -139,7 +139,7 @@ async def fetch_page(
         if own_session and hasattr(session, "close"):
             try:
                 await session.close()
-            except Exception as close_exc:
+            except Exception as close_exc:  # best-effort browser session close; suppress error
                 logger.warning("Muaban session close failed: %s", close_exc)
 
 def _extract_detail_phone(next_data: dict[str, Any]) -> tuple[str | None, str | None, str | None]:
@@ -224,7 +224,7 @@ async def fetch_detail_phone(
                     res.status,
                     detail_url,
                 )
-        except Exception as exc:
+        except Exception as exc:  # phone API fetch failure; fallback to partial phone
             logger.debug("Muaban phone API attempt failed for %s: %s", detail_url, exc)
 
     return phone or phone_display or None, phone_display, phone_enc

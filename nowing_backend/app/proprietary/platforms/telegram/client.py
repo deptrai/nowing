@@ -101,7 +101,7 @@ class TelethonScraperClient:
         if self._raw_client is not None:
             try:
                 return bool(self._raw_client.is_connected())
-            except Exception as exc:
+            except Exception as exc:  # MTProto client connection check error -> fallback to cached state
                 logger.debug("Suppressed %r", exc)
         return self._is_connected
 

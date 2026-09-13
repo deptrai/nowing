@@ -126,7 +126,7 @@ async def fetch_html(url: str) -> str | None:
             return None
         except TikTokAccessBlockedError:
             raise
-        except Exception as e:
+        except Exception as e:  # network or request error; rotate proxy and retry
             logger.warning("[tiktok] GET %s failed: %s", url, e)
             if attempt < _MAX_ROTATIONS:
                 attempt += 1

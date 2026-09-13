@@ -108,7 +108,7 @@ class ShopeeScraper:
                 if response.status_code == 200:
                     try:
                         return response.json()
-                    except Exception as json_err:
+                    except Exception as json_err:  # malformed JSON response -> wrap as ShopeeScraperError
                         raise ShopeeScraperError(
                             f"Failed to parse JSON: {json_err}"
                         ) from json_err

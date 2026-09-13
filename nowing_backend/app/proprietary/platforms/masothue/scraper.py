@@ -131,7 +131,7 @@ async def scrape_masothue(
                 degradation_reason = "decode_error"
                 page_failed = True
                 break
-            except (MasothueAccessBlockedError, MasothueTimeoutError, Exception) as exc:
+            except (MasothueAccessBlockedError, MasothueTimeoutError, Exception) as exc:  # page fetch error; retry up to max retries then mark failed
                 logger.warning("masothue search page %s failed: %s", page, exc)
                 if attempt < _MAX_RETRIES:
                     await asyncio.sleep(_page_delay())
@@ -198,7 +198,7 @@ async def scrape_masothue(
                 except MasothueDecodeError as exc:
                     # Detail page malformed; keep the summary from search.
                     logger.debug("Suppressed %r", exc)
-                except Exception as exc:
+                except Exception as exc:  # unexpected detail fetch error; skip item and continue batch
                     logger.warning(
                         "masothue detail fetch unexpected error for %s: %s",
                         company.detail_url,
