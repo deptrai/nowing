@@ -204,7 +204,7 @@ class ClickUpConnector:
 
             return all_tasks, None
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # upstream API failure; return empty tasks and error
             return [], f"Error fetching tasks: {e!s}"
 
     def get_task_details(self, task_id: str) -> dict[str, Any]:

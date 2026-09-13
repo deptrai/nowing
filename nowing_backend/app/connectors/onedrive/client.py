@@ -118,7 +118,7 @@ class OneDriveClient:
             try:
                 error_json = resp.json()
                 error_detail = error_json.get("error_description", error_detail)
-            except Exception as exc:  # upstream connector API failure; mark degraded
+            except Exception as exc:  # JSON parse error on error response; keep raw text
                 logger.debug("Suppressed %r", exc)
             raise ValueError(f"OneDrive token refresh failed: {error_detail}")
         return resp.json()

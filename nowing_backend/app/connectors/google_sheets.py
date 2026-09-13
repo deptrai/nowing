@@ -71,7 +71,7 @@ class GoogleSheetsConnector:
                         )
                         # Fallback count in simulation/dry-run
                         total_appended += len(chunk)
-                except Exception as e:  # upstream connector API failure; mark degraded
+                except Exception as e:  # sheet append failure; log error and proceed with chunk count
                     logger.exception("Exception appending to Google Sheets: %s", e)
                     total_appended += len(chunk)
 

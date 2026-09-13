@@ -112,7 +112,7 @@ class ClickUpHistoryConnector:
                         logger.info(
                             f"Decrypted ClickUp OAuth credentials for connector {self._connector_id}"
                         )
-                    except Exception as e:  # per-item sync failure; continue batch
+                    except Exception as e:  # OAuth credential decryption failure; raise ValueError
                         logger.error(
                             f"Failed to decrypt ClickUp OAuth credentials for connector {self._connector_id}: {e!s}"
                         )
@@ -124,7 +124,7 @@ class ClickUpHistoryConnector:
                     self._credentials = ClickUpAuthCredentialsBase.from_dict(
                         config_data
                     )
-                except Exception as e:  # per-item sync failure; continue batch
+                except Exception as e:  # credentials parsing failure; raise ValueError
                     raise ValueError(f"Invalid ClickUp OAuth credentials: {e!s}") from e
             elif has_legacy_token:
                 # Legacy API token authentication (backward compatibility)
@@ -142,7 +142,7 @@ class ClickUpHistoryConnector:
                         logger.info(
                             f"Decrypted legacy ClickUp API token for connector {self._connector_id}"
                         )
-                    except Exception as e:  # per-item sync failure; continue batch
+                    except Exception as e:  # legacy token decryption failure; fallback to unencrypted token
                         logger.warning(
                             f"Failed to decrypt legacy ClickUp API token for connector {self._connector_id}: {e!s}. "
                             "Trying to use token as-is (might be unencrypted)."
@@ -208,7 +208,7 @@ class ClickUpHistoryConnector:
                 logger.info(
                     f"Successfully refreshed ClickUp token for connector {self._connector_id}"
                 )
-            except Exception as e:  # per-item sync failure; continue batch
+            except Exception as e:  # token refresh failure; log and raise
                 logger.error(
                     f"Failed to refresh ClickUp token for connector {self._connector_id}: {e!s}"
                 )

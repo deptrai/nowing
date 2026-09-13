@@ -110,7 +110,7 @@ async def download_and_extract_content(
         )
         return markdown, drive_metadata, None
 
-    except Exception as e:  # upstream connector API failure; mark degraded
+    except Exception as e:  # attachment extraction error; skip content
         logger.warning(f"Failed to extract content from {file_name}: {e!s}")
         return None, drive_metadata, str(e)
     finally:
@@ -256,7 +256,7 @@ async def download_and_process_file(
 
         return None, None, connector_info["metadata"]
 
-    except Exception as e:  # upstream connector API failure; mark degraded
+    except Exception as e:  # best-effort cleanup; temp file removal failure is non-fatal
         logger.warning(f"Failed to process {file_name}: {e!s}")
         return None, str(e), None
 

@@ -72,7 +72,7 @@ async def fetch_linear_organization_name(access_token: str) -> str | None:
             logger.warning(f"Failed to fetch Linear org info: {response.status_code}")
             return None
 
-    except Exception as e:  # upstream connector API failure; mark degraded
+    except Exception as e:  # upstream API failure; return None for organization name
         logger.warning(f"Error fetching Linear organization name: {e!s}")
         return None
 
@@ -151,7 +151,7 @@ class LinearConnector:
                     logger.info(
                         f"Decrypted Linear credentials for connector {self._connector_id}"
                     )
-                except Exception as e:  # upstream connector API failure; mark degraded
+                except Exception as e:  # credential decryption failure; raise ValueError
                     logger.error(
                         f"Failed to decrypt Linear credentials for connector {self._connector_id}: {e!s}"
                     )
@@ -171,7 +171,7 @@ class LinearConnector:
 
             try:
                 self._credentials = LinearAuthCredentialsBase.from_dict(config_data)
-            except Exception as e:  # upstream connector API failure; mark degraded
+            except Exception as e:  # credentials parsing failure; raise ValueError
                 raise ValueError(f"Invalid Linear credentials: {e!s}") from e
 
         # Check if token is expired and refreshable
@@ -219,7 +219,7 @@ class LinearConnector:
                 logger.info(
                     f"Successfully refreshed Linear token for connector {self._connector_id}"
                 )
-            except Exception as e:  # upstream connector API failure; mark degraded
+            except Exception as e:  # token refresh failure; log and raise
                 logger.error(
                     f"Failed to refresh Linear token for connector {self._connector_id}: {e!s}"
                 )
@@ -281,7 +281,7 @@ class LinearConnector:
                     friendly = ext["userPresentableMessage"]
                 elif errors[0].get("message"):
                     friendly = errors[0]["message"]
-        except Exception as exc:  # upstream connector API failure; mark degraded
+        except Exception as exc:  # JSON parse error on error response; keep default message
             logger.debug("Suppressed %r", exc)
 
         raise LinearAPIError(friendly or f"Linear API error (HTTP {status_code})")
@@ -552,7 +552,7 @@ class LinearConnector:
 
                 return all_issues, None
 
-            except Exception as e:  # upstream connector API failure; mark degraded
+            except Exception as e:  # upstream GraphQL query failure; return empty issues and error
                 return [], f"Error fetching issues: {e!s}"
 
         except ValueError as e:
@@ -681,7 +681,7 @@ class LinearConnector:
                 "url": issue.get("url"),
                 "message": f"Issue {issue.get('identifier')} created successfully.",
             }
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # issue creation failure; log error and return status error
             logger.error(f"Error creating Linear issue: {e}")
             return {"status": "error", "message": str(e)}
 
@@ -745,7 +745,7 @@ class LinearConnector:
                 "url": issue.get("url"),
                 "message": f"Issue {issue.get('identifier')} updated successfully.",
             }
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # issue update failure; log error and return status error
             logger.error(f"Error updating Linear issue: {e}")
             return {"status": "error", "message": str(e)}
 
@@ -769,7 +769,7 @@ class LinearConnector:
                 )
                 return {"status": "error", "message": f"issueArchive failed: {msg}"}
             return {"status": "success", "message": "Issue archived successfully."}
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # issue archive failure; log error and return status error
             logger.error(f"Error archiving Linear issue: {e}")
             return {"status": "error", "message": str(e)}
 

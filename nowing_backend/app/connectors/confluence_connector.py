@@ -350,5 +350,5 @@ class ConfluenceConnector:
 
             return all_pages, None
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # upstream API failure; return empty pages and error
             return [], f"Error fetching pages: {e!s}"

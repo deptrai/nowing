@@ -329,7 +329,7 @@ class NotionBlocksMixin:
 
                     parsed_url = urlparse(url)
                     return f"[External Image from {parsed_url.netloc}]"
-                except Exception:  # per-item sync failure; continue batch
+                except Exception:  # URL parse error for external image; fallback to generic label
                     return "[External Image]"
         elif block_type == "code":
             language = block["code"]["language"]

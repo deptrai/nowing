@@ -72,7 +72,7 @@ async def download_and_extract_content(
         )
         return markdown, metadata, None
 
-    except Exception as e:  # upstream connector API failure; mark degraded
+    except Exception as e:  # attachment extraction error; skip content
         logger.warning(f"Failed to extract content from {file_name}: {e!s}")
         return None, metadata, str(e)
     finally:

@@ -198,7 +198,7 @@ async def _warm_agent_jit_caches() -> None:
             warmup_middleware.append(
                 SubAgentMiddleware(backend=StateBackend, subagents=[gp_warmup_spec])
             )
-        except Exception:  # config/lifecycle fallback to default
+        except Exception:  # SubAgentMiddleware warmup failure; proceed with middleware-only warmup
             # Deepagents missing/incompatible — middleware-only warmup
             # still produces a useful (smaller) speedup.
             logger.debug("[startup] SubAgentMiddleware warmup skipped", exc_info=True)
@@ -222,7 +222,7 @@ async def _warm_agent_jit_caches() -> None:
             "[startup] Agent JIT warmup completed in %.3fs",
             _time.perf_counter() - t0,
         )
-    except Exception:  # config/lifecycle fallback to default
+    except Exception:  # agent JIT warmup failure; non-fatal startup warmup
         logger.warning(
             "[startup] Agent JIT warmup failed in %.3fs (non-fatal — first "
             "real request will pay the full compile cost)",
@@ -270,7 +270,7 @@ async def _warm_embedding_model() -> None:
             "[startup] Embedding model warmup completed in %.3fs",
             _time.perf_counter() - t0,
         )
-    except Exception:  # config/lifecycle fallback to default
+    except Exception:  # embedding model warmup failure; non-fatal startup warmup
         logger.warning(
             "[startup] Embedding model warmup failed in %.3fs (non-fatal — first "
             "KB search will pay the cold embed cost)",
@@ -296,7 +296,7 @@ async def _sweep_stale_scraper_runs() -> None:
             logger.info(
                 "[startup] Marked %d stale running scraper run(s) as error", swept
             )
-    except Exception:  # config/lifecycle fallback to default
+    except Exception:  # sweep stale scraper runs failure; non-fatal startup cleanup
         logger.warning(
             "[startup] Stale scraper-run sweep failed (non-fatal)", exc_info=True
         )
@@ -319,8 +319,8 @@ async def lifespan(app: FastAPI):
     _warn_if_build_id_unknown()
     await create_db_and_tables()
     from app.automations.services.playbook_seed_service import seed_system_playbooks
-    from app.services.xactions_connector_seed import seed_xactions_connectors
     from app.db import async_session_maker
+    from app.services.xactions_connector_seed import seed_xactions_connectors
 
     async with async_session_maker() as _seed_sess:
         await seed_system_playbooks(_seed_sess)
@@ -338,7 +338,7 @@ async def lifespan(app: FastAPI):
     try:
         redis = await get_redis_client()
         scraper_rule_pubsub.start_background_subscriber(redis)
-    except Exception:  # config/lifecycle fallback to default
+    except Exception:  # scraper rule pubsub subscriber start failure; non-fatal background listener
         logging.getLogger(__name__).warning(
             "[startup] Failed to start scraper rule subscriber (non-fatal)",
             exc_info=True,

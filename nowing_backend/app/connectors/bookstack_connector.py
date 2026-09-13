@@ -324,7 +324,7 @@ class BookStackConnector:
             )
             return all_pages, None
 
-        except Exception as e:  # upstream connector API failure; mark degraded
+        except Exception as e:  # upstream API failure; return empty pages and error
             logger.error(f"Error fetching pages by date range: {e!s}", exc_info=True)
             return [], str(e)
 
@@ -352,7 +352,7 @@ class BookStackConnector:
         if use_markdown:
             try:
                 content = self.export_page_markdown(page_id)
-            except Exception as e:  # upstream connector API failure; mark degraded
+            except Exception as e:  # markdown export failure; fallback to HTML content
                 logger.warning(
                     f"Failed to export markdown for page {page_id}, falling back to HTML: {e}"
                 )
