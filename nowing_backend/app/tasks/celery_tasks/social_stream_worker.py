@@ -39,12 +39,12 @@ def process_social_stream_task(self) -> int:
         finally:
             try:
                 await redis_client.aclose()
-            except Exception as exc:
+            except Exception as exc:  # best-effort redis client close; suppressed
                 logger.debug("Suppressed %r", exc)
 
     try:
         return run_async_celery_task(_consume)
-    except Exception as exc:
+    except Exception as exc:  # task-level guard: retry-eligible failure → re-raise for celery retry
         # Retry on transient Redis or DB errors; permanent failures should land
         # in the dead-letter queue inside run_social_stream_consumer.
         raise self.retry(exc=exc) from exc

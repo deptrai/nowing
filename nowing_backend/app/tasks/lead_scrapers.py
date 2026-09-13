@@ -101,7 +101,7 @@ async def _execute_scraper_job(
                 lead_dict.setdefault("workspace_id", workspace_id)
                 extracted_leads.append(lead_dict)
                 await buffer.add_lead(lead_dict)
-            except Exception as norm_err:
+            except Exception as norm_err:  # per-item lead normalization failure; log warning and continue
                 logger.warning(
                     "Normalization error on platform %s for record: %s",
                     platform,
@@ -124,7 +124,7 @@ async def _execute_scraper_job(
             "leads_extracted": len(extracted_leads),
         }
 
-    except Exception as exc:
+    except Exception as exc:  # scraper task failure; log error, record circuit breaker failure, and return error dict
         logger.error("Scraper failed on %s: %s", platform, exc)
         status_code = getattr(exc, "status_code", 500)
         # Record failure for circuit breaker only on external/network/anti-bot errors
@@ -187,7 +187,7 @@ async def reclaim_pending_stream_messages(
             max="+",
             count=100,
         )
-    except Exception as exc:
+    except Exception as exc:  # redis xpending_range query failure; log debug and return 0 reclaimed
         logger.debug("No pending messages or group not found: %s", exc)
         return 0
 

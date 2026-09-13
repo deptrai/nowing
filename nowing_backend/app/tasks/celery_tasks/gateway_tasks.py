@@ -106,7 +106,7 @@ def gateway_health_check_task() -> None:
                                 cursor_state[key] = metadata[key]
                         account.cursor_state = cursor_state
                         account.bot_username = metadata.get("bot_username")
-                except Exception:
+                except Exception:  # per-account health check failure; mark failing and record metric
                     logger.warning(
                         "External chat health check failed platform=%s account_id=%s",
                         account.platform.value,
@@ -219,7 +219,7 @@ def process_auto_reply_buffer_task(
                 try:
                     bundle = resolve_platform_bundle(account)
                     adapter = bundle.adapter
-                except Exception as e:
+                except Exception as e:  # adapter bundle resolution failure → continue without adapter
                     logger.warning("Could not resolve platform bundle for auto-reply: %s", e)
 
             agent = AutoReplyAgent()
@@ -248,7 +248,7 @@ def process_auto_reply_buffer_task(
                         channel,
                         sender_id,
                     )
-                except Exception as e:
+                except Exception as e:  # outbound auto-reply dispatch failure → log error, commit session
                     logger.error("Failed to send auto-reply: %s", e, exc_info=True)
 
             # Commit token usage and any lead updates staged by the agent.

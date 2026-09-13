@@ -178,7 +178,7 @@ async def _cleanup_stale_notifications():
 
             await session.commit()
 
-        except Exception as e:
+        except Exception as e:  # notification cleanup batch failure → rollback and log error
             logger.error(f"Error cleaning up stale notifications: {e!s}", exc_info=True)
             await session.rollback()
 
@@ -250,7 +250,7 @@ async def _cleanup_stuck_documents(session, connector_ids: list[int]):
             f"for connector IDs: {connector_ids}"
         )
 
-    except Exception as e:
+    except Exception as e:  # stuck documents cleanup failure → log and continue outer cleanup
         logger.error(
             f"Error cleaning up stuck documents for connectors {connector_ids}: {e!s}",
             exc_info=True,
@@ -357,7 +357,7 @@ async def _cleanup_stale_document_processing_notifications():
 
             await session.commit()
 
-        except Exception as e:
+        except Exception as e:  # document processing notification batch failure → rollback and log error
             logger.error(
                 f"Error cleaning up stale document processing notifications: {e!s}",
                 exc_info=True,
@@ -433,7 +433,7 @@ async def _cleanup_stuck_non_connector_documents(session, document_ids: list[int
             "documents as failed"
         )
 
-    except Exception as e:
+    except Exception as e:  # stuck non-connector documents cleanup failure → log and continue outer cleanup
         logger.error(
             f"Error cleaning up stuck non-connector documents {document_ids}: {e!s}",
             exc_info=True,

@@ -94,7 +94,7 @@ async def _process_single_file_core(
         logger.info(f"Successfully indexed Google Drive file: {file_name}")
         return 1, 0, 0
 
-    except Exception as e:
+    except Exception as e:  # per-file indexing error; log and return failure count
         logger.error(f"Error processing file {file_name}: {e!s}", exc_info=True)
         return 0, 0, 1
 

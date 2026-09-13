@@ -80,7 +80,7 @@ async def _persist_anti_bot_escalation(
     if screenshot_png_b64 is not None:
         try:
             data = base64.b64decode(screenshot_png_b64, validate=True)
-        except Exception as exc:
+        except Exception as exc:  # base64 decode failure → log warning and record metric
             logger.warning("Failed to decode anti-bot screenshot: %s", exc)
             metrics.record_anti_bot_screenshot_failure(reason="decode")
         else:
@@ -96,7 +96,7 @@ async def _persist_anti_bot_escalation(
                     backend = get_storage_backend()
                     await backend.put(key, data, content_type="image/png")
                     screenshot_url = _public_url(key)
-                except Exception as exc:
+                except Exception as exc:  # storage backend put failure → log warning and record metric
                     logger.warning("Failed to upload anti-bot screenshot: %s", exc)
                     metrics.record_anti_bot_screenshot_failure(reason="upload")
 
@@ -156,7 +156,7 @@ async def _apply_anti_bot_screenshot_retention(
                     try:
                         backend = get_storage_backend()
                         await backend.delete(storage_key)
-                    except Exception as exc:
+                    except Exception as exc:  # storage backend delete failure → record error and skip resolving
                         logger.warning(
                             "Failed to delete old screenshot for escalation %s: %s",
                             escalation.id,
@@ -220,7 +220,7 @@ async def _capture_platform_anti_bot_screenshot(
         if outcome.screenshot_png is not None:
             screenshot_png_b64 = base64.b64encode(outcome.screenshot_png).decode()
             block_type = outcome.block_type.value or block_type
-    except Exception as exc:
+    except Exception as exc:  # best-effort platform screenshot capture; continue escalation
         logger.warning(
             "Failed to capture platform screenshot for %s (run %s): %s",
             url,

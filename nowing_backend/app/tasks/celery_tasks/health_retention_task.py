@@ -49,7 +49,7 @@ async def _cleanup_health_history() -> dict[str, int]:
                 retention_days,
             )
             return {"deleted": deleted, "retention_days": retention_days}
-        except Exception as exc:
+        except Exception as exc:  # purge history failure → rollback and return error dict
             logger.error("Failed to purge admin health history: %s", exc, exc_info=True)
             await session.rollback()
             return {"deleted": 0, "error": str(exc)}

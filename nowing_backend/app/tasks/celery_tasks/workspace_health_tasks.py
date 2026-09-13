@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import text
+
 from app.celery_app import celery_app
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
 
@@ -58,7 +60,7 @@ async def _aggregate_health_daily(
                     )
                 await session.commit()
                 succeeded.append(wid)
-            except Exception as exc:
+            except Exception as exc:  # per-item failure; rollback and continue workspace batch
                 logger.error(
                     "Workspace health rollup failed for workspace %s on %s: %s",
                     wid,

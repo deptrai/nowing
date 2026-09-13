@@ -28,7 +28,7 @@ def run_async_celery_task[T](coro_factory: Callable[[], Awaitable[T]]) -> T:
             try:
                 result = _run_async_celery_task(coro_factory)
                 sp.set_attribute("connector.status", "success")
-            except Exception as exc:
+            except Exception as exc:  # connector sync failure → categorize for telemetry and re-raise
                 error_category = ot_metrics.categorize_exception(exc)
                 sp.set_attribute("connector.error.category", error_category)
                 raise
@@ -93,7 +93,7 @@ def index_notion_pages_task(
                 connector_id, workspace_id, user_id, start_date, end_date
             )
         )
-    except Exception as e:
+    except Exception as e:  # task-level guard: inspect greenlet error and re-raise for celery
         _handle_greenlet_error(e, "index_notion_pages", connector_id)
         raise
 
@@ -202,7 +202,7 @@ def index_google_calendar_events_task(
                 connector_id, workspace_id, user_id, start_date, end_date
             )
         )
-    except Exception as e:
+    except Exception as e:  # task-level guard: inspect greenlet error and re-raise for celery
         _handle_greenlet_error(e, "index_google_calendar_events", connector_id)
         raise
 

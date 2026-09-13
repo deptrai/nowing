@@ -184,7 +184,7 @@ async def index_bookstack_pages(
 
             logger.info(f"Retrieved {len(pages)} pages from BookStack API")
 
-        except Exception as e:
+        except Exception as e:  # upstream API call failure (BookStack API); log error and return failure
             logger.error(f"Error fetching BookStack pages: {e!s}", exc_info=True)
             return 0, f"Error fetching BookStack pages: {e!s}"
 
@@ -225,7 +225,7 @@ async def index_bookstack_pages(
                     _, page_content = bookstack_client.get_page_with_content(
                         page_id, use_markdown=True
                     )
-                except Exception as e:
+                except Exception as e:  # per-page content fetch failure; log warning, skip page, and continue
                     logger.warning(f"Failed to fetch content for page {page_name}: {e}")
                     skipped_pages.append(f"{page_name} (content fetch error)")
                     documents_skipped += 1
@@ -351,7 +351,7 @@ async def index_bookstack_pages(
                     }
                 )
 
-            except Exception as e:
+            except Exception as e:  # per-page phase 1 preparation failure; log error, increment failed, and continue
                 logger.error(f"Error in Phase 1 for page: {e!s}", exc_info=True)
                 documents_failed += 1
                 continue
@@ -424,7 +424,7 @@ async def index_bookstack_pages(
                     )
                     await session.commit()
 
-            except Exception as e:
+            except Exception as e:  # per-document processing failure; attempt marking document failed and continue
                 logger.error(
                     f"Error processing page {item.get('page_name', 'Unknown')}: {e!s}",
                     exc_info=True,
@@ -436,7 +436,7 @@ async def index_bookstack_pages(
                     # Commit now so the failed status survives a later rollback or
                     # crash; otherwise the doc stays stuck in pending/processing.
                     await session.commit()
-                except Exception as status_error:
+                except Exception as status_error:  # mark document failed commit failure; rollback and continue
                     logger.error(
                         f"Failed to update document status to failed: {status_error}"
                     )
@@ -461,7 +461,7 @@ async def index_bookstack_pages(
             logger.info(
                 "Successfully committed all BookStack document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             # Handle any remaining integrity errors gracefully (race conditions, etc.)
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
@@ -512,7 +512,7 @@ async def index_bookstack_pages(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

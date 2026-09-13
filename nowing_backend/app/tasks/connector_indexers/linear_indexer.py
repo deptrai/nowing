@@ -193,7 +193,7 @@ async def index_linear_issues(
 
             logger.info(f"Retrieved {len(issues)} issues from Linear API")
 
-        except Exception as e:
+        except Exception as e:  # upstream API call failure (Linear API); log error and return failure
             logger.error(f"Exception when calling Linear API: {e!s}", exc_info=True)
             return 0, 0, f"Failed to get Linear issues: {e!s}"
 
@@ -287,7 +287,7 @@ async def index_linear_issues(
 
                 connector_docs.append(doc)
 
-            except Exception as e:
+            except Exception as e:  # per-item building ConnectorDocument error; skip document and continue
                 logger.error(
                     f"Error building ConnectorDocument for issue: {e!s}",
                     exc_info=True,
@@ -330,7 +330,7 @@ async def index_linear_issues(
             logger.info(
                 "Successfully committed all Linear document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
                 or "uniqueviolationerror" in str(e).lower()
@@ -378,7 +378,7 @@ async def index_linear_issues(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

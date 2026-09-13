@@ -162,7 +162,7 @@ async def _extract_memory_after_run(run_id, *, retries_left: bool = True) -> Non
                 await _mark_failed(session, run_id)
                 record_run_memory_failed()
             raise
-        except Exception:
+        except Exception:  # non-transient terminal failure → rollback, mark failed, and re-raise
             # Terminal (auth/config/validation/persistence): no retry would help.
             # Roll back the extraction transaction before committing `failed`,
             # so a fact staged before a later failure can never leak through.

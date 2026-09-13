@@ -224,11 +224,11 @@ async def _execute_bulk_op(job_id_str: str) -> None:
                             )
                         )
 
-                except Exception as ex:
+                except Exception as ex:  # per-item failure; record error and continue batch
                     errors_count += 1
                     try:
                         await session.rollback()
-                    except Exception as exc:
+                    except Exception as exc:  # best-effort rollback; ignore if transaction already dead
                         logger.debug("Suppressed %r", exc)
                     err_record = BulkOpError(
                         job_id=job.id,

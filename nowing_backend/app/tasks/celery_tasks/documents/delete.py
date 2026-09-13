@@ -174,7 +174,7 @@ async def _delete_workspace_background(workspace_id: int) -> None:
                 if storage_key:
                     try:
                         await backend.delete(storage_key)
-                    except Exception as exc:
+                    except Exception as exc:  # best-effort storage cleanup during workspace deletion; suppressed
                         logger.debug("Suppressed %r", exc)
 
         space = await session.get(Workspace, workspace_id)

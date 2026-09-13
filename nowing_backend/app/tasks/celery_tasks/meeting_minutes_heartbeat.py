@@ -51,7 +51,7 @@ def start_meeting_minutes_pending_heartbeat(meeting_minutes_id: int) -> None:
             key, PENDING_HEARTBEAT_TTL_SECONDS, "pending"
         )
         ot_metrics.record_celery_heartbeat_refresh(heartbeat_type="meeting_minutes")
-    except Exception as exc:
+    except Exception as exc:  # best-effort heartbeat write; record failure and log warning
         ot_metrics.record_celery_heartbeat_failure(heartbeat_type="meeting_minutes")
         logger.warning(
             "Failed to set pending heartbeat for meeting minutes %s: %s",
@@ -66,7 +66,7 @@ def start_meeting_minutes_heartbeat(meeting_minutes_id: int) -> None:
         key = _get_heartbeat_key(meeting_minutes_id)
         _get_heartbeat_redis().setex(key, HEARTBEAT_TTL_SECONDS, "started")
         ot_metrics.record_celery_heartbeat_refresh(heartbeat_type="meeting_minutes")
-    except Exception as exc:
+    except Exception as exc:  # best-effort heartbeat write; record failure and log warning
         ot_metrics.record_celery_heartbeat_failure(heartbeat_type="meeting_minutes")
         logger.warning(
             "Failed to set initial heartbeat for meeting minutes %s: %s",
@@ -80,7 +80,7 @@ def stop_meeting_minutes_heartbeat(meeting_minutes_id: int) -> None:
     try:
         key = _get_heartbeat_key(meeting_minutes_id)
         _get_heartbeat_redis().delete(key)
-    except Exception as exc:
+    except Exception as exc:  # best-effort heartbeat delete; suppressed on task finish
         logger.debug("Suppressed %r", exc)
 
 
@@ -90,7 +90,7 @@ def meeting_minutes_heartbeat_is_alive(meeting_minutes_id: int) -> bool:
         return bool(
             _get_heartbeat_redis().exists(_get_heartbeat_key(meeting_minutes_id))
         )
-    except Exception:
+    except Exception:  # redis read failure → report heartbeat not alive (False)
         return False
 
 
@@ -110,7 +110,7 @@ async def run_meeting_minutes_heartbeat_loop(meeting_minutes_id: int) -> None:
                 ot_metrics.record_celery_heartbeat_refresh(
                     heartbeat_type="meeting_minutes"
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort periodic heartbeat refresh; record failure and continue loop
                 ot_metrics.record_celery_heartbeat_failure(
                     heartbeat_type="meeting_minutes"
                 )

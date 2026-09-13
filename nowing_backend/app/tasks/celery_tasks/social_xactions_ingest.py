@@ -215,7 +215,7 @@ async def _ingest_social_target(task, target_id: int) -> int:
                     )
                     return ingested
 
-            except Exception:
+            except Exception:  # ingest failure → rollback and re-raise
                 await session.rollback()
                 raise
             finally:
@@ -291,7 +291,7 @@ async def _check_and_trigger_social_targets() -> int:
                     )
                     ingest_social_target_task.delay(target.id)
                     triggered += 1
-                except Exception:
+                except Exception:  # per-target schedule failure; continue scheduling remaining targets
                     logger.exception(
                         "Failed to schedule social ingest for target %s",
                         target.id,

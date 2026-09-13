@@ -100,7 +100,7 @@ async def _generate_title(
                     .limit(1)
                 )
                 is_first_response = probe_result.scalars().first() is None
-        except Exception:
+        except Exception:  # DB probe for prior assistant messages failed; log warning and skip title gen
             logger.warning(
                 "[TitleGen] first-response probe failed (chat_id=%s)",
                 chat_id,
@@ -153,7 +153,7 @@ async def _generate_title(
                     )
                 if response:
                     break
-            except Exception as e:
+            except Exception as e:  # LLM title generation attempt failure; log warning and retry or return default
                 logger.warning(
                     "[TitleGen] acompletion attempt %d/%d failed: %s",
                     attempt + 1,
@@ -191,7 +191,7 @@ async def _generate_title(
         if raw_title and len(raw_title) <= 100:
             return raw_title.strip("\"'"), usage_info
         return None, usage_info
-    except Exception:
+    except Exception:  # title generation outer failure; fallback to default title
         logger.exception("[TitleGen] _generate_title failed; using fallback title")
         return DEFAULT_TITLE, None
 

@@ -196,6 +196,6 @@ async def _check_and_trigger_schedules():
                         f"No task found for connector type {connector.connector_type}"
                     )
 
-        except Exception as e:
+        except Exception as e:  # schedule checker iteration failure → rollback and log error
             logger.error(f"Error checking periodic schedules: {e!s}", exc_info=True)
             await session.rollback()

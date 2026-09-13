@@ -228,7 +228,7 @@ async def index_luma_events(
 
             logger.info(f"Retrieved {len(events)} events from Luma API")
 
-        except Exception as e:
+        except Exception as e:  # upstream Luma API call failure; log error and return failure
             logger.error(f"Error fetching Luma events: {e!s}", exc_info=True)
             return 0, f"Error fetching Luma events: {e!s}"
 
@@ -404,7 +404,7 @@ async def index_luma_events(
                     }
                 )
 
-            except Exception as e:
+            except Exception as e:  # per-event phase 1 preparation failure; mark failed, increment count, and continue
                 logger.error(f"Error in Phase 1 for event: {e!s}", exc_info=True)
                 documents_failed += 1
                 continue
@@ -477,7 +477,7 @@ async def index_luma_events(
                     )
                     await session.commit()
 
-            except Exception as e:
+            except Exception as e:  # per-event document indexing failure; mark failed and continue
                 logger.error(
                     f"Error processing event {item.get('event_name', 'Unknown')}: {e!s}",
                     exc_info=True,
@@ -489,7 +489,7 @@ async def index_luma_events(
                     # Commit now so the failed status survives a later rollback or
                     # crash; otherwise the doc stays stuck in pending/processing.
                     await session.commit()
-                except Exception as status_error:
+                except Exception as status_error:  # failure updating document status; rollback and continue
                     logger.error(
                         f"Failed to update document status to failed: {status_error}"
                     )
@@ -510,7 +510,7 @@ async def index_luma_events(
         try:
             await session.commit()
             logger.info("Successfully committed all Luma document changes to database")
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             # Handle any remaining integrity errors gracefully (race conditions, etc.)
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
@@ -560,7 +560,7 @@ async def index_luma_events(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,
