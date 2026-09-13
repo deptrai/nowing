@@ -34,9 +34,20 @@ def _quality_gate_path() -> Path:
 
 
 def _quality_thresholds() -> dict[str, float]:
-    with _quality_gate_path().open("r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh) or {}
-    return data.get("thresholds", {})
+    path = _quality_gate_path()
+    if not path.is_file():
+        pytest.skip(f"Quality gate.yaml not found at {path}")
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except (OSError, yaml.YAMLError) as exc:
+        pytest.fail(f"Quality gate.yaml at {path} could not be loaded: {exc}")
+    if not isinstance(data, dict):
+        pytest.fail(f"Quality gate.yaml at {path} must be a mapping, got {type(data).__name__}")
+    thresholds = data.get("thresholds")
+    if not isinstance(thresholds, dict):
+        pytest.fail(f"'thresholds' in {path} must be a mapping")
+    return thresholds
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +114,41 @@ def test_evaluate_gate_clean_metrics_have_no_violations() -> None:
     # baseline_ratified is false in gate.yaml, so violations would be tagged
     # "(baseline not ratified)"; clean metrics must yield no violations at all.
     assert _evaluate_gate(metrics, _quality_gate_path()) == []
+
+
+def test_evaluate_gate_handles_missing_file(tmp_path: Path) -> None:
+    """Missing gate.yaml file reports a violation instead of silently passing or crashing."""
+    missing = tmp_path / "nonexistent_gate.yaml"
+    violations = _evaluate_gate({"overall": {}}, missing)
+    assert len(violations) == 1
+    assert "not found" in violations[0].lower()
+
+
+def test_evaluate_gate_handles_malformed_yaml(tmp_path: Path) -> None:
+    """Malformed YAML reports a load error violation instead of raising unhandled exception."""
+    malformed = tmp_path / "broken_gate.yaml"
+    malformed.write_text("thresholds: [unclosed list\n", encoding="utf-8")
+    violations = _evaluate_gate({"overall": {}}, malformed)
+    assert len(violations) == 1
+    assert "failed to load gate config" in violations[0].lower()
+
+
+def test_evaluate_gate_handles_non_mapping_yaml(tmp_path: Path) -> None:
+    """Non-mapping YAML (e.g. list or scalar) reports an error instead of raising AttributeError."""
+    bad = tmp_path / "scalar_gate.yaml"
+    bad.write_text("- item1\n- item2\n", encoding="utf-8")
+    violations = _evaluate_gate({"overall": {}}, bad)
+    assert len(violations) == 1
+    assert "mapping" in violations[0].lower() or "failed to load gate config" in violations[0].lower()
+
+
+def test_evaluate_gate_handles_non_mapping_thresholds(tmp_path: Path) -> None:
+    """gate.yaml with non-mapping 'thresholds' reports an error instead of crashing."""
+    bad = tmp_path / "bad_thresholds_gate.yaml"
+    bad.write_text("thresholds: 'not-a-dict'\n", encoding="utf-8")
+    violations = _evaluate_gate({"overall": {}}, bad)
+    assert len(violations) == 1
+    assert "thresholds" in violations[0].lower()
 
 
 def test_aggregate_scores_computes_mean_dimensions() -> None:

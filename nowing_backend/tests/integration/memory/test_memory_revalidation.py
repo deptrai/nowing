@@ -511,3 +511,4 @@ async def test_revalidate_capability_failure_returns_failed_not_500(
     assert result.memory_id == memory.id
     assert result.reason is not None
     assert "upstream blew up" in result.reason
+    cap.executor.assert_called_once()
