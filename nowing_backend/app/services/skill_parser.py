@@ -61,7 +61,7 @@ class SkillParser:
 
         try:
             frontmatter = yaml.safe_load(frontmatter_raw)
-        except Exception as exc:
+        except Exception as exc:  # yaml.safe_load raises broadly; wrap as typed SkillParseError
             raise SkillParseError(f"Invalid YAML frontmatter: {exc}") from exc
 
         if not isinstance(frontmatter, dict):

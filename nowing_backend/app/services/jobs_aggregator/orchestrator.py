@@ -10,7 +10,6 @@ from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import config
 from app.observability.metrics import record_vn_jobs_pii_detected
 from app.services.location_normalize import resolve_city_code
 from app.services.pii.redact import redact_job_pii
@@ -154,7 +153,7 @@ async def _call_source(
 
     try:
         input_obj = cap.input_schema(**payload)
-    except Exception:
+    except Exception:  # input schema mismatch → degraded empty result for this source
         logger.exception("Source %s input validation failed", source)
         return {
             "items": [],
@@ -164,7 +163,7 @@ async def _call_source(
 
     try:
         result = await execute_with_context(cap.executor, payload=input_obj, ctx=ctx)
-    except Exception:
+    except Exception:  # per-source scrape failure → degraded empty result; other sources still run
         logger.exception("Source %s scrape execution failed", source)
         return {"items": [], "degraded": True, "degradation_reason": "source_failed"}
 
@@ -212,7 +211,7 @@ async def _persist_jobs_aggregates(
     for listing in listings:
         try:
             chunks.extend(_job_to_chunks(listing, fetched_at))
-        except Exception:
+        except Exception:  # per-listing chunk serialization failure; continue remaining listings
             logger.exception("Job listing %s chunk serialization failed", listing.id)
 
     if not chunks:
@@ -233,7 +232,7 @@ async def _persist_jobs_aggregates(
         if result.status == "partial":
             return "partial", result.error
         return "failed", result.error
-    except Exception as exc:
+    except Exception as exc:  # ingest failure → report ("failed", reason) to caller, not a crash
         logger.exception("Job aggregate chainlens ingest failed")
         return "failed", str(exc)
 
@@ -255,7 +254,7 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
         payload = _source_payload(input, source)
         try:
             raw = await _call_source(source, payload, ctx)
-        except Exception:
+        except Exception:  # per-source capability failure → empty raw keeps aggregation running
             logger.exception("Source %s capability call failed", source)
             raw = {
                 "items": [],

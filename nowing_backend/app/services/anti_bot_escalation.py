@@ -80,7 +80,7 @@ async def _bump_existing(
         try:
             backend = get_storage_backend()
             await backend.delete(old_storage_key)
-        except Exception as exc:
+        except Exception as exc:  # best-effort old screenshot cleanup; orphaned file is harmless
             logger.warning(
                 "Failed to delete old screenshot %s: %s", old_storage_key, exc
             )
@@ -119,7 +119,7 @@ async def upload_screenshot(
         backend = get_storage_backend()
         await backend.put(key, data, content_type="image/png")
         return _public_url(key)
-    except Exception as exc:
+    except Exception as exc:  # upload failure → None + metric; escalation proceeds without screenshot
         logger.warning("Failed to upload anti-bot screenshot: %s", exc)
         metrics.record_anti_bot_screenshot_failure(reason="upload")
         return None
@@ -249,7 +249,7 @@ async def resolve_escalation(
         try:
             backend = get_storage_backend()
             await backend.delete(storage_key)
-        except Exception as exc:
+        except Exception as exc:  # best-effort screenshot cleanup after escalation resolves
             logger.warning(
                 "Failed to delete screenshot for escalation %s: %s",
                 escalation_id,

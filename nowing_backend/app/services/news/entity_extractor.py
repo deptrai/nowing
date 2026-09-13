@@ -70,7 +70,7 @@ def _trim_text_to_token_budget(text: str, max_tokens: int = MAX_CONTEXT_TOKENS) 
             # Truncate at the last token inside the budget.
             encoded = enc.encode(text)[:max_tokens]
             return enc.decode(encoded)
-        except Exception:
+        except Exception:  # tiktoken encode/decode failure → char-based fallback bounds the text
             logger.warning("tiktoken trim failed, using char fallback")
     # Worst-case reserve: assume max ~chars per token.
     return text[: max_tokens * _FALLBACK_CHARS_PER_TOKEN]

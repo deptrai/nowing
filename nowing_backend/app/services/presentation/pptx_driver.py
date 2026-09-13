@@ -31,14 +31,14 @@ def _set_shape_text(shape: Any, text: str) -> None:
         return
     try:
         shape.text = text
-    except Exception:
+    except Exception:  # non-text shape → skip; pptx generation continues
         return
 
 
 def _set_notes(slide: Any, notes: str) -> None:
     try:
         slide.notes_slide.notes_text_frame.text = notes
-    except Exception:
+    except Exception:  # notes frame absent on layout → skip notes, keep slide
         return
 
 

@@ -154,7 +154,7 @@ class PresentationStudioService:
                     "status": status,
                 },
             )
-        except Exception:
+        except Exception:  # best-effort usage recording; never fail generation on metering
             logger.exception(
                 "[PresentationStudio] Failed to record presentation_generate usage"
             )
@@ -222,7 +222,7 @@ class PresentationStudioService:
                 return None, _extract_token_usage(response, llm)
 
             return spec, _extract_token_usage(response, llm)
-        except Exception as e:
+        except Exception as e:  # LLM spec generation failure → (None, {}) triggers validation-failed path
             logger.warning("[PresentationStudio] LLM call failed: %s", e)
             return None, {}
 
@@ -272,7 +272,7 @@ class PresentationStudioService:
             )
             try:
                 await session.commit()
-            except Exception:
+            except Exception:  # best-effort usage commit on failure path; row loss is acceptable
                 logger.exception(
                     "[PresentationStudio] Failed to commit usage for validation_failed"
                 )
@@ -299,7 +299,7 @@ class PresentationStudioService:
 
         try:
             spec = DeckSpec(**spec_dict)
-        except Exception as e:
+        except Exception as e:  # spec schema mismatch → structured validation failure, not a crash
             logger.warning("[PresentationStudio] DeckSpec validation failed: %s", e)
             return await _fail_validation("Deck spec validation failed.")
 
@@ -334,7 +334,7 @@ class PresentationStudioService:
                 pptx_file = storage_dir / "output.pptx"
                 pptx_file.write_bytes(pptx_bytes)
                 file_path = str(pptx_file)
-        except Exception:
+        except Exception:  # artifact write failure → cleanup temp dir then propagate via caller
             logger.exception("[PresentationStudio] File write failed")
             if storage_dir is not None and storage_dir.exists():
                 shutil.rmtree(storage_dir, ignore_errors=True)
@@ -401,7 +401,7 @@ class PresentationStudioService:
                     "[PresentationStudio] Slug collision for %r; retrying", slug
                 )
                 continue
-            except Exception as exc:
+            except Exception as exc:  # DB insert failure after slug retries → rollback and surface last error
                 last_error = exc
                 await session.rollback()
                 break

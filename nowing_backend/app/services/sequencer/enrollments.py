@@ -226,7 +226,7 @@ class SequencerEnrollmentMixin:
                         workspace_id=ws_id,
                     )
                     dispatched_count += 1
-                except Exception:
+                except Exception:  # per-enrollment dispatch failure; continue remaining enrollments
                     logger.exception(
                         "Failed to dispatch Celery task for enrollment %s",
                         enrollment.id,

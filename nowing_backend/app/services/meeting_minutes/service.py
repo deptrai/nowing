@@ -132,7 +132,7 @@ class MeetingMinutesService:
 
         try:
             self._enqueue_worker(row.id, workspace_id, user_id)
-        except Exception as exc:
+        except Exception as exc:  # best-effort worker enqueue; row already persisted, worker can be re-triggered
             logger.warning("Failed to enqueue meeting minutes worker: %s", exc)
 
         return GenerateMeetingMinutesOutput(
@@ -218,7 +218,7 @@ class MeetingMinutesService:
                 segments_with_speakers = await loop.run_in_executor(
                     None, self._diarize, str(audio_path), transcription
                 )
-            except Exception as exc:
+            except Exception as exc:  # diarization failure degrades to transcript-only segments, keeps pipeline alive
                 logger.warning("Diarization failed for MeetingMinutes %s: %s", row.id, exc)
                 segments_with_speakers = self._degraded_segments(transcription)
                 degraded = True
@@ -294,7 +294,7 @@ class MeetingMinutesService:
                 status="failed",
                 error=error,
             )
-        except Exception:
+        except Exception:  # top-level processing guard: mark row FAILED, commit, never crash worker
             logger.exception("MeetingMinutes %s processing failed", row.id)
             row.status = MeetingMinutesStatus.FAILED
             row.error = "processing_error"
@@ -463,7 +463,7 @@ class MeetingMinutesService:
     ) -> list[MeetingMinutesSegment]:
         try:
             turns = self.diarization.diarize(audio_path)
-        except Exception:
+        except Exception:  # diarizer backend failure → degraded segments keep pipeline alive
             return self._degraded_segments(transcription)
 
         if not turns:
@@ -558,7 +558,7 @@ class MeetingMinutesService:
             ) = await _resolve_agent_billing_for_workspace(
                 session, row.workspace_id, thread_id=row.thread_id
             )
-        except Exception:
+        except Exception:  # billing resolution failure → free/auto defaults keep summarization running
             billing_tier = "free"
             base_model = "auto"
             owner_user_id = row.user_id
@@ -592,7 +592,7 @@ class MeetingMinutesService:
         except QuotaInsufficientError:
             # Return degraded but keep transcript.
             return "", []
-        except Exception as exc:
+        except Exception as exc:  # LLM summary failure → empty summary keeps transcript usable
             logger.warning("Summary extraction failed for MeetingMinutes %s: %s", row.id, exc)
             return "", []
 
@@ -606,7 +606,7 @@ class MeetingMinutesService:
             import json
 
             return json.loads(content)
-        except Exception:
+        except Exception:  # malformed LLM JSON → empty dict, caller treats as no structured output
             return {}
 
     async def _purge_document(self, session: AsyncSession, row: MeetingMinutes) -> None:

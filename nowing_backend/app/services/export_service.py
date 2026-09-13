@@ -560,7 +560,7 @@ async def build_export_zip(
             skipped_docs=skipped_docs,
         )
 
-    except Exception:
+    except Exception:  # export failure → cleanup temp file then re-raise for caller
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
         raise
@@ -590,7 +590,7 @@ def _maybe_decrypt_pii(value: str | None) -> str | None:
     if enc.is_encrypted(value):
         try:
             return enc.decrypt(value)
-        except Exception:
+        except Exception:  # decrypt failure → None so caller treats value as absent
             return None
     return value
 

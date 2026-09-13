@@ -49,7 +49,7 @@ async def publish_rule_update(
         return
     try:
         await redis.publish(SUBSCRIPTION_CHANNEL, payload)
-    except Exception:
+    except Exception:  # best-effort pubsub publish; DB write already committed
         logger.exception("Failed to publish scraper rule update")
 
 
@@ -66,7 +66,7 @@ async def start_rule_subscriber(
 
     try:
         await pubsub.subscribe(SUBSCRIPTION_CHANNEL)
-    except Exception:
+    except Exception:  # subscribe failure → listener exits; pollers still get updates on restart
         logger.exception("Failed to subscribe to scraper config updates")
         return
 

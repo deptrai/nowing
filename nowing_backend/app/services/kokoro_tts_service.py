@@ -36,7 +36,7 @@ class KokoroTTSService:
         """Initialize the Kokoro pipeline."""
         try:
             self.pipeline = KPipeline(lang_code=self.lang_code)
-        except Exception:
+        except Exception:  # log then re-raise: TTS init failure must surface to caller
             logger.exception("Error initializing Kokoro pipeline")
             raise
 
@@ -78,7 +78,7 @@ class KokoroTTSService:
             if isinstance(voice, str) and voice.endswith(".pt"):
                 try:
                     voice_param = torch.load(voice, weights_only=True)
-                except Exception:
+                except Exception:  # voice tensor load failure → default voice keeps TTS functional
                     logger.warning(
                         "Could not load voice tensor from %s, using default", voice
                     )
@@ -114,7 +114,7 @@ class KokoroTTSService:
 
             return output_path
 
-        except Exception:
+        except Exception:  # log then re-raise: TTS generation failure must surface to caller
             logger.exception("Error generating speech with Kokoro")
             raise
 

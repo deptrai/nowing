@@ -159,7 +159,7 @@ class SequencerDispatchMixin:
                     if self.encryption.is_encrypted(contact.email)
                     else contact.email
                 )
-            except Exception:
+            except Exception:  # decrypt failure → raw value fallback keeps dispatch attemptable
                 raw_email = contact.email
             if not raw_email:
                 return await self._skip_step(
@@ -177,7 +177,7 @@ class SequencerDispatchMixin:
                     if self.encryption.is_encrypted(contact.phone)
                     else contact.phone
                 )
-            except Exception:
+            except Exception:  # decrypt failure → raw value fallback keeps dispatch attemptable
                 raw_phone = contact.phone
             if step.channel == "telegram":
                 telegram_chat_id = (contact.external_chat_ids or {}).get(
@@ -329,7 +329,7 @@ class SequencerDispatchMixin:
                 # Ensure final commit for zero-cost sends and staged state.
                 await session.commit()
                 return event
-            except Exception as exc:
+            except Exception as exc:  # per-channel dispatch failure → record error, try fallback channel
                 last_error = str(exc)
                 logger.warning(
                     "Channel %s failed for lead %s: %s. Trying fallback...",

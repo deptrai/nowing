@@ -83,7 +83,7 @@ async def ensure_workspace_xactions_connector(
             workspace_id,
         )
         return connector
-    except Exception as exc:
+    except Exception as exc:  # seed failure → rollback so session stays clean; connector absent
         await session.rollback()
         logger.warning(
             "Failed to ensure XActions connector for workspace %d: %s",
@@ -140,7 +140,7 @@ async def seed_xactions_connectors(session: AsyncSession) -> int:
         if created_count > 0:
             await session.commit()
             logger.info("Seeded XActions connector for %d workspaces", created_count)
-    except Exception as exc:
+    except Exception as exc:  # seeding best-effort at boot; rollback keeps session usable
         logger.warning("seed_xactions_connectors failed: %s", exc, exc_info=True)
         await session.rollback()
 

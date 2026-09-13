@@ -195,7 +195,7 @@ class ComposioDriveMixin(ComposioClientMixin):
                                 f"File path from Composio does not exist: {file_path}"
                             )
                             return None, f"File not found at path: {file_path}"
-                    except Exception as e:
+                    except Exception as e:  # local file read failure → (None, error) tuple for caller
                         logger.error(
                             f"Failed to read file from Composio path {file_path}: {e!s}"
                         )

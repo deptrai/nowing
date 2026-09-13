@@ -118,7 +118,7 @@ class ImageGenRouterService:
                 f"Image Generation Router initialized with {len(model_list)} deployments, "
                 f"strategy: {final_settings.get('routing_strategy')}"
             )
-        except Exception as e:
+        except Exception as e:  # router init failure → None router; callers fall back to default deployment
             logger.error(f"Failed to initialize Image Generation Router: {e}")
             instance._router = None
 
@@ -158,7 +158,7 @@ class ImageGenRouterService:
 
             return deployment
 
-        except Exception as e:
+        except Exception as e:  # config conversion failure → None deployment; router skips candidate
             logger.warning(f"Failed to convert image gen config to deployment: {e}")
             return None
 
