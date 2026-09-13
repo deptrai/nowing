@@ -54,7 +54,7 @@ class TeamsHistory:
             teams = await self.connector.get_joined_teams()
             logger.info("Retrieved %s teams", len(teams))
             return teams
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error("Error fetching teams: %s", str(e))
             raise
 
@@ -72,7 +72,7 @@ class TeamsHistory:
             channels = await self.connector.get_team_channels(team_id)
             logger.info("Retrieved %s channels for team %s", len(channels), team_id)
             return channels
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error("Error fetching channels for team %s: %s", team_id, str(e))
             raise
 
@@ -120,7 +120,7 @@ class TeamsHistory:
                             team_id, channel_id, message.get("id")
                         )
                         all_messages.extend(replies)
-                    except Exception:
+                    except Exception:  # per-item sync failure; continue batch
                         logger.warning(
                             "Failed to get replies for message %s",
                             message.get("id"),
@@ -137,7 +137,7 @@ class TeamsHistory:
 
             return messages
 
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error(
                 "Error fetching messages from channel %s in team %s: %s",
                 channel_id,
@@ -184,7 +184,7 @@ class TeamsHistory:
                         channel_name,
                         channel_id,
                     )
-                except Exception:
+                except Exception:  # per-item sync failure; continue batch
                     logger.error(
                         "Failed to fetch messages from channel '%s' (%s)",
                         channel_name,
@@ -195,7 +195,7 @@ class TeamsHistory:
 
             return all_channel_messages
 
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error("Error fetching messages from team %s: %s", team_id, str(e))
             raise
 
@@ -238,7 +238,7 @@ class TeamsHistory:
                         team_name,
                         team_id,
                     )
-                except Exception:
+                except Exception:  # per-item sync failure; continue batch
                     logger.error(
                         "Failed to fetch messages from team '%s' (%s)",
                         team_name,
@@ -249,6 +249,6 @@ class TeamsHistory:
 
             return all_messages
 
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             logger.error("Error fetching all messages: %s", str(e))
             raise

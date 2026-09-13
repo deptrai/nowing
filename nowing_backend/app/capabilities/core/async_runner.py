@@ -142,7 +142,7 @@ async def _execute_async_run(
                 try:
                     if output.billable_units > 0:
                         cost_micros = await charge_capability(output, unit, ctx)
-                except Exception:
+                except Exception:  # billing debit error; log failure and continue async finalize
                     logger.exception("charge failed for async run %s", run_id)
 
                 # Story 20.2: async research runs that request gap-fill indexing
@@ -172,7 +172,7 @@ async def _execute_async_run(
                                 "ts": _now_ms(),
                             },
                         )
-                    except Exception:
+                    except Exception:  # gap-fill trigger error; log failure and proceed with output
                         logger.exception(
                             "gap-fill trigger failed for async run %s", run_id
                         )
@@ -184,7 +184,7 @@ async def _execute_async_run(
         except (NowingError, HTTPException) as exc:
             final_status = "error"
             final_error = str(exc)
-        except Exception:
+        except Exception:  # capability execution error; mark async run error with upstream message
             logger.exception("async run %s failed with an upstream error", run_id)
             final_status = "error"
             final_error = (
@@ -350,7 +350,7 @@ async def _notify_terminal(run_id: str, status: str) -> None:
                     "capability": run.capability,
                 },
             )
-    except Exception:
+    except Exception:  # notification dispatch best-effort; log and continue
         logger.exception("failed to create terminal notification for run %s", run_id)
 
 

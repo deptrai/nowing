@@ -77,7 +77,7 @@ def _record_queue_latency(task=None, **_kwargs):
             scheduled=scheduled,
             operation=operation,
         )
-    except Exception as exc:
+    except Exception as exc:  # log error and fallback safely
         logger.debug("Suppressed %r", exc)
 
 
@@ -101,7 +101,7 @@ def _set_celery_span_attributes(task=None, **_kwargs):
         latency_ms = getattr(request, "nowing_queue_latency_ms", None)
         if latency_ms is not None:
             span.set_attribute("celery.queue.latency_ms", latency_ms)
-    except Exception as exc:
+    except Exception as exc:  # log error and fallback safely
         logger.debug("Suppressed %r", exc)
 
 
@@ -113,7 +113,7 @@ async def _run_scraper_rule_subscriber() -> None:
     try:
         redis = await get_redis_client()
         await scraper_rule_pubsub.start_rule_subscriber(redis)
-    except Exception as exc:
+    except Exception as exc:  # log error and fallback safely
         # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
         logger.debug("Suppressed %r", exc)
 

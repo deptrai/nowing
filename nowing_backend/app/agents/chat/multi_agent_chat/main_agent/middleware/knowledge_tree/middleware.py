@@ -72,7 +72,7 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None) -> int:
     if callable(count_fn):
         try:
             return int(count_fn([{"role": "user", "content": text}]))
-        except Exception as exc:
+        except Exception as exc:  # model token counter method failure; fall back to profile models
             logger.debug("Suppressed %r", exc)
     profile = getattr(llm, "profile", None)
     model_names: list[str] = []
@@ -93,7 +93,7 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None) -> int:
                 model=model_name,
             )
         )
-    except Exception:
+    except Exception:  # token_counter library failure; fall back to character approximation
         return _approx_tokens(text)
 
 

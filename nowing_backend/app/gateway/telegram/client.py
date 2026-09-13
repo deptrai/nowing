@@ -298,7 +298,7 @@ class TelegramClient:
                     timeout=30,
                     allowed_updates=["message", "edited_message", "callback_query"],
                 )
-            except Exception:
+            except Exception:  # channel message delivery failure; fallback
                 logger.exception(
                     "Telegram get_updates failed; will retry from offset=%s",
                     next_offset,
@@ -309,7 +309,7 @@ class TelegramClient:
             for update in updates:
                 try:
                     payload = update.to_dict()
-                except Exception:
+                except Exception:  # channel message delivery failure; fallback
                     logger.exception(
                         "Malformed Telegram update id=%s",
                         getattr(update, "update_id", None),

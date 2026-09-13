@@ -34,7 +34,7 @@ def _build_vn_jobs_chunks(items: list[Any], fetched_at: str) -> list[Any]:
                     category=None,
                 )
             )
-        except Exception:
+        except Exception:  # per-item serialization error; skip item and continue batch
             logger.exception("Skipping unserializable job listing")
     return chunks
 
@@ -91,7 +91,7 @@ def build_aggregate_executor() -> Executor:
                     await _ingest_vn_jobs_output(
                         output, workspace_id, session, correlation_id
                     )
-                except Exception:
+                except Exception:  # chainlens ingest failure; record failed status and return output
                     logger.exception("vn_jobs.aggregate ingest failed")
                     output.ingest_status = "failed"
             else:

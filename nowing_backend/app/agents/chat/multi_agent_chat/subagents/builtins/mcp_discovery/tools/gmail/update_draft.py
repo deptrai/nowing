@@ -322,7 +322,7 @@ def create_update_gmail_draft_tool(
                             .execute()
                         ),
                     )
-                except Exception as api_err:
+                except Exception as api_err:  # Gmail API call failure; inspect permission/auth error
                     from googleapiclient.errors import HttpError
 
                     if isinstance(api_err, HttpError) and api_err.resp.status == 403:
@@ -339,7 +339,7 @@ def create_update_gmail_draft_tool(
                                 }
                                 flag_modified(connector, "config")
                                 await db_session.commit()
-                        except Exception:
+                        except Exception:  # best-effort auth_expired flag persistence; continue execution
                             logger.warning(
                                 "Failed to persist auth_expired for connector %s",
                                 connector.id,
@@ -393,7 +393,7 @@ def create_update_gmail_draft_tool(
                         )
                     else:
                         kb_message_suffix = " This draft will be fully updated in your knowledge base in the next scheduled sync."
-                except Exception as kb_err:
+                except Exception as kb_err:  # post-update KB sync failure; rollback and defer to scheduled sync
                     logger.warning(f"KB update after draft edit failed: {kb_err}")
                     await db_session.rollback()
                     kb_message_suffix = " This draft will be fully updated in your knowledge base in the next scheduled sync."
@@ -404,7 +404,7 @@ def create_update_gmail_draft_tool(
                 "message": f"Successfully updated Gmail draft with subject '{final_subject}'.{kb_message_suffix}",
             }
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):
@@ -444,6 +444,6 @@ async def _find_draft_id_by_message(gmail_service: Any, message_id: str) -> str 
                 break
 
         return None
-    except Exception as e:
+    except Exception as e:  # draft search by message_id failure; return None
         logger.warning(f"Failed to look up draft by message_id: {e}")
         return None

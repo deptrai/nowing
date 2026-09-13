@@ -297,7 +297,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 if run_id is not None:
                     response.headers["X-Run-Id"] = f"run_{run_id}"
                 raise
-            except Exception as exc:
+            except Exception as exc:  # capability executor failure; return structured error
                 run_id = await record_and_publish_sync_run_error(
                     session=session,
                     workspace_id=workspace_id,
@@ -322,7 +322,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             cost_micros = None
             try:
                 cost_micros = await charge_capability(output, unit, ctx)
-            except Exception:
+            except Exception:  # capability executor failure; return structured error
                 logger.exception("charge failed for sync run")
 
             # Story 20.2: trigger on-demand gap-fill indexing for research results.
@@ -339,7 +339,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                             correlation_id=sync_run_id,
                         )
                     )
-                except Exception:
+                except Exception:  # capability executor failure; return structured error
                     logger.exception("gap-fill trigger failed for sync research run")
 
             run_id = await record_and_publish_sync_run(
@@ -602,7 +602,7 @@ def _register_run_history(router: APIRouter) -> None:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Run output is not valid deliverable JSON.",
             ) from exc
-        except Exception:
+        except Exception:  # capability executor failure; return structured error
             logger.exception("Failed to parse run %s output as ResearchOutput", run_id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

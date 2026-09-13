@@ -211,7 +211,7 @@ async def _execute_xactions_tool(
                 "code": exc.code,
                 "suggested_action": exc.suggested_action,
             }
-        except Exception as exc:
+        except Exception as exc:  # unexpected XActions execution failure; return error payload
             logger.exception("XActions execution error on '%s': %s", tool_name, exc)
             return {
                 "success": False,

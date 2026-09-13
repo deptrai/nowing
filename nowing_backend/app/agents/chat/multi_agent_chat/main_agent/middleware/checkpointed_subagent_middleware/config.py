@@ -82,7 +82,7 @@ def drain_parent_null_resume(runtime: ToolRuntime) -> None:
         return
     try:
         consume(True)
-    except Exception:
+    except Exception:  # scratchpad get_null_resume inspection failure; suppress and proceed
         # Defensive: if langgraph's internal scratchpad shape changes we don't
         # want to break the resume path. Worst case the original ValueError
         # still surfaces — same behavior as before this fix.

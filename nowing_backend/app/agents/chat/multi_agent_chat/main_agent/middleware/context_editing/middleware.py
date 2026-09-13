@@ -224,7 +224,7 @@ class SpillToBackendEdit(ContextEdit):
             import json
 
             return json.dumps(content, default=str).encode("utf-8")
-        except Exception:
+        except Exception:  # JSON encoding failure for tool content; fall back to str encoding
             return str(content).encode("utf-8")
 
     @staticmethod
@@ -331,7 +331,7 @@ class SpillingContextEditingMiddleware(ContextEditingMiddleware):
                         thread_id=thread_id,
                         tool_name=tool_name,
                     )
-        except Exception:
+        except Exception:  # spill-to-DB flush failure; leave placeholders in message context
             logger.exception(
                 "Spill-to-DB flush failed (%d rows); placeholders remain in "
                 "messages but content is unrecoverable",

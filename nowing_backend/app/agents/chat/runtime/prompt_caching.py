@@ -111,7 +111,7 @@ def _get_or_init_model_kwargs(llm: BaseChatModel) -> dict[str, Any] | None:
         return model_kwargs
     try:
         llm.model_kwargs = {}  # type: ignore[attr-defined]
-    except Exception:
+    except Exception:  # best-effort model kwargs initialization; fallback to None
         return None
     refreshed = getattr(llm, "model_kwargs", None)
     return refreshed if isinstance(refreshed, dict) else None

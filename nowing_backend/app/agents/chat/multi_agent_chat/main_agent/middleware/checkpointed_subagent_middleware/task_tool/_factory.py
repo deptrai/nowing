@@ -173,7 +173,7 @@ def build_task_tool_with_parent_config(
                 pending_id, pending_value = get_first_pending_subagent_interrupt(
                     snapshot
                 )
-            except Exception:
+            except Exception:  # subagent sync state lookup failure; re-raise if resume queued or fallback
                 # Fail loud if a resume is queued: silent fallback would
                 # replay the original interrupt to the user.
                 if has_nowing_resume(runtime):
@@ -228,7 +228,7 @@ def build_task_tool_with_parent_config(
                         outcome=invoke_outcome,
                     )
                     _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                except Exception:
+                except Exception:  # subagent sync invoke failure; record metric and re-raise interrupt or bubble
                     invoke_outcome = "error"
                     sp.set_attribute("subagent.outcome", invoke_outcome)
                     ot_metrics.record_subagent_invoke_duration(
@@ -265,7 +265,7 @@ def build_task_tool_with_parent_config(
                         outcome=invoke_outcome,
                     )
                     _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                except Exception:
+                except Exception:  # subagent sync retry invoke failure; record metric and re-raise interrupt or bubble
                     invoke_outcome = "error"
                     sp.set_attribute("subagent.outcome", invoke_outcome)
                     ot_metrics.record_subagent_invoke_duration(
@@ -394,7 +394,7 @@ def build_task_tool_with_parent_config(
                 pending_id, pending_value = get_first_pending_subagent_interrupt(
                     snapshot
                 )
-            except Exception:
+            except Exception:  # subagent async state lookup failure; re-raise if resume queued or fallback
                 if has_nowing_resume(runtime):
                     logger.exception(
                         "Subagent %r aget_state raised with resume queued; re-raising.",
@@ -484,7 +484,7 @@ def build_task_tool_with_parent_config(
                             time.perf_counter() - atask_start,
                         )
                         _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                    except Exception:
+                    except Exception:  # subagent async invoke failure; record metric and re-raise interrupt or bubble
                         ainvoke_outcome = "error"
                         sp.set_attribute("subagent.outcome", ainvoke_outcome)
                         ot_metrics.record_subagent_invoke_duration(
@@ -557,7 +557,7 @@ def build_task_tool_with_parent_config(
                             time.perf_counter() - atask_start,
                         )
                         _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                    except Exception:
+                    except Exception:  # subagent async retry invoke failure; record metric and re-raise interrupt or bubble
                         ainvoke_outcome = "error"
                         sp.set_attribute("subagent.outcome", ainvoke_outcome)
                         ot_metrics.record_subagent_invoke_duration(

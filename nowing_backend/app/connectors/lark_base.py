@@ -76,7 +76,7 @@ class LarkBaseConnector:
                             res.status_code,
                             res.text,
                         )
-                except Exception as e:
+                except Exception as e:  # upstream connector API failure; mark degraded
                     logger.exception("Exception during Lark Base batch create: %s", e)
 
         return {

@@ -30,7 +30,7 @@ def _extract_domain(url: str | None) -> str | None:
         if netloc.startswith("www."):
             netloc = netloc[4:]
         return netloc or None
-    except Exception:
+    except Exception:  # lead intelligence operation fallback
         return None
 
 

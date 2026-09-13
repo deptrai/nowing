@@ -173,7 +173,7 @@ class RetryAfterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
     def _should_retry(self, exc: BaseException) -> bool:
         try:
             return bool(self._retry_on(exc))
-        except Exception:
+        except Exception:  # retry predicate evaluation failure; default to no-retry
             logger.exception("retry_on callable raised; defaulting to False")
             return False
 
@@ -196,7 +196,7 @@ class RetryAfterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
         for attempt in range(self.max_retries + 1):
             try:
                 return handler(request)
-            except Exception as exc:
+            except Exception as exc:  # sync model call failure; evaluate retry policy or re-raise
                 if not self._should_retry(exc) or attempt >= self.max_retries:
                     raise
                 delay = self._delay_for_attempt(attempt, exc)
@@ -219,7 +219,7 @@ class RetryAfterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
                             "reason": type(exc).__name__,
                         },
                     )
-                except Exception:
+                except Exception:  # best-effort telemetry event dispatch; continue retry delay
                     logger.debug(
                         "dispatch_custom_event failed; suppressed", exc_info=True
                     )
@@ -238,7 +238,7 @@ class RetryAfterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
         for attempt in range(self.max_retries + 1):
             try:
                 return await handler(request)
-            except Exception as exc:
+            except Exception as exc:  # async model call failure; evaluate retry policy or re-raise
                 if not self._should_retry(exc) or attempt >= self.max_retries:
                     raise
                 delay = self._delay_for_attempt(attempt, exc)
@@ -261,7 +261,7 @@ class RetryAfterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
                             "reason": type(exc).__name__,
                         },
                     )
-                except Exception:
+                except Exception:  # best-effort telemetry event dispatch; continue retry delay
                     logger.debug(
                         "adispatch_custom_event failed; suppressed", exc_info=True
                     )

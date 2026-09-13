@@ -90,7 +90,7 @@ class MentionNotificationHandler(BaseNotificationHandler):
                 f"Created new_mention notification {notification.id} for user {mentioned_user_id}"
             )
             return notification
-        except Exception as e:
+        except Exception as e:  # log error and fallback safely
             # Race: a concurrent insert won; fetch the existing row instead.
             await session.rollback()
             if (

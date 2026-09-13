@@ -101,7 +101,7 @@ def build_linkedin_jobs_executor(
 
                 async with async_session_maker() as session:
                     await persist_linkedin_jobs(postings, session=session)
-            except Exception as exc:
+            except Exception as exc:  # optional DB persistence failure; log and continue
                 logger.warning(f"Failed to persist LinkedIn jobs to database: {exc}")
 
         emit_progress(

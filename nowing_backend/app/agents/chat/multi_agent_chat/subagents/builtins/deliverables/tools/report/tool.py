@@ -223,7 +223,7 @@ def create_generate_report_tool(
                         f"[generate_report] Saved failed report {failed_report.id}: {error_msg}"
                     )
                     return failed_report.id
-            except Exception:
+            except Exception:  # best-effort failed report persistence; return None
                 logger.exception(
                     "[generate_report] Could not persist failed report row"
                 )
@@ -378,7 +378,7 @@ def create_generate_report_tool(
                         )
                         logger.info("[generate_report] KB search returned no results")
 
-                except Exception as e:
+                except Exception as e:  # KB search query failure; proceed with existing source content
                     logger.warning(
                         f"[generate_report] Internal KB search failed: {e}. "
                         "Proceeding with existing source_content."
@@ -570,7 +570,7 @@ def create_generate_report_tool(
                 tool_call_id=runtime.tool_call_id,
             )
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → persist failure and return degraded result
             error_message = str(e)
             logger.exception(f"[generate_report] Error: {error_message}")
             report_id = await _save_failed_report(error_message)

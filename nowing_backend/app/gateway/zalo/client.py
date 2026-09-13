@@ -256,7 +256,7 @@ async def generate_assisted_outbound_draft(
             temperature=0.6,
             max_tokens=300,
         )
-    except Exception as exc:
+    except Exception as exc:  # LLM draft completion failure; degrade to fallback template
         logger.warning("LLM draft generation failed: %s; using fallback template", exc)
         return _fallback_template(lead_data, custom_context=custom_context)
 
@@ -279,7 +279,7 @@ async def generate_assisted_outbound_draft(
     cost_usd = 0.0
     try:
         cost_usd = float(litellm.completion_cost(completion_response=response) or 0.0)
-    except Exception:
+    except Exception:  # litellm cost calculation failure; non-fatal
         logger.debug("Could not compute draft cost via litellm")
     cost_micros = round(cost_usd * 1_000_000)
 
@@ -404,7 +404,7 @@ class ZaloClient:
             resp = await client.post(url, headers=headers, data=data)
             resp.raise_for_status()
             res_data = resp.json()
-        except Exception as exc:
+        except Exception as exc:  # Zalo token refresh HTTP/network failure; surface typed error
             logger.error("Failed to refresh Zalo OA token: %s", exc)
             raise RuntimeError(f"Zalo OAuth token refresh failed: {exc}") from exc
 
@@ -500,7 +500,7 @@ class ZaloClient:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             res_json = resp.json()
-        except Exception as exc:
+        except Exception as exc:  # ZNS dispatch HTTP/network failure; surface typed error
             logger.error("Failed to send ZNS message: %s", exc)
             raise RuntimeError(f"ZNS send request failed: {exc}") from exc
 
@@ -538,7 +538,7 @@ class ZaloClient:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             return resp.json()
-        except Exception as exc:
+        except Exception as exc:  # Zalo CS message HTTP/network failure; surface typed error
             logger.error("Failed to send Zalo CS message: %s", exc)
             raise RuntimeError(f"Zalo CS message send failed: {exc}") from exc
 

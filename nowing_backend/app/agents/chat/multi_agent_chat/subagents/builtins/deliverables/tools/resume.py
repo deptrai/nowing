@@ -545,7 +545,7 @@ def create_generate_resume_tool(
                         f"[generate_resume] Saved failed report {failed.id}: {error_msg}"
                     )
                     return failed.id
-            except Exception:
+            except Exception:  # best-effort failed report persistence; return None
                 logger.exception(
                     "[generate_resume] Could not persist failed report row"
                 )
@@ -677,7 +677,7 @@ def create_generate_resume_tool(
                         pdf_bytes = _compile_typst(typst_source)
                         compile_error = None
                         break
-                    except Exception as e:
+                    except Exception as e:  # Typst compilation failure; retry once or surface error
                         compile_error = str(e)
                         logger.warning(
                             "[generate_resume] Compile attempt %s failed: %s",
@@ -855,7 +855,7 @@ def create_generate_resume_tool(
                 title=resume_title,
             )
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → persist failure and return degraded result
             error_message = str(e)
             logger.exception(f"[generate_resume] Error: {error_message}")
             report_id = await _save_failed_report(error_message)

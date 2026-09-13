@@ -53,7 +53,7 @@ class ElasticsearchConnector:
         # Initialize Elasticsearch client
         try:
             self.client = AsyncElasticsearch(**self.es_config)
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Failed to initialize Elasticsearch client: {e}")
             raise
 
@@ -138,7 +138,7 @@ class ElasticsearchConnector:
         except ConnectionError:
             logger.error("Failed to connect to Elasticsearch")
             raise
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Search failed: {e}")
             raise
 
@@ -152,7 +152,7 @@ class ElasticsearchConnector:
         try:
             indices = await self.client.indices.get_alias(index="*")
             return list(indices.keys())
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Failed to get indices: {e}")
             raise
 
@@ -169,7 +169,7 @@ class ElasticsearchConnector:
         try:
             mapping = await self.client.indices.get_mapping(index=index)
             return mapping[index]["mappings"] if index in mapping else {}
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Failed to get mapping for index '{index}': {e}")
             raise
 
@@ -227,10 +227,10 @@ class ElasticsearchConnector:
             if scroll_id:
                 try:
                     await self.client.clear_scroll(scroll_id=scroll_id)
-                except Exception:
+                except Exception:  # upstream connector API failure; mark degraded
                     logger.debug("Failed to clear scroll id (non-fatal)")
 
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Scroll search failed: {e}", exc_info=True)
             raise
 
@@ -254,7 +254,7 @@ class ElasticsearchConnector:
                 response = await self.client.count(index=index)
 
             return response["count"]
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Failed to count documents in index '{index}': {e}")
             raise
 

@@ -63,7 +63,7 @@ def register_runtime_observables() -> None:
             unit="{collection}",
             description="CPython GC counters by generation.",
         )
-    except Exception:
+    except Exception:  # best-effort telemetry/alerting; don't fail primary op
         logger.warning("Failed to register OTel runtime observables", exc_info=True)
         return
 

@@ -134,7 +134,7 @@ class GoogleCalendarConnector:
                     connector.config = creds_dict
                     flag_modified(connector, "config")
                     await self._session.commit()
-            except Exception as e:
+            except Exception as e:  # upstream connector API failure; mark degraded
                 error_str = str(e)
                 if (
                     "invalid_grant" in error_str.lower()
@@ -165,7 +165,7 @@ class GoogleCalendarConnector:
             credentials = await self._get_credentials()
             self.service = build("calendar", "v3", credentials=credentials)
             return self.service
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             error_str = str(e)
             # If the error already contains a user-friendly re-authentication message, preserve it
             if (
@@ -203,7 +203,7 @@ class GoogleCalendarConnector:
 
             return formatted_calendars, None
 
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             return [], f"Error fetching calendars: {e!s}"
 
     async def get_all_primary_calendar_events(
@@ -286,7 +286,7 @@ class GoogleCalendarConnector:
 
             return events, None
 
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             error_str = str(e)
             # If the error already contains a user-friendly re-authentication message, preserve it
             if (
@@ -326,7 +326,7 @@ class GoogleCalendarConnector:
                     start_formatted = start_dt.strftime("%Y-%m-%d %H:%M")
                 else:  # Date format (all-day event)
                     start_formatted = start_time
-            except Exception:
+            except Exception:  # upstream connector API failure; mark degraded
                 start_formatted = start_time
         else:
             start_formatted = "Unknown"
@@ -338,7 +338,7 @@ class GoogleCalendarConnector:
                     end_formatted = end_dt.strftime("%Y-%m-%d %H:%M")
                 else:  # Date format (all-day event)
                     end_formatted = end_time
-            except Exception:
+            except Exception:  # upstream connector API failure; mark degraded
                 end_formatted = end_time
         else:
             end_formatted = "Unknown"

@@ -214,7 +214,7 @@ class BusyMutexMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
         # Preferred path: real LangGraph runtime context.
         try:
             tid = _from_dict(get_config())
-        except Exception:
+        except Exception:  # LangGraph runtime config lookup failure; fall back to None
             tid = None
         if tid is not None:
             return tid

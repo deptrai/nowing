@@ -153,7 +153,7 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         except ValidationError:
             logger.exception("generate_presentation input failed validation")
             return _failed("Invalid presentation input.")
-        except Exception as exc:
+        except Exception as exc:  # presentation generation failure; rollback and return failure output
             if session is not None:
                 with contextlib.suppress(Exception):
                     await session.rollback()

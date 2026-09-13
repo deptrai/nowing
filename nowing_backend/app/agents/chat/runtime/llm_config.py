@@ -121,7 +121,7 @@ def _attach_model_profile(llm: ChatLiteLLM, model_string: str) -> None:
                 "token_count_model": model_string,
                 "token_count_models": [model_string],
             }
-    except Exception:
+    except Exception:  # model profile lookup failure; keep unannotated profile
         return
 
 
@@ -271,7 +271,7 @@ def load_llm_config_from_yaml(llm_config_id: int = -1) -> dict | None:
 
             logger.error("Global LLM config id %d not found", llm_config_id)
             return None
-    except Exception:
+    except Exception:  # global config file load failure; return None
         logger.exception("Error loading config")
         return None
 

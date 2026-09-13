@@ -97,6 +97,6 @@ async def _start_one(
             run.id,
             event.event_id,
         )
-    except Exception:
+    except Exception:  # automation step error; record failure and continue
         logger.exception("memory_change fire failed for trigger %d", trigger.id)
         await session.rollback()

@@ -509,7 +509,7 @@ async def commit_staged_filesystem_state(
                         await session.execute(
                             delete(Document).where(Document.id == doc_pk)
                         )
-                except Exception as exc:
+                except Exception as exc:  # document delete savepoint failure; rollback savepoint and continue
                     logger.exception(
                         "kb_persistence: strict rm SAVEPOINT for path=%s failed: %s",
                         final,
@@ -614,7 +614,7 @@ async def commit_staged_filesystem_state(
                         await session.execute(
                             delete(Folder).where(Folder.id == folder_pk)
                         )
-                except Exception as exc:
+                except Exception as exc:  # folder delete savepoint failure; rollback savepoint and continue
                     logger.exception(
                         "kb_persistence: strict rmdir SAVEPOINT for path=%s failed: %s",
                         final,
@@ -651,7 +651,7 @@ async def commit_staged_filesystem_state(
         for action_id in dict.fromkeys(deferred_dispatches):
             try:
                 await _dispatch_reversibility_update(action_id)
-            except Exception:
+            except Exception:  # best-effort reversibility update dispatch; continue execution
                 logger.debug(
                     "kb_persistence: deferred reversibility dispatch failed for action_id=%s",
                     action_id,
@@ -662,28 +662,28 @@ async def commit_staged_filesystem_state(
         for payload in committed_creates:
             try:
                 dispatch_custom_event("document_created", payload)
-            except Exception:
+            except Exception:  # best-effort document_created event dispatch; continue execution
                 logger.exception(
                     "kb_persistence: failed to dispatch document_created event"
                 )
         for payload in committed_updates:
             try:
                 dispatch_custom_event("document_updated", payload)
-            except Exception:
+            except Exception:  # best-effort document_updated event dispatch; continue execution
                 logger.exception(
                     "kb_persistence: failed to dispatch document_updated event"
                 )
         for payload in committed_deletes:
             try:
                 dispatch_custom_event("document_deleted", payload)
-            except Exception:
+            except Exception:  # best-effort document_deleted event dispatch; continue execution
                 logger.exception(
                     "kb_persistence: failed to dispatch document_deleted event"
                 )
         for payload in committed_folder_deletes:
             try:
                 dispatch_custom_event("folder_deleted", payload)
-            except Exception:
+            except Exception:  # best-effort folder_deleted event dispatch; continue execution
                 logger.exception(
                     "kb_persistence: failed to dispatch folder_deleted event"
                 )

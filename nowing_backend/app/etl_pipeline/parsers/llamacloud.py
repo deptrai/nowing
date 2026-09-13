@@ -138,7 +138,7 @@ async def parse_with_llamacloud(
                     f"Errors: {'; '.join(attempt_errors)}"
                 )
 
-        except Exception:
+        except Exception:  # unretryable LlamaCloud failure; re-raise
             raise
 
     raise last_exception or RuntimeError(

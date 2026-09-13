@@ -111,7 +111,7 @@ class RunService:
             redis = await get_redis_client()
             res = await redis.set(lock_key, "in_flight", nx=True, ex=ttl)
             lock_acquired = bool(res)
-        except Exception as exc:
+        except Exception as exc:  # automation step error; record failure and continue
             logger.warning(
                 "Redis dedup lock unavailable for automation %s: %s",
                 automation_id,
@@ -185,7 +185,7 @@ class RunService:
             message = str(exc)
             status_code = 404 if "not found" in message.lower() else 400
             raise HTTPException(status_code=status_code, detail=message) from exc
-        except Exception:
+        except Exception:  # automation step error; record failure and continue
             if redis is not None and lock_key:
                 with contextlib.suppress(Exception):
                     await redis.delete(lock_key)

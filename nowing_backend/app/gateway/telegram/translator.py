@@ -118,7 +118,7 @@ class TelegramStreamTranslator(BaseStreamTranslator):
                 parse_mode=parse_mode,
                 reply_markup=self._reply_markup,
             )
-        except Exception:
+        except Exception:  # channel message delivery failure; fallback
             record_gateway_outbound(platform="telegram", kind="send", status="failed")
             raise
         logger.info(
@@ -146,7 +146,7 @@ class TelegramStreamTranslator(BaseStreamTranslator):
                 parse_mode=parse_mode,
                 reply_markup=self._reply_markup,
             )
-        except Exception:
+        except Exception:  # channel message delivery failure; fallback
             record_gateway_outbound(platform="telegram", kind="edit", status="failed")
             raise
         logger.info(

@@ -33,7 +33,7 @@ def _extract_domain(url: str | None) -> str | None:
         if netloc.startswith("www."):
             netloc = netloc[4:]
         return netloc or None
-    except Exception:
+    except Exception:  # lead intelligence operation fallback
         return None
 
 
@@ -166,7 +166,7 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
                 )
                 for idx, item in enumerate(items)
             ]
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.error("VietnamWorks search failed: %s", exc)
             self.last_execution_status = "degraded"
             return []

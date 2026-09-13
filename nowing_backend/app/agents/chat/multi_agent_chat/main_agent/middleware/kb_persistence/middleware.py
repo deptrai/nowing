@@ -90,7 +90,7 @@ class KnowledgeBasePersistenceMiddleware(AgentMiddleware):  # type: ignore[type-
         """
         try:
             config = get_config()
-        except Exception:
+        except Exception:  # LangGraph config resolution failure; fall back to constructor thread_id
             config = None
         if isinstance(config, dict):
             value = (config.get("configurable") or {}).get("thread_id")

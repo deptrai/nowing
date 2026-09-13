@@ -121,7 +121,7 @@ class SlackHistory:
                     logger.info(
                         f"Decrypted Slack credentials for connector {self._connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # per-item sync failure; continue batch
                     logger.error(
                         f"Failed to decrypt Slack credentials for connector {self._connector_id}: {e!s}"
                     )
@@ -131,7 +131,7 @@ class SlackHistory:
 
             try:
                 self._credentials = SlackAuthCredentialsBase.from_dict(config_data)
-            except Exception as e:
+            except Exception as e:  # per-item sync failure; continue batch
                 raise ValueError(f"Invalid Slack credentials: {e!s}") from e
 
         # Check if token is expired and refreshable
@@ -179,7 +179,7 @@ class SlackHistory:
                 logger.info(
                     f"Successfully refreshed Slack token for connector {self._connector_id}"
                 )
-            except Exception as e:
+            except Exception as e:  # per-item sync failure; continue batch
                 logger.error(
                     f"Failed to refresh Slack token for connector {self._connector_id}: {e!s}"
                 )
@@ -299,7 +299,7 @@ class SlackHistory:
                     raise SlackApiError(
                         f"Error retrieving channels: {e}", e.response
                     ) from e
-            except Exception as general_error:
+            except Exception as general_error:  # per-item sync failure; continue batch
                 # Handle other potential errors like network issues if necessary, or re-raise
                 logger.error(
                     f"An unexpected error occurred during channel fetching: {general_error}"
@@ -553,7 +553,7 @@ class SlackHistory:
                 user_info = await self.get_user_info(msg["user"])
                 formatted["user_name"] = user_info.get("real_name", "Unknown")
                 formatted["user_email"] = user_info.get("profile", {}).get("email", "")
-            except Exception:
+            except Exception:  # per-item sync failure; continue batch
                 # If we can't get user info, just continue without it
                 formatted["user_name"] = "Unknown"
 

@@ -201,7 +201,7 @@ class GitHubConnector:
             return self._ingest_with_python_library(
                 repo_full_name, branch, max_file_size
             )
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Failed to ingest repository {repo_full_name}: {e}")
             return None
 
@@ -256,6 +256,6 @@ class GitHubConnector:
                 branch=branch,
             )
 
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             logger.error(f"Python library failed for {repo_full_name}: {e}")
             return None

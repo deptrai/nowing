@@ -198,7 +198,7 @@ async def _warm_agent_jit_caches() -> None:
             warmup_middleware.append(
                 SubAgentMiddleware(backend=StateBackend, subagents=[gp_warmup_spec])
             )
-        except Exception:
+        except Exception:  # config/lifecycle fallback to default
             # Deepagents missing/incompatible — middleware-only warmup
             # still produces a useful (smaller) speedup.
             logger.debug("[startup] SubAgentMiddleware warmup skipped", exc_info=True)
@@ -222,7 +222,7 @@ async def _warm_agent_jit_caches() -> None:
             "[startup] Agent JIT warmup completed in %.3fs",
             _time.perf_counter() - t0,
         )
-    except Exception:
+    except Exception:  # config/lifecycle fallback to default
         logger.warning(
             "[startup] Agent JIT warmup failed in %.3fs (non-fatal — first "
             "real request will pay the full compile cost)",
@@ -270,7 +270,7 @@ async def _warm_embedding_model() -> None:
             "[startup] Embedding model warmup completed in %.3fs",
             _time.perf_counter() - t0,
         )
-    except Exception:
+    except Exception:  # config/lifecycle fallback to default
         logger.warning(
             "[startup] Embedding model warmup failed in %.3fs (non-fatal — first "
             "KB search will pay the cold embed cost)",
@@ -296,7 +296,7 @@ async def _sweep_stale_scraper_runs() -> None:
             logger.info(
                 "[startup] Marked %d stale running scraper run(s) as error", swept
             )
-    except Exception:
+    except Exception:  # config/lifecycle fallback to default
         logger.warning(
             "[startup] Stale scraper-run sweep failed (non-fatal)", exc_info=True
         )
@@ -338,7 +338,7 @@ async def lifespan(app: FastAPI):
     try:
         redis = await get_redis_client()
         scraper_rule_pubsub.start_background_subscriber(redis)
-    except Exception:
+    except Exception:  # config/lifecycle fallback to default
         logging.getLogger(__name__).warning(
             "[startup] Failed to start scraper rule subscriber (non-fatal)",
             exc_info=True,

@@ -36,7 +36,7 @@ async def launch_run(
 
     try:
         definition = AutomationDefinition.model_validate(automation.definition)
-    except Exception as exc:
+    except Exception as exc:  # validation error → raise DispatchError
         raise DispatchError(f"invalid automation definition: {exc}") from exc
 
     inputs = prepare_inputs(definition, trigger, runtime_inputs)
@@ -68,7 +68,7 @@ async def launch_run(
             args=[run.id],
             time_limit=definition.execution.timeout_seconds,
         )
-    except Exception as exc:
+    except Exception as exc:  # automation dispatch enqueue failure; record failure and raise
         run.status = RunStatus.FAILED
         await session.commit()
         raise DispatchError(f"failed to enqueue execution for run {run.id}: {exc}") from exc

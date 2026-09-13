@@ -117,7 +117,7 @@ class ConfluenceHistoryConnector:
                         logger.info(
                             f"Decrypted Confluence credentials for connector {self._connector_id}"
                         )
-                    except Exception as e:
+                    except Exception as e:  # per-item sync failure; continue batch
                         logger.error(
                             f"Failed to decrypt Confluence credentials for connector {self._connector_id}: {e!s}"
                         )
@@ -145,7 +145,7 @@ class ConfluenceHistoryConnector:
                         "site_url"
                     )
                     self._use_oauth = True
-                except Exception as e:
+                except Exception as e:  # per-item sync failure; continue batch
                     raise ValueError(
                         f"Invalid Confluence OAuth credentials: {e!s}"
                     ) from e
@@ -225,7 +225,7 @@ class ConfluenceHistoryConnector:
                 logger.info(
                     f"Successfully refreshed Confluence token for connector {self._connector_id}"
                 )
-            except Exception as e:
+            except Exception as e:  # per-item sync failure; continue batch
                 logger.error(
                     f"Failed to refresh Confluence token for connector {self._connector_id}: {e!s}"
                 )
@@ -648,7 +648,7 @@ class ConfluenceHistoryConnector:
 
             return all_pages, None
 
-        except Exception as e:
+        except Exception as e:  # per-item sync failure; continue batch
             return [], f"Error fetching pages: {e!s}"
 
     async def get_page(self, page_id: str) -> dict[str, Any]:

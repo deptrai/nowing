@@ -66,7 +66,7 @@ def _inject_oauth_headers(
             "Authorization": f"Bearer {access_token}",
         }
         return result
-    except Exception:
+    except Exception:  # OAuth token decryption failure; skip connector
         logger.error(
             "Failed to decrypt MCP OAuth token — connector will be skipped",
             exc_info=True,
@@ -211,7 +211,7 @@ async def _maybe_refresh_mcp_oauth_token(
         }
         return refreshed_config
 
-    except Exception:
+    except Exception:  # OAuth token refresh failure; return None
         _perf_log.info(
             "[mcp_oauth_refresh] connector=%s elapsed=%.3fs outcome=failed",
             connector.id,
@@ -273,7 +273,7 @@ async def _force_refresh_and_get_headers(
                 "Authorization": f"Bearer {new_access}",
             }
 
-    except Exception:
+    except Exception:  # force token refresh failure; log warning and continue
         logger.warning(
             "Failed to force-refresh MCP OAuth token for connector %s",
             connector_id,
@@ -315,7 +315,7 @@ async def _mark_connector_auth_expired(connector_id: int) -> None:
             )
             invalidate_mcp_tools_cache(connector.workspace_id)
 
-    except Exception:
+    except Exception:  # best-effort auth_expired flag persistence; continue execution
         logger.warning(
             "Failed to mark connector %s as auth_expired",
             connector_id,

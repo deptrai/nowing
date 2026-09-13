@@ -123,7 +123,7 @@ async def purge_document_blobs(
     for storage_key in result.scalars().all():
         try:
             await backend.delete(storage_key)
-        except Exception as delete_error:
+        except Exception as delete_error:  # log error and fallback safely
             logger.warning(
                 "Failed to delete stored blob %s: %s", storage_key, delete_error
             )

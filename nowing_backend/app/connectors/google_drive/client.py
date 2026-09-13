@@ -79,7 +79,7 @@ class GoogleDriveClient:
                 self._resolved_credentials = credentials
                 self.service = build("drive", "v3", credentials=credentials)
                 return self.service
-            except Exception as e:
+            except Exception as e:  # upstream connector API failure; mark degraded
                 raise Exception(f"Failed to create Google Drive service: {e!s}") from e
 
     async def list_files(
@@ -126,7 +126,7 @@ class GoogleDriveClient:
         except HttpError as e:
             error_msg = f"HTTP error listing files: {e.resp.status} - {e.error_details}"
             return [], None, error_msg
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             return [], None, f"Error listing files: {e!s}"
 
     async def get_file_metadata(
@@ -152,7 +152,7 @@ class GoogleDriveClient:
             return file, None
         except HttpError as e:
             return None, f"HTTP error getting file metadata: {e.resp.status}"
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             return None, f"Error getting file metadata: {e!s}"
 
     @staticmethod
@@ -179,7 +179,7 @@ class GoogleDriveClient:
             return fh.getvalue(), None
         except HttpError as e:
             return None, f"HTTP error downloading file: {e.resp.status}"
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             return None, f"Error downloading file: {e!s}"
         finally:
             logger.info(
@@ -230,7 +230,7 @@ class GoogleDriveClient:
             return None
         except HttpError as e:
             return f"HTTP error downloading file: {e.resp.status}"
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             return f"Error downloading file: {e!s}"
         finally:
             logger.info(
@@ -280,7 +280,7 @@ class GoogleDriveClient:
             return content, None
         except HttpError as e:
             return None, f"HTTP error exporting file: {e.resp.status}"
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             return None, f"Error exporting file: {e!s}"
         finally:
             logger.info(

@@ -99,7 +99,7 @@ def verify_sendgrid_signature(
         return True
     except InvalidSignature:
         logger.warning("SendGrid signature verification failed")
-    except Exception as exc:
+    except Exception as exc:  # SendGrid webhook crypto/key parse failure; reject signature
         logger.warning("SendGrid signature verification error: %s", exc)
 
     audit(action="email_webhook_verification_failed", provider="sendgrid")

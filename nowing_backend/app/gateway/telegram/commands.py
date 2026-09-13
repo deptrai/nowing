@@ -211,7 +211,7 @@ async def _safe_send_message(
     """Send a Telegram reply and swallow transient send errors."""
     try:
         await adapter.send_message(external_peer_id=external_peer_id, text=text)
-    except Exception:
+    except Exception:  # channel message delivery failure; fallback
         logger.exception("Failed to send Telegram message to %s", external_peer_id)
 
 
@@ -374,7 +374,7 @@ async def _handle_run_command(
             "Could not start run. Please try again later.",
         )
         return True
-    except Exception:
+    except Exception:  # channel message delivery failure; fallback
         logger.exception(
             "Unexpected error starting run for automation %s", automation.id
         )

@@ -93,7 +93,7 @@ class PipelineMessages:
 def safe_exception_message(exc: Exception) -> str:
     try:
         return str(exc)
-    except Exception:
+    except Exception:  # string formatting failure; return generic fallback message
         return "Something went wrong during indexing. Error details could not be retrieved."
 
 
@@ -103,7 +103,7 @@ def llm_retryable_message(exc: Exception) -> str:
         if adapted.category is LLMErrorCategory.UNKNOWN:
             return safe_exception_message(exc)
         return adapted.user_message
-    except Exception:
+    except Exception:  # LLM error adaptation failure; return generic LLM fallback message
         return "Something went wrong when calling the LLM."
 
 
@@ -113,7 +113,7 @@ def llm_permanent_message(exc: Exception) -> str:
         if adapted.category is LLMErrorCategory.UNKNOWN:
             return safe_exception_message(exc)
         return adapted.user_message
-    except Exception:
+    except Exception:  # LLM error adaptation failure; return generic LLM fallback message
         return "Something went wrong when calling the LLM."
 
 
@@ -126,5 +126,5 @@ def embedding_message(exc: Exception) -> str:
         if isinstance(exc, MemoryError):
             return PipelineMessages.EMBEDDING_MEMORY
         return safe_exception_message(exc)
-    except Exception:
+    except Exception:  # embedding error message generation failure; return generic embedding fallback message
         return "Something went wrong when generating the embedding."

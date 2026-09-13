@@ -88,7 +88,7 @@ class KBPostgresBackend(
     def _file_data_size(file_data: dict[str, Any]) -> int:
         try:
             return len("\n".join(file_data.get("content") or []))
-        except Exception:
+        except Exception:  # malformed file data in DB; fall back to size 0
             return 0
 
     def _normalize_listing_path(self, path: str) -> str:

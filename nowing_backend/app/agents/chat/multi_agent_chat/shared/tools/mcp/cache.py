@@ -89,7 +89,7 @@ async def write_cached_tools(
                 connector_id,
                 len(payload.tools),
             )
-    except Exception:
+    except Exception:  # best-effort cached_tools DB persistence; continue execution
         logger.warning(
             "Failed to persist cached_tools for MCP connector %d",
             connector_id,
@@ -117,7 +117,7 @@ def refresh_mcp_tools_cache_for_connector(
         )
 
         invalidate_mcp_tools_cache(workspace_id)
-    except Exception:
+    except Exception:  # in-process cache invalidation failure; continue execution
         logger.debug(
             "MCP in-process cache eviction skipped for space %d",
             workspace_id,
@@ -141,7 +141,7 @@ async def _run_connector_prefetch(connector_id: int) -> None:
 
     try:
         await discover_single_mcp_connector(connector_id)
-    except Exception:
+    except Exception:  # background tool prefetch failure; log warning
         logger.warning(
             "MCP background prefetch failed for connector_id=%d",
             connector_id,

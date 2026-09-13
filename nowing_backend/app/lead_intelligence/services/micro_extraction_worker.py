@@ -226,7 +226,7 @@ class MicroExtractionWorker:
                 ),
                 timeout=_PER_CALL_TIMEOUT,
             )
-        except Exception:
+        except Exception:  # lead intelligence operation fallback
             logger.exception("Micro-extraction LLM call failed")
             raise
         finally:

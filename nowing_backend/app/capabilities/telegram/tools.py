@@ -54,7 +54,7 @@ def _format_post_summary(post: dict[str, Any]) -> str:
     if isinstance(entities, str):
         try:
             entities = json.loads(entities)
-        except Exception:
+        except Exception:  # JSON decode error; fallback to empty entities dict
             entities = {}
     if not isinstance(entities, dict):
         entities = TelegramEntityExtractor.extract_entities(text) if text else {}

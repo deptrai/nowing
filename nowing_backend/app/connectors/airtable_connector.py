@@ -99,7 +99,7 @@ class AirtableConnector:
                         error_detail = error_json.get("error", {}).get(
                             "message", error_detail
                         )
-                    except Exception as exc:
+                    except Exception as exc:  # upstream connector API failure; mark degraded
                         logger.debug("Suppressed %r", exc)
                     return None, f"API error {response.status_code}: {error_detail}"
 
@@ -114,7 +114,7 @@ class AirtableConnector:
                 time.sleep(retry_delay)
                 retry_delay *= 2
 
-            except Exception as e:
+            except Exception as e:  # upstream connector API failure; mark degraded
                 if attempt == max_retries - 1:
                     return None, f"Request failed: {e!s}"
                 logger.warning(
@@ -326,7 +326,7 @@ class AirtableConnector:
                 # filter_by_formula=filter_formula,
             )
 
-        except Exception as e:
+        except Exception as e:  # upstream connector API failure; mark degraded
             return [], f"Error filtering by date range: {e!s}"
 
     def format_record_to_markdown(
@@ -425,6 +425,6 @@ async def fetch_airtable_user_email(access_token: str) -> str | None:
             )
             return None
 
-    except Exception as e:
+    except Exception as e:  # upstream connector API failure; mark degraded
         logger.warning(f"Error fetching Airtable user email: {e!s}")
         return None

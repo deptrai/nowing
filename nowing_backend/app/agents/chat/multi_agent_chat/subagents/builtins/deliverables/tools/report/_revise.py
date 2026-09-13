@@ -83,7 +83,7 @@ async def _revise_with_sections(
             f"modify={modify_indices}, add={len(add_sections)}, "
             f"remove={remove_indices}, reasoning={reasoning}"
         )
-    except Exception:
+    except Exception:  # section revision planning failure; fall back to full revision
         logger.warning(
             "[generate_report] Failed to identify sections for revision, "
             "falling back to full revision",

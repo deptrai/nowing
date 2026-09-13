@@ -86,7 +86,7 @@ class OtelSpanMiddleware(AgentMiddleware):
             _annotate_model_request(sp, model_id=model_id, provider=provider)
             try:
                 result = await handler(request)
-            except Exception:
+            except Exception:  # model call failure; record duration telemetry and re-raise
                 ot_metrics.record_model_call_duration(
                     (time.perf_counter() - t0) * 1000,
                     model=model_id,
@@ -133,7 +133,7 @@ class OtelSpanMiddleware(AgentMiddleware):
         with ot.tool_call_span(tool_name, input_size=input_size) as sp:
             try:
                 result = await handler(request)
-            except Exception:
+            except Exception:  # tool call failure; record duration and error telemetry and re-raise
                 ot_metrics.record_tool_call_duration(
                     (time.perf_counter() - t0) * 1000,
                     tool_name=tool_name,

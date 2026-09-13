@@ -133,7 +133,7 @@ async def discover_single_mcp_connector(connector_id: int) -> None:
             connector_id,
             _MCP_DISCOVERY_TIMEOUT_SECONDS,
         )
-    except Exception:
+    except Exception:  # single connector discovery failure; continue with others
         logger.warning(
             "discover_single_mcp_connector: failed for connector %d",
             connector_id,
@@ -272,7 +272,7 @@ async def load_mcp_tools(
                     }
                 )
 
-            except Exception as e:
+            except Exception as e:  # connector preparation failure; skip connector
                 logger.exception(
                     "Failed to prepare MCP connector %d: %s",
                     connector.id,
@@ -336,7 +336,7 @@ async def load_mcp_tools(
                     _MCP_DISCOVERY_TIMEOUT_SECONDS,
                 )
                 return []
-            except Exception as e:
+            except Exception as e:  # parallel tool discovery failure for connector; return empty list
                 _perf_log.info(
                     "[mcp_discover] connector=%s name=%r transport=%s elapsed=%.3fs outcome=error",
                     task["connector_id"],
@@ -375,6 +375,6 @@ async def load_mcp_tools(
         )
         return tools
 
-    except Exception as e:
+    except Exception as e:  # workspace MCP tool loader failure; fallback to empty list
         logger.exception("Failed to load MCP tools: %s", e)
         return []

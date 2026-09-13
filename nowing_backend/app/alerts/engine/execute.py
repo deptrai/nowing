@@ -120,7 +120,7 @@ async def execute_alert_rule(
         output = await execute_with_context(
             capability.executor, payload=payload, ctx=ctx
         )
-    except Exception as exc:
+    except Exception as exc:  # best-effort telemetry/alerting; don't fail primary op
         logger.exception(
             "alert rule %s capability %s failed",
             alert_rule.id,
@@ -226,7 +226,7 @@ async def execute_alert_rule(
                     triggered_by_alert_rule_id=alert_rule.id,
                 )
                 await session.commit()
-        except Exception:
+        except Exception:  # best-effort telemetry/alerting; don't fail primary op
             logger.exception(
                 "Failed to trigger target sequence %s for alert rule %s",
                 alert_rule.target_sequence_id,
