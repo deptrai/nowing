@@ -40,7 +40,7 @@ async def leads_reverse_icp(url: str, custom_instructions: str | None = None) ->
         )
         payload = response.model_dump()
         return json.dumps(payload, ensure_ascii=False, indent=2)
-    except Exception as exc:
+    except Exception as exc:  # capability executor error → structured failure response
         logger.warning(
             "[ReverseIcpTool] Error executing leads_reverse_icp for %s: %s", url, exc
         )

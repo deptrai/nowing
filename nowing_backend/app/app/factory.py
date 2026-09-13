@@ -430,7 +430,7 @@ if config.AUTH_TYPE == "GOOGLE":
                 google_requests.Request(),
                 config.GOOGLE_OAUTH_CLIENT_ID,
             )
-        except Exception as exc:
+        except Exception as exc:  # Google id_token verification failure; raise 401 unauthorized
             _error_logger.warning("Web Google id_token verification failed: %s", exc)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

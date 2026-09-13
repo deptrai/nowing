@@ -56,7 +56,7 @@ def create_get_connected_accounts_tool(*, workspace_id: int) -> BaseTool:
                     )
                 )
                 connectors = list(result.scalars())
-        except Exception:
+        except Exception:  # connector DB query failure; return empty accounts list
             logger.exception("get_connected_accounts: connector query failed")
             return json.dumps({"accounts": [], "error": "query_failed"})
 

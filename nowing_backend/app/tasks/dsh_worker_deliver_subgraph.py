@@ -147,7 +147,7 @@ class DshDeliverSubgraph:
 
         return {
             "type": "xlsx",
-            "filename": "wide_research_output.xlsx",
+            "filename": Path(SANDBOX_OUTPUT_PATH).name,
             "sandbox_path": SANDBOX_OUTPUT_PATH,
             "include_pii": self.include_pii,
             "size": len(content),

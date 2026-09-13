@@ -47,8 +47,12 @@ def _notification_message(alert_rule: AlertRule, snapshot: AlertSnapshot) -> str
     if snapshot.run_status == "failed":
         return f"Saved search '{alert_rule.name}' failed."
     if snapshot.run_status == "degraded":
-        reasons = snapshot.degradation_reasons or []
-        return f"Saved search '{alert_rule.name}' is degraded: {', '.join(reasons)}."
+        reasons = [str(r) for r in (snapshot.degradation_reasons or []) if r]
+        if len(reasons) > 3:
+            display_reasons = f"{', '.join(reasons[:3])} (+{len(reasons) - 3} more)"
+        else:
+            display_reasons = ", ".join(reasons) or "unspecified"
+        return f"Saved search '{alert_rule.name}' is degraded: {display_reasons}."
     triggered = snapshot.new_items_count or snapshot.changed_items_count
     if triggered:
         return (
@@ -109,7 +113,7 @@ async def _telegram(
         )
         record_gateway_outbound(platform="telegram", kind="send", status="sent")
 
-    except Exception:
+    except Exception:  # Telegram notification delivery failure; record metric and continue
         logger.exception(
             "Telegram notification for alert %s user %s failed", alert_rule.id, user_id
         )
@@ -117,19 +121,30 @@ async def _telegram(
 
 
 def _send_email_smtp(to_email: str, subject: str, body: str) -> None:
-    """Synchronous helper: send a plain-text email over SMTP with explicit timeout."""
+    """Synchronous helper: send a plain-text email over SMTP with explicit timeout and SSL options."""
+    import ssl
 
-    msg = MIMEText(body)
+    msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = config.SMTP_FROM or "noreply@nowing.net"
     msg["To"] = to_email
 
-    timeout = getattr(config, "SMTP_TIMEOUT_SECONDS", 30.0)
-    server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=timeout)
+    timeout = float(getattr(config, "SMTP_TIMEOUT_SECONDS", 30.0) or 30.0)
+    port = int(config.SMTP_PORT or 587)
+    use_ssl = bool(getattr(config, "SMTP_SSL", False) or port == 465)
+    ssl_context = ssl.create_default_context()
+
+    if use_ssl:
+        server = smtplib.SMTP_SSL(config.SMTP_HOST, port, timeout=timeout, context=ssl_context)
+    else:
+        server = smtplib.SMTP(config.SMTP_HOST, port, timeout=timeout)
+
     try:
-        if config.SMTP_TLS:
-            server.starttls()
-        if config.SMTP_USER and config.SMTP_PASSWORD:
+        if not use_ssl and config.SMTP_TLS:
+            server.starttls(context=ssl_context)
+        if config.SMTP_USER or config.SMTP_PASSWORD:
+            if not (config.SMTP_USER and config.SMTP_PASSWORD):
+                raise ValueError("Partial SMTP credentials configured: both SMTP_USER and SMTP_PASSWORD required")
             server.login(config.SMTP_USER, config.SMTP_PASSWORD)
         server.send_message(msg)
     finally:
@@ -152,7 +167,14 @@ async def _email(
 
     subject = _notification_title(alert_rule, snapshot)
     body = _notification_message(alert_rule, snapshot)
-    await asyncio.to_thread(_send_email_smtp, user.email, subject, body)
+    try:
+        await asyncio.to_thread(_send_email_smtp, user.email, subject, body)
+        record_gateway_outbound(platform="email", kind="send", status="sent")
+    except Exception:  # Email notification delivery failure; record metric and continue
+        logger.exception(
+            "Email notification for alert %s user %s failed", alert_rule.id, user_id
+        )
+        record_gateway_outbound(platform="email", kind="send", status="failed")
 
 
 async def notify_alert_run(
@@ -203,7 +225,7 @@ async def notify_alert_run(
                         channel,
                         alert_rule.id,
                     )
-            except Exception:
+            except Exception:  # alert channel notification dispatch failure; continue remaining subscribers
                 # One failing subscriber/channel must not abort the others.
                 logger.exception(
                     "alert %s notification channel %s failed for user %s",

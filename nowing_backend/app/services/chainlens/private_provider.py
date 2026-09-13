@@ -20,7 +20,7 @@ from app.db import (
     SearchSourceConnector,
     Workspace,
 )
-from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
+from app.retriever.chunks_hybrid_search import ChunksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
 from app.services.chainlens.schemas import (
     PrivateDataSearchRequest,
@@ -112,7 +112,7 @@ class PrivateProviderService:
 
     def __init__(self, session):
         self.session = session
-        self._chunk_retriever = ChucksHybridSearchRetriever(session)
+        self._chunk_retriever = ChunksHybridSearchRetriever(session)
         self._document_retriever = DocumentHybridSearchRetriever(session)
 
     async def search(
@@ -424,7 +424,7 @@ class PrivateProviderService:
                 query_embedding=query_embedding,
                 top_k=memory_top_k,
             )
-        except Exception:
+        except Exception:  # best-effort memory search; continue with empty memory results
             logger.warning(
                 "Memory search failed for workspace %d", workspace_id, exc_info=True
             )
@@ -439,7 +439,7 @@ class PrivateProviderService:
                     query_embedding=query_embedding,
                     top_k=memory_top_k,
                 )
-            except Exception:
+            except Exception:  # best-effort user memory search; continue with empty results
                 logger.warning(
                     "User-scoped memory search failed for user %s in workspace %d",
                     user_id,

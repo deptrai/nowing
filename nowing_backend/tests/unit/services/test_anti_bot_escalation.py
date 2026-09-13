@@ -193,3 +193,38 @@ async def test_open_escalation_after_retry(
     assert updated is base_escalation
     assert updated.status == "open"
     assert "retry_completed_at" in updated.escalation_metadata
+
+
+def test_anti_bot_escalation_read_syncs_metadata_and_escalation_metadata():
+    """Verify AntiBotEscalationRead supports both .metadata and .escalation_metadata seamlessly."""
+    from datetime import datetime, timezone
+    from uuid import uuid4
+    from app.schemas.anti_bot_escalation import AntiBotEscalationRead
+
+    payload = {
+        "id": 1,
+        "run_id": uuid4(),
+        "workspace_id": 10,
+        "capability": "topcv.scrape",
+        "domain": "topcv.vn",
+        "block_type": "bot_detected",
+        "status": "open",
+        "detection_count": 1,
+        "last_seen_at": datetime.now(timezone.utc),
+        "escalation_metadata": {"storage_key": "path/key.png"},
+        "created_at": datetime.now(timezone.utc),
+    }
+
+    read_obj = AntiBotEscalationRead.model_validate(payload)
+    assert read_obj.metadata == {"storage_key": "path/key.png"}
+    assert read_obj.escalation_metadata == {"storage_key": "path/key.png"}
+
+    # Also test instantiation with metadata
+    payload2 = {
+        **payload,
+        "escalation_metadata": None,
+        "metadata": {"storage_key": "other/key.png"},
+    }
+    read_obj2 = AntiBotEscalationRead.model_validate(payload2)
+    assert read_obj2.metadata == {"storage_key": "other/key.png"}
+    assert read_obj2.escalation_metadata == {"storage_key": "other/key.png"}

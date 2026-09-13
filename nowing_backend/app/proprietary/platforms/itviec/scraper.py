@@ -98,7 +98,8 @@ def _extract_salary_numbers(
             token = token[:-1].strip()
         try:
             numbers.append(float(token) * unit)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     if not numbers:
@@ -169,7 +170,7 @@ def _html_text_without_heading(div: Any, heading: str) -> str:
 def _parse_detail(html: str, source_url: str) -> dict[str, Any]:
     try:
         root = lxml_html.fromstring(html)
-    except Exception:
+    except Exception:  # HTML parse failure on detail page; return empty dict
         return {}
 
     # Title: full JD page uses h1 inside .job-header-info; preview uses h2.text-it-black.
@@ -298,7 +299,7 @@ def _parse_detail(html: str, source_url: str) -> dict[str, Any]:
 def _parse_search_page(html: str) -> list[dict[str, Any]]:
     try:
         root = lxml_html.fromstring(html)
-    except Exception:
+    except Exception:  # HTML parse failure on search page; return empty list
         return []
 
     cards = root.xpath(
@@ -556,6 +557,6 @@ async def scrape_itviec(params: dict[str, Any]) -> dict[str, Any]:
         if code >= 500:
             return _degraded("api_error")
         return _degraded("api_error")
-    except Exception as exc:
+    except Exception as exc:  # scrape unexpected failure; return degraded api_error
         logger.warning("itviec.scrape failed: %s", exc)
         return _degraded("api_error")

@@ -85,7 +85,7 @@ def get_google_flow():
         )
         flow.redirect_uri = config.GOOGLE_GMAIL_REDIRECT_URI
         return flow
-    except Exception as e:
+    except Exception as e:  # OAuth flow init failure → surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to create Google flow: {e!s}"
         ) from e
@@ -137,7 +137,7 @@ async def connect_gmail(
             f"Initiating Google Gmail OAuth for user {user.id}, space {space_id}"
         )
         return {"auth_url": auth_url}
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Google Gmail OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Google OAuth: {e!s}"
@@ -201,7 +201,7 @@ async def reauth_gmail(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Gmail re-auth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Gmail re-auth: {e!s}"
@@ -240,7 +240,7 @@ async def gmail_callback(
                     state_manager = get_state_manager()
                     data = state_manager.validate_state(state)
                     space_id = data.get("space_id")
-                except Exception:
+                except Exception:  # best-effort state decode in error handler
                     # If state is invalid, we'll redirect without space_id
                     logger.warning("Failed to validate state in error handler")
 
@@ -266,7 +266,7 @@ async def gmail_callback(
             data = state_manager.validate_state(state)
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as e:  # malformed input → typed error / sentinel
             raise HTTPException(
                 status_code=400, detail=f"Invalid state parameter: {e!s}"
             ) from e
@@ -409,7 +409,7 @@ async def gmail_callback(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except Exception as e:
+    except Exception as e:  # OAuth callback completion failure → surface as typed HTTP error
         logger.error(f"Unexpected error in Gmail callback: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to complete Google Gmail OAuth: {e!s}"

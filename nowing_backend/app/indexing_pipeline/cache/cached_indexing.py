@@ -104,7 +104,7 @@ async def _recall(key: EmbeddingKey) -> EmbeddingSet | None:
 
         async with get_celery_session_maker()() as session:
             return await EmbeddingCacheService(session).recall(key)
-    except Exception:
+    except Exception:  # embedding cache recall failure; fallback to fresh embedding
         logger.warning("Embedding cache recall failed; embedding fresh", exc_info=True)
         return None
 
@@ -121,7 +121,7 @@ async def _remember(
         )
         async with get_celery_session_maker()() as session:
             await EmbeddingCacheService(session).remember(key, embedding_set)
-    except Exception:
+    except Exception:  # embedding cache write failure; log and continue without caching
         logger.warning("Embedding cache write failed; result not cached", exc_info=True)
 
 

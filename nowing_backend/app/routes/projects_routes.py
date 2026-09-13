@@ -15,8 +15,10 @@ from app.db import (
     Document,
     Project,
     ProjectPinnedDocument,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.schemas.projects_schemas import (
     ProjectCreate,
     ProjectPinnedDocumentRead,
@@ -24,7 +26,7 @@ from app.schemas.projects_schemas import (
     ProjectUpdate,
 )
 from app.users import get_auth_context
-from app.utils.rbac import Permission, check_permission
+from app.utils.rbac import Permission
 
 router = APIRouter(tags=["projects"])
 
@@ -46,8 +48,14 @@ async def _get_project_with_pins(
 
 
 def _format_project_read(project: Project) -> ProjectRead:
+    # When callers use session.get() instead of a select() that already loads
+    # pinned_documents, touching the relationship here would trigger a lazy
+    # load inside a sync helper (MissingGreenlet under the ASGI test client).
+    # pinned_documents is only populated when already loaded; every list/get
+    # route eager-loads it via _get_project_with_pins.
+    pins = project.__dict__.get("pinned_documents") or []
     pins_read: list[ProjectPinnedDocumentRead] = []
-    for pin in project.pinned_documents:
+    for pin in pins:
         pins_read.append(
             ProjectPinnedDocumentRead(
                 id=pin.id,
@@ -85,15 +93,14 @@ async def list_projects(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_READ.value,
+            "You don't have permission to view projects in this workspace",
+        )
+    ),
 ) -> list[ProjectRead]:
     """List projects in a workspace with optional archived filtering."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_READ.value,
-        "You don't have permission to view projects in this workspace",
-    )
 
     stmt = (
         select(Project)
@@ -124,15 +131,14 @@ async def create_project(
     payload: ProjectCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_CREATE.value,
+            "You don't have permission to create projects in this workspace",
+        )
+    ),
 ) -> ProjectRead:
     """Create a new project in the workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_CREATE.value,
-        "You don't have permission to create projects in this workspace",
-    )
 
     now = datetime.now(UTC)
     project = Project(
@@ -164,15 +170,14 @@ async def get_project(
     project_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_READ.value,
+            "You don't have permission to view projects in this workspace",
+        )
+    ),
 ) -> ProjectRead:
     """Get project details with pinned documents."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_READ.value,
-        "You don't have permission to view projects in this workspace",
-    )
 
     stmt = (
         select(Project)
@@ -205,15 +210,14 @@ async def update_project(
     payload: ProjectUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_UPDATE.value,
+            "You don't have permission to update projects in this workspace",
+        )
+    ),
 ) -> ProjectRead:
     """Update project fields (name, description, master instructions, archive status)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_UPDATE.value,
-        "You don't have permission to update projects in this workspace",
-    )
 
     stmt = (
         select(Project)
@@ -258,15 +262,14 @@ async def delete_project(
     project_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_DELETE.value,
+            "You don't have permission to delete projects in this workspace",
+        )
+    ),
 ) -> None:
     """Delete a project completely."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_DELETE.value,
-        "You don't have permission to delete projects in this workspace",
-    )
 
     project = await session.get(Project, project_id)
     if not project or project.workspace_id != workspace_id:
@@ -289,15 +292,14 @@ async def archive_project(
     project_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_UPDATE.value,
+            "You don't have permission to archive projects in this workspace",
+        )
+    ),
 ) -> ProjectRead:
     """Convenience endpoint to toggle or mark a project as archived."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_UPDATE.value,
-        "You don't have permission to archive projects in this workspace",
-    )
 
     stmt = (
         select(Project)
@@ -335,15 +337,14 @@ async def pin_document(
     document_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_UPDATE.value,
+            "You don't have permission to update project pins in this workspace",
+        )
+    ),
 ) -> dict[str, str]:
     """Pin a document to a project (idempotent)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_UPDATE.value,
-        "You don't have permission to update project pins in this workspace",
-    )
 
     project = await session.get(Project, project_id)
     if not project or project.workspace_id != workspace_id:
@@ -395,15 +396,14 @@ async def unpin_document(
     document_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.PROJECTS_UPDATE.value,
+            "You don't have permission to update project pins in this workspace",
+        )
+    ),
 ) -> dict[str, str]:
     """Unpin a document from a project without deleting the underlying document."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.PROJECTS_UPDATE.value,
-        "You don't have permission to update project pins in this workspace",
-    )
 
     project = await session.get(Project, project_id)
     if not project or project.workspace_id != workspace_id:

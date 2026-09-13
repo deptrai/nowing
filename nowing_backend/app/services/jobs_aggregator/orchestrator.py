@@ -35,6 +35,20 @@ _DEGRADATION_ENUM_MAP: dict[str, str] = {
     "captcha": "ANTI_BOT",
     "anti_bot": "ANTI_BOT",
     "anti-bot": "ANTI_BOT",
+    "bot_detected": "ANTI_BOT",
+    "access_blocked": "ANTI_BOT",
+    "timeout": "TIMEOUT",
+    "timed out": "TIMEOUT",
+    "network": "NETWORK_ERROR",
+    "connection": "NETWORK_ERROR",
+    "connect": "NETWORK_ERROR",
+    "circuit": "CIRCUIT_OPEN",
+    "503": "SERVICE_UNAVAILABLE",
+    "unavailable": "SERVICE_UNAVAILABLE",
+    "auth": "AUTH_FAILED",
+    "401": "AUTH_FAILED",
+    "legal": "LEGAL_BLOCKED",
+    "legal_blocked": "LEGAL_BLOCKED",
     "partial": "PARTIAL_DATA",
 }
 
@@ -139,7 +153,7 @@ async def _call_source(
 
     try:
         input_obj = cap.input_schema(**payload)
-    except Exception:
+    except Exception:  # input schema mismatch → degraded empty result for this source
         logger.exception("Source %s input validation failed", source)
         return {
             "items": [],
@@ -149,7 +163,7 @@ async def _call_source(
 
     try:
         result = await execute_with_context(cap.executor, payload=input_obj, ctx=ctx)
-    except Exception:
+    except Exception:  # per-source scrape failure → degraded empty result; other sources still run
         logger.exception("Source %s scrape execution failed", source)
         return {"items": [], "degraded": True, "degradation_reason": "source_failed"}
 
@@ -197,7 +211,7 @@ async def _persist_jobs_aggregates(
     for listing in listings:
         try:
             chunks.extend(_job_to_chunks(listing, fetched_at))
-        except Exception:
+        except Exception:  # per-listing chunk serialization failure; continue remaining listings
             logger.exception("Job listing %s chunk serialization failed", listing.id)
 
     if not chunks:
@@ -218,7 +232,7 @@ async def _persist_jobs_aggregates(
         if result.status == "partial":
             return "partial", result.error
         return "failed", result.error
-    except Exception as exc:
+    except Exception as exc:  # ingest failure → report ("failed", reason) to caller, not a crash
         logger.exception("Job aggregate chainlens ingest failed")
         return "failed", str(exc)
 
@@ -240,7 +254,7 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
         payload = _source_payload(input, source)
         try:
             raw = await _call_source(source, payload, ctx)
-        except Exception:
+        except Exception:  # per-source capability failure → empty raw keeps aggregation running
             logger.exception("Source %s capability call failed", source)
             raw = {
                 "items": [],
@@ -293,16 +307,23 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
     # Upgrade path: use a canonical location taxonomy (e.g. Geonames) for
     # fuzzy matching and avoid ad-hoc normalisation.
     if input.location:
-        loc_code = resolve_city_code(input.location) or input.location.lower().strip()
-        output.items = [
-            item
-            for item in output.items
-            if (
-                resolve_city_code(item.location)
-                or (item.location or "").lower().strip()
-            )
-            == loc_code
-        ]
+        input_loc_raw = input.location.lower().strip()
+        loc_code = resolve_city_code(input.location)
+        filtered = []
+        for item in output.items:
+            item_loc_code = resolve_city_code(item.location)
+            if loc_code and item_loc_code:
+                if loc_code == item_loc_code:
+                    filtered.append(item)
+            elif item.location:
+                item_loc_raw = item.location.lower().strip()
+                if (
+                    item_loc_raw == input_loc_raw
+                    or input_loc_raw in item_loc_raw
+                    or item_loc_raw in input_loc_raw
+                ):
+                    filtered.append(item)
+        output.items = filtered
 
     session = getattr(ctx, "session", None)
     workspace_id = getattr(ctx, "workspace_id", None)

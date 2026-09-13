@@ -21,7 +21,13 @@ from app.db import (
     Permission,
     Project,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
+)
+from app.dependencies.auth import (
+    RequirePermission,
+    RequirePermissionFromBody,
+    RequirePermissionFromEntity,
 )
 from app.routes.new_chat.shared import (
     _try_delete_sandbox,
@@ -45,7 +51,6 @@ from app.tasks.chat.streaming.flows.new_chat.chat_modes import (
 )
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -72,6 +77,12 @@ async def list_threads(
     limit: int | None = None,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -90,14 +101,6 @@ async def list_threads(
     Requires CHATS_READ permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CHATS_READ.value,
-            "You don't have permission to read chats in this workspace",
-        )
-
         # Check if user is the workspace owner (for legacy thread visibility)
         workspace_query = select(Workspace).filter(Workspace.id == workspace_id)
         workspace_result = await session.execute(workspace_query)
@@ -166,7 +169,7 @@ async def list_threads(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while fetching threads: {e!s}",
@@ -178,6 +181,12 @@ async def search_threads(
     title: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -195,14 +204,6 @@ async def search_threads(
     Requires CHATS_READ permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.CHATS_READ.value,
-            "You don't have permission to read chats in this workspace",
-        )
-
         # Check if user is the workspace owner (for legacy thread visibility)
         workspace_query = select(Workspace).filter(Workspace.id == workspace_id)
         workspace_result = await session.execute(workspace_query)
@@ -258,7 +259,7 @@ async def search_threads(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while searching threads: {e!s}",
@@ -269,6 +270,12 @@ async def create_thread(
     thread: NewChatThreadCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to create chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -280,14 +287,6 @@ async def create_thread(
     Requires CHATS_CREATE permission.
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_CREATE.value,
-            "You don't have permission to create chats in this workspace",
-        )
-
         # Internal web threads are unscoped; reject any body attempt to claim a
         # vertical client or agent.  PAT-scoped public thread creation is the
         # only path that may bind client_id/agent_id.
@@ -356,7 +355,7 @@ async def create_thread(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -368,6 +367,14 @@ async def get_thread_messages(
     thread_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -389,15 +396,6 @@ async def get_thread_messages(
 
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        # Check permission to read chats in this workspace
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_READ.value,
-            "You don't have permission to read chats in this workspace",
-        )
 
         # Check thread-level access based on visibility
         await check_thread_access(session, thread, user)
@@ -441,7 +439,7 @@ async def get_thread_messages(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while fetching the thread: {e!s}",
@@ -452,6 +450,14 @@ async def get_thread_full(
     thread_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -478,14 +484,6 @@ async def get_thread_full(
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
 
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_READ.value,
-            "You don't have permission to read chats in this workspace",
-        )
-
         # Check thread-level access based on visibility
         await check_thread_access(session, thread, user)
 
@@ -509,7 +507,7 @@ async def get_thread_full(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while fetching the thread: {e!s}",
@@ -521,6 +519,14 @@ async def update_thread(
     thread_update: NewChatThreadUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -540,14 +546,6 @@ async def update_thread(
 
         if not db_thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            db_thread.workspace_id,
-            Permission.CHATS_UPDATE.value,
-            "You don't have permission to update chats in this workspace",
-        )
 
         # For PRIVATE threads, only the creator can update
         # For SEARCH_SPACE threads, any member with permission can update
@@ -586,7 +584,7 @@ async def update_thread(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -598,6 +596,14 @@ async def delete_thread(
     thread_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_DELETE.value,
+            "You don't have permission to delete chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -616,14 +622,6 @@ async def delete_thread(
 
         if not db_thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            db_thread.workspace_id,
-            Permission.CHATS_DELETE.value,
-            "You don't have permission to delete chats in this workspace",
-        )
 
         # For PRIVATE threads, only the creator can delete
         # For SEARCH_SPACE threads, any member with permission can delete
@@ -657,7 +655,7 @@ async def delete_thread(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -670,6 +668,14 @@ async def update_thread_visibility(
     visibility_update: NewChatThreadVisibilityUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -689,14 +695,6 @@ async def update_thread_visibility(
 
         if not db_thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            db_thread.workspace_id,
-            Permission.CHATS_UPDATE.value,
-            "You don't have permission to update chats in this workspace",
-        )
 
         # Only the creator can change visibility
         await check_thread_access(session, db_thread, user, require_ownership=True)
@@ -722,7 +720,7 @@ async def update_thread_visibility(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,

@@ -55,7 +55,7 @@ class MessagingHealthProbe(HealthProbe):
             if resp.status_code >= 500:
                 return ("unavailable", f"Telegram API returned HTTP {resp.status_code}")
             return ("degraded", f"Telegram API returned HTTP {resp.status_code}")
-        except Exception as exc:
+        except Exception as exc:  # Telegram ping helper: report unavailable rather than raise
             return ("unavailable", f"Telegram ping failed: {type(exc).__name__}: {exc}")
 
     async def _ping_slack(self, token: str) -> tuple[HealthStatus, str | None]:
@@ -71,7 +71,7 @@ class MessagingHealthProbe(HealthProbe):
             if data.get("error") in {"invalid_auth", "account_inactive"}:
                 return ("degraded", f"Slack auth error: {data.get('error')}")
             return ("unavailable", f"Slack auth.test failed: {data.get('error')}")
-        except Exception as exc:
+        except Exception as exc:  # Slack ping helper: report unavailable rather than raise
             return ("unavailable", f"Slack ping failed: {type(exc).__name__}: {exc}")
 
     async def _ping_discord(self, token: str) -> tuple[HealthStatus, str | None]:
@@ -88,7 +88,7 @@ class MessagingHealthProbe(HealthProbe):
             if resp.status_code >= 500:
                 return ("unavailable", f"Discord API returned HTTP {resp.status_code}")
             return ("degraded", f"Discord API returned HTTP {resp.status_code}")
-        except Exception as exc:
+        except Exception as exc:  # Discord ping helper: report unavailable rather than raise
             return ("unavailable", f"Discord ping failed: {type(exc).__name__}: {exc}")
 
     async def probe(self) -> HealthResult:
@@ -130,7 +130,7 @@ class MessagingHealthProbe(HealthProbe):
                 suggested_action = f"Configure credentials for messaging provider {self._provider}"
 
             latency_ms = int((time.perf_counter() - start) * 1000)
-        except Exception as exc:
+        except Exception as exc:  # probe must not propagate: mark messaging provider unavailable
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = f"Messaging probe error: {type(exc).__name__}"

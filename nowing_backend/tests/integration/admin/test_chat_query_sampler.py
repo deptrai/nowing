@@ -203,6 +203,50 @@ async def test_sample_chat_queries_filters_by_days(
     assert all(row["query"] != "Old question." for row in rows)
 
 
+class _SessionCM:
+    """Context manager wrapper for db_session in sampler tests.
+
+    Handles exceptions in __aexit__ by rolling back the session, preventing
+    unhandled transaction errors from corrupting the test session state.
+    """
+
+    def __init__(self, session) -> None:
+        self.session = session
+
+    async def __aenter__(self):
+        return self.session
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            await self.session.rollback()
+        return None
+
+
+@pytest.mark.asyncio
+async def test_sampler_session_cm_rolls_back_on_exception() -> None:
+    """_SessionCM must roll back the session if an exception occurs in the context block."""
+    mock_session = AsyncMock()
+    cm = _SessionCM(mock_session)
+
+    with pytest.raises(RuntimeError):
+        async with cm:
+            raise RuntimeError("simulated error inside session block")
+
+    mock_session.rollback.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_sampler_session_cm_does_not_rollback_on_clean_exit() -> None:
+    """_SessionCM does not roll back when context block completes successfully."""
+    mock_session = AsyncMock()
+    cm = _SessionCM(mock_session)
+
+    async with cm:
+        pass
+
+    mock_session.rollback.assert_not_awaited()
+
+
 @pytest.mark.asyncio
 async def test_sampler_rejects_non_superuser_pat_with_exit_code_1(
     db_session, db_user, capsys
@@ -222,17 +266,8 @@ async def test_sampler_rejects_non_superuser_pat_with_exit_code_1(
         dry_run=True,
     )
 
-    # The script uses `async with async_session_maker() as session:` — provide a
-    # CM that yields the test session.
-    class _SessionCM:
-        async def __aenter__(self):
-            return db_session
-
-        async def __aexit__(self, *args):
-            return None
-
     with (
-        patch.object(sampler, "async_session_maker", return_value=_SessionCM()),
+        patch.object(sampler, "async_session_maker", return_value=_SessionCM(db_session)),
         patch.object(sampler, "resolve_pat", new=AsyncMock(return_value=fake_pat)),
         pytest.raises(SystemExit) as exc_info,
     ):

@@ -1,6 +1,11 @@
+---
+story_key: 21-14-smart-whitelist-do-not-call-dnc-compliance-engine
+status: done
+---
+
 # Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Governed by epics.md (FR-84, AD-31, AD-42, AD-49) & Decree 91/2020/NĐ-CP, Decree 13/2023/NĐ-CP -->
 

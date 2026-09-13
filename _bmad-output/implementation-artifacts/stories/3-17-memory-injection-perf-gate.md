@@ -1,3 +1,8 @@
+---
+story_key: 3-17-memory-injection-bounded-retrieval-performance-gate
+status: done
+---
+
 # Story 3.17: Memory Injection Bounded-Retrieval Performance Gate
 
 **Epic:** 3 — Knowledge Base + Long-Term Memory

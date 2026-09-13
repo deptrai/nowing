@@ -126,3 +126,37 @@ async def test_launch_invalid_definition_raises_400(monkeypatch):
     )
     assert captured["http_exc"].status_code == 400
     assert "definition" in captured["http_exc"].detail
+
+
+async def test_launch_run_celery_apply_async_failure_sets_failed_status(monkeypatch):
+    """Verify launch_run sets status=FAILED and raises DispatchError if Celery enqueue fails."""
+    from unittest.mock import AsyncMock, MagicMock
+    from app.automations.dispatch.launch import launch_run
+    from app.automations.persistence.enums.run_status import RunStatus
+    from app.automations.persistence.models.trigger import AutomationTrigger
+    from app.automations.persistence.models.automation import Automation
+    from app.automations.persistence.enums.automation_status import AutomationStatus
+
+    session = AsyncMock()
+    trigger = AutomationTrigger(id=1, automation_id=10, type="schedule", params={"cron": "0 0 * * *"})
+    automation = Automation(
+        id=10,
+        workspace_id=1,
+        status=AutomationStatus.ACTIVE,
+        definition={"name": "Test", "plan": [{"step_id": "s1", "action": "continue_research", "params": {"research_thread_id": 1}}]},
+    )
+
+    monkeypatch.setattr("app.automations.dispatch.launch.resolve_active_automation", AsyncMock(return_value=automation))
+    monkeypatch.setattr("app.automations.dispatch.launch.resolve_research_thread_id", AsyncMock(return_value=None))
+
+    mock_task = MagicMock()
+    mock_task.apply_async.side_effect = RuntimeError("Broker connection refused")
+    monkeypatch.setattr("app.automations.dispatch.launch.automation_run_execute", mock_task)
+
+    with pytest.raises(DispatchError, match="failed to enqueue execution"):
+        await launch_run(session=session, trigger=trigger)
+
+    assert session.commit.await_count >= 2
+    # Verify the added run object was marked FAILED
+    added_run = session.add.call_args.args[0]
+    assert added_run.status == RunStatus.FAILED

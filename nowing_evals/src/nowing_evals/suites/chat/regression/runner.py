@@ -537,8 +537,16 @@ def _load_chat_gate() -> tuple[dict[str, Any], dict[str, Any]]:
     gate_path = Path(__file__).parent / "gate.yaml"
     if not gate_path.is_file():
         return {}, {}
-    data = yaml.safe_load(gate_path.read_text(encoding="utf-8")) or {}
-    return data, data.get("thresholds") or {}
+    try:
+        data = yaml.safe_load(gate_path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return {}, {}
+    if not isinstance(data, dict):
+        return {}, {}
+    thresholds = data.get("thresholds")
+    if not isinstance(thresholds, dict):
+        thresholds = {}
+    return data, thresholds
 
 
 def _evaluate_chat_gate(metrics: dict[str, Any]) -> list[str]:

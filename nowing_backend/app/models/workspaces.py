@@ -139,6 +139,9 @@ class Workspace(BaseModel, TimestampMixin):
     # Story 29.4: Workspace lifecycle archiving
     archived_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
 
+    # Story 29.6: governance-driven scrape pause for high-risk source tiers
+    scrape_paused_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
     # Epic 21 lead scoring ICP criteria (Story 21.2).
     icp_criteria = Column(JSONB, nullable=True)
 
@@ -374,11 +377,19 @@ class Workspace(BaseModel, TimestampMixin):
         back_populates="workspace",
         order_by="SocialMonitoredTarget.id",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     social_posts = relationship(
         "SocialPost",
         back_populates="workspace",
         order_by="SocialPost.id",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    xactions_proxy_bindings = relationship(
+        "XActionsProxyBinding",
+        back_populates="workspace",
+        order_by="XActionsProxyBinding.id",
         cascade="all, delete-orphan",
     )
     zalo_connections = relationship(

@@ -106,7 +106,7 @@ class DoomLoopMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respon
 
         try:
             tid = _from_dict(get_config())
-        except Exception:
+        except Exception:  # LangGraph config lookup failure; fall back to runtime config
             tid = None
         if tid is not None:
             return tid

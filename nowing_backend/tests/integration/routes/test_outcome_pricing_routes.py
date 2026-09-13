@@ -66,7 +66,7 @@ def test_get_pricing_plan(test_app: FastAPI, mock_auth: AuthContext) -> None:
 
     with (
         patch(
-            "app.routes.outcome_pricing_routes.check_workspace_access",
+            "app.dependencies.auth.check_workspace_access",
             new=AsyncMock(return_value=True),
         ),
         patch(
@@ -102,7 +102,7 @@ def test_record_meeting_booked_route_success(
 
     with (
         patch(
-            "app.routes.outcome_pricing_routes.check_workspace_access",
+            "app.dependencies.auth.check_workspace_access",
             new=AsyncMock(return_value=True),
         ),
         patch(
@@ -141,7 +141,7 @@ def test_update_pricing_plan(test_app: FastAPI, mock_auth: AuthContext) -> None:
 
     with (
         patch(
-            "app.routes.outcome_pricing_routes.check_permission",
+            "app.dependencies.auth.check_permission",
             new=AsyncMock(return_value=True),
         ),
         patch(

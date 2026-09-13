@@ -70,7 +70,7 @@ async def get_valid_credentials(
             logger.info(
                 f"Decrypted Google Drive credentials for connector {connector_id}"
             )
-        except Exception as e:
+        except Exception as e:  # credential decryption failure; raise ValueError
             logger.error(
                 f"Failed to decrypt Google Drive credentials for connector {connector_id}: {e!s}"
             )
@@ -136,7 +136,7 @@ async def get_valid_credentials(
             flag_modified(connector, "config")
             await session.commit()
 
-        except Exception as e:
+        except Exception as e:  # auth failure/token expired; raise
             error_str = str(e)
             # Check if this is an invalid_grant error (token expired/revoked)
             if (

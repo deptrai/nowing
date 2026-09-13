@@ -149,12 +149,12 @@ def mock_leads():
 
 @pytest.fixture
 def client(monkeypatch, mock_leads):
-    import app.routes.leads_routes as leads_routes
+    import app.dependencies.auth as auth_deps
 
     async def _mock_check_perm(*args: Any, **kwargs: Any) -> None:
         return None
 
-    monkeypatch.setattr(leads_routes, "check_permission", _mock_check_perm)
+    monkeypatch.setattr(auth_deps, "check_permission", _mock_check_perm)
 
     from app.routes.leads_routes import router
 
@@ -238,14 +238,14 @@ def test_company_graph_empty_name_returns_400(client):
 
 
 def test_update_lead_status_permission_denied(monkeypatch, mock_leads):
-    import app.routes.leads_routes as leads_routes
+    import app.dependencies.auth as auth_deps
 
     async def _deny(*args, **kwargs):
         from fastapi import HTTPException
 
         raise HTTPException(status_code=403, detail="denied")
 
-    monkeypatch.setattr(leads_routes, "check_permission", _deny)
+    monkeypatch.setattr(auth_deps, "check_permission", _deny)
 
     from app.routes.leads_routes import router
 

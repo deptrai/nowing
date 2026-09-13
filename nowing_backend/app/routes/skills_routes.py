@@ -11,7 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import WorkspaceSkill, get_async_session
+from app.db import WorkspaceMembership, WorkspaceSkill, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.schemas.skills_schemas import (
     SkillCreate,
     SkillExecuteRequest,
@@ -23,7 +24,7 @@ from app.schemas.skills_schemas import (
 from app.services.skill_execution_service import SkillExecutionService
 from app.services.skill_parser import SkillParseError, SkillParser
 from app.users import get_auth_context
-from app.utils.rbac import Permission, check_permission
+from app.utils.rbac import Permission
 
 router = APIRouter(tags=["skills"])
 
@@ -38,15 +39,14 @@ async def parse_skill_file(
     payload: SkillParseRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SKILLS_READ.value,
+            "You don't have permission to parse skills in this workspace",
+        )
+    ),
 ) -> SkillParseResponse:
     """Parse raw .skill.md file content and return extracted metadata and markdown body."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SKILLS_READ.value,
-        "You don't have permission to parse skills in this workspace",
-    )
 
     try:
         parsed = SkillParser.parse(payload.file_content)
@@ -79,15 +79,14 @@ async def list_skills(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SKILLS_READ.value,
+            "You don't have permission to view skills in this workspace",
+        )
+    ),
 ) -> list[SkillRead]:
     """List skills configured in a workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SKILLS_READ.value,
-        "You don't have permission to view skills in this workspace",
-    )
 
     stmt = select(WorkspaceSkill).where(WorkspaceSkill.workspace_id == workspace_id)
     if not include_inactive:
@@ -110,15 +109,14 @@ async def create_skill(
     payload: SkillCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SKILLS_CREATE.value,
+            "You don't have permission to create skills in this workspace",
+        )
+    ),
 ) -> SkillRead:
     """Create a new skill in the workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SKILLS_CREATE.value,
-        "You don't have permission to create skills in this workspace",
-    )
 
     # Check for duplicate slug in workspace
     existing_stmt = select(WorkspaceSkill).where(
@@ -171,15 +169,14 @@ async def get_skill(
     skill_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SKILLS_READ.value,
+            "You don't have permission to view skills in this workspace",
+        )
+    ),
 ) -> SkillRead:
     """Get a specific skill by ID."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SKILLS_READ.value,
-        "You don't have permission to view skills in this workspace",
-    )
 
     skill = await session.get(WorkspaceSkill, skill_id)
     if not skill or skill.workspace_id != workspace_id:
@@ -202,15 +199,14 @@ async def update_skill(
     payload: SkillUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SKILLS_UPDATE.value,
+            "You don't have permission to update skills in this workspace",
+        )
+    ),
 ) -> SkillRead:
     """Update a skill in the workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SKILLS_UPDATE.value,
-        "You don't have permission to update skills in this workspace",
-    )
 
     skill = await session.get(WorkspaceSkill, skill_id)
     if not skill or skill.workspace_id != workspace_id:
@@ -272,15 +268,14 @@ async def delete_skill(
     skill_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SKILLS_DELETE.value,
+            "You don't have permission to delete skills in this workspace",
+        )
+    ),
 ) -> None:
     """Delete a skill from the workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SKILLS_DELETE.value,
-        "You don't have permission to delete skills in this workspace",
-    )
 
     skill = await session.get(WorkspaceSkill, skill_id)
     if not skill or skill.workspace_id != workspace_id:
@@ -303,15 +298,14 @@ async def execute_skill(
     payload: SkillExecuteRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SKILLS_EXECUTE.value,
+            "You don't have permission to execute skills in this workspace",
+        )
+    ),
 ) -> dict[str, Any]:
     """Execute a skill (renders prompt or dispatches workflow mission)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SKILLS_EXECUTE.value,
-        "You don't have permission to execute skills in this workspace",
-    )
 
     skill = await session.get(WorkspaceSkill, skill_id)
     if not skill or skill.workspace_id != workspace_id:

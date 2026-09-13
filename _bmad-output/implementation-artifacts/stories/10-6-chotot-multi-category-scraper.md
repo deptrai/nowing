@@ -1,10 +1,11 @@
 ---
-baseline_commit: null
+story_key: 10-6-chợ-tốt-multi-category-scraper
+status: done
 ---
 
 # Story 10.6: Chợ Tốt Multi-Category Scraper
 
-Status: review
+Status: done
 
 ## Story
 

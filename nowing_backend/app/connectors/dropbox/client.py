@@ -115,8 +115,8 @@ class DropboxClient:
             try:
                 error_json = resp.json()
                 error_detail = error_json.get("error_description", error_detail)
-            except Exception:
-                pass
+            except Exception as exc:  # JSON parse error on error response; keep raw text
+                logger.debug("Suppressed %r", exc)
             raise ValueError(f"Dropbox token refresh failed: {error_detail}")
         return resp.json()
 

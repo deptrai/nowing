@@ -43,8 +43,7 @@ def _fingerprint_key(listing: VnJobAggregatedListing) -> tuple[str, str, str]:
     return (
         (listing.title or "").lower().strip(),
         listing.company.lower().strip(),
-        resolve_city_code(listing.location)
-        or (listing.location or "").lower().strip(),
+        resolve_city_code(listing.location) or (listing.location or "").lower().strip(),
     )
 
 
@@ -110,13 +109,18 @@ def _salary_values(group: list[VnJobAggregatedListing]) -> list[int]:
     """Extract non-zero salary values for comparison.
 
     Zero values mean "negotiable/hidden" and are skipped per Q4 failure mode.
+    Validates min <= max when both values are present.
     """
     values: list[int] = []
     for item in group:
-        if item.salary.min and item.salary.min > 0:
-            values.append(item.salary.min)
-        if item.salary.max and item.salary.max > 0:
-            values.append(item.salary.max)
+        s_min = item.salary.min if (item.salary.min and item.salary.min > 0) else None
+        s_max = item.salary.max if (item.salary.max and item.salary.max > 0) else None
+        if s_min is not None and s_max is not None and s_min > s_max:
+            s_min, s_max = s_max, s_min
+        if s_min is not None:
+            values.append(s_min)
+        if s_max is not None:
+            values.append(s_max)
     return values
 
 
@@ -247,6 +251,8 @@ def _union_find(n: int, pairs: list[tuple[int, int]]) -> list[int]:
 
     for a, b in pairs:
         union(a, b)
+    for i in range(n):
+        parent[i] = find(i)
     return parent
 
 
@@ -278,12 +284,12 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
                     pairs.append((i, j))
         parent = _union_find(n, pairs)
 
-        # Collect merged groups.
+        # Collect merged groups using fully compressed roots.
         fine_groups: dict[int, list[VnJobAggregatedListing]] = defaultdict(list)
         for i, item in enumerate(group):
             # Find root using the same path-compressed logic.
             root = i
-            while parent[root] != root:
+            while parent[root] <= root:
                 root = parent[root]
             fine_groups[root].append(item)
 

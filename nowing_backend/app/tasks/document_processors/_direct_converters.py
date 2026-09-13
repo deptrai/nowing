@@ -11,10 +11,13 @@ markdown without any external ETL/OCR service:
 from __future__ import annotations
 
 import csv
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
 from markdownify import markdownify
+
+logger = logging.getLogger(__name__)
 
 # The stdlib csv module defaults to a 128 KB field-size limit which is too
 # small for real-world exports (e.g. chat logs, CRM dumps).  We raise it once
@@ -48,13 +51,13 @@ def _read_text(file_path: str) -> str:
     encoding = _detect_encoding(file_path)
     try:
         return Path(file_path).read_text(encoding=encoding)
-    except (UnicodeDecodeError, UnicodeError):
-        pass
+    except (UnicodeDecodeError, UnicodeError) as exc:
+        logger.debug("Suppressed %r", exc)
     if encoding != "utf-8":
         try:
             return Path(file_path).read_text(encoding="utf-8")
-        except (UnicodeDecodeError, UnicodeError):
-            pass
+        except (UnicodeDecodeError, UnicodeError) as exc:
+            logger.debug("Suppressed %r", exc)
     return Path(file_path).read_text(encoding="latin-1")
 
 

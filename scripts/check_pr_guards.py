@@ -12,8 +12,13 @@ Rules (applied only to files added or modified in the PR diff):
 * ``.only(`` in ``.ts/.tsx/.js`` test/describe blocks is forbidden.
 * New ``@pytest.mark.skip`` decorators in Python tests are forbidden.
 * New bare ``except Exception`` in ``nowing_backend/app/routes/`` or
-  ``nowing_backend/app/services/`` is forbidden (legacy files are allowed;
+  ``nowing_backend/app/services/`` **fails**; elsewhere under
+  ``nowing_backend/app/`` it warns (legacy files are allowed;
   the rule targets *added* lines).
+* New ``except ...: pass``/``continue`` (silent swallow) anywhere under
+  ``nowing_backend/app/`` fails.
+* New ``console.log(``/``console.debug(`` in ``nowing_web`` production
+  dirs (``app/``, ``components/``, ``lib/``, ``hooks/``, ``atoms/``) fails.
 """
 
 from __future__ import annotations
@@ -107,14 +112,67 @@ def _content_checks(path: Path) -> list[str]:
     return errors
 
 
-def _new_bare_exception_in_service_or_route(diff: str) -> bool:
-    """Detect *added* lines containing ``except Exception`` in routes/services."""
-    for line in diff.splitlines():
-        if not line.startswith("+") or line.startswith("+++"):
+def _added_lines(diff: str) -> list[str]:
+    return [
+        line[1:]
+        for line in diff.splitlines()
+        if line.startswith("+") and not line.startswith("+++")
+    ]
+
+
+def _new_bare_exception(diff: str) -> bool:
+    """Detect *added* lines containing ``except Exception``."""
+    return any(re.search(r"except\s+Exception\b", line) for line in _added_lines(diff))
+
+
+def _new_silent_swallow(diff: str) -> bool:
+    """Detect added ``except ...: pass/continue`` blocks — an added ``except``
+    line immediately followed by an added ``pass``/``continue``/``...`` line
+    in the same hunk (non-added lines reset adjacency)."""
+    prev_was_except = False
+    for raw in diff.splitlines():
+        if not raw.startswith("+") or raw.startswith("+++"):
+            prev_was_except = False
             continue
-        if re.search(r"except\s+Exception", line):
+        line = raw[1:]
+        if re.search(r"except\b[^:]*:\s*(pass|continue|\.\.\.)\s*(#.*)?$", line):
             return True
+        if re.match(r"^\s*#", line):
+            # Comment-only lines between an added ``except:`` and its body
+            # keep adjacency so ``except:`` + ``# why`` + ``pass`` is caught.
+            continue
+        if prev_was_except and re.match(
+            r"^\s*(pass|continue|\.\.\.)\s*(#.*)?$", line
+        ):
+            return True
+        prev_was_except = bool(re.search(r"except\b[^:]*:\s*(#.*)?$", line))
     return False
+
+
+def _new_console_noise(diff: str) -> bool:
+    """Detect added ``console.log``/``console.debug`` calls."""
+    return any(
+        re.search(r"console\.(log|debug)\s*\(", line) for line in _added_lines(diff)
+    )
+
+
+def _is_swallowed_except_scope(rel: str) -> bool:
+    return rel.startswith("nowing_backend/app/") and rel.endswith(".py")
+
+
+_WEB_PROD_DIRS = ("nowing_web/app/", "nowing_web/components/", "nowing_web/lib/",
+                  "nowing_web/hooks/", "nowing_web/atoms/")
+
+
+_WEB_DEV_UTIL = re.compile(r"\.(selfcheck|test|spec|stories)\.(ts|tsx|js|jsx)$")
+
+
+def _is_web_prod_code(rel: str) -> bool:
+    return (
+        rel.startswith(_WEB_PROD_DIRS)
+        and rel.endswith((".ts", ".tsx", ".js", ".jsx"))
+        and not _WEB_DEV_UTIL.search(rel)
+    )
 
 
 def main() -> int:
@@ -150,17 +208,24 @@ def main() -> int:
             for err in content_errors:
                 failures.append(f"{rel}: {err}")
 
-        if (
-            rel.startswith("nowing_backend/app/routes/")
-            or rel.startswith("nowing_backend/app/services/")
-        ) and rel.endswith(".py"):
+        if _is_swallowed_except_scope(rel):
             diff = _diff_for_file(rel, base_ref)
-            if _new_bare_exception_in_service_or_route(diff):
-                # Phase H transitional: warn rather than fail while legacy splits
-                # still contain broad exception handling. Once task C is complete,
-                # upgrade this to a hard failure.
-                msg = f"{rel}: added bare 'except Exception' in route/service"
-                warnings.append(msg)
+            if _new_silent_swallow(diff):
+                failures.append(
+                    f"{rel}: added 'except: pass/continue' — log the error instead"
+                )
+            if _new_bare_exception(diff):
+                in_hot = rel.startswith(("nowing_backend/app/routes/",
+                                        "nowing_backend/app/services/"))
+                msg = f"{rel}: added bare 'except Exception'"
+                (failures if in_hot else warnings).append(msg)
+
+        if _is_web_prod_code(rel):
+            diff = _diff_for_file(rel, base_ref)
+            if _new_console_noise(diff):
+                failures.append(
+                    f"{rel}: added console.log/debug in production code"
+                )
 
     for w in warnings:
         print(f"⚠️  {w}")

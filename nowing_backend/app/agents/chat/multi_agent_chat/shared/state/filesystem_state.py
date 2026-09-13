@@ -202,7 +202,7 @@ class NowingFilesystemState(FilesystemState):
     and returns it under the ``"receipt"`` key alongside its existing
     payload. The subagent's tool-call middleware folds the receipt into
     this list, and ``_return_command_with_state_update`` in
-    ``checkpointed_subagent_middleware/task_tool.py`` carries the list up
+    ``checkpointed_subagent_middleware/task_tool`` carries the list up
     to the parent automatically (``"receipts"`` is not in
     ``EXCLUDED_STATE_KEYS``).
 

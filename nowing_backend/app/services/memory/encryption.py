@@ -388,7 +388,7 @@ class MemoryEncryptionService:
         cipher = _build_cipher(key, effective_algo)
         try:
             return cipher.decrypt(ciphertext.encode()).decode()
-        except Exception as exc:
+        except Exception as exc:  # Fernet/cipher raises broadly; wrap as DecryptionError with key context
             raise DecryptionError(f"decryption failed for key_id={key_id}: {exc}") from exc
 
     def is_ciphertext(self, value: str | None, key_id: str | None = None) -> bool:

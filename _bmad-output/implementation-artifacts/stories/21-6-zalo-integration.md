@@ -1,10 +1,11 @@
 ---
-baseline_commit: b1f688eee31cff54ede82d9a11a836815cdd827f
+story_key: 21-6-vietnam-outbound-automation
+status: done
 ---
 
 # Story 21.6: Zalo Integration (Vietnam Market)
 
-Status: in-progress
+Status: done
 
 ## Story
 

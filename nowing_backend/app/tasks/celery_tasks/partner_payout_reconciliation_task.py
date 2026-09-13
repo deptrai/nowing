@@ -84,7 +84,7 @@ async def _reconcile_pending_partner_payouts() -> None:
                         client=client,
                     )
                     await item_session.commit()
-                except Exception as e:
+                except Exception as e:  # per-item failure; rollback and continue batch
                     logger.error(
                         "Failed to auto-reconcile payout %s: %s",
                         payout_id,

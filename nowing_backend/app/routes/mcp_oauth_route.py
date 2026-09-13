@@ -96,7 +96,7 @@ async def _fetch_account_metadata(
                         resp.status_code,
                     )
 
-    except Exception:
+    except Exception:  # best-effort account metadata fetch; non-blocking
         logger.warning(
             "Failed to fetch account metadata for %s (non-blocking)",
             service_key,
@@ -257,7 +257,7 @@ async def connect_mcp_service(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error("Failed to initiate %s MCP OAuth: %s", service, e, exc_info=True)
         raise HTTPException(
             status_code=500,
@@ -285,8 +285,8 @@ async def mcp_oauth_callback(
             try:
                 data = _get_state_manager().validate_state(state)
                 space_id = data.get("space_id")
-            except Exception:
-                pass
+            except Exception as exc:  # best-effort state decode in error handler
+                logger.debug("Suppressed %r", exc)
         return _frontend_redirect(
             space_id,
             error=f"{service}_mcp_oauth_denied",
@@ -500,7 +500,7 @@ async def mcp_oauth_callback(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # OAuth callback completion failure → surface as typed HTTP error
         logger.error(
             "Failed to complete %s MCP OAuth: %s",
             service,
@@ -642,7 +642,7 @@ async def reauth_mcp_service(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(
             "Failed to initiate %s MCP re-auth: %s",
             service,
@@ -672,5 +672,5 @@ def _refresh_mcp_cache(connector_id: int, space_id: int) -> None:
         )
 
         refresh_mcp_tools_cache_for_connector(connector_id, space_id)
-    except Exception:
+    except Exception:  # best-effort cache refresh after re-auth
         logger.debug("MCP cache refresh skipped", exc_info=True)

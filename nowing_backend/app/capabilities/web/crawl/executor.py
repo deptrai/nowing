@@ -79,7 +79,7 @@ def build_crawl_executor(engine: WebCrawlerConnector | None = None) -> Executor:
                     continue
                 try:
                     domain = host_of(page.url)
-                except Exception:
+                except Exception:  # URL parse error; fallback to UNKNOWN domain for escalation
                     domain = "UNKNOWN"
                 screenshot_id = hashlib.sha256(page.url.encode()).hexdigest()[:16]
                 persist_anti_bot_escalation_task.delay(

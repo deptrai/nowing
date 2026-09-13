@@ -159,5 +159,5 @@ def _dispatch_chat_event(event: dict[str, Any]) -> None:
         from langchain_core.callbacks import dispatch_custom_event
 
         dispatch_custom_event("scraper_progress", event)
-    except Exception:
+    except Exception:  # capability executor failure; return structured error
         logger.debug("scraper_progress dispatch skipped (no run context)")

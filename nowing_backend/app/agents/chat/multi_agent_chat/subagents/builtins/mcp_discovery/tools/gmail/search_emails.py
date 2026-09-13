@@ -157,7 +157,7 @@ def create_search_gmail_tool(
 
             return {"status": "success", "emails": emails, "total": len(emails)}
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

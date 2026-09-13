@@ -151,7 +151,7 @@ class HealthResultStore:
             snapshot_key = f"nowing:health:snapshot:{result.service_id}"
             await redis.set(snapshot_key, payload, ex=HEALTH_SNAPSHOT_TTL_SECONDS)
             await redis.publish(HEALTH_PUB_SUB_CHANNEL, payload)
-        except Exception as exc:
+        except Exception as exc:  # best-effort publish of health snapshot to Redis; DB persistence succeeded
             logger.warning("Failed to publish health result to Redis: %s", exc)
 
         return record

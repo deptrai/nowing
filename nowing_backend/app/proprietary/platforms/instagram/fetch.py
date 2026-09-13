@@ -394,7 +394,7 @@ async def _fetch(
             return None
         except InstagramAccessBlockedError:
             raise
-        except Exception as e:
+        except Exception as e:  # network or request error; rotate proxy and retry
             logger.warning("[instagram] GET %s failed: %s", path, e)
             if attempt < _MAX_ROTATIONS:
                 attempt += 1

@@ -175,7 +175,7 @@ class SignalDetectionService:
                         user_id=ctx.user_id,
                         cost_micros=cost_per_item,
                     )
-                except Exception as exc:
+                except Exception as exc:  # lead intelligence operation fallback
                     logger.exception("Billing event failed for signal %s", signal.id)
                     degradation_reasons.append(str(exc))
 
@@ -332,7 +332,7 @@ class SignalDetectionService:
         except httpx.TimeoutException:
             reasons.append("crunchbase.timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"crunchbase.error: {exc}")
             return [], reasons
 
@@ -345,7 +345,7 @@ class SignalDetectionService:
 
         try:
             data = resp.json()
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"crunchbase.json_error: {exc}")
             return [], reasons
 
@@ -388,7 +388,7 @@ class SignalDetectionService:
         except TimeoutError:
             reasons.append("hiring.aggregate_timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.exception("hiring detection failed for %s", input.company_name)
             reasons.append(f"hiring.aggregate_error: {exc}")
             return [], reasons
@@ -449,7 +449,7 @@ class SignalDetectionService:
         except httpx.TimeoutException:
             reasons.append("website.timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"website.error: {exc}")
             return [], reasons
 
@@ -523,7 +523,7 @@ class SignalDetectionService:
         except httpx.TimeoutException:
             reasons.append("newsapi.timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"newsapi.error: {exc}")
             return [], reasons
 
@@ -536,7 +536,7 @@ class SignalDetectionService:
 
         try:
             data = resp.json()
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"newsapi.json_error: {exc}")
             return [], reasons
 

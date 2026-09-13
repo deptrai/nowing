@@ -15,7 +15,12 @@ from app.db import (
     Chunk,
     Document,
     Permission,
+    WorkspaceMembership,
     get_async_session,
+)
+from app.dependencies.auth import (
+    RequirePermission,
+    RequirePermissionFromEntity,
 )
 from app.routes.documents.crud.router import router
 from app.schemas import (
@@ -36,6 +41,12 @@ async def get_document_by_virtual_path(
     virtual_path: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """Resolve a knowledge-base document by its agent-facing virtual path.
 
@@ -56,14 +67,6 @@ async def get_document_by_virtual_path(
     * ``safe_filename`` round-trip for connector titles with lossy chars
     """
     try:
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.DOCUMENTS_READ.value,
-            "You don't have permission to read documents in this workspace",
-        )
-
         document = await virtual_path_to_doc(
             session,
             workspace_id=workspace_id,
@@ -204,6 +207,14 @@ async def get_document_chunks_paginated(
     ),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Document",
+            "document_id",
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """
     Paginated chunk loading for a document.
@@ -211,25 +222,6 @@ async def get_document_chunks_paginated(
     """
     try:
         from sqlalchemy import func
-
-        doc_result = await session.execute(
-            select(Document).filter(
-                Document.id == document_id,
-                Document.archived_at.is_(None),
-            )
-        )
-        document = doc_result.scalars().first()
-
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-        await check_permission(
-            session,
-            auth,
-            document.workspace_id,
-            Permission.DOCUMENTS_READ.value,
-            "You don't have permission to read documents in this workspace",
-        )
 
         total_result = await session.execute(
             select(func.count())

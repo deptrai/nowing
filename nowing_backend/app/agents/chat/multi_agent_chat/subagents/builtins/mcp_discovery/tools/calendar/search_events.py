@@ -153,7 +153,7 @@ def create_search_calendar_events_tool(
 
             return {"status": "success", "events": events, "total": len(events)}
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

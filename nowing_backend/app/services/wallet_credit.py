@@ -15,12 +15,15 @@ per-unit biller (ETL, crawl, platform scrape) shares one "out of credit" type â€
 the capability doors already catch exactly that one.
 """
 
+import logging
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.etl_credit_service import InsufficientCreditsError
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "InsufficientCreditsError",
@@ -117,8 +120,8 @@ async def apply_debit(
         from app.services.auto_reload_service import maybe_trigger_auto_reload
 
         await maybe_trigger_auto_reload(user_id)
-    except Exception:
-        pass
+    except Exception as exc:  # best-effort post-commit hook; never fail the debit
+        logger.debug("Suppressed %r", exc)
 
     return user.credit_micros_balance
 

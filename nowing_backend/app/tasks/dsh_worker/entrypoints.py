@@ -50,7 +50,7 @@ async def healthcheck() -> int:
     try:
         redis_client = await get_redis_client()
         await redis_client.ping()
-    except Exception as exc:
+    except Exception as exc:  # healthcheck redis ping failure; log error and return 1
         logger.error("DSH healthcheck Redis ping failed: %s", exc)
         return 1
 
@@ -60,7 +60,7 @@ async def healthcheck() -> int:
                 f"{config.DSH_INTERNAL_BASE_URL.rstrip('/')}/health"
             )
             resp.raise_for_status()
-    except Exception as exc:
+    except Exception as exc:  # healthcheck api ping failure; log error and return 1
         logger.error("DSH healthcheck API ping failed: %s", exc)
         return 1
 

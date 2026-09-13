@@ -207,6 +207,7 @@ async def _live_chat_image_call(cfg: dict) -> tuple[bool, str]:
         ],
         "max_tokens": 16,
         "timeout": 60,
+        "num_retries": 1,
     }
     if cfg.get("api_base"):
         kwargs["api_base"] = cfg["api_base"]
@@ -258,6 +259,7 @@ async def _live_image_gen_call(cfg: dict) -> tuple[bool, str]:
         "n": 1,
         "size": "1024x1024",
         "timeout": 120,
+        "num_retries": 1,
     }
     if cfg.get("api_base"):
         base_kwargs["api_base"] = cfg["api_base"]

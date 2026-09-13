@@ -133,7 +133,7 @@ def _register(
         return 0
     try:
         litellm.register_model(payload)
-    except Exception as exc:
+    except Exception as exc:  # best-effort dynamic litellm model registration; continue on error
         logger.warning(
             "[PricingRegistration] register_model failed for aliases=%s: %s",
             aliases,
@@ -356,7 +356,7 @@ def register_pricing_from_global_configs() -> None:
 
         if OpenRouterIntegrationService.is_initialized():
             or_pricing = OpenRouterIntegrationService.get_instance().get_raw_pricing()
-    except Exception as exc:
+    except Exception as exc:  # best-effort OpenRouter pricing lookup during initial boot; continue if unready
         logger.debug(
             "[PricingRegistration] OpenRouter pricing not available yet: %s", exc
         )

@@ -72,6 +72,8 @@ ALLOWED_FILTERS: dict[BulkAction, set[str]] = {
     BulkAction.DELETE_SOURCE_TYPE_MEMORIES: {
         "workspace_id",
         "source_type",
+        "source_id",
+        "source_entity_type",
         "created_before",
         "created_after",
         "memory_type",
@@ -695,7 +697,7 @@ class BulkOpsService:
             task = bulk_op_executor.delay(str(job.id))
             job.celery_task_id = str(task.id) if task and hasattr(task, "id") else None
             await session.commit()
-        except Exception as e:
+        except Exception as e:  # best-effort Celery dispatch; job row committed, can be re-dispatched
             logger.warning(
                 "Celery dispatch failed or skipped (e.g. broker offline): %s", e
             )

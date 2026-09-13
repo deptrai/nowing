@@ -5,10 +5,13 @@ A module for retrieving events and guest data from Luma Event Platform.
 Allows fetching event lists, event details, and guest information with date range filtering.
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class LumaConnector:
@@ -105,7 +108,7 @@ class LumaConnector:
         try:
             user_info = self.make_request("user/get-self")
             return user_info, None
-        except Exception as e:
+        except Exception as e:  # upstream API failure; return None and error
             return None, f"Error fetching user info: {e!s}"
 
     def get_all_events(
@@ -145,7 +148,7 @@ class LumaConnector:
 
             return all_events, None
 
-        except Exception as e:
+        except Exception as e:  # upstream API failure; return empty events and error
             return [], f"Error fetching events: {e!s}"
 
     def get_event_details(
@@ -163,7 +166,7 @@ class LumaConnector:
         try:
             event_details = self.make_request(f"events/{event_id}")
             return event_details, None
-        except Exception as e:
+        except Exception as e:  # upstream API failure; return None and error
             return None, f"Error fetching event details for {event_id}: {e!s}"
 
     def get_event_guests(
@@ -204,7 +207,7 @@ class LumaConnector:
 
             return all_guests, None
 
-        except Exception as e:
+        except Exception as e:  # upstream API failure; return empty guests and error
             return [], f"Error fetching guests for event {event_id}: {e!s}"
 
     def get_events_by_date_range(
@@ -256,8 +259,9 @@ class LumaConnector:
                                         event["guests"] = guests
 
                             filtered_events.append(event)
-                    except (ValueError, AttributeError):
+                    except (ValueError, AttributeError) as exc:
                         # Skip events with invalid dates
+                        logger.debug("Suppressed %r", exc)
                         continue
 
             if not filtered_events:
@@ -267,7 +271,7 @@ class LumaConnector:
 
         except ValueError as e:
             return [], f"Invalid date format: {e!s}. Please use YYYY-MM-DD."
-        except Exception as e:
+        except Exception as e:  # events retrieval by date failure; return empty events and error
             return [], f"Error fetching events by date range: {e!s}"
 
     def format_event_to_markdown(self, event: dict[str, Any]) -> str:
@@ -430,6 +434,6 @@ if __name__ == "__main__":
         else:
             print(f"\nRetrieved {len(date_events)} events from {start_date} to {end_date}")
     
-    except Exception as e:
+    except Exception as e:  # example script runner failure; print error
         print(f"Error: {e}")
 """

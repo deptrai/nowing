@@ -50,3 +50,23 @@ async def test_stale_allowlist_falls_back_to_all_tools_hitl_gated():
     assert sorted(t.name for t in tools) == ["notion-search", "notion-update-page"]
     # Renamed tools match no readonly entry -> every tool requires approval.
     assert all(t.metadata["hitl"] is True for t in tools)
+
+
+async def test_xactions_connector_loads_meta_tools_not_full_discovery():
+    """XACTIONS_MCP_CONNECTOR bypasses generic discovery and returns 3 meta-tools."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.tool import (
+        _load_http_mcp_tools,
+    )
+
+    tools = await _load_http_mcp_tools(
+        connector_id=42,
+        connector_name="XActions",
+        server_config={"url": "http://test:3001/mcp"},
+        allowed_tools=["x_scrape", "x_search", "x_crawl_post"],
+        readonly_tools=frozenset({"x_scrape", "x_search", "x_crawl_post"}),
+        connector_type="XACTIONS_MCP_CONNECTOR",
+    )
+
+    assert sorted(t.name for t in tools) == ["x_crawl_post", "x_scrape", "x_search"]
+    assert all(t.metadata["hitl"] is False for t in tools)
+    assert all(t.metadata["mcp_connector_name"] == "XActions" for t in tools)

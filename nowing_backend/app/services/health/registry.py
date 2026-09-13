@@ -23,6 +23,7 @@ from app.services.health.probes.payment_probe import PaymentHealthProbe
 from app.services.health.probes.proxy_probe import ProxyHealthProbe
 from app.services.health.probes.scraper_probe import ScraperHealthProbe
 from app.services.health.probes.storage_probe import StorageHealthProbe
+from app.services.health.probes.xactions_probe import XActionsHealthProbe
 
 logger = logging.getLogger(__name__)
 
@@ -206,12 +207,25 @@ class HealthProbeRegistry:
             else:
                 name = cap.description or platform.replace("_", " ").title()
                 group = "Platform Scrapers"
-            cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
+            # XActions uses the dedicated MCP health probe, not generic HTTP scraper probe.
+            if platform == "xactions":
+                from app.services.health.probes.xactions_probe import (
+                    XActionsHealthProbe,
+                )
+                cls.register(XActionsHealthProbe())
+            else:
+                cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
             registered_platforms.add(platform)
 
         for platform, name, group in CANONICAL_SCRAPER_PLATFORMS:
             if platform not in registered_platforms and platform not in capability_platforms:
-                cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
+                if platform == "xactions":
+                    from app.services.health.probes.xactions_probe import (
+                        XActionsHealthProbe,
+                    )
+                    cls.register(XActionsHealthProbe())
+                else:
+                    cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
                 registered_platforms.add(platform)
 
     @classmethod
@@ -231,7 +245,7 @@ class HealthProbeRegistry:
                 ).distinct()
                 res = await session.execute(stmt)
                 db_types = {str(row[0]).lower() for row in res.fetchall() if row[0]}
-        except Exception as exc:
+        except Exception as exc:  # best-effort dynamic connector probe discovery from DB; falls back to static seed
             logger.warning("Failed to discover connector probes from DB: %s", exc)
 
         seed_by_type = {t: (n, g) for t, n, g in CANONICAL_CONNECTORS}
@@ -246,12 +260,35 @@ class HealthProbeRegistry:
 
     @classmethod
     def _register_messaging_payment_storage_proxy_research(cls) -> None:
+        """Register messaging, payment, storage, and proxy probes.
+
+        Discovers providers from config where possible; falls back to seed list.
+        """
         cls.register(ProxyHealthProbe())
         cls.register(ChainLensHealthProbe())
-        for msg_provider in ["telegram", "slack", "discord"]:
-            cls.register(MessagingHealthProbe(provider=msg_provider))
-        cls.register(PaymentHealthProbe(provider="stripe"))
-        cls.register(StorageHealthProbe(provider="s3"))
+
+        # Discover messaging providers from config
+        msg_providers: list[str] = []
+        if getattr(config, "TELEGRAM_BOT_TOKEN", None) or getattr(config, "DSH_TELEGRAM_ENABLED", False):
+            msg_providers.append("telegram")
+        if getattr(config, "SLACK_CLIENT_ID", None) or getattr(config, "SLACK_BOT_TOKEN", None):
+            msg_providers.append("slack")
+        if getattr(config, "DISCORD_BOT_TOKEN", None) or getattr(config, "DISCORD_CLIENT_ID", None):
+            msg_providers.append("discord")
+        if not msg_providers:
+            msg_providers = ["telegram", "slack", "discord"]
+        for provider in msg_providers:
+            cls.register(MessagingHealthProbe(provider=provider))
+
+        # Discover payment provider from config
+        payment_provider = "stripe"
+        cls.register(PaymentHealthProbe(provider=payment_provider))
+
+        # Discover storage provider from config
+        storage_provider = "s3"
+        cls.register(StorageHealthProbe(provider=storage_provider))
+
+        cls.register(XActionsHealthProbe())
 
     @classmethod
     async def _discover_dynamic_probes(cls) -> None:

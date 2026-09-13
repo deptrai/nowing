@@ -47,7 +47,7 @@ def _start_heartbeat(notification_id: int) -> None:
         key = _get_heartbeat_key(notification_id)
         _get_doc_heartbeat_redis().setex(key, HEARTBEAT_TTL_SECONDS, "started")
         ot_metrics.record_celery_heartbeat_refresh(heartbeat_type="document")
-    except Exception as e:
+    except Exception as e:  # best-effort heartbeat write; record failure and log warning
         ot_metrics.record_celery_heartbeat_failure(heartbeat_type="document")
         logger.warning(
             f"Failed to set initial heartbeat for notification {notification_id}: {e}"
@@ -59,8 +59,8 @@ def _stop_heartbeat(notification_id: int) -> None:
     try:
         key = _get_heartbeat_key(notification_id)
         _get_doc_heartbeat_redis().delete(key)
-    except Exception:
-        pass  # Key will expire on its own
+    except Exception as exc:  # best-effort heartbeat delete; suppressed on completion
+        logger.debug("Suppressed %r", exc)
 
 
 async def _run_heartbeat_loop(notification_id: int):
@@ -77,10 +77,10 @@ async def _run_heartbeat_loop(notification_id: int):
             try:
                 _get_doc_heartbeat_redis().setex(key, HEARTBEAT_TTL_SECONDS, "alive")
                 ot_metrics.record_celery_heartbeat_refresh(heartbeat_type="document")
-            except Exception as e:
+            except Exception as e:  # best-effort periodic heartbeat refresh; record failure and continue loop
                 ot_metrics.record_celery_heartbeat_failure(heartbeat_type="document")
                 logger.warning(
                     f"Failed to refresh heartbeat for notification {notification_id}: {e}"
                 )
-    except asyncio.CancelledError:
-        pass  # Normal cancellation when task completes
+    except asyncio.CancelledError as exc:
+        logger.debug("Suppressed %r", exc)

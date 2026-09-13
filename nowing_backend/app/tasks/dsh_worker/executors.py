@@ -29,7 +29,7 @@ class DeepLeadResearchExecutor:
         try:
             parsed = urlparse(url)
             return parsed.netloc if parsed.netloc else None
-        except Exception:
+        except Exception:  # url parsing failure; return None
             return None
 
     async def _patch_checkpoint(
@@ -132,7 +132,7 @@ class DeepLeadResearchExecutor:
                     progress_percent=35,
                     current_subtask_id="reasoning",
                 )
-            except Exception as exc:
+            except Exception as exc:  # crawl subtask execution failure; update checkpoint error and re-raise
                 subtasks.append(
                     {
                         "id": "crawl",
@@ -263,19 +263,19 @@ class DeepLeadResearchExecutor:
                                     await self.rest_client.notify_high_fit_lead(
                                         mission_id, lead_id
                                     )
-                                except Exception as notify_exc:
+                                except Exception as notify_exc:  # best-effort high-fit lead notification dispatch; log warning
                                     logger.warning(
                                         "Failed to notify high fit lead for mission %s: %s",
                                         mission_id,
                                         notify_exc,
                                     )
-                    except Exception as notify_exc:
+                    except Exception as notify_exc:  # high-fit lead notification processing failure; log warning
                         logger.warning(
                             "Failed to process high fit lead notification for mission %s: %s",
                             mission_id,
                             notify_exc,
                         )
-                except Exception as exc:
+                except Exception as exc:  # ingestion subtask execution failure; update checkpoint error and re-raise
                     subtasks.append(
                         {
                             "id": "ingestion",

@@ -29,13 +29,14 @@ async def launch_run(
     session: AsyncSession,
     trigger: AutomationTrigger,
     runtime_inputs: dict[str, Any] | None = None,
+    idempotency_key: str | None = None,
 ) -> AutomationRun:
     """Resolve ``trigger``'s active automation and enqueue a PENDING run for it."""
     automation = await resolve_active_automation(session, trigger)
 
     try:
         definition = AutomationDefinition.model_validate(automation.definition)
-    except Exception as exc:
+    except Exception as exc:  # validation error → raise DispatchError
         raise DispatchError(f"invalid automation definition: {exc}") from exc
 
     inputs = prepare_inputs(definition, trigger, runtime_inputs)
@@ -56,15 +57,21 @@ async def launch_run(
         inputs=inputs,
         step_results=[],
         artifacts=[],
+        idempotency_key=idempotency_key,
     )
     session.add(run)
     await session.commit()
     await session.refresh(run)
 
-    automation_run_execute.apply_async(
-        args=[run.id],
-        time_limit=definition.execution.timeout_seconds,
-    )
+    try:
+        automation_run_execute.apply_async(
+            args=[run.id],
+            time_limit=definition.execution.timeout_seconds,
+        )
+    except Exception as exc:  # automation dispatch enqueue failure; record failure and raise
+        run.status = RunStatus.FAILED
+        await session.commit()
+        raise DispatchError(f"failed to enqueue execution for run {run.id}: {exc}") from exc
     return run
 
 

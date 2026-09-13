@@ -36,6 +36,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Fallback title used when LLM title generation fails after all retries.
+DEFAULT_TITLE = "Cuộc trò chuyện"
+
 
 def spawn_title_task(
     *,
@@ -97,7 +100,7 @@ async def _generate_title(
                     .limit(1)
                 )
                 is_first_response = probe_result.scalars().first() is None
-        except Exception:
+        except Exception:  # DB probe for prior assistant messages failed; log warning and skip title gen
             logger.warning(
                 "[TitleGen] first-response probe failed (chat_id=%s)",
                 chat_id,
@@ -150,7 +153,7 @@ async def _generate_title(
                     )
                 if response:
                     break
-            except Exception as e:
+            except Exception as e:  # LLM title generation attempt failure; log warning and retry or return default
                 logger.warning(
                     "[TitleGen] acompletion attempt %d/%d failed: %s",
                     attempt + 1,
@@ -158,11 +161,15 @@ async def _generate_title(
                     e,
                 )
                 if attempt == max_retries - 1:
-                    return None, None
+                    logger.warning(
+                        "[TitleGen] title generation exhausted retries; using fallback title"
+                    )
+                    return DEFAULT_TITLE, None
                 await asyncio.sleep(0.5)
 
         if not response or not getattr(response, "choices", None):
-            return None, None
+            logger.warning("[TitleGen] empty response from LLM; using fallback title")
+            return DEFAULT_TITLE, None
 
         usage_info = None
         usage = getattr(response, "usage", None)
@@ -184,9 +191,9 @@ async def _generate_title(
         if raw_title and len(raw_title) <= 100:
             return raw_title.strip("\"'"), usage_info
         return None, usage_info
-    except Exception:
-        logger.exception("[TitleGen] _generate_title failed")
-        return None, None
+    except Exception:  # title generation outer failure; fallback to default title
+        logger.exception("[TitleGen] _generate_title failed; using fallback title")
+        return DEFAULT_TITLE, None
 
 
 async def maybe_emit_title_update(

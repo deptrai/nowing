@@ -23,6 +23,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.reverse_icp import ReverseIcpService
 from app.lead_intelligence.schemas import (
     CompanyGraphRead,
@@ -49,7 +50,7 @@ from app.services.phone_waterfall_service import PhoneWaterfallService
 from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, has_permission
+from app.utils.rbac import get_user_permissions, has_permission
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         if enc.is_encrypted(value):
             try:
                 return enc.decrypt(value)
-            except Exception:
+            except Exception:  # decryption failure → return None fallback
                 return None
         return value
 
@@ -266,15 +267,14 @@ async def list_workspace_leads(
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view leads in this workspace",
+        )
+    ),
 ) -> LeadListResponse:
     """List multi-domain leads with filtering and pagination (Widget U3 / AC-5)."""
-    membership = await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view leads in this workspace",
-    )
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     # Base query for active workspace
@@ -372,15 +372,14 @@ async def reverse_icp_endpoint(
     body: ReverseIcpRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to access lead intelligence in this workspace",
+        )
+    ),
 ) -> ReverseIcpResponse:
     """Analyze a website or landing page URL to generate ICP, buyer personas, and filter presets (Story 21.10)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to access lead intelligence in this workspace",
-    )
 
     # Rate limiting: Max 10 requests / minute per workspace
     try:
@@ -402,7 +401,7 @@ async def reverse_icp_endpoint(
             )
     except HTTPException:
         raise
-    except Exception as rl_exc:
+    except Exception as rl_exc:  # best-effort rate limit check; continue on error
         logger.debug("[ReverseIcpRoute] Rate limiter check skipped: %s", rl_exc)
 
     service = ReverseIcpService()
@@ -427,7 +426,7 @@ async def reverse_icp_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as typed HTTP error
         logger.exception(
             "[ReverseIcpRoute] Unexpected error analyzing URL %s: %s", body.url, exc
         )
@@ -447,15 +446,14 @@ async def get_lead(
     lead_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view leads in this workspace",
+        )
+    ),
 ) -> LeadRead:
     """Get single lead details with verified contacts."""
-    membership = await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view leads in this workspace",
-    )
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     lead = await _require_lead_visible(session, workspace_id, lead_id, membership)
@@ -473,15 +471,14 @@ async def update_lead_status(
     body: LeadStatusUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to update leads in this workspace",
+        )
+    ),
 ) -> LeadRead:
     """Update CRM pipeline status for a lead (AC-4)."""
-    membership = await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to update leads in this workspace",
-    )
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     lead = await _require_lead_visible(session, workspace_id, lead_id, membership)
@@ -503,15 +500,14 @@ async def get_company_graph(
     company_name: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view company graph in this workspace",
+        )
+    ),
 ) -> CompanyGraphRead:
     """Get aggregated relationship graph for enterprise/company (AC-3 / Widget U4 / Story 21.9)."""
-    membership = await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view company graph in this workspace",
-    )
     await _set_lead_tenant_context(session, workspace_id, membership)
 
     clean_name = company_name.strip()
@@ -555,7 +551,7 @@ async def get_company_graph(
         if enc.is_encrypted(value):
             try:
                 return enc.decrypt(value)
-            except Exception:
+            except Exception:  # decryption failure → return None fallback
                 return None
         return value
 
@@ -602,8 +598,8 @@ async def get_company_graph(
                             confidence=dm.confidence_score or 0.85,
                         )
                     )
-    except Exception:
-        pass
+    except Exception as exc:  # best-effort decision maker parsing
+        logger.debug("Suppressed %r", exc)
 
     # Query LinkedIn job postings for this company safely with nested savepoint
     db_jobs = []
@@ -620,7 +616,7 @@ async def get_company_graph(
         async with session.begin_nested():
             jobs_result = await session.execute(jobs_stmt)
             db_jobs = jobs_result.scalars().all()
-    except Exception:
+    except Exception:  # best-effort linkedin jobs query; fallback to empty list
         db_jobs = []
 
     active_jobs = [j for j in db_jobs if j.posted_at and j.posted_at >= thirty_days_ago]
@@ -715,12 +711,9 @@ async def resolve_lead_phone_endpoint(
     Debits 1.5 credits (1,500,000 micros) via BillingEvent only upon success.
     """
     # RBAC: Enforce LEADS_ENRICH or LEADS_WRITE (Viewer LEADS_READ alone cannot trigger paid mutations)
-    has_enrich = await has_permission(
-        session, auth, workspace_id, Permission.LEADS_ENRICH.value
-    )
-    has_write = await has_permission(
-        session, auth, workspace_id, Permission.LEADS_WRITE.value
-    )
+    perms = await get_user_permissions(session, auth, workspace_id)
+    has_enrich = has_permission(perms, Permission.LEADS_ENRICH.value)
+    has_write = has_permission(perms, Permission.LEADS_WRITE.value)
     if not (has_enrich or has_write):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -766,9 +759,7 @@ async def resolve_lead_phone_endpoint(
     )
 
     # Check if caller is authorized to view plaintext PII (AD-25 / AD-49)
-    can_read_contacts = await has_permission(
-        session, auth, workspace_id, Permission.CONTACTS_READ.value
-    )
+    can_read_contacts = has_permission(perms, Permission.CONTACTS_READ.value)
     if not can_read_contacts:
         can_read_contacts = has_enrich or has_write
 
@@ -803,15 +794,14 @@ async def report_invalid_phone_endpoint(
     body: InvalidPhoneReportRequest = InvalidPhoneReportRequest(),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to report invalid leads in this workspace",
+        )
+    ),
 ) -> PhoneRefundResponse:
     """Report an unreachable/invalid phone number within 24h SLA for 100% credit auto-refund (Story 21.3)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to report invalid leads in this workspace",
-    )
 
     billing = BillingService(session)
     result = await billing.auto_refund_lead(

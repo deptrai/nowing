@@ -52,8 +52,8 @@ class WebBuilderService:
         Returns the parsed project specification plus usage metadata from the LLM
         response so token/cost tracking is not hard-coded (P24).
         """
-        from app.services.llm_service import get_agent_llm, get_planner_llm
         from app.agents.chat.runtime.llm_config import create_chat_litellm_from_config
+        from app.services.llm_service import get_agent_llm, get_planner_llm
 
         # Build a prioritized list of LLM candidates
         llm_candidates: list[Any] = []
@@ -115,24 +115,25 @@ class WebBuilderService:
 
             try:
                 return json.loads(cleaned, strict=False)
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as exc:
+                logger.debug("Suppressed %r", exc)
 
             decoder = json.JSONDecoder()
             for start_idx in (m.start() for m in re.finditer(r"(?<!\\)\{", cleaned)):
                 try:
-                    obj, end = decoder.raw_decode(cleaned, start_idx)
+                    obj, _ = decoder.raw_decode(cleaned, start_idx)
                     if isinstance(obj, dict):
                         return obj
-                except (json.JSONDecodeError, ValueError):
+                except (json.JSONDecodeError, ValueError) as exc:
+                    logger.debug("Suppressed %r", exc)
                     continue
 
             fence_match = re.search(r"```(?:json)?\n(.*?)\n```", text, re.DOTALL)
             if fence_match:
                 try:
                     return json.loads(fence_match.group(1), strict=False)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as exc:
+                    logger.debug("Suppressed %r", exc)
 
             return None
 
@@ -238,7 +239,7 @@ class WebBuilderService:
 
                 return spec, token_usage
 
-            except Exception as e:
+            except Exception as e:  # per-attempt LLM failure; retry loop continues to next attempt
                 logger.warning(
                     "[WebBuilderService] LLM attempt %d failed: %s: %s",
                     attempt,
@@ -324,7 +325,7 @@ class WebBuilderService:
 
         try:
             spec = GeneratedProjectSpec(**spec_dict)
-        except Exception as e:
+        except Exception as e:  # spec schema mismatch → structured build output error, not a crash
             err = f"Pydantic schema validation error: {e}"
             return WebAppBuildOutput(
                 app_id=app_id,
@@ -408,7 +409,7 @@ class WebBuilderService:
                 await session.commit()
 
 
-            except Exception as db_err:
+            except Exception as db_err:  # best-effort DB persistence; generated files still returned to caller
                 logger.error(
                     f"[WebBuilderService] DB persistence failed for app {app_id}: {db_err}"
                 )
@@ -489,7 +490,7 @@ class WebBuilderService:
                     content = "".join(str(p) for p in content)
                 raw_parts.append(content)
                 yield f"data: {json.dumps({'type': 'token', 'token': content})}\n\n"
-        except Exception as err:
+        except Exception as err:  # streaming failure falls back to collected raw_parts / non-stream path
             logger.warning(f"[WebBuilderService] Streaming LLM failed, fallback: {err}")
 
         raw_text = "".join(raw_parts)
@@ -507,7 +508,7 @@ class WebBuilderService:
             spec_dict = json.loads(cleaned_text, strict=False)
             if spec_dict and isinstance(spec_dict, dict) and "files" in spec_dict:
                 spec = GeneratedProjectSpec(**spec_dict)
-        except Exception as e:
+        except Exception as e:  # spec parse failure → empty spec; writer still materializes workspace
             logger.warning(f"[WebBuilderService] Parsing streaming spec failed: {e}")
 
         workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -605,7 +606,7 @@ class WebBuilderService:
                     await BuilderService.trigger_async_build(
                         app_id=app_id, workspace_id=build_input.workspace_id
                     )
-            except Exception as db_err:
+            except Exception as db_err:  # best-effort DB persistence; generated files still returned to caller
                 logger.error(
                     f"[WebBuilderService] DB persistence failed for app {app_id}: {db_err}"
                 )
@@ -619,7 +620,7 @@ class WebBuilderService:
                 "slug": app_slug,
                 "status": status,
                 "preview_url": preview_url,
-                "public_url": f"https://{app_slug}.apps.nowing.net",
+                "public_url": f"https://{app_slug}.{(getattr(app_config, 'HOSTING_BASE_DOMAIN', 'apps.nowing.net') or 'apps.nowing.net').lower().lstrip('.')}",
                 "files": written_files,
                 "message": message,
             },

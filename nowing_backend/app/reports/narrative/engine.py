@@ -118,7 +118,7 @@ class NarrativeSynthesisEngine:
                 degraded = True
                 reasons.append("empty_dataset")
 
-        except Exception as exc:
+        except Exception as exc:  # template data ingress failure; mark degraded and append reason
             logger.warning("Data ingress error for template %s: %s", tid, exc)
             degraded = True
             reasons.append(f"upstream_fetch_error: {exc}")

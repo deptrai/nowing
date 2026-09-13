@@ -20,7 +20,11 @@ try:
 except ImportError:  # pragma: no cover - optional OTel dependency
     trace = None  # type: ignore[assignment]
 
+import logging
+
 from app.config import config
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -73,8 +77,8 @@ def _record_queue_latency(task=None, **_kwargs):
             scheduled=scheduled,
             operation=operation,
         )
-    except Exception:
-        pass
+    except Exception as exc:  # queue latency metric recording failure; suppress exception
+        logger.debug("Suppressed %r", exc)
 
 
 @task_postrun.connect
@@ -97,8 +101,8 @@ def _set_celery_span_attributes(task=None, **_kwargs):
         latency_ms = getattr(request, "nowing_queue_latency_ms", None)
         if latency_ms is not None:
             span.set_attribute("celery.queue.latency_ms", latency_ms)
-    except Exception:
-        pass
+    except Exception as exc:  # span attribute attachment failure; suppress exception
+        logger.debug("Suppressed %r", exc)
 
 
 async def _run_scraper_rule_subscriber() -> None:
@@ -109,9 +113,9 @@ async def _run_scraper_rule_subscriber() -> None:
     try:
         redis = await get_redis_client()
         await scraper_rule_pubsub.start_rule_subscriber(redis)
-    except Exception:
+    except Exception as exc:  # scraper rule pubsub subscriber start failure; fallback to TTL cache
         # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
-        pass
+        logger.debug("Suppressed %r", exc)
 
 
 def _start_scraper_rule_subscriber_thread() -> None:
@@ -211,6 +215,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.obsidian_tasks",
         "app.tasks.celery_tasks.schedule_checker_task",
         "app.tasks.celery_tasks.social_xactions_ingest",
+        "app.tasks.celery_tasks.social_stream_worker",
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
         "app.tasks.celery_tasks.stale_meeting_minutes_cleanup_task",
@@ -312,6 +317,7 @@ celery_app.conf.update(
         "health_probe_messaging": {"queue": HEALTH_QUEUE},
         "health_probe_payment": {"queue": HEALTH_QUEUE},
         "health_probe_storage": {"queue": HEALTH_QUEUE},
+        "health_probe_xactions": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
@@ -344,6 +350,14 @@ celery_app.conf.beat_schedule = {
         "task": "check_social_monitored_targets",
         "schedule": crontab(minute="*"),
         "options": {"expires": 50},
+    },
+    # Consume `stream:social:raw_posts` into `social_posts` + `Lead` records.
+    # Each beat enqueues a short-lived consumer task that reads a batch and
+    # ACKs messages; actual throughput is bounded by the Celery worker pool.
+    "process-social-stream": {
+        "task": "process_social_stream",
+        "schedule": 30.0,
+        "options": {"expires": 25},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup
@@ -510,6 +524,11 @@ celery_app.conf.beat_schedule = {
     },
     "health-probe-storage": {
         "task": "health_probe_storage",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-xactions": {
+        "task": "health_probe_xactions",
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {"expires": 120},
     },

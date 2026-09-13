@@ -107,7 +107,7 @@ def detect_challenge(page: Any, cfg: CaptchaConfig) -> tuple[str, str] | None:
                     m = _RENDER_SITEKEY.search(src)
                     if m and m.group(1) != "explicit":
                         return "v3", m.group(1)
-    except Exception as exc:
+    except Exception as exc:  # challenge DOM detection failure; treat as no challenge
         logger.debug(
             "%s detection error (treated as no challenge): %s", _CAPTCHA_LOG, exc
         )
@@ -199,7 +199,7 @@ def _inject_and_submit(page: Any, challenge_type: str, token: str) -> None:
         page.evaluate(_INJECT_JS, {"token": token, "ctype": challenge_type})
         with contextlib.suppress(Exception):
             page.wait_for_load_state("networkidle", timeout=15000)
-    except Exception as exc:
+    except Exception as exc:  # token injection or networkidle wait failure; log warning
         logger.warning("%s injection error: %s", _CAPTCHA_LOG, exc)
 
 
@@ -241,7 +241,7 @@ def build_captcha_page_action(
         page_url = getattr(page, "url", "") or ""
         try:
             user_agent = page.evaluate("() => navigator.userAgent")
-        except Exception:
+        except Exception:  # userAgent evaluation failure; fallback to None
             user_agent = None
 
         # This counts as an attempt the moment we call the (paid) solver.
@@ -273,7 +273,7 @@ def build_captcha_page_action(
         except FuturesTimeout:
             logger.warning("%s solve timed out after %ss", _CAPTCHA_LOG, cfg.timeout_s)
             return page
-        except Exception as exc:
+        except Exception as exc:  # solver execution failure; latch if unrecoverable, else log
             if _is_unrecoverable(exc):
                 _latch_solver(repr(exc))
             else:

@@ -130,7 +130,7 @@ class TestWebBuilderDeployRoutes:
             )
 
             with patch(
-                "app.routes.web_builder_routes.check_web_builder_enabled",
+                "app.routes.web_builder.apps.check_web_builder_enabled",
                 side_effect=lambda: None,
             ):
                 res = client.post(

@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.auth.context import AuthContext
-from app.db import Memory, Permission, get_async_session
+from app.db import Memory, Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.services.export_service import build_export_zip
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
@@ -29,16 +30,14 @@ async def export_knowledge_base(
     ),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to export documents in this workspace",
+        )
+    ),
 ):
     """Export documents as a ZIP of markdown files preserving folder structure."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_READ.value,
-        "You don't have permission to export documents in this workspace",
-    )
-
     # The OKF bundle may include memory facts; require memory:read when it would.
     # AC-18.8: set workspace GUC so FORCE RLS counts only memories the caller
     # is allowed to see (internal / client-scoped depending on caller scope).

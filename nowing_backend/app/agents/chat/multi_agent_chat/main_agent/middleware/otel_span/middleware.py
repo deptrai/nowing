@@ -86,7 +86,7 @@ class OtelSpanMiddleware(AgentMiddleware):
             _annotate_model_request(sp, model_id=model_id, provider=provider)
             try:
                 result = await handler(request)
-            except Exception:
+            except Exception:  # model call failure; record duration telemetry and re-raise
                 ot_metrics.record_model_call_duration(
                     (time.perf_counter() - t0) * 1000,
                     model=model_id,
@@ -133,7 +133,7 @@ class OtelSpanMiddleware(AgentMiddleware):
         with ot.tool_call_span(tool_name, input_size=input_size) as sp:
             try:
                 result = await handler(request)
-            except Exception:
+            except Exception:  # tool call failure; record duration and error telemetry and re-raise
                 ot_metrics.record_tool_call_duration(
                     (time.perf_counter() - t0) * 1000,
                     tool_name=tool_name,
@@ -176,8 +176,8 @@ def _resolve_model_attrs(request: Any) -> tuple[str | None, str | None]:
             if value:
                 provider = str(value)
                 break
-    except Exception:  # pragma: no cover — defensive
-        pass
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.debug("Suppressed %r", exc)
     return model_id, provider
 
 
@@ -193,8 +193,8 @@ def _resolve_tool_name(request: Any) -> str:
         name = call.get("name") if isinstance(call, dict) else None
         if isinstance(name, str) and name:
             return name
-    except Exception:  # pragma: no cover — defensive
-        pass
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.debug("Suppressed %r", exc)
     return "unknown"
 
 
@@ -220,8 +220,8 @@ def _annotate_model_request(
             span.set_attribute("gen_ai.request.model", model_id)
         if provider:
             span.set_attribute("gen_ai.provider.name", provider)
-    except Exception:  # pragma: no cover — defensive
-        pass
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.debug("Suppressed %r", exc)
 
 
 def _annotate_model_response(
@@ -272,8 +272,8 @@ def _annotate_model_response(
                 span.set_attribute("gen_ai.usage.total_tokens", int(n))
         tool_calls = getattr(msg, "tool_calls", None) or []
         span.set_attribute("model.tool_calls", len(tool_calls))
-    except Exception:  # pragma: no cover — defensive
-        pass
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.debug("Suppressed %r", exc)
     return input_tokens, output_tokens
 
 
@@ -295,8 +295,8 @@ def _annotate_tool_result(span: Any, result: Any) -> bool:
             if isinstance(kwargs, dict) and kwargs.get("error"):
                 span.set_attribute("tool.error", True)
                 errored = True
-    except Exception:  # pragma: no cover — defensive
-        pass
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.debug("Suppressed %r", exc)
     return errored
 
 

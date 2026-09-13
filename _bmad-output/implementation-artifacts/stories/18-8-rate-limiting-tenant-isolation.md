@@ -1,6 +1,11 @@
+---
+story_key: 18-8-rate-limiting-tenant-isolation
+status: done
+---
+
 # Story 18.8: Rate Limiting + Tenant Isolation
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

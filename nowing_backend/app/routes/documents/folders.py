@@ -10,7 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.auth.context import AuthContext
-from app.db import Document, DocumentType, Permission, get_async_session
+from app.db import (
+    Document,
+    DocumentType,
+    Permission,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermissionFromBody
 from app.indexing_pipeline.document_hashing import compute_identifier_hash
 from app.routes.documents._shared import (
     FolderSyncFinalizeRequest,
@@ -22,7 +29,6 @@ from app.tasks.connector_indexers.local_folder_indexer import (
     _cleanup_empty_folders,
 )
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +39,17 @@ async def folder_unlink(
     request: FolderUnlinkRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.DOCUMENTS_DELETE.value,
+            "You don't have permission to delete documents in this workspace",
+        )
+    ),
 ):
     """Handle file deletion events from the desktop watcher.
 
     For each relative path, find the matching document and delete it.
     """
-
-    await check_permission(
-        session,
-        auth,
-        request.workspace_id,
-        Permission.DOCUMENTS_DELETE.value,
-        "You don't have permission to delete documents in this workspace",
-    )
 
     deleted_count = 0
 
@@ -57,6 +61,9 @@ async def folder_unlink(
             request.workspace_id,
         )
 
+        # Intentional omission of archived_at filter: when a file is unlinked/deleted
+        # from the local disk, any corresponding Document row (active or soft-archived)
+        # must be deleted to prevent hash collisions and orphaned ghost records.
         existing = (
             await session.execute(
                 select(Document).where(Document.unique_identifier_hash == uid_hash)
@@ -83,6 +90,12 @@ async def folder_sync_finalize(
     request: FolderSyncFinalizeRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.DOCUMENTS_DELETE.value,
+            "You don't have permission to delete documents in this workspace",
+        )
+    ),
 ):
     """Finalize a full folder scan by deleting orphaned documents.
 
@@ -90,14 +103,6 @@ async def folder_sync_finalize(
     folder. Any document in the DB for this folder that is NOT in the list
     gets deleted.
     """
-
-    await check_permission(
-        session,
-        auth,
-        request.workspace_id,
-        Permission.DOCUMENTS_DELETE.value,
-        "You don't have permission to delete documents in this workspace",
-    )
 
     if not request.root_folder_id:
         return {"deleted_count": 0}
@@ -114,6 +119,10 @@ async def folder_sync_finalize(
         )
         seen_hashes.add(uid_hash)
 
+    # Intentional omission of archived_at filter: all documents in the subtree
+    # (active and archived) must be checked against disk contents so that files
+    # removed from disk are deleted from DB, avoiding orphaned records and enabling
+    # directory pruning via _cleanup_empty_folders.
     all_folder_docs = (
         (
             await session.execute(

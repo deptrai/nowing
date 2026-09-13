@@ -136,22 +136,24 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
                         "You don't have permission to generate presentations in this workspace"
                     )
 
-                service = PresentationStudioService()
-                result = await service.generate(
-                    session=session,
-                    build_input=GeneratePresentationInput(
-                        prompt=prompt,
-                        output_format=normalized_format,
-                        workspace_id=workspace_id,
-                        user_id=user_id,
-                        language=language,
-                    ),
+                from app.capabilities.presentation.generate import (
+                    PresentationCapabilityInput,
+                    execute_generate_presentation,
                 )
+
+                cap_input = PresentationCapabilityInput(
+                    prompt=prompt,
+                    output_format=normalized_format,
+                    workspace_id=workspace_id,
+                    user_id=user_id,
+                    language=language,
+                )
+                result = await execute_generate_presentation(session, cap_input)
                 return result.model_dump(mode="json")
         except ValidationError:
             logger.exception("generate_presentation input failed validation")
             return _failed("Invalid presentation input.")
-        except Exception as exc:
+        except Exception as exc:  # presentation generation failure; rollback and return failure output
             if session is not None:
                 with contextlib.suppress(Exception):
                     await session.rollback()

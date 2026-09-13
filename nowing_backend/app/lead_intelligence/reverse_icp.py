@@ -65,7 +65,7 @@ class ReverseIcpService:
             await redis_client.aclose()
             if cached_val:
                 return json.loads(cached_val)
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.debug(
                 "[ReverseIcpService] Redis cache lookup failed (skipping cache): %s",
                 exc,
@@ -92,7 +92,7 @@ class ReverseIcpService:
                 cache_key, json.dumps(data, ensure_ascii=False), ex=ttl
             )
             await redis_client.aclose()
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.debug("[ReverseIcpService] Redis cache write failed: %s", exc)
 
     async def _fetch_and_parse_crawl(self, url: str) -> dict[str, Any]:

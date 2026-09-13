@@ -93,7 +93,7 @@ def _coerce_response_json(response: httpx.Response) -> dict[str, Any]:
         return {}
     try:
         return response.json()
-    except Exception as exc:
+    except Exception as exc:  # fallback to empty dict on malformed JSON response
         logger.warning("Failed to decode chainlens ingest response as JSON: %s", exc)
         return {}
 
@@ -496,7 +496,7 @@ class NowingIngestService:
                 if inspect.isawaitable(add_result):
                     await add_result
                 await session.commit()
-            except Exception as exc:
+            except Exception as exc:  # rollback on DB persistence error and record in result error string
                 await session.rollback()
                 result.error = f"{result.error or ''}; persistence failed: {exc}".strip(
                     "; "

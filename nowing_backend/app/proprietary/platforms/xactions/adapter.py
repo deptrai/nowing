@@ -18,8 +18,7 @@ import os
 import re
 import shutil
 import time
-from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -28,60 +27,28 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from app.config import config
+from app.proprietary.platforms.xactions.adapter_v2 import (
+    XActionsSocialAdapterV2,
+)
+from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
+from app.proprietary.platforms.xactions.mcp_client import (
+    XActionsMcpError,
+)
+from app.proprietary.platforms.xactions.models import (
+    SocialMonitoredTargetData,
+    SocialPostData,
+)
 
 logger = logging.getLogger(__name__)
 
-STREAM_SOCIAL_RAW_POSTS = "stream:social:raw_posts"
 XACTIONS_PROXY_REDIS_KEY = "xactions:account_proxies"
 _XACTIONS_MCP_SERVER = "src/mcp/server.js"
 _PROXY_REDIS_FAILURE_BACKOFF_SECONDS = 60.0
 
 
-class XActionsMcpError(RuntimeError):
-    """Raised when the XActions MCP server returns an error."""
 
 
-@dataclass
-class SocialPostData:
-    platform: str  # 'facebook', 'twitter'
-    external_post_id: str
-    author_id: str | None = None
-    author_name: str | None = None
-    author_url: str | None = None
-    post_url: str | None = None
-    content: str | None = None
-    intent_tag: str | None = None
-    fit_score: float = 0.0
-    reactions_count: int = 0
-    comments_count: int = 0
-    shares_count: int = 0
-    media_urls: list[str] = field(default_factory=list)
-    raw_entities: dict[str, Any] = field(default_factory=dict)
-    published_at: datetime | None = None
-    target_id: int | None = None
-    workspace_id: int | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> dict[str, Any]:
-        data = asdict(self)
-        if self.published_at:
-            data["published_at"] = self.published_at.isoformat()
-        if self.created_at:
-            data["created_at"] = self.created_at.isoformat()
-        return data
-
-
-@dataclass
-class SocialMonitoredTargetData:
-    platform: str  # 'facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'
-    target_id: str
-    target_name: str
-    target_url: str | None = None
-    category: str = "general"
-    is_active: bool = True
-    realtime_stream: bool = False
-    scrape_interval_minutes: int = 15
-    status: str = "active"
 
 
 def _to_int(raw_value: Any) -> int:
@@ -146,8 +113,8 @@ def _parse_published_at(value: Any) -> datetime | None:
 
     try:
         return datetime.fromisoformat(v)
-    except ValueError:
-        pass
+    except ValueError as exc:
+        logger.debug("Suppressed %r", exc)
 
     for fmt in (
         "%a %b %d %H:%M:%S %z %Y",
@@ -157,7 +124,8 @@ def _parse_published_at(value: Any) -> datetime | None:
     ):
         try:
             return datetime.strptime(v, fmt)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     logger.warning(
@@ -187,9 +155,55 @@ class XActionsSocialAdapter:
 
         # AD-SOC-3: in-memory cache + durable Redis backing for proxy bindings.
         self._account_proxies: dict[str, str] = {}
+        self._adapter_v2 = XActionsSocialAdapterV2() if getattr(
+            config, "XACTIONS_TRANSPORT", "streamable-http"
+        ) == "streamable-http" else None
         self._proxy_redis_client = redis_client
         self._proxy_redis_available: bool | None = None
         self._proxy_redis_last_failure = 0.0
+
+    @staticmethod
+    def _target_data_from_tool_call(
+        tool_name: str, arguments: dict[str, Any]
+    ) -> SocialMonitoredTargetData:
+        """Convert legacy MCP tool/arguments to a v2 target dataclass.
+
+        This lets the streamable-http v2 mapper route legacy callers without
+        re-implementing platform-specific argument translation here.
+        """
+        platform = None
+        target_id = ""
+        target_name = arguments.get("name", "") or tool_name
+        target_url = arguments.get("url")
+
+        if tool_name == "x_facebook_group_posts":
+            platform = "facebook_group"
+            target_id = target_url or arguments.get("group_id") or ""
+        elif tool_name == "x_facebook_posts":
+            platform = "facebook_page"
+            target_id = target_url or arguments.get("page_id") or ""
+        elif tool_name == "x_search_tweets":
+            platform = "twitter_keyword"
+            target_id = arguments.get("query") or ""
+        elif tool_name == "x_get_tweets":
+            platform = "twitter_user"
+            target_id = arguments.get("username") or ""
+        else:
+            # Generic fallback: try to derive platform from x_scrape args.
+            platform = arguments.get("platform") or tool_name
+            target_id = arguments.get("query") or arguments.get("q") or arguments.get("url") or ""
+
+        if not platform:
+            raise ValueError(f"Cannot determine platform for XActions tool {tool_name}")
+
+        return SocialMonitoredTargetData(
+            platform=platform,
+            target_id=target_id,
+            target_name=target_name,
+            target_url=target_url,
+            account_id=arguments.get("accountId") or arguments.get("account_id"),
+            proxy_url=arguments.get("proxyUrl") or arguments.get("proxy_url"),
+        )
 
     def _resolve_mcp_server_params(self) -> StdioServerParameters:
         """Return stdio parameters for the XActions MCP server.
@@ -256,7 +270,7 @@ class XActionsSocialAdapter:
             self._proxy_redis_client = client
             self._proxy_redis_available = True
             return client
-        except Exception as exc:
+        except Exception as exc:  # Redis connection failure for proxy binding; disable proxy Redis
             logger.warning(
                 "XActions proxy binding could not connect to Redis at %s: %s",
                 config.REDIS_APP_URL,
@@ -287,7 +301,7 @@ class XActionsSocialAdapter:
                 await client.hset(
                     XACTIONS_PROXY_REDIS_KEY, account_id, proxy_url
                 )
-            except Exception as exc:
+            except Exception as exc:  # Redis hset failure for proxy cache; best-effort persist
                 logger.warning(
                     "Failed to persist proxy for %s to Redis: %s",
                     account_id,
@@ -311,7 +325,7 @@ class XActionsSocialAdapter:
                 if proxy:
                     self._account_proxies[account_id] = proxy
                     return proxy
-            except Exception as exc:
+            except Exception as exc:  # Redis hget failure for proxy cache; fallback to default proxy
                 logger.warning(
                     "Failed to read proxy for %s from Redis: %s",
                     account_id,
@@ -337,7 +351,7 @@ class XActionsSocialAdapter:
 
     async def _browser_options_for_account(
         self, account_id: str | None
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any] // None:
         if account_id:
             proxy = await self.get_account_proxy(account_id)
         else:
@@ -449,6 +463,18 @@ class XActionsSocialAdapter:
         arguments: dict[str, Any],
         timeout: float,
     ) -> Any:
+        if self._adapter_v2 is not None:
+            try:
+                # Convert legacy MCP tool call into a Nowing target dataclass so
+                # the v2 mapper/adapter can route it via XActions streamable-http.
+                target = self._target_data_from_tool_call(tool_name, arguments)
+                async with self._adapter_v2 as adapter:
+                    return [post.to_dict() for post in await adapter.fetch_posts_for_target(target)]
+            except Exception as exc:  # XActions v2 adapter call failure; wrap as XActionsMcpError
+                raise XActionsMcpError(
+                    f"XActions MCP tool {tool_name} failed: {exc}"
+                ) from exc
+
         init_timeout = min(10.0, timeout)
 
         try:
@@ -528,7 +554,7 @@ class XActionsSocialAdapter:
             }
         except XActionsMcpError as exc:
             return {"success": False, "error": str(exc), "data": []}
-        except Exception as exc:
+        except Exception as exc:  # unexpected MCP tool execution failure; return error envelope
             logger.warning(
                 "XActions MCP tool %s failed: %s",
                 tool_name,
@@ -775,7 +801,7 @@ class XActionsSocialAdapter:
                     config.REDIS_APP_URL, decode_responses=True
                 )
                 await redis_client.ping()
-            except Exception as exc:
+            except Exception as exc:  # local Redis connection failure; surface RuntimeError
                 raise RuntimeError(
                     f"Redis connection failed at {config.REDIS_APP_URL}: {exc}"
                 ) from exc
@@ -803,8 +829,10 @@ class XActionsSocialAdapter:
             payload["workspace_id"] = str(post.workspace_id)
 
         try:
-            msg_id = await redis_client.xadd(STREAM_SOCIAL_RAW_POSTS, payload)
-        except Exception as exc:
+            msg_id = await redis_client.xadd(
+                STREAM_SOCIAL_RAW_POSTS, payload, maxlen=20000, approximate=True
+            )
+        except Exception as exc:  # Redis xadd failure for social post; surface RuntimeError
             raise RuntimeError(
                 f"Redis xadd failed on {STREAM_SOCIAL_RAW_POSTS}: {exc}"
             ) from exc

@@ -15,8 +15,10 @@ from app.db import (
     LeadScore,
     Permission,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.scoring.schemas import (
     IcpCriteria,
     LeadScoreInput,
@@ -25,7 +27,6 @@ from app.lead_intelligence.scoring.schemas import (
 )
 from app.lead_intelligence.scoring.service import LeadScoringService
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 router = APIRouter()
 
@@ -40,15 +41,14 @@ async def score_leads(
     body: LeadScoreInput,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_SCORE.value,
+            "You don't have permission to score leads in this workspace",
+        )
+    ),
 ) -> LeadScoreOutput:
     """Trigger lead scoring for a list of leads or all leads in the workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_SCORE.value,
-        error_message="You don't have permission to score leads in this workspace",
-    )
 
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
@@ -86,15 +86,14 @@ async def list_lead_scores(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view lead scores in this workspace",
+        )
+    ),
 ) -> list[LeadScoreRead]:
     """List lead scores with optional filters and pagination."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view lead scores in this workspace",
-    )
 
     stmt = select(LeadScore).where(LeadScore.workspace_id == workspace_id)
     if lead_id is not None:
@@ -134,15 +133,14 @@ async def get_latest_lead_score(
     lead_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view lead scores in this workspace",
+        )
+    ),
 ) -> LeadScoreRead:
     """Return the most recent score for a single lead."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view lead scores in this workspace",
-    )
 
     stmt = (
         select(LeadScore)
@@ -173,15 +171,14 @@ async def get_lead_score_history(
     limit: int = Query(default=50, ge=1, le=200),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view lead scores in this workspace",
+        )
+    ),
 ) -> list[LeadScoreRead]:
     """Return historical scores for a single lead."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view lead scores in this workspace",
-    )
 
     stmt = (
         select(LeadScore)
@@ -208,15 +205,14 @@ async def update_icp_criteria(
     body: IcpCriteria,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update workspace settings",
+        )
+    ),
 ) -> IcpCriteria:
     """Update the Ideal Customer Profile criteria for a workspace."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        error_message="You don't have permission to update workspace settings",
-    )
 
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:

@@ -91,7 +91,7 @@ async def _index_local_folder_async(
             notification_id = notification.id
             _start_heartbeat(notification_id)
             heartbeat_task = asyncio.create_task(_run_heartbeat_loop(notification_id))
-        except Exception:
+        except Exception:  # best-effort notification creation; doesn't fail folder indexing
             logger.warning(
                 "Failed to create notification for local folder indexing",
                 exc_info=True,
@@ -138,13 +138,13 @@ async def _index_local_folder_async(
                             session=session,
                             notification=notification,
                         )
-                except Exception:
+                except Exception:  # best-effort notification update; doesn't fail primary indexing
                     logger.warning(
                         "Failed to update notification after local folder indexing",
                         exc_info=True,
                     )
 
-        except Exception as e:
+        except Exception as e:  # folder indexing failure → log, update notification, and re-raise
             logger.exception(f"Local folder indexing failed: {e}")
             if notification:
                 try:
@@ -154,8 +154,8 @@ async def _index_local_folder_async(
                         notification=notification,
                         error_message=str(e)[:200],
                     )
-                except Exception:
-                    pass
+                except Exception as exc:  # best-effort failure notification update; suppressed
+                    logger.debug("Suppressed %r", exc)
             raise
         finally:
             if heartbeat_task:
@@ -216,7 +216,7 @@ async def _index_uploaded_folder_files_async(
             notification_id = notification.id
             _start_heartbeat(notification_id)
             heartbeat_task = asyncio.create_task(_run_heartbeat_loop(notification_id))
-        except Exception:
+        except Exception:  # best-effort notification creation; doesn't fail uploaded indexing
             logger.warning(
                 "Failed to create notification for uploaded folder indexing",
                 exc_info=True,
@@ -259,13 +259,13 @@ async def _index_uploaded_folder_files_async(
                             session=session,
                             notification=notification,
                         )
-                except Exception:
+                except Exception:  # best-effort notification update; doesn't fail primary indexing
                     logger.warning(
                         "Failed to update notification after uploaded folder indexing",
                         exc_info=True,
                     )
 
-        except Exception as e:
+        except Exception as e:  # folder indexing failure → log, update notification, and re-raise
             logger.exception(f"Uploaded folder indexing failed: {e}")
             if notification:
                 try:
@@ -275,8 +275,8 @@ async def _index_uploaded_folder_files_async(
                         notification=notification,
                         error_message=str(e)[:200],
                     )
-                except Exception:
-                    pass
+                except Exception as exc:  # best-effort failure notification update; suppressed
+                    logger.debug("Suppressed %r", exc)
             raise
         finally:
             if heartbeat_task:

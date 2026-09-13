@@ -196,6 +196,6 @@ async def send_telegram_lead_alert(
             "message_id": result.external_message_id,
             "text": text,
         }
-    except Exception as exc:
+    except Exception as exc:  # Telegram alert dispatch failure; return error payload
         logger.error("Failed to send Telegram lead alert: %s", exc)
         return {"sent": False, "error": str(exc), "text": text}

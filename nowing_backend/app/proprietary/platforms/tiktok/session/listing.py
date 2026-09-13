@@ -82,7 +82,7 @@ _WARM_POLL_MS = 500
 def _has_mstoken(page: Any) -> bool:
     try:
         return any(c.get("name") == _MSTOKEN_COOKIE for c in page.context.cookies())
-    except Exception:
+    except Exception:  # browser context cookie inspection failure -> assume False
         return False
 
 
@@ -102,8 +102,8 @@ def _dismiss_login_modal(page: Any) -> None:
         )
         if not closed:
             page.keyboard.press("Escape")
-    except Exception:
-        pass
+    except Exception as exc:  # best-effort modal dismiss; doesn't fail scrape
+        logger.debug("Suppressed %r", exc)
 
 
 def _scroll_page(page: Any, collected: list[dict[str, Any]], target_count: int) -> None:
@@ -131,16 +131,18 @@ def _open_comments(page: Any) -> None:
     for selector in _COMMENT_ICON_SELECTORS:
         try:
             page.wait_for_selector(selector, timeout=_COMMENT_ICON_WAIT_MS)
-        except Exception:
+        except Exception as exc:  # selector timeout; try next comment icon selector
+            logger.debug("Suppressed %r", exc)
             continue
         try:
             page.click(selector, timeout=_COMMENT_ICON_WAIT_MS)
             return
-        except Exception:
+        except Exception:  # click intercepted; try JS click fallback
             try:
                 page.eval_on_selector(selector, "el => el.click()")
                 return
-            except Exception:
+            except Exception as exc:  # JS click failed; try next selector
+                logger.debug("Suppressed %r", exc)
                 continue
 
 
@@ -197,7 +199,7 @@ def _build_page_action(
             return
         try:
             body = response.json()
-        except Exception:
+        except Exception:  # response body not JSON or soft-block; skip XHR
             # An empty 200 (TikTok soft-block) or a body evicted before read.
             return
         collected.extend(extract(body))
@@ -220,7 +222,7 @@ def _build_page_action(
             page.goto(url, wait_until="domcontentloaded")
             page.wait_for_timeout(_SCROLL_SETTLE_MS)
             interact(page, collected, target_count)
-        except Exception as exc:
+        except Exception as exc:  # browser interaction failure; return partial capture
             logger.debug("[tiktok] capture interaction aborted: %s", exc)
         return page
 

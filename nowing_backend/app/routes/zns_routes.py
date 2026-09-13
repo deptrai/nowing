@@ -12,7 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import Permission, ZaloConnection, ZaloMessageLog, get_async_session
+from app.db import (
+    Permission,
+    WorkspaceMembership,
+    ZaloConnection,
+    ZaloMessageLog,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.gateway.zalo.tasks import process_zalo_inbox_event
 from app.gateway.zalo.webhook import check_timestamp_freshness, verify_zalo_signature
 from app.gateway.zalo.zns_client import (
@@ -28,7 +35,6 @@ from app.schemas.zns import (
     ZnsTemplateResponse,
 )
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +63,7 @@ async def zalo_oa_fast_webhook(
     raw_body = await request.body()
     try:
         data = json.loads(raw_body.decode("utf-8") or "{}")
-    except Exception as exc:
+    except Exception as exc:  # malformed input → typed error
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON payload",
@@ -87,7 +93,7 @@ async def zalo_oa_fast_webhook(
         )
         res = await session.execute(conn_stmt)
         connection = res.scalar_one_or_none()
-    except Exception as exc:
+    except Exception as exc:  # best-effort connection lookup; fallback to config secret
         logger.debug("[ZaloWebhook] Connection DB lookup note: %s", exc)
 
     secret = (connection.webhook_secret if connection else None) or getattr(
@@ -114,7 +120,7 @@ async def zalo_oa_fast_webhook(
     # Fast ACK: Dispatch processing to background Celery task (INV-23.8)
     try:
         process_zalo_inbox_event.delay(workspace_id, data)
-    except Exception as exc:
+    except Exception as exc:  # best-effort celery dispatch; fast ACK webhook
         logger.warning("[ZaloWebhook] Celery dispatch note: %s", exc)
 
     return {"status": "ok"}
@@ -134,8 +140,8 @@ async def list_zns_templates(
     workspace_id: int,
     auth_ctx: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequirePermission(Permission.SETTINGS_VIEW.value)),
 ) -> list[dict[str, Any]]:
-    await check_permission(auth_ctx, workspace_id, Permission.VIEW_WORKSPACE, session)
     client = ZnsClient()
     return await client.get_approved_templates(session, workspace_id)
 
@@ -150,8 +156,8 @@ async def send_zns_message(
     payload: ZnsSendRequest,
     auth_ctx: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequirePermission(Permission.SETTINGS_UPDATE.value)),
 ) -> dict[str, Any]:
-    await check_permission(auth_ctx, workspace_id, Permission.MANAGE_WORKSPACE, session)
     client = ZnsClient()
 
     try:
@@ -190,8 +196,8 @@ async def list_zns_logs(
     workspace_id: int,
     auth_ctx: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequirePermission(Permission.SETTINGS_VIEW.value)),
 ) -> list[ZaloMessageLog]:
-    await check_permission(auth_ctx, workspace_id, Permission.VIEW_WORKSPACE, session)
     stmt = (
         select(ZaloMessageLog)
         .where(

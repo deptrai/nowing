@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Document, Folder
+
+logger = logging.getLogger(__name__)
 
 
 async def _mirror_folder_structure(
@@ -165,8 +168,8 @@ async def _clear_indexing_flag(session: AsyncSession, folder_id: int) -> None:
             meta.pop("indexing_in_progress", None)
             folder.folder_metadata = meta
             await session.commit()
-    except Exception:
-        pass
+    except Exception as exc:  # best-effort clear indexing in progress flag; log debug
+        logger.debug("Suppressed %r", exc)
 
 
 async def _cleanup_empty_folder_chain(

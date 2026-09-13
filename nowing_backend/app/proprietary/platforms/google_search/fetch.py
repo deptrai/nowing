@@ -191,7 +191,7 @@ async def _precheck(url: str, proxy: str | None) -> bool:
             stealthy_headers=True,
             timeout=_PRECHECK_TIMEOUT_S,
         )
-    except Exception as e:
+    except Exception as e:  # precheck fetch failure / timeout; treat as walled IP
         # A timeout (slow/dead IP) lands here too; treat it like a walled IP.
         logger.debug("[google_search] precheck error: %s", e)
         return False
@@ -330,15 +330,16 @@ async def _expand_blocks(page):
         if more:
             await more.click(timeout=1500)
             clicked += 1
-    except Exception:  # clamp absent/detached; the collapsed text still parses
-        pass
+    except Exception as exc:  # clamp absent/detached; the collapsed text still parses
+        logger.debug("Suppressed %r", exc)
     try:
         pairs = await page.query_selector_all("div.related-question-pair")
         for pair in pairs[:_PAA_EXPAND_LIMIT]:
             try:
                 await pair.click(timeout=1500)
                 clicked += 1
-            except Exception:  # stale handle/overlay; skip pair
+            except Exception as exc:  # stale handle/overlay; skip pair
+                logger.debug("Suppressed %r", exc)
                 continue
     except Exception as e:  # never fail the render over PAA
         logger.debug("[google_search] PAA expansion skipped: %s", e)
@@ -617,7 +618,7 @@ async def fetch_serp_html(url: str, *, mobile: bool = False) -> str | None:
         started = time.perf_counter()
         try:
             page = await _render(url, proxy, mobile=mobile)
-        except Exception as e:
+        except Exception as e:  # browser render failure; evict proxy and relaunch session
             # Renders on a walled IP still return HTML; an exception means the
             # browser side is broken, so relaunch it rather than limp along.
             # repr(), not str(): e.g. NotImplementedError stringifies to "".

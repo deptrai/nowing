@@ -39,16 +39,16 @@ export function groupInboxNotifications(items: InboxItem[]): {
 		const ruleName = typeof meta?.rule_name === "string" ? meta.rule_name : "Saved search";
 		const rawCount = meta?.new_items_count;
 		let count = 0;
-		if (typeof rawCount === "number") {
-			count = rawCount;
+		if (typeof rawCount === "number" && Number.isFinite(rawCount)) {
+			count = Math.max(0, Math.floor(rawCount));
 		} else if (typeof rawCount === "string") {
 			const parsed = parseInt(rawCount, 10);
-			count = Number.isNaN(parsed) ? 0 : parsed;
+			count = Number.isNaN(parsed) || !Number.isFinite(parsed) ? 0 : Math.max(0, parsed);
 		}
 
 		const existing = groups.get(ruleId);
 		if (existing) {
-			existing.match_count += count;
+			existing.match_count = Math.min(Number.MAX_SAFE_INTEGER, existing.match_count + count);
 			existing.items.push(item);
 			if (item.created_at > existing.latest_created_at) {
 				existing.latest_created_at = item.created_at;

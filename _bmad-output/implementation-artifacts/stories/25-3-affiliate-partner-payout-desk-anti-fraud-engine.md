@@ -1,3 +1,8 @@
+---
+story_key: 25-3-affiliate-partner-payout-desk-anti-fraud-engine
+status: done
+---
+
 story_key: 25-3-affiliate-partner-payout-desk-anti-fraud-engine
 status: done
 baseline_commit: be1122dd9ab3a0d92200ecfbc3c3545b736b04a0

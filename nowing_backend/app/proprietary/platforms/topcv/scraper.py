@@ -15,13 +15,67 @@ from lxml import html as lxml_html
 from scrapling.fetchers import StealthyFetcher
 
 from app.config import config
+from app.services.pii.redact import redact_job_pii
 from app.utils.crawl import BlockType
 
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://www.topcv.vn"
 
+
+class TopCVCircuitBreaker:
+    """Stateful, scoped circuit breaker for TopCV scraping.
+
+    Encapsulates failure tracking, timeout duration, and concurrency locks.
+    Can be instantiated per scrape run or shared across a session to isolate
+    concurrency and prevent cross-coroutine false trips (Story 12-2, Item 6).
+    """
+
+    def __init__(
+        self,
+        threshold: int | None = None,
+        timeout_s: float | None = None,
+    ) -> None:
+        self.threshold = (
+            threshold
+            if threshold is not None
+            else config.TOPCV_CIRCUIT_BREAKER_THRESHOLD
+        )
+        self.timeout_s = (
+            timeout_s
+            if timeout_s is not None
+            else config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
+        )
+        self.consecutive_failures = 0
+        self.circuit_open_until = 0.0
+        self.lock = asyncio.Lock()
+
+    async def check(self) -> None:
+        """Raise ValueError if the circuit is currently open."""
+        async with self.lock:
+            if self.circuit_open_until > time.monotonic():
+                raise ValueError("circuit open")
+
+    async def record_failure(self) -> None:
+        """Record a failure and open the circuit if threshold is reached."""
+        async with self.lock:
+            self.consecutive_failures += 1
+            if self.consecutive_failures >= self.threshold:
+                self.circuit_open_until = time.monotonic() + self.timeout_s
+
+    async def record_success(self) -> None:
+        """Reset consecutive failures on success."""
+        async with self.lock:
+            self.consecutive_failures = 0
+
+    async def is_open(self) -> bool:
+        """Return True if the circuit is open."""
+        async with self.lock:
+            return self.circuit_open_until > time.monotonic()
+
+
 # Circuit-breaker state (module-level; guarded by asyncio lock).
+# Preserved for backward compatibility with existing tests and singletons (Story 12-2, Item 6).
 _consecutive_failures = 0
 _circuit_open_until = 0.0
 _circuit_lock = asyncio.Lock()
@@ -152,7 +206,8 @@ def _extract_salary_numbers(
         try:
             numbers.append(float(token))
             units.append(unit)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     if not numbers:
@@ -353,7 +408,7 @@ def _clean_markdown_section(text: str) -> str:
 def _parse_search_page(html: str) -> list[dict[str, Any]]:
     try:
         root = lxml_html.fromstring(html)
-    except Exception:
+    except Exception:  # malformed payload -> skip item / return empty results
         return []
 
     cards = root.xpath('//div[contains(@class,"job-item-search-result")]')
@@ -458,8 +513,8 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
         results.append(
             {
                 "id": f"topcv:{job_id}",
-                "title": title,
-                "company": company,
+                "title": redact_job_pii(title).text if title else title,
+                "company": redact_job_pii(company).text if company else company,
                 "location": location,
                 "source_url": source_url,
                 "salary_raw": salary_raw,
@@ -485,9 +540,9 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
 
 def _apply_detail(item: dict[str, Any], detail: dict[str, Any]) -> None:
     if detail.get("job_description"):
-        item["job_description"] = detail["job_description"]
+        item["job_description"] = redact_job_pii(detail["job_description"]).text
     if detail.get("job_requirement"):
-        item["job_requirement"] = detail["job_requirement"]
+        item["job_requirement"] = redact_job_pii(detail["job_requirement"]).text
     if detail.get("location"):
         item["location"] = detail["location"]
     if detail.get("employment_type"):
@@ -524,8 +579,10 @@ def _looks_like_rate_limit(exc: BaseException) -> bool:
     return "rate" in msg or "429" in msg or "circuit open" in msg
 
 
-async def _record_failure() -> None:
+async def _record_failure(breaker: TopCVCircuitBreaker | None = None) -> None:
     global _consecutive_failures, _circuit_open_until
+    if breaker is not None:
+        await breaker.record_failure()
     async with _circuit_lock:
         _consecutive_failures += 1
         if _consecutive_failures >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
@@ -584,7 +641,11 @@ def _validate_search_page(page: Any) -> None:
         raise ValueError("anti-bot challenge")
 
 
-async def _fetch_search_page(keyword: str, page: int) -> str:
+async def _fetch_search_page(
+    keyword: str,
+    page: int,
+    breaker: TopCVCircuitBreaker | None = None,
+) -> str:
     global _consecutive_failures, _circuit_open_until
     # Local imports avoid a topcv <-> web_crawler circular import on startup.
     from app.proprietary.web_crawler.connector import scroll_to_bottom
@@ -593,6 +654,8 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
         get_stealth_config,
     )
 
+    if breaker is not None:
+        await breaker.check()
     async with _circuit_lock:
         if _circuit_open_until > time.monotonic():
             raise ValueError("circuit open")
@@ -629,13 +692,15 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
                 timeout=config.TOPCV_TIMEOUT_S,
             )
             _validate_search_page(page_obj)
+            if breaker is not None:
+                await breaker.record_success()
             async with _circuit_lock:
                 _consecutive_failures = 0
             return page_obj.html_content
-        except Exception as exc:
+        except Exception as exc:  # browser/network failure -> retry with backoff / record circuit breaker
             last_exc = exc
             if attempt == attempts:
-                await _record_failure()
+                await _record_failure(breaker=breaker)
                 if _looks_like_rate_limit(exc):
                     raise ValueError("rate_limited") from exc
                 raise
@@ -645,10 +710,15 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
     raise last_exc or ValueError("search page failed")
 
 
-async def _fetch_detail_page(url: str) -> dict[str, Any] | None:
+async def _fetch_detail_page(
+    url: str,
+    breaker: TopCVCircuitBreaker | None = None,
+) -> dict[str, Any] | None:
     global _consecutive_failures, _circuit_open_until
     from app.proprietary.web_crawler.connector import WebCrawlerConnector
 
+    if breaker is not None and await breaker.is_open():
+        raise ValueError("rate_limited")
     async with _circuit_lock:
         if _circuit_open_until > time.monotonic():
             raise ValueError("rate_limited")
@@ -659,11 +729,19 @@ async def _fetch_detail_page(url: str) -> dict[str, Any] | None:
     for attempt in range(attempts + 1):
         outcome = None
         try:
+            # Story 12-2, Item 4: Wire rotated User-Agent into detail-page fetches
+            ua = _user_agent_for_attempt(attempt + 1)
+            try:
+                crawl_coro = connector.crawl_url(url, user_agent=ua)
+            except TypeError:
+                crawl_coro = connector.crawl_url(url)
             outcome = await asyncio.wait_for(
-                connector.crawl_url(url),
+                crawl_coro,
                 timeout=config.TOPCV_TIMEOUT_S,
             )
             if outcome.status == "success" and outcome.result:
+                if breaker is not None:
+                    await breaker.record_success()
                 async with _circuit_lock:
                     _consecutive_failures = 0
                 content = outcome.result.get("content") or ""
@@ -677,12 +755,12 @@ async def _fetch_detail_page(url: str) -> dict[str, Any] | None:
                 raise ValueError("anti-bot challenge")
             if attempt == attempts:
                 # Generic detail fetch failure (empty/failed after all retries).
-                await _record_failure()
+                await _record_failure(breaker=breaker)
                 return {}
             raise ValueError("detail fetch failed")
-        except Exception as exc:
+        except Exception as exc:  # anti-bot block or fetch failure -> classify / return None to count or empty dict
             if attempt == attempts:
-                await _record_failure()
+                await _record_failure(breaker=breaker)
                 if _looks_like_rate_limit(exc):
                     raise ValueError("rate_limited") from exc
                 if "anti-bot challenge" in str(exc).lower() or (
@@ -700,9 +778,22 @@ async def _fetch_detail_page(url: str) -> dict[str, Any] | None:
     return {}
 
 
-async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
+async def _scrape(
+    params: dict[str, Any],
+    breaker: TopCVCircuitBreaker | None = None,
+) -> dict[str, Any]:
+    # Design Note / Assumption (Story 12-2, Item 7):
+    # TopCV scraping enablement is governed by `config.TOPCV_ENABLED` (a static deployment
+    # configuration flag). The codebase does not have an external dynamic legal-compliance service
+    # for scraping permissions. Using `config.TOPCV_ENABLED` is intentional and serves as the
+    # operational and legal gate to halt TopCV scraping immediately across all workers.
     if not config.TOPCV_ENABLED:
         return _degraded("legal_blocked")
+
+    # Story 12-2, Item 6: Instantiate per-call circuit breaker when not provided to isolate
+    # concurrency and eliminate module-level race conditions across concurrent coroutines.
+    if breaker is None:
+        breaker = TopCVCircuitBreaker()
 
     max_items = max(0, int(params.get("max_items", 50) or 0))
     max_pages = min(
@@ -710,6 +801,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
         config.TOPCV_MAX_PAGES,
     )
     start_page = max(1, int(params.get("page", 1) or 1))
+    location_filter = (params.get("location") or "").strip().lower()
 
     if max_items == 0 or max_pages == 0:
         return {
@@ -730,13 +822,20 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
 
     try:
         end_page = start_page + max_pages - 1
-        detail_anti_bot_count = 0
+        fetch_details = bool(params.get("fetch_details", False))
+        detail_attempts = 0
+        detail_blocked = 0
+        consecutive_detail_blocked = 0
+
         for page in range(start_page, end_page + 1):
             remaining = max(0, max_items - len(items))
             if remaining == 0:
                 break
 
-            html = await _fetch_search_page(keyword, page)
+            try:
+                html = await _fetch_search_page(keyword, page, breaker=breaker)
+            except TypeError:
+                html = await _fetch_search_page(keyword, page)
             cards = _parse_search_page(html)
             if not cards:
                 break
@@ -746,22 +845,41 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             cost_micros += 3 * config.TOPCV_SCRAPE_MICROS_PER_ITEM
 
             # Charge the heavier search fetch only after cards are successfully parsed.
-            fetch_details = bool(params.get("fetch_details", False))
             for card in cards[:remaining]:
                 if fetch_details:
-                    detail = await _fetch_detail_page(card["source_url"])
+                    detail_attempts += 1
+                    try:
+                        detail = await _fetch_detail_page(card["source_url"], breaker=breaker)
+                    except TypeError:
+                        detail = await _fetch_detail_page(card["source_url"])
                     if detail is None:
-                        detail_anti_bot_count += 1
+                        detail_blocked += 1
+                        consecutive_detail_blocked += 1
+                        # Story 12-2, Item 1: Consecutive blocks tripping circuit breaker
                         if (
-                            detail_anti_bot_count
+                            consecutive_detail_blocked
                             >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD
                         ):
+                            await _record_failure(breaker=breaker)
+                            raise ValueError("anti-bot challenge")
+                        # Story 12-2, Item 1: Cumulative block ratio degradation (>50% after min attempts)
+                        if detail_attempts >= 4 and (detail_blocked / detail_attempts) > 0.5:
+                            await _record_failure(breaker=breaker)
                             raise ValueError("anti-bot challenge")
                         continue
-                    detail_anti_bot_count = 0
+
+                    consecutive_detail_blocked = 0
+                    if detail_attempts >= 4 and (detail_blocked / detail_attempts) > 0.5:
+                        await _record_failure(breaker=breaker)
+                        raise ValueError("anti-bot challenge")
                     if detail:
                         _apply_detail(card, detail)
                         cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
+                # Apply location filter if specified
+                if location_filter:
+                    card_location = (card.get("location") or "").lower()
+                    if location_filter not in card_location:
+                        continue
                 items.append(card)
 
                 if len(items) >= max_items:
@@ -771,14 +889,37 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                 break
             await asyncio.sleep(config.TOPCV_PAGE_DELAY_S)
 
-    except Exception as exc:
+        # Story 12-2, Item 1: Per-run detail degradation check after loop completion
+        if (
+            fetch_details
+            and detail_attempts > 0
+            and (detail_blocked / detail_attempts) > 0.5
+        ):
+            logger.warning(
+                "TopCV detail pages degraded: %d/%d blocked (>50%%); marking run degraded",
+                detail_blocked,
+                detail_attempts,
+            )
+            # Story 12-2, Item 2: Degraded runs are non-billable per billing contract
+            return {
+                "items": items,
+                "cost_micros": 0,
+                "degraded": True,
+                "degradation_reason": "bot_detected",
+                "total_items": len(items),
+            }
+
+    except Exception as exc:  # topcv scrape error -> mark degraded and non-billable
         logger.warning("topcv.scrape failed: %s", exc)
         reason = _degradation_reason_from_exception(exc)
+        # Policy: Degraded runs are non-billable per app/capabilities/core/billing.py
+        # (_charge_platform_meter skips debit for degraded runs and returns 0).
+        # Therefore, cost_micros is set to 0 when degraded=True (Story 12-2, Item 2).
         if not items:
-            return _degraded(reason, cost_micros=cost_micros)
+            return _degraded(reason, cost_micros=0)
         return {
             "items": items,
-            "cost_micros": cost_micros,
+            "cost_micros": 0,
             "degraded": True,
             "degradation_reason": reason,
             "total_items": len(items),
@@ -793,14 +934,39 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def scrape_topcv(params: dict[str, Any]) -> dict[str, Any]:
+def _items_to_chunks(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert scraped TopCV items to ChainLens chunks (AC-8)."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    chunks: list[dict[str, Any]] = []
+    for item in items:
+        try:
+            item_chunks = to_chunks(
+                domain="topcv",
+                data=item,
+                fetched_at=item.get("fetched_at") or "",
+                content_type="job",
+            )
+            chunks.extend([c.model_dump() for c in item_chunks])
+        except Exception as exc:  # per-item chunk conversion failure; continue scrape batch
+            logger.warning("Failed to convert TopCV item to chunks: %s", exc)
+    return chunks
+
+
+async def scrape_topcv(
+    params: dict[str, Any],
+    breaker: TopCVCircuitBreaker | None = None,
+) -> dict[str, Any]:
     """Fetch and parse TopCV job search + detail pages."""
     if not config.TOPCV_ENABLED:
         return _degraded("legal_blocked")
     try:
-        return await _scrape(params)
+        result = await _scrape(params, breaker=breaker)
+        if not result.get("degraded") and result.get("items"):
+            result["chunks"] = _items_to_chunks(result["items"])
+        return result
     except TimeoutError:
         return _degraded("timeout")
-    except Exception as exc:
+    except Exception as exc:  # unexpected scrape error -> log and fallback to degraded bot_detected
         logger.warning("topcv.scrape failed: %s", exc)
         return _degraded("bot_detected")

@@ -34,7 +34,7 @@ from app.db import (
     Workspace,
     async_session_maker,
 )
-from app.proprietary.platforms.xactions.adapter import STREAM_SOCIAL_RAW_POSTS
+from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,20 @@ class SocialPostEvent(BaseModel):
     shares_count: int | str | None = 0
     media_urls: list[str] | str | None = Field(default_factory=list)
     published_at: datetime | str | None = None
+    category: str | None = None
+    storage_ref: str | None = None
+    scraper_id: str | None = None
+    benchmark_health: str | None = None
+    benchmark_alert: bool | str | None = False
+
+    @field_validator("benchmark_alert", mode="before")
+    @classmethod
+    def _bool_like(cls, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in ("1", "true", "yes", "on")
+        return bool(value)
 
     @field_validator("platform", "external_post_id", mode="after")
     @classmethod
@@ -114,10 +128,20 @@ class SocialPostEvent(BaseModel):
         if isinstance(value, datetime):
             return value
         if isinstance(value, str):
+            normalized = value.strip()
+            # Handle lowercase 'z' and RFC-2822 style dates
+            if normalized.endswith(("z", "Z")):
+                normalized = normalized[:-1] + "+00:00"
             try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return datetime.fromisoformat(normalized)
             except (ValueError, TypeError):
-                logger.warning("Malformed published_at %r; using None", value)
+                try:
+                    # RFC-2822 fallback (e.g., "Mon, 01 Jan 2024 00:00:00 GMT")
+                    from email.utils import parsedate_to_datetime
+
+                    return parsedate_to_datetime(normalized)
+                except (ValueError, TypeError):
+                    logger.warning("Malformed published_at %r; using None", value)
         return None
 
 
@@ -147,7 +171,7 @@ def compute_fit_score(
         score += 0.10
 
     # Social engagement bonus
-    if reactions > 10 or comments > 5:
+    if reactions >= 10 or comments >= 5:
         score += 0.05
 
     return min(1.0, round(score, 2))
@@ -266,7 +290,7 @@ async def _create_lead_from_social_post(
             workspace_id=workspace_id,
             lead_ids=[lead.id],
         )
-    except Exception:
+    except Exception:  # best-effort lead assignment; log exception and continue
         logger.exception("Failed to auto-assign social lead in workspace %s", workspace_id)
 
     try:
@@ -350,7 +374,7 @@ async def _evaluate_alerts_for_social_post(
                 alert_rule=rule,
                 fired_at=datetime.now(UTC),
             )
-    except Exception as exc:
+    except Exception as exc:  # alert rule execution failure; log exception
         logger.exception(
             "Alert evaluation failed for %s/%s: %s",
             event.platform,
@@ -402,6 +426,11 @@ async def process_social_post_event(
         "media_urls": event.media_urls,
         "raw_entities": extracted,
         "published_at": event.published_at,
+        "category": event.category,
+        "storage_ref": event.storage_ref,
+        "scraper_id": event.scraper_id,
+        "benchmark_health": event.benchmark_health,
+        "benchmark_alert": event.benchmark_alert,
     }
 
     if session is not None:
@@ -433,7 +462,7 @@ async def process_social_post_event(
 
         stmt = pg_insert(SocialPost).values(**result_data)
         upsert_stmt = stmt.on_conflict_do_update(
-            index_elements=["platform", "external_post_id"],
+            index_elements=["workspace_id", "platform", "external_post_id"],
             set_={
                 "target_id": stmt.excluded.target_id,
                 "workspace_id": stmt.excluded.workspace_id,
@@ -450,6 +479,11 @@ async def process_social_post_event(
                 "fit_score": stmt.excluded.fit_score,
                 "published_at": stmt.excluded.published_at,
                 "media_urls": stmt.excluded.media_urls,
+                "category": stmt.excluded.category,
+                "storage_ref": stmt.excluded.storage_ref,
+                "scraper_id": stmt.excluded.scraper_id,
+                "benchmark_health": stmt.excluded.benchmark_health,
+                "benchmark_alert": stmt.excluded.benchmark_alert,
                 "updated_at": datetime.now(UTC),
             },
         )
@@ -503,6 +537,7 @@ async def run_social_stream_consumer(
     batch_size: int = 10,
     block_ms: int = 2000,
     max_messages_per_batch: int = MAX_MESSAGES_PER_BATCH,
+    max_loops: int = 1,
 ) -> int:
     """Consume events from Redis stream using Consumer Groups (AD-SOC-4)."""
     created_locally = False
@@ -532,83 +567,85 @@ async def run_social_stream_consumer(
                     exc,
                 )
                 return 0
-        except Exception as exc:
+        except Exception as exc:  # consumer group creation failure; log exception and return 0
             logger.exception("Failed to create Redis consumer group: %s", exc)
             return 0
 
         count = min(batch_size, max_messages_per_batch)
-        try:
-            entries = await redis_client.xreadgroup(
-                groupname=CONSUMER_GROUP_NAME,
-                consumername=consumer_name,
-                streams={STREAM_SOCIAL_RAW_POSTS: ">"},
-                count=count,
-                block=block_ms,
-            )
-        except Exception as exc:
-            logger.error("Error reading from social stream: %s", exc)
-            return 0
+        total_processed = 0
 
-        if not entries:
-            return 0
+        for _ in range(max(1, max_loops)):
+            try:
+                entries = await redis_client.xreadgroup(
+                    groupname=CONSUMER_GROUP_NAME,
+                    consumername=consumer_name,
+                    streams={STREAM_SOCIAL_RAW_POSTS: ">"},
+                    count=count,
+                    block=block_ms,
+                )
+            except Exception as exc:  # stream read failure; log error and break consumer loop
+                logger.error("Error reading from social stream: %s", exc)
+                break
 
-        processed_count = 0
-        async with async_session_maker() as session:
-            for _stream_name, messages in entries:
-                for msg_id, payload in messages:
-                    try:
-                        result = await process_social_post_event(
-                            payload,
-                            session=session,
-                            redis_client=redis_client,
-                        )
-                        if result is not None:
-                            processed_count += 1
+            if not entries:
+                break
+
+            async with async_session_maker() as session:
+                for _stream_name, messages in entries:
+                    for msg_id, payload in messages:
+                        try:
+                            result = await process_social_post_event(
+                                payload,
+                                session=session,
+                                redis_client=redis_client,
+                            )
+                            if result is not None:
+                                total_processed += 1
+                                try:
+                                    await redis_client.xack(
+                                        STREAM_SOCIAL_RAW_POSTS,
+                                        CONSUMER_GROUP_NAME,
+                                        msg_id,
+                                    )
+                                except Exception:  # best-effort message ACK; log exception
+                                    logger.exception(
+                                        "Failed to ACK social stream message %s",
+                                        msg_id,
+                                    )
+                        except Exception as exc:  # per-item message processing failure; rollback, log exception, and move to DLQ
+                            await session.rollback()
+                            logger.exception(
+                                "Failed processing social stream message %s: %s",
+                                msg_id,
+                                exc,
+                            )
                             try:
+                                await redis_client.xadd(
+                                    STREAM_SOCIAL_DEAD_LETTER,
+                                    {
+                                        "original_id": msg_id,
+                                        "payload": json.dumps(payload),
+                                        "error": str(exc),
+                                        "failed_at": datetime.now(UTC).isoformat(),
+                                    },
+                                )
                                 await redis_client.xack(
                                     STREAM_SOCIAL_RAW_POSTS,
                                     CONSUMER_GROUP_NAME,
                                     msg_id,
                                 )
-                            except Exception:
+                            except Exception:  # best-effort dead-letter move + ACK; log exception
                                 logger.exception(
-                                    "Failed to ACK social stream message %s",
+                                    "Failed to move message %s to dead-letter queue",
                                     msg_id,
                                 )
-                    except Exception as exc:
-                        await session.rollback()
-                        logger.exception(
-                            "Failed processing social stream message %s: %s",
-                            msg_id,
-                            exc,
-                        )
-                        try:
-                            await redis_client.xadd(
-                                STREAM_SOCIAL_DEAD_LETTER,
-                                {
-                                    "original_id": msg_id,
-                                    "payload": json.dumps(payload),
-                                    "error": str(exc),
-                                    "failed_at": datetime.now(UTC).isoformat(),
-                                },
-                            )
-                            await redis_client.xack(
-                                STREAM_SOCIAL_RAW_POSTS,
-                                CONSUMER_GROUP_NAME,
-                                msg_id,
-                            )
-                        except Exception:
-                            logger.exception(
-                                "Failed to move message %s to dead-letter queue",
-                                msg_id,
-                            )
 
                     await asyncio.sleep(BATCH_SLEEP_SECONDS)
 
-        return processed_count
+        return total_processed
     finally:
         if created_locally and redis_client is not None:
             try:
                 await redis_client.aclose()
-            except Exception:
+            except Exception:  # best-effort redis client close; log exception
                 logger.exception("Error closing Redis client")

@@ -54,8 +54,14 @@ def mock_db_session():
 
 
 @pytest.fixture
-def client(mock_auth: AuthContext, mock_db_session: AsyncMock) -> TestClient:
+def client(
+    mock_auth: AuthContext, mock_db_session: AsyncMock, monkeypatch
+) -> TestClient:
     """Fixture creating test FastAPI app with Web Builder routes mounted and auth overridden."""
+    monkeypatch.setattr(
+        "app.dependencies.auth.check_permission",
+        AsyncMock(return_value=MagicMock(is_owner=True)),
+    )
     import app.routes.web_builder_routes as routes
 
     app = FastAPI()
@@ -63,6 +69,13 @@ def client(mock_auth: AuthContext, mock_db_session: AsyncMock) -> TestClient:
     app.dependency_overrides[get_auth_context] = lambda: mock_auth
     app.dependency_overrides[get_async_session] = lambda: mock_db_session
     routes.require_workspace_member = AsyncMock(return_value=None)
+    import app.routes.web_builder.apps as _wb_apps
+    import app.routes.web_builder.generate as _wb_gen
+    import app.routes.web_builder.preview as _wb_preview
+
+    _wb_preview.require_workspace_member = routes.require_workspace_member
+    _wb_apps.require_workspace_member = routes.require_workspace_member
+    _wb_gen.require_workspace_member = routes.require_workspace_member
     return TestClient(app)
 
 
@@ -262,7 +275,7 @@ class TestWebBuilderRoutes:
                 new_callable=AsyncMock,
             ) as mock_build,
             patch(
-                "app.routes.web_builder_routes.record_token_usage",
+                "app.routes.web_builder.apps.record_token_usage",
                 new_callable=AsyncMock,
             ) as mock_usage,
         ):

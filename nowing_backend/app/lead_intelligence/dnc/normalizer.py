@@ -93,7 +93,7 @@ def normalize_domain(domain_or_url: str | None) -> str | None:
     try:
         parsed = urlparse(to_parse)
         hostname = parsed.hostname
-    except Exception:
+    except Exception:  # DNC check fail-closed to protect compliance
         hostname = None
 
     if not hostname:

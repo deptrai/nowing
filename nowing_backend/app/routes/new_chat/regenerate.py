@@ -19,9 +19,11 @@ from app.db import (
     NewChatThread,
     Permission,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
     shielded_async_session,
 )
+from app.dependencies.auth import RequirePermissionFromEntity
 from app.routes.new_chat.shared import (
     _find_pre_turn_checkpoint_id,
     _logger,
@@ -38,7 +40,6 @@ from app.tasks.chat.streaming.flows import (
 )
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 from app.utils.user_message_multimodal import (
     split_langchain_human_content,
     split_persisted_user_content_parts,
@@ -53,6 +54,14 @@ async def regenerate_response(
     http_request: Request,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "NewChatThread",
+            "thread_id",
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -78,15 +87,6 @@ async def regenerate_response(
     from app.agents.chat.runtime.checkpointer import get_checkpointer
 
     try:
-        # Authorize the workspace before any tenant-scoped query.
-        await check_permission(
-            session,
-            auth,
-            request.workspace_id,
-            Permission.CHATS_UPDATE.value,
-            "You don't have permission to update chats in this workspace",
-        )
-
         # Set workspace + user GUC before the RLS-protected thread lookup.
         # client_id/agent_id are not trusted before the thread is verified.
         await set_request_tenant_context(
@@ -524,7 +524,7 @@ async def regenerate_response(
                             await delete_affected_snapshots(
                                 cleanup_session, thread_id, message_ids_to_delete
                             )
-                    except Exception as cleanup_error:
+                    except Exception as cleanup_error:  # best-effort old messages cleanup; failure doesn't fail primary op
                         _logger.warning(
                             "[regenerate] Failed to delete old messages: %s",
                             cleanup_error,
@@ -543,7 +543,7 @@ async def regenerate_response(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         import traceback
 
         traceback.print_exc()

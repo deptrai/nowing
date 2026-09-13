@@ -86,7 +86,7 @@ class MarkToolASTMutator:
             source_bytes = jsx_code.encode("utf-8")
             parser = Parser(_TSX_LANGUAGE)
             tree = parser.parse(source_bytes)
-        except Exception as exc:
+        except Exception as exc:  # tree-sitter parse can raise broadly; surface as structured MutationResult error
             logger.warning("Failed to parse TSX source: %s", exc)
             return MutationResult(
                 status="error",
@@ -395,7 +395,7 @@ class MarkToolASTMutator:
         parser = Parser(_TSX_LANGUAGE)
         try:
             tree = parser.parse(validation_source)
-        except Exception as exc:
+        except Exception as exc:  # tree-sitter parse can raise broadly; wrap as MarkToolError for caller
             raise MarkToolError(f"Invalid replacement JSX: {exc}") from exc
 
         if tree.root_node.has_error:
@@ -408,7 +408,7 @@ class MarkToolASTMutator:
         patched = source_bytes[:start] + value_bytes + source_bytes[end:]
         try:
             rebuilt = parser.parse(patched)
-        except Exception as exc:
+        except Exception as exc:  # tree-sitter parse can raise broadly; wrap as MarkToolError for caller
             raise MarkToolError(f"Invalid replacement JSX: {exc}") from exc
         if rebuilt.root_node.has_error:
             raise MarkToolError(

@@ -8,7 +8,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import CNAME_INGRESS_HOST, HOSTING_BASE_DOMAIN
+from app.config import (
+    CNAME_INGRESS_HOST,
+    HOSTING_BASE_DOMAIN,
+    get_web_builder_tier_limits,
+)
 from app.services.web_builder.deploy.custom_domain import verify_and_bind_custom_domain
 from app.services.web_builder.deploy.deploy_app import deploy_app
 from app.services.web_builder.schemas import (
@@ -33,6 +37,18 @@ class WebAppDeployService:
     @classmethod
     def _container_name(cls, workspace_id: int, slug: str) -> str:
         return f"nowing-app-{workspace_id}-{slug}"
+
+    _NET_NAME_SAFE_RE = re.compile(r"[^a-z0-9_.-]")
+
+    @classmethod
+    def _app_network_name(cls, workspace_id: int, app_id: str) -> str:
+        """Per-app bridge network name for WEB_BUILDER_PER_APP_NETWORK mode.
+
+        app_id is sanitized to ``[a-z0-9_.-]`` (lowercase) and the result
+        bounded to 255 chars so the name is always a safe docker target.
+        """
+        safe_app = cls._NET_NAME_SAFE_RE.sub("-", str(app_id).lower())
+        return f"nowing-app-{workspace_id}-{safe_app}-net"[:255]
 
     @classmethod
     def _image_tag(cls, workspace_id: int, app_id: str, slug: str) -> str:
@@ -150,10 +166,16 @@ class WebAppDeployService:
     _CONTAINER_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]*$", re.ASCII)
 
     def _is_safe_container_id(self, container_id_or_name: str) -> bool:
-        """Docker IDs/Names only contain safe characters (no shell metacharacters)."""
+        """Docker IDs/Names only contain safe characters (no shell metacharacters).
+
+        The name bound is 255 chars, not 64: generated names like
+        ``nowing-app-{workspace_id}-{slug}`` reach ~80 chars with a max-length
+        (63-char) slug, and ``docker --name``/``inspect``/``rm`` impose no
+        64-char limit. The charset regex is what guards against injection.
+        """
         if not container_id_or_name:
             return False
-        if len(container_id_or_name) <= 64 and self._CONTAINER_NAME_RE.match(container_id_or_name):
+        if len(container_id_or_name) <= 255 and self._CONTAINER_NAME_RE.match(container_id_or_name):
             return True
         # Docker short ID is 12 hex characters
         return (
@@ -205,34 +227,280 @@ class WebAppDeployService:
         with contextlib.suppress(asyncio.TimeoutError):
             await asyncio.wait_for(proc.communicate(), timeout=10.0)
 
+    async def _ensure_app_network(self, network: str, proxy_container: str) -> None:
+        """Create the per-app bridge network and connect the ingress proxy.
+
+        Both steps are idempotent across redeploys: ``docker network create``
+        returning "already exists" and ``docker network connect`` returning
+        "already exists"/"already connected" in stderr are tolerated.
+        """
+        docker_bin = shutil.which("docker")
+        if not docker_bin:
+            raise RuntimeError("Docker CLI is not available in current environment")
+        proc = await asyncio.create_subprocess_exec(
+            docker_bin,
+            "network",
+            "create",
+            network,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=15.0)
+        err = stderr.decode("utf-8", errors="replace")
+        if proc.returncode != 0 and "already exists" not in err:
+            raise RuntimeError(
+                f"docker network create {network} failed: {err}"
+            )
+        if not self._is_safe_container_id(proxy_container):
+            raise RuntimeError(
+                f"WEB_BUILDER_INGRESS_PROXY_CONTAINER={proxy_container!r} is "
+                "not a safe container name/id"
+            )
+        proc = await asyncio.create_subprocess_exec(
+            docker_bin,
+            "network",
+            "connect",
+            network,
+            proxy_container,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=15.0)
+        err = stderr.decode("utf-8", errors="replace")
+        if (
+            proc.returncode != 0
+            and "already exists" not in err
+            and "already connected" not in err
+        ):
+            raise RuntimeError(
+                f"docker network connect {proxy_container} to {network} "
+                f"failed: {err}"
+            )
+
+    async def _cleanup_app_network(
+        self, workspace_id: int, app_id: str
+    ) -> None:
+        """Best-effort teardown of the per-app bridge network.
+
+        Only acts when WEB_BUILDER_PER_APP_NETWORK is enabled. Disconnects
+        the ingress proxy then removes the network; removal tolerates
+        "active endpoints"/"not found" races — everything is suppress()ed.
+        """
+        from app.config import config as app_config
+
+        if not getattr(app_config, "WEB_BUILDER_PER_APP_NETWORK", False):
+            return
+        docker_bin = shutil.which("docker")
+        if not docker_bin:
+            return
+        network = self._app_network_name(workspace_id, app_id)
+        proxy_container = (
+            getattr(app_config, "WEB_BUILDER_INGRESS_PROXY_CONTAINER", "") or ""
+        ).strip()
+        if proxy_container and self._is_safe_container_id(proxy_container):
+            with contextlib.suppress(Exception):
+                proc = await asyncio.create_subprocess_exec(
+                    docker_bin,
+                    "network",
+                    "disconnect",
+                    network,
+                    proxy_container,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await asyncio.wait_for(proc.communicate(), timeout=10.0)
+        with contextlib.suppress(Exception):
+            proc = await asyncio.create_subprocess_exec(
+                docker_bin,
+                "network",
+                "rm",
+                network,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await asyncio.wait_for(proc.communicate(), timeout=10.0)
+
+    # Single inspect snapshot of everything the deploy path needs: health
+    # status (image HEALTHCHECK), running flag, exit code, OOM kill flag, and
+    # the daemon-recorded error string. Piped format keeps it to ONE call so
+    # auto-restart cannot mutate state between separate inspects.
+    _INSPECT_STATE_FORMAT = (
+        "{{.State.Health.Status}}|{{.State.Running}}|{{.State.ExitCode}}"
+        "|{{.State.OOMKilled}}|{{.State.Error}}"
+    )
+
+    async def _inspect_container_state(
+        self, container_id_or_name: str
+    ) -> dict[str, Any] | None:
+        """Snapshot ``.State`` of a container in one ``docker inspect`` call.
+
+        Returns ``None`` when the inspect itself fails (unsafe id, no docker
+        binary, non-zero exit, timeout) — callers treat that as "unknown"
+        rather than crashing the deploy/cleanup path.
+        """
+        if not self._is_safe_container_id(container_id_or_name):
+            logger.warning(
+                "Refusing to inspect container with unsafe id/name: %s",
+                container_id_or_name,
+            )
+            return None
+        docker_bin = shutil.which("docker")
+        if not docker_bin:
+            return None
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                docker_bin,
+                "inspect",
+                "--format",
+                self._INSPECT_STATE_FORMAT,
+                container_id_or_name,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except (OSError, PermissionError):
+            # Spawn failure (missing binary race, sandbox denial) must not
+            # bypass cleanup — treat the state as unknown.
+            return None
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5.0)
+        except TimeoutError:
+            with contextlib.suppress(Exception):
+                proc.kill()
+            # Reap the child so a killed inspect cannot linger as a zombie.
+            if hasattr(proc, "wait") and callable(proc.wait):
+                with contextlib.suppress(Exception):
+                    res = proc.wait()
+                    if asyncio.iscoroutine(res):
+                        await asyncio.wait_for(res, timeout=1.0)
+            return None
+        if proc.returncode != 0:
+            return None
+
+        parts = stdout.decode("utf-8", errors="replace").strip().split("|", 4)
+        while len(parts) < 5:
+            parts.append("")
+        health_raw, running_raw, exit_raw, oom_raw, error = parts
+
+        def _truthy(value: str) -> bool | None:
+            value = value.strip().lower()
+            if value in ("true", "false"):
+                return value == "true"
+            return None
+
+        health: str | None = health_raw.strip()
+        # "none"/"<no value>"/"" mean the image defines no HEALTHCHECK.
+        if health in ("", "<no value>", "none"):
+            health = None
+        try:
+            exit_code: int | None = int(exit_raw.strip())
+        except ValueError:
+            exit_code = None
+
+        return {
+            "health": health,
+            "running": _truthy(running_raw),
+            "exit_code": exit_code,
+            "oom_killed": _truthy(oom_raw) is True,
+            "error": error.strip(),
+        }
+
+    # Same probe the image HEALTHCHECK runs (docker/web-app.Dockerfile) —
+    # used for the no-HEALTHCHECK fallback so "running" is never declared
+    # healthy without proving the :3000 listener actually answers.
+    _EXEC_HEALTH_CMD = (
+        "require('http').get('http://127.0.0.1:3000',"
+        "(r)=>process.exit(r.statusCode<400?0:1))"
+        ".on('error',()=>process.exit(1))"
+    )
+
+    async def _exec_health_probe(self, container_id_or_name: str) -> bool | None:
+        """``docker exec`` the HTTP probe inside the container.
+
+        Returns ``True`` on exit code 0, ``False`` on a non-zero exit (the
+        listener refused/errored), and ``None`` when the probe itself could
+        not run (unsafe id, no docker binary, spawn failure, timeout).
+        """
+        if not self._is_safe_container_id(container_id_or_name):
+            return None
+        docker_bin = shutil.which("docker")
+        if not docker_bin:
+            return None
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                docker_bin,
+                "exec",
+                container_id_or_name,
+                "node",
+                "-e",
+                self._EXEC_HEALTH_CMD,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except (OSError, PermissionError):
+            return None
+        try:
+            await asyncio.wait_for(proc.communicate(), timeout=5.0)
+        except TimeoutError:
+            with contextlib.suppress(Exception):
+                proc.kill()
+            if hasattr(proc, "wait") and callable(proc.wait):
+                with contextlib.suppress(Exception):
+                    res = proc.wait()
+                    if asyncio.iscoroutine(res):
+                        await asyncio.wait_for(res, timeout=1.0)
+            return None
+        return proc.returncode == 0
+
     async def _healthcheck_container(
         self,
-        host: str,
-        port: int,
+        container_id_or_name: str,
         timeout_seconds: int = 60,
         retries: int = 10,
     ) -> bool:
-        """Wait for the container to accept HTTP connections on host:port."""
+        """Wait for the container to report healthy via ``docker inspect``.
+
+        Polls ``.State.Health.Status`` until ``healthy`` or the deadline —
+        the image already defines HEALTHCHECK (docker/web-app.Dockerfile).
+        When the image has no HEALTHCHECK (``.State.Health`` nil) the
+        fallback ``docker exec``s the same HTTP probe the image HEALTHCHECK
+        uses so a running-but-not-serving container is not declared healthy.
+        Never TCP-connects to the container name: the backend shares no
+        network with user app containers, so container-name DNS does not
+        resolve here (Story 31.1).
+
+        A dead sample (Running=false with non-zero exit) is only fatal
+        after 3 CONSECUTIVE observations — a single sample can land in the
+        dead window between ``--restart unless-stopped`` restarts, while a
+        real crash-loop still fails in seconds.
+        """
         deadline = asyncio.get_event_loop().time() + timeout_seconds
         delay = min(1.0, timeout_seconds / max(retries, 1))
+        dead_streak = 0
         while asyncio.get_event_loop().time() < deadline:
-            try:
-                reader, writer = await asyncio.wait_for(
-                    asyncio.open_connection(host, port),
-                    timeout=5.0,
-                )
-                request = (
-                    f"GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
-                )
-                writer.write(request.encode("utf-8"))
-                await writer.drain()
-                response = await asyncio.wait_for(reader.read(256), timeout=5.0)
-                writer.close()
-                await writer.wait_closed()
-                if response and b"HTTP/1.1" in response:
+            state = await self._inspect_container_state(container_id_or_name)
+            if state is not None:
+                dead = state.get("running") is False and state.get(
+                    "exit_code"
+                ) not in (None, 0)
+                dead_streak = dead_streak + 1 if dead else 0
+                if dead_streak >= 3:
+                    # Container is persistently dead with a non-zero exit
+                    # (e.g. OOM kill at startup): fail — the caller inspects
+                    # .State once more before removal to surface the reason.
+                    return False
+                health = state.get("health")
+                if health == "healthy":
                     return True
-            except Exception:
-                pass
+                # No HEALTHCHECK in image: prove the :3000 listener via the
+                # same in-container probe the HEALTHCHECK uses.
+                if (
+                    health is None
+                    and state.get("running")
+                    and await self._exec_health_probe(container_id_or_name)
+                ):
+                    return True
+                # "starting"/"unhealthy"/unknown/failed-probe: keep polling
+                # until the deadline — --restart may still recover it.
             await asyncio.sleep(delay)
         return False
 
@@ -296,7 +564,7 @@ class WebAppDeployService:
                 break
             except dns.resolver.NXDOMAIN:
                 return False
-            except Exception:
+            except Exception:  # DNS resolution failure → fail-closed: domain not verified
                 return False
 
         # No CNAME match; try A/AAAA for apex-style / ALIAS-like records.
@@ -324,7 +592,7 @@ class WebAppDeployService:
                     domain_ips.add(str(rdata))
 
             return bool(target_ips) and bool(domain_ips) and target_ips == domain_ips
-        except Exception:
+        except Exception:  # DNS A/AAAA resolution failure → fail-closed: domain not verified
             return False
 
     def _caddy_snippets_path(self) -> Path:
@@ -400,7 +668,7 @@ class WebAppDeployService:
 
                 text = text.rstrip() + f"\n\n{marker}\n{snippet}{end_marker}\n"
                 caddy_file.write_text(text, encoding="utf-8")
-            except Exception as e:
+            except Exception as e:  # file write can raise broadly; wrap as RuntimeError for caller
                 logger.error("Failed to write Caddy snippet for %s: %s", slug, e)
                 raise RuntimeError(f"Failed to write Caddy snippet: {e}") from e
 
@@ -480,7 +748,7 @@ class WebAppDeployService:
                 thread_local=False,
                 blocking_timeout=float(timeout_seconds) + 60.0,
             )
-        except Exception as e:
+        except Exception as e:  # Redis lock down → in-memory fallback keeps deploy scheduling alive
             logger.warning(
                 "Redis lock unavailable for %s; using in-memory fallback: %s",
                 lock_key,
@@ -529,8 +797,13 @@ class WebAppDeployService:
         project_path: Path,
         slug: str,
         custom_domain: str | None = None,
+        plan_tier: str | None = None,
     ) -> tuple[str, int]:
-        """Builds Docker runtime image from .next/standalone and runs container."""
+        """Builds Docker runtime image from .next/standalone and runs container.
+
+        ``plan_tier`` selects the cgroup limits applied to the container via
+        ``get_web_builder_tier_limits`` (Story 31.1); unknown/None -> free.
+        """
 
         docker_bin = shutil.which("docker")
         if not docker_bin:
@@ -571,7 +844,58 @@ class WebAppDeployService:
 
         from app.config import config as app_config
 
+        # Opt-in per-app network isolation (Story 31.1): each app runs on its
+        # own bridge network nowing-app-{ws}-{app}-net so tenant containers
+        # cannot reach each other by membership. The shared
+        # WEB_BUILDER_DOKPLOY_NETWORK guard does not apply in this mode —
+        # the per-app net IS the isolation — but the ingress proxy container
+        # must be named so it can be connected into each app network.
+        per_app_network = getattr(
+            app_config, "WEB_BUILDER_PER_APP_NETWORK", False
+        )
+        proxy_container = (
+            getattr(app_config, "WEB_BUILDER_INGRESS_PROXY_CONTAINER", "") or ""
+        ).strip()
+        if per_app_network:
+            if not proxy_container:
+                raise RuntimeError(
+                    "WEB_BUILDER_INGRESS_PROXY_CONTAINER is empty while "
+                    "WEB_BUILDER_PER_APP_NETWORK is enabled; refusing to "
+                    "deploy because the ingress proxy could not be connected "
+                    "to the per-app network (public URL would 502). Set it "
+                    "to the proxy container name (e.g. dokploy-traefik on "
+                    "Dokploy, the compose proxy container on self-host)."
+                )
+            network = self._app_network_name(workspace_id, app_id)
+        else:
+            # Fail fast when the app bridge network is unconfigured or points
+            # at a Docker builtin/reserved name: either would land the
+            # container on a non-isolated network (docker0 ICC on, no tenant
+            # isolation, no ingress path). Refuse loudly instead
+            # (Story 31.1) — deploy_container only runs when
+            # WEB_BUILDER_CONTAINER_DEPLOY_ENABLED=TRUE.
+            network = (app_config.WEB_BUILDER_DOKPLOY_NETWORK or "").strip()
+            if not network:
+                raise RuntimeError(
+                    "WEB_BUILDER_DOKPLOY_NETWORK is empty; refusing to deploy the "
+                    "app container onto the default docker0 bridge. Set it to the "
+                    "dedicated app bridge network that the ingress proxy also "
+                    "joins (e.g. nowing-web-apps-net)."
+                )
+            if network.lower() in ("default", "bridge", "host", "none"):
+                raise RuntimeError(
+                    f"WEB_BUILDER_DOKPLOY_NETWORK={network!r} is a reserved or "
+                    "builtin Docker network name; refusing to deploy the app "
+                    "container onto a non-isolated network. Set it to the "
+                    "dedicated app bridge network that the ingress proxy also "
+                    "joins (e.g. nowing-web-apps-net)."
+                )
+        tier_limits = get_web_builder_tier_limits(plan_tier)
+
         # 1. Build image from standalone directory with a bounded timeout.
+        # The runtime Dockerfile (docker/web-app.Dockerfile) has zero RUN
+        # steps — only COPY/ENV/USER — so `docker build` cannot execute user
+        # code; the wait_for below already bounds build time.
         build_cmd = [
             docker_bin,
             "build",
@@ -605,7 +929,18 @@ class WebAppDeployService:
         # 2. Stop/remove previous container if exists
         await self._stop_container(container_name)
 
-        # 3. Generate Traefik labels (port is the stable internal port 3000).
+        # 3. Per-app isolation: create the app's bridge network and attach
+        # the ingress proxy BEFORE docker run. Idempotent on redeploy —
+        # existing network/connection is tolerated. On failure, tear down
+        # any partially-created network.
+        if per_app_network:
+            try:
+                await self._ensure_app_network(network, proxy_container)
+            except Exception:  # network ensure failure → cleanup partial network then re-raise
+                await self._cleanup_app_network(workspace_id, app_id)
+                raise
+
+        # 4. Generate Traefik labels (port is the stable internal port 3000).
         labels = self.generate_traefik_labels(
             app_slug=slug,
             base_domain=self.base_domain,
@@ -616,9 +951,14 @@ class WebAppDeployService:
         for k, v in labels.items():
             label_args.extend(["--label", f"{k}={v}"])
 
-        # 4. Run container with resource limits and security opts on the dokploy network.
-        network = app_config.WEB_BUILDER_DOKPLOY_NETWORK
-        network_args = ["--network", network] if network else []
+        # 5. Run container on the dedicated (or per-app) bridge network with
+        # tier-scoped cgroup limits and a hardened runtime profile
+        # (Story 31.1): swap disabled via --memory-swap == --memory, all
+        # capabilities dropped, root filesystem read-only with a small
+        # noexec/nosuid /tmp tmpfs for runtime scratch, json-file logs
+        # bounded to 3x10m so a noisy tenant cannot fill the host disk.
+        # USER node comes from the image; /var/run/docker.sock is never
+        # mounted.
         run_cmd = [
             docker_bin,
             "run",
@@ -627,11 +967,26 @@ class WebAppDeployService:
             container_name,
             "--restart",
             "unless-stopped",
-            "--memory=512m",
-            "--cpus=0.5",
-            "--pids-limit=100",
+            f"--memory={tier_limits['memory']}",
+            f"--memory-swap={tier_limits['memory']}",
+            f"--cpus={tier_limits['cpus']}",
+            f"--pids-limit={tier_limits['pids_limit']}",
+            "--cap-drop=ALL",
             "--security-opt=no-new-privileges",
-            *network_args,
+            "--read-only",
+            "--log-opt",
+            "max-size=10m",
+            "--log-opt",
+            "max-file=3",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            # Next.js standalone writes ISR/image-optimizer cache under
+            # /app/.next/cache (WORKDIR=/app) — needs a writable mount on
+            # the read-only rootfs.
+            "--tmpfs",
+            "/app/.next/cache:rw,noexec,nosuid,size=128m",
+            "--network",
+            network,
             *label_args,
             image_tag,
         ]
@@ -648,17 +1003,20 @@ class WebAppDeployService:
         except TimeoutError:
             with contextlib.suppress(Exception):
                 proc_run.kill()
+            await self._cleanup_app_network(workspace_id, app_id)
             raise RuntimeError("Docker run timed out after 60s") from None
         if proc_run.returncode != 0:
+            await self._cleanup_app_network(workspace_id, app_id)
             raise RuntimeError(
                 f"Docker run failed: {stderr_run.decode('utf-8', errors='replace')}"
             )
 
         container_id = stdout_run.decode("utf-8").strip()[:12]
 
-        # 5. Healthcheck the container before declaring it ready.
+        # 6. Inspect-based healthcheck before declaring the container ready —
+        # the backend shares no network with app containers, so TCP to the
+        # container name is not an option (Story 31.1).
         port = 3000
-        target_host = container_name
         healthcheck_timeout = getattr(
             app_config, "WEB_BUILDER_CONTAINER_HEALTHCHECK_TIMEOUT", 60
         )
@@ -666,14 +1024,36 @@ class WebAppDeployService:
             app_config, "WEB_BUILDER_CONTAINER_HEALTHCHECK_RETRIES", 10
         )
         healthy = await self._healthcheck_container(
-            target_host,
-            port,
+            container_name,
             timeout_seconds=healthcheck_timeout,
             retries=healthcheck_retries,
         )
         if not healthy:
+            # Capture .State (OOMKilled/ExitCode/Running/Error) in ONE inspect
+            # BEFORE removing the container — auto-restart can mutate state
+            # between calls and erase the evidence.
+            state = await self._inspect_container_state(container_name)
             await self._stop_container(container_name)
-            raise RuntimeError("Container started but failed healthcheck; removed.")
+            # Per-app mode: drop the orphaned bridge network too.
+            await self._cleanup_app_network(workspace_id, app_id)
+            reason = ""
+            if state:
+                details = []
+                if state.get("oom_killed"):
+                    details.append("OOMKilled=true")
+                if state.get("exit_code") is not None:
+                    details.append(f"ExitCode={state['exit_code']}")
+                if state.get("running") is not None:
+                    details.append(
+                        f"Running={str(state['running']).lower()}"
+                    )
+                if state.get("error"):
+                    details.append(f"Error={state['error']}")
+                if details:
+                    reason = " (" + "; ".join(details) + ")"
+            raise RuntimeError(
+                f"Container started but failed healthcheck; removed.{reason}"
+            )
 
         return container_id, port
 

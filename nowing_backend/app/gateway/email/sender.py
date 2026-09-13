@@ -149,7 +149,7 @@ def send_email_reply(
             reply_to=reply_to,
             headers=headers,
         )
-    except Exception as exc:
+    except Exception as exc:  # SMTP email dispatch failure; audit and return failure status
         logger.exception("Failed to send email reply to %s", original_from)
         audit(
             action="email_reply_failed",

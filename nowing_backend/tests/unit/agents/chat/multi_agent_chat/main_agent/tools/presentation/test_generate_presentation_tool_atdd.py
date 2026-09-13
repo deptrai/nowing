@@ -237,3 +237,147 @@ def test_thinking_validation_failed_without_error_is_failure():
     )
     assert "failed" in title.lower()
     assert any("error:" in item.lower() for item in items)
+
+@pytest.mark.unit
+async def test_tool_calls_service_and_returns_ready_status(
+    tool_factory, enable_presentation_studio, monkeypatch
+):
+    """Tool leaves early-return path: calls PresentationStudioService and returns ready payload."""
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+    from app.services.presentation.schemas import GeneratePresentationOutput
+
+    mock_ws = MagicMock(id=1, presentation_studio_enabled=True)
+    mock_membership = MagicMock(is_owner=True, role=None)
+
+    mock_output = GeneratePresentationOutput(
+        status="ready",
+        presentation_id="pres-uuid-123",
+        slug="pitch-deck",
+        title="Pitch Deck",
+        output_format="pptx",
+        workspace_id=1,
+        download_url="/api/v1/presentations/pres-uuid-123/download",
+        preview_url="/api/v1/presentations/pres-uuid-123/preview",
+        slide_count=5,
+    )
+
+    class _MockScalarResult:
+        def __init__(self, val):
+            self._val = val
+        def first(self):
+            return self._val
+
+    class _MockExecuteResult:
+        def __init__(self, val):
+            self._val = val
+        def scalars(self):
+            return _MockScalarResult(self._val)
+
+    mock_session = AsyncMock()
+    call_count = 0
+    async def _mock_execute(stmt):
+        nonlocal call_count
+        call_count += 1
+        # First call is Workspace query, second is WorkspaceMembership query
+        if call_count == 1:
+            return _MockExecuteResult(mock_ws)
+        return _MockExecuteResult(mock_membership)
+
+    mock_session.execute = AsyncMock(side_effect=_mock_execute)
+
+    class _MockSessionMaker:
+        async def __aenter__(self):
+            return mock_session
+        async def __aexit__(self, *args):
+            pass
+
+    monkeypatch.setattr(
+        "app.agents.chat.multi_agent_chat.main_agent.tools.presentation.generate_presentation.async_session_maker",
+        lambda: _MockSessionMaker(),
+    )
+    monkeypatch.setattr(
+        "app.services.presentation.service.PresentationStudioService.generate",
+        AsyncMock(return_value=mock_output),
+    )
+
+    tools = tool_factory({"workspace_id": 1, "user_id": uuid4()})
+    tool = next(t for t in tools if t.name == "generate_presentation")
+
+    result = await tool.ainvoke({"prompt": "Pitch deck for AI Startup", "output_format": "pptx"})
+    assert result["status"] == "ready"
+    assert result["presentation_id"] == "pres-uuid-123"
+    assert result["slug"] == "pitch-deck"
+    assert result["download_url"] == "/api/v1/presentations/pres-uuid-123/download"
+
+
+@pytest.mark.unit
+async def test_tool_calls_service_and_returns_degraded_status(
+    tool_factory, enable_presentation_studio, monkeypatch
+):
+    """Tool passes through degraded status when Marp/CLI driver is unavailable."""
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+    from app.services.presentation.schemas import GeneratePresentationOutput
+
+    mock_ws = MagicMock(id=1, presentation_studio_enabled=True)
+    mock_membership = MagicMock(is_owner=True, role=None)
+
+    mock_output = GeneratePresentationOutput(
+        status="degraded",
+        presentation_id="pres-uuid-456",
+        slug="marp-deck",
+        title="Marp Deck",
+        output_format="marp",
+        workspace_id=1,
+        download_url="/api/v1/presentations/pres-uuid-456/download",
+        preview_url=None,
+        degradation_reason="cli_missing",
+        slide_count=3,
+    )
+
+    class _MockScalarResult:
+        def __init__(self, val):
+            self._val = val
+        def first(self):
+            return self._val
+
+    class _MockExecuteResult:
+        def __init__(self, val):
+            self._val = val
+        def scalars(self):
+            return _MockScalarResult(self._val)
+
+    mock_session = AsyncMock()
+    call_count = 0
+    async def _mock_execute(stmt):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return _MockExecuteResult(mock_ws)
+        return _MockExecuteResult(mock_membership)
+
+    mock_session.execute = AsyncMock(side_effect=_mock_execute)
+
+    class _MockSessionMaker:
+        async def __aenter__(self):
+            return mock_session
+        async def __aexit__(self, *args):
+            pass
+
+    monkeypatch.setattr(
+        "app.agents.chat.multi_agent_chat.main_agent.tools.presentation.generate_presentation.async_session_maker",
+        lambda: _MockSessionMaker(),
+    )
+    monkeypatch.setattr(
+        "app.services.presentation.service.PresentationStudioService.generate",
+        AsyncMock(return_value=mock_output),
+    )
+
+    tools = tool_factory({"workspace_id": 1, "user_id": uuid4()})
+    tool = next(t for t in tools if t.name == "generate_presentation")
+
+    result = await tool.ainvoke({"prompt": "Marp presentation with degraded preview", "output_format": "marp"})
+    assert result["status"] == "degraded"
+    assert result["degradation_reason"] == "cli_missing"
+    assert result["preview_url"] is None

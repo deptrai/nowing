@@ -429,7 +429,7 @@ async def fetch_json(path: str, params: dict[str, Any] | None = None) -> Any | N
             return None
         except RedditAccessBlockedError:
             raise
-        except Exception as e:
+        except Exception as e:  # network or request error; rotate proxy and retry
             logger.warning("[reddit] GET %s failed: %s", path, e)
             if attempt < _MAX_ROTATIONS:
                 attempt += 1

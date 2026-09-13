@@ -39,7 +39,7 @@ async def is_auto_reply_paused(thread_id: str) -> bool:
         key = f"auto_reply_paused:{thread_id}"
         exists = await redis.exists(key)
         return bool(exists)
-    except Exception as e:
+    except Exception as e:  # fail-closed: Redis down → assume paused so human takeover is never overridden
         logger.error("Error checking auto_reply_paused status for %s: %s", thread_id, e)
         # ponytail: fail-closed: if Redis is down, do not auto-reply during a supposed human takeover.
         return True
@@ -55,7 +55,7 @@ async def pause_auto_reply(thread_id: str, duration_seconds: int = 86400) -> Non
         key = f"auto_reply_paused:{thread_id}"
         await redis.setex(key, duration_seconds, "1")
         logger.info("Paused auto-reply for thread %s for %ds", thread_id, duration_seconds)
-    except Exception as e:
+    except Exception as e:  # best-effort pause write; failure only means auto-reply stays active
         logger.error("Error pausing auto_reply for %s: %s", thread_id, e)
 
 
@@ -158,7 +158,7 @@ class AutoReplyAgent:
                     for row in rows
                     if row[0] is not None
                 ]
-        except Exception as e:
+        except Exception as e:  # RAG retrieval best-effort; empty context still allows LLM reply
             logger.warning("RAG retrieval failed in auto-reply agent: %s", e)
             return []
 
@@ -209,7 +209,7 @@ class AutoReplyAgent:
                 cost_usd = 0.0
                 try:
                     cost_usd = float(completion_cost(completion_response=response) or 0.0)
-                except Exception:
+                except Exception:  # litellm cost computation best-effort; cost defaults to 0
                     logger.debug("Could not compute auto-reply cost via litellm")
                 cost_micros = round(cost_usd * 1_000_000)
                 model_name = getattr(response, "model", None) or model or "unknown"
@@ -233,7 +233,7 @@ class AutoReplyAgent:
                 )
 
             return content or self.SAFE_FALLBACK_TEXT
-        except Exception as e:
+        except Exception as e:  # LLM failure → safe canned fallback so thread still gets a reply
             logger.warning("LLM completion failed for auto-reply: %s", e)
             return self.SAFE_FALLBACK_TEXT
 
@@ -326,7 +326,7 @@ class AutoReplyAgent:
                 sender_id,
                 thread_id,
             )
-        except Exception as e:
+        except Exception as e:  # best-effort alert dispatch; auto-reply flow already completed
             logger.error("Failed to dispatch hot lead alert: %s", e, exc_info=True)
 
     def _build_nhan_tu_van_callback_data(
@@ -384,7 +384,7 @@ class AutoReplyAgent:
                 workspace_id,
             )
             return lead
-        except Exception:
+        except Exception:  # best-effort lead upsert; reply flow continues without lead linkage
             logger.exception("Failed to get or create lead for auto-reply")
             return None
 

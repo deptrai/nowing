@@ -131,7 +131,7 @@ class ScraperHealthProbe(HealthProbe):
                 proxy_dict = provider.get_requests_proxies()
                 proxy_url = proxy_dict.get("http") if isinstance(proxy_dict, dict) else proxy_dict
                 proxy_configured = bool(proxy_url)
-        except Exception as proxy_err:
+        except Exception as proxy_err:  # best-effort proxy config resolution; proceed without proxy
             logger.debug("Proxy resolution note for %s: %s", self._service_id, proxy_err)
 
         # 2. Non-mutating lightweight probe: safe HTTP HEAD to platform endpoint via proxy or direct
@@ -151,7 +151,7 @@ class ScraperHealthProbe(HealthProbe):
                     status = "degraded"
                     suggested_action = "Verify target endpoint and proxy configuration"
                     last_error = f"HTTP {resp.status_code} from {self._endpoint}"
-        except Exception as net_exc:
+        except Exception as net_exc:  # probe must not propagate: network failure → degraded/unavailable
             if proxy_configured:
                 status = "degraded"
                 suggested_action = "Rotate proxy pool endpoints"

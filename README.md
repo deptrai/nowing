@@ -129,7 +129,7 @@ For Windows:
 irm https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.ps1 | iex
 ```
 
-The install script sets up [Watchtower](https://github.com/nicholas-fedor/watchtower) automatically for daily auto-updates. To skip it, add the `--no-watchtower` flag. For Docker Compose, manual installation, and other deployment options, see the [docs](https://www.nowing.com/docs/).
+The installer detects port conflicts and prompts for alternatives, and offers a fully local model path via Ollama (`nomic-embed-text` + `llama3.1`) so the first `nowing_remember` / `nowing_recall` works without cloud API keys. The install script sets up [Watchtower](https://github.com/nicholas-fedor/watchtower) automatically for daily auto-updates. To skip it, add the `--no-watchtower` flag. For Docker Compose, manual installation, and other deployment options, see the [docs](https://www.nowing.com/docs/).
 
 ### Use deep research on self-host
 

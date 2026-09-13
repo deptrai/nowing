@@ -120,7 +120,7 @@ async def execute_alert_rule(
         output = await execute_with_context(
             capability.executor, payload=payload, ctx=ctx
         )
-    except Exception as exc:
+    except Exception as exc:  # capability execution failure; mark snapshot failed and notify
         logger.exception(
             "alert rule %s capability %s failed",
             alert_rule.id,
@@ -214,7 +214,8 @@ async def execute_alert_rule(
             for mid in matched_items:
                 try:
                     lead_ids.append(UUID(str(mid)))
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as exc:
+                    logger.debug("Suppressed %r", exc)
                     continue
             if lead_ids:
                 await sequencer.enroll_leads(
@@ -225,7 +226,7 @@ async def execute_alert_rule(
                     triggered_by_alert_rule_id=alert_rule.id,
                 )
                 await session.commit()
-        except Exception:
+        except Exception:  # target sequence trigger failure; log error and continue to notification
             logger.exception(
                 "Failed to trigger target sequence %s for alert rule %s",
                 alert_rule.target_sequence_id,

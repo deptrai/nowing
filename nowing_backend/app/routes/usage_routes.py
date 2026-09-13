@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import get_async_session
+from app.db import WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.schemas.usage import (
     PerTurnUsageResponse,
     UsageSummaryResponse,
@@ -16,7 +17,6 @@ from app.schemas.usage import (
 )
 from app.services.usage_service import UsageService
 from app.users import require_session_context
-from app.utils.rbac import check_workspace_access
 
 router = APIRouter(prefix="/usage", tags=["usage"])
 
@@ -38,9 +38,9 @@ async def get_usage_summary(
     end_date: datetime | None = None,
     auth: AuthContext = Depends(require_session_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> UsageSummaryResponse:
     """Return a workspace usage/credit summary with usage breakdowns."""
-    await check_workspace_access(session, auth, workspace_id)
     _validate_date_range(start_date, end_date)
     service = UsageService(session, auth.user)
     return await service.get_summary(workspace_id, start_date, end_date)
@@ -54,9 +54,9 @@ async def get_usage_time_series(
     end_date: datetime | None = None,
     auth: AuthContext = Depends(require_session_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> UsageTimeSeriesResponse:
     """Return time-series cost and token totals for a workspace."""
-    await check_workspace_access(session, auth, workspace_id)
     _validate_date_range(start_date, end_date)
     service = UsageService(session, auth.user)
     return await service.get_time_series(
@@ -83,9 +83,9 @@ async def get_usage_per_turn(
     end_date: datetime | None = None,
     auth: AuthContext = Depends(require_session_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> PerTurnUsageResponse:
     """Return a per-turn cost and token breakdown for a workspace."""
-    await check_workspace_access(session, auth, workspace_id)
     _validate_date_range(start_date, end_date)
     service = UsageService(session, auth.user)
     return await service.get_per_turn_usage(workspace_id, start_date, end_date)
@@ -98,9 +98,9 @@ async def get_service_breakdown(
     end_date: datetime | None = None,
     auth: AuthContext = Depends(require_session_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ):
     """Return usage breakdown categorized into 5 standardized service buckets."""
-    await check_workspace_access(session, auth, workspace_id)
     _validate_date_range(start_date, end_date)
     service = UsageService(session, auth.user)
     norm_start, norm_end = service._normalize_range(start_date, end_date)

@@ -89,7 +89,7 @@ async def list_composio_toolkits(
         service = ComposioService()
         toolkits = service.list_available_toolkits()
         return {"toolkits": toolkits}
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to list Composio toolkits: {e!s}")
         raise HTTPException(
             status_code=500, detail=f"Failed to list toolkits: {e!s}"
@@ -173,7 +173,7 @@ async def initiate_composio_auth(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Composio OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Composio OAuth: {e!s}"
@@ -208,7 +208,7 @@ async def composio_callback(
                     state_manager = get_state_manager()
                     data = state_manager.validate_state(state)
                     space_id = data.get("space_id")
-                except Exception:
+                except Exception:  # best-effort state decode in error handler
                     logger.warning("Failed to validate state in error handler")
 
             if space_id:
@@ -230,7 +230,7 @@ async def composio_callback(
             data = state_manager.validate_state(state)
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as e:  # malformed input → typed error / sentinel
             raise HTTPException(
                 status_code=400, detail=f"Invalid state parameter: {e!s}"
             ) from e
@@ -271,7 +271,7 @@ async def composio_callback(
             # Wait for Composio to finish exchanging the auth code for tokens.
             try:
                 service.wait_for_connection(final_connected_account_id, timeout=30.0)
-            except Exception:
+            except Exception:  # best-effort wait for connection; proceed on timeout
                 logger.warning(
                     f"wait_for_connection timed out for {final_connected_account_id}, "
                     "proceeding anyway",
@@ -312,7 +312,7 @@ async def composio_callback(
             )
             if email:
                 logger.info(f"Retrieved email {email} for {toolkit_id} connector")
-        except Exception as email_error:
+        except Exception as email_error:  # best-effort email retrieval; connector created without email if failed
             logger.warning(f"Could not get email for connector: {email_error!s}")
 
         # Generate the connector name (with email if available)
@@ -359,7 +359,7 @@ async def composio_callback(
                             f"Deleted old Composio connected account {old_connected_account_id} "
                             f"before updating connector {existing_connector.id}"
                         )
-                except Exception as delete_error:
+                except Exception as delete_error:  # best-effort cleanup of old connected account
                     logger.warning(
                         f"Error deleting old Composio connected account {old_connected_account_id}: {delete_error!s}"
                     )
@@ -432,7 +432,7 @@ async def composio_callback(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # OAuth callback completion failure → surface as typed HTTP error
         logger.error(f"Unexpected error in Composio callback: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to complete Composio OAuth: {e!s}"
@@ -549,7 +549,7 @@ async def reauth_composio_connector(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Composio re-auth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Composio re-auth: {e!s}"
@@ -577,7 +577,7 @@ async def composio_reauth_callback(
             data = state_manager.validate_state(state)
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as e:  # malformed input → typed error / sentinel
             raise HTTPException(
                 status_code=400, detail=f"Invalid state parameter: {e!s}"
             ) from e
@@ -611,7 +611,7 @@ async def composio_reauth_callback(
             try:
                 service = ComposioService()
                 service.wait_for_connection(connected_account_id, timeout=30.0)
-            except Exception:
+            except Exception:  # best-effort wait for connection; proceed on timeout
                 logger.warning(
                     f"wait_for_connection timed out for connector {reauth_connector_id}, "
                     "proceeding anyway — tokens may not be ready yet",
@@ -638,7 +638,7 @@ async def composio_reauth_callback(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # OAuth reauth callback failure → surface as typed HTTP error
         logger.error(f"Error in Composio reauth callback: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to complete Composio re-auth: {e!s}"
@@ -743,7 +743,7 @@ async def list_composio_drive_folders(
                         logger.info(
                             f"Marked Composio connector {connector_id} as auth_expired"
                         )
-                except Exception:
+                except Exception:  # best-effort flag update on auth expiry
                     logger.warning(
                         f"Failed to persist auth_expired for connector {connector_id}",
                         exc_info=True,
@@ -768,7 +768,7 @@ async def list_composio_drive_folders(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Error listing Composio Drive contents: {e!s}", exc_info=True)
         error_lower = str(e).lower()
         if (
@@ -786,7 +786,7 @@ async def list_composio_drive_folders(
                     logger.info(
                         f"Marked Composio connector {connector_id} as auth_expired"
                     )
-            except Exception:
+            except Exception:  # best-effort flag update on auth expiry
                 logger.warning(
                     f"Failed to persist auth_expired for connector {connector_id}",
                     exc_info=True,

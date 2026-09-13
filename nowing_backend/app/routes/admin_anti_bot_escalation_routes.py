@@ -10,7 +10,8 @@ import logging
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from app.rate_limiter import limiter
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -94,7 +95,9 @@ async def _to_read(escalation: AntiBotEscalation) -> AntiBotEscalationRead:
 
 
 @router.get("", response_model=AntiBotEscalationListResponse)
+@limiter.limit("60/minute")
 async def list_anti_bot_escalations(
+    request: Request,
     workspace_id: int | None = Query(None),
     domain: str | None = Query(None),
     status: str | None = Query(None),
@@ -146,7 +149,9 @@ async def list_anti_bot_escalations(
 
 
 @router.get("/{escalation_id}", response_model=AntiBotEscalationRead)
+@limiter.limit("60/minute")
 async def get_anti_bot_escalation(
+    request: Request,
     escalation_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
@@ -166,7 +171,9 @@ async def get_anti_bot_escalation(
 
 
 @router.post("/{escalation_id}/resolve", response_model=AntiBotEscalationRead)
+@limiter.limit("30/minute")
 async def resolve_anti_bot_escalation(
+    request: Request,
     escalation_id: int,
     body: AntiBotEscalationResolveRequest | None = None,
     session: AsyncSession = Depends(get_async_session),
@@ -191,7 +198,9 @@ async def resolve_anti_bot_escalation(
 
 
 @router.post("/{escalation_id}/retry", response_model=AntiBotEscalationRetryResponse)
+@limiter.limit("20/minute")
 async def retry_anti_bot_escalation(
+    request: Request,
     escalation_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
@@ -251,7 +260,7 @@ async def retry_anti_bot_escalation(
                 "Retry requested but could not be enqueued; "
                 "manual re-run may be required."
             )
-        except Exception as exc:
+        except Exception as exc:  # retry scheduling failure; record message and continue
             logger.exception("Retry failed for escalation %s", escalation_id)
             message = f"Retry scheduling failed: {exc}"
 
@@ -284,7 +293,9 @@ async def retry_anti_bot_escalation(
 
 
 @router.get("/{escalation_id}/screenshot")
+@limiter.limit("60/minute")
 async def get_anti_bot_escalation_screenshot(
+    request: Request,
     escalation_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),

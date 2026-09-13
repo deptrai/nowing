@@ -31,7 +31,7 @@ async def get_start_page_token(
         logger.info(f"Got start page token: {token}")
         return token, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return None and error
         logger.error(f"Error getting start page token: {e!s}", exc_info=True)
         return None, f"Error getting start page token: {e!s}"
 
@@ -79,7 +79,7 @@ async def get_changes(
         logger.info(f"Got {len(changes)} changes, next token: {token_to_return}")
         return changes, token_to_return, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return empty changes and error
         logger.error(f"Error getting changes: {e!s}", exc_info=True)
         return [], None, f"Error getting changes: {e!s}"
 
@@ -115,7 +115,8 @@ async def _is_descendant_of(
             )
             grandparents = meta.get("parents", [])
             to_check.extend(grandparents)
-        except Exception:
+        except Exception as exc:  # parent folder resolution failure; skip ancestor check
+            logger.debug("Suppressed %r", exc)
             continue
 
     return False
@@ -175,8 +176,8 @@ def categorize_change(change: dict[str, Any]) -> str:
             time_diff = abs((modified - created).total_seconds())
             if time_diff < 60:  # Within 1 minute
                 return "new"
-        except Exception:
-            pass
+        except Exception as exc:  # timestamp parsing error; fallback to modified status
+            logger.debug("Suppressed %r", exc)
 
     return "modified"
 
@@ -221,6 +222,6 @@ async def fetch_all_changes(
         logger.info(f"Fetched total of {len(all_changes)} changes")
         return all_changes, current_token, error
 
-    except Exception as e:
+    except Exception as e:  # changes pagination failure; return collected changes and error
         logger.error(f"Error fetching all changes: {e!s}", exc_info=True)
         return all_changes, current_token, f"Error fetching all changes: {e!s}"

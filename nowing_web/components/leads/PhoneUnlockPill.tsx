@@ -7,9 +7,10 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fastUnlockSessionAtom, makeFastUnlockKey } from "@/atoms/leads/leads-canvas.atoms";
-import { currentUserAtom } from "@/atoms/user/user-query.atoms";
+import { currentUserAtom, USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
 import type { Lead } from "@/contracts/types/leads.types";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
+import { queryClient } from "@/lib/query-client/client";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { SmartUnlockPopover } from "./SmartUnlockPopover";
 
@@ -144,6 +145,8 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 			onPhoneChange?.(lead.id, newPhone, true);
 			setIsFlipped(true);
 			setTimeout(() => setIsFlipped(false), FLIP_CLASS_HOLD_MS);
+			// Refetch user credits after successful unlock
+			queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
 
 			toast.success(`Đã mở khóa SĐT -${UNLOCK_COST_CREDITS} credits`, {
 				duration: 5000,
