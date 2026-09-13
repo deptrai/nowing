@@ -45,7 +45,7 @@ def decrypt_credentials(encrypted: str | None) -> dict[str, Any] | None:
     raw = enc.decrypt_token(encrypted)
     try:
         return json.loads(raw)
-    except Exception as exc:
+    except Exception as exc:  # json.loads failure → typed ValueError so caller surfaces credential corruption
         raise ValueError("Stored scraper credentials are not valid JSON") from exc
 
 

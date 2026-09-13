@@ -339,7 +339,7 @@ class HybridLLMRouter:
             await redis.expire(rpd_key, 86400)
             await redis.incr(rpm_key)
             await redis.expire(rpm_key, 60)
-        except Exception:
+        except Exception:  # best-effort RPM counter; quota enforcement already applied upstream
             logger.warning("Failed to consume Gemini quota", exc_info=True)
 
     async def _vllm_health(self) -> bool:
@@ -659,7 +659,7 @@ class HybridLLMRouter:
                 completion_tokens=completion_tokens,
                 call_type="completion",
             )
-        except Exception:
+        except Exception:  # litellm cost computation best-effort; zero cost keeps telemetry flowing
             prompt_cost = completion_cost = 0.0
 
         if prompt_cost or completion_cost:

@@ -134,7 +134,7 @@ def _redact_text(text: str | None, *, domain: str, context: str) -> str:
         if context == "job_data":
             return redact_job_pii(text).text
         return redact_pii(text, context=context).text
-    except Exception as exc:
+    except Exception as exc:  # PII redaction failure → fail-closed ChunkValidationError, never emit unredacted chunk
         logger.exception(
             "PII redaction failed for domain %s context %s", domain, context
         )

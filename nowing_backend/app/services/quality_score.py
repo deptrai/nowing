@@ -297,7 +297,7 @@ def static_score_yaml(cfg: dict) -> int:
         ctx = int(info.get("max_input_tokens") or info.get("max_tokens") or 0)
         p_cost = float(info.get("input_cost_per_token") or 0.0)
         c_cost = float(info.get("output_cost_per_token") or 0.0)
-    except Exception as exc:
+    except Exception as exc:  # litellm model-info lookup failure → zero costs still yield a prestige score
         # Unknown to litellm — that's fine for prestige+operator-bonus weighting.
         logger.debug("Suppressed %r", exc)
 

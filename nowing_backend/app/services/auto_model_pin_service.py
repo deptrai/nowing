@@ -138,7 +138,7 @@ def _shared_runtime_cooled_down_ids(config_ids: list[int]) -> set[int]:
         values = _get_runtime_cooldown_redis().mget(
             [_runtime_cooldown_redis_key(cid) for cid in unique_ids]
         )
-    except Exception:
+    except Exception:  # Redis read failure → cooldown list empty; pin evaluation still runs
         logger.warning(
             "auto_pin_runtime_cooldown_redis_read_failed count=%s",
             len(unique_ids),

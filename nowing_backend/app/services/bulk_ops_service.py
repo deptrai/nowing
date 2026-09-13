@@ -697,7 +697,7 @@ class BulkOpsService:
             task = bulk_op_executor.delay(str(job.id))
             job.celery_task_id = str(task.id) if task and hasattr(task, "id") else None
             await session.commit()
-        except Exception as e:
+        except Exception as e:  # best-effort Celery dispatch; job row committed, can be re-dispatched
             logger.warning(
                 "Celery dispatch failed or skipped (e.g. broker offline): %s", e
             )

@@ -205,7 +205,7 @@ async def _persist_bds_aggregates(
     for listing in listings:
         try:
             chunks.extend(_bds_to_chunk(listing, fetched_at))
-        except Exception:
+        except Exception:  # per-listing chunk serialization failure; continue remaining listings
             logger.exception(
                 "BDS listing %s chunk serialization failed", listing.canonical_id
             )
@@ -228,7 +228,7 @@ async def _persist_bds_aggregates(
         if result.status == "partial":
             return "partial", result.error
         return "failed", result.error
-    except Exception as exc:
+    except Exception as exc:  # ingest failure → report ("failed", reason) to caller, not a crash
         logger.exception("BDS aggregate chainlens ingest failed")
         return "failed", str(exc)
 
@@ -254,7 +254,7 @@ async def _execute_source(
     except ValidationError as exc:
         logger.warning("vn_bds.aggregate validation error for %s: %s", source, exc)
         return [], 0, True, "invalid_input"
-    except Exception as exc:
+    except Exception as exc:  # per-source failure → degraded empty result; other sources still run
         logger.exception("vn_bds.aggregate source %s failed: %s", source, exc)
         return [], 0, True, "api_error"
 
@@ -315,7 +315,7 @@ async def aggregate(
                 listing = normalize_listing(source, raw)
                 listing.provenance.source_input = provenance_input
                 normalized.append(listing)
-            except Exception:
+            except Exception:  # per-listing normalize failure; continue remaining listings
                 logger.exception("vn_bds.aggregate normalize failed for %s", source)
 
     deduped = deduplicate(normalized)

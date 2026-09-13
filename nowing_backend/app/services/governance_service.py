@@ -16,8 +16,8 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import HTTPException, status
-from sqlalchemy import and_, func, or_, select, text
+from fastapi import HTTPException
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
@@ -502,7 +502,7 @@ class GovernanceService:
             )
             global_res = await self.session.execute(global_stmt)
             superseded = global_res.scalars().first() is not None
-        except Exception:
+        except Exception:  # global-supersede check failure → skip supersede flag, record still created
             logger.warning(
                 "governance.dnc_record.create global check failed",
                 extra={

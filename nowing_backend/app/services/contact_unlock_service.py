@@ -151,7 +151,7 @@ class ContactUnlockService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Billing validation failed.",
             ) from exc
-        except Exception as exc:
+        except Exception as exc:  # unhandled billing failure → HTTP 500 so client sees typed error
             logger.exception(
                 "Failed to bill unlock for contact %s: %s", contact.id, exc
             )

@@ -155,7 +155,7 @@ async def _extract_binary_attachment_markdown(
 ) -> tuple[str, dict[str, Any]]:
     try:
         raw_bytes = base64.b64decode(payload.binary_base64, validate=True)
-    except Exception:
+    except Exception:  # invalid base64 payload → skip attachment, continue indexing other files
         logger.warning(
             "obsidian attachment payload had invalid base64: %s", payload.path
         )
@@ -180,7 +180,7 @@ async def _extract_binary_attachment_markdown(
             "attachment_content_type": result.content_type,
         }
         return result.markdown_content, metadata
-    except Exception as exc:
+    except Exception as exc:  # per-attachment ETL failure → skip file, continue indexing batch
         logger.warning(
             "obsidian attachment ETL failed for %s: %s",
             payload.path,
@@ -313,7 +313,7 @@ async def upsert_note(
 
         try:
             await create_version_snapshot(session, existing)
-        except Exception:
+        except Exception:  # best-effort version snapshot; index update still proceeds
             logger.debug(
                 "version snapshot failed for obsidian doc %s",
                 existing.id,

@@ -123,7 +123,7 @@ class WorkspaceCountingMixin:
                 from app.file_storage.factory import get_storage_backend
 
                 backend = get_storage_backend()
-            except Exception as exc:
+            except Exception as exc:  # storage backend down → skip blob purge, orphans listed for retry
                 logger.warning("Storage backend not available for blob purge: %s", exc)
 
             for orphan in orphans:
