@@ -314,7 +314,7 @@ def _parse_rss_news(xml_text: str, symbol: str | None, max_news: int) -> list[di
 
         # Strip namespacing for simple parsing.
         root = ET.fromstring(xml_text)
-    except Exception:
+    except Exception:  # malformed RSS XML; return empty items
         return items
 
     channel = root.find("channel")

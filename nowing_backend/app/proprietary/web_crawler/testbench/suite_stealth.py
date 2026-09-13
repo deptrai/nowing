@@ -73,11 +73,11 @@ def _full_text(page: Any, limit: int = 200_000) -> str:
         txt = page.get_all_text()
         if txt:
             return str(txt)[:limit]
-    except Exception as exc:
+    except Exception as exc:  # get_all_text call failure; fallback to html_content
         logger.debug("Suppressed %r", exc)
     try:
         return str(page.html_content or "")[:limit]
-    except Exception:
+    except Exception:  # html_content read failure; return empty string
         return ""
 
 
@@ -376,7 +376,7 @@ def _run_browser_site(
 
     try:
         page = StealthyFetcher.fetch(site.url, **kwargs)
-    except Exception as exc:
+    except Exception as exc:  # stealth browser fetch failure; record ERROR check result
         return CheckResult(
             suite="S",
             name=site.name,
@@ -389,7 +389,7 @@ def _run_browser_site(
 
     try:
         status, numeric, detail = site.parse(page, cell)
-    except Exception as exc:
+    except Exception as exc:  # site result parse failure; record ERROR check result
         status, numeric, detail = (
             CheckStatus.ERROR,
             None,
@@ -430,7 +430,7 @@ async def _run_tls(proxy: str | None) -> CheckResult:
             bar="informational (diff vs real Chrome)",
             detail=f"ja3={ja3} ja4={ja4} peet={peet}",
         )
-    except Exception as exc:
+    except Exception as exc:  # TLS fingerprint test fetch failure; record ERROR check result
         return CheckResult(
             suite="S",
             name="tls_fingerprint",
@@ -461,7 +461,7 @@ async def _run_proxy_leak(proxy: str | None) -> CheckResult:
             bar="not your real/datacenter IP",
             detail=f"exit_ip={ip} ({note})",
         )
-    except Exception as exc:
+    except Exception as exc:  # IP echo test fetch failure; record ERROR check result
         return CheckResult(
             suite="S",
             name="exit_ip",

@@ -138,7 +138,7 @@ async def validate_safe_ip(hostname: str) -> bool:
             family=socket.AF_UNSPEC,
             type=socket.SOCK_STREAM,
         )
-    except (socket.gaierror, Exception):
+    except (socket.gaierror, Exception):  # DNS resolution failure or invalid host; reject URL
         return False
 
     if not addr_info:

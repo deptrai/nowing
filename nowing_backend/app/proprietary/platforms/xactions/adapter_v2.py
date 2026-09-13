@@ -241,7 +241,7 @@ class XActionsSocialAdapterV2:
                 approximate=True,
             )
             return msg_id
-        except Exception as exc:
+        except Exception as exc:  # best-effort Redis stream publish; doesn't fail caller
             logger.exception("Redis xadd failed on %s: %s", STREAM_SOCIAL_RAW_POSTS, exc)
             return None
 

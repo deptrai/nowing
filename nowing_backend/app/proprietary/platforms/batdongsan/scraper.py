@@ -144,7 +144,7 @@ async def scrape_batdongsan(
             rate_limited_seen = True
             page_failed = True
             await record_failure("batdongsan")
-        except (BatdongsanAccessBlockedError, Exception):
+        except (BatdongsanAccessBlockedError, Exception):  # blocked or unexpected error; record failure and mark page failed
             page_failed = True
             await record_failure("batdongsan")
 
@@ -173,7 +173,7 @@ async def scrape_batdongsan(
                     )
             except BatdongsanRateLimitedError:
                 rate_limited_seen = True
-            except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception) as exc:
+            except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception) as exc:  # web fallback failure; suppress and proceed with primary data
                 logger.debug("Suppressed %r", exc)
 
         if page_failed:
@@ -326,7 +326,7 @@ async def scrape_batdongsan(
                                             success=False,
                                             error_type="rate_limited",
                                         )
-                                    except Exception:
+                                    except Exception:  # per-item phone resolve failure; continue batch
                                         logger.exception(
                                             "Batdongsan phone resolve failed for %s",
                                             item.detail_url,
@@ -345,7 +345,7 @@ async def scrape_batdongsan(
                                 item.phone_display = title_phone
 
                     await asyncio.gather(*(_resolve_phone(item) for item in items))
-        except Exception:
+        except Exception:  # detail/phone batch resolution failure; return items with partial phone data
             logger.exception("batdongsan detail/phone resolution failed")
 
     for item in items:

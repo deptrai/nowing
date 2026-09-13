@@ -86,7 +86,7 @@ class TenderDossierService:
             )
             return s3_uri
 
-        except Exception as exc:
+        except Exception as exc:  # S3 multipart upload failure; abort upload and re-raise
             logger.error(
                 "S3 multipart upload failed for bid %s: %s. Aborting upload.",
                 bid_no,
@@ -99,7 +99,7 @@ class TenderDossierService:
                         Key=s3_key,
                         UploadId=upload_id,
                     )
-            except Exception as exc:
+            except Exception as exc:  # best-effort abort multipart upload; suppress secondary error
                 logger.debug("Suppressed %r", exc)
             raise
 
@@ -115,7 +115,7 @@ class TenderDossierService:
                 if page_text:
                     extracted_text.append(page_text)
             return "\n\n".join(extracted_text)
-        except Exception as exc:
+        except Exception as exc:  # PDF text extraction failure; return empty string
             logger.warning("PDF extraction failed: %s", str(exc))
             return ""
 

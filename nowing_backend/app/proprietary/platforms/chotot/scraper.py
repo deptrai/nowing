@@ -209,7 +209,7 @@ async def scrape_chotot(
         ChototBdsDecodeError,
     ):
         raise
-    except Exception:
+    except Exception:  # loadRegions unexpected failure; return degraded api_error
         return ChototScrapeOutput(
             items=[],
             total_items=0,
@@ -294,7 +294,7 @@ async def scrape_chotot(
                 page_failed = True
                 degradation_reason = "bot_detected"
                 break
-            except (ChototBdsAccessBlockedError, Exception):
+            except (ChototBdsAccessBlockedError, Exception):  # access blocked or unexpected error; mark page failed and break
                 page_failed = True
                 break
 
@@ -345,7 +345,7 @@ async def scrape_chotot(
                 async with _phone_semaphore:
                     item.phone = await fetch_phone(item.listing_id)
                     await asyncio.sleep(_page_delay())
-            except Exception:
+            except Exception:  # per-item phone resolution failure; continue with item.phone as None
                 logger.exception(
                     "failed to resolve phone for list_id=%s", item.listing_id
                 )

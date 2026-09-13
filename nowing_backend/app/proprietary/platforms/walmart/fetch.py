@@ -66,7 +66,7 @@ async def _stealthy_fetch_html(url: str) -> str | None:
         kwargs["proxy"] = get_proxy_url()
         try:
             page = await asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs)
-        except Exception as exc:
+        except Exception as exc:  # browser/stealth fetch failure; retry across proxy pool
             logger.warning("Walmart StealthyFetcher attempt %s failed: %s", attempt, exc)
             if attempt == _MAX_PROXY_ATTEMPTS:
                 return None

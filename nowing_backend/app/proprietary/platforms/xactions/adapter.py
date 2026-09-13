@@ -270,7 +270,7 @@ class XActionsSocialAdapter:
             self._proxy_redis_client = client
             self._proxy_redis_available = True
             return client
-        except Exception as exc:
+        except Exception as exc:  # Redis connection failure for proxy binding; disable proxy Redis
             logger.warning(
                 "XActions proxy binding could not connect to Redis at %s: %s",
                 config.REDIS_APP_URL,
@@ -301,7 +301,7 @@ class XActionsSocialAdapter:
                 await client.hset(
                     XACTIONS_PROXY_REDIS_KEY, account_id, proxy_url
                 )
-            except Exception as exc:
+            except Exception as exc:  # Redis hset failure for proxy cache; best-effort persist
                 logger.warning(
                     "Failed to persist proxy for %s to Redis: %s",
                     account_id,
@@ -325,7 +325,7 @@ class XActionsSocialAdapter:
                 if proxy:
                     self._account_proxies[account_id] = proxy
                     return proxy
-            except Exception as exc:
+            except Exception as exc:  # Redis hget failure for proxy cache; fallback to default proxy
                 logger.warning(
                     "Failed to read proxy for %s from Redis: %s",
                     account_id,
@@ -470,7 +470,7 @@ class XActionsSocialAdapter:
                 target = self._target_data_from_tool_call(tool_name, arguments)
                 async with self._adapter_v2 as adapter:
                     return [post.to_dict() for post in await adapter.fetch_posts_for_target(target)]
-            except Exception as exc:
+            except Exception as exc:  # XActions v2 adapter call failure; wrap as XActionsMcpError
                 raise XActionsMcpError(
                     f"XActions MCP tool {tool_name} failed: {exc}"
                 ) from exc
@@ -554,7 +554,7 @@ class XActionsSocialAdapter:
             }
         except XActionsMcpError as exc:
             return {"success": False, "error": str(exc), "data": []}
-        except Exception as exc:
+        except Exception as exc:  # unexpected MCP tool execution failure; return error envelope
             logger.warning(
                 "XActions MCP tool %s failed: %s",
                 tool_name,
@@ -801,7 +801,7 @@ class XActionsSocialAdapter:
                     config.REDIS_APP_URL, decode_responses=True
                 )
                 await redis_client.ping()
-            except Exception as exc:
+            except Exception as exc:  # local Redis connection failure; surface RuntimeError
                 raise RuntimeError(
                     f"Redis connection failed at {config.REDIS_APP_URL}: {exc}"
                 ) from exc
@@ -832,7 +832,7 @@ class XActionsSocialAdapter:
             msg_id = await redis_client.xadd(
                 STREAM_SOCIAL_RAW_POSTS, payload, maxlen=20000, approximate=True
             )
-        except Exception as exc:
+        except Exception as exc:  # Redis xadd failure for social post; surface RuntimeError
             raise RuntimeError(
                 f"Redis xadd failed on {STREAM_SOCIAL_RAW_POSTS}: {exc}"
             ) from exc

@@ -191,7 +191,7 @@ async def _precheck(url: str, proxy: str | None) -> bool:
             stealthy_headers=True,
             timeout=_PRECHECK_TIMEOUT_S,
         )
-    except Exception as e:
+    except Exception as e:  # precheck fetch failure / timeout; treat as walled IP
         # A timeout (slow/dead IP) lands here too; treat it like a walled IP.
         logger.debug("[google_search] precheck error: %s", e)
         return False
@@ -618,7 +618,7 @@ async def fetch_serp_html(url: str, *, mobile: bool = False) -> str | None:
         started = time.perf_counter()
         try:
             page = await _render(url, proxy, mobile=mobile)
-        except Exception as e:
+        except Exception as e:  # browser render failure; evict proxy and relaunch session
             # Renders on a walled IP still return HTML; an exception means the
             # browser side is broken, so relaunch it rather than limp along.
             # repr(), not str(): e.g. NotImplementedError stringifies to "".

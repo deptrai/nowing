@@ -215,7 +215,7 @@ class XActionsMcpClient:
                 resp.raise_for_status()
                 try:
                     return resp.json()
-                except Exception:
+                except Exception:  # artifact response not JSON; return empty list
                     logger.warning("Artifact %s is not valid JSON", artifact_path)
                     return []
         # Local shared volume path — require a configured, absolute root and
@@ -238,7 +238,7 @@ class XActionsMcpClient:
             return await anyio.to_thread.run_sync(
                 lambda: json.load(open(safe_path, encoding="utf-8"))
             )
-        except Exception as exc:
+        except Exception as exc:  # local artifact file read/JSON parse failure; return empty list
             logger.warning("Failed to read artifact %s: %s", safe_path, exc)
             return []
 
@@ -250,5 +250,5 @@ class XActionsMcpClient:
                 "status": "healthy" if result.get("success") else "degraded",
                 "data": result.get("data", {}),
             }
-        except Exception as exc:
+        except Exception as exc:  # health check tool failure; mark unavailable
             return {"status": "unavailable", "error": str(exc)}

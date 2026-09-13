@@ -275,7 +275,7 @@ class MuasamcongScraper:
                 degraded=True,
                 degradation_reason="Request timed out",
             )
-        except Exception as exc:
+        except Exception as exc:  # search request or decode failure; enter degraded mode
             logger.warning(
                 "Muasamcong scraper search failed or timed out: %s. Entering degraded mode.",
                 str(exc),
@@ -332,7 +332,7 @@ class MuasamcongScraper:
                 self.timeout_seconds,
             )
             return None
-        except Exception as exc:
+        except Exception as exc:  # tender detail fetch or parse failure; return None
             logger.warning(
                 "Failed to fetch tender detail for %s (%s): %s",
                 bid_no,
