@@ -73,7 +73,7 @@ async def request_pairing_code(
     adapter = WhatsAppBaileysAdapter()
     try:
         pairing = await adapter.request_pairing_code(phone_number=body.phone_number)
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as 502 error
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     account = await _get_user_whatsapp_account(session, user)
@@ -108,5 +108,5 @@ async def bridge_health(
     adapter = WhatsAppBaileysAdapter()
     try:
         return await adapter.validate_credentials()
-    except Exception as exc:
+    except Exception as exc:  # upstream failure → surface as 502 error
         raise HTTPException(status_code=502, detail=str(exc)) from exc

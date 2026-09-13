@@ -105,7 +105,7 @@ async def create_meeting_minutes(
     payload = await request.json()
     try:
         data = GenerateMeetingMinutesInput.model_validate(payload)
-    except Exception as exc:
+    except Exception as exc:  # payload validation failure → surface as 422 HTTP error
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid payload: {exc}",

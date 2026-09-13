@@ -142,7 +142,7 @@ async def get_memory_detail(
         return await service.get_memory_detail(
             workspace_id, memory_id, client_id=_pat_client_id(auth)
         )
-    except Exception as exc:
+    except Exception as exc:  # surface as typed HTTP error (404/500)
         message = str(exc).lower()
         if "not found" in message or "no result" in message:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -170,7 +170,7 @@ async def get_memory_versions(
         return await service.get_memory_versions(
             workspace_id, memory_id, client_id=_pat_client_id(auth)
         )
-    except Exception as exc:
+    except Exception as exc:  # surface as typed HTTP error (404/500)
         message = str(exc).lower()
         if "not found" in message or "no result" in message:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -198,7 +198,7 @@ async def get_memory_relations(
         return await service.get_memory_relations(
             workspace_id, memory_id, client_id=_pat_client_id(auth)
         )
-    except Exception as exc:
+    except Exception as exc:  # surface as typed HTTP error (404/500)
         message = str(exc).lower()
         if "not found" in message or "no result" in message:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -237,7 +237,7 @@ async def flag_memory_for_review(
         if "not found" in message or "no result" in message:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
+    except Exception as exc:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail="An internal error occurred. Please try again or report this issue if it persists.",

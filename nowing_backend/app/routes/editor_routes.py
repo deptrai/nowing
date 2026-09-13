@@ -483,7 +483,7 @@ async def export_document(
     try:
         loop = asyncio.get_running_loop()
         output = await loop.run_in_executor(None, _convert_and_read)
-    except Exception as e:
+    except Exception as e:  # document export conversion failure → surface as typed HTTP error
         logger.exception("Document export failed")
         raise HTTPException(status_code=500, detail=f"Export failed: {e!s}") from e
 

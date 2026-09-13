@@ -167,7 +167,7 @@ async def create_dsh_mission(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # stream dispatch failure → surface as 503 error
         logger.exception("Failed to publish mission to Redis stream: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -441,7 +441,7 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
 
     try:
         await pubsub.subscribe(channel)
-    except Exception:
+    except Exception:  # cleanup pubsub and release stream lock on subscription failure
         await redis.delete(stream_lock_key)
         await pubsub.close()
         raise
@@ -479,7 +479,7 @@ def _redact_cdp_result_value(value):
     if isinstance(value, str):
         try:
             return redact_pii(value, context="lead_enrichment").text
-        except Exception as exc:
+        except Exception as exc:  # best-effort PII redaction; fallback to placeholder
             logger.warning("PII redaction failed for CDP result value: %s", exc)
             return "<redaction_failed>"
     if isinstance(value, dict):
@@ -633,7 +633,7 @@ async def resume_mission(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # rollback + surface as typed 503 error
         logger.exception("Failed to redispatch mission to stream: %s", exc)
         await session.rollback()
         raise HTTPException(

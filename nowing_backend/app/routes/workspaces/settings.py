@@ -86,7 +86,7 @@ async def get_workspace_limits(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspace limits: {e!s}"
@@ -184,7 +184,7 @@ async def update_workspace_limits(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to update workspace limits: {e!s}"
@@ -254,7 +254,7 @@ async def list_workspace_mcp_tools(
         ]
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"Failed to list MCP tools: {e!s}",
@@ -320,7 +320,7 @@ async def update_workspace_mcp_tool(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,

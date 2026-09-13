@@ -158,7 +158,7 @@ async def run_scraper_for_chainlens(
 
     try:
         payload = capability.input_schema(**input_data)
-    except Exception as exc:
+    except Exception as exc:  # schema validation failure → surface as 422 HTTP error
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid scraper parameters for {scraper_id}: {exc}",
@@ -218,7 +218,7 @@ async def run_scraper_for_chainlens(
                     category=None,
                 )
             )
-        except Exception:
+        except Exception:  # per-item normalization failure; skip unserializable listing
             # Skip records that cannot be normalized; the ingestion still
             # proceeds with the rest.
             logger.exception(

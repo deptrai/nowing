@@ -149,7 +149,7 @@ async def list_voice_profiles(
                     created_at=m.created_at,
                 )
             )
-        except Exception:
+        except Exception:  # fallback to raw content item on parsing error
             items.append(
                 VoiceProfileListItem(
                     id=m.id,
@@ -190,7 +190,7 @@ async def activate_voice_profile(
             mem.content = json.dumps(d)
             if encryption.is_enabled():
                 encryption.encrypt_memory(mem)
-        except Exception as exc:
+        except Exception as exc:  # best-effort memory encryption; continue unencrypted on failure
             logger.debug("Suppressed %r", exc)
 
     stmt = select(Memory).where(
@@ -218,7 +218,7 @@ async def activate_voice_profile(
         profile = VoiceProfile(**data)
         profile.id = memory.id
         return profile
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update profile: {e}",
@@ -250,7 +250,7 @@ async def get_outlier_posts(
             total=len(outliers),
             degraded=False,
         )
-    except Exception as e:
+    except Exception as e:  # fallback degraded response on outlier detection error
         logger.warning(f"Outlier detection degraded for workspace {workspace_id}: {e}")
         return OutlierPostsResponse(
             items=[],
@@ -315,7 +315,7 @@ async def generate_viral_drafts(
                     encryption.decrypt_memory(mem)
                 voice = VoiceProfile(**json.loads(mem.content))
                 voice.id = mem.id
-            except Exception:
+            except Exception:  # fallback default persona on json parse failure
                 voice = VoiceProfile(
                     profile_name="Default Persona", tone="authoritative, pragmatic"
                 )
@@ -346,7 +346,7 @@ async def generate_viral_drafts(
                 if d.get("is_active"):
                     selected_mem = m
                     break
-            except Exception as exc:
+            except Exception as exc:  # best-effort candidate memory parsing
                 logger.debug("Suppressed %r", exc)
         if not selected_mem and all_mems:
             selected_mem = all_mems[0]
@@ -358,7 +358,7 @@ async def generate_viral_drafts(
                     encryption.decrypt_memory(selected_mem)
                 voice = VoiceProfile(**json.loads(selected_mem.content))
                 voice.id = selected_mem.id
-            except Exception:
+            except Exception:  # fallback default persona on json parse failure
                 voice = VoiceProfile(
                     profile_name="Default Persona", tone="authoritative, pragmatic"
                 )

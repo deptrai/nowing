@@ -63,7 +63,7 @@ async def zalo_oa_fast_webhook(
     raw_body = await request.body()
     try:
         data = json.loads(raw_body.decode("utf-8") or "{}")
-    except Exception as exc:
+    except Exception as exc:  # malformed input → typed error
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON payload",
@@ -93,7 +93,7 @@ async def zalo_oa_fast_webhook(
         )
         res = await session.execute(conn_stmt)
         connection = res.scalar_one_or_none()
-    except Exception as exc:
+    except Exception as exc:  # best-effort connection lookup; fallback to config secret
         logger.debug("[ZaloWebhook] Connection DB lookup note: %s", exc)
 
     secret = (connection.webhook_secret if connection else None) or getattr(
@@ -120,7 +120,7 @@ async def zalo_oa_fast_webhook(
     # Fast ACK: Dispatch processing to background Celery task (INV-23.8)
     try:
         process_zalo_inbox_event.delay(workspace_id, data)
-    except Exception as exc:
+    except Exception as exc:  # best-effort celery dispatch; fast ACK webhook
         logger.warning("[ZaloWebhook] Celery dispatch note: %s", exc)
 
     return {"status": "ok"}

@@ -85,7 +85,7 @@ async def get_research_thread_context(
     if query.strip():
         try:
             embeddings = await asyncio.to_thread(embed_texts, [query])
-        except Exception as exc:
+        except Exception as exc:  # query embedding provider failure → re-raise as VectorValidationError
             raise VectorValidationError("provider_error") from exc
         query_embedding = validate_single_embedding_result(embeddings)
 

@@ -169,7 +169,7 @@ async def list_threads(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while fetching threads: {e!s}",
@@ -259,7 +259,7 @@ async def search_threads(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while searching threads: {e!s}",
@@ -355,7 +355,7 @@ async def create_thread(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -439,7 +439,7 @@ async def get_thread_messages(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while fetching the thread: {e!s}",
@@ -507,7 +507,7 @@ async def get_thread_full(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred while fetching the thread: {e!s}",
@@ -584,7 +584,7 @@ async def update_thread(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -655,7 +655,7 @@ async def delete_thread(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,
@@ -720,7 +720,7 @@ async def update_thread_visibility(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500,

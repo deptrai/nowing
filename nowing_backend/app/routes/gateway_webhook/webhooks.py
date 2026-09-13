@@ -100,7 +100,7 @@ async def slack_webhook(
         )
         await session.commit()
         record_gateway_inbox_write(platform="slack", dedup_skipped=inbox_id is None)
-    except Exception:
+    except Exception:  # rollback on slack webhook persistence failure
         await session.rollback()
         logger.exception("Slack webhook persistence failed team_id=%s", team_id)
     return Response(status_code=200)
@@ -169,7 +169,7 @@ async def telegram_webhook(
         await session.commit()
         record_gateway_inbox_write(platform="telegram", dedup_skipped=inbox_id is None)
         return Response(status_code=200)
-    except Exception:
+    except Exception:  # rollback on telegram webhook persistence failure
         await session.rollback()
         logger.exception("Telegram webhook processing failed account_id=%s", account_id)
         return Response(status_code=200)

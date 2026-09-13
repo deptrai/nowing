@@ -111,7 +111,7 @@ async def create_workspace(
         return response
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to create workspace: {e!s}", exc_info=True)
         raise HTTPException(
@@ -218,7 +218,7 @@ async def read_workspaces(
             )
 
         return workspaces_with_stats
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspaces: {e!s}"
         ) from e
@@ -252,7 +252,7 @@ async def read_workspace(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspace: {e!s}"
         ) from e
@@ -405,7 +405,7 @@ async def update_workspace(
         raise HTTPException(
             status_code=503, detail="Database operation failed. Please try again later."
         ) from None
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to update workspace: {e!s}"
@@ -450,7 +450,7 @@ async def update_workspace_api_access(
         return db_workspace
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to update API access: {e!s}"
@@ -505,7 +505,7 @@ async def delete_workspace(
             from app.tasks.celery_tasks.document_tasks import delete_workspace_task
 
             delete_workspace_task.delay(workspace_id)
-        except Exception as dispatch_error:
+        except Exception as dispatch_error:  # celery dispatch failure; revert rename and surface error
             db_workspace.name = base_name
             await session.commit()
             raise HTTPException(
@@ -516,7 +516,7 @@ async def delete_workspace(
         return {"message": "Workspace deleted successfully"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to delete workspace: {e!s}"

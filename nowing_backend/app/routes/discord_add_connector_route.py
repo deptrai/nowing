@@ -134,7 +134,7 @@ async def connect_discord(
         logger.info(f"Generated Discord OAuth URL for user {user.id}, space {space_id}")
         return {"auth_url": auth_url}
 
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Discord OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Discord OAuth: {e!s}"
@@ -173,7 +173,7 @@ async def discord_callback(
                     state_manager = get_state_manager()
                     data = state_manager.validate_state(state)
                     space_id = data.get("space_id")
-                except Exception:
+                except Exception:  # best-effort state decode in error handler
                     # If state is invalid, we'll redirect without space_id
                     logger.warning("Failed to validate state in error handler")
 
@@ -199,7 +199,7 @@ async def discord_callback(
             data = state_manager.validate_state(state)
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as e:  # malformed input → typed error / sentinel
             raise HTTPException(
                 status_code=400, detail=f"Invalid state parameter: {e!s}"
             ) from e
@@ -237,7 +237,7 @@ async def discord_callback(
                 error_detail = error_json.get(
                     "error_description", error_json.get("error", error_detail)
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
@@ -364,7 +364,7 @@ async def discord_callback(
                 status_code=409,
                 detail=f"Database integrity error: {e!s}",
             ) from e
-        except Exception as e:
+        except Exception as e:  # rollback + re-raise as typed HTTP error
             logger.error(f"Failed to create search source connector: {e!s}")
             await session.rollback()
             raise HTTPException(
@@ -374,7 +374,7 @@ async def discord_callback(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # OAuth callback completion failure → surface as typed HTTP error
         logger.error(f"Failed to complete Discord OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to complete Discord OAuth: {e!s}"
@@ -417,7 +417,7 @@ async def refresh_discord_token(
         if is_encrypted and refresh_token:
             try:
                 refresh_token = token_encryption.decrypt_token(refresh_token)
-            except Exception as e:
+            except Exception as e:  # decryption failure → surface as typed HTTP error
                 logger.error(f"Failed to decrypt refresh token: {e!s}")
                 raise HTTPException(
                     status_code=500, detail="Failed to decrypt stored refresh token"
@@ -463,7 +463,7 @@ async def refresh_discord_token(
                 error_detail = error_json.get(
                     "error_description", error_json.get("error", error_detail)
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             # If refresh fails, bot token from config is still valid
             logger.warning(
@@ -536,7 +536,7 @@ async def refresh_discord_token(
         return connector
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # token refresh failure → surface as typed HTTP error
         logger.error(
             f"Failed to refresh Discord tokens for connector {connector.id}: {e!s}",
             exc_info=True,
@@ -666,7 +666,7 @@ async def get_discord_channels(
         if is_encrypted and bot_token:
             try:
                 bot_token = token_encryption.decrypt_token(bot_token)
-            except Exception as e:
+            except Exception as e:  # decryption failure → surface as typed HTTP error
                 logger.error(f"Failed to decrypt bot token: {e!s}")
                 raise HTTPException(
                     status_code=500, detail="Failed to decrypt stored bot token"
@@ -772,7 +772,7 @@ async def get_discord_channels(
             try:
                 error_json = channels_response.json()
                 error_detail = error_json.get("message", error_detail)
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=channels_response.status_code,
@@ -832,7 +832,7 @@ async def get_discord_channels(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(
             f"Failed to get Discord channels for connector {connector_id}: {e!s}",
             exc_info=True,

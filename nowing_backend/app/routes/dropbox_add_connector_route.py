@@ -102,7 +102,7 @@ async def connect_dropbox(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error("Failed to initiate Dropbox OAuth: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Dropbox OAuth: {e!s}"
@@ -165,7 +165,7 @@ async def reauth_dropbox(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error("Failed to initiate Dropbox re-auth: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Dropbox re-auth: {e!s}"
@@ -190,7 +190,7 @@ async def dropbox_callback(
                 try:
                     data = get_state_manager().validate_state(state)
                     space_id = data.get("space_id")
-                except Exception as exc:
+                except Exception as exc:  # best-effort state decode in error handler
                     logger.debug("Suppressed %r", exc)
             if space_id:
                 return RedirectResponse(
@@ -240,7 +240,7 @@ async def dropbox_callback(
             try:
                 error_json = token_response.json()
                 error_detail = error_json.get("error_description", error_detail)
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
@@ -282,7 +282,7 @@ async def dropbox_callback(
                         "user_name": user_data.get("name", {}).get("display_name"),
                         "account_id": user_data.get("account_id"),
                     }
-        except Exception as e:
+        except Exception as e:  # best-effort user info fetch from Dropbox API
             logger.warning("Failed to fetch user info from Dropbox: %s", str(e))
 
         connector_config = {
@@ -448,7 +448,7 @@ async def list_dropbox_folders(
                         connector.config = {**connector.config, "auth_expired": True}
                         flag_modified(connector, "config")
                         await session.commit()
-                except Exception:
+                except Exception:  # best-effort flag update on auth expiry
                     logger.warning(
                         "Failed to persist auth_expired for connector %s",
                         connector_id,
@@ -466,7 +466,7 @@ async def list_dropbox_folders(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error("Error listing Dropbox contents: %s", str(e), exc_info=True)
         error_lower = str(e).lower()
         if "401" in str(e) or "authentication expired" in error_lower:
@@ -475,7 +475,7 @@ async def list_dropbox_folders(
                     connector.config = {**connector.config, "auth_expired": True}
                     flag_modified(connector, "config")
                     await session.commit()
-            except Exception as exc:
+            except Exception as exc:  # best-effort flag update on auth expiry
                 logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400,
@@ -499,7 +499,7 @@ async def refresh_dropbox_token(
     if is_encrypted and refresh_token:
         try:
             refresh_token = token_encryption.decrypt_token(refresh_token)
-        except Exception as e:
+        except Exception as e:  # decryption failure → surface as typed HTTP error
             logger.error("Failed to decrypt refresh token: %s", str(e))
             raise HTTPException(
                 status_code=500, detail="Failed to decrypt stored refresh token"
@@ -533,7 +533,7 @@ async def refresh_dropbox_token(
             error_json = token_response.json()
             error_detail = error_json.get("error_description", error_detail)
             error_code = error_json.get("error", "")
-        except Exception as exc:
+        except Exception as exc:  # best-effort error response json parsing
             logger.debug("Suppressed %r", exc)
         error_lower = (error_detail + error_code).lower()
         if (

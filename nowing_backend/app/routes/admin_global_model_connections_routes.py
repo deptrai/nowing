@@ -383,7 +383,7 @@ async def create_global_model_connection(
     try:
         await session.commit()
         await refresh_global_model_catalog(session, rebuild_routers=True)
-    except Exception as exc:
+    except Exception as exc:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         _log_admin_action(
             auth.user.id,
@@ -457,7 +457,7 @@ async def update_global_model_connection(
     try:
         await session.commit()
         await refresh_global_model_catalog(session, rebuild_routers=True)
-    except Exception as exc:
+    except Exception as exc:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         _log_admin_action(
             auth.user.id,
@@ -497,7 +497,7 @@ async def delete_global_model_connection(
     try:
         await session.commit()
         await refresh_global_model_catalog(session, rebuild_routers=True)
-    except Exception as exc:
+    except Exception as exc:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         _log_admin_action(
             auth.user.id,
@@ -715,7 +715,7 @@ async def update_global_model(
     try:
         await session.commit()
         await refresh_global_model_catalog(session, rebuild_routers=True)
-    except Exception as exc:
+    except Exception as exc:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         _log_admin_action(
             auth.user.id,
@@ -762,7 +762,7 @@ async def bulk_update_global_models(
     try:
         await session.commit()
         await refresh_global_model_catalog(session, rebuild_routers=True)
-    except Exception as exc:
+    except Exception as exc:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

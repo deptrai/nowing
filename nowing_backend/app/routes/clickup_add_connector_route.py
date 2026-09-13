@@ -106,7 +106,7 @@ async def connect_clickup(
         logger.info(f"Generated ClickUp OAuth URL for user {user.id}, space {space_id}")
         return {"auth_url": auth_url}
 
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate ClickUp OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate ClickUp OAuth: {e!s}"
@@ -145,7 +145,7 @@ async def clickup_callback(
                     state_manager = get_state_manager()
                     data = state_manager.validate_state(state)
                     space_id = data.get("space_id")
-                except Exception:
+                except Exception:  # best-effort state decode in error handler
                     # If state is invalid, we'll redirect without space_id
                     logger.warning("Failed to validate state in error handler")
 
@@ -171,7 +171,7 @@ async def clickup_callback(
             data = state_manager.validate_state(state)
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as e:  # malformed input → typed error / sentinel
             raise HTTPException(
                 status_code=400, detail=f"Invalid state parameter: {e!s}"
             ) from e
@@ -205,7 +205,7 @@ async def clickup_callback(
             try:
                 error_json = token_response.json()
                 error_detail = error_json.get("error", error_detail)
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
@@ -270,7 +270,7 @@ async def clickup_callback(
                             else None,
                             "workspace_name": first_team.get("name"),
                         }
-        except Exception as e:
+        except Exception as e:  # best-effort user/workspace info fetch
             logger.warning(f"Failed to fetch user/workspace info from ClickUp: {e!s}")
 
         # Store the encrypted tokens and user/workspace info in connector config
@@ -344,7 +344,7 @@ async def clickup_callback(
                 status_code=409,
                 detail=f"Integrity error: A connector with this type already exists. {e!s}",
             ) from e
-        except Exception as e:
+        except Exception as e:  # rollback + re-raise as typed HTTP error
             logger.error(f"Failed to create search source connector: {e!s}")
             await session.rollback()
             raise HTTPException(
@@ -354,7 +354,7 @@ async def clickup_callback(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # OAuth callback completion failure → surface as typed HTTP error
         logger.error(f"Failed to complete ClickUp OAuth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to complete ClickUp OAuth: {e!s}"
@@ -387,7 +387,7 @@ async def refresh_clickup_token(
         if is_encrypted and refresh_token:
             try:
                 refresh_token = token_encryption.decrypt_token(refresh_token)
-            except Exception as e:
+            except Exception as e:  # decryption failure → surface as typed HTTP error
                 logger.error(f"Failed to decrypt refresh token: {e!s}")
                 raise HTTPException(
                     status_code=500, detail="Failed to decrypt stored refresh token"
@@ -419,7 +419,7 @@ async def refresh_clickup_token(
             try:
                 error_json = token_response.json()
                 error_detail = error_json.get("error", error_detail)
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             # Check if this is a token expiration/revocation error
             error_lower = error_detail.lower()
@@ -489,7 +489,7 @@ async def refresh_clickup_token(
         return connector
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # token refresh failure → surface as typed HTTP error
         logger.error(f"Failed to refresh ClickUp token: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to refresh ClickUp token: {e!s}"

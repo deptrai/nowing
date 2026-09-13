@@ -133,7 +133,7 @@ def _admin_id_from_token(token: str | None) -> uuid.UUID | None:
     try:
         payload = jwt.decode(token, SECRET, algorithms=["HS256"], options={"verify_aud": False})
         return uuid.UUID(payload.get("impersonated_by"))
-    except Exception:
+    except Exception:  # token decode failure → return None fallback
         return None
 
 

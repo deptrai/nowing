@@ -264,7 +264,7 @@ async def apply_mark_tool_patch(
 
     try:
         jsx_code = await asyncio.to_thread(target_file.read_text, encoding="utf-8")
-    except Exception as exc:
+    except Exception as exc:  # local file read failure → surface as typed HTTP error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not read target file: {exc}",
@@ -287,7 +287,7 @@ async def apply_mark_tool_patch(
             await asyncio.to_thread(
                 target_file.write_text, result.patched_code, encoding="utf-8"
             )
-        except Exception as exc:
+        except Exception as exc:  # local file write failure → surface as typed HTTP error
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Could not write target file: {exc}",
@@ -314,7 +314,7 @@ async def apply_mark_tool_patch(
             call_details=call_details,
         )
         await session.commit()
-    except Exception:
+    except Exception:  # best-effort token usage tracking; failure doesn't fail primary op
         logger.exception("Failed to record web_builder_mark token usage")
         with contextlib.suppress(Exception):
             await session.rollback()

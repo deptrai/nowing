@@ -338,7 +338,7 @@ async def relock_contact(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=detail,
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # surface as typed HTTP error
         logger.exception("Failed to relock contact %s: %s", contact_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -355,7 +355,7 @@ async def relock_contact(
         if enc.is_encrypted(value):
             try:
                 return enc.decrypt(value)
-            except Exception:
+            except Exception:  # decryption failure → return None fallback
                 return None
         return value
 
@@ -425,7 +425,7 @@ async def pii_opt_out(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Billing validation failed.",
         ) from exc
-    except Exception as exc:
+    except Exception as exc:  # surface as typed HTTP error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process opt-out.",

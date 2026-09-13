@@ -276,7 +276,7 @@ async def _assign_clipped_lead(
             workspace_id=workspace_id,
             lead_ids=[lead_id],
         )
-    except Exception:
+    except Exception:  # best-effort lead auto-assignment; failure doesn't fail primary op
         logger.exception("Failed to auto-assign clipped lead in workspace %s", workspace_id)
 
 

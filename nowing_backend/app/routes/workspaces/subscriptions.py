@@ -106,7 +106,7 @@ async def get_workspace_subscription(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspace subscription: {e!s}"
         ) from e
@@ -147,7 +147,7 @@ async def create_workspace_subscription_change(
         return SubscriptionChangeRead.model_validate(change)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to change subscription: {e!s}"
@@ -181,7 +181,7 @@ async def list_workspace_subscription_changes(
         return [SubscriptionChangeRead.model_validate(c) for c in changes]
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to list subscription changes: {e!s}"
         ) from e
@@ -219,7 +219,7 @@ async def revert_workspace_subscription_change(
         return SubscriptionChangeRead.model_validate(change)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to revert subscription change: {e!s}"
@@ -258,7 +258,7 @@ async def cancel_workspace_subscription_change(
         return SubscriptionChangeRead.model_validate(change)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to cancel subscription change: {e!s}"

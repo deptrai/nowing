@@ -264,7 +264,7 @@ async def handle_new_chat(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {e!s}",

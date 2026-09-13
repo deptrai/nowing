@@ -93,7 +93,7 @@ async def download_sandbox_file(
     try:
         sandbox, _ = await get_or_create_sandbox(thread_id)
         content: bytes = await asyncio.to_thread(sandbox.download_file, path)
-    except Exception as exc:
+    except Exception as exc:  # sandbox download failure → surface as typed 404 HTTP error
         logger.warning("Sandbox file download failed for %s: %s", path, exc)
         raise HTTPException(
             status_code=404, detail=f"Could not download file: {exc}"

@@ -260,7 +260,7 @@ async def retry_anti_bot_escalation(
                 "Retry requested but could not be enqueued; "
                 "manual re-run may be required."
             )
-        except Exception as exc:
+        except Exception as exc:  # retry scheduling failure; record message and continue
             logger.exception("Retry failed for escalation %s", escalation_id)
             message = f"Retry scheduling failed: {exc}"
 

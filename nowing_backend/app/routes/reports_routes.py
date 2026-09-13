@@ -403,7 +403,7 @@ async def preview_report_pdf(
         )
     except HTTPException:
         raise
-    except Exception:
+    except Exception:  # compilation failure → surface as typed HTTP error
         logger.exception("Failed to compile Typst preview for report %d", report_id)
         raise HTTPException(
             status_code=500,
@@ -594,7 +594,7 @@ async def export_report(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # report export failure → surface as typed HTTP error
         logger.exception("Report export failed")
         raise HTTPException(status_code=500, detail=f"Export failed: {e!s}") from e
 

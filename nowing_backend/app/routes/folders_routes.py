@@ -86,7 +86,7 @@ async def create_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         if "uq_folder_space_parent_name" in str(e):
             raise HTTPException(
@@ -121,7 +121,7 @@ async def list_folders(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to list folders: {e!s}"
         ) from e
@@ -151,7 +151,7 @@ async def get_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to get folder: {e!s}"
         ) from e
@@ -191,7 +191,7 @@ async def get_folder_breadcrumb(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to get breadcrumb: {e!s}"
         ) from e
@@ -252,7 +252,7 @@ async def update_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         if "uq_folder_space_parent_name" in str(e):
             raise HTTPException(
@@ -312,7 +312,7 @@ async def move_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         if "uq_folder_space_parent_name" in str(e):
             raise HTTPException(
@@ -359,7 +359,7 @@ async def reorder_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to reorder folder: {e!s}"
@@ -408,7 +408,7 @@ async def delete_folder(
             delete_folder_documents_task.delay(
                 document_ids, folder_subtree_ids=list(subtree_ids)
             )
-        except Exception as err:
+        except Exception as err:  # celery dispatch failure; revert doc moves on error
             if document_ids:
                 await session.execute(
                     Document.__table__.update()
@@ -428,7 +428,7 @@ async def delete_folder(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to delete folder: {e!s}"
@@ -478,7 +478,7 @@ async def move_document(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to move document: {e!s}"
@@ -537,7 +537,7 @@ async def bulk_move_documents(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to move documents: {e!s}"

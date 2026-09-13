@@ -322,7 +322,7 @@ async def send_zns_message(
             tracking_id=payload.tracking_id,
             mode=payload.mode,
         )
-    except Exception as exc:
+    except Exception as exc:  # upstream ZNS send failure; log error and record failure status
         logger.error("ZNS send failed: %s", exc)
         log_entry = ZaloMessageLog(
             workspace_id=target_ws,
@@ -620,7 +620,7 @@ async def zalo_inbound_webhook(
     raw_body = await request.body()
     try:
         data = await request.json()
-    except Exception as exc:
+    except Exception as exc:  # malformed input → typed 400 error
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body"
         ) from exc

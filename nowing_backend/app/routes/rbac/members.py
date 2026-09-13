@@ -103,7 +103,7 @@ async def list_members(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch members: {e!s}"
         ) from e
@@ -197,7 +197,7 @@ async def update_member_role(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to update member role: {e!s}", exc_info=True)
         raise HTTPException(
@@ -246,7 +246,7 @@ async def leave_workspace(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to leave workspace: {e!s}", exc_info=True)
         raise HTTPException(
@@ -297,7 +297,7 @@ async def remove_member(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         logger.error(f"Failed to remove member: {e!s}", exc_info=True)
         raise HTTPException(
@@ -343,7 +343,7 @@ async def get_my_access(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to get access info: {e!s}"
         ) from e

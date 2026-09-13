@@ -131,7 +131,7 @@ async def connect_teams(
         )
         return {"auth_url": auth_url}
 
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(
             "Failed to initiate Microsoft Teams OAuth: %s", str(e), exc_info=True
         )
@@ -209,7 +209,7 @@ async def teams_callback(
             try:
                 error_json = token_response.json()
                 error_detail = error_json.get("error_description", error_detail)
-            except Exception as exc:
+            except Exception as exc:  # best-effort error response json parsing
                 logger.debug("Suppressed %r", exc)
             raise HTTPException(
                 status_code=400, detail=f"Token exchange failed: {error_detail}"
@@ -269,7 +269,7 @@ async def teams_callback(
                             "tenant_id": org.get("id"),
                             "tenant_name": org.get("displayName"),
                         }
-        except Exception as e:
+        except Exception as e:  # best-effort user/tenant info fetch from Graph
             logger.warning(
                 "Failed to fetch user/tenant info from Microsoft Graph: %s", str(e)
             )
@@ -397,7 +397,7 @@ async def refresh_teams_token(
     if is_encrypted and refresh_token:
         try:
             refresh_token = token_encryption.decrypt_token(refresh_token)
-        except Exception as e:
+        except Exception as e:  # decryption failure → surface as typed HTTP error
             logger.error("Failed to decrypt refresh token: %s", str(e))
             raise HTTPException(
                 status_code=500, detail="Failed to decrypt stored refresh token"
@@ -433,7 +433,7 @@ async def refresh_teams_token(
             error_json = token_response.json()
             error_detail = error_json.get("error_description", error_detail)
             error_code = error_json.get("error", "")
-        except Exception as exc:
+        except Exception as exc:  # best-effort error response json parsing
             logger.debug("Suppressed %r", exc)
         # Check if this is a token expiration/revocation error
         error_lower = (error_detail + error_code).lower()

@@ -51,7 +51,7 @@ async def create_log(
         return db_log
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to create log: {e!s}"
@@ -129,7 +129,7 @@ async def read_logs(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch logs: {e!s}"
         ) from e
@@ -163,7 +163,7 @@ async def read_log(
         return log
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch log: {e!s}"
         ) from e
@@ -205,7 +205,7 @@ async def update_log(
         return db_log
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to update log: {e!s}"
@@ -242,7 +242,7 @@ async def delete_log(
         return {"message": "Log deleted successfully"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to delete log: {e!s}"
@@ -356,7 +356,7 @@ async def get_logs_summary(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to generate logs summary: {e!s}"
         ) from e
