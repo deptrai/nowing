@@ -26,7 +26,7 @@ def _instrument_search(mode: str):
                     result = await func(
                         self, query_text, top_k, workspace_id, *args, **kwargs
                     )
-                except Exception:
+                except Exception:  # search failure → record telemetry duration then re-raise
                     ot_metrics.record_kb_search_duration(
                         (time.perf_counter() - t0) * 1000,
                         workspace_id=workspace_id,

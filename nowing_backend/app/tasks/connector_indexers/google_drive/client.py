@@ -173,7 +173,7 @@ class ComposioDriveClient:
             try:
                 with urllib.request.urlopen(file_path, timeout=60) as response:
                     return response.read(), None
-            except Exception as e:
+            except Exception as e:  # download Composio file URL failure; return None and error message
                 return None, f"Failed to download Composio file URL: {e!s}"
 
         path_obj = Path(file_path)
@@ -184,7 +184,7 @@ class ComposioDriveClient:
 
         try:
             return base64.b64decode(file_path), None
-        except Exception:
+        except Exception:  # base64 decode fallback; encode raw file_path as utf-8 bytes
             return file_path.encode("utf-8"), None
 
 

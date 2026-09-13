@@ -26,7 +26,7 @@ async def _run_health_probe_for_category(category: str) -> dict[str, Any]:
                 "degraded": sum(1 for r in results if r.status == "degraded"),
                 "unavailable": sum(1 for r in results if r.status == "unavailable"),
             }
-        except Exception as exc:
+        except Exception as exc:  # health probe category execution failure → return error dict
             logger.error("Error running health probe for category %s: %s", category, exc)
             return {"category": category, "error": str(exc)}
 

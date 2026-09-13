@@ -70,7 +70,7 @@ def proxy_login_form(proxy_url: str | None) -> str | None:
         if p.username and p.password:
             return f"{p.username}:{p.password}@{p.hostname}:{p.port}"
         return f"{p.hostname}:{p.port}"
-    except Exception:
+    except Exception:  # unparseable proxy URL → fallback to None (proxyless solve)
         return None
 
 
@@ -179,7 +179,7 @@ def capsolver_proxy(proxy_url: str | None) -> str | None:
         if p.username and p.password:
             return f"{scheme}:{p.hostname}:{p.port}:{p.username}:{p.password}"
         return f"{scheme}:{p.hostname}:{p.port}"
-    except Exception:
+    except Exception:  # unparseable proxy URL → fallback to None (proxyless task)
         return None
 
 

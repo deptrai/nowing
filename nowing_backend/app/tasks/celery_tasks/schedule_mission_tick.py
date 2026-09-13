@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.celery_app import celery_app
 from app.config import config
 from app.db import DshMission, DshMissionStatus
-from app.exceptions import NowingError
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
 from app.tasks.dsh_worker import DshRestClient
 from app.tasks.dsh_worker_langgraph import LangGraphMissionExecutor
@@ -22,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 TASK_NAME = "schedule_mission_tick"
 _TICK_BATCH = 200
+_MAX_RETRIES = 3
 
 
 def _apply_workspace_rls(*, workspace_id: int | None = None) -> int | None:
@@ -62,7 +62,7 @@ def _advance_next_fire_at(
             return compute_next_fire_at(
                 schedule["expression"], tz, after=now
             )
-        except Exception as exc:
+        except Exception as exc:  # next fire calculation failure → fallback to 1 hour delta
             logger.warning("Failed to advance next_fire_at: %s", exc)
 
     return now + timedelta(hours=1)
@@ -147,7 +147,7 @@ def _ingestion_result(
 
     try:
         worker.run()
-    except Exception:
+    except Exception:  # worker ingestion execution failure → return error status dict
         logger.exception("Scheduled mission ingestion failed for %s", mission_id)
         return {"new_data": False, "error": True}
 
@@ -250,7 +250,7 @@ def run_scheduled_mission(
             retry_count=1,
         )
         return {"status": "error", "retry_count": 1}
-    except Exception as exc:
+    except Exception as exc:  # executor init failure → set mission to ERROR with retry
         logger.exception("Failed to initialise LangGraphMissionExecutor: %s", exc)
         _update_mission_status(
             mission_id,
@@ -294,7 +294,7 @@ def schedule_mission_tick() -> None:
         async with session_maker() as session:
             try:
                 claims = await _claim_due_missions(session)
-            except Exception:
+            except Exception:  # tick claim failure → log and return early
                 logger.exception("scheduled_mission_tick_failed")
                 return
 

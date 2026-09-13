@@ -57,7 +57,7 @@ def process_file_upload_task(
     try:
         file_size = os.path.getsize(file_path)
         logger.info(f"[process_file_upload] File size: {file_size} bytes")
-    except Exception as e:
+    except Exception as e:  # best-effort file size query; falls back to None
         logger.warning(f"[process_file_upload] Could not get file size: {e}")
 
     try:
@@ -67,7 +67,7 @@ def process_file_upload_task(
         logger.info(
             f"[process_file_upload] Task completed successfully for: {filename}"
         )
-    except Exception as e:
+    except Exception as e:  # task-level guard: log and re-raise for celery
         logger.error(
             f"[process_file_upload] Task failed for {filename}: {e}\n"
             f"Traceback:\n{traceback.format_exc()}"
@@ -89,7 +89,7 @@ async def _process_file_upload(
         try:
             file_size = os.path.getsize(file_path)
             logger.info(f"[_process_file_upload] File size: {file_size} bytes")
-        except Exception as e:
+        except Exception as e:  # best-effort file size query; falls back to None
             logger.warning(f"[_process_file_upload] Could not get file size: {e}")
             file_size = None
 
@@ -113,7 +113,7 @@ async def _process_file_upload(
             )
             _start_heartbeat(notification.id)
             heartbeat_task = asyncio.create_task(_run_heartbeat_loop(notification.id))
-        except Exception:
+        except Exception:  # best-effort notification creation; doesn't fail upload processing
             logger.warning(
                 f"[_process_file_upload] Failed to create notification for: {filename}",
                 exc_info=True,
@@ -161,7 +161,7 @@ async def _process_file_upload(
                         error_message="Document already exists (duplicate)",
                     )
 
-        except Exception as e:
+        except Exception as e:  # file upload processing failure → handle credit errors, log, and re-raise
             # Import here to avoid circular dependencies
             from fastapi import HTTPException
 
@@ -206,7 +206,7 @@ async def _process_file_upload(
                         balance_micros=credit_error.balance_micros,
                         required_micros=credit_error.required_micros,
                     )
-                except Exception as notif_error:
+                except Exception as notif_error:  # best-effort notification update; doesn't fail error handling
                     logger.error(
                         f"Failed to create insufficient credits notification: {notif_error!s}"
                     )
@@ -221,7 +221,7 @@ async def _process_file_upload(
                             notification=notification,
                             error_message=error_message,
                         )
-                except Exception as notif_error:
+                except Exception as notif_error:  # best-effort notification update; doesn't fail error handling
                     logger.error(
                         f"Failed to update notification on failure: {notif_error!s}"
                     )
@@ -236,7 +236,7 @@ async def _process_file_upload(
                             notification=notification,
                             error_message=error_message,
                         )
-                except Exception as notif_error:
+                except Exception as notif_error:  # best-effort notification update; doesn't fail error handling
                     logger.error(
                         f"Failed to update notification on failure: {notif_error!s}"
                     )
@@ -317,7 +317,7 @@ def process_file_upload_with_document_task(
         logger.info(
             f"[process_file_upload_with_document] Task completed successfully for: {filename}"
         )
-    except Exception as e:
+    except Exception as e:  # task-level guard: log and re-raise for celery
         logger.error(
             f"[process_file_upload_with_document] Task failed for {filename}: {e}\n"
             f"Traceback:\n{traceback.format_exc()}"
@@ -378,7 +378,7 @@ async def _process_file_with_document(
         try:
             file_size = os.path.getsize(temp_path)
             logger.info(f"[_process_file_with_document] File size: {file_size} bytes")
-        except Exception as e:
+        except Exception as e:  # best-effort file size query; falls back to None
             logger.warning(
                 f"[_process_file_with_document] Could not get file size: {e}"
             )
@@ -413,7 +413,7 @@ async def _process_file_with_document(
 
             _start_heartbeat(notification.id)
             heartbeat_task = asyncio.create_task(_run_heartbeat_loop(notification.id))
-        except Exception:
+        except Exception:  # best-effort notification creation; doesn't fail upload processing
             logger.warning(
                 f"[_process_file_with_document] Failed to create notification for: {filename}",
                 exc_info=True,
@@ -479,7 +479,7 @@ async def _process_file_with_document(
                         error_message="Document already exists (duplicate)",
                     )
 
-        except Exception as e:
+        except Exception as e:  # file upload processing failure → handle credit errors, log, and re-raise
             # Import here to avoid circular dependencies
             from fastapi import HTTPException
 
@@ -524,7 +524,7 @@ async def _process_file_with_document(
                         balance_micros=credit_error.balance_micros,
                         required_micros=credit_error.required_micros,
                     )
-                except Exception as notif_error:
+                except Exception as notif_error:  # best-effort notification update; doesn't fail error handling
                     logger.error(
                         f"Failed to create insufficient credits notification: {notif_error!s}"
                     )
@@ -538,7 +538,7 @@ async def _process_file_with_document(
                             notification=notification,
                             error_message=str(e)[:100],
                         )
-                except Exception as notif_error:
+                except Exception as notif_error:  # best-effort notification update; doesn't fail error handling
                     logger.error(
                         f"Failed to update notification on failure: {notif_error!s}"
                     )
@@ -566,7 +566,7 @@ async def _process_file_with_document(
                     logger.info(
                         f"[_process_file_with_document] Cleaned up temp file: {temp_path}"
                     )
-                except Exception as cleanup_error:
+                except Exception as cleanup_error:  # best-effort temp file cleanup; suppressed
                     logger.warning(
                         f"[_process_file_with_document] Failed to clean up temp file: {cleanup_error}"
                     )

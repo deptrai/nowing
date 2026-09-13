@@ -56,7 +56,7 @@ class BrowserOperatorCdpSubgraph:
         if isinstance(value, str):
             try:
                 return redact_pii(value, context="lead_enrichment").text
-            except Exception as exc:
+            except Exception as exc:  # fail-soft PII redaction; log warning and return marker
                 logger.warning("PII redaction failed for CDP value: %s", exc)
                 return "<redaction_failed>"
         return value
@@ -85,7 +85,7 @@ class BrowserOperatorCdpSubgraph:
 
         try:
             payload_model = BrowserOperatorCdpPayload.model_validate(payload)
-        except Exception as exc:
+        except Exception as exc:  # malformed CDP payload validation failure; re-raise ValueError
             raise ValueError(f"Invalid CDP mission payload: {exc}") from exc
 
         target_url = str(payload_model.target_url)
@@ -104,7 +104,7 @@ class BrowserOperatorCdpSubgraph:
                 raise HumanInterventionRequired("No extension listening for CDP takeover")
         except HumanInterventionRequired:
             raise
-        except Exception as exc:
+        except Exception as exc:  # redis pubsub subscription check failure; wrap in CdpExecutionError
             # If we cannot check subscription state due to a Redis error, surface it
             # as a degradation error so the retry/ DLQ path can distinguish it from
             # a genuine "no extension" condition.
@@ -221,7 +221,7 @@ class BrowserOperatorCdpSubgraph:
         # Keep a PII-redacted trace of the raw command/result for debugging.
         try:
             redacted_url = redact_pii(target_url, context="lead_enrichment").text
-        except Exception as exc:
+        except Exception as exc:  # fail-soft PII redaction on target URL; log warning and use marker
             logger.warning("PII redaction failed for CDP target URL: %s", exc)
             redacted_url = "<redaction_failed>"
         state_checkpoint["cdp_last_command"] = {
@@ -246,5 +246,5 @@ def _extract_domain(url: str | None) -> str | None:
     try:
         parsed = urlparse(url)
         return parsed.netloc if parsed.netloc else None
-    except Exception:
+    except Exception:  # malformed URL parse failure; return None
         return None

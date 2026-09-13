@@ -95,7 +95,7 @@ def get_model_context_window(model_name: str) -> int:
             )
             return 4096  # Conservative fallback
         return context_window
-    except Exception:
+    except Exception:  # litellm model-info probe failure → fallback to default 4096 tokens
         logger.exception(
             "Could not get model info for %s, using default 4096 tokens.",
             model_name,

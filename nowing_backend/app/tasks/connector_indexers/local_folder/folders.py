@@ -168,7 +168,7 @@ async def _clear_indexing_flag(session: AsyncSession, folder_id: int) -> None:
             meta.pop("indexing_in_progress", None)
             folder.folder_metadata = meta
             await session.commit()
-    except Exception as exc:
+    except Exception as exc:  # best-effort clear indexing in progress flag; log debug
         logger.debug("Suppressed %r", exc)
 
 

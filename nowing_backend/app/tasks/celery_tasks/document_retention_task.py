@@ -51,7 +51,7 @@ async def _apply_retention() -> None:
                     doc.status = {"state": "deleting"}
                     try:
                         delete_document_task.delay(doc.id)
-                    except Exception:
+                    except Exception:  # task dispatch failure → revert status to ready and continue
                         logger.exception(
                             "Failed to dispatch delete_document_task for doc %s; "
                             "reverting status to ready",

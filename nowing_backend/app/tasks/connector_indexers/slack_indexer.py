@@ -242,7 +242,7 @@ async def index_slack_messages(
         # Get all channels
         try:
             channels = await slack_client.get_all_channels()
-        except Exception as e:
+        except Exception as e:  # upstream Slack API call failure; log task failure and return error
             await task_logger.log_task_failure(
                 log_entry,
                 f"Failed to get Slack channels for connector {connector_id}",
@@ -507,7 +507,7 @@ async def index_slack_messages(
                 skipped_channels.append(f"{channel_name} (Slack API error)")
                 documents_skipped += 1
                 continue  # Skip this channel and continue with others
-            except Exception as e:
+            except Exception as e:  # per-channel processing failure; log error, record skipped, and continue
                 logger.error(f"Error processing channel {channel_name}: {e!s}")
                 skipped_channels.append(f"{channel_name} (processing error)")
                 documents_skipped += 1
@@ -578,7 +578,7 @@ async def index_slack_messages(
                     )
                     await session.commit()
 
-            except Exception as e:
+            except Exception as e:  # per-batch indexing failure; mark failed, increment count, and continue
                 logger.error(
                     f"Error processing Slack batch document: {e!s}",
                     exc_info=True,
@@ -590,7 +590,7 @@ async def index_slack_messages(
                     # Commit now so the failed status survives a later rollback or
                     # crash; otherwise the doc stays stuck in pending/processing.
                     await session.commit()
-                except Exception as status_error:
+                except Exception as status_error:  # failure updating document status; rollback and continue
                     logger.error(
                         f"Failed to update document status to failed: {status_error}"
                     )
@@ -610,7 +610,7 @@ async def index_slack_messages(
         try:
             await session.commit()
             logger.info("Successfully committed all Slack document changes to database")
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             # Handle any remaining integrity errors gracefully (race conditions, etc.)
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
@@ -671,7 +671,7 @@ async def index_slack_messages(
         )
         logger.error(f"Database error: {db_error!s}")
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

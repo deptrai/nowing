@@ -234,7 +234,7 @@ async def index_google_drive_files(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, 0, f"Database error: {db_error!s}", 0
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,
@@ -349,7 +349,7 @@ async def index_google_drive_single_file(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # single file task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,
@@ -470,7 +470,7 @@ async def index_google_drive_selected_files(
         )
         logger.error(error_msg, exc_info=True)
         return 0, 0, [error_msg]
-    except Exception as e:
+    except Exception as e:  # batch file task-level guard: rollback, log failure, and return error
         await session.rollback()
         error_msg = f"Failed to index Google Drive files: {e!s}"
         await task_logger.log_task_failure(

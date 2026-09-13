@@ -189,7 +189,7 @@ async def index_local_folder(
 
         try:
             files = scan_folder(folder_path, file_extensions, exclude_patterns)
-        except Exception as e:
+        except Exception as e:  # folder scan failure; log task failure, clear flag, and return early
             await task_logger.log_task_failure(
                 log_entry, f"Failed to scan folder: {e}", "Scan error", {}
             )
@@ -277,7 +277,7 @@ async def index_local_folder(
                             file_info["relative_path"],
                             workspace_id,
                         )
-                    except Exception as read_err:
+                    except Exception as read_err:  # file reading or hash computation error; log warning and skip
                         logger.warning(f"Could not read {file_path_abs}: {read_err}")
                         skipped_count += 1
                         continue
@@ -313,7 +313,7 @@ async def index_local_folder(
                             file_info["relative_path"],
                             workspace_id,
                         )
-                    except Exception as read_err:
+                    except Exception as read_err:  # file reading or hash computation error; log warning and skip
                         logger.warning(f"Could not read {file_path_abs}: {read_err}")
                         skipped_count += 1
                         continue
@@ -343,7 +343,7 @@ async def index_local_folder(
                     "raw_file_hash": raw_hash,
                 }
 
-            except Exception as e:
+            except Exception as e:  # per-file Phase 1 preprocessing error; log and continue
                 logger.exception(f"Phase 1 error for {file_info.get('path')}: {e}")
                 failed_count += 1
 
@@ -457,7 +457,7 @@ async def index_local_folder(
 
         try:
             await session.commit()
-        except Exception as e:
+        except Exception as e:  # DB commit error (e.g. unique constraint violation); rollback or re-raise
             if "duplicate key value violates unique constraint" in str(e).lower():
                 logger.warning(f"Duplicate key during commit: {e}")
                 await session.rollback()
@@ -492,7 +492,7 @@ async def index_local_folder(
             await _clear_indexing_flag(session, root_folder_id)
         return 0, 0, root_folder_id, f"Database error: {e}"
 
-    except Exception as e:
+    except Exception as e:  # unexpected error during local folder indexing; log, clear flag, and return error
         logger.exception(f"Error during local folder indexing: {e}")
         await task_logger.log_task_failure(
             log_entry, f"Error: {e}", "Unexpected error", {}
@@ -559,7 +559,7 @@ async def _index_batch_files(
                         completed += 1
                         if on_progress_callback and completed % batch_concurrency == 0:
                             await on_progress_callback(completed)
-            except Exception as exc:
+            except Exception as exc:  # batch worker per-file error; record failure and continue
                 logger.exception(f"Batch: error processing {file_path}: {exc}")
                 async with lock:
                     failed += 1
@@ -648,7 +648,7 @@ async def _index_single_file(
             content, content_hash = await _compute_file_content_hash(
                 str(full_path), full_path.name, workspace_id
             )
-        except Exception as e:
+        except Exception as e:  # file read or hash computation error; return failure
             return 0, 1, f"Could not read file: {e}"
 
         if not content.strip():
@@ -716,7 +716,7 @@ async def _index_single_file(
             )
         return indexed, 0 if indexed else 1, failed_msg
 
-    except Exception as e:
+    except Exception as e:  # unexpected error indexing single file; rollback and return failure
         logger.exception(f"Error indexing single file {target_file_path}: {e}")
         await session.rollback()
         return 0, 0, str(e)
@@ -833,7 +833,7 @@ async def index_uploaded_files(
                         vision_llm=vision_llm_instance,
                         processing_mode=mode.value,
                     )
-                except Exception as e:
+                except Exception as e:  # file read or hash computation error for uploaded file; log and skip
                     logger.warning(f"Could not read {relative_path}: {e}")
                     failed_count += 1
                     errors.append(f"{filename}: {e}")
@@ -905,7 +905,7 @@ async def index_uploaded_files(
                 if on_heartbeat_callback and (i + 1) % 5 == 0:
                     await on_heartbeat_callback(i + 1)
 
-            except Exception as e:
+            except Exception as e:  # per-file uploaded indexing error; rollback, record failure, and continue
                 logger.exception(f"Error indexing uploaded file {relative_path}: {e}")
                 await session.rollback()
                 failed_count += 1
@@ -936,7 +936,7 @@ async def index_uploaded_files(
         )
         return 0, 0, f"Database error: {e}"
 
-    except Exception as e:
+    except Exception as e:  # unexpected error during uploaded file indexing; log, rollback, and return error
         logger.exception(f"Error during uploaded file indexing: {e}")
         await task_logger.log_task_failure(
             log_entry, f"Error: {e}", "Unexpected error", {}

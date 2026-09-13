@@ -91,7 +91,7 @@ def create_periodic_schedule(
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # Celery enqueue or dispatch failure → log error and return False
         logger.error(
             f"Failed to trigger initial indexing for connector {connector_id}: {e!s}",
             exc_info=True,

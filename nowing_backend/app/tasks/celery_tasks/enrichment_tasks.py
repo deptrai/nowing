@@ -38,7 +38,7 @@ async def _run_enrichment(
         service = EnrichmentService()
         try:
             await service._run_waterfall(session, request_id)
-        except Exception as exc:
+        except Exception as exc:  # waterfall execution failure → mark request failed
             logger.exception(
                 "enrichment request %s failed with unhandled error: %s",
                 request_id,
