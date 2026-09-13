@@ -45,12 +45,14 @@ class RedisRunEventBus:
         subscribe_max_retries: int = 5,
         subscribe_backoff_base: float = 1.0,
         subscribe_backoff_cap: float = 30.0,
+        publish_max_retries: int = 3,
     ) -> None:
         self._buffer_size = buffer_size
         self._subscriber_queue_size = subscriber_queue_size
         self._subscribe_max_retries = subscribe_max_retries
         self._subscribe_backoff_base = subscribe_backoff_base
         self._subscribe_backoff_cap = subscribe_backoff_cap
+        self._publish_max_retries = publish_max_retries
         self._buffers: dict[str, deque[dict[str, Any]]] = {}
         self._subscribers: dict[str, set[asyncio.Queue[dict[str, Any]]]] = {}
         self._tasks: dict[str, asyncio.Task[Any]] = {}
@@ -61,6 +63,7 @@ class RedisRunEventBus:
         self._listener_lock = asyncio.Lock()
         # Per-channel subscribe retry state: run_id -> (retry_count, next_attempt_ts)
         self._subscribe_retries: dict[str, tuple[int, float]] = {}
+        self._listener_retries: int = 0
 
     # -- Redis client ----------------------------------------------------
 
@@ -116,6 +119,7 @@ class RedisRunEventBus:
                         self._listener(),
                         name="run_event_bus_redis_listener",
                     )
+                    self._listener_retries = 0
                 except Exception:
                     logger.exception(
                         "run_event_bus _ensure_listener failed to start pubsub"
@@ -186,7 +190,16 @@ class RedisRunEventBus:
                 )
                 metrics.record_run_event_bus_subscribe_failure(reason="retry_scheduled")
         else:
-            delay = self._subscribe_backoff_base
+            self._listener_retries += 1
+            delay = min(
+                self._subscribe_backoff_base * (2 ** (self._listener_retries - 1)),
+                self._subscribe_backoff_cap,
+            )
+            logger.warning(
+                "run_event_bus redis listener connection error (attempt %d): reconnecting in %.1fs",
+                self._listener_retries,
+                delay,
+            )
 
         await asyncio.sleep(delay)
         if any(subs for subs in self._subscribers.values()):
@@ -316,7 +329,7 @@ class RedisRunEventBus:
             client = self._client()
             payload = json.dumps(event)
             channel = _channel(run_id)
-            for attempt in range(2):
+            for attempt in range(self._publish_max_retries):
                 try:
                     await asyncio.wait_for(
                         client.publish(channel, payload), timeout=5.0
@@ -324,17 +337,28 @@ class RedisRunEventBus:
                     return
                 except TimeoutError:
                     logger.warning(
-                        "run %s: redis publish timed out (attempt %d/2)",
+                        "run %s: redis publish timed out (attempt %d/%d)",
                         run_id,
                         attempt + 1,
+                        self._publish_max_retries,
                     )
                 except Exception:
                     logger.warning(
-                        "run %s: redis publish failed (attempt %d/2)",
+                        "run %s: redis publish failed (attempt %d/%d)",
                         run_id,
                         attempt + 1,
+                        self._publish_max_retries,
                         exc_info=True,
                     )
+                if attempt + 1 < self._publish_max_retries:
+                    await asyncio.sleep(0.1 * (2**attempt))
+
+            logger.error(
+                "run %s: redis publish failed after %d attempts; event dropped from cross-replica fanout",
+                run_id,
+                self._publish_max_retries,
+            )
+            metrics.record_run_event_bus_dropped(reason="publish_failed")
 
         self._fire(f"run_event_bus_publish:{run_id}", _pub())
 
@@ -363,6 +387,7 @@ class RedisRunEventBus:
         self._buffers.pop(run_id, None)
         self._subscribers.pop(run_id, None)
         self._tasks.pop(run_id, None)
+        self._subscribe_retries.pop(run_id, None)
         self._unsubscribe_channel(run_id)
 
 
