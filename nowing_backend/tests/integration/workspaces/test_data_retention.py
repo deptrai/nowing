@@ -513,9 +513,24 @@ async def test_archived_document_excluded_from_hybrid_search(
     await db_session.flush()
 
     # Precondition assertions: verify document states and chunk inventory before
-    # running hybrid search.
+    # running hybrid search. Verify both individual chunks exist in the DB so the
+    # exclusion assertion does not pass for the wrong reason (e.g. unpersisted chunk).
     assert visible.archived_at is None
     assert archived.archived_at is not None
+
+    visible_chunk_count = (
+        await db_session.execute(
+            select(func.count(Chunk.id)).where(Chunk.document_id == visible.id)
+        )
+    ).scalar()
+    archived_chunk_count = (
+        await db_session.execute(
+            select(func.count(Chunk.id)).where(Chunk.document_id == archived.id)
+        )
+    ).scalar()
+    assert visible_chunk_count == 1, f"Expected 1 chunk for visible doc, found {visible_chunk_count}"
+    assert archived_chunk_count == 1, f"Expected 1 chunk for archived doc, found {archived_chunk_count}"
+
     total_chunk_count = (
         await db_session.execute(
             select(func.count(Chunk.id)).where(
