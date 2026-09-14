@@ -11,6 +11,7 @@ unit-testing ``run_purge`` (already covered in
 from __future__ import annotations
 
 import json
+import re
 
 import httpx
 import pytest
@@ -104,6 +105,9 @@ def test_purge_cli_deletes_seeded_fixtures_end_to_end(respx_mock, tmp_env, monke
 
     assert exit_code == 0
     combined = capsys.readouterr().out
-    assert "purge OK" in combined
-    assert "2 deleted" in combined
+    # Rich console wraps interpolated values in ANSI codes (e.g. the count is
+    # emitted as \x1b[1;36m2\x1b[0m), so strip them before matching.
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", combined)
+    assert "purge OK" in plain
+    assert "2 deleted" in plain
     assert not map_path.exists()
