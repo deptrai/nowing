@@ -1718,3 +1718,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: Fallback tests pass URL via target_id with target_url=None; no coverage for production layout where target_url holds the HTTP URL and target_id is a slug
   evidence: Review finding (test_xactions_adapter_v2.py); production-realism gap in test fixtures
+
+## Deferred from: code review of story-36.3 (2026-09-14) — RESOLVED 2026-09-14
+
+- **Finding:** Successful ingest leaves paused target in `status="paused"` indefinitely (`social_xactions_ingest.py:322`). After a paused target cools down and successfully fetches, `target.status` is never reset to `"active"` — only `last_scraped_at` updates. Scheduler still picks up paused targets so functionally it keeps running, but the status lies about lifecycle.
+  - **Action:** Resolved 2026-09-14 — `_ingest_social_target` now sets `target.status = "active"` when prior status was `"paused"` after successful ingest. Test `test_ingest_social_target_resumes_paused_to_active_on_success` covers the transition.
+
+- **Finding:** Paused target waits `cooldown + scrape_interval` before becoming due again (`social_xactions_ingest.py:370-374`). `_pause_target` pushes `last_scraped_at` into the future by `cooldown`, then the scheduler also subtracts `scrape_interval_minutes` from `now` — so a paused target's effective resume is `cooldown + scrape_interval`, longer than the canonical `cooldown` alone.
+  - **Action:** Resolved 2026-09-14 — `_check_and_trigger_social_targets` due-check now branches by status. `paused` targets are due when `last_scraped_at <= now` (cooldown expired); `active` targets keep `last_scraped_at <= now - scrape_interval_minutes`. Tests `test_check_social_targets_paused_due_when_cooldown_expired` and `test_check_social_targets_paused_not_due_during_cooldown` cover both branches.

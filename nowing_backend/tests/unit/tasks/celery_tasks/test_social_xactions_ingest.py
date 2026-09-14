@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 import operator as op_module
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
@@ -14,7 +12,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy import BindParameter
 
-from app.db import XActionsProxyBinding
 from app.proprietary.platforms.xactions.adapter_v2 import TargetUnsupportedError
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 from app.proprietary.platforms.xactions.models import SocialPostData
@@ -487,7 +484,7 @@ async def test_ingest_social_target_resolves_proxy_binding(
     """Per-target task resolves XActionsProxyBinding when account_id/proxy_url missing."""
     target = _fake_target(account_id=None, proxy_url=None)
     binding = _fake_binding()
-    session = _FakeSession(target, binding)
+    _FakeSession(target, binding)
 
     monkeypatch.setattr(
         social_xactions_ingest,
@@ -556,14 +553,57 @@ async def test_ingest_social_target_retries_on_rate_limit(
     with pytest.raises(RuntimeError):
         await social_xactions_ingest._ingest_social_target(task, target.id)
 
-    task.retry.assert_called_once_with(countdown=45)
+    task.retry.assert_called_once_with(countdown=45, max_retries=5)
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_rate_limit_exhausted_retries_halts(
+    monkeypatch,
+):
+    """XACT_4291 when retries >= 5 halts target and does not write DLQ."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("rate limited", code="XACT_4291", retry_after=45)
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    task.request = SimpleNamespace(retries=5)
+
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "error"
+    assert target.is_active is False
+    client.xadd.assert_not_called()
+    task.retry.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_ingest_social_target_pauses_on_hibernation(
     monkeypatch,
 ):
-    """ACCOUNT_HIBERNATION pauses target and returns 0."""
+    """ACCOUNT_HIBERNATION pauses target, pushes last_scraped_at to future, and returns 0."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -590,10 +630,89 @@ async def test_ingest_social_target_pauses_on_hibernation(
     )
 
     task = MagicMock()
+    before = datetime.now(UTC)
     ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
 
     assert ingested == 0
     assert target.status == "paused"
+    assert target.last_scraped_at is not None
+    assert target.last_scraped_at >= before + timedelta(seconds=590)
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_pauses_on_proxy_exhausted(monkeypatch):
+    """PROXY_EXHAUSTED pauses target and pushes last_scraped_at to future."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("proxy exhausted", code="PROXY_EXHAUSTED", retry_after=120)
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    before = datetime.now(UTC)
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "paused"
+    assert target.last_scraped_at >= before + timedelta(seconds=115)
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_pauses_on_5030_temporary_unavailable(monkeypatch):
+    """XACT_5030 pauses target and pushes last_scraped_at to future."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("temporary unavailable", code="XACT_5030", retry_after=300)
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    before = datetime.now(UTC)
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "paused"
+    assert target.last_scraped_at >= before + timedelta(seconds=295)
     assert session.commits == 1
 
 
@@ -673,6 +792,156 @@ async def test_ingest_social_target_signer_crash_retries(
         await social_xactions_ingest._ingest_social_target(task, target.id)
 
     task.retry.assert_called_once_with(countdown=60, max_retries=3)
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_signer_crash_exhausted_retries_writes_dlq_and_halts(
+    monkeypatch,
+):
+    """XACT_5000 when retries >= 3 writes DLQ and halts target."""
+    target = _fake_target(target_id=42, workspace_id=10, account_id="acc_1", platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("signer crash", code="XACT_5000")
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    task.request = SimpleNamespace(retries=3)
+
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "error"
+    assert target.is_active is False
+    task.retry.assert_not_called()
+
+    client.xadd.assert_called_once()
+    stream_name, entry_data = client.xadd.call_args[0]
+    assert stream_name == "stream:social:failed"
+    assert entry_data["original_id"] == "42"
+    assert entry_data["error"] == str(err)
+    assert entry_data["code"] == "XACT_5000"
+    assert entry_data["retries"] == "3"
+    assert "failed_at" in entry_data
+    # failed_at must be a parseable ISO timestamp
+    datetime.fromisoformat(entry_data["failed_at"])
+
+    payload = json.loads(entry_data["payload"])
+    assert payload["target_id"] == 42
+    assert payload["platform"] == "facebook_group"
+    assert payload["workspace_id"] == 10
+    assert payload["account_id"] == "acc_1"
+    assert payload["code"] == "XACT_5000"
+    assert payload["retries"] == 3
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_signer_crash_dlq_fail_still_halts(
+    monkeypatch,
+):
+    """When DLQ xadd raises an exception, the target is still halted safely."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    client.xadd.side_effect = RuntimeError("redis is down")
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("signer crash", code="XACT_5000")
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    task.request = SimpleNamespace(retries=3)
+
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "error"
+    assert target.is_active is False
+    task.retry.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_bad_request_4001_pauses_and_logs_suggested_action(
+    monkeypatch,
+    caplog,
+):
+    """XACT_4001 pauses target, sets future last_scraped_at, and logs suggested action."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError(
+        "invalid filter parameter",
+        code="XACT_4001",
+        retry_after=180,
+        suggested_action="check keyword syntax",
+    )
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    before = datetime.now(UTC)
+    with caplog.at_level("WARNING"):
+        ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "paused"
+    assert target.last_scraped_at >= before + timedelta(seconds=175)
+    assert "check keyword syntax" in caplog.text
+    assert session.commits == 1
 
 
 @pytest.mark.asyncio
@@ -797,14 +1066,15 @@ async def test_pause_target_with_retry_after_sets_future():
 
 
 @pytest.mark.asyncio
-async def test_pause_target_without_retry_after_leaves_last_scraped():
-    """_pause_target does not touch last_scraped_at when no retry_after."""
+async def test_pause_target_without_retry_after_sets_future_default():
+    """_pause_target sets last_scraped_at into future with default cooldown when no retry_after."""
     target = _fake_target()
-    original = target.last_scraped_at
+    before = datetime.now(UTC)
     session = _FakeSession(target)
     await social_xactions_ingest._pause_target(session, target, "transient")
     assert target.status == "paused"
-    assert target.last_scraped_at is original
+    assert target.last_scraped_at is not None
+    assert target.last_scraped_at >= before + timedelta(seconds=590)
     assert session.commits == 1
 
 
@@ -1012,8 +1282,8 @@ async def test_ingest_social_target_no_proxy_binding_needed(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_ingest_social_target_wrong_error_code_does_not_match(monkeypatch):
-    """An unrecognized XActions error code falls through and re-raises."""
+async def test_ingest_social_target_unmapped_code_defaults_to_pause(monkeypatch):
+    """An unrecognized XActions error code defaults to PAUSE and sets last_scraped_at to future."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -1028,7 +1298,7 @@ async def test_ingest_social_target_wrong_error_code_does_not_match(monkeypatch)
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
 
-    err = XActionsMcpError("unknown", code="XACT_9999")
+    err = XActionsMcpError("unknown", code="XACT_9999", retry_after=120)
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -1040,13 +1310,56 @@ async def test_ingest_social_target_wrong_error_code_does_not_match(monkeypatch)
     )
 
     task = MagicMock()
-    with pytest.raises(XActionsMcpError):
-        await social_xactions_ingest._ingest_social_target(task, target.id)
+    before = datetime.now(UTC)
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "paused"
+    assert target.last_scraped_at >= before + timedelta(seconds=115)
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_none_code_defaults_to_pause(monkeypatch):
+    """A None error code defaults to PAUSE and sets last_scraped_at to future."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("error with no code", code=None)
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    before = datetime.now(UTC)
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "paused"
+    assert target.last_scraped_at >= before + timedelta(seconds=590)
+    assert session.commits == 1
 
 
 @pytest.mark.asyncio
 async def test_rate_limit_default_retry_after(monkeypatch):
-    """XACT_4291 without retry_after falls back to 30 seconds."""
+    """XACT_4291 without retry_after falls back to 30 seconds and max_retries=5."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -1079,7 +1392,7 @@ async def test_rate_limit_default_retry_after(monkeypatch):
     with pytest.raises(RuntimeError):
         await social_xactions_ingest._ingest_social_target(task, target.id)
 
-    task.retry.assert_called_once_with(countdown=30)
+    task.retry.assert_called_once_with(countdown=30, max_retries=5)
 
 
 @pytest.mark.asyncio
@@ -1145,6 +1458,118 @@ async def test_check_social_targets_just_not_due(monkeypatch):
     triggered = await social_xactions_ingest._check_and_trigger_social_targets()
     assert triggered == 0
     delay_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_check_social_targets_paused_due_when_cooldown_expired(monkeypatch):
+    """A paused target becomes due as soon as last_scraped_at <= now (cooldown
+    expired), without also requiring scrape_interval to elapse."""
+    now = datetime.now(UTC)
+    # _pause_target sets last_scraped_at = now + cooldown. After the cooldown
+    # lapses, last_scraped_at is in the past — the target should be due even
+    # though scrape_interval (default 15m) has not fully elapsed since then.
+    target = _fake_target(
+        target_id=7,
+        status="paused",
+        last_scraped_at=now - timedelta(seconds=30),  # cooldown expired 30s ago
+        interval_minutes=15,
+    )
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    delay_mock = MagicMock()
+    monkeypatch.setattr(
+        social_xactions_ingest.ingest_social_target_task,
+        "delay",
+        delay_mock,
+    )
+
+    triggered = await social_xactions_ingest._check_and_trigger_social_targets()
+    assert triggered == 1
+    delay_mock.assert_called_once_with(7)
+
+
+@pytest.mark.asyncio
+async def test_check_social_targets_paused_not_due_during_cooldown(monkeypatch):
+    """A paused target with last_scraped_at still in the future is not due."""
+    now = datetime.now(UTC)
+    target = _fake_target(
+        target_id=8,
+        status="paused",
+        last_scraped_at=now + timedelta(minutes=10),  # cooldown active
+        interval_minutes=15,
+    )
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    delay_mock = MagicMock()
+    monkeypatch.setattr(
+        social_xactions_ingest.ingest_social_target_task,
+        "delay",
+        delay_mock,
+    )
+
+    triggered = await social_xactions_ingest._check_and_trigger_social_targets()
+    assert triggered == 0
+    delay_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_resumes_paused_to_active_on_success(monkeypatch):
+    """When a paused target fetches successfully, its status resets to active."""
+    target = _fake_target(
+        status="paused",
+        last_scraped_at=datetime.now(UTC) - timedelta(seconds=5),
+    )
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(return_value=[])
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+
+    task = MagicMock()
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    assert target.status == "active"
+    assert session.commits == 1
 
 
 @pytest.mark.asyncio
@@ -1355,3 +1780,59 @@ async def test_ingest_social_target_status_unsupported_skips(monkeypatch):
     assert ingested == 0
     assert session.commits == 0
     client.set.assert_not_called()
+
+
+def test_get_task_retries_various_shapes():
+    """_get_task_retries safely handles various task and request shapes."""
+    assert social_xactions_ingest._get_task_retries(None) == 0
+    assert social_xactions_ingest._get_task_retries(object()) == 0
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=None)) == 0
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=3))) == 3
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries="5"))) == 5
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries="bad"))) == 0
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=True))) == 0
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=False))) == 0
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=-2))) == 0
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_unhandled_behavior_raises(monkeypatch):
+    """An unhandled behavior like RAISE re-raises the underlying exception."""
+    from app.proprietary.platforms.xactions.error_map import (
+        BehaviorDecision,
+        TaskBehavior,
+    )
+
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("fatal crash", code="XACT_FATAL")
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "resolve_task_behavior",
+        lambda _exc: BehaviorDecision(behavior=TaskBehavior.RAISE, reason="fatal crash"),
+    )
+
+    task = MagicMock()
+    with pytest.raises(XActionsMcpError):
+        await social_xactions_ingest._ingest_social_target(task, target.id)
