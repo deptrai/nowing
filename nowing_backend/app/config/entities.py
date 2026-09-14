@@ -91,6 +91,15 @@ XACTIONS_STREAM_SINGLE_WRITER_ENABLED = (
     os.getenv("XACTIONS_STREAM_SINGLE_WRITER_ENABLED", "false").strip().lower()
     in ("true", "1", "yes", "t", "on")
 )
+# Unified dispatch gate (Story 36.6a / AD-1, AD-2, AD-6)
+# When ON: UniversalScrapeTargetMapper resolves platform+action from the
+# CanonicalActionMatrix (x_actions_list + static fallback) and dispatches
+# x_scrape with the nested {platform, action, args, context} envelope.
+# When OFF: legacy PLATFORM_TOOL_MAP path is used unchanged.
+XACTIONS_USE_UNIFIED_DISPATCH = (
+    os.getenv("XACTIONS_USE_UNIFIED_DISPATCH", "false").strip().lower()
+    in ("true", "1", "yes", "t", "on")
+)
 
 
 
@@ -138,4 +147,5 @@ __all__ = [
     "XACTIONS_STREAM_SINGLE_WRITER_ENABLED",
     "XACTIONS_TIMEOUT_SECONDS",
     "XACTIONS_TRANSPORT",
+    "XACTIONS_USE_UNIFIED_DISPATCH",
 ]

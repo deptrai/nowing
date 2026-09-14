@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -12,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.config import config
 from app.db import (
     Permission,
     SocialMonitoredTarget,
@@ -20,6 +22,10 @@ from app.db import (
     get_async_session,
 )
 from app.dependencies.auth import RequirePermission
+from app.proprietary.platforms.xactions.action_matrix import (
+    CanonicalActionMatrix,
+    derive_platform_action,
+)
 from app.users import get_auth_context
 
 logger = logging.getLogger(__name__)
@@ -48,8 +54,56 @@ _PLATFORM_PATTERN = f"^({'|'.join(SUPPORTED_PLATFORMS)})$"
 SocialTargetStatus = Literal["active", "paused", "error", "disabled", "unsupported"]
 
 
+def _matrix_supported_platform_kinds(
+    matrix: dict[str, dict[str, dict]],
+) -> list[str]:
+    """Derive the list of accepted ``platform_kind`` values from the matrix.
+
+    Each ``{platform, action}`` pair contributes ``{platform}_{target_kind}``
+    when the descriptor carries a ``match.target_kind`` hint; platforms with a
+    single unambiguous action also accept the bare ``{platform}`` form.
+    """
+    kinds: set[str] = set()
+    for platform, actions in matrix.items():
+        for meta in actions.values():
+            kind = (meta.get("match") or {}).get("target_kind")
+            if kind:
+                kinds.add(f"{platform}_{kind}")
+        if len(actions) == 1:
+            # Single-action platform also accepts the bare platform_kind.
+            kinds.add(platform)
+    return sorted(kinds)
+
+
+def _validate_platform_against_matrix(platform: str) -> None:
+    """Raise HTTP 422 when ``platform`` isn't in the canonical action matrix.
+
+    Only consulted when ``XACTIONS_USE_UNIFIED_DISPATCH`` is ON — the flag-OFF
+    path keeps the legacy ``_PLATFORM_PATTERN`` regex check on the Pydantic
+    schema. Uses the cached/static matrix only (never fetches the network).
+    """
+    if not getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+        return
+
+    matrix = CanonicalActionMatrix.get_sync()
+    try:
+        derive_platform_action(platform, matrix)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": f"Unsupported platform: {platform}",
+                "supported_platforms": _matrix_supported_platform_kinds(matrix),
+            },
+        )
+
+
 class SocialTargetCreate(BaseModel):
-    platform: str = Field(..., pattern=_PLATFORM_PATTERN)
+    # Pattern enforced via field_validator so it can relax when
+    # XACTIONS_USE_UNIFIED_DISPATCH is ON — the route then validates the
+    # platform against CanonicalActionMatrix and returns a 422 carrying
+    # ``supported_platforms``.
+    platform: str = Field(..., min_length=1, max_length=100)
     target_id: str = Field(..., min_length=1, max_length=255)
     target_name: str = Field(..., min_length=1, max_length=1000)
     target_url: str | None = None
@@ -60,6 +114,23 @@ class SocialTargetCreate(BaseModel):
     status: SocialTargetStatus = Field(default="active")
     proxy_url: str | None = None
     account_id: str | None = None
+
+    @field_validator("platform")
+    @classmethod
+    def validate_platform_format(cls, v: str) -> str:
+        """When the unified dispatch flag is OFF, keep the legacy whitelist.
+
+        When ON, defer to the matrix check in the route handler so it can
+        return a 422 with the ``supported_platforms`` list.
+        """
+        if getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            return v
+
+        if not re.match(_PLATFORM_PATTERN, v):
+            raise ValueError(
+                f"platform must be one of: {', '.join(SUPPORTED_PLATFORMS)}"
+            )
+        return v
 
     @field_validator("target_url", "proxy_url")
     @classmethod
@@ -150,6 +221,8 @@ async def create_social_target(
     ),
 ) -> SocialTargetRead:
     """Create a new social monitored target."""
+    _validate_platform_against_matrix(payload.platform)
+
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
         raise HTTPException(

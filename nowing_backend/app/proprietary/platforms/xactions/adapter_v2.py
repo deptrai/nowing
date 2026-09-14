@@ -16,6 +16,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.config import config
+from app.proprietary.platforms.xactions.action_matrix import (
+    CanonicalActionMatrix,
+    derive_platform_action,
+)
 from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.mcp_client import (
     XActionsMcpClient,
@@ -140,15 +144,116 @@ class UniversalScrapeTargetMapper:
     XActions daemon does not yet expose `x_scrape` (per INTEGRATION-PLAN),
     callers should treat an MCP `tool_not_found`/`XACT_404`-style failure as
     a signal to fall back to `x_crawl_post` for post-detail-only ingestion.
+
+    When ``XACTIONS_USE_UNIFIED_DISPATCH`` is ON, platforms that were already
+    dispatched via ``x_scrape`` in ``PLATFORM_TOOL_MAP`` resolve their
+    ``(platform, action)`` pair from the :class:`CanonicalActionMatrix` and
+    emit the nested ``{platform, action, args, context}`` envelope per AD-2.
+    Facebook/Twitter entries that still use dedicated legacy tools
+    (``x_facebook_group_posts``, ``x_search_tweets``, …) are left untouched —
+    unified dispatch only replaces the ``x_scrape`` rows.
     """
 
     @staticmethod
+    def _unified_envelope(
+        target: Any,
+        platform_kind: str,
+        matrix: dict[str, dict[str, dict[str, Any]]],
+    ) -> tuple[str, dict[str, Any]]:
+        """Build the nested ``x_scrape`` envelope for a matrix-backed platform.
+
+        Returns ``("x_scrape", {platform, action, args: {...}, context:
+        {targetId, workspaceId}})``. Action args are populated from the
+        descriptor's ``requiredArgs`` — the target's ``target_id`` is bound to
+        the single required arg (all current matrix entries have exactly one).
+        """
+        platform, action = derive_platform_action(platform_kind, matrix)
+        descriptor = matrix[platform][action]
+        required_args = list(descriptor.get("requiredArgs") or [])
+
+        target_id_value = getattr(target, "target_id", None)
+        args: dict[str, Any] = {}
+        if required_args:
+            if len(required_args) == 1:
+                if not target_id_value:
+                    raise ValueError(
+                        f"target_id required for action {action}"
+                    )
+                args[required_args[0]] = target_id_value
+            else:
+                # Multi-required-arg descriptors are not yet produced by the
+                # static matrix; surface them loudly rather than guess binding.
+                raise ValueError(
+                    f"Action {action} requires multiple args {required_args}; "
+                    "automatic binding not supported"
+                )
+
+        context = {
+            "targetId": getattr(target, "id", None) or getattr(target, "target_id", None),
+            "workspaceId": getattr(target, "workspace_id", None),
+        }
+
+        arguments: dict[str, Any] = {
+            "platform": platform,
+            "action": action,
+            "args": args,
+            "context": context,
+        }
+        return "x_scrape", arguments
+
+    @staticmethod
     def map(target: Any) -> tuple[str, dict[str, Any]]:
+        """Map a target to ``(tool_name, arguments)``.
+
+        Sync — never touches the network. Under flag ON this consults
+        :meth:`CanonicalActionMatrix.get_sync` (fresh cache or static
+        fallback); under flag OFF it uses ``PLATFORM_TOOL_MAP`` verbatim.
+        """
         platform = getattr(target, "platform", None)
+
+        if getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            mapping = PLATFORM_TOOL_MAP.get(platform)
+            if mapping is None:
+                raise ValueError(f"Unsupported social platform: {platform}")
+            # Legacy dedicated tools (facebook/twitter) stay as-is even when
+            # the flag is ON — unified dispatch only replaces x_scrape rows.
+            if mapping["tool"] != "x_scrape":
+                return mapping["tool"], mapping["args_builder"](target)
+            matrix = CanonicalActionMatrix.get_sync()
+            return UniversalScrapeTargetMapper._unified_envelope(
+                target, platform, matrix
+            )
+
         mapping = PLATFORM_TOOL_MAP.get(platform)
         if not mapping:
             raise ValueError(f"Unsupported social platform: {platform}")
         return mapping["tool"], mapping["args_builder"](target)
+
+    @staticmethod
+    async def map_async(
+        target: Any,
+        client: Any | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        """Async variant — refreshes the action matrix when the flag is ON.
+
+        Flag OFF → delegates to :meth:`map` unchanged. Flag ON → awaits
+        ``CanonicalActionMatrix.get(client)`` so the TTL cache can refresh
+        from ``x_actions_list`` before resolving ``(platform, action)``.
+        """
+        if not getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            return UniversalScrapeTargetMapper.map(target)
+
+        platform = getattr(target, "platform", None)
+        mapping = PLATFORM_TOOL_MAP.get(platform)
+        if mapping is None:
+            raise ValueError(f"Unsupported social platform: {platform}")
+        if mapping["tool"] != "x_scrape":
+            return mapping["tool"], mapping["args_builder"](target)
+
+        matrix = await CanonicalActionMatrix.get(client)
+        return UniversalScrapeTargetMapper._unified_envelope(
+            target, platform, matrix
+        )
 
     @staticmethod
     def fallback_crawl_post(target: Any) -> tuple[str, dict[str, Any]]:
@@ -195,7 +300,12 @@ class XActionsSocialAdapterV2:
     async def fetch_posts_for_target(self, target: Any) -> list[SocialPostData]:
         """Fetch posts for a monitored target via XActions MCP."""
         client = await self._get_client()
-        tool_name, arguments = UniversalScrapeTargetMapper.map(target)
+        if getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            tool_name, arguments = await UniversalScrapeTargetMapper.map_async(
+                target, client
+            )
+        else:
+            tool_name, arguments = UniversalScrapeTargetMapper.map(target)
 
         account_id = getattr(target, "account_id", None) or self.default_account_id
         if account_id:

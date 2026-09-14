@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-14-2026 18:30'
+last_updated: '09-15-2026 01:59'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -386,7 +386,8 @@ development_status:
   36-3-centralized-xact_-task-behavior-error-map: done
   36-4-single-writer-stream-stop-nowing-publishing-to-stream-social: done
   36-5-stream-consumer-schema-contract-dlq-routing: done
-  36-6-canonical-action-matrix-legacy-tool-deprecation: backlog
+  36-6a-canonical-action-matrix: review
+  36-6b-legacy-tool-deprecation: backlog
   epic-36-retrospective: optional
 validation_reports:
   - story: "3.18"
