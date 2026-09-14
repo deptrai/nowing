@@ -252,3 +252,24 @@ class TestCeleryIndependence:
             mod = getattr(attr_val, "__module__", "")
             if mod:
                 assert not mod.startswith("celery"), f"{attr_name} has module {mod}"
+
+
+class TestExtractMessageFallback:
+    def test_empty_message_and_empty_str_returns_class_code(self):
+        err = XActionsMcpError("", code="XACT_5000")
+        # message="" and str(err)="" -> fallback includes class name + code
+        msg = error_map._extract_message(err)
+        assert "XActionsMcpError" in msg
+        assert "XACT_5000" in msg
+
+    def test_default_retry_populates_countdown(self):
+        err = MagicMock(code="XACT_9999", message="weird", retry_after=42)
+        decision = resolve_task_behavior(err, default=TaskBehavior.RETRY)
+        assert decision.behavior == TaskBehavior.RETRY
+        assert decision.countdown == 42
+        assert decision.cooldown_seconds is None
+
+    def test_default_retry_clamps_countdown(self):
+        err = MagicMock(code="XACT_9999", message="weird", retry_after=99999)
+        decision = resolve_task_behavior(err, default=TaskBehavior.RETRY)
+        assert decision.countdown == 3600

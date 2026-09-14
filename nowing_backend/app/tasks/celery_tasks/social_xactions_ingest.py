@@ -105,6 +105,8 @@ async def _pause_target(
 ) -> None:
     """Pause a target after a transient scraping failure."""
     target.status = "paused"
+    # decision.cooldown_seconds is already clamped in error_map; clamp again
+    # defensively for direct callers passing raw retry_after values.
     cooldown = clamp_cooldown(retry_after_seconds)
     target.last_scraped_at = datetime.now(UTC) + timedelta(seconds=cooldown)
     await session.commit()
@@ -128,7 +130,7 @@ def _get_task_retries(task: Any) -> int:
     if isinstance(raw, int) and not isinstance(raw, bool):
         return max(0, raw)
     try:
-        return max(0, int(str(raw)))
+        return max(0, int(float(str(raw))))
     except (TypeError, ValueError):
         return 0
 
@@ -156,7 +158,8 @@ async def _write_dlq(
                         "code": normalized_code if normalized_code else None,
                         "suggested_action": decision.suggested_action,
                         "retries": retries,
-                    }
+                    },
+                    default=str,
                 ),
                 "error": str(exc),
                 "code": normalized_code,
@@ -268,24 +271,46 @@ async def _ingest_social_target(task, target_id: int) -> int:
                         decision = resolve_task_behavior(exc)
                         if decision.behavior is TaskBehavior.RETRY:
                             retries = _get_task_retries(task)
-                            if (
+                            retries_exhausted = (
                                 decision.max_retries is not None
                                 and retries >= decision.max_retries
-                                and decision.exhausted_behavior
-                                is TaskBehavior.HALT
-                            ):
-                                if decision.write_dlq:
-                                    await _write_dlq(
-                                        redis_client,
-                                        target,
-                                        exc,
-                                        decision,
-                                        retries,
+                            )
+                            if retries_exhausted:
+                                if (
+                                    decision.exhausted_behavior
+                                    is TaskBehavior.HALT
+                                ):
+                                    if decision.write_dlq:
+                                        await _write_dlq(
+                                            redis_client,
+                                            target,
+                                            exc,
+                                            decision,
+                                            retries,
+                                        )
+                                    await _halt_target(
+                                        session, target, decision.reason
                                     )
-                                await _halt_target(
-                                    session, target, decision.reason
-                                )
-                                return 0
+                                    return 0
+                                if (
+                                    decision.exhausted_behavior
+                                    is TaskBehavior.PAUSE
+                                ):
+                                    await _pause_target(
+                                        session,
+                                        target,
+                                        decision.reason,
+                                        retry_after_seconds=decision.cooldown_seconds,
+                                    )
+                                    return 0
+                                if (
+                                    decision.exhausted_behavior
+                                    is TaskBehavior.RAISE
+                                ):
+                                    raise exc
+                                # No exhausted_behavior -> surface the original
+                                # error rather than triggering MaxRetriesExceededError.
+                                raise exc
                             await session.commit()
                             logger.info(
                                 "Retrying social target %s in %ss (attempt %d/%s): %s",
@@ -298,6 +323,7 @@ async def _ingest_social_target(task, target_id: int) -> int:
                                 decision.reason,
                             )
                             raise task.retry(
+                                exc=exc,
                                 countdown=decision.countdown,
                                 max_retries=decision.max_retries,
                             ) from exc

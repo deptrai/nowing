@@ -85,7 +85,11 @@ def _extract_message(exc: Any) -> str:
     msg = getattr(exc, "message", None)
     if msg is not None and str(msg).strip():
         return str(msg)
-    return str(exc)
+    rendered = str(exc)
+    if rendered.strip():
+        return rendered
+    raw_code = getattr(exc, "code", None)
+    return f"{exc.__class__.__name__} (code={raw_code})"
 
 
 XACT_ERROR_BEHAVIOR: dict[str, Callable[[Any], BehaviorDecision]] = {
@@ -167,8 +171,14 @@ def resolve_task_behavior(
         if default is TaskBehavior.PAUSE
         else None
     )
+    countdown = (
+        clamp_countdown(getattr(exc, "retry_after", None))
+        if default is TaskBehavior.RETRY
+        else None
+    )
     return BehaviorDecision(
         behavior=default,
+        countdown=countdown,
         cooldown_seconds=cooldown,
         code=code,
         reason=f"unmapped code {raw_code}: {msg}",

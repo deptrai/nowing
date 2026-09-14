@@ -553,7 +553,7 @@ async def test_ingest_social_target_retries_on_rate_limit(
     with pytest.raises(RuntimeError):
         await social_xactions_ingest._ingest_social_target(task, target.id)
 
-    task.retry.assert_called_once_with(countdown=45, max_retries=5)
+    task.retry.assert_called_once_with(exc=err, countdown=45, max_retries=5)
     assert session.commits == 1
 
 
@@ -791,7 +791,7 @@ async def test_ingest_social_target_signer_crash_retries(
     with pytest.raises(RuntimeError):
         await social_xactions_ingest._ingest_social_target(task, target.id)
 
-    task.retry.assert_called_once_with(countdown=60, max_retries=3)
+    task.retry.assert_called_once_with(exc=err, countdown=60, max_retries=3)
 
 
 @pytest.mark.asyncio
@@ -1392,7 +1392,7 @@ async def test_rate_limit_default_retry_after(monkeypatch):
     with pytest.raises(RuntimeError):
         await social_xactions_ingest._ingest_social_target(task, target.id)
 
-    task.retry.assert_called_once_with(countdown=30, max_retries=5)
+    task.retry.assert_called_once_with(exc=err, countdown=30, max_retries=5)
 
 
 @pytest.mark.asyncio
@@ -1793,6 +1793,9 @@ def test_get_task_retries_various_shapes():
     assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=True))) == 0
     assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=False))) == 0
     assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=-2))) == 0
+    # float / float-string coercion (was: int("3.0") -> ValueError -> 0)
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries=3.0))) == 3
+    assert social_xactions_ingest._get_task_retries(SimpleNamespace(request=SimpleNamespace(retries="3.0"))) == 3
 
 
 @pytest.mark.asyncio
@@ -1836,6 +1839,58 @@ async def test_ingest_social_target_unhandled_behavior_raises(monkeypatch):
     task = MagicMock()
     with pytest.raises(XActionsMcpError):
         await social_xactions_ingest._ingest_social_target(task, target.id)
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_exhausted_pause_pauses_target(monkeypatch):
+    """Retries exhausted with exhausted_behavior=PAUSE pauses instead of MaxRetriesExceededError."""
+    from app.proprietary.platforms.xactions.error_map import (
+        BehaviorDecision,
+        TaskBehavior,
+    )
+
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+    monkeypatch.setattr(
+        social_xactions_ingest, "get_celery_session_maker", lambda: session
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    err = XActionsMcpError("flaky", code="XACT_FLAKY")
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "resolve_task_behavior",
+        lambda _exc: BehaviorDecision(
+            behavior=TaskBehavior.RETRY,
+            countdown=30,
+            max_retries=3,
+            exhausted_behavior=TaskBehavior.PAUSE,
+            cooldown_seconds=120,
+            reason="flaky",
+        ),
+    )
+
+    task = MagicMock()
+    task.request.retries = 3  # already at max
+    task.retry = MagicMock(side_effect=RuntimeError("should-not-retry"))
+
+    result = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert result == 0
+    assert target.status == "paused"
+    task.retry.assert_not_called()
 
 
 # Story 36.4: Single-Writer Stream tests

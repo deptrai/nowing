@@ -173,3 +173,39 @@ raise exc  # trailing else — behavior lạ không rơi qua post-processing
 - `false` — `_get_task_retries` `"3.0"` string parse: `task.request.retries` is always `int` in Celery; `"3.0"` never occurs in production. Defensive fallback is sufficient.
 - `false` — `exhausted_behavior` non-HALT fall-through: current map only emits `HALT` for exhausted retry; no other enum value exists for `exhausted_behavior` in `XACT_ERROR_BEHAVIOR`. Guard is correct for the actual domain.
 - `false` — `XACT_ERROR_BEHAVIOR` mutable dict race condition: map is read-only after module init; no code mutates it at runtime. `MappingProxyType` adds no real protection here.
+
+## Suggested Review Order
+
+**Core Error Behavior Mapping (Pure Logic)**
+
+- Single source of truth resolving XACT error codes to task behavior decisions.
+  [`error_map.py:153`](../../nowing_backend/app/proprietary/platforms/xactions/error_map.py#L153)
+
+- Canonical mapping table binding error codes to retry, pause, and halt behaviors.
+  [`error_map.py:95`](../../nowing_backend/app/proprietary/platforms/xactions/error_map.py#L95)
+
+- Decoupled dataclass and enum contracts isolating error classification from Celery runtime.
+  [`error_map.py:16`](../../nowing_backend/app/proprietary/platforms/xactions/error_map.py#L16)
+
+- Safe boundary clamping keeping retry countdown and pause cooldown within operational limits.
+  [`error_map.py:40`](../../nowing_backend/app/proprietary/platforms/xactions/error_map.py#L40)
+
+**Celery Ingest Task Execution & DLQ Routing**
+
+- Dispatches worker task retry, pause, and halt strictly via decision metadata fields.
+  [`social_xactions_ingest.py:271`](../../nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py#L271)
+
+- Publishes structured error event to stream:social:failed before permanently halting exhausted targets.
+  [`social_xactions_ingest.py:138`](../../nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py#L138)
+
+- Guarantees future last_scraped_at timestamp for paused targets avoiding immediate scheduler spin-loops.
+  [`social_xactions_ingest.py:99`](../../nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py#L99)
+
+**Verification Suites**
+
+- Comprehensive unit tests verifying error mapping, clamping boundaries, and Celery independence.
+  [`test_error_map.py:1`](../../nowing_backend/tests/unit/platforms/xactions/test_error_map.py#L1)
+
+- Unit tests verifying worker retry limits, DLQ event publication, and cooldown scheduling.
+  [`test_social_xactions_ingest.py:530`](../../nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py#L530)
+

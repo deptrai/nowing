@@ -65,6 +65,22 @@ context:
 - Given `XACTIONS_STREAM_SINGLE_WRITER_ENABLED=True`, when `_ingest_social_target` chạy thành công, then `adapter.ingest_raw_post_to_stream` KHÔNG được gọi (Nowing không XADD vào stream), nhưng `target.last_scraped_at` vẫn được cập nhật và `target.status` được phục hồi `"active"` nếu trước đó là `"paused"`.
 - Given default environment, when config loads, then `XACTIONS_STREAM_SINGLE_WRITER_ENABLED` có giá trị `False`.
 
+### Review Findings
+
+- [ ] [Review][Patch] Missing direct unit test for adapter_v2 single-writer guard [nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py:376-380] — defense-in-depth guard `getattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", False)` in `ingest_raw_post_to_stream` is unexercised: all task-level tests mock `adapter.ingest_raw_post_to_stream`, and `tests/unit/platforms/test_xactions_adapter_v2.py` has no direct tests for the method under either flag state.
+
+**Rejected:**
+
+- `test_single_writer_config_default_and_parsing` reloads `entities_mod` but not `app.config` — **false**: test only asserts `entities_mod.XACTIONS_STREAM_SINGLE_WRITER_ENABLED` (module-level), which reload correctly updates; `config.XACTIONS_STREAM_SINGLE_WRITER_ENABLED` staying `False` is expected for that assertion target, and separate task tests monkeypatch `config` directly.
+- Inconsistent access (`config.X` vs `getattr(config, "X", False)`) — **low**, rejected: attr always exists via `from app.config.entities import *`; adding `getattr` in task buys nothing.
+- Legacy `adapter.py` lacks flag check — **false**: `XActionsSocialAdapter` (v1) has zero callers outside `__init__.py` re-export; no live path bypasses the flag.
+- Unrelated `elif` consolidation in `fetch_posts_for_target` — **low**, rejected: semantically equivalent refactor; reverting adds more diff noise than it removes.
+- Spec Code Map shows `== "true"` but impl uses tuple — rejected: fix would edit the frozen spec; impl (multi-value parse) is strictly better.
+- Truthy tuple missing `"t"` test / `"y"` omitted — **low**, rejected: `"t"` is covered implicitly; `"y"` omission is intentional (avoid ambiguous single-char).
+- No runtime `DeprecationWarning` on `ingest_raw_post_to_stream` — rejected: codebase does not use `DeprecationWarning` pattern; docstring + guard suffice.
+- Docstring of `_ingest_social_target` still says "push to Redis stream" — **low**, rejected: cosmetic only.
+- Flag ON skips `post.target_id`/`post.workspace_id` assignment — **false**: `fetch_posts_for_target` already sets both fields on each `SocialPostData`; the loop assignment was only a refresh, and posts are unused afterward (only `len(posts)` counts).
+
 ## Spec Change Log
 
 ## Design Notes
