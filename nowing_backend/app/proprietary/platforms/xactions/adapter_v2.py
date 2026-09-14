@@ -10,6 +10,7 @@ XActions running with `MCP_TRANSPORT=http PORT=3001`.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -379,7 +380,44 @@ class XActionsSocialAdapterV2:
             )
             return None
 
-        payload = post.to_dict()
+        # Build payload matching the consumer schema in social_stream_worker.
+        # ``post.to_dict()`` is unsafe here: asdict() keeps ``None`` fields which
+        # Redis ``xadd`` rejects with ``DataError``. Mirror the legacy v1 adapter
+        # (``adapter.py:ingest_raw_post_to_stream``) and serialize datetimes /
+        # collections to strings, omitting ``None`` optionals entirely.
+        payload: dict[str, Any] = {
+            "platform": post.platform,
+            "external_post_id": post.external_post_id,
+            "author_id": post.author_id or "",
+            "author_name": post.author_name or "",
+            "author_url": post.author_url or "",
+            "post_url": post.post_url or "",
+            "content": post.content or "",
+            "reactions_count": str(post.reactions_count),
+            "comments_count": str(post.comments_count),
+            "shares_count": str(post.shares_count),
+            "published_at": post.published_at.isoformat() if post.published_at else "",
+            "media_urls": json.dumps(post.media_urls or []),
+            "schema_version": "1",
+        }
+        if post.target_id is not None:
+            payload["target_id"] = str(post.target_id)
+        if post.workspace_id is not None:
+            payload["workspace_id"] = str(post.workspace_id)
+        if post.client_id is not None:
+            payload["client_id"] = post.client_id
+        if post.category is not None:
+            payload["category"] = post.category
+        if post.storage_ref is not None:
+            payload["storage_ref"] = post.storage_ref
+        if post.scraper_id is not None:
+            payload["scraper_id"] = post.scraper_id
+        if post.benchmark_health is not None:
+            payload["benchmark_health"] = post.benchmark_health
+        if post.benchmark_alert is not None:
+            payload["benchmark_alert"] = "true" if post.benchmark_alert else "false"
+        if post.raw_entities:
+            payload["raw_entities"] = json.dumps(post.raw_entities)
         try:
             msg_id = await redis_client.xadd(
                 STREAM_SOCIAL_RAW_POSTS,
