@@ -67,7 +67,7 @@ context:
 
 ### Review Findings
 
-- [ ] [Review][Patch] Missing direct unit test for adapter_v2 single-writer guard [nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py:376-380] — defense-in-depth guard `getattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", False)` in `ingest_raw_post_to_stream` is unexercised: all task-level tests mock `adapter.ingest_raw_post_to_stream`, and `tests/unit/platforms/test_xactions_adapter_v2.py` has no direct tests for the method under either flag state.
+- [x] [Review][Patch] Missing direct unit test for adapter_v2 single-writer guard [nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py:376-380] — defense-in-depth guard `getattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", False)` in `ingest_raw_post_to_stream` is unexercised: all task-level tests mock `adapter.ingest_raw_post_to_stream`, and `tests/unit/platforms/test_xactions_adapter_v2.py` has no direct tests for the method under either flag state. **Fixed:** added `test_ingest_raw_post_to_stream_single_writer_enabled_skips_xadd` and `test_ingest_raw_post_to_stream_single_writer_disabled_calls_xadd` in `test_xactions_adapter_v2.py`.
 
 **Rejected:**
 

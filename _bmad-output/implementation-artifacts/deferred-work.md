@@ -1726,3 +1726,9 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - **Finding:** Paused target waits `cooldown + scrape_interval` before becoming due again (`social_xactions_ingest.py:370-374`). `_pause_target` pushes `last_scraped_at` into the future by `cooldown`, then the scheduler also subtracts `scrape_interval_minutes` from `now` — so a paused target's effective resume is `cooldown + scrape_interval`, longer than the canonical `cooldown` alone.
   - **Action:** Resolved 2026-09-14 — `_check_and_trigger_social_targets` due-check now branches by status. `paused` targets are due when `last_scraped_at <= now` (cooldown expired); `active` targets keep `last_scraped_at <= now - scrape_interval_minutes`. Tests `test_check_social_targets_paused_due_when_cooldown_expired` and `test_check_social_targets_paused_not_due_during_cooldown` cover both branches.
+
+## Deferred from: code review of story-36.5 (2026-09-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-5-stream-consumer-schema-contract-dlq.md`
+  summary: `_LAG_STATE` module-global throttle ineffective across multi-process Celery workers — each process probes independently
+  evidence: Review finding (social_stream_worker.py:64); trade-off accepted — probe cost is low at 30s intervals

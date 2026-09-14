@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-14-2026 13:27'
+last_updated: '09-14-2026 18:30'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -348,34 +348,46 @@ development_status:
   30-8-epic-13-canonical-entity-cleanup: done
   30-9-technical-debt-retirement-system-hardening: done
   epic-30-retrospective: done
+
   epic-31: in-progress
-  31-1-dokploy-container-cgroup-network-isolation: done
-  31-2-custom-cname-dns-txt-verification: backlog
-  31-3-ast-static-eval-dynamic-jsx-mark-tool: backlog
-  31-4-entitlement-presentation-format-selection: backlog
+  31-1-dokploy-multi-tenant-container-resource-constraints-cgroup-c: done
+  31-2-strict-cname-dns-ingress-ownership-verification: backlog
+  31-3-ast-static-eval-policy-for-dynamic-jsx-expression-matching-i: backlog
+  31-4-entitlement-driven-presentation-studio-format-selection-from: backlog
+  epic-31-retrospective: optional
+
   epic-32: backlog
-  32-1-human-live-takeover-popover-countdown-scheduler: backlog
-  32-2-chrome-extension-ondetach-reconnection: backlog
-  32-3-cryptographic-cdp-session-token-audit-log: backlog
+  32-1-humanlivetakeoverpopover-ui-with-countdown-timer-and-abort-s: backlog
+  32-2-chrome-extension-chrome-debugger-ondetach-recovery-reconnect: backlog
+  32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: backlog
+  epic-32-retrospective: optional
+
   epic-33: backlog
-  33-1-automated-secret-key-rotation-dual-key-fallback: backlog
-  33-2-superadmin-cross-workspace-dnc-purge-engine: backlog
-  33-3-two-phase-transactional-credit-locking-waterfall: backlog
+  33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: backlog
+  33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: backlog
+  33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: backlog
+  epic-33-retrospective: optional
+
   epic-34: backlog
-  34-1-bidirectional-deal-stage-sync-hubspot-salesforce: backlog
-  34-2-web-admin-telegram-userbot-channels-console: backlog
-  34-3-dedicated-crm-deal-pipeline-activity-timeline-ui: backlog
+  34-1-bi-directional-deal-stage-activity-synchronization-for-hubsp: backlog
+  34-2-web-admin-management-endpoints-for-telegram-userbots-monitor: backlog
+  34-3-dedicated-crm-deal-pipeline-customer-activity-timeline-ui-ta: backlog
+  epic-34-retrospective: optional
+
   epic-35: backlog
-  35-1-redis-consumer-group-xautoclaim-dlq-replay: backlog
-  35-2-sub-quadratic-windowed-deduplication: backlog
-  35-3-per-platform-scraper-failure-metrics-sse-heartbeat: backlog
+  35-1-redis-consumer-group-pending-message-auto-claim-xautoclaim-d: backlog
+  35-2-o-n-log-n-spatial-windowed-deduplication-for-mass-entity-dat: backlog
+  35-3-per-platform-scraper-failure-metrics-sse-streaming-idle-hear: backlog
+  epic-35-retrospective: optional
+
   epic-36: in-progress
-  36-1-wire-x-crawl-post-fallback-unsupported-marking: done
-  36-2-loop-scoped-mcp-client-cache: done
-  36-3-centralized-xact-error-map: done
-  36-4-single-writer-stream-cleanup: review
-  36-5-stream-consumer-schema-contract-dlq: backlog
-  36-6-canonical-action-matrix-legacy-deprecation: backlog
+  36-1-wire-x_crawl_post-fallback-graceful-unsupported-marking-p0-u: done
+  36-2-loop-scoped-xactionsmcpclient-connection-cache: done
+  36-3-centralized-xact_-task-behavior-error-map: done
+  36-4-single-writer-stream-stop-nowing-publishing-to-stream-social: done
+  36-5-stream-consumer-schema-contract-dlq-routing: done
+  36-6-canonical-action-matrix-legacy-tool-deprecation: backlog
+  epic-36-retrospective: optional
 validation_reports:
   - story: "3.18"
     type: "code-review"
