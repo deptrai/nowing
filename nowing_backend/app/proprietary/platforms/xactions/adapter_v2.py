@@ -286,9 +286,7 @@ class XActionsSocialAdapterV2:
         data = result.get("data", [])
         if isinstance(data, dict):
             data = [data]
-        elif isinstance(data, list):
-            pass
-        elif hasattr(data, "__iter__") and not isinstance(data, (str, bytes)):
+        elif isinstance(data, list) or (hasattr(data, "__iter__") and not isinstance(data, (str, bytes))):
             pass
         else:
             data = []
@@ -365,7 +363,22 @@ class XActionsSocialAdapterV2:
         post: SocialPostData,
         redis_client: Any,
     ) -> str | None:
-        """Push a thin social post event to Redis Stream (AD-SOC-4)."""
+        """Push a thin social post event to Redis Stream (AD-SOC-4).
+
+        .. deprecated:: Story 36.4 / AD-4
+            Legacy dual-write bridge. In the target architecture (AD-4 Sole Writer),
+            XActions publishes raw post events directly to stream:social:raw_posts
+            via its AbstractCrawler stream hook (REQ-X2).
+            Nowing acts solely as a consumer of this stream. This method is bypassed
+            when XACTIONS_STREAM_SINGLE_WRITER_ENABLED is True and will be removed
+            permanently once XActions REQ-X2 is confirmed live in production.
+        """
+        if getattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", False):
+            logger.debug(
+                "Skipping ingest_raw_post_to_stream: XACTIONS_STREAM_SINGLE_WRITER_ENABLED is active"
+            )
+            return None
+
         payload = post.to_dict()
         try:
             msg_id = await redis_client.xadd(

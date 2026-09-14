@@ -1836,3 +1836,235 @@ async def test_ingest_social_target_unhandled_behavior_raises(monkeypatch):
     task = MagicMock()
     with pytest.raises(XActionsMcpError):
         await social_xactions_ingest._ingest_social_target(task, target.id)
+
+
+# Story 36.4: Single-Writer Stream tests
+
+
+def test_single_writer_config_default_and_parsing(monkeypatch):
+    """XACTIONS_STREAM_SINGLE_WRITER_ENABLED defaults to False and parses env var."""
+    import importlib
+
+    import app.config.entities as entities_mod
+    from app.config import config
+
+    try:
+        # Default in app.config is False
+        assert config.XACTIONS_STREAM_SINGLE_WRITER_ENABLED is False
+
+        # Verify env var parsing logic: true, 1, yes, on
+        for truthy in ("true", "True ", "1", "yes", "on", "ON"):
+            monkeypatch.setenv("XACTIONS_STREAM_SINGLE_WRITER_ENABLED", truthy)
+            importlib.reload(entities_mod)
+            assert entities_mod.XACTIONS_STREAM_SINGLE_WRITER_ENABLED is True
+
+        for falsy in ("false", "0", "no", "off", "invalid", ""):
+            monkeypatch.setenv("XACTIONS_STREAM_SINGLE_WRITER_ENABLED", falsy)
+            importlib.reload(entities_mod)
+            assert entities_mod.XACTIONS_STREAM_SINGLE_WRITER_ENABLED is False
+
+        monkeypatch.delenv("XACTIONS_STREAM_SINGLE_WRITER_ENABLED", raising=False)
+        importlib.reload(entities_mod)
+        assert entities_mod.XACTIONS_STREAM_SINGLE_WRITER_ENABLED is False
+    finally:
+        monkeypatch.delenv("XACTIONS_STREAM_SINGLE_WRITER_ENABLED", raising=False)
+        importlib.reload(entities_mod)
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_single_writer_disabled_calls_xadd(monkeypatch):
+    """When single_writer is False, adapter.ingest_raw_post_to_stream is called for every post."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    posts = [
+        SocialPostData(
+            platform="facebook",
+            external_post_id=f"fb_{i}",
+            content=f"Post content {i}",
+        )
+        for i in range(5)
+    ]
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(return_value=posts)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock(return_value="123-0")
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+    monkeypatch.setattr(
+        social_xactions_ingest.config,
+        "XACTIONS_STREAM_SINGLE_WRITER_ENABLED",
+        False,
+    )
+
+    task = MagicMock()
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 5
+    assert mock_adapter.ingest_raw_post_to_stream.call_count == 5
+    for p in posts:
+        assert p.target_id == target.id
+        assert p.workspace_id == target.workspace_id
+    assert session.commits == 1
+    assert target.last_scraped_at is not None
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_single_writer_enabled_bypasses_xadd(monkeypatch, caplog):
+    """When single_writer is True, adapter.ingest_raw_post_to_stream is NOT called, target is updated."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    posts = [
+        SocialPostData(
+            platform="facebook",
+            external_post_id=f"fb_{i}",
+            content=f"Post content {i}",
+        )
+        for i in range(5)
+    ]
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(return_value=posts)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+    monkeypatch.setattr(
+        social_xactions_ingest.config,
+        "XACTIONS_STREAM_SINGLE_WRITER_ENABLED",
+        True,
+    )
+
+    task = MagicMock()
+    with caplog.at_level("INFO"):
+        ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 5
+    mock_adapter.ingest_raw_post_to_stream.assert_not_called()
+    assert session.commits == 1
+    assert target.last_scraped_at is not None
+    assert "Single-writer mode enabled; bypassed raw-posts stream publish" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_single_writer_enabled_resumes_paused_target(monkeypatch):
+    """When single_writer is True and target is paused, target.status is restored to active."""
+    target = _fake_target(
+        platform="facebook_group",
+        status="paused",
+        last_scraped_at=datetime.now(UTC) - timedelta(seconds=10),
+    )
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    posts = [
+        SocialPostData(
+            platform="facebook",
+            external_post_id="fb_resume_01",
+            content="Resume test",
+        )
+    ]
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(return_value=posts)
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+    monkeypatch.setattr(
+        social_xactions_ingest.config,
+        "XACTIONS_STREAM_SINGLE_WRITER_ENABLED",
+        True,
+    )
+
+    task = MagicMock()
+    ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 1
+    mock_adapter.ingest_raw_post_to_stream.assert_not_called()
+    assert target.status == "active"
+    assert session.commits == 1
+    assert target.last_scraped_at is not None
+
+
+@pytest.mark.asyncio
+async def test_ingest_social_target_single_writer_enabled_empty_posts(monkeypatch, caplog):
+    """When single_writer is True and adapter returns 0 posts, returns 0 and updates target."""
+    target = _fake_target(platform="facebook_group")
+    session = _FakeSession(target)
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "get_celery_session_maker",
+        lambda: session,
+    )
+
+    client = _fake_redis_client()
+    fake_aioredis = MagicMock()
+    fake_aioredis.from_url.return_value = client
+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
+
+    mock_adapter = MagicMock()
+    mock_adapter.fetch_posts_for_target = AsyncMock(return_value=[])
+    mock_adapter.ingest_raw_post_to_stream = AsyncMock()
+
+    monkeypatch.setattr(
+        social_xactions_ingest,
+        "XActionsSocialAdapterV2",
+        lambda: _FakeAdapterCtx(mock_adapter),
+    )
+    monkeypatch.setattr(
+        social_xactions_ingest.config,
+        "XACTIONS_STREAM_SINGLE_WRITER_ENABLED",
+        True,
+    )
+
+    task = MagicMock()
+    with caplog.at_level("INFO"):
+        ingested = await social_xactions_ingest._ingest_social_target(task, target.id)
+
+    assert ingested == 0
+    mock_adapter.ingest_raw_post_to_stream.assert_not_called()
+    assert session.commits == 1
+    assert target.last_scraped_at is not None
+    assert "Single-writer mode enabled; bypassed raw-posts stream publish" in caplog.text

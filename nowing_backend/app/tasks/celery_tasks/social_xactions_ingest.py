@@ -5,8 +5,10 @@ spawns ``ingest_social_target`` for each active ``SocialMonitoredTarget`` whose
 ``scrape_interval_minutes`` has elapsed since ``last_scraped_at``.
 
 The per-target task uses ``XActionsSocialAdapterV2`` (streamable-http MCP) to
-fetch posts and pushes each one to Redis Stream ``stream:social:raw_posts`` with
-the target's ``workspace_id`` and internal ``target_id`` attached. Downstream
+fetch posts and, in legacy dual-write mode, pushes each one to Redis Stream
+``stream:social:raw_posts`` with the target's ``workspace_id`` and internal
+``target_id`` attached. When ``XACTIONS_STREAM_SINGLE_WRITER_ENABLED`` is active,
+stream publishing is bypassed (XActions sole-writer architecture AD-4). Downstream
 ``social_stream_worker`` picks up the stream, extracts entities, and UPSERTs
 into ``social_posts``.
 """
@@ -314,14 +316,22 @@ async def _ingest_social_target(task, target_id: int) -> int:
                         raise exc
 
                     ingested = 0
-                    for post in posts:
-                        post.target_id = target.id
-                        post.workspace_id = target.workspace_id
-                        await adapter.ingest_raw_post_to_stream(
-                            post,
-                            redis_client=redis_client,
+                    if not config.XACTIONS_STREAM_SINGLE_WRITER_ENABLED:
+                        for post in posts:
+                            post.target_id = target.id
+                            post.workspace_id = target.workspace_id
+                            await adapter.ingest_raw_post_to_stream(
+                                post,
+                                redis_client=redis_client,
+                            )
+                            ingested += 1
+                    else:
+                        ingested = len(posts)
+                        logger.info(
+                            "Single-writer mode enabled; bypassed raw-posts stream publish for social target %s (%d posts)",
+                            target_id,
+                            ingested,
                         )
-                        ingested += 1
 
                     target.last_scraped_at = datetime.now(UTC)
                     if target.status == "paused":
