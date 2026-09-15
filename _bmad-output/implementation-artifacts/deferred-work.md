@@ -1768,3 +1768,18 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: `_merge_with_static` does not emit "using static fallback" warning when live catalog partially lacks FB/Twitter platforms
   evidence: Review finding (action_matrix.py:185-208); spec I/O matrix row 7 wording vs implementation — merge is correct, log verbosity trade-off accepted
+
+## Resolved from: code review of story-36.6b (2026-09-15) — commit 318b40113
+
+All 8 items from the two deferred blocks above (lines 1736-1774) are resolved:
+
+- `_facebook_group_url`/`_facebook_page_url` — now strip+lowercase scheme check (adapter_v2.py:98-106), matching `fallback_crawl_post` canonical form
+- `_unified_envelope` — prefers `target.target_url` when descriptor's required arg is `url` (adapter_v2.py:264-275)
+- `context.targetId` — explicit `is not None` check, `id=0` no longer falsy-fallback (adapter_v2.py:288-292)
+- `.env.example` — `XACTIONS_USE_UNIFIED_DISPATCH` + `XACTIONS_LEGACY_TOOL_DEPRECATION` documented at lines ~789-796
+- `map_async(client=None)` — covered by `test_map_async_default_client_none_uses_static_fallback` (test_xactions_mapper.py)
+- flag-alone no-op — parametrized to all 4 legacy kinds for sync + async (test_xactions_mapper.py)
+- `optionalArgs == ["limit"]` — asserted in `test_static_fallback_matrix_legacy_descriptors` (test_canonical_action_matrix.py:144-157)
+- `_merge_with_static` — emits INFO log naming platforms served from static fallback on partial catalog (action_matrix.py:185-215)
+
+Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_action_matrix.py + test_social_xactions_ingest.py + test_social_routes.py → 181/181 pass.
