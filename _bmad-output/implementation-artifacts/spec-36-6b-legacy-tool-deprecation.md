@@ -146,3 +146,23 @@ context:
 
 - Derive-from-static coverage for all four `platform_kind` values.
   [`test_canonical_action_matrix.py:129`](../../nowing_backend/tests/unit/platforms/test_canonical_action_matrix.py#L129)
+
+### Review Findings
+
+- [x] [Review][Patch] `logger.info` per dispatch is noisy at batch scale — downgrade to `logger.debug` [nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py:299-303,336-340] — fixed: `logger.debug` in both `map()` and `map_async()`
+- [x] [Review][Patch] `twitter_user` strips `@` without checking `arg_name == "username"` — add arg_name guard so a renamed descriptor arg (e.g. `user_id`) binds raw `target_id` verbatim [nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py:302] — fixed: `elif platform_kind == "twitter_user" and arg_name == "username"`
+- [x] [Review][Patch] Missing integration test — `XActionsSocialAdapterV2.fetch_posts_for_target` untested with both flags ON; envelope enrichment (`accountId`, `proxyUrl`, `dryRun`) unverified for `x_scrape` legacy dispatches [nowing_backend/tests/unit/platforms/test_xactions_adapter_v2.py] — fixed: `test_fetch_posts_for_target_unified_and_deprecation_flags_on` added and passing
+- [x] [Review][Defer] `_facebook_group_url`/`_facebook_page_url` case-sensitive `startswith("http")` — `" HTTPS://…"` or `"www.facebook.com/…"` produces malformed URL [adapter_v2.py:95-101] — deferred: pre-existing since 36.6a; tracked in deferred-work.md
+- [x] [Review][Defer] `_unified_envelope` never consults `SocialMonitoredTarget.target_url` as fallback for URL args [adapter_v2.py:243] — deferred: pre-existing from 36.6a; spec scope is arg-shape only
+- [x] [Review][Defer] `context.targetId` falls back to `target.target_id` (string) when `target.id` is None [adapter_v2.py:255-258] — deferred: pre-existing from 36.6a; only surfaces for unpersisted DTOs
+- [x] [Review][Defer] `XACTIONS_USE_UNIFIED_DISPATCH` and `XACTIONS_LEGACY_TOOL_DEPRECATION` missing from `.env.example` — deferred: operator-doc gap, low runtime risk; tracked in deferred-work.md
+- [x] [Review][Defer] `map_async(target)` with `client=None` not covered when both flags ON [test_xactions_mapper.py] — deferred: minor coverage gap; `client=None` path already exercised in `test_map_async_partial_catalog_merges_static_fallback`
+- [x] [Review][Defer] Flag-alone no-op test only covers `facebook_group`/`twitter_user`; `facebook_page`/`twitter_keyword` untested in sync/async no-op scenarios [test_xactions_mapper.py:241-251,271-282] — deferred: same gate logic, no per-platform divergence risk
+- [x] [Review][Defer] `test_static_fallback_matrix_legacy_descriptors` does not assert `optionalArgs == ["limit"]` [test_canonical_action_matrix.py:141] — deferred: regression still caught by urlified args assertions
+- [x] [Review][Defer] `_merge_with_static` does not emit warning when live catalog partially lacks FB/Twitter [action_matrix.py:185-208] — deferred: spec-vs-code wording gap; merge works, operators see fallback via dispatch logs
+
+**Rejected findings**
+- Spec AC/I/O matrix `args` shape missing `limit:20` — fix edits the spec under review (rejected per triage rules); runtime `limit=20` injection is correct and tested
+- `lstrip('@')` vs `strip('@')` spec wording — fix edits the spec under review; `PLATFORM_TOOL_MAP` and Boundaries section both prescribe `strip('@')`
+- `_build_unified_args` early-returns `{}` when `requiredArgs` empty → misses `limit` injection — unreachable today (all 4 legacy descriptors declare requiredArgs); fix adds a branch for a case that cannot happen → reject (low, guard-only)
+- `context.targetId` uses `or` → `id=0` falsy fallback — edge case only in test mocks; auto-increment IDs never 0 → reject (low, guard-only)

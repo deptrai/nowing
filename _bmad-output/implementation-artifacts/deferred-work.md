@@ -1750,3 +1750,21 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: `XACTIONS_USE_UNIFIED_DISPATCH` and `XACTIONS_LEGACY_TOOL_DEPRECATION` are absent from `nowing_backend/.env.example` — operators have no env-doc reference for the two flags
   evidence: Review finding; `XACTIONS_STREAM_SINGLE_WRITER_ENABLED` documented at .env.example:788 but the 36.6a/36.6b flags are not
+
+## Deferred from: code review of story-36.6b second-pass (2026-09-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `map_async(target)` with `client=None` not covered when both flags ON — only explicit client arg tested
+  evidence: Review finding (test_xactions_mapper.py); `client=None` fallback to `CanonicalActionMatrix.get(None)` exercised elsewhere
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: flag-alone no-op test covers only `facebook_group`/`twitter_user`; `facebook_page`/`twitter_keyword` sync+async no-op paths untested
+  evidence: Review finding (test_xactions_mapper.py:241-282); shared gate, no per-platform divergence
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `test_static_fallback_matrix_legacy_descriptors` does not assert `optionalArgs == ["limit"]` — regression in optionalArgs would silently skip limit injection
+  evidence: Review finding (test_canonical_action_matrix.py:141); caught indirectly by urlified-args assertions
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `_merge_with_static` does not emit "using static fallback" warning when live catalog partially lacks FB/Twitter platforms
+  evidence: Review finding (action_matrix.py:185-208); spec I/O matrix row 7 wording vs implementation — merge is correct, log verbosity trade-off accepted

@@ -389,6 +389,51 @@ class TestXActionsSocialAdapterV2:
         # Schema contract — producer emits schema_version for REQ-X2 contract.
         assert payload.get("schema_version") == "1"
 
+    @pytest.mark.asyncio
+    async def test_fetch_posts_for_target_unified_and_deprecation_flags_on(
+        self, monkeypatch
+    ):
+        """Integration: both flags ON routes legacy facebook_group through x_scrape
+        and preserves adapter envelope enrichment (accountId/proxyUrl/dryRun)."""
+        from app.config import config
+        from app.proprietary.platforms.xactions.action_matrix import (
+            CanonicalActionMatrix,
+        )
+
+        monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+        monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", True)
+        CanonicalActionMatrix.reset()
+        try:
+            client = XActionsMcpClientWithAdmin()
+            adapter = XActionsSocialAdapterV2(client=client)
+            target = FakeTarget(
+                "facebook_group",
+                "group123",
+                account_id="fb_acct",
+                proxy_url="http://proxy:8080",
+                id=10,
+            )
+            target.workspace_id = 20
+
+            await adapter.fetch_posts_for_target(target)
+
+            call_args = client._session.call_tool.call_args
+            tool_name = call_args[0][0]
+            arguments = call_args.kwargs["arguments"]
+            assert tool_name == "x_scrape"
+            assert arguments["platform"] == "facebook"
+            assert arguments["action"] == "group_posts"
+            assert arguments["args"] == {
+                "url": "https://www.facebook.com/groups/group123",
+                "limit": 20,
+            }
+            assert arguments["context"] == {"targetId": 10, "workspaceId": 20}
+            assert arguments["accountId"] == "fb_acct"
+            assert arguments["proxyUrl"] == "http://proxy:8080"
+            assert arguments["dryRun"] is False
+        finally:
+            CanonicalActionMatrix.reset()
+
 
 class XActionsMcpClientWithAdmin:
     """Fake client that passes call_tool through."""

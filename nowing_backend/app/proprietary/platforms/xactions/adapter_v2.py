@@ -192,7 +192,7 @@ def _build_unified_args(
         val: Any = _facebook_group_url(raw)
     elif platform_kind == "facebook_page" and arg_name == "url":
         val = _facebook_page_url(raw)
-    elif platform_kind == "twitter_user":
+    elif platform_kind == "twitter_user" and arg_name == "username":
         val = raw.strip("@")
         if not val:
             raise ValueError(
@@ -296,7 +296,7 @@ class UniversalScrapeTargetMapper:
             if mapping["tool"] != "x_scrape":
                 if not _is_legacy_tool_deprecated():
                     return mapping["tool"], mapping["args_builder"](target)
-                logger.info(
+                logger.debug(
                     "Unified dispatch: routing legacy tool %s via x_scrape "
                     "(platform=%s, XACTIONS_LEGACY_TOOL_DEPRECATION=on)",
                     mapping["tool"], platform,
@@ -332,7 +332,7 @@ class UniversalScrapeTargetMapper:
         if mapping["tool"] != "x_scrape":
             if not _is_legacy_tool_deprecated():
                 return mapping["tool"], mapping["args_builder"](target)
-            logger.info(
+            logger.debug(
                 "Unified dispatch: routing legacy tool %s via x_scrape "
                 "(platform=%s, XACTIONS_LEGACY_TOOL_DEPRECATION=on)",
                 mapping["tool"], platform,
