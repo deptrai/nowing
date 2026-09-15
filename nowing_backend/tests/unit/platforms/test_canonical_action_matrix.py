@@ -144,18 +144,22 @@ class TestDerivePlatformAction:
     def test_static_fallback_matrix_legacy_descriptors(self):
         fb_group = STATIC_FALLBACK_MATRIX["facebook"]["group_posts"]
         assert fb_group["requiredArgs"] == ["url"]
+        assert fb_group["optionalArgs"] == ["limit"]
         assert fb_group["match"]["target_kind"] == "group"
 
         fb_page = STATIC_FALLBACK_MATRIX["facebook"]["page_posts"]
         assert fb_page["requiredArgs"] == ["url"]
+        assert fb_page["optionalArgs"] == ["limit"]
         assert fb_page["match"]["target_kind"] == "page"
 
         tw_keyword = STATIC_FALLBACK_MATRIX["twitter"]["search_tweets"]
         assert tw_keyword["requiredArgs"] == ["query"]
+        assert tw_keyword["optionalArgs"] == ["limit"]
         assert tw_keyword["match"]["target_kind"] == "keyword"
 
         tw_user = STATIC_FALLBACK_MATRIX["twitter"]["user_tweets"]
         assert tw_user["requiredArgs"] == ["username"]
+        assert tw_user["optionalArgs"] == ["limit"]
         assert tw_user["match"]["target_kind"] == "user"
 
 

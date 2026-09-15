@@ -189,10 +189,23 @@ def _merge_with_static(live: dict[str, dict[str, dict[str, Any]]]) -> dict[str, 
     are filled from ``STATIC_FALLBACK_MATRIX``. A live descriptor without a
     ``match`` hint inherits it from the static entry when available so
     ``target_kind`` derivation still works.
+
+    Emits a single ``INFO`` log when any platform falls back to static
+    descriptors because the live catalog is partial (Story 36.6b I/O matrix
+    row 7). Fire-and-forget — never raises.
     """
     merged: dict[str, dict[str, dict[str, Any]]] = {}
+    missing_platforms: list[str] = []
     for platform, actions in STATIC_FALLBACK_MATRIX.items():
         merged[platform] = {action: dict(meta) for action, meta in actions.items()}
+        if platform not in live:
+            missing_platforms.append(platform)
+
+    if missing_platforms:
+        logger.info(
+            "x_actions_list partial catalog — using static fallback for platforms: %s",
+            ", ".join(sorted(missing_platforms)),
+        )
 
     for platform, actions in live.items():
         platform_map = merged.setdefault(platform, {})

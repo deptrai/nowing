@@ -92,15 +92,20 @@ PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
 
 
 def _facebook_group_url(target_id: str) -> str:
-    if target_id.startswith("http"):
-        return target_id
-    return f"https://www.facebook.com/groups/{target_id}"
+    # Match fallback_crawl_post's canonical check: strip + lowercase + scheme
+    # prefix — guards against `" HTTPS://…"` or `"www.facebook.com/…"` inputs
+    # that would otherwise double-prefix the URL.
+    normalized = str(target_id).strip()
+    if normalized.lower().startswith(("http://", "https://")):
+        return normalized
+    return f"https://www.facebook.com/groups/{normalized}"
 
 
 def _facebook_page_url(target_id: str) -> str:
-    if target_id.startswith("http"):
-        return target_id
-    return f"https://www.facebook.com/{target_id}"
+    normalized = str(target_id).strip()
+    if normalized.lower().startswith(("http://", "https://")):
+        return normalized
+    return f"https://www.facebook.com/{normalized}"
 
 
 def _normalize_platform_for_post(platform: str) -> str:
@@ -256,6 +261,19 @@ class UniversalScrapeTargetMapper:
         target_id_value = getattr(target, "target_id", None)
         args: dict[str, Any] = {}
         if required_args:
+            # If the descriptor's single required arg is ``url``, prefer the
+            # persisted ``target_url`` column over ``target_id`` (which may be
+            # a numeric ID or short slug on some platforms). Story 36.6b review
+            # finding — ``target_url`` is the operator-curated field for the
+            # canonical URL.
+            if (
+                len(required_args) == 1
+                and required_args[0] == "url"
+                and getattr(target, "target_url", None)
+            ):
+                candidate = getattr(target, "target_url")
+                if isinstance(candidate, str) and candidate.strip():
+                    target_id_value = candidate
             if target_id_value is None or not str(target_id_value).strip():
                 raise ValueError(
                     f"target_id required for action {action}"
@@ -264,8 +282,12 @@ class UniversalScrapeTargetMapper:
                 platform_kind, target_id_value, descriptor, action
             )
 
+        # Prefer integer ``id`` over string ``target_id`` slug; ``id`` falsy
+        # values (``0``, ``None``) must still fall back via explicit None-check,
+        # not truthiness — ``0`` is a valid DB id in some test fixtures.
+        target_db_id = getattr(target, "id", None)
         context = {
-            "targetId": getattr(target, "id", None) or getattr(target, "target_id", None),
+            "targetId": target_db_id if target_db_id is not None else getattr(target, "target_id", None),
             "workspaceId": getattr(target, "workspace_id", None),
         }
 

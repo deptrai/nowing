@@ -236,20 +236,51 @@ class TestLegacyToolDeprecation:
     Gated on BOTH XACTIONS_USE_UNIFIED_DISPATCH and XACTIONS_LEGACY_TOOL_DEPRECATION.
     """
 
-    def test_deprecation_flag_alone_is_noop(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize(
+        "platform,target_id,expected_tool,expected_args",
+        [
+            (
+                "facebook_group",
+                "grp123",
+                "x_facebook_group_posts",
+                {"url": "https://www.facebook.com/groups/grp123", "limit": 20},
+            ),
+            (
+                "facebook_page",
+                "page456",
+                "x_facebook_posts",
+                {"url": "https://www.facebook.com/page456", "limit": 20},
+            ),
+            (
+                "twitter_keyword",
+                "AI agents",
+                "x_search_tweets",
+                {"query": "AI agents", "limit": 20},
+            ),
+            (
+                "twitter_user",
+                "@elon",
+                "x_get_tweets",
+                {"username": "elon", "limit": 20},
+            ),
+        ],
+    )
+    def test_deprecation_flag_alone_is_noop(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        platform: str,
+        target_id: str,
+        expected_tool: str,
+        expected_args: dict,
+    ):
         """Deprecation ON without unified dispatch still returns legacy tool calls."""
         monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False)
         monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", True)
 
-        target = _make_target("facebook_group", "grp123")
+        target = _make_target(platform, target_id)
         tool, args = UniversalScrapeTargetMapper.map(target)
-        assert tool == "x_facebook_group_posts"
-        assert args == {"url": "https://www.facebook.com/groups/grp123", "limit": 20}
-
-        target_tw = _make_target("twitter_user", "@elon")
-        tool_tw, args_tw = UniversalScrapeTargetMapper.map(target_tw)
-        assert tool_tw == "x_get_tweets"
-        assert args_tw == {"username": "elon", "limit": 20}
+        assert tool == expected_tool
+        assert args == expected_args
 
     def test_unified_on_deprecation_off_preserves_legacy_tools(
         self, monkeypatch: pytest.MonkeyPatch
@@ -269,29 +300,53 @@ class TestLegacyToolDeprecation:
             tool, _ = UniversalScrapeTargetMapper.map(target)
             assert tool == expected_tool
 
+    @pytest.mark.parametrize(
+        "platform,target_id,expected_tool",
+        [
+            ("facebook_group", "grp", "x_facebook_group_posts"),
+            ("facebook_page", "page", "x_facebook_posts"),
+            ("twitter_keyword", "q", "x_search_tweets"),
+            ("twitter_user", "@u", "x_get_tweets"),
+        ],
+    )
     async def test_map_async_deprecation_alone_is_noop(
-        self, monkeypatch: pytest.MonkeyPatch
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        platform: str,
+        target_id: str,
+        expected_tool: str,
     ):
         """Deprecation flag alone (unified OFF) — map_async must not bypass legacy."""
         monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False)
         monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", True)
 
-        target = _make_target("facebook_group", "grp")
-        tool, args = await UniversalScrapeTargetMapper.map_async(target)
-        assert tool == "x_facebook_group_posts"
-        assert args["url"] == "https://www.facebook.com/groups/grp"
+        target = _make_target(platform, target_id)
+        tool, _ = await UniversalScrapeTargetMapper.map_async(target)
+        assert tool == expected_tool
 
+    @pytest.mark.parametrize(
+        "platform,expected_tool",
+        [
+            ("facebook_group", "x_facebook_group_posts"),
+            ("facebook_page", "x_facebook_posts"),
+            ("twitter_keyword", "x_search_tweets"),
+            ("twitter_user", "x_get_tweets"),
+        ],
+    )
     async def test_map_async_unified_on_deprecation_off_preserves_legacy(
-        self, monkeypatch: pytest.MonkeyPatch
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        platform: str,
+        expected_tool: str,
     ):
         """Unified ON + deprecation OFF — map_async still uses dedicated tools."""
         monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
         monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", False)
         CanonicalActionMatrix.reset()
 
-        target = _make_target("twitter_keyword", "q")
+        target = _make_target(platform, "q")
         tool, _ = await UniversalScrapeTargetMapper.map_async(target)
-        assert tool == "x_search_tweets"
+        assert tool == expected_tool
 
     class TestBothFlagsOn:
         @pytest.fixture(autouse=True)
@@ -415,6 +470,19 @@ class TestLegacyToolDeprecation:
             assert args["platform"] == "twitter"
             assert args["action"] == "user_tweets"
             assert args["args"] == {"username": "jack", "limit": 20}
+
+        async def test_map_async_default_client_none_uses_static_fallback(self):
+            """map_async(target) without explicit client → STATIC_FALLBACK_MATRIX path."""
+            target = _make_target("facebook_group", "grp_none", id=9, workspace_id=11)
+            tool, args = await UniversalScrapeTargetMapper.map_async(target)
+            assert tool == "x_scrape"
+            assert args["platform"] == "facebook"
+            assert args["action"] == "group_posts"
+            assert args["args"] == {
+                "url": "https://www.facebook.com/groups/grp_none",
+                "limit": 20,
+            }
+            assert args["context"] == {"targetId": 9, "workspaceId": 11}
 
         def test_whitespace_target_id_raises_value_error(self):
             target = _make_target("facebook_group", "   ")
