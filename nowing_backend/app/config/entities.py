@@ -100,6 +100,15 @@ XACTIONS_USE_UNIFIED_DISPATCH = (
     os.getenv("XACTIONS_USE_UNIFIED_DISPATCH", "false").strip().lower()
     in ("true", "1", "yes", "t", "on")
 )
+# Legacy tool deprecation gate (Story 36.6b / AD-1, AD-2)
+# When ON (and XACTIONS_USE_UNIFIED_DISPATCH is also ON): UniversalScrapeTargetMapper
+# routes facebook_group, facebook_page, twitter_keyword, twitter_user through
+# x_scrape with the canonical matrix envelope instead of dedicated legacy tools.
+# When OFF (or XACTIONS_USE_UNIFIED_DISPATCH is OFF): legacy tool calls are preserved.
+XACTIONS_LEGACY_TOOL_DEPRECATION = (
+    os.getenv("XACTIONS_LEGACY_TOOL_DEPRECATION", "false").strip().lower()
+    in ("true", "1", "yes", "t", "on")
+)
 
 
 
@@ -140,6 +149,7 @@ __all__ = [
     "XACTIONS_FACEBOOK_ACCOUNT_ID",
     "XACTIONS_FACEBOOK_C_USER",
     "XACTIONS_FACEBOOK_XS",
+    "XACTIONS_LEGACY_TOOL_DEPRECATION",
     "XACTIONS_MCP_API_KEY",
     "XACTIONS_MCP_URL",
     "XACTIONS_MODE",

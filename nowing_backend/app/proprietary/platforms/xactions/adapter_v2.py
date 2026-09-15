@@ -137,6 +137,89 @@ def _is_permanent_fallback_error(exc: XActionsMcpError) -> bool:
     return False
 
 
+def _is_legacy_tool_deprecated() -> bool:
+    """Check if legacy tool deprecation is active.
+
+    Deprecation requires BOTH XACTIONS_USE_UNIFIED_DISPATCH and
+    XACTIONS_LEGACY_TOOL_DEPRECATION to be truthy. Deprecation flag alone
+    is a no-op (Story 36.6b / AD-1, AD-2).
+    """
+    return bool(
+        getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False)
+        and getattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", False)
+    )
+
+
+def _build_unified_args(
+    platform_kind: str,
+    target_id: Any,
+    descriptor: dict[str, Any],
+    action: str,
+) -> dict[str, Any]:
+    """Build canonical action args dictionary for a target.
+
+    Honours the descriptor's ``requiredArgs`` name (``url``, ``query``,
+    ``username``, …) rather than hard-coding. Applies platform-specific
+    transformations:
+
+    - ``facebook_group``/``facebook_page``: URL-ify ``target_id`` via
+      :func:`_facebook_group_url` / :func:`_facebook_page_url` — but only
+      when the declared arg is ``url``. If the descriptor ever renames the
+      arg to ``group_id``/``page_id``, the raw id is bound verbatim.
+    - ``twitter_user``: strip whitespace + leading/trailing ``@`` via
+      ``str(target_id).strip().strip("@")``.
+    - ``twitter_keyword`` and other kinds: pass ``target_id`` verbatim.
+
+    When the descriptor declares ``limit`` in ``optionalArgs``, the
+    canonical default ``limit=20`` is preserved so routing through
+    ``x_scrape`` matches the legacy ``PLATFORM_TOOL_MAP`` behaviour.
+    """
+    required_args = list(descriptor.get("requiredArgs") or [])
+    if not required_args:
+        return {}
+
+    if len(required_args) != 1:
+        raise ValueError(
+            f"Action {action or '<unknown>'} requires multiple args "
+            f"{required_args}; automatic binding not supported"
+        )
+
+    # Normalize: coerce non-string ids to str, strip whitespace.
+    raw = str(target_id).strip() if target_id is not None else ""
+
+    arg_name = required_args[0]
+    if platform_kind == "facebook_group" and arg_name == "url":
+        val: Any = _facebook_group_url(raw)
+    elif platform_kind == "facebook_page" and arg_name == "url":
+        val = _facebook_page_url(raw)
+    elif platform_kind == "twitter_user":
+        val = raw.strip("@")
+        if not val:
+            raise ValueError(
+                f"target_id required for action {action} "
+                f"(after stripping '@' from {target_id!r})"
+            )
+    else:
+        val = raw
+
+    args: dict[str, Any] = {arg_name: val}
+
+    # Preserve legacy `limit=20` for platforms that had it in PLATFORM_TOOL_MAP
+    # (facebook_*, twitter_*). Other kinds rely on the descriptor's own
+    # optionalArgs defaults — don't inject a limit the legacy path never set.
+    if platform_kind in (
+        "facebook_group",
+        "facebook_page",
+        "twitter_keyword",
+        "twitter_user",
+    ):
+        optional_args = list(descriptor.get("optionalArgs") or [])
+        if "limit" in optional_args:
+            args.setdefault("limit", 20)
+
+    return args
+
+
 class UniversalScrapeTargetMapper:
     """Map a Nowing social target to an XActions tool call.
 
@@ -145,13 +228,12 @@ class UniversalScrapeTargetMapper:
     callers should treat an MCP `tool_not_found`/`XACT_404`-style failure as
     a signal to fall back to `x_crawl_post` for post-detail-only ingestion.
 
-    When ``XACTIONS_USE_UNIFIED_DISPATCH`` is ON, platforms that were already
-    dispatched via ``x_scrape`` in ``PLATFORM_TOOL_MAP`` resolve their
+    When ``XACTIONS_USE_UNIFIED_DISPATCH`` is ON, platforms resolve their
     ``(platform, action)`` pair from the :class:`CanonicalActionMatrix` and
     emit the nested ``{platform, action, args, context}`` envelope per AD-2.
-    Facebook/Twitter entries that still use dedicated legacy tools
-    (``x_facebook_group_posts``, ``x_search_tweets``, …) are left untouched —
-    unified dispatch only replaces the ``x_scrape`` rows.
+    When ``XACTIONS_LEGACY_TOOL_DEPRECATION`` is also ON (Story 36.6b), Facebook
+    and Twitter legacy tools are also routed through ``x_scrape``; when OFF,
+    those four platforms remain on dedicated legacy tools.
     """
 
     @staticmethod
@@ -174,19 +256,13 @@ class UniversalScrapeTargetMapper:
         target_id_value = getattr(target, "target_id", None)
         args: dict[str, Any] = {}
         if required_args:
-            if len(required_args) == 1:
-                if not target_id_value:
-                    raise ValueError(
-                        f"target_id required for action {action}"
-                    )
-                args[required_args[0]] = target_id_value
-            else:
-                # Multi-required-arg descriptors are not yet produced by the
-                # static matrix; surface them loudly rather than guess binding.
+            if target_id_value is None or not str(target_id_value).strip():
                 raise ValueError(
-                    f"Action {action} requires multiple args {required_args}; "
-                    "automatic binding not supported"
+                    f"target_id required for action {action}"
                 )
+            args = _build_unified_args(
+                platform_kind, target_id_value, descriptor, action
+            )
 
         context = {
             "targetId": getattr(target, "id", None) or getattr(target, "target_id", None),
@@ -215,10 +291,16 @@ class UniversalScrapeTargetMapper:
             mapping = PLATFORM_TOOL_MAP.get(platform)
             if mapping is None:
                 raise ValueError(f"Unsupported social platform: {platform}")
-            # Legacy dedicated tools (facebook/twitter) stay as-is even when
-            # the flag is ON — unified dispatch only replaces x_scrape rows.
+            # Legacy dedicated tools (facebook/twitter) stay as-is unless
+            # deprecation flag is also ON.
             if mapping["tool"] != "x_scrape":
-                return mapping["tool"], mapping["args_builder"](target)
+                if not _is_legacy_tool_deprecated():
+                    return mapping["tool"], mapping["args_builder"](target)
+                logger.info(
+                    "Unified dispatch: routing legacy tool %s via x_scrape "
+                    "(platform=%s, XACTIONS_LEGACY_TOOL_DEPRECATION=on)",
+                    mapping["tool"], platform,
+                )
             matrix = CanonicalActionMatrix.get_sync()
             return UniversalScrapeTargetMapper._unified_envelope(
                 target, platform, matrix
@@ -248,7 +330,13 @@ class UniversalScrapeTargetMapper:
         if mapping is None:
             raise ValueError(f"Unsupported social platform: {platform}")
         if mapping["tool"] != "x_scrape":
-            return mapping["tool"], mapping["args_builder"](target)
+            if not _is_legacy_tool_deprecated():
+                return mapping["tool"], mapping["args_builder"](target)
+            logger.info(
+                "Unified dispatch: routing legacy tool %s via x_scrape "
+                "(platform=%s, XACTIONS_LEGACY_TOOL_DEPRECATION=on)",
+                mapping["tool"], platform,
+            )
 
         matrix = await CanonicalActionMatrix.get(client)
         return UniversalScrapeTargetMapper._unified_envelope(

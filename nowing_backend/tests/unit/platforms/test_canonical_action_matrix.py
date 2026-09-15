@@ -126,6 +126,38 @@ class TestDerivePlatformAction:
         with pytest.raises(ValueError, match="platform_kind is required"):
             derive_platform_action("", self.MATRIX)
 
+    @pytest.mark.parametrize(
+        "platform_kind,expected_platform,expected_action",
+        [
+            ("facebook_group", "facebook", "group_posts"),
+            ("facebook_page", "facebook", "page_posts"),
+            ("twitter_keyword", "twitter", "search_tweets"),
+            ("twitter_user", "twitter", "user_tweets"),
+        ],
+    )
+    def test_legacy_platform_kinds_derive_against_static_fallback(
+        self, platform_kind: str, expected_platform: str, expected_action: str
+    ):
+        platform, action = derive_platform_action(platform_kind, STATIC_FALLBACK_MATRIX)
+        assert (platform, action) == (expected_platform, expected_action)
+
+    def test_static_fallback_matrix_legacy_descriptors(self):
+        fb_group = STATIC_FALLBACK_MATRIX["facebook"]["group_posts"]
+        assert fb_group["requiredArgs"] == ["url"]
+        assert fb_group["match"]["target_kind"] == "group"
+
+        fb_page = STATIC_FALLBACK_MATRIX["facebook"]["page_posts"]
+        assert fb_page["requiredArgs"] == ["url"]
+        assert fb_page["match"]["target_kind"] == "page"
+
+        tw_keyword = STATIC_FALLBACK_MATRIX["twitter"]["search_tweets"]
+        assert tw_keyword["requiredArgs"] == ["query"]
+        assert tw_keyword["match"]["target_kind"] == "keyword"
+
+        tw_user = STATIC_FALLBACK_MATRIX["twitter"]["user_tweets"]
+        assert tw_user["requiredArgs"] == ["username"]
+        assert tw_user["match"]["target_kind"] == "user"
+
 
 class TestCanonicalActionMatrixCache:
     async def test_get_fetches_and_caches(self):

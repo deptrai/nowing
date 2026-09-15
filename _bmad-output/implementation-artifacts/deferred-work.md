@@ -1732,3 +1732,21 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-5-stream-consumer-schema-contract-dlq.md`
   summary: `_LAG_STATE` module-global throttle ineffective across multi-process Celery workers — each process probes independently
   evidence: Review finding (social_stream_worker.py:64); trade-off accepted — probe cost is low at 30s intervals
+
+## Deferred from: code review of story-36.6b (2026-09-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `_facebook_group_url` / `_facebook_page_url` use case-sensitive `startswith("http")` — `" HTTPS://..."` or `"https..."` with leading whitespace produces malformed URL
+  evidence: Review finding (adapter_v2.py:94-101); pre-existing since 36.6a, inconsistent with `fallback_crawl_post` which uses `.strip().lower().startswith(("http://","https://"))`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `_unified_envelope` only reads `target.target_id`; `SocialMonitoredTarget.target_url` is never consulted as a fallback for URL-requiring actions
+  evidence: Review finding (adapter_v2.py:243); pre-existing — spec-36.6b scope only touches arg-shape, not target resolution precedence
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `context.targetId` falls back to `target.target_id` (string slug/URL) when `target.id` is None — stream consumers expect integer ids
+  evidence: Review finding (adapter_v2.py:255-258); pre-existing since 36.6a — surfaced only when target objects are unpersisted DTOs
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `XACTIONS_USE_UNIFIED_DISPATCH` and `XACTIONS_LEGACY_TOOL_DEPRECATION` are absent from `nowing_backend/.env.example` — operators have no env-doc reference for the two flags
+  evidence: Review finding; `XACTIONS_STREAM_SINGLE_WRITER_ENABLED` documented at .env.example:788 but the 36.6a/36.6b flags are not

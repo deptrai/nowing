@@ -112,8 +112,9 @@ STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
             "match": {"target_kind": "search"},
         }
     },
-    # facebook/twitter legacy tools stay on dedicated tools (not x_scrape) —
-    # included here so platform validation still accepts them when flag is ON.
+    # facebook/twitter descriptors — routed through x_scrape when both
+    # XACTIONS_USE_UNIFIED_DISPATCH and XACTIONS_LEGACY_TOOL_DEPRECATION are ON
+    # (Story 36.6b), and for platform validation when unified dispatch is ON.
     "facebook": {
         "group_posts": {
             "requiredArgs": ["url"],

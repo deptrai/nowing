@@ -387,7 +387,7 @@ development_status:
   36-4-single-writer-stream-stop-nowing-publishing-to-stream-social: done
   36-5-stream-consumer-schema-contract-dlq-routing: done
   36-6a-canonical-action-matrix: review
-  36-6b-legacy-tool-deprecation: backlog
+  36-6b-legacy-tool-deprecation: review
   epic-36-retrospective: optional
 validation_reports:
   - story: "3.18"
