@@ -9,6 +9,8 @@ with mocks.
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 from app.config import config
@@ -192,9 +194,9 @@ async def test_rrf_tie_break_by_similarity(db_session, db_workspace):
     RRF scores are identical: 1/(60+1) + 1/(60+2) == 1/(60+2) + 1/(60+1).
     Memory A must win because similarity DESC precedes created_at and id.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    t0 = datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 8, 1, 10, 0, 0, tzinfo=UTC)
     half = _EMBEDDING_DIM // 2
     query_emb = [1.0] * half + [0.0] * (_EMBEDDING_DIM - half)
     closer_emb = [1.0] * half + [0.0] * (_EMBEDDING_DIM - half)  # angle 0, distance 0
@@ -243,9 +245,9 @@ async def test_rrf_tie_break_by_created_at(db_session, db_workspace):
     Similarities: identical because same embedding vector.
     mem_b is newer (created_at + 2 days), so mem_b must win on created_at DESC.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    t_old = datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc)
+    t_old = datetime(2026, 8, 1, 10, 0, 0, tzinfo=UTC)
     t_new = t_old + timedelta(days=2)
     same_emb = [0.25] * _EMBEDDING_DIM
 
@@ -295,9 +297,9 @@ async def test_rrf_tie_break_by_id(db_session, db_workspace):
     Both have same created_at and same embedding -> score, similarity, and created_at are identical!
     mem_a.id < mem_b.id -> mem_a must win on id ASC.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    t_same = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
+    t_same = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
     same_emb = [0.35] * _EMBEDDING_DIM
 
     mem_a = Memory(

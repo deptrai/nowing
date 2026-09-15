@@ -84,7 +84,7 @@ async def index_google_drive_files(
             {"stage": "client_initialization"},
         )
 
-        drive_client, client_error = _build_drive_client_for_connector(
+        drive_client, client_error = await _build_drive_client_for_connector(
             session, connector_id, connector, user_id
         )
         if client_error or not drive_client:
@@ -283,7 +283,7 @@ async def index_google_drive_single_file(
             )
             return 0, error_msg
 
-        drive_client, client_error = _build_drive_client_for_connector(
+        drive_client, client_error = await _build_drive_client_for_connector(
             session, connector_id, connector, user_id
         )
         if client_error or not drive_client:
@@ -401,7 +401,7 @@ async def index_google_drive_selected_files(
             )
             return 0, 0, [error_msg]
 
-        drive_client, client_error = _build_drive_client_for_connector(
+        drive_client, client_error = await _build_drive_client_for_connector(
             session, connector_id, connector, user_id
         )
         if client_error or not drive_client:

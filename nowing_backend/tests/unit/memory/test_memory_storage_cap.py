@@ -12,9 +12,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
+from app.config import config as _cfg
 from app.db import Memory, MemorySourceType, MemoryType
 from app.services.memory.repository import MemoryRepository
 from app.services.workspace_limits import ResolvedWorkspaceLimits, WorkspaceLimitService
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 
 @pytest.mark.unit
@@ -28,7 +31,7 @@ class TestWorkspaceMemoryStorageCap:
         repo = MemoryRepository(session)
 
         # Mock embedding
-        repo._embed = AsyncMock(return_value=[0.1] * 384)
+        repo._embed = AsyncMock(return_value=[0.1] * _EMBEDDING_DIM)
         repo._find_near_duplicate = AsyncMock(return_value=None)
 
         # Mock WorkspaceLimitService.assert_can_create_memory to raise limit exceeded
@@ -66,7 +69,7 @@ class TestWorkspaceMemoryStorageCap:
         existing_memory.workspace_id = 1
         existing_memory.content = "Initial memory content"
 
-        repo._embed = AsyncMock(return_value=[0.1] * 384)
+        repo._embed = AsyncMock(return_value=[0.1] * _EMBEDDING_DIM)
         repo._find_near_duplicate = AsyncMock(return_value=existing_memory)
         repo.update_memory = AsyncMock(return_value=existing_memory)
 
@@ -91,7 +94,7 @@ class TestWorkspaceMemoryStorageCap:
         session = AsyncMock()
         repo = MemoryRepository(session)
 
-        repo._embed = AsyncMock(return_value=[0.1] * 384)
+        repo._embed = AsyncMock(return_value=[0.1] * _EMBEDDING_DIM)
         repo._find_near_duplicate = AsyncMock(return_value=None)
         repo._load_with_versions = AsyncMock(side_effect=lambda m: m)
         repo._persist = AsyncMock()

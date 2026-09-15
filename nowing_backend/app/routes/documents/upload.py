@@ -25,7 +25,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission, RequirePermissionFromBody
+from app.dependencies.auth import RequirePermissionFromBody, RequirePermissionFromForm
 from app.etl_pipeline.etl_document import ProcessingMode
 from app.file_storage.service import store_document_file
 from app.indexing_pipeline.document_hashing import compute_identifier_hash
@@ -123,7 +123,7 @@ async def create_documents_file_upload(
     auth: AuthContext = Depends(get_auth_context),
     dispatcher: TaskDispatcher = Depends(get_task_dispatcher),
     _membership: WorkspaceMembership = Depends(
-        RequirePermission(
+        RequirePermissionFromForm(
             Permission.DOCUMENTS_CREATE.value,
             "You don't have permission to create documents in this workspace",
         )
@@ -403,7 +403,7 @@ async def folder_upload(
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
     _membership: WorkspaceMembership = Depends(
-        RequirePermission(
+        RequirePermissionFromForm(
             Permission.DOCUMENTS_CREATE.value,
             "You don't have permission to create documents in this workspace",
         )

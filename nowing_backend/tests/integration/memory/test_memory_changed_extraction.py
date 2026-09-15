@@ -14,6 +14,10 @@ from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 
+from app.config import config as _cfg
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 
@@ -57,7 +61,7 @@ def patched_embeddings(monkeypatch):
     """Deterministic embeddings so extraction never touches the real model."""
 
     def _fake_embed_texts(texts: list[str]) -> list[list[float]]:
-        return [[0.1] * 384 for _ in texts]
+        return [[0.1] * _EMBEDDING_DIM for _ in texts]
 
     monkeypatch.setattr(
         "app.services.memory.repository.embed_texts",

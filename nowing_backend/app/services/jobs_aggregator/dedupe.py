@@ -289,7 +289,9 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
         for i, item in enumerate(group):
             # Find root using the same path-compressed logic.
             root = i
-            while parent[root] <= root:
+            # Walk to the union-find root: stop when the node is its own parent.
+            # (`<=` spun forever — every root satisfies parent[root] == root.)
+            while parent[root] != root:
                 root = parent[root]
             fine_groups[root].append(item)
 

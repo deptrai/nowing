@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors.google_drive import (
+    GoogleDriveClient,
     categorize_change,
     download_and_extract_content,
     fetch_all_changes,
@@ -69,6 +70,7 @@ __all__ = [
     "ACCEPTED_DRIVE_CONNECTOR_TYPES",
     "HEARTBEAT_INTERVAL_SECONDS",
     "ComposioDriveClient",
+    "GoogleDriveClient",
     "HeartbeatCallbackType",
     "_build_connector_doc",
     "_build_drive_client_for_connector",

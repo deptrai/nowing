@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.config import config as _cfg
 from app.services.chainlens.private_provider import PrivateProviderService
 from app.services.chainlens.schemas import (
     PrivateDataSearchRequest,
@@ -15,6 +16,8 @@ from app.services.chainlens.schemas import (
     PrivateProviderChunk,
     PrivateProviderChunkMetadata,
 )
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 pytestmark = pytest.mark.unit
 
@@ -118,7 +121,7 @@ async def test_search_returns_empty_when_connector_not_found(
     # Patch embedding and memory search.
     monkeypatch.setattr(
         "app.services.chainlens.private_provider.embed_text",
-        lambda _text: [0.1] * 384,
+        lambda _text: [0.1] * _EMBEDDING_DIM,
     )
     monkeypatch.setattr(
         service,
@@ -361,7 +364,7 @@ async def test_search_sets_tenant_context_for_owner_and_records_usage(
 
     monkeypatch.setattr(
         "app.services.chainlens.private_provider.embed_text",
-        lambda _text: [0.1] * 384,
+        lambda _text: [0.1] * _EMBEDDING_DIM,
     )
 
     record_spy = AsyncMock(return_value=None)

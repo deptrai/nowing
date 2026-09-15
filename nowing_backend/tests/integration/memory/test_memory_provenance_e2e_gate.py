@@ -10,9 +10,11 @@ import pytest_asyncio
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
+from app.config import config as _cfg
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
-_EMBEDDING_DIM = 384
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 
 class _FakeInput(BaseModel):
