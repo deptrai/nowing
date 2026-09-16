@@ -364,7 +364,7 @@ development_status:
 
   epic-33: backlog
   33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
-  33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: backlog
+  33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
   33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: backlog
   epic-33-retrospective: optional
 
