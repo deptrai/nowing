@@ -452,12 +452,14 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
         raise
 
     async def event_generator():
+        last_heartbeat = time.monotonic()
         try:
             while True:
                 if await request.is_disconnected():
                     break
 
                 message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                now = time.monotonic()
                 if message and message["type"] == "message":
                     raw_data = message["data"]
                     data = raw_data.decode("utf-8") if isinstance(raw_data, bytes) else str(raw_data)
@@ -465,6 +467,13 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
                         "event": "cdp_command",
                         "data": data,
                     }
+                    last_heartbeat = now
+                elif now - last_heartbeat >= 15.0:
+                    # Story 35.3: Emit keep-alive comment every 15s to keep idle SSE active
+                    yield {
+                        "comment": "ping",
+                    }
+                    last_heartbeat = now
         except asyncio.CancelledError:
             raise
         finally:

@@ -374,10 +374,10 @@ development_status:
   34-3-dedicated-crm-deal-pipeline-customer-activity-timeline-ui-ta: done
   epic-34-retrospective: optional
 
-  epic-35: in-progress
+  epic-35: done
   35-1-redis-consumer-group-pending-message-auto-claim-xautoclaim-d: done
   35-2-o-n-log-n-spatial-windowed-deduplication-for-mass-entity-dat: done
-  35-3-per-platform-scraper-failure-metrics-sse-streaming-idle-hear: backlog
+  35-3-per-platform-scraper-failure-metrics-sse-streaming-idle-hear: done
   epic-35-retrospective: optional
 
   epic-36: done
