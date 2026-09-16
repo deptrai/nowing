@@ -1783,3 +1783,7 @@ All 8 items from the two deferred blocks above (lines 1736-1774) are resolved:
 - `_merge_with_static` — emits INFO log naming platforms served from static fallback on partial catalog (action_matrix.py:185-215)
 
 Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_action_matrix.py + test_social_xactions_ingest.py + test_social_routes.py → 181/181 pass.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-31-3-ast-static-eval-mark-tool.md`
+  summary: Widen Mark Tool static-eval to spread_element (`cn(...["a","b"])`), computed_property_name object keys (`clsx({["k"]:true})`), and hoisted array/object results in _eval_node (`cn(true && ["a","b"])`), plus `satisfies`/`non_null`/`type_assertion` in collect_arg.
+  evidence: Blind-hunter findings #7-#10 — all are deliberate scope beyond the spec's "conservative, statically-known" whitelist; each needs its own resolution rules, deferred as follow-up.

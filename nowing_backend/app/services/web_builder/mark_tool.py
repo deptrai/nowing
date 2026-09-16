@@ -26,11 +26,366 @@ logger = logging.getLogger(__name__)
 _TSX_LANGUAGE = Language(language_tsx())
 _JSX_ATTR_NAME = re.compile(r"^[A-Za-z_][\w:-]*$")
 JSX_FILE_SUFFIXES = {".tsx", ".jsx"}
+_WHITELISTED_CALLEES = frozenset({"cn", "clsx", "classnames", "classNames"})
 
 
 def _node_text(node: Node, source_bytes: bytes) -> bytes:
     """Return the raw source bytes for a tree-sitter node."""
     return source_bytes[node.start_byte : node.end_byte]
+
+
+def _js_str(val: Any) -> str:
+    """Coerce a statically resolved value to its JavaScript string form."""
+    if val is True:
+        return "true"
+    if val is False:
+        return "false"
+    if val is None:
+        return "null"
+    return str(val)
+
+
+class _Sentinel:
+    """Sentinel representing a non-statically-determinable expression."""
+
+    def __repr__(self) -> str:
+        return "<UNKNOWN>"
+
+
+_UNKNOWN = _Sentinel()
+
+
+def _js_truthy(val: Any) -> bool:
+    """Evaluate JavaScript truthiness of a statically resolved value."""
+    return not (
+        val is _UNKNOWN or val is None or val is False or val == 0 or val == ""
+    )
+
+
+def _decode_js_escapes(content: str) -> str:
+    """Decode JavaScript escape sequences in a string-literal body.
+
+    JSON decoding handles the common escapes. For escapes valid in JS but not
+    in JSON (\\', \\xHH, \\v, \\0, Tailwind's \\:), fall back to a conservative
+    unescape so raw backslashes do not leak into the resolved class string.
+    """
+    simple = {
+        "n": "\n", "t": "\t", "r": "\r", "b": "\b", "f": "\f",
+        "v": "\v", "0": "\0", "\\": "\\", '"': '"', "'": "'",
+        "`": "`", "/": "/",
+    }
+    out: list[str] = []
+    i = 0
+    while i < len(content):
+        ch = content[i]
+        if ch == "\\" and i + 1 < len(content):
+            nxt = content[i + 1]
+            if nxt == "x" and i + 3 < len(content):
+                try:
+                    out.append(chr(int(content[i + 2 : i + 4], 16)))
+                    i += 4
+                    continue
+                except ValueError:
+                    pass
+            if nxt == "u" and i + 5 < len(content):
+                try:
+                    out.append(chr(int(content[i + 2 : i + 6], 16)))
+                    i += 6
+                    continue
+                except ValueError:
+                    pass
+            if nxt in simple:
+                out.append(simple[nxt])
+                i += 2
+                continue
+            # Unknown escape (e.g. Tailwind \\:): emit char without backslash.
+            out.append(nxt)
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _extract_string_literal(node: Node, source_bytes: bytes) -> str:
+    """Return the decoded string contents of a string literal node."""
+    raw = _node_text(node, source_bytes).decode("utf-8", errors="replace")
+    if len(raw) >= 2 and (
+        (raw.startswith('"') and raw.endswith('"'))
+        or (raw.startswith("'") and raw.endswith("'"))
+    ):
+        content = raw[1:-1]
+        if "\\" in content:
+            return _decode_js_escapes(content)
+        return content
+    return ""
+
+
+def _eval_node(node: Node, source_bytes: bytes) -> Any:
+    """Recursively evaluate an AST expression node in a safe, static manner."""
+    if node.type == "parenthesized_expression":
+        for child in node.children:
+            if child.type not in ("(", ")", "comment"):
+                return _eval_node(child, source_bytes)
+        return _UNKNOWN
+
+    if node.type == "as_expression":
+        # TypeScript type assertion, e.g. expr as string
+        children = [c for c in node.children if c.type not in ("as", "comment")]
+        if children:
+            return _eval_node(children[0], source_bytes)
+        return _UNKNOWN
+
+    if node.type == "type_assertion":
+        # TypeScript <string>expr
+        children = [c for c in node.children if c.type not in ("type_arguments", "comment")]
+        if children:
+            return _eval_node(children[-1], source_bytes)
+        return _UNKNOWN
+
+    if node.type == "string":
+        return _extract_string_literal(node, source_bytes)
+
+    if node.type == "number":
+        raw = _node_text(node, source_bytes).decode("utf-8", errors="replace")
+        try:
+            if "." in raw or "e" in raw or "E" in raw:
+                return float(raw)
+            # Support hex/binary/octal and BigInt (100n) literals.
+            return int(raw.rstrip("n"), 0) if raw[:1] == "0" or raw.endswith("n") else int(raw)
+        except ValueError:
+            return _UNKNOWN
+
+    if node.type == "true":
+        return True
+    if node.type == "false":
+        return False
+    if node.type in ("null", "undefined"):
+        return None
+
+    if node.type == "template_string":
+        parts: list[str] = []
+        for child in node.children:
+            if child.type == "`":
+                continue
+            if child.type in ("string_fragment", "escape_sequence"):
+                parts.append(
+                    _node_text(child, source_bytes).decode("utf-8", errors="replace")
+                )
+            elif child.type == "template_substitution":
+                sub_expr: Node | None = None
+                for sub_child in child.children:
+                    if sub_child.type not in ("${", "}", "comment"):
+                        sub_expr = sub_child
+                        break
+                if sub_expr is None:
+                    return _UNKNOWN
+                sub_val = _eval_node(sub_expr, source_bytes)
+                if sub_val is _UNKNOWN:
+                    return _UNKNOWN
+                # Coerce with JS semantics: null/undefined render as their
+                # keyword, matching binary `+` coercion (consistency fix).
+                parts.append(_js_str(sub_val))
+            else:
+                return _UNKNOWN
+        return "".join(parts)
+
+    if node.type == "binary_expression":
+        left_node = node.child_by_field_name("left")
+        op_node = node.child_by_field_name("operator")
+        right_node = node.child_by_field_name("right")
+        if left_node is None or op_node is None or right_node is None:
+            children = [c for c in node.children if c.type != "comment"]
+            if len(children) == 3:
+                left_node, op_node, right_node = children
+            else:
+                return _UNKNOWN
+
+        op = _node_text(op_node, source_bytes).decode("utf-8", errors="replace")
+        if op == "+":
+            left_val = _eval_node(left_node, source_bytes)
+            if left_val is _UNKNOWN:
+                return _UNKNOWN
+            right_val = _eval_node(right_node, source_bytes)
+            if right_val is _UNKNOWN:
+                return _UNKNOWN
+            if isinstance(left_val, str) or isinstance(right_val, str):
+                return _js_str(left_val) + _js_str(right_val)
+            if (
+                isinstance(left_val, (int, float))
+                and not isinstance(left_val, bool)
+                and isinstance(right_val, (int, float))
+                and not isinstance(right_val, bool)
+            ):
+                return left_val + right_val
+            return _UNKNOWN
+
+        if op == "&&":
+            left_val = _eval_node(left_node, source_bytes)
+            if left_val is _UNKNOWN:
+                return _UNKNOWN
+            if not _js_truthy(left_val):
+                return left_val
+            return _eval_node(right_node, source_bytes)
+
+        if op == "||":
+            left_val = _eval_node(left_node, source_bytes)
+            if left_val is _UNKNOWN:
+                return _UNKNOWN
+            if _js_truthy(left_val):
+                return left_val
+            return _eval_node(right_node, source_bytes)
+
+        if op == "??":
+            left_val = _eval_node(left_node, source_bytes)
+            if left_val is _UNKNOWN:
+                return _UNKNOWN
+            if left_val is None:
+                return _eval_node(right_node, source_bytes)
+            return left_val
+
+        return _UNKNOWN
+
+    if node.type == "ternary_expression":
+        cond_node = node.child_by_field_name("condition")
+        conseq_node = node.child_by_field_name("consequence")
+        alt_node = node.child_by_field_name("alternative")
+        if cond_node is None or conseq_node is None or alt_node is None:
+            children = [
+                c for c in node.children if c.type not in ("?", ":", "comment")
+            ]
+            if len(children) == 3:
+                cond_node, conseq_node, alt_node = children
+            else:
+                return _UNKNOWN
+
+        cond_val = _eval_node(cond_node, source_bytes)
+        if cond_val is _UNKNOWN:
+            return _UNKNOWN
+        if _js_truthy(cond_val):
+            return _eval_node(conseq_node, source_bytes)
+        return _eval_node(alt_node, source_bytes)
+
+    if node.type == "unary_expression":
+        op_node = node.child_by_field_name("operator")
+        arg_node = node.child_by_field_name("argument")
+        if op_node is None or arg_node is None:
+            children = [c for c in node.children if c.type != "comment"]
+            if len(children) == 2:
+                op_node, arg_node = children
+            else:
+                return _UNKNOWN
+        op = _node_text(op_node, source_bytes).decode("utf-8", errors="replace")
+        val = _eval_node(arg_node, source_bytes)
+        if val is _UNKNOWN:
+            return _UNKNOWN
+        if op == "!":
+            return not _js_truthy(val)
+        if (
+            op == "-"
+            and isinstance(val, (int, float))
+            and not isinstance(val, bool)
+        ):
+            return -val
+        if (
+            op == "+"
+            and isinstance(val, (int, float))
+            and not isinstance(val, bool)
+        ):
+            return +val
+        return _UNKNOWN
+
+    if node.type == "call_expression":
+        callee_node = node.child_by_field_name("function")
+        if callee_node is None:
+            for child in node.children:
+                if child.type != "comment":
+                    callee_node = child
+                    break
+        if callee_node is None or callee_node.type != "identifier":
+            return _UNKNOWN
+        callee_name = _node_text(callee_node, source_bytes).decode(
+            "utf-8", errors="replace"
+        )
+        if callee_name not in _WHITELISTED_CALLEES:
+            return _UNKNOWN
+
+        args_node = node.child_by_field_name("arguments")
+        if args_node is None:
+            for child in node.children:
+                if child.type == "arguments":
+                    args_node = child
+                    break
+        if args_node is None:
+            return _UNKNOWN
+
+        tokens: list[str] = []
+
+        def collect_arg(arg: Node) -> None:
+            if arg.type == "parenthesized_expression":
+                for child in arg.children:
+                    if child.type not in ("(", ")", "comment"):
+                        collect_arg(child)
+                return
+            if arg.type == "as_expression":
+                children = [c for c in arg.children if c.type not in ("as", "comment")]
+                if children:
+                    collect_arg(children[0])
+                return
+            if arg.type == "array":
+                for item in arg.children:
+                    if item.type not in ("[", "]", ",", "comment"):
+                        collect_arg(item)
+                return
+            if arg.type == "object":
+                for child in arg.children:
+                    if child.type == "pair":
+                        key_node = child.child_by_field_name("key")
+                        val_node = child.child_by_field_name("value")
+                        if key_node is None or val_node is None:
+                            p_children = [
+                                c
+                                for c in child.children
+                                if c.type not in (":", "comment")
+                            ]
+                            if len(p_children) == 2:
+                                key_node, val_node = p_children
+                        if not key_node or not val_node:
+                            continue
+                        val = _eval_node(val_node, source_bytes)
+                        if val is not _UNKNOWN and _js_truthy(val):
+                            if key_node.type == "property_identifier":
+                                k = _node_text(key_node, source_bytes).decode(
+                                    "utf-8", errors="replace"
+                                )
+                                tokens.extend(k.split())
+                            elif key_node.type == "string":
+                                k_val = _extract_string_literal(
+                                    key_node, source_bytes
+                                )
+                                tokens.extend(k_val.split())
+                return
+
+            val = _eval_node(arg, source_bytes)
+            if isinstance(val, str):
+                tokens.extend(val.split())
+            elif (
+                isinstance(val, (int, float))
+                and not isinstance(val, bool)
+                and _js_truthy(val)
+            ):
+                # Falsy numbers (0) are dropped by clsx/cn — never a class token.
+                tokens.append(_js_str(val))
+
+        for arg in args_node.children:
+            if arg.type not in ("(", ")", ",", "comment"):
+                collect_arg(arg)
+
+        # A fully-static call that produced no tokens resolves to "" — distinct
+        # from _UNKNOWN so `className={cn("")}` behaves like `className={""}`.
+        return " ".join(tokens)
+
+    return _UNKNOWN
 
 
 @dataclass(frozen=True)
@@ -256,6 +611,26 @@ class MarkToolASTMutator:
                         return child
         return None
 
+    def _resolve_jsx_expr(
+        self, expr_node: Node, source_bytes: bytes
+    ) -> str | None:
+        """Statically evaluate a jsx_expression node, returning str or None."""
+        inner: Node | None = None
+        for child in expr_node.children:
+            if child.type not in ("{", "}", "comment"):
+                inner = child
+                break
+        if inner is None:
+            return None
+        val = _eval_node(inner, source_bytes)
+        if val is _UNKNOWN or val is None or isinstance(val, bool):
+            return None
+        if isinstance(val, str):
+            return val
+        if isinstance(val, (int, float)):
+            return str(val)
+        return None
+
     def _get_attr_value(
         self, opening: Node, attr_name: str, source_bytes: bytes
     ) -> str | None:
@@ -265,24 +640,18 @@ class MarkToolASTMutator:
         value = self._attribute_value_text(attr, source_bytes)
         if value is not None:
             return value
-        # Expressions can't be evaluated, so they don't match a class/id selector.
+        for child in attr.children:
+            if child.type == "jsx_expression":
+                return self._resolve_jsx_expr(child, source_bytes)
         return None
 
     def _attribute_value_text(self, attr: Node, source_bytes: bytes) -> str | None:
         """Return the string value of a JSX attribute if it is a string literal."""
         for child in attr.children:
             if child.type == "string":
-                # Prefer the explicit string_fragment child.
-                for frag in child.children:
-                    if frag.type == "string_fragment":
-                        return _node_text(frag, source_bytes).decode(
-                            "utf-8", errors="replace"
-                        )
-                # Fall back to text between the quotes.
-                raw = _node_text(child, source_bytes).decode("utf-8", errors="replace")
-                if len(raw) >= 2:
-                    return raw[1:-1]
-                return ""
+                # Reuse the same extractor as expression attrs so multi-fragment
+                # strings and escapes are decoded identically.
+                return _extract_string_literal(child, source_bytes)
         return None
 
     def _close_token(self, opening: Node) -> Node:
