@@ -362,10 +362,10 @@ development_status:
   32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: done
   epic-32-retrospective: optional
 
-  epic-33: backlog
+  epic-33: done
   33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
   33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
-  33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: backlog
+  33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
   epic-33-retrospective: optional
 
   epic-34: backlog

@@ -725,12 +725,14 @@ class PhoneWaterfallService:
             except Exception as e:  # best-effort cache read; fall through to live waterfall resolution
                 logger.warning("Failed reading Redis phone cache: %s", e)
 
-        # 3. Check Wallet Pre-balance (AD-42)
+        # 3. Two-Phase Credit Locking: Phase 1 - Reserve Credits (Story 33.3)
+        credit_reserved = False
         if user_id is not None:
             try:
-                await wallet_credit.check_balance(
+                await wallet_credit.reserve_credit(
                     self.session, user_id, PHONE_RESOLUTION_COST_MICROS
                 )
+                credit_reserved = True
             except wallet_credit.InsufficientCreditsError as ice:
                 logger.warning(
                     "Insufficient wallet balance for phone resolution: %s", ice
@@ -929,44 +931,39 @@ class PhoneWaterfallService:
         self.session.add(log_entry)
         await self.session.flush()
 
-        # 7. Record BillingEvent & Apply Debit (AD-42 / AD-48)
-        billing_event = BillingEvent(
-            workspace_id=workspace_id,
-            client_id=client_id,
-            user_id=user_id,
-            event_entity_type="contact_enrichment",
-            event_type="contact_enrichment",
-            event_id=log_entry.id,
-            cost_micros=PHONE_RESOLUTION_COST_MICROS,
-            currency="USD",
-            cost_basis="actual",
-        )
-        self.session.add(billing_event)
+        # 7. Two-Phase Credit Locking: Phase 2 - Commit or Release (Story 33.3)
+        if phone_res.status == "success":
+            billing_event = BillingEvent(
+                workspace_id=workspace_id,
+                client_id=client_id,
+                user_id=user_id,
+                event_entity_type="contact_enrichment",
+                event_type="contact_enrichment",
+                event_id=log_entry.id,
+                cost_micros=PHONE_RESOLUTION_COST_MICROS,
+                currency="USD",
+                cost_basis="actual",
+            )
+            self.session.add(billing_event)
 
-        if user_id is not None:
-            try:
-                await wallet_credit.apply_debit(
-                    self.session, user_id, PHONE_RESOLUTION_COST_MICROS
-                )
-            except wallet_credit.InsufficientCreditsError as ice:
-                logger.warning("Wallet ran out of credits during final debit: %s", ice)
-                return PhoneResolutionResult(
-                    lead_id=lead_id,
-                    phone=None,
-                    phone_masked="",
-                    phone_hash=None,
-                    tier_reached=0,
-                    provider_used="none",
-                    status="failed",
-                    cost_micros=0,
-                    confidence=0.0,
-                    carrier="Unknown",
-                    is_cached=False,
-                    degraded=True,
-                    degradation_reason="insufficient_wallet",
-                )
+            if user_id is not None and credit_reserved:
+                try:
+                    await wallet_credit.commit_reserved_credit(
+                        self.session, user_id, PHONE_RESOLUTION_COST_MICROS
+                    )
+                except Exception as exc:
+                    logger.warning("Failed to commit reserved credit: %s", exc)
+            else:
+                await self.session.commit()
         else:
-            await self.session.commit()
+            # Resolution failed: release the reserved credit atomically
+            if user_id is not None and credit_reserved:
+                try:
+                    await wallet_credit.release_credit(
+                        self.session, user_id, PHONE_RESOLUTION_COST_MICROS
+                    )
+                except Exception as exc:
+                    logger.warning("Failed to release reserved credit: %s", exc)
 
         # 8. Set 30-Day Redis Cache
         if redis:
