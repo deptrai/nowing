@@ -34,6 +34,10 @@ export const searchSourceConnectorTypeEnum = z.enum([
 	"COMPOSIO_GMAIL_CONNECTOR",
 	"COMPOSIO_GOOGLE_CALENDAR_CONNECTOR",
 	"RSS_FEED",
+	// XActions unified social/scrape connector (Epic 36). Emitted by the
+	// backend search-source-connectors endpoint; without it the response fails
+	// Zod validation (Invalid API response schema).
+	"XACTIONS_MCP_CONNECTOR",
 ]);
 
 export const searchSourceConnector = z.object({
