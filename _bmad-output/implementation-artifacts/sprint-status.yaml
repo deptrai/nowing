@@ -349,11 +349,11 @@ development_status:
   30-9-technical-debt-retirement-system-hardening: done
   epic-30-retrospective: done
 
-  epic-31: in-progress
+  epic-31: done
   31-1-dokploy-multi-tenant-container-resource-constraints-cgroup-c: done
   31-2-strict-cname-dns-ingress-ownership-verification: done
-  31-3-ast-static-eval-policy-for-dynamic-jsx-expression-matching-i: 'review'
-  31-4-entitlement-driven-presentation-studio-format-selection-from: review
+  31-3-ast-static-eval-policy-for-dynamic-jsx-expression-matching-i: done
+  31-4-entitlement-driven-presentation-studio-format-selection-from: done
   epic-31-retrospective: optional
 
   epic-32: backlog
