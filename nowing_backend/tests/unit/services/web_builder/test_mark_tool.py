@@ -726,3 +726,31 @@ class TestStaticEvalEdgeCases:
         jsx = 'export default function P(){return <div className={clsx({ "active": true, "off": false })}>t</div>}'
         assert self._patch(mutator, jsx, ".active").status == "patched"
         assert self._patch(mutator, jsx, ".off").status == "mark_unresolvable"
+
+
+    def test_spread_static_array(self, mutator: MarkToolASTMutator):
+        """cn("a", ...["b","c"]) flattens the spread into tokens."""
+        jsx = 'export default function P(){return <div className={cn("a", ...["b","c"])}>t</div>}'
+        assert self._patch(mutator, jsx, ".b").status == "patched"
+        assert self._patch(mutator, jsx, ".c").status == "patched"
+
+    def test_computed_property_name_literal(self, mutator: MarkToolASTMutator):
+        """clsx({ ["btn-primary"]: true }) emits the computed key."""
+        jsx = 'export default function P(){return <div className={clsx({ ["btn-primary"]: true })}>t</div>}'
+        assert self._patch(mutator, jsx, ".btn-primary").status == "patched"
+
+    def test_and_array_literal(self, mutator: MarkToolASTMutator):
+        """cn(true && ["a","b"]) evaluates the array via _eval_node."""
+        jsx = 'export default function P(){return <div className={cn(true && ["a","b"])}>t</div>}'
+        assert self._patch(mutator, jsx, ".a").status == "patched"
+        assert self._patch(mutator, jsx, ".b").status == "patched"
+
+    def test_satisfies_expression(self, mutator: MarkToolASTMutator):
+        """cn("a" satisfies string) unwraps to the string."""
+        jsx = 'export default function P(){return <div className={cn("a" satisfies string)}>t</div>}'
+        assert self._patch(mutator, jsx, ".a").status == "patched"
+
+    def test_non_null_unknown_still_failsafe(self, mutator: MarkToolASTMutator):
+        """cn(classes!) — identifier still unknown, no false-positive."""
+        jsx = 'export default function P(){return <div className={cn(classes!)}>t</div>}'
+        assert self._patch(mutator, jsx, ".classes").status == "mark_unresolvable"

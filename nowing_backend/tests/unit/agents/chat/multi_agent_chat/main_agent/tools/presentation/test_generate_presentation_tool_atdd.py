@@ -393,7 +393,7 @@ async def test_tool_returns_plan_limited_when_service_raises_403(
     from unittest.mock import AsyncMock, MagicMock
     from uuid import uuid4
 
-    from fastapi import HTTPException
+    from app.services.presentation.service import PlanLimitedError
 
     mock_ws = MagicMock(id=1, presentation_studio_enabled=True)
     mock_membership = MagicMock(is_owner=True, role=None)
@@ -438,10 +438,7 @@ async def test_tool_returns_plan_limited_when_service_raises_403(
     monkeypatch.setattr(
         "app.services.presentation.service.PresentationStudioService.generate",
         AsyncMock(
-            side_effect=HTTPException(
-                status_code=403,
-                detail="PPTX format generation is not enabled on this workspace plan; use Marp or upgrade",
-            )
+            side_effect=PlanLimitedError()
         ),
     )
 

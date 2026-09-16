@@ -55,6 +55,7 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         from app.services.presentation.schemas import (
             GeneratePresentationOutput,
         )
+        from app.services.presentation.service import PlanLimitedError
 
         def _failed(error: str, *, status: str = "validation_failed") -> dict[str, Any]:
             return GeneratePresentationOutput(
@@ -154,6 +155,12 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         except ValidationError:
             logger.exception("generate_presentation input failed validation")
             return _failed("Invalid presentation input.")
+        except PlanLimitedError as exc:  # domain-layer entitlement (story 31.4)
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    await session.rollback()
+            logger.info("generate_presentation blocked by plan: %s", exc.detail)
+            return _failed(str(exc.detail), status="plan_limited")
         except HTTPException as exc:  # only a 403 is a plan-entitlement paywall
             if session is not None:
                 with contextlib.suppress(Exception):

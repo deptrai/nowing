@@ -309,8 +309,13 @@ async def test_generate_pptx_free_tier_returns_403(
 
     The gate lives in PresentationStudioService.generate, so the direct
     POST /presentations/generate route (which bypasses the capability
-    executor) is also covered.
+    executor) is also covered. Self-hosted deployments skip the SaaS
+    paywall (unlimited licensing) — skip this assertion there.
     """
+    from app.config import config as app_config
+
+    if app_config.is_self_hosted():
+        pytest.skip("self-hosted deployments skip the PPTX plan-tier paywall")
     res = await client_as_regular_user.post(
         "/api/v1/presentations/generate",
         json={

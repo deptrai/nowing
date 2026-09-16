@@ -1784,14 +1784,8 @@ All 8 items from the two deferred blocks above (lines 1736-1774) are resolved:
 
 Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_action_matrix.py + test_social_xactions_ingest.py + test_social_routes.py → 181/181 pass.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-31-3-ast-static-eval-mark-tool.md`
-  summary: Widen Mark Tool static-eval to spread_element (`cn(...["a","b"])`), computed_property_name object keys (`clsx({["k"]:true})`), and hoisted array/object results in _eval_node (`cn(true && ["a","b"])`), plus `satisfies`/`non_null`/`type_assertion` in collect_arg.
-  evidence: Blind-hunter findings #7-#10 — all are deliberate scope beyond the spec's "conservative, statically-known" whitelist; each needs its own resolution rules, deferred as follow-up.
+## Resolved from: epic-31 leftover defers (2026-09-16)
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-31-4-presentation-format-entitlement.md`
-  summary: Self-hosted instances default plan_tier to free → PPTX generation blocked despite unlimited licensing; consider a `is_self_hosted()` bypass so self-host is not paywalled.
-  evidence: Edge-case hunter — self-host has no paid plan but should not lose PPTX. Requires a product/licensing decision on whether self-host gets full features.
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-31-4-presentation-format-entitlement.md`
-  summary: PresentationStudioService.generate raises fastapi.HTTPException, coupling the domain service to HTTP transport; a domain-exception + route/executor translation would let CLI/workers/LangGraph callers consume the gate without FastAPI.
-  evidence: Blind-hunter — architectural coupling. Spec explicitly asked for HTTP 403, so the current raise is in-contract; a domain-exception refactor is a follow-up, not a story-31.4 defect.
+- Mark Tool static-eval widened: `spread_element`, `computed_property_name` keys, hoisted array/object in `_eval_node` (`cn(true && ["a","b"])`), `satisfies_expression`/`non_null_expression` unwrap. Tests in `TestStaticEvalEdgeCases`.
+- Self-hosted deployments skip the PPTX plan-tier paywall (`app_config.is_self_hosted()`); SaaS still hard-blocks free-tier PPTX.
+- `PresentationStudioService.generate` now raises domain `PlanLimitedError` (not FastAPI `HTTPException`); the REST route translates to HTTP 403 and the chat tool to `status="plan_limited"`.

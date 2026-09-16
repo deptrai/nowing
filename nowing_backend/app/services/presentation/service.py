@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from fastapi import HTTPException, status as http_status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +31,21 @@ from app.services.web_builder.deploy_service import disambiguate_slug
 from app.services.workspace_limits.service import WorkspaceLimitService
 
 logger = logging.getLogger(__name__)
+
+
+class PlanLimitedError(Exception):
+    """Raised when PPTX generation is requested on a non-entitled plan.
+
+    Domain-layer exception (not FastAPI) so CLI/workers/LangGraph callers
+    can catch it without depending on HTTP transport. Routes translate it
+    to HTTP 403; the chat tool translates it to status="plan_limited".
+    """
+
+    def __init__(self, detail: str = "PPTX format generation is not enabled on this workspace plan; use Marp or upgrade"):
+        super().__init__(detail)
+        self.detail = detail
+        self.status_code = 403
+
 
 
 def _llm_content_to_text(raw: Any) -> str:
@@ -260,7 +274,10 @@ class PresentationStudioService:
         # Placed after input validation so bad input fails with a validation
         # result, and before generation so neither the capability executor nor
         # the REST route can bypass it.
-        if output_format == "pptx":
+        if output_format == "pptx" and not app_config.is_self_hosted():
+            # Self-hosted deployments have unlimited licensing — skip the
+            # SaaS plan-tier paywall so a local free-tier workspace can
+            # still generate PPTX (story 31.4 deferred item).
             tier = "free"
             workspace_id = getattr(build_input, "workspace_id", None)
             if workspace_id:
@@ -269,10 +286,7 @@ class PresentationStudioService:
                 )
                 tier = (limits.plan_tier or "free").strip().lower()
             if tier not in {"team", "growth", "enterprise"}:
-                raise HTTPException(
-                    status_code=http_status.HTTP_403_FORBIDDEN,
-                    detail="PPTX format generation is not enabled on this workspace plan; use Marp or upgrade",
-                )
+                raise PlanLimitedError()
 
 
         if len(prompt) > app_config.PRESENTATION_MAX_PROMPT_CHARS:

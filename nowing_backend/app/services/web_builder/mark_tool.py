@@ -121,6 +121,46 @@ def _extract_string_literal(node: Node, source_bytes: bytes) -> str:
     return ""
 
 
+def _eval_spread(node: Node, source_bytes: bytes) -> Any:
+    """Evaluate a spread_element (`...expr`) to a list, or _UNKNOWN."""
+    inner = None
+    for child in node.children:
+        if child.type not in (".", "...", "comment"):
+            inner = child
+            break
+    if inner is None:
+        return _UNKNOWN
+    val = _eval_node(inner, source_bytes)
+    if val is _UNKNOWN:
+        return _UNKNOWN
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        return val.split()
+    return _UNKNOWN
+
+
+def _object_key_to_str(key_node: Node, source_bytes: bytes) -> Any:
+    """Resolve an object-literal key to a string, including computed names."""
+    if key_node.type == "property_identifier":
+        return _node_text(key_node, source_bytes).decode("utf-8", errors="replace")
+    if key_node.type == "string":
+        return _extract_string_literal(key_node, source_bytes)
+    if key_node.type == "computed_property_name":
+        inner = None
+        for child in key_node.children:
+            if child.type not in ("[", "]", "comment"):
+                inner = child
+                break
+        if inner is None:
+            return _UNKNOWN
+        val = _eval_node(inner, source_bytes)
+        if val is _UNKNOWN or val is None:
+            return _UNKNOWN
+        return _js_str(val)
+    return _UNKNOWN
+
+
 def _eval_node(node: Node, source_bytes: bytes) -> Any:
     """Recursively evaluate an AST expression node in a safe, static manner."""
     if node.type == "parenthesized_expression":
@@ -142,6 +182,62 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
         if children:
             return _eval_node(children[-1], source_bytes)
         return _UNKNOWN
+
+    if node.type == "satisfies_expression":
+        # `"a" satisfies string` — evaluate the value, ignore the type.
+        children = [c for c in node.children if c.type not in ("satisfies", "comment")]
+        if children:
+            return _eval_node(children[0], source_bytes)
+        return _UNKNOWN
+
+    if node.type == "non_null_expression":
+        # `expr!` — unwrap; still fail-safe if the inner node is unknown.
+        children = [c for c in node.children if c.type not in ("!", "comment")]
+        if children:
+            return _eval_node(children[0], source_bytes)
+        return _UNKNOWN
+
+    if node.type == "array":
+        items: list[Any] = []
+        for child in node.children:
+            if child.type in ("[", "]", ",", "comment"):
+                continue
+            if child.type == "spread_element":
+                inner = _eval_spread(child, source_bytes)
+                if inner is _UNKNOWN:
+                    return _UNKNOWN
+                if isinstance(inner, list):
+                    items.extend(inner)
+                else:
+                    items.append(inner)
+                continue
+            val = _eval_node(child, source_bytes)
+            if val is _UNKNOWN:
+                return _UNKNOWN
+            items.append(val)
+        return items
+
+    if node.type == "object":
+        keys: list[str] = []
+        for child in node.children:
+            if child.type != "pair":
+                continue
+            key_node = child.child_by_field_name("key")
+            val_node = child.child_by_field_name("value")
+            if key_node is None or val_node is None:
+                p_children = [c for c in child.children if c.type not in (":", "comment")]
+                if len(p_children) == 2:
+                    key_node, val_node = p_children
+            if not key_node or not val_node:
+                continue
+            val = _eval_node(val_node, source_bytes)
+            if val is _UNKNOWN or not _js_truthy(val):
+                continue
+            k = _object_key_to_str(key_node, source_bytes)
+            if k is _UNKNOWN:
+                continue
+            keys.extend(str(k).split())
+        return " ".join(keys)
 
     if node.type == "string":
         return _extract_string_literal(node, source_bytes)
@@ -332,43 +428,62 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
                 if children:
                     collect_arg(children[0])
                 return
+            if arg.type == "type_assertion":
+                children = [
+                    c for c in arg.children if c.type not in ("type_arguments", "comment")
+                ]
+                if children:
+                    collect_arg(children[-1])
+                return
+            if arg.type == "satisfies_expression":
+                children = [
+                    c for c in arg.children if c.type not in ("satisfies", "comment")
+                ]
+                if children:
+                    collect_arg(children[0])
+                return
+            if arg.type == "non_null_expression":
+                children = [c for c in arg.children if c.type not in ("!", "comment")]
+                if children:
+                    collect_arg(children[0])
+                return
+            if arg.type == "spread_element":
+                inner = _eval_spread(arg, source_bytes)
+                if isinstance(inner, list):
+                    for item in inner:
+                        if isinstance(item, str):
+                            tokens.extend(item.split())
+                        elif (
+                            isinstance(item, (int, float))
+                            and not isinstance(item, bool)
+                            and _js_truthy(item)
+                        ):
+                            tokens.append(_js_str(item))
+                return
             if arg.type == "array":
                 for item in arg.children:
                     if item.type not in ("[", "]", ",", "comment"):
                         collect_arg(item)
                 return
             if arg.type == "object":
-                for child in arg.children:
-                    if child.type == "pair":
-                        key_node = child.child_by_field_name("key")
-                        val_node = child.child_by_field_name("value")
-                        if key_node is None or val_node is None:
-                            p_children = [
-                                c
-                                for c in child.children
-                                if c.type not in (":", "comment")
-                            ]
-                            if len(p_children) == 2:
-                                key_node, val_node = p_children
-                        if not key_node or not val_node:
-                            continue
-                        val = _eval_node(val_node, source_bytes)
-                        if val is not _UNKNOWN and _js_truthy(val):
-                            if key_node.type == "property_identifier":
-                                k = _node_text(key_node, source_bytes).decode(
-                                    "utf-8", errors="replace"
-                                )
-                                tokens.extend(k.split())
-                            elif key_node.type == "string":
-                                k_val = _extract_string_literal(
-                                    key_node, source_bytes
-                                )
-                                tokens.extend(k_val.split())
+                obj_val = _eval_node(arg, source_bytes)
+                if isinstance(obj_val, str):
+                    tokens.extend(obj_val.split())
                 return
 
             val = _eval_node(arg, source_bytes)
             if isinstance(val, str):
                 tokens.extend(val.split())
+            elif isinstance(val, list):
+                for item in val:
+                    if isinstance(item, str):
+                        tokens.extend(item.split())
+                    elif (
+                        isinstance(item, (int, float))
+                        and not isinstance(item, bool)
+                        and _js_truthy(item)
+                    ):
+                        tokens.append(_js_str(item))
             elif (
                 isinstance(val, (int, float))
                 and not isinstance(val, bool)
