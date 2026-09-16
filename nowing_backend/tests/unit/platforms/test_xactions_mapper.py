@@ -32,6 +32,13 @@ def _make_target(
 
 
 class TestUniversalScrapeTargetMapper:
+    # Legacy PLATFORM_TOOL_MAP expectations — pin both dispatch flags OFF so the
+    # test is deterministic regardless of the developer's .env.local.
+    @pytest.fixture(autouse=True)
+    def _flags_off(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False)
+        monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", False)
+
     @pytest.mark.parametrize(
         "platform,expected_tool",
         [
@@ -108,6 +115,10 @@ class TestUnifiedDispatchFlagOn:
     @pytest.fixture(autouse=True)
     def _flag_on(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+        # Deprecation stays OFF here: this class asserts legacy facebook/twitter
+        # keep their dedicated tools under unified dispatch. Deterministic
+        # regardless of .env.local.
+        monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", False)
         CanonicalActionMatrix.reset()
         yield
         CanonicalActionMatrix.reset()

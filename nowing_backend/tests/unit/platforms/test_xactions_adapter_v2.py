@@ -14,6 +14,17 @@ from app.proprietary.platforms.xactions.adapter_v2 import (
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 
 
+@pytest.fixture(autouse=True)
+def _pin_dispatch_flags_off(monkeypatch):
+    """Force XACTIONS_USE_UNIFIED_DISPATCH + XACTIONS_LEGACY_TOOL_DEPRECATION
+    OFF so flag-dependent tests are deterministic regardless of the developer's
+    .env.local. Tests covering the ON path set the flags themselves afterward."""
+    from app.config import config
+
+    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False)
+    monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", False)
+
+
 class FakeTarget:
     def __init__(
         self,
