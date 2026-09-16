@@ -30,6 +30,7 @@ type CdpCommand = {
 	mission_id: string;
 	command_id: string;
 	user_id?: string;
+	session_token?: string;
 	url?: string;
 	selector?: string;
 	text?: string;
@@ -51,6 +52,7 @@ class CdpBridge {
 		cmd: CdpCommand;
 		alreadyHandled: boolean;
 	} | null = null;
+	private activeSessionToken: string | null = null;
 	private processing = false;
 	private queued: CdpCommand[] = [];
 	private reconnectDelay = 1000;
@@ -219,6 +221,9 @@ class CdpBridge {
 
 	private async _processCommand(cmd: CdpCommand): Promise<void> {
 		this.currentCommand = { cmd, alreadyHandled: false };
+		if (cmd.session_token) {
+			this.activeSessionToken = cmd.session_token;
+		}
 		try {
 			await this.handleCdpCommand(cmd);
 		} finally {
@@ -759,6 +764,7 @@ class CdpBridge {
 			error,
 			requires_human: requiresHuman,
 			challenge,
+			session_token: this.activeSessionToken,
 		};
 
 		const isRetryableStatus = (status: number) => status >= 500 || status === 429;

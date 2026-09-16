@@ -34,6 +34,11 @@ from app.schemas.dsh import (
     DshNotifyHighFitRequest,
     DshNotifyHighFitResponse,
 )
+from app.services.browser_operator_audit_service import (
+    BrowserOperatorAuditService,
+    generate_session_token,
+    validate_session_token,
+)
 from app.services.dsh_control_service import MissionControlService
 from app.services.dsh_mission_service import (
     _UNSET,
@@ -495,10 +500,38 @@ async def cdp_result(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Receive result from extension's CDP execution."""
+    """Receive result from extension's CDP execution with session token validation."""
     mission = await session.get(DshMission, payload.mission_id)
     if mission:
         _require_mission_access(auth, mission)
+
+    # Validate CDP session token when provided (required for audit trail).
+    session_token = payload.session_token
+    if session_token:
+        valid, err = validate_session_token(
+            session_token,
+            str(payload.mission_id),
+            str(auth.user.id),
+        )
+        if not valid:
+            # Log failed auth attempt as audit event
+            if mission:
+                await BrowserOperatorAuditService.log_event(
+                    session,
+                    mission_id=payload.mission_id,
+                    workspace_id=mission.workspace_id,
+                    user_id=auth.user.id,
+                    command_id=payload.command_id or "unknown",
+                    action="auth_failure",
+                    success=False,
+                    error_message=f"Session token validation failed: {err}",
+                    metadata={"event_type": "auth_failure"},
+                )
+                await session.commit()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid CDP session token: {err}",
+            )
 
     redis = await get_redis_client()
     key = f"cdp_result:{auth.user.id}:{payload.mission_id}"
@@ -523,6 +556,23 @@ async def cdp_result(
     pipe.expire(key, 300)
     pipe.ltrim(key, -5, -1)
     await pipe.execute()
+
+    # Log audit event for the command result
+    if mission and command_id:
+        success = payload.error is None and not payload.requires_human
+        await BrowserOperatorAuditService.log_command_result(
+            session,
+            mission_id=payload.mission_id,
+            workspace_id=mission.workspace_id,
+            user_id=auth.user.id,
+            command_id=command_id,
+            action="cdp_result",
+            success=success,
+            error_message=payload.error,
+            challenge=payload.challenge,
+            requires_human=payload.requires_human,
+        )
+        await session.commit()
 
     return {"status": "ok"}
 

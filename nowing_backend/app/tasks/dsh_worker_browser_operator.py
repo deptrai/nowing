@@ -9,6 +9,7 @@ from langgraph.types import RunnableConfig
 
 from app.redis_client import get_redis_client
 from app.schemas.dsh import BrowserOperatorCdpPayload
+from app.services.browser_operator_audit_service import generate_session_token
 from app.services.pii.redact import redact_pii
 
 MissionState = dict[str, Any]
@@ -115,12 +116,14 @@ class BrowserOperatorCdpSubgraph:
             raise CdpExecutionError(f"Cannot verify extension CDP subscription: {exc}") from exc
 
         command_id = uuid.uuid4().hex
+        session_token = generate_session_token(str(mission_id), str(resolved_user_id))
         cmd = {
             "action": "navigate",
             "url": target_url,
             "mission_id": str(mission_id),
             "command_id": command_id,
             "user_id": str(resolved_user_id),
+            "session_token": session_token,
         }
 
         # Publish command as an SSE event through the Redis pub/sub channel.

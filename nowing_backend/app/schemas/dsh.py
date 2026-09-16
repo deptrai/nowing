@@ -219,6 +219,7 @@ class CdpResultPayload(BaseModel):
     error: str | None = None
     requires_human: bool = False
     challenge: str | None = None
+    session_token: str | None = None
 
     @field_validator("result", mode="before")
     @classmethod

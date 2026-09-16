@@ -356,10 +356,10 @@ development_status:
   31-4-entitlement-driven-presentation-studio-format-selection-from: done
   epic-31-retrospective: optional
 
-  epic-32: in-progress
+  epic-32: done
   32-1-humanlivetakeoverpopover-ui-with-countdown-timer-and-abort-s: done
   32-2-chrome-extension-chrome-debugger-ondetach-recovery-reconnect: done
-  32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: backlog
+  32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: done
   epic-32-retrospective: optional
 
   epic-33: backlog

@@ -10,6 +10,7 @@ from __future__ import annotations
 from app.models import (
     admin_health as admin_health,
     billing as billing,
+    browser_operator_audit as browser_operator_audit,
     bulk_ops as bulk_ops,
     chat as chat,
     connectors as connectors,
@@ -28,6 +29,7 @@ from app.models import (
 __all__ = [
     "admin_health",
     "billing",
+    "browser_operator_audit",
     "bulk_ops",
     "chat",
     "connectors",
