@@ -143,6 +143,14 @@ class BrowserOperatorCdpSubgraph:
         if not isinstance(parsed_result, dict):
             raise CdpExecutionError("CDP result must be a JSON object")
 
+        # Verify the result belongs to the command we just sent before processing
+        # data or errors. A mismatch means we received a stale result from a prior race.
+        if parsed_result.get("command_id") != command_id:
+            raise CdpExecutionError(
+                f"CDP result command_id mismatch for mission {mission_id}: "
+                f"expected {command_id}, got {parsed_result.get('command_id')}"
+            )
+
         if parsed_result.get("requires_human"):
             challenge = parsed_result.get("challenge", "challenge")
             exc = HumanInterventionRequired(f"CDP requires human intervention: {challenge}")
@@ -166,14 +174,6 @@ class BrowserOperatorCdpSubgraph:
             # Degrade on extension-reported CDP errors instead of crashing the mission.
             logger.warning("CDP execution failed for mission %s: %s", mission_id, error_msg)
             raise CdpExecutionError(f"Extension CDP execution failed: {error_msg}")
-
-        # Verify the result belongs to the command we just sent. A mismatch means
-        # we received a stale result, possibly from a previous command or a race.
-        if parsed_result.get("command_id") != command_id:
-            raise CdpExecutionError(
-                f"CDP result command_id mismatch for mission {mission_id}: "
-                f"expected {command_id}, got {parsed_result.get('command_id')}"
-            )
 
         cdp_res = parsed_result.get("result") or {}
 

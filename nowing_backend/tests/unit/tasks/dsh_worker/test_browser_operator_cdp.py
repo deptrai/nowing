@@ -241,3 +241,33 @@ def test_resume_invalid_payload():
     """should handle None or empty payload to /resume gracefully (422 Unprocessable Entity)."""
     with pytest.raises(ValidationError):
         ResumeMissionPayload()
+
+@pytest.mark.asyncio
+async def test_cdp_stale_error_command_id_mismatch_rejected():
+    """should reject stale error payloads with mismatched command_id before raising detach error."""
+    from app.tasks.dsh_worker_browser_operator import (
+        BrowserOperatorCdpSubgraph,
+        CdpExecutionError,
+    )
+
+    redis_mock = AsyncMock()
+    redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 1)]
+    # Returned error payload has stale command_id "stale-999"
+    redis_mock.blpop.return_value = (
+        b"key",
+        b'{"command_id": "stale-999", "error": "DEBUGGER_DETACHED: canceled_by_user"}',
+    )
+
+    with (
+        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
+        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+    ):
+        subgraph = BrowserOperatorCdpSubgraph(None)
+        state = {
+            "mission_id": "test-mission",
+            "user_id": "user-1",
+            "payload": {"target_url": "https://test.com"},
+            "workspace_id": 1,
+        }
+        with pytest.raises(CdpExecutionError, match="command_id mismatch"):
+            await subgraph._cdp_crawl_node(state, {})

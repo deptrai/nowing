@@ -253,6 +253,7 @@ class CdpBridge {
 
 		console.warn(`CdpBridge: debugger detached unexpectedly on tab ${tabId}, reason: ${reason}`);
 		this.activeDebuggeeTabId = null;
+		const droppedCommands = this.queued;
 		this.queued = [];
 
 		const detachReason = reason || "unknown";
@@ -266,6 +267,11 @@ class CdpBridge {
 				errorMessage,
 				cmd.command_id
 			);
+		}
+
+		// Also fail-fast any queued commands waiting on this debugger session
+		for (const cmd of droppedCommands) {
+			await this.sendResult(cmd.mission_id, null, errorMessage, cmd.command_id);
 		}
 	}
 
@@ -330,6 +336,7 @@ class CdpBridge {
 	private async _attachDebugger(tabId: number): Promise<void> {
 		if (this.activeDebuggeeTabId === tabId) return;
 		await this.detachDebugger();
+		this.intentionalDetachTabIds.delete(tabId);
 		await chrome.debugger.attach({ tabId }, "1.3");
 		this.activeDebuggeeTabId = tabId;
 	}
