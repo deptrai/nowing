@@ -273,22 +273,6 @@ async def _create_lead_from_social_post(
     )[:200]
     source_url = event.post_url or event.author_url
 
-    # Avoid duplicate leads for the same social post/source.
-    existing_id = await session.scalar(
-        select(Lead.id).where(
-            Lead.workspace_id == workspace_id,
-            Lead.source == "social",
-            Lead.source_url == source_url,
-        )
-    )
-    if existing_id is not None:
-        logger.debug(
-            "Lead already exists for %s/%s (id=%s)",
-            event.platform,
-            event.external_post_id,
-            existing_id,
-        )
-        return None
     locations = raw_entities.get("locations", [])
     location = locations[0][:100] if locations else None
 
@@ -303,6 +287,32 @@ async def _create_lead_from_social_post(
     intent_tag = raw_entities.get("intent", "other")
     intent_score = 0.8 if intent_tag in SOCIAL_LEAD_INTENTS else fit_score
 
+    # leads.value_hmac is NOT NULL + UNIQUE(workspace_id, value_hmac)
+    # (migration 224). Reuse the canonical stream HMAC so social leads dedupe
+    # against batch/stream-ingested leads on the same company+domain.
+    from app.lead_intelligence.services.lead_stream_service import generate_lead_hmac
+
+    value_hmac = generate_lead_hmac(workspace_id, company_name, domain)
+
+    # Avoid duplicate leads: value_hmac is the canonical identity
+    # (workspace+domain+company). A repeat author posting again, or the same
+    # post re-scraped, maps to the same key — skip rather than violate the
+    # uq_leads_workspace_value_hmac constraint.
+    existing_id = await session.scalar(
+        select(Lead.id).where(
+            Lead.workspace_id == workspace_id,
+            Lead.value_hmac == value_hmac,
+        )
+    )
+    if existing_id is not None:
+        logger.debug(
+            "Lead already exists for %s/%s (id=%s)",
+            event.platform,
+            event.external_post_id,
+            existing_id,
+        )
+        return None
+
     lead = Lead(
         workspace_id=workspace_id,
         client_id=event.client_id,
@@ -310,6 +320,7 @@ async def _create_lead_from_social_post(
         source_url=source_url,
         company_name=company_name,
         domain=domain,
+        value_hmac=value_hmac,
         industry=intent_tag,
         location=location,
         tech_stack=[],

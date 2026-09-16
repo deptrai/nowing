@@ -12,6 +12,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    Computed,
     Float,
     ForeignKey,
     ForeignKeyConstraint,
@@ -87,8 +88,22 @@ class Lead(Base, TimestampMixin):
     is_zalo_active = Column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # Generated STORED tsvector (migration 235). Marked Computed so the ORM
+    # omits it from INSERT/UPDATE — Postgres rejects an explicit value into a
+    # GENERATED ALWAYS column (asyncpg GeneratedAlwaysError). The expression
+    # must match the DDL in alembic 235 exactly.
     search_vector = Column(
         TSVECTOR,
+        Computed(
+            "setweight(to_tsvector('simple', COALESCE(company_name, '')), 'A') || "
+            "setweight(to_tsvector('simple', COALESCE(domain, '')), 'A') || "
+            "setweight(to_tsvector('simple', COALESCE(tax_id, '')), 'A') || "
+            "setweight(to_tsvector('simple', COALESCE(legal_representative, '')), 'B') || "
+            "setweight(to_tsvector('simple', COALESCE(industry, '')), 'B') || "
+            "setweight(to_tsvector('simple', COALESCE(location, '')), 'C') || "
+            "setweight(to_tsvector('simple', COALESCE(company_status, '')), 'D')",
+            persisted=True,
+        ),
         nullable=True,
         doc="Generated full-text search vector across company, domain, tax, industry, location.",
     )
