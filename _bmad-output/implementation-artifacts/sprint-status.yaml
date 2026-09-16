@@ -610,7 +610,7 @@ validation_reports:
 waves:
   - wave: 0
     theme: P0 — Lead Intelligence & DSH Substrate Integration
-    status: in-progress
+    status: done
     evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker 
       active; FastMCP batch ingestion and Daytona Sandbox ready
     stories:
@@ -623,7 +623,7 @@ waves:
       Pro Formatter in Daytona sandbox without building new container.
   - wave: 1
     theme: P0 — Interactive Browser Operator & Projects Workspace
-    status: backlog
+    status: done
     evidence_gate: Plasmo extension CDP debugger enabled; 
       `browser_operator.execute` capability and `web_crawler` prompt-in-UI 
       working; Human Live Takeover UI partially wired in popup; mission 
@@ -640,7 +640,7 @@ waves:
       downstream agent turns.
   - wave: 2
     theme: P1 — Inbound Mail Gateway & Long-running Automations
-    status: backlog
+    status: done
     evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat 
       stateful delta snapshots comparing runs
     stories:
@@ -653,7 +653,7 @@ waves:
       analysis to existing Celery Beat scheduler.
   - wave: 3
     theme: P1/P2 — Creative Studio & Full-Stack Web Builder
-    status: backlog
+    status: done
     evidence_gate: PPTX export + Marp slides working; pyannote/whisper 
       diarization working; Next.js scaffolding + *.apps.nowing.net Traefik/Caddy
       routing working
