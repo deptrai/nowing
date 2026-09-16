@@ -269,3 +269,165 @@ class DshMissionService:
             },
         )
         return msg_id
+
+    async def abort_takeover_mission(
+        self,
+        session: AsyncSession,
+        mission_id: uuid.UUID | str,
+    ) -> DshMission:
+        """Abort a mission awaiting human takeover, setting status to cancelled and phase to aborted_timeout."""
+        if isinstance(mission_id, str):
+            try:
+                mission_uuid = uuid.UUID(mission_id)
+            except ValueError as exc:
+                raise DshMissionServiceError(f"Invalid mission ID {mission_id!r}") from exc
+        else:
+            mission_uuid = mission_id
+
+        mission = await session.get(DshMission, mission_uuid)
+        if mission is None:
+            raise DshMissionServiceError("Mission not found")
+
+        # Idempotent return if already aborted_timeout
+        if (
+            mission.status == DshMissionStatus.CANCELLED.value
+            and mission.phase == "aborted_timeout"
+        ):
+            return mission
+
+        if mission.phase != "waiting_for_human":
+            raise DshMissionServiceError(
+                f"Mission is in phase {mission.phase!r}, only waiting_for_human missions can be aborted"
+            )
+
+        now = datetime.now(UTC)
+        mission.status = DshMissionStatus.CANCELLED.value
+        mission.phase = "aborted_timeout"
+        mission.updated_at = now
+        mission.completed_at = now
+
+        checkpoint = dict(mission.checkpoint) if isinstance(mission.checkpoint, dict) else {}
+        takeover = checkpoint.setdefault("takeover", {})
+        if isinstance(takeover, dict):
+            takeover["aborted_at"] = now.isoformat()
+            takeover["aborted_reason"] = "user_aborted"
+        checkpoint["takeover"] = takeover
+        mission.checkpoint = checkpoint
+        session.add(mission)
+
+        # Atomically release the Redis takeover lock
+        try:
+            redis = await get_redis_client()
+            takeover_key = f"dsh:lock:takeover:{mission.workspace_id}:{mission.id}"
+            await redis.delete(takeover_key)
+        except Exception as redis_exc:
+            logger.warning(
+                "Failed to delete Redis takeover lock for mission %s: %s",
+                mission.id,
+                redis_exc,
+            )
+
+        await session.flush()
+        return mission
+
+    async def sweep_expired_takeovers(
+        self,
+        session: AsyncSession,
+        *,
+        timeout_seconds: int = 900,
+        workspace_id: int | None = None,
+    ) -> list[DshMission]:
+        """Scan and transition expired waiting_for_human missions to cancelled/aborted_timeout."""
+        now = datetime.now(UTC)
+        stmt = select(DshMission).where(
+            DshMission.phase == "waiting_for_human",
+            DshMission.status != DshMissionStatus.CANCELLED.value,
+        )
+        if workspace_id is not None:
+            stmt = stmt.where(DshMission.workspace_id == workspace_id)
+        result = await session.execute(stmt)
+        candidates = list(result.scalars().all())
+
+        swept_missions: list[DshMission] = []
+        redis = None
+        try:
+            redis = await get_redis_client()
+        except Exception as redis_exc:
+            logger.warning("Could not connect to Redis during takeover sweep: %s", redis_exc)
+
+        for mission in candidates:
+            checkpoint = mission.checkpoint if isinstance(mission.checkpoint, dict) else {}
+            takeover = checkpoint.get("takeover") if isinstance(checkpoint, dict) else {}
+            expires_at = None
+
+            if isinstance(takeover, dict) and takeover.get("expires_at"):
+                try:
+                    expires_at = datetime.fromisoformat(takeover["expires_at"])
+                    if expires_at.tzinfo is None:
+                        expires_at = expires_at.replace(tzinfo=UTC)
+                except (ValueError, TypeError):
+                    expires_at = None
+
+            if expires_at is None:
+                ref_time = mission.updated_at or mission.created_at or now
+                if ref_time.tzinfo is None:
+                    ref_time = ref_time.replace(tzinfo=UTC)
+                expires_at = ref_time + timedelta(seconds=timeout_seconds)
+
+            if now >= expires_at:
+                mission.status = DshMissionStatus.CANCELLED.value
+                mission.phase = "aborted_timeout"
+                mission.updated_at = now
+                mission.completed_at = now
+
+                if isinstance(checkpoint, dict):
+                    takeover = checkpoint.setdefault("takeover", {})
+                    if isinstance(takeover, dict):
+                        takeover["aborted_at"] = now.isoformat()
+                        takeover["aborted_reason"] = "timeout"
+                    checkpoint["takeover"] = takeover
+                mission.checkpoint = checkpoint
+                session.add(mission)
+
+                if redis is not None:
+                    try:
+                        takeover_key = f"dsh:lock:takeover:{mission.workspace_id}:{mission.id}"
+                        await redis.delete(takeover_key)
+                    except Exception as del_exc:
+                        logger.warning(
+                            "Failed to delete Redis takeover lock for swept mission %s: %s",
+                            mission.id,
+                            del_exc,
+                        )
+
+                swept_missions.append(mission)
+                logger.info(
+                    "Takeover timed out for mission %s; marked as aborted_timeout",
+                    mission.id,
+                )
+
+        if swept_missions:
+            await session.flush()
+
+        return swept_missions
+
+
+async def abort_takeover_mission(
+    session: AsyncSession,
+    mission_id: uuid.UUID | str,
+) -> DshMission:
+    """Module-level helper to abort a takeover mission."""
+    return await DshMissionService().abort_takeover_mission(session, mission_id)
+
+
+async def sweep_expired_takeovers(
+    session: AsyncSession,
+    *,
+    timeout_seconds: int = 900,
+    workspace_id: int | None = None,
+) -> list[DshMission]:
+    """Module-level helper to sweep expired takeover missions."""
+    return await DshMissionService().sweep_expired_takeovers(
+        session, timeout_seconds=timeout_seconds, workspace_id=workspace_id
+    )
+

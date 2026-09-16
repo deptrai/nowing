@@ -357,7 +357,7 @@ development_status:
   epic-31-retrospective: optional
 
   epic-32: in-progress
-  32-1-humanlivetakeoverpopover-ui-with-countdown-timer-and-abort-s: backlog
+  32-1-humanlivetakeoverpopover-ui-with-countdown-timer-and-abort-s: done
   32-2-chrome-extension-chrome-debugger-ondetach-recovery-reconnect: done
   32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: backlog
   epic-32-retrospective: optional

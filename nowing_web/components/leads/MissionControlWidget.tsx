@@ -17,7 +17,7 @@ import {
 	X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HumanLiveTakeoverPopover } from "@/components/dsh/HumanLiveTakeoverPopover";
 import type {
@@ -64,6 +64,7 @@ const PHASE_LABELS: Record<string, string> = {
 	running: "Đang chạy",
 	cancelled: "Đã hủy",
 	dlq: "DLQ",
+	aborted_timeout: "Hủy (timeout)",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -73,6 +74,7 @@ const STATUS_LABELS: Record<string, string> = {
 	error: "Lỗi",
 	cancelled: "Đã hủy",
 	dlq: "DLQ",
+	aborted_timeout: "Hủy (timeout)",
 };
 
 const SUBTASK_STATUS_LABELS: Record<string, string> = {
@@ -235,6 +237,8 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 	const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set());
 	const [resumingTakeover, setResumingTakeover] = useState(false);
 	const [releasingTakeover, setReleasingTakeover] = useState(false);
+	const [abortingTakeover, setAbortingTakeover] = useState(false);
+	const [abortedMissionId, setAbortedMissionId] = useState<string | null>(null);
 	const [takeoverError, setTakeoverError] = useState<string | null>(null);
 
 	// Re-expand the current subtask when it changes.
@@ -251,12 +255,15 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 		}
 	}, [missionControl?.current_subtask_id]);
 
-	const phase = missionControl?.phase ?? latestMission?.phase ?? "idle";
+	const isAborted = Boolean(latestMission?.id && abortedMissionId === latestMission.id);
+	const phase = isAborted
+		? "aborted_timeout"
+		: (missionControl?.phase ?? latestMission?.phase ?? "idle");
 	const rawProgress = missionControl?.progress_percent ?? latestMission?.progress_percent ?? 0;
 	const progressPercent = Number.isFinite(rawProgress)
 		? Math.min(100, Math.max(0, rawProgress))
 		: 0;
-	const status = latestMission?.status ?? "idle";
+	const status = isAborted ? "cancelled" : (latestMission?.status ?? "idle");
 	const tokenVelocity = missionControl?.token_velocity;
 	const deliverables = missionControl?.deliverables ?? [];
 	const query = missionControl?.query;
@@ -354,6 +361,23 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 		}
 	};
 
+	const handleAbortTakeover = useCallback(async () => {
+		if (!latestMission?.id || abortingTakeover) return;
+		setTakeoverError(null);
+		setAbortingTakeover(true);
+		try {
+			await dshApiService.abortMission(latestMission.id, workspaceId ?? latestMission.workspace_id);
+			setAbortedMissionId(latestMission.id);
+			toast.success("Đã hủy nhiệm vụ takeover");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Không thể hủy nhiệm vụ";
+			setTakeoverError(msg);
+			toast.error(msg);
+		} finally {
+			setAbortingTakeover(false);
+		}
+	}, [latestMission?.id, latestMission?.workspace_id, abortingTakeover, workspaceId]);
+
 	if (!loading && status === "idle" && !latestMission) {
 		return null;
 	}
@@ -415,8 +439,10 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 					missionControl={missionControl}
 					onResume={handleResumeTakeover}
 					onRelease={handleReleaseTakeover}
+					onAbort={handleAbortTakeover}
 					resuming={resumingTakeover}
 					releasing={releasingTakeover}
+					aborting={abortingTakeover}
 					error={takeoverError}
 				/>
 			)}

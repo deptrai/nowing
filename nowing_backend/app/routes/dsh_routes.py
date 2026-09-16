@@ -587,7 +587,7 @@ async def resume_mission(
     if mission.phase != "waiting_for_human":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Mission is not awaiting human takeover.",
+            detail="Mission is not in waiting_for_human phase.",
         )
 
     # Verify challenge was addressed: the takeover lock still exists, has not expired,
@@ -646,3 +646,62 @@ async def resume_mission(
         await redis.delete(takeover_key)
 
     return {"mission_id": mission_id, "status": "running", "phase": "crawl"}
+
+
+@dsh_public_router.post("/dsh/missions/{mission_id}/abort", tags=["dsh"])
+async def abort_mission(
+    mission_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Explicitly abort a mission awaiting human takeover."""
+    mission = await session.get(DshMission, mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    _require_mission_access(auth, mission)
+
+    service = DshMissionService()
+    try:
+        updated = await service.abort_takeover_mission(session, mission_id)
+        await session.commit()
+    except DshMissionServiceError as exc:
+        await session.rollback()
+        # Phase conflict should map to 409; other errors to 400.
+        status_code = (
+            status.HTTP_409_CONFLICT
+            if "only waiting_for_human" in str(exc)
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+    return {
+        "mission_id": str(updated.id),
+        "status": updated.status,
+        "phase": updated.phase,
+    }
+
+
+@dsh_public_router.post(
+    "/workspaces/{workspace_id}/dsh/missions/sweep-takeovers", tags=["dsh"]
+)
+async def sweep_takeovers(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DSH_MISSIONS_WRITE.value,
+            "You don't have permission to run takeover sweeps in this workspace",
+        )
+    ),
+):
+    """Trigger a workspace-scoped maintenance sweep for expired takeovers."""
+    # Scope the sweep to the caller's workspace to avoid cross-tenant leakage.
+    service = DshMissionService()
+    swept = await service.sweep_expired_takeovers(
+        session, workspace_id=workspace_id
+    )
+    await session.commit()
+    return {"swept_count": len(swept)}
+
