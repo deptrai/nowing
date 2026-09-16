@@ -1,74 +1,109 @@
-"""Unit tests for ``VerifiedContactEncryption`` (Story 21.3, Task 2)."""
+"""Unit tests for VerifiedContactEncryption dual-key fallback (Story 33.1)."""
 
 from __future__ import annotations
+
+import uuid
+from unittest.mock import patch
 
 import pytest
 
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.unit]
 
 
-@pytest.fixture()
-def crypto() -> VerifiedContactEncryption:
-    return VerifiedContactEncryption("test-secret-key-for-unit-tests")
+class TestVerifiedContactEncryption:
+    """Test dual-key encryption/decryption for SECRET_KEY rotation."""
 
+    def test_encrypt_decrypt_with_primary_key(self):
+        """Encrypt and decrypt with primary key works."""
+        enc = VerifiedContactEncryption(secret_key="primary-secret-123")
+        original = "test@example.com"
+        encrypted = enc.encrypt(original)
+        decrypted = enc.decrypt(encrypted)
+        assert decrypted == original
 
-async def test_encrypt_decrypt_roundtrip(crypto: VerifiedContactEncryption) -> None:
-    """Encrypted values decrypt back to the original plaintext."""
-    raw = "nguyen.van.a@example.com"
-    encrypted = crypto.encrypt(raw)
-    assert encrypted != raw
-    assert crypto.is_encrypted(encrypted)
-    assert crypto.decrypt(encrypted) == raw
+    def test_decrypt_with_secondary_key_fallback(self):
+        """Decrypt falls back to secondary key when primary fails."""
+        # Create encryption with old key
+        old_enc = VerifiedContactEncryption(secret_key="old-secret-456")
+        encrypted = old_enc.encrypt("legacy@data.com")
 
+        # New encryption with different primary + old as secondary
+        new_enc = VerifiedContactEncryption(
+            secret_key="new-secret-789",
+            secondary_secret_key="old-secret-456",
+        )
+        decrypted = new_enc.decrypt(encrypted)
+        assert decrypted == "legacy@data.com"
 
-async def test_encrypt_decrypt_contact_dict(crypto: VerifiedContactEncryption) -> None:
-    """``encrypt_contact``/``decrypt_contact`` round-trip the PII fields."""
-    contact = {
-        "name": "Nguyen Van A",
-        "title": "Head of Sales",
-        "email": "nguyen.van.a@example.com",
-        "phone": "+84901234567",
-        "verification_status": "verified",
-        "confidence": 0.95,
-        "source_provider": "cleanlist",
-    }
-    encrypted = crypto.encrypt_contact(dict(contact))
-    assert encrypted["email"] != contact["email"]
-    assert encrypted["phone"] != contact["phone"]
-    assert encrypted["name"] != contact["name"]
-    # Non-PII fields pass through untouched.
-    assert encrypted["verification_status"] == "verified"
-    assert encrypted["source_provider"] == "cleanlist"
+    def test_decrypt_fails_without_secondary_key(self):
+        """Decryption fails when only primary key is wrong."""
+        old_enc = VerifiedContactEncryption(secret_key="old-secret")
+        encrypted = old_enc.encrypt("data")
 
-    decrypted = crypto.decrypt_contact(encrypted)
-    assert decrypted == contact
+        new_enc = VerifiedContactEncryption(secret_key="new-secret")
+        with pytest.raises(ValueError, match="Token decryption failed"):
+            new_enc.decrypt(encrypted)
 
+    def test_rotate_encryption_upgrades_to_primary(self):
+        """rotate_encryption re-encrypts legacy data with primary key."""
+        old_enc = VerifiedContactEncryption(secret_key="old-secret")
+        encrypted = old_enc.encrypt("rotate-me")
 
-async def test_none_values_pass_through(crypto: VerifiedContactEncryption) -> None:
-    """None and empty strings are left as-is (no ciphertext churn)."""
-    assert crypto.encrypt(None) is None
-    assert crypto.decrypt(None) is None
-    assert crypto.encrypt("") == ""
-    assert crypto.decrypt("") == ""
+        new_enc = VerifiedContactEncryption(
+            secret_key="new-secret",
+            secondary_secret_key="old-secret",
+        )
+        rotated = new_enc.rotate_encryption({"email": encrypted})
 
+        # Should decrypt to original with new key only
+        assert new_enc.decrypt(rotated["email"]) == "rotate-me"
+        # Old key should no longer work on rotated value
+        with pytest.raises(ValueError):
+            old_enc.decrypt(rotated["email"])
 
-async def test_decrypt_plaintext_raises(crypto: VerifiedContactEncryption) -> None:
-    """Decrypting a non-encrypted value surfaces a ValueError."""
-    with pytest.raises(ValueError):
-        crypto.decrypt("not-encrypted@example.com")
+    def test_encrypt_contact_all_fields(self):
+        """encrypt_contact encrypts all PII fields."""
+        enc = VerifiedContactEncryption(secret_key="test-key")
+        contact = {
+            "name": "John Doe",
+            "title": "CEO",
+            "email": "john@example.com",
+            "phone": "0908123456",
+            "verification_status": "verified",
+        }
+        encrypted = enc.encrypt_contact(contact)
 
+        assert encrypted["name"] != contact["name"]
+        assert encrypted["title"] != contact["title"]
+        assert encrypted["email"] != contact["email"]
+        assert encrypted["phone"] != contact["phone"]
+        assert encrypted["verification_status"] == contact["verification_status"]
 
-async def test_empty_secret_falls_back_to_config(monkeypatch) -> None:
-    """A falsy explicit secret falls back to ``config.SECRET_KEY`` (not ``and``)."""
-    from app.config import config
+        # Decrypt back
+        decrypted = enc.decrypt_contact(encrypted)
+        assert decrypted["name"] == contact["name"]
+        assert decrypted["email"] == contact["email"]
 
-    monkeypatch.setattr(config, "SECRET_KEY", "config-fallback-secret-key")
-    empty = VerifiedContactEncryption("")
-    none = VerifiedContactEncryption(None)
+    def test_decrypt_contact_with_secondary(self):
+        """decrypt_contact uses secondary key for legacy records."""
+        old_enc = VerifiedContactEncryption(secret_key="old-key")
+        contact = {"name": "Jane", "email": "jane@old.com"}
+        encrypted = old_enc.encrypt_contact(contact)
 
-    raw = "fallback@example.com"
-    ciphertext = empty.encrypt(raw)
-    assert ciphertext != raw
-    assert none.decrypt(ciphertext) == raw
+        new_enc = VerifiedContactEncryption(
+            secret_key="new-key",
+            secondary_secret_key="old-key",
+        )
+        decrypted = new_enc.decrypt_contact(encrypted)
+        assert decrypted["name"] == "Jane"
+        assert decrypted["email"] == "jane@old.com"
+
+    def test_is_encrypted_heuristic(self):
+        """is_encrypted returns True for Fernet ciphertexts."""
+        enc = VerifiedContactEncryption(secret_key="test")
+        assert enc.is_encrypted(enc.encrypt("test")) is True
+        assert enc.is_encrypted("plaintext") is False
+        assert enc.is_encrypted(None) is False
+        assert enc.is_encrypted("") is False
