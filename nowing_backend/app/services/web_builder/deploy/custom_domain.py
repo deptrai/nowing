@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import secrets
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -136,24 +137,17 @@ async def verify_and_bind_custom_domain(
                         message=f"Domain '{clean_domain}' is already assigned to another application",
                     )
 
-                # DNS proof-of-control: CNAME must point to the ingress host (R-11).
-                dns_ok = await service._resolve_cname_ingress(
-                    clean_domain, cname_target
-                )
-                if not dns_ok:
-                    return CustomDomainOutput(
-                        app_id=app_id,
-                        workspace_id=workspace_id,
-                        custom_domain=clean_domain,
-                        status="failed",
-                        cname_target=cname_target,
-                        message=f"Domain '{clean_domain}' CNAME does not point to {cname_target}.",
+                # Fetch target app entity to ensure token exists and for subsequent updates.
+                # with_for_update serializes token generation across concurrent binds of
+                # different domains on the SAME app — the per-domain lock cannot, since
+                # it keys on clean_domain, not app_id.
+                stmt = (
+                    select(WorkspaceApp)
+                    .where(
+                        WorkspaceApp.id == app_id,
+                        WorkspaceApp.workspace_id == workspace_id,
                     )
-
-                # Update DB entity
-                stmt = select(WorkspaceApp).where(
-                    WorkspaceApp.id == app_id,
-                    WorkspaceApp.workspace_id == workspace_id,
+                    .with_for_update()
                 )
                 app_res = await session.execute(stmt)
                 app_entity = app_res.scalars().first()
@@ -166,6 +160,55 @@ async def verify_and_bind_custom_domain(
                         status="failed",
                         cname_target=cname_target,
                         message="Application not found",
+                    )
+
+                # Ensure verification token exists for app (generate + persist if NULL).
+                if not app_entity.custom_domain_verify_token:
+                    app_entity.custom_domain_verify_token = secrets.token_urlsafe(32)
+                    await session.commit()
+
+                # Step 1: DNS proof-of-ownership via TXT record.
+                from app.config import (
+                    WEB_BUILDER_TXT_VERIFY_LABEL,
+                    WEB_BUILDER_TXT_VERIFY_PREFIX,
+                )
+
+                txt_detail: dict[str, str] = {}
+                txt_ok = await service._verify_txt_ownership(
+                    clean_domain,
+                    app_entity.custom_domain_verify_token,
+                    detail_out=txt_detail,
+                )
+                if not txt_ok:
+                    txt_host = f"{WEB_BUILDER_TXT_VERIFY_LABEL}.{clean_domain}"
+                    if txt_detail.get("reason") == "mismatch":
+                        msg = f"Domain '{clean_domain}' TXT record at '{txt_host}' did not match the verification token."
+                    else:
+                        expected_txt = f"{WEB_BUILDER_TXT_VERIFY_PREFIX}{app_entity.custom_domain_verify_token}"
+                        msg = f"Domain '{clean_domain}' TXT record at '{txt_host}' with value '{expected_txt}' not found."
+                    return CustomDomainOutput(
+                        app_id=app_id,
+                        workspace_id=workspace_id,
+                        custom_domain=clean_domain,
+                        status="failed",
+                        cname_target=cname_target,
+                        message=msg,
+                        verify_stage="txt",
+                    )
+
+                # Step 2: DNS proof-of-control: CNAME must point to the ingress host (R-11).
+                dns_ok = await service._resolve_cname_ingress(
+                    clean_domain, cname_target
+                )
+                if not dns_ok:
+                    return CustomDomainOutput(
+                        app_id=app_id,
+                        workspace_id=workspace_id,
+                        custom_domain=clean_domain,
+                        status="failed",
+                        cname_target=cname_target,
+                        message=f"Domain '{clean_domain}' CNAME does not point to {cname_target}.",
+                        verify_stage="cname",
                     )
 
                 if app_entity.status != "published":

@@ -375,6 +375,8 @@ class TestCustomDomainValidation:
 
         # 1. DNS Failure: unpointed CNAME
         with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
             deploy_service, "_resolve_cname_ingress", return_value=False
         ):
             out = await deploy_service.verify_and_bind_custom_domain(
@@ -385,6 +387,7 @@ class TestCustomDomainValidation:
             )
             assert out.status == "failed"
             assert "CNAME does not point to" in out.message
+            assert out.verify_stage == "cname"
 
         # 2. DNS Success: Points to cname-ingress.apps.nowing.net
         mock_db_session.reset_mock()
@@ -396,6 +399,8 @@ class TestCustomDomainValidation:
             mock_app_res,
         ]
         with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
             deploy_service, "_resolve_cname_ingress", return_value=True
         ):
             out = await deploy_service.verify_and_bind_custom_domain(
@@ -430,6 +435,8 @@ class TestCustomDomainValidation:
         ]
 
         with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
             deploy_service, "_resolve_cname_ingress", return_value=True
         ):
             out = await deploy_service.verify_and_bind_custom_domain(
@@ -1521,6 +1528,8 @@ class TestDeployCallersThreadPlanTier:
         ]
 
         with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
             deploy_service, "_resolve_cname_ingress", return_value=True
         ), patch.object(
             deploy_service,
@@ -1564,6 +1573,8 @@ class TestDeployCallersThreadPlanTier:
         ]
 
         with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
             deploy_service, "_resolve_cname_ingress", return_value=True
         ), patch.object(
             deploy_service,
@@ -1586,3 +1597,396 @@ class TestDeployCallersThreadPlanTier:
         mock_deploy.assert_awaited_once()
         # None tier -> deploy_container resolves free limits internally.
         assert mock_deploy.await_args.kwargs["plan_tier"] is None
+
+
+@pytest.mark.unit
+class TestTxtOwnershipVerification:
+    """Unit tests for DNS TXT ownership verification and custom domain gating (Spec 31-2)."""
+
+    @pytest.fixture
+    def deploy_service(self):
+        return WebAppDeployService(base_domain="apps.nowing.net")
+
+    @pytest.fixture
+    def mock_db_session(self):
+        session = MagicMock(spec=AsyncSession)
+        session.execute = AsyncMock()
+        session.commit = AsyncMock()
+        session.add = MagicMock()
+        return session
+
+    @staticmethod
+    def _res(value):
+        res = MagicMock()
+        res.scalars.return_value.first.return_value = value
+        return res
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_matching_token_returns_true(self, deploy_service):
+        mock_rdata = MagicMock()
+        mock_rdata.strings = [b"nowing-verify=secret-token-123"]
+        detail = {}
+
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.return_value = [mock_rdata]
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is True
+            assert detail.get("reason") == "ok"
+            mock_resolver.resolve.assert_called_once_with(
+                "_nowing-verify.app.mycompany.com", "TXT"
+            )
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_strips_quotes_and_whitespace(self, deploy_service):
+        mock_rdata = MagicMock()
+        mock_rdata.strings = [b"  \"nowing-verify=secret-token-123\"  "]
+        detail = {}
+
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.return_value = [mock_rdata]
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "APP.MYCOMPANY.COM.", "secret-token-123", detail_out=detail
+            )
+            assert ok is True
+            assert detail.get("reason") == "ok"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_fallback_str_rdata(self, deploy_service):
+        mock_rdata = MagicMock()
+        # No strings attribute
+        del mock_rdata.strings
+        mock_rdata.__str__.return_value = "\"nowing-verify=secret-token-123\""
+        detail = {}
+
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.return_value = [mock_rdata]
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is True
+            assert detail.get("reason") == "ok"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_mismatch_returns_false(self, deploy_service):
+        mock_rdata = MagicMock()
+        mock_rdata.strings = [b"nowing-verify=wrong-token"]
+        detail = {}
+
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.return_value = [mock_rdata]
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is False
+            assert detail.get("reason") == "mismatch"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_split_string_rdata(self, deploy_service):
+        # RFC 1035: long TXT records arrive as multiple character-string chunks.
+        mock_rdata = MagicMock()
+        mock_rdata.strings = [b"nowing-verify=", b"secret-token-123"]
+        detail = {}
+
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.return_value = [mock_rdata]
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is True
+            assert detail.get("reason") == "ok"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_single_quoted_rdata(self, deploy_service):
+        mock_rdata = MagicMock()
+        mock_rdata.strings = [b"'nowing-verify=secret-token-123'"]
+        detail = {}
+
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.return_value = [mock_rdata]
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is True
+            assert detail.get("reason") == "ok"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_empty_token_fails_closed(self, deploy_service):
+        # An empty token must never dispatch a DNS query.
+        for bad_token in (None, "", "   "):
+            detail = {}
+            with patch("dns.resolver.Resolver") as mock_resolver_cls:
+                ok = await deploy_service._verify_txt_ownership(
+                    "app.mycompany.com", bad_token, detail_out=detail
+                )
+                assert ok is False
+                assert detail.get("reason") == "missing"
+                mock_resolver_cls.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_oversize_txt_host_fails(self, deploy_service):
+        # Domain near the 255-char limit pushes _nowing-verify.<domain> past the
+        # 253-octet DNS name cap -> distinct 'invalid' reason, not 'missing'.
+        long_domain = ("a" * 60 + ".") * 4 + "example.com"  # >238 chars
+        detail = {}
+        ok = await deploy_service._verify_txt_ownership(
+            long_domain, "secret-token-123", detail_out=detail
+        )
+        assert ok is False
+        assert detail.get("reason") == "invalid"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_no_answer_returns_false_fail_closed(self, deploy_service):
+        import dns.resolver
+
+        detail = {}
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.side_effect = dns.resolver.NoAnswer()
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is False
+            assert detail.get("reason") == "missing"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_nxdomain_returns_false_fail_closed(self, deploy_service):
+        import dns.resolver
+
+        detail = {}
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.side_effect = dns.resolver.NXDOMAIN()
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is False
+            assert detail.get("reason") == "missing"
+
+    @pytest.mark.asyncio
+    async def test_verify_txt_ownership_timeout_and_exceptions_fail_closed(self, deploy_service):
+        import dns.resolver
+
+        detail = {}
+        with patch("dns.resolver.Resolver") as mock_resolver_cls:
+            mock_resolver = MagicMock()
+            mock_resolver.resolve.side_effect = dns.resolver.LifetimeTimeout()
+            mock_resolver_cls.return_value = mock_resolver
+
+            ok = await deploy_service._verify_txt_ownership(
+                "app.mycompany.com", "secret-token-123", detail_out=detail
+            )
+            assert ok is False
+            assert detail.get("reason") == "missing"
+
+    @pytest.mark.asyncio
+    async def test_custom_domain_missing_txt_fails_with_stage_txt_and_instructions(
+        self, deploy_service, mock_db_session
+    ):
+        app = WorkspaceApp(
+            id="app-1",
+            workspace_id=1,
+            status="published",
+            slug="my-app",
+            custom_domain_verify_token="token-abc-123",
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(None),  # workspace
+            self._res(None),  # no collision
+            self._res(app),   # app entity
+        ]
+
+        async def fake_verify_txt(domain, token, detail_out=None):
+            if detail_out is not None:
+                detail_out["reason"] = "missing"
+            return False
+
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", side_effect=fake_verify_txt
+        ):
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1",
+                workspace_id=1,
+                custom_domain="landing.mybrand.com",
+                session=mock_db_session,
+            )
+
+        assert out.status == "failed"
+        assert out.verify_stage == "txt"
+        assert "_nowing-verify.landing.mybrand.com" in out.message
+        assert "nowing-verify=token-abc-123" in out.message
+
+    @pytest.mark.asyncio
+    async def test_custom_domain_wrong_txt_fails_without_leaking_expected_token(
+        self, deploy_service, mock_db_session
+    ):
+        app = WorkspaceApp(
+            id="app-1",
+            workspace_id=1,
+            status="published",
+            slug="my-app",
+            custom_domain_verify_token="secret-never-leak-in-mismatch",
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(None),  # workspace
+            self._res(None),  # no collision
+            self._res(app),   # app entity
+        ]
+
+        async def fake_verify_txt(domain, token, detail_out=None):
+            if detail_out is not None:
+                detail_out["reason"] = "mismatch"
+            return False
+
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", side_effect=fake_verify_txt
+        ):
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1",
+                workspace_id=1,
+                custom_domain="landing.mybrand.com",
+                session=mock_db_session,
+            )
+
+        assert out.status == "failed"
+        assert out.verify_stage == "txt"
+        assert "secret-never-leak-in-mismatch" not in out.message
+        assert "did not match" in out.message
+
+    @pytest.mark.asyncio
+    async def test_custom_domain_txt_ok_cname_fail_fails_with_stage_cname(
+        self, deploy_service, mock_db_session
+    ):
+        app = WorkspaceApp(
+            id="app-1",
+            workspace_id=1,
+            status="published",
+            slug="my-app",
+            custom_domain_verify_token="token-abc-123",
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(None),  # workspace
+            self._res(None),  # no collision
+            self._res(app),   # app entity
+        ]
+
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
+            deploy_service, "_resolve_cname_ingress", return_value=False
+        ):
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1",
+                workspace_id=1,
+                custom_domain="landing.mybrand.com",
+                session=mock_db_session,
+            )
+
+        assert out.status == "failed"
+        assert out.verify_stage == "cname"
+        assert "CNAME does not point to" in out.message
+
+    @pytest.mark.asyncio
+    async def test_custom_domain_generates_and_persists_token_if_null(
+        self, deploy_service, mock_db_session
+    ):
+        app = WorkspaceApp(
+            id="app-1",
+            workspace_id=1,
+            status="published",
+            slug="my-app",
+            custom_domain_verify_token=None,
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(None),  # workspace
+            self._res(None),  # no collision
+            self._res(app),   # app entity
+        ]
+
+        token_seen = []
+
+        async def fake_verify_txt(domain, token, detail_out=None):
+            token_seen.append(token)
+            return True
+
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", side_effect=fake_verify_txt
+        ), patch.object(
+            deploy_service, "_resolve_cname_ingress", return_value=True
+        ):
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1",
+                workspace_id=1,
+                custom_domain="landing.mybrand.com",
+                session=mock_db_session,
+            )
+
+        assert out.status == "active"
+        assert app.custom_domain_verify_token is not None
+        assert len(app.custom_domain_verify_token) >= 32
+        assert token_seen == [app.custom_domain_verify_token]
+        # Verify it was committed to session
+        assert mock_db_session.commit.call_count >= 1
+
+    @pytest.mark.asyncio
+    async def test_custom_domain_reuses_existing_token_without_regeneration(
+        self, deploy_service, mock_db_session
+    ):
+        existing_token = "stable-existing-token-32-chars-long"
+        app = WorkspaceApp(
+            id="app-1",
+            workspace_id=1,
+            status="published",
+            slug="my-app",
+            custom_domain_verify_token=existing_token,
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(None),  # workspace
+            self._res(None),  # no collision
+            self._res(app),   # app entity
+        ]
+
+        token_seen = []
+
+        async def fake_verify_txt(domain, token, detail_out=None):
+            token_seen.append(token)
+            return True
+
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", side_effect=fake_verify_txt
+        ), patch.object(
+            deploy_service, "_resolve_cname_ingress", return_value=True
+        ):
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1",
+                workspace_id=1,
+                custom_domain="landing.mybrand.com",
+                session=mock_db_session,
+            )
+
+        assert out.status == "active"
+        assert app.custom_domain_verify_token == existing_token
+        assert token_seen == [existing_token]

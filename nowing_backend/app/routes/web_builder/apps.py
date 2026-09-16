@@ -206,6 +206,11 @@ async def configure_custom_domain(
         session=session,
     )
     if result.status == "failed":
+        if result.verify_stage in {"txt", "cname"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.message or "Custom domain verification failed",
+            )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=result.message or "Custom domain configuration failed",
@@ -335,7 +340,11 @@ async def apply_mark_tool_patch(
     )
 
 
-@router.get("/apps", response_model=list[WorkspaceAppRead])
+@router.get(
+    "/apps",
+    response_model=list[WorkspaceAppRead],
+    response_model_exclude={"__all__": {"custom_domain_verify_token"}},
+)
 async def list_workspace_apps(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],

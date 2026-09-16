@@ -9,6 +9,7 @@ Acceptance Criteria:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -18,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.auth.context import AuthContext
-from app.db import get_async_session
+from app.db import WorkspaceApp, get_async_session
 from app.routes.web_builder_routes import router as web_builder_router
 from app.services.web_builder.schemas import CustomDomainOutput, WebAppDeployOutput
 from app.users import get_auth_context
@@ -142,3 +143,132 @@ class TestWebBuilderDeployRoutes:
                 assert res.status_code == 403
                 data = res.json()
                 assert "Web Builder is not enabled" in data["detail"]
+
+    def test_custom_domain_endpoint_txt_verify_fail_returns_400(
+        self, client: TestClient
+    ):
+        with patch(
+            "app.services.web_builder.deploy_service.WebAppDeployService.verify_and_bind_custom_domain",
+            new_callable=AsyncMock,
+        ) as mock_bind:
+            mock_bind.return_value = CustomDomainOutput(
+                app_id="app-123",
+                workspace_id=1,
+                custom_domain="landing.mycompany.com",
+                status="failed",
+                cname_target="cname-ingress.apps.nowing.net",
+                message="Domain 'landing.mycompany.com' TXT record at '_nowing-verify.landing.mycompany.com' with value 'nowing-verify=secret' not found.",
+                verify_stage="txt",
+            )
+
+            res = client.post(
+                "/api/v1/web-builder/apps/app-123/custom-domain",
+                params={"workspace_id": 1},
+                json={"workspace_id": 1, "custom_domain": "landing.mycompany.com"},
+            )
+
+            assert res.status_code == 400
+            data = res.json()
+            assert "TXT record" in data["detail"]
+
+    def test_custom_domain_endpoint_cname_verify_fail_returns_400(
+        self, client: TestClient
+    ):
+        with patch(
+            "app.services.web_builder.deploy_service.WebAppDeployService.verify_and_bind_custom_domain",
+            new_callable=AsyncMock,
+        ) as mock_bind:
+            mock_bind.return_value = CustomDomainOutput(
+                app_id="app-123",
+                workspace_id=1,
+                custom_domain="landing.mycompany.com",
+                status="failed",
+                cname_target="cname-ingress.apps.nowing.net",
+                message="Domain 'landing.mycompany.com' CNAME does not point to cname-ingress.apps.nowing.net.",
+                verify_stage="cname",
+            )
+
+            res = client.post(
+                "/api/v1/web-builder/apps/app-123/custom-domain",
+                params={"workspace_id": 1},
+                json={"workspace_id": 1, "custom_domain": "landing.mycompany.com"},
+            )
+
+            assert res.status_code == 400
+            data = res.json()
+            assert "CNAME does not point to" in data["detail"]
+
+    def test_custom_domain_endpoint_non_dns_fail_returns_422(
+        self, client: TestClient
+    ):
+        with patch(
+            "app.services.web_builder.deploy_service.WebAppDeployService.verify_and_bind_custom_domain",
+            new_callable=AsyncMock,
+        ) as mock_bind:
+            mock_bind.return_value = CustomDomainOutput(
+                app_id="app-123",
+                workspace_id=1,
+                custom_domain="landing.mycompany.com",
+                status="failed",
+                cname_target="cname-ingress.apps.nowing.net",
+                message="Custom domain verified, but container redeploy failed: docker crashed",
+                verify_stage=None,
+            )
+
+            res = client.post(
+                "/api/v1/web-builder/apps/app-123/custom-domain",
+                params={"workspace_id": 1},
+                json={"workspace_id": 1, "custom_domain": "landing.mycompany.com"},
+            )
+
+            assert res.status_code == 422
+            data = res.json()
+            assert "container redeploy failed" in data["detail"]
+
+    def test_list_apps_excludes_verify_token_detail_includes_token(
+        self, client: TestClient, mock_db_session: AsyncMock
+    ):
+        now = datetime.now(UTC)
+        app_entity = WorkspaceApp(
+            id="app-123",
+            workspace_id=1,
+            name="Test App",
+            slug="test-app",
+            status="published",
+            language="en",
+            custom_domain="landing.mycompany.com",
+            custom_domain_status="active",
+            custom_domain_verify_token="super-secret-token-32-chars",
+            created_at=now,
+            updated_at=now,
+        )
+
+        def mock_execute(stmt, *args, **kwargs):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "workspace_apps" in stmt_str:
+                res.scalars.return_value.all.return_value = [app_entity]
+                res.scalars.return_value.first.return_value = app_entity
+            else:
+                membership = MagicMock()
+                res.scalars.return_value.first.return_value = membership
+                res.scalars.return_value.all.return_value = [membership]
+            return res
+
+        mock_db_session.execute = AsyncMock(side_effect=mock_execute)
+
+        list_res = client.get("/api/v1/web-builder/apps", params={"workspace_id": 1})
+        assert list_res.status_code == 200
+        list_data = list_res.json()
+        assert len(list_data) == 1
+        assert "custom_domain_verify_token" not in list_data[0]
+
+        detail_res = client.get(
+            "/api/v1/web-builder/apps/app-123", params={"workspace_id": 1}
+        )
+        assert detail_res.status_code == 200
+        detail_data = detail_res.json()
+        assert (
+            detail_data.get("custom_domain_verify_token")
+            == "super-secret-token-32-chars"
+        )
