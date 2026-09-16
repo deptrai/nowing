@@ -1990,3 +1990,215 @@ class TestTxtOwnershipVerification:
         assert out.status == "active"
         assert app.custom_domain_verify_token == existing_token
         assert token_seen == [existing_token]
+
+
+@pytest.mark.unit
+class TestDomainVerifyHardening:
+    """Story 31.2b — deferred gaps: not_found stage, restore-on-fail,
+    TTL hint, rotate token, unbind."""
+
+    @pytest.fixture
+    def deploy_service(self):
+        return WebAppDeployService(base_domain="apps.nowing.net")
+
+    @pytest.fixture
+    def mock_db_session(self):
+        session = MagicMock(spec=AsyncSession)
+        session.execute = AsyncMock()
+        session.commit = AsyncMock()
+        session.add = MagicMock()
+        return session
+
+    @staticmethod
+    def _res(value):
+        res = MagicMock()
+        res.scalars.return_value.first.return_value = value
+        return res
+
+    @pytest.mark.asyncio
+    async def test_app_not_found_returns_not_found_stage(
+        self, deploy_service, mock_db_session
+    ):
+        ws = Workspace(id=1, name="WS", web_builder_enabled=True)
+        mock_db_session.execute.side_effect = [
+            self._res(ws),     # workspace
+            self._res(None),   # collision check
+            self._res(None),   # app entity -> None
+        ]
+        out = await deploy_service.verify_and_bind_custom_domain(
+            app_id="missing-app",
+            workspace_id=1,
+            custom_domain="landing.mybrand.com",
+            session=mock_db_session,
+        )
+        assert out.status == "failed"
+        assert out.verify_stage == "not_found"
+        assert "not found" in out.message.lower()
+
+    @pytest.mark.asyncio
+    async def test_txt_missing_message_includes_value_and_ttl_hint(
+        self, deploy_service, mock_db_session
+    ):
+        ws = Workspace(id=1, name="WS", web_builder_enabled=True)
+        app = WorkspaceApp(
+            id="app-1", workspace_id=1, status="published", slug="my-app",
+            custom_domain_verify_token="tok-xyz",
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(ws), self._res(None), self._res(app),
+        ]
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=False
+        ), patch.object(
+            deploy_service, "_resolve_cname_ingress", return_value=True
+        ):
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1", workspace_id=1,
+                custom_domain="landing.mybrand.com", session=mock_db_session,
+            )
+        assert out.verify_stage == "txt"
+        assert "nowing-verify=tok-xyz" in out.message
+        assert "propagate" in out.message.lower() or "ttl" in out.message.lower()
+
+    @pytest.mark.asyncio
+    async def test_redeploy_failure_restores_previous_domain(
+        self, deploy_service, mock_db_session
+    ):
+        ws = Workspace(
+            id=1, name="WS", web_builder_enabled=True, plan_tier="growth"
+        )
+        app = WorkspaceApp(
+            id="app-1", workspace_id=1, status="published", slug="my-app",
+            custom_domain="old.example.com",
+            custom_domain_status="active",
+            container_id="cid-old", port=3000,
+            custom_domain_verify_token="tok-xyz",
+            storage_path="/tmp/x",
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(ws), self._res(None), self._res(app),
+        ]
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
+            deploy_service, "_resolve_cname_ingress", return_value=True
+        ), patch.object(
+            deploy_service, "_validate_storage_path", return_value=Path("/tmp/x")
+        ), patch.object(
+            deploy_service, "deploy_container",
+            new=AsyncMock(side_effect=RuntimeError("redeploy boom")),
+        ), patch(
+            "app.config.config"
+        ) as mock_cfg:
+            mock_cfg.WEB_BUILDER_CONTAINER_DEPLOY_ENABLED = True
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1", workspace_id=1,
+                custom_domain="new.example.com", session=mock_db_session,
+            )
+        assert out.status == "failed"
+        # The previously-active domain must be restored, not clobbered.
+        assert app.custom_domain == "old.example.com"
+        assert app.custom_domain_status == "active"
+        assert app.container_id == "cid-old"
+        assert app.port == 3000
+
+    @pytest.mark.asyncio
+    async def test_caddy_failure_restores_previous_domain(
+        self, deploy_service, mock_db_session
+    ):
+        ws = Workspace(
+            id=1, name="WS", web_builder_enabled=True, plan_tier="growth"
+        )
+        app = WorkspaceApp(
+            id="app-1", workspace_id=1, status="published", slug="my-app",
+            custom_domain="old.example.com",
+            custom_domain_status="active",
+            container_id="cid-old", port=3000,
+            custom_domain_verify_token="tok-xyz",
+            storage_path=None,  # skip redeploy path
+        )
+        mock_db_session.execute.side_effect = [
+            self._res(ws), self._res(None), self._res(app),
+        ]
+        with patch.object(
+            deploy_service, "_verify_txt_ownership", return_value=True
+        ), patch.object(
+            deploy_service, "_resolve_cname_ingress", return_value=True
+        ), patch.object(
+            deploy_service, "_write_caddy_snippet_for_app",
+            new=AsyncMock(side_effect=RuntimeError("caddy boom")),
+        ):
+            out = await deploy_service.verify_and_bind_custom_domain(
+                app_id="app-1", workspace_id=1,
+                custom_domain="new.example.com", session=mock_db_session,
+            )
+        assert out.status == "failed"
+        assert app.custom_domain == "old.example.com"
+        assert app.custom_domain_status == "active"
+
+    @pytest.mark.asyncio
+    async def test_rotate_token_generates_and_downgrades_active(
+        self, deploy_service, mock_db_session
+    ):
+        from app.services.web_builder.deploy.custom_domain import (
+            rotate_domain_token,
+        )
+
+        app = WorkspaceApp(
+            id="app-1", workspace_id=1, status="published", slug="my-app",
+            custom_domain="old.example.com", custom_domain_status="active",
+            custom_domain_verify_token="old-tok",
+        )
+        mock_db_session.execute.side_effect = [self._res(app)]
+        mock_db_session.commit = AsyncMock()
+        new_token = await rotate_domain_token("app-1", 1, mock_db_session)
+        assert new_token is not None
+        assert new_token != "old-tok"
+        assert app.custom_domain_verify_token == new_token
+        assert app.custom_domain_status == "pending_verification"
+        mock_db_session.commit.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_rotate_token_app_not_found_returns_none(
+        self, deploy_service, mock_db_session
+    ):
+        from app.services.web_builder.deploy.custom_domain import (
+            rotate_domain_token,
+        )
+
+        mock_db_session.execute.side_effect = [self._res(None)]
+        new_token = await rotate_domain_token("missing", 1, mock_db_session)
+        assert new_token is None
+
+    @pytest.mark.asyncio
+    async def test_unbind_clears_domain_and_token(
+        self, deploy_service, mock_db_session
+    ):
+        from app.services.web_builder.deploy.custom_domain import (
+            unbind_custom_domain,
+        )
+
+        app = WorkspaceApp(
+            id="app-1", workspace_id=1, status="published", slug="my-app",
+            custom_domain="old.example.com", custom_domain_status="active",
+            custom_domain_verify_token="tok",
+        )
+        mock_db_session.execute.side_effect = [self._res(app)]
+        mock_db_session.commit = AsyncMock()
+        cleared = await unbind_custom_domain("app-1", 1, mock_db_session)
+        assert cleared is True
+        assert app.custom_domain is None
+        assert app.custom_domain_status is None
+        assert app.custom_domain_verify_token is None
+
+    @pytest.mark.asyncio
+    async def test_unbind_app_not_found_returns_false(
+        self, deploy_service, mock_db_session
+    ):
+        from app.services.web_builder.deploy.custom_domain import (
+            unbind_custom_domain,
+        )
+
+        mock_db_session.execute.side_effect = [self._res(None)]
+        cleared = await unbind_custom_domain("missing", 1, mock_db_session)
+        assert cleared is False

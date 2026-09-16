@@ -1783,13 +1783,3 @@ All 8 items from the two deferred blocks above (lines 1736-1774) are resolved:
 - `_merge_with_static` — emits INFO log naming platforms served from static fallback on partial catalog (action_matrix.py:185-215)
 
 Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_action_matrix.py + test_social_xactions_ingest.py + test_social_routes.py → 181/181 pass.
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-31-2-strict-cname-dns-ingress-ownership-verification.md`
-  summary: Surface custom-domain TXT verify token to the CNAME modal before first bind (eager token on app creation or GET detail) so users can pre-configure DNS without an initial failed request.
-  evidence: Blind-hunter — token only generated inside verify_and_bind_custom_domain; GET /apps/{id} returns null until first bind. Requires a UX/product decision (write-on-GET vs a dedicated token endpoint), so left to the human per spec "Ask First".
-- source_spec: `_bmad-output/implementation-artifacts/spec-31-2-strict-cname-dns-ingress-ownership-verification.md`
-  summary: verify_and_bind_custom_domain leaves `custom_domain` overwritten on the entity when post-verify redeploy/Caddy fails (pre-existing flow, not introduced by 31.2).
-  evidence: custom_domain set to clean_domain and committed before redeploy; on failure only custom_domain_status becomes "failed", so a previously-working domain is replaced by the failed one.
-- source_spec: `_bmad-output/implementation-artifacts/spec-31-2-strict-cname-dns-ingress-ownership-verification.md`
-  summary: Route returns 422 (not 404) for "Application not found" and has no token-rotation / unbind endpoint; also no guidance for DNS negative-caching (NXDOMAIN TTL) so immediate re-verify can keep failing.
-  evidence: Pre-existing contract + out-of-scope features surfaced by review; each needs a product/API decision.

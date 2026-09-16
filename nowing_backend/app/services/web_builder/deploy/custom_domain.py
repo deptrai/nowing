@@ -160,6 +160,7 @@ async def verify_and_bind_custom_domain(
                         status="failed",
                         cname_target=cname_target,
                         message="Application not found",
+                        verify_stage="not_found",
                     )
 
                 # Ensure verification token exists for app (generate + persist if NULL).
@@ -181,6 +182,10 @@ async def verify_and_bind_custom_domain(
                 )
                 if not txt_ok:
                     txt_host = f"{WEB_BUILDER_TXT_VERIFY_LABEL}.{clean_domain}"
+                    ttl_hint = (
+                        " DNS may take a few minutes to propagate; wait for the"
+                        " record TTL to expire if you just added it."
+                    )
                     if txt_detail.get("reason") == "mismatch":
                         msg = f"Domain '{clean_domain}' TXT record at '{txt_host}' did not match the verification token."
                     else:
@@ -192,7 +197,7 @@ async def verify_and_bind_custom_domain(
                         custom_domain=clean_domain,
                         status="failed",
                         cname_target=cname_target,
-                        message=msg,
+                        message=msg + ttl_hint,
                         verify_stage="txt",
                     )
 
@@ -228,6 +233,13 @@ async def verify_and_bind_custom_domain(
                 # redeploy (if container deploy is enabled) and Caddy rewrite.
                 from app.config import config as app_config
 
+                # Preserve the previously-working binding so a failed re-bind does
+                # not clobber a live domain — restore it on redeploy/Caddy failure.
+                previous_domain = app_entity.custom_domain
+                previous_status = app_entity.custom_domain_status
+                previous_container_id = app_entity.container_id
+                previous_port = app_entity.port
+
                 app_entity.custom_domain = clean_domain
                 app_entity.custom_domain_status = "pending_verification"
                 await session.commit()
@@ -257,12 +269,15 @@ async def verify_and_bind_custom_domain(
                         )
                         app_entity.container_id = container_id
                         app_entity.port = port
-                    except Exception as redeploy_err:  # redeploy failure → mark custom_domain_status failed below
+                    except Exception as redeploy_err:  # redeploy failure → restore previous binding
                         logger.error(
                             "[WebAppDeployService] Container redeploy for custom domain failed: %s",
                             redeploy_err,
                         )
-                        app_entity.custom_domain_status = "failed"
+                        app_entity.custom_domain = previous_domain
+                        app_entity.custom_domain_status = previous_status or "failed"
+                        app_entity.container_id = previous_container_id
+                        app_entity.port = previous_port
                         app_entity.error_message = f"Container redeploy failed: {redeploy_err}"
                         await session.commit()
                         return CustomDomainOutput(
@@ -277,11 +292,14 @@ async def verify_and_bind_custom_domain(
                 # Rewrite the Caddy snippet with the new custom domain.
                 try:
                     await service._write_caddy_snippet_for_app(app_entity)
-                except Exception as caddy_err:  # snippet rewrite failure → mark custom_domain_status failed below
+                except Exception as caddy_err:  # snippet rewrite failure → restore previous binding
                     logger.error(
                         "[WebAppDeployService] Caddy snippet rewrite failed: %s", caddy_err
                     )
-                    app_entity.custom_domain_status = "failed"
+                    app_entity.custom_domain = previous_domain
+                    app_entity.custom_domain_status = previous_status or "failed"
+                    app_entity.container_id = previous_container_id
+                    app_entity.port = previous_port
                     app_entity.error_message = f"Caddy snippet rewrite failed: {caddy_err}"
                     await session.commit()
                     return CustomDomainOutput(
@@ -317,4 +335,74 @@ async def verify_and_bind_custom_domain(
     )
 
 
-__all__ = ["verify_and_bind_custom_domain"]
+async def rotate_domain_token(
+    app_id: str,
+    workspace_id: int,
+    session: AsyncSession,
+) -> str | None:
+    """Rotate the per-app DNS TXT verification token.
+
+    Returns the new token, or ``None`` when the app does not exist. When the app
+    currently has an ``active`` custom domain, the status is reset to
+    ``pending_verification`` so the new token must be re-verified before the
+    domain is trusted again (fail-closed on token rotation).
+    """
+    from app.db import WorkspaceApp
+
+    stmt = (
+        select(WorkspaceApp)
+        .where(
+            WorkspaceApp.id == app_id,
+            WorkspaceApp.workspace_id == workspace_id,
+        )
+        .with_for_update()
+    )
+    app_entity = (await session.execute(stmt)).scalars().first()
+    if not app_entity:
+        return None
+
+    new_token = secrets.token_urlsafe(32)
+    app_entity.custom_domain_verify_token = new_token
+    if app_entity.custom_domain_status == "active":
+        app_entity.custom_domain_status = "pending_verification"
+    await session.commit()
+    return new_token
+
+
+async def unbind_custom_domain(
+    app_id: str,
+    workspace_id: int,
+    session: AsyncSession,
+) -> bool:
+    """Clear the bound custom domain + its verification token.
+
+    Returns ``True`` when cleared, ``False`` when the app does not exist. The
+    Caddy snippet / Traefik route is left to the next publish or manual cleanup —
+    removing ingress config is intentionally out of scope for the unbind action.
+    """
+    from app.db import WorkspaceApp
+
+    stmt = (
+        select(WorkspaceApp)
+        .where(
+            WorkspaceApp.id == app_id,
+            WorkspaceApp.workspace_id == workspace_id,
+        )
+        .with_for_update()
+    )
+    app_entity = (await session.execute(stmt)).scalars().first()
+    if not app_entity:
+        return False
+
+    app_entity.custom_domain = None
+    app_entity.custom_domain_status = None
+    app_entity.custom_domain_verify_token = None
+    await session.commit()
+    return True
+
+
+__all__ = [
+    "rotate_domain_token",
+    "unbind_custom_domain",
+    "verify_and_bind_custom_domain",
+]

@@ -114,6 +114,17 @@ export default function WebBuilderPage() {
 		}
 	}, [polledApp, selectedApp, queryClient, workspaceId]);
 
+	// 2b. Story 31.2b: fetch app detail when the domain modal opens so the modal
+	// can render the required TXT verification record (token lives on detail,
+	// not the list response).
+	const { data: domainDetailApp } = useQuery({
+		queryKey: ["web-builder-app-domain-detail", selectedApp?.id, workspaceId],
+		queryFn: () => (selectedApp ? webBuilderApiService.getApp(selectedApp.id, workspaceId) : null),
+		enabled: !!selectedApp && isDomainModalOpen,
+	});
+	const domainVerifyToken =
+		domainDetailApp?.custom_domain_verify_token ?? selectedApp?.custom_domain_verify_token ?? null;
+
 	// 3. Fetch build logs
 	const { data: buildLogs } = useQuery({
 		queryKey: ["web-builder-build-logs", selectedApp?.id, workspaceId],
@@ -888,6 +899,29 @@ export default function WebBuilderPage() {
 							<code className="text-indigo-400 font-mono">cname-ingress.apps.nowing.net</code> to
 							bind your custom domain.
 						</p>
+						{domainVerifyToken && (
+							<div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
+								<p className="text-[11px] font-medium text-foreground">
+									Verify domain ownership — add this DNS TXT record:
+								</p>
+								<div className="text-[11px] font-mono text-muted-foreground space-y-0.5">
+									<div>
+										<span className="text-foreground">Name/host: </span>
+										<code className="text-indigo-400">
+											_nowing-verify.
+											{customDomainInput.trim() || "<your-domain>"}
+										</code>
+									</div>
+									<div className="break-all">
+										<span className="text-foreground">Value: </span>
+										<code className="text-indigo-400">nowing-verify={domainVerifyToken}</code>
+									</div>
+								</div>
+								<p className="text-[10px] text-muted-foreground">
+									DNS may take a few minutes to propagate (record TTL).
+								</p>
+							</div>
+						)}
 						<input
 							type="text"
 							placeholder="e.g. app.mycompany.com"

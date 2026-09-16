@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import logging
+import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,6 +21,10 @@ from app.dependencies.auth import (
 )
 from app.services.token_tracking_service import UsageType, record_token_usage
 from app.services.web_builder.builder import BuilderService
+from app.services.web_builder.deploy.custom_domain import (
+    rotate_domain_token,
+    unbind_custom_domain,
+)
 from app.services.web_builder.deploy_service import WebAppDeployService
 from app.services.web_builder.mark_tool import JSX_FILE_SUFFIXES, MarkToolASTMutator
 from app.services.web_builder.schemas import (
@@ -27,6 +32,7 @@ from app.services.web_builder.schemas import (
     BuildProjectInput,
     CustomDomainInput,
     CustomDomainOutput,
+    CustomDomainTokenOutput,
     MarkToolInput,
     MarkToolOutput,
     WebAppDeployInput,
@@ -206,6 +212,11 @@ async def configure_custom_domain(
         session=session,
     )
     if result.status == "failed":
+        if result.verify_stage == "not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result.message or "Application not found",
+            )
         if result.verify_stage in {"txt", "cname"}:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -216,6 +227,67 @@ async def configure_custom_domain(
             detail=result.message or "Custom domain configuration failed",
         )
     return result
+
+
+@router.post(
+    "/apps/{app_id}/custom-domain/rotate-token",
+    response_model=CustomDomainTokenOutput,
+)
+async def rotate_custom_domain_token(
+    app_id: str,
+    workspace_id: int,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
+) -> CustomDomainTokenOutput:
+    """Rotate the per-app DNS TXT verification token (Story 31.2b).
+
+    Rotating while a domain is `active` downgrades it to `pending_verification`
+    so the new token must be re-verified before the domain is trusted again.
+    """
+    check_web_builder_enabled()
+    await require_workspace_member(session, auth, workspace_id)
+    new_token = await rotate_domain_token(app_id, workspace_id, session)
+    if new_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found",
+        )
+    return CustomDomainTokenOutput(
+        app_id=app_id,
+        workspace_id=workspace_id,
+        custom_domain_verify_token=new_token,
+    )
+
+
+@router.delete("/apps/{app_id}/custom-domain", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_custom_domain(
+    app_id: str,
+    workspace_id: int,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
+) -> None:
+    """Unbind the custom domain and clear its verification token (Story 31.2b)."""
+    check_web_builder_enabled()
+    await require_workspace_member(session, auth, workspace_id)
+    cleared = await unbind_custom_domain(app_id, workspace_id, session)
+    if not cleared:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found",
+        )
+    return None
 
 
 @router.post("/apps/{app_id}/mark", response_model=MarkToolOutput)
@@ -395,4 +467,10 @@ async def get_workspace_app(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found",
         )
+    # Story 31.2b: generate-on-read so the CNAME modal can render the required
+    # TXT record before the first bind attempt. Idempotent — only when NULL.
+    if not app_entity.custom_domain_verify_token:
+        app_entity.custom_domain_verify_token = secrets.token_urlsafe(32)
+        await session.commit()
+        await session.refresh(app_entity)
     return app_entity

@@ -272,3 +272,100 @@ class TestWebBuilderDeployRoutes:
             detail_data.get("custom_domain_verify_token")
             == "super-secret-token-32-chars"
         )
+
+    def test_custom_domain_app_not_found_returns_404(
+        self, client: TestClient
+    ):
+        with patch(
+            "app.services.web_builder.deploy_service.WebAppDeployService.verify_and_bind_custom_domain",
+            new_callable=AsyncMock,
+        ) as mock_bind:
+            mock_bind.return_value = CustomDomainOutput(
+                app_id="missing",
+                workspace_id=1,
+                custom_domain="landing.mycompany.com",
+                status="failed",
+                cname_target="cname-ingress.apps.nowing.net",
+                message="Application not found",
+                verify_stage="not_found",
+            )
+
+            res = client.post(
+                "/api/v1/web-builder/apps/missing/custom-domain",
+                params={"workspace_id": 1},
+                json={"workspace_id": 1, "custom_domain": "landing.mycompany.com"},
+            )
+
+            assert res.status_code == 404
+            assert "not found" in res.json()["detail"].lower()
+
+    def test_rotate_token_returns_new_token(
+        self, client: TestClient, mock_db_session: AsyncMock
+    ):
+        now = datetime.now(UTC)
+        app_entity = WorkspaceApp(
+            id="app-123", workspace_id=1, name="A", slug="a",
+            status="published", language="en",
+            custom_domain="landing.mycompany.com", custom_domain_status="active",
+            custom_domain_verify_token="old-tok",
+            created_at=now, updated_at=now,
+        )
+
+        def mock_execute(stmt, *args, **kwargs):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "workspace_apps" in stmt_str:
+                res.scalars.return_value.first.return_value = app_entity
+            else:
+                membership = MagicMock()
+                res.scalars.return_value.first.return_value = membership
+                res.scalars.return_value.all.return_value = [membership]
+            return res
+
+        mock_db_session.execute = AsyncMock(side_effect=mock_execute)
+        mock_db_session.commit = AsyncMock()
+
+        res = client.post(
+            "/api/v1/web-builder/apps/app-123/custom-domain/rotate-token",
+            params={"workspace_id": 1},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["custom_domain_verify_token"]
+        assert data["custom_domain_verify_token"] != "old-tok"
+        # active domain downgraded for re-verification
+        assert app_entity.custom_domain_status == "pending_verification"
+
+    def test_unbind_custom_domain_returns_204(
+        self, client: TestClient, mock_db_session: AsyncMock
+    ):
+        now = datetime.now(UTC)
+        app_entity = WorkspaceApp(
+            id="app-123", workspace_id=1, name="A", slug="a",
+            status="published", language="en",
+            custom_domain="landing.mycompany.com", custom_domain_status="active",
+            custom_domain_verify_token="tok",
+            created_at=now, updated_at=now,
+        )
+
+        def mock_execute(stmt, *args, **kwargs):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "workspace_apps" in stmt_str:
+                res.scalars.return_value.first.return_value = app_entity
+            else:
+                membership = MagicMock()
+                res.scalars.return_value.first.return_value = membership
+                res.scalars.return_value.all.return_value = [membership]
+            return res
+
+        mock_db_session.execute = AsyncMock(side_effect=mock_execute)
+        mock_db_session.commit = AsyncMock()
+
+        res = client.delete(
+            "/api/v1/web-builder/apps/app-123/custom-domain",
+            params={"workspace_id": 1},
+        )
+        assert res.status_code == 204
+        assert app_entity.custom_domain is None
+        assert app_entity.custom_domain_verify_token is None

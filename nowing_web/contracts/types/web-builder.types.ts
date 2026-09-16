@@ -30,6 +30,7 @@ export interface WorkspaceApp {
 	public_url?: string;
 	custom_domain?: string;
 	custom_domain_status?: "active" | "pending_verification" | "failed";
+	custom_domain_verify_token?: string | null;
 	error_message?: string;
 	created_at: string;
 	updated_at: string;
@@ -81,6 +82,7 @@ export interface CustomDomainOutput {
 	status: "active" | "pending_verification" | "failed";
 	cname_target: string;
 	message?: string;
+	verify_stage?: "txt" | "cname" | "not_found" | null;
 }
 
 export interface MarkToolRect {
