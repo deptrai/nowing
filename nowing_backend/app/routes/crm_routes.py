@@ -262,3 +262,63 @@ async def list_crm_conversions(
         for e in events
     ]
 
+
+
+from fastapi import Header, Request
+
+
+@router.post("/webhooks/hubspot", tags=["crm"])
+async def hubspot_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    x_hubspot_signature_v3: str | None = Header(None),
+):
+    """Ingest HubSpot webhook events (e.g. deal stage changes) (Story 34.1)."""
+    body = await request.body()
+    from app.services.crm_webhook_service import (
+        CrmWebhookService,
+        verify_hubspot_signature,
+    )
+
+    if not verify_hubspot_signature(body, x_hubspot_signature_v3):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid HubSpot signature",
+        )
+
+    try:
+        events = json.loads(body.decode("utf-8"))
+        if not isinstance(events, list):
+            events = [events]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Malformed JSON payload: {exc}",
+        ) from exc
+
+    service = CrmWebhookService(session)
+    results = await service.handle_hubspot_deal_change(events)
+    await session.commit()
+    return {"status": "ok", "processed": len(results), "results": results}
+
+
+@router.post("/webhooks/salesforce", tags=["crm"])
+async def salesforce_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Ingest Salesforce outbound message / webhook event (Story 34.1)."""
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Malformed JSON payload: {exc}",
+        ) from exc
+
+    from app.services.crm_webhook_service import CrmWebhookService
+
+    service = CrmWebhookService(session)
+    result = await service.handle_salesforce_deal_change(payload)
+    await session.commit()
+    return {"status": "ok", "result": result}

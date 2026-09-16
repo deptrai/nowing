@@ -368,8 +368,8 @@ development_status:
   33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
   epic-33-retrospective: optional
 
-  epic-34: backlog
-  34-1-bi-directional-deal-stage-activity-synchronization-for-hubsp: backlog
+  epic-34: in-progress
+  34-1-bi-directional-deal-stage-activity-synchronization-for-hubsp: done
   34-2-web-admin-management-endpoints-for-telegram-userbots-monitor: backlog
   34-3-dedicated-crm-deal-pipeline-customer-activity-timeline-ui-ta: backlog
   epic-34-retrospective: optional
