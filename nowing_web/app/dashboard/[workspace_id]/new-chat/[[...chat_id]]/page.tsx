@@ -51,6 +51,10 @@ import { TimelineDataUI } from "@/features/chat-messages/timeline";
 import { useAgentActionsQuery } from "@/hooks/use-agent-actions-query";
 import { useChatSessionStateSync } from "@/hooks/use-chat-session-state";
 import { useMessagesSync } from "@/hooks/use-messages-sync";
+import {
+	rewritePresentationPromptToMarp,
+	usePresentationStudioEntitlement,
+} from "@/hooks/use-presentation-studio-entitlement";
 import { useThreadDetail, useThreadMessages } from "@/hooks/use-thread-queries";
 import { documentsApiService } from "@/lib/apis/documents-api.service";
 import {
@@ -175,10 +179,22 @@ export default function NewChatPage() {
 	const router = useRouter();
 	const params = useParams();
 	const searchParams = useSearchParams();
-	const initialPrompt = searchParams.get("q") ?? undefined;
+	const formatParam = searchParams.get("format");
 	const isLeadsMode = searchParams.get("mode") === "leads";
 	const isWebBuilderMode = searchParams.get("mode") === "web_builder";
-	const isPresentationStudioMode = searchParams.get("mode") === "presentation_studio";
+	const isPresentationStudioMode =
+		searchParams.get("mode") === "presentation_studio" ||
+		formatParam === "pptx" ||
+		formatParam === "marp";
+	const { isResolvedFreeTier } = usePresentationStudioEntitlement();
+	const rawInitialPrompt = searchParams.get("q") ?? undefined;
+	const initialPrompt = useMemo(() => {
+		if (!rawInitialPrompt) return undefined;
+		if (isPresentationStudioMode && isResolvedFreeTier) {
+			return rewritePresentationPromptToMarp(rawInitialPrompt);
+		}
+		return rawInitialPrompt;
+	}, [rawInitialPrompt, isPresentationStudioMode, isResolvedFreeTier]);
 	const isMeetingMinutesMode = searchParams.get("mode") === "meeting_minutes";
 	const isPresentationStudioEnabled = searchParams.get("presentation_studio_enabled") !== "false";
 	const isMeetingMinutesEnabled = searchParams.get("meeting_minutes_enabled") !== "false";
@@ -203,6 +219,35 @@ export default function NewChatPage() {
 	// is streaming, the live overlay in ``chatStreamStore`` takes precedence
 	// (see ``displayMessages``) so it survives this page unmounting on nav.
 	const [messages, setMessages] = useState<ThreadMessageLike[]>([]);
+
+	// Downgrade ?format=pptx and PPTX prompts to Marp on a resolved free tier (Story 31.4).
+	// Per spec: only rewrite when subscription has resolved and workspace is in presentation_studio mode.
+	useEffect(() => {
+		if (!isPresentationStudioMode || !isResolvedFreeTier) return;
+		if (typeof window === "undefined") return;
+
+		const currentUrl = new URL(window.location.href);
+		let changed = false;
+
+		const currentFormat = currentUrl.searchParams.get("format");
+		if (currentFormat && currentFormat.toLowerCase() === "pptx") {
+			currentUrl.searchParams.set("format", "marp");
+			changed = true;
+		}
+
+		const currentQ = currentUrl.searchParams.get("q");
+		if (currentQ) {
+			const rewritten = rewritePresentationPromptToMarp(currentQ);
+			if (rewritten !== currentQ) {
+				currentUrl.searchParams.set("q", rewritten);
+				changed = true;
+			}
+		}
+
+		if (changed) {
+			window.history.replaceState(null, "", currentUrl.pathname + currentUrl.search);
+		}
+	}, [isPresentationStudioMode, isResolvedFreeTier]);
 
 	// Durable, cross-navigation streaming state for the viewed thread.
 	const streamState = useChatStream(activeThreadId);
@@ -773,33 +818,33 @@ export default function NewChatPage() {
 
 	// Surface the thread's deliverables to the layout-level artifacts sidebar.
 	// Standalone / Hydrated interactive choice dispatcher (e.g. question card)
-		useEffect(() => {
-			const handleChoice = (e: Event) => {
-				if (pendingInterrupts.length > 0) return;
-				const detail = (e as CustomEvent).detail as {
-					decisions?: Array<{
-						type: string;
-						message?: string;
-						edited_action?: { name: string; args: Record<string, unknown> };
-					}>;
-				};
-				const targetDecision = detail?.decisions?.[0];
-				const answerText =
-					targetDecision?.message ||
-					(targetDecision?.edited_action?.args?.selected_answer as string) ||
-					"";
-				if (answerText && activeThreadId != null) {
-					void onNew({
-						content: [{ type: "text", text: answerText }],
-					} as unknown as AppendMessage);
-				}
+	useEffect(() => {
+		const handleChoice = (e: Event) => {
+			if (pendingInterrupts.length > 0) return;
+			const detail = (e as CustomEvent).detail as {
+				decisions?: Array<{
+					type: string;
+					message?: string;
+					edited_action?: { name: string; args: Record<string, unknown> };
+				}>;
 			};
-			window.addEventListener("hitl-decision", handleChoice);
-			return () => window.removeEventListener("hitl-decision", handleChoice);
-		}, [pendingInterrupts.length, activeThreadId, onNew]);
+			const targetDecision = detail?.decisions?.[0];
+			const answerText =
+				targetDecision?.message ||
+				(targetDecision?.edited_action?.args?.selected_answer as string) ||
+				"";
+			if (answerText && activeThreadId != null) {
+				void onNew({
+					content: [{ type: "text", text: answerText }],
+				} as unknown as AppendMessage);
+			}
+		};
+		window.addEventListener("hitl-decision", handleChoice);
+		return () => window.removeEventListener("hitl-decision", handleChoice);
+	}, [pendingInterrupts.length, activeThreadId, onNew]);
 
-		// Surface the thread's deliverables to the layout-level artifacts sidebar.
-		useSyncChatArtifacts(displayMessages);
+	// Surface the thread's deliverables to the layout-level artifacts sidebar.
+	useSyncChatArtifacts(displayMessages);
 
 	// Create external store runtime
 	const runtime = useExternalStoreRuntime({

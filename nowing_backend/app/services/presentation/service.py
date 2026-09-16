@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from fastapi import HTTPException, status as http_status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +29,7 @@ from app.services.presentation.schemas import (
 )
 from app.services.token_tracking_service import UsageType, record_token_usage
 from app.services.web_builder.deploy_service import disambiguate_slug
+from app.services.workspace_limits.service import WorkspaceLimitService
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +244,20 @@ class PresentationStudioService:
                 output_format,
             )
             output_format = "pptx"
+
+        if output_format == "pptx":
+            tier = "free"
+            workspace_id = getattr(build_input, "workspace_id", None)
+            if workspace_id:
+                limits = await WorkspaceLimitService.get_effective_limits(
+                    session, workspace_id
+                )
+                tier = (limits.plan_tier or "free").lower()
+            if tier not in {"team", "growth", "enterprise"}:
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="PPTX format generation is not enabled on this workspace plan; use Marp or upgrade",
+                )
 
         prompt = build_input.prompt.strip()
         if not prompt:

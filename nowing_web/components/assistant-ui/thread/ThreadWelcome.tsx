@@ -8,6 +8,7 @@ import { type FC, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { QuickstartPlaybookBuilder } from "@/components/assistant-ui/quickstart-playbook-builder";
+import { usePresentationStudioEntitlement } from "@/hooks/use-presentation-studio-entitlement";
 import { Composer } from "./Composer";
 import { OUTREACH_BETA_DISMISSED_KEY } from "./constants";
 import type { ThreadProps } from "./types";
@@ -21,6 +22,7 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 	const { data: user } = useAtomValue(currentUserAtom);
 	const params = useParams();
 	const workspaceId = params?.workspace_id as string | undefined;
+	const { isResolvedFreeTier } = usePresentationStudioEntitlement();
 
 	const creditsCount = useMemo(() => {
 		if (!user) return 500;
@@ -106,12 +108,16 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 								"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts and download CTA.",
 							mode: "web_builder",
 						},
-						{
-							label: tChat("card_pitch_title"),
-							icon: "📑",
-							prompt: tChat("card_pitch_prompt"),
-							mode: "presentation_studio",
-						},
+						...(isResolvedFreeTier
+							? []
+							: [
+									{
+										label: tChat("card_pitch_title"),
+										icon: "📑",
+										prompt: tChat("card_pitch_prompt"),
+										mode: "presentation_studio" as const,
+									},
+								]),
 						{
 							label: tChat("card_marp_title"),
 							icon: "📝",

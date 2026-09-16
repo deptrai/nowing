@@ -1787,3 +1787,7 @@ Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_ac
 - source_spec: `_bmad-output/implementation-artifacts/spec-31-3-ast-static-eval-mark-tool.md`
   summary: Widen Mark Tool static-eval to spread_element (`cn(...["a","b"])`), computed_property_name object keys (`clsx({["k"]:true})`), and hoisted array/object results in _eval_node (`cn(true && ["a","b"])`), plus `satisfies`/`non_null`/`type_assertion` in collect_arg.
   evidence: Blind-hunter findings #7-#10 — all are deliberate scope beyond the spec's "conservative, statically-known" whitelist; each needs its own resolution rules, deferred as follow-up.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-31-4-presentation-format-entitlement.md`
+  summary: Self-hosted instances default plan_tier to free → PPTX generation blocked despite unlimited licensing; consider a `is_self_hosted()` bypass so self-host is not paywalled.
+  evidence: Edge-case hunter — self-host has no paid plan but should not lose PPTX. Requires a product/licensing decision on whether self-host gets full features.

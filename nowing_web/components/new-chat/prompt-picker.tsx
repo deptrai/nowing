@@ -24,6 +24,7 @@ import {
 	ComposerSuggestionSeparator,
 	ComposerSuggestionSkeleton,
 } from "@/components/new-chat/composer-suggestion-popup";
+import { usePresentationStudioEntitlement } from "@/hooks/use-presentation-studio-entitlement";
 import { getWorkspaceIdParam } from "@/lib/route-params";
 
 export interface PromptPickerRef {
@@ -134,6 +135,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 ) {
 	const router = useRouter();
 	const params = useParams();
+	const { isResolvedFreeTier } = usePresentationStudioEntitlement();
 	const { data: prompts, isLoading, isError } = useAtomValue(promptsAtom);
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -149,15 +151,22 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 		return q;
 	}, [deferredSearch]);
 
+	const availableBuiltins = useMemo(() => {
+		if (isResolvedFreeTier) {
+			return BUILTIN_TEMPLATES.filter((item) => item.id !== "slides-pptx");
+		}
+		return BUILTIN_TEMPLATES;
+	}, [isResolvedFreeTier]);
+
 	const filteredBuiltins = useMemo(() => {
-		if (!normalizedSearch) return BUILTIN_TEMPLATES;
-		return BUILTIN_TEMPLATES.filter(
+		if (!normalizedSearch) return availableBuiltins;
+		return availableBuiltins.filter(
 			(item) =>
 				item.name.toLowerCase().includes(normalizedSearch) ||
 				item.description.toLowerCase().includes(normalizedSearch) ||
 				item.prompt.toLowerCase().includes(normalizedSearch)
 		);
-	}, [normalizedSearch]);
+	}, [availableBuiltins, normalizedSearch]);
 	const filteredWebBuiltins = useMemo(
 		() => filteredBuiltins.filter((b) => b.chatMode === "web_builder"),
 		[filteredBuiltins]

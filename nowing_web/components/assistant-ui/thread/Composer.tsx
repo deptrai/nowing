@@ -2,17 +2,17 @@
 
 import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ChevronDown, ChevronUp, Sparkles, X } from "lucide-react";
+import { ChevronUp, Sparkles, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chatSessionStateAtom } from "@/atoms/chat/chat-session-state.atom";
-import { suggestedActionsSessionMapAtom } from "@/atoms/chat/suggested-actions.atom";
 import {
 	type MentionedDocumentInfo,
 	mentionedDocumentsAtom,
 	submittedMentionsAtom,
 } from "@/atoms/chat/mentioned-documents.atom";
+import { suggestedActionsSessionMapAtom } from "@/atoms/chat/suggested-actions.atom";
 import { selectedLeadContextAtom } from "@/atoms/leads/leads-canvas.atoms";
 import { membersAtom } from "@/atoms/members/members-query.atoms";
 import { llmSetupStatusAtomFamily } from "@/atoms/model-connections/model-connections-query.atoms";
@@ -61,7 +61,6 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 	const [actionQuery, setActionQuery] = useState("");
 	const [suggestionAnchorPoint, setSuggestionAnchorPoint] =
 		useState<ComposerSuggestionAnchorPoint | null>(null);
-	const [suggestedCardDismissed, setSuggestedCardDismissed] = useState(false);
 	const [_isComposerInputEmpty, setIsComposerInputEmpty] = useState(true);
 	const editorRef = useRef<InlineMentionEditorRef>(null);
 	const prevMentionedDocsRef = useRef<Map<string, MentionedDocumentInfo>>(new Map());
@@ -89,24 +88,23 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 		});
 	}, [electronAPI]);
 
-	const initialPromptAppliedRef = useRef(false);
+	const appliedPromptRef = useRef<string | null>(null);
 	useEffect(() => {
-		if (
-			!initialPrompt ||
-			initialPromptAppliedRef.current ||
-			hasActiveThread ||
-			!editorRef.current
-		) {
+		if (!initialPrompt || hasActiveThread || !editorRef.current) {
 			return;
 		}
 		const text = initialPrompt.trim();
 		if (!text) return;
-		initialPromptAppliedRef.current = true;
-		editorRef.current.setText(text);
-		aui.composer().setText(text);
-		setIsComposerInputEmpty(false);
-		if (isDesktop) {
-			editorRef.current.focus();
+		if (appliedPromptRef.current === text) return;
+		const currentText = editorRef.current.getText();
+		if (appliedPromptRef.current === null || currentText === appliedPromptRef.current) {
+			appliedPromptRef.current = text;
+			editorRef.current.setText(text);
+			aui.composer().setText(text);
+			setIsComposerInputEmpty(false);
+			if (isDesktop) {
+				editorRef.current.focus();
+			}
 		}
 	}, [initialPrompt, hasActiveThread, aui, isDesktop]);
 
@@ -657,73 +655,79 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 			/>
 
 			{/* Reopen Pill Trigger when user collapsed/dismissed suggestions */}
-			{hasActiveThread && !isThreadRunning && dynamicSuggestedActions.length > 0 && isSessionDismissed && (
-				<div className="flex justify-start px-1 animate-in fade-in duration-200">
-					<button
-						type="button"
-						onClick={handleReopenSuggestions}
-						className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80 transition-all shadow-2xs select-none cursor-pointer"
-					>
-						<span className="text-amber-500">💡</span>
-						<span>{dynamicSuggestedActions.length} gợi ý bước tiếp theo</span>
-						<ChevronUp className="size-3 opacity-60" />
-					</button>
-				</div>
-			)}
+			{hasActiveThread &&
+				!isThreadRunning &&
+				dynamicSuggestedActions.length > 0 &&
+				isSessionDismissed && (
+					<div className="flex justify-start px-1 animate-in fade-in duration-200">
+						<button
+							type="button"
+							onClick={handleReopenSuggestions}
+							className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80 transition-all shadow-2xs select-none cursor-pointer"
+						>
+							<span className="text-amber-500">💡</span>
+							<span>{dynamicSuggestedActions.length} gợi ý bước tiếp theo</span>
+							<ChevronUp className="size-3 opacity-60" />
+						</button>
+					</div>
+				)}
 
 			{/* Nowing: Dynamic Suggested Next Actions Card */}
-			{hasActiveThread && !isThreadRunning && dynamicSuggestedActions.length > 0 && !isSessionDismissed && (
-				<section
-					className="rounded-xl border border-border/70 bg-card/95 p-2 shadow-2xs transition-all backdrop-blur-xs animate-in fade-in slide-in-from-bottom-2 duration-200"
-					aria-label={tChat("suggested_actions_title")}
-				>
-					<div className="flex items-center justify-between px-1.5 pb-1.5 gap-2 border-b border-border/40">
-						<div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
-							<span className="text-amber-500" aria-hidden="true">
-								💡
-							</span>
-							<span>{tChat("suggested_actions_title")}</span>
+			{hasActiveThread &&
+				!isThreadRunning &&
+				dynamicSuggestedActions.length > 0 &&
+				!isSessionDismissed && (
+					<section
+						className="rounded-xl border border-border/70 bg-card/95 p-2 shadow-2xs transition-all backdrop-blur-xs animate-in fade-in slide-in-from-bottom-2 duration-200"
+						aria-label={tChat("suggested_actions_title")}
+					>
+						<div className="flex items-center justify-between px-1.5 pb-1.5 gap-2 border-b border-border/40">
+							<div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
+								<span className="text-amber-500" aria-hidden="true">
+									💡
+								</span>
+								<span>{tChat("suggested_actions_title")}</span>
+							</div>
+							<div className="flex items-center gap-1">
+								<Sparkles className="size-3 text-muted-foreground opacity-60" aria-hidden="true" />
+								<button
+									type="button"
+									onClick={handleDismissSuggestions}
+									className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+									aria-label={tChat("dismiss_suggested_actions")}
+									title="Thu gọn gợi ý (Lưu cho phiên này)"
+								>
+									<X className="size-3" aria-hidden="true" />
+								</button>
+							</div>
 						</div>
-						<div className="flex items-center gap-1">
-							<Sparkles className="size-3 text-muted-foreground opacity-60" aria-hidden="true" />
-							<button
-								type="button"
-								onClick={handleDismissSuggestions}
-								className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-								aria-label={tChat("dismiss_suggested_actions")}
-								title="Thu gọn gợi ý (Lưu cho phiên này)"
-							>
-								<X className="size-3" aria-hidden="true" />
-							</button>
-						</div>
-					</div>
-					<ul className="space-y-1 list-none mt-1.5">
-						{dynamicSuggestedActions.slice(0, 4).map((actionText, idx) => {
-							const icon = idx === 0 ? "🚀" : idx === 1 ? "💼" : idx === 2 ? "📱" : "✨";
-							return (
-								<li key={actionText}>
-									<button
-										type="button"
-										onClick={() => handleApplySuggestedAction(actionText)}
-										className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-										title={tChat("click_to_prompt_tooltip", { action: actionText })}
-									>
-										<span
-											className="size-4.5 rounded-md bg-muted/80 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0"
-											aria-hidden="true"
+						<ul className="space-y-1 list-none mt-1.5">
+							{dynamicSuggestedActions.slice(0, 4).map((actionText, idx) => {
+								const icon = idx === 0 ? "🚀" : idx === 1 ? "💼" : idx === 2 ? "📱" : "✨";
+								return (
+									<li key={actionText}>
+										<button
+											type="button"
+											onClick={() => handleApplySuggestedAction(actionText)}
+											className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/70 transition-colors text-xs text-foreground group cursor-pointer border border-transparent hover:border-border/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+											title={tChat("click_to_prompt_tooltip", { action: actionText })}
 										>
-											{icon}
-										</span>
-										<span className="leading-tight font-medium text-foreground truncate">
-											{actionText}
-										</span>
-									</button>
-								</li>
-							);
-						})}
-					</ul>
-				</section>
-			)}
+											<span
+												className="size-4.5 rounded-md bg-muted/80 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0"
+												aria-hidden="true"
+											>
+												{icon}
+											</span>
+											<span className="leading-tight font-medium text-foreground truncate">
+												{actionText}
+											</span>
+										</button>
+									</li>
+								);
+							})}
+						</ul>
+					</section>
+				)}
 			<Popover open={showDocumentPopover} onOpenChange={handleDocumentPopoverOpenChange}>
 				{suggestionAnchorPoint ? (
 					<>

@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: '09-16-2026 12:47'
+# last_updated: '09-16-2026 16:54'
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -353,7 +353,7 @@ development_status:
   31-1-dokploy-multi-tenant-container-resource-constraints-cgroup-c: done
   31-2-strict-cname-dns-ingress-ownership-verification: review
   31-3-ast-static-eval-policy-for-dynamic-jsx-expression-matching-i: 'review'
-  31-4-entitlement-driven-presentation-studio-format-selection-from: backlog
+  31-4-entitlement-driven-presentation-studio-format-selection-from: review
   epic-31-retrospective: optional
 
   epic-32: backlog

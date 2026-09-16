@@ -84,8 +84,12 @@ async def test_deck_with_chart_adds_chart_slide():
 
 
 @pytest.mark.unit
-async def test_empty_prompt_returns_validation_failed():
+async def test_empty_prompt_returns_validation_failed(monkeypatch):
     """AC-2/AC-3/AC-6: empty or whitespace prompt returns validation_failed, no file."""
+    monkeypatch.setattr(
+        "app.services.presentation.service.WorkspaceLimitService.get_effective_limits",
+        AsyncMock(return_value=MagicMock(plan_tier="team")),
+    )
     service = PresentationStudioService()
     session = MagicMock()
     result = await service.generate(
@@ -100,11 +104,16 @@ async def test_empty_prompt_returns_validation_failed():
 
 
 @pytest.mark.unit
-async def test_prompt_exceeding_max_length_is_truncated_or_rejected():
+async def test_prompt_exceeding_max_length_is_truncated_or_rejected(monkeypatch):
     """AC-1: prompt longer than PRESENTATION_MAX_PROMPT_CHARS is rejected by schema and truncated by service."""
     from pydantic import ValidationError
+
     from app.config import config
 
+    monkeypatch.setattr(
+        "app.services.presentation.service.WorkspaceLimitService.get_effective_limits",
+        AsyncMock(return_value=MagicMock(plan_tier="team")),
+    )
     service = PresentationStudioService()
     original_limit = config.PRESENTATION_MAX_PROMPT_CHARS
     config.PRESENTATION_MAX_PROMPT_CHARS = 20
@@ -136,8 +145,12 @@ async def test_path_traversal_rejected():
 
 
 @pytest.mark.unit
-async def test_service_generate_pptx_with_mocked_llm():
+async def test_service_generate_pptx_with_mocked_llm(monkeypatch):
     """AC-2: a valid prompt produces a ready PPTX with metadata when LLM returns a valid spec."""
+    monkeypatch.setattr(
+        "app.services.presentation.service.WorkspaceLimitService.get_effective_limits",
+        AsyncMock(return_value=MagicMock(plan_tier="team")),
+    )
     service = PresentationStudioService()
     service._call_llm_for_deck = AsyncMock(
         return_value=(
@@ -177,8 +190,12 @@ async def test_service_generate_pptx_with_mocked_llm():
 
 
 @pytest.mark.unit
-async def test_workspace_scoped_slug_is_unique_with_mocked_llm():
+async def test_workspace_scoped_slug_is_unique_with_mocked_llm(monkeypatch):
     """AC-4/AC-5: two decks with the same title in the same workspace get disambiguated slugs."""
+    monkeypatch.setattr(
+        "app.services.presentation.service.WorkspaceLimitService.get_effective_limits",
+        AsyncMock(return_value=MagicMock(plan_tier="team")),
+    )
     service = PresentationStudioService()
     service._call_llm_for_deck = AsyncMock(
         return_value=(

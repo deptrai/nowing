@@ -37,12 +37,15 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         """Generate a PPTX or Marp Markdown slide deck from a description.
 
         Use this tool when the user wants a slide deck, pitch deck, or presentation.
+        Note: PPTX output requires a paid workspace plan (team/growth/enterprise).
+        On a free plan, request output_format="marp".
 
         Args:
             prompt: Natural language description of the desired slide deck.
             output_format: Either "pptx" (default) or "marp".
             language: Target UI language (e.g. "en" or "vi").
         """
+        from fastapi import HTTPException
         from pydantic import ValidationError
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
@@ -50,10 +53,8 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         from app.config import config as app_config
         from app.db import Permission, Workspace, WorkspaceMembership
         from app.services.presentation.schemas import (
-            GeneratePresentationInput,
             GeneratePresentationOutput,
         )
-        from app.services.presentation.service import PresentationStudioService
 
         def _failed(error: str, *, status: str = "validation_failed") -> dict[str, Any]:
             return GeneratePresentationOutput(
@@ -153,6 +154,9 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         except ValidationError:
             logger.exception("generate_presentation input failed validation")
             return _failed("Invalid presentation input.")
+        except HTTPException as exc:  # plan-entitlement 403 → surface paywall, not a generic error
+            logger.info("generate_presentation blocked: %s", exc.detail)
+            return _failed(str(exc.detail), status="plan_limited")
         except Exception as exc:  # presentation generation failure; rollback and return failure output
             if session is not None:
                 with contextlib.suppress(Exception):

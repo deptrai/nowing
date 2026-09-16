@@ -134,8 +134,13 @@ async def test_cross_workspace_presentation_returns_404(
 
 
 @pytest.mark.integration
-async def test_generate_download_presentation(client_as_regular_user, db_workspace):
+async def test_generate_download_presentation(
+    client_as_regular_user, db_workspace, db_session
+):
     """AC-2/AC-5: generate a PPTX and download it for the owner workspace."""
+    # PPTX requires a paid tier (story 31.4); the default workspace is free.
+    db_workspace.plan_tier = "team"
+    await db_session.commit()
     res = await client_as_regular_user.post(
         "/api/v1/presentations/generate",
         json={
@@ -198,9 +203,11 @@ async def test_list_scoped_to_workspace(
 
 @pytest.mark.integration
 async def test_delete_presentation_204_after_member_check(
-    client_as_regular_user, db_workspace
+    client_as_regular_user, db_workspace, db_session
 ):
     """AC-5: DELETE returns 204 and the row is gone."""
+    db_workspace.plan_tier = "team"
+    await db_session.commit()
     res = await client_as_regular_user.post(
         "/api/v1/presentations/generate",
         json={
@@ -292,3 +299,42 @@ async def test_list_presentations_pagination_limit_and_offset(
     ids1 = {d["id"] for d in data}
     ids2 = {d["id"] for d in data2}
     assert ids1.isdisjoint(ids2)
+
+
+@pytest.mark.integration
+async def test_generate_pptx_free_tier_returns_403(
+    client_as_regular_user, db_workspace
+):
+    """Story 31.4: free-tier workspace cannot generate PPTX via the REST route.
+
+    The gate lives in PresentationStudioService.generate, so the direct
+    POST /presentations/generate route (which bypasses the capability
+    executor) is also covered.
+    """
+    res = await client_as_regular_user.post(
+        "/api/v1/presentations/generate",
+        json={
+            "workspace_id": db_workspace.id,
+            "prompt": "Pitch deck",
+            "output_format": "pptx",
+        },
+    )
+    assert res.status_code == 403
+    assert "pptx" in res.json()["detail"].lower()
+
+
+@pytest.mark.integration
+async def test_generate_marp_free_tier_allowed(
+    client_as_regular_user, db_workspace
+):
+    """Story 31.4: free-tier workspace may still generate Marp slides."""
+    res = await client_as_regular_user.post(
+        "/api/v1/presentations/generate",
+        json={
+            "workspace_id": db_workspace.id,
+            "prompt": "Markdown deck",
+            "output_format": "marp",
+        },
+    )
+    assert res.status_code == 200
+    assert res.json()["format"] == "marp"
