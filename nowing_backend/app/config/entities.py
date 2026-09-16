@@ -91,6 +91,11 @@ XACTIONS_STREAM_SINGLE_WRITER_ENABLED = (
     os.getenv("XACTIONS_STREAM_SINGLE_WRITER_ENABLED", "false").strip().lower()
     in ("true", "1", "yes", "t", "on")
 )
+# XActions stream data-plane Redis (Story 36.4 / REQ-X2). The single-writer
+# social raw-posts stream (stream:social:raw_posts) lives on the XActions-side
+# Redis instance, which may differ from the app-level REDIS_APP_URL used for
+# cache/queues. Leave empty to fall back to REDIS_APP_URL (same instance).
+XACTIONS_STREAM_REDIS_URL = os.getenv("XACTIONS_STREAM_REDIS_URL", "").strip()
 # Unified dispatch gate (Story 36.6a / AD-1, AD-2, AD-6)
 # When ON: UniversalScrapeTargetMapper resolves platform+action from the
 # CanonicalActionMatrix (x_actions_list + static fallback) and dispatches
@@ -155,6 +160,7 @@ __all__ = [
     "XACTIONS_MODE",
     "XACTIONS_PATH",
     "XACTIONS_STREAM_SINGLE_WRITER_ENABLED",
+    "XACTIONS_STREAM_REDIS_URL",
     "XACTIONS_TIMEOUT_SECONDS",
     "XACTIONS_TRANSPORT",
     "XACTIONS_USE_UNIFIED_DISPATCH",

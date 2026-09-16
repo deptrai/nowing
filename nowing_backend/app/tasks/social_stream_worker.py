@@ -916,9 +916,14 @@ async def run_social_stream_consumer(
     if redis_client is None:
         import redis.asyncio as aioredis
 
-        redis_client = aioredis.from_url(
-            config.REDIS_APP_URL, decode_responses=True
+        # The single-writer social raw-posts stream lives on the XActions-side
+        # Redis instance, which can differ from the app REDIS_APP_URL
+        # (cache/queues). Prefer the dedicated XACTIONS_STREAM_REDIS_URL when
+        # set; fall back to REDIS_APP_URL for same-instance deployments.
+        stream_url = (
+            getattr(config, "XACTIONS_STREAM_REDIS_URL", "") or config.REDIS_APP_URL
         )
+        redis_client = aioredis.from_url(stream_url, decode_responses=True)
         created_locally = True
 
     consumer_name = consumer_name or _default_consumer_name()
