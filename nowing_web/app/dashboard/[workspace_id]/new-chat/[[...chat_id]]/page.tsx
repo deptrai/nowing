@@ -52,6 +52,7 @@ import { useAgentActionsQuery } from "@/hooks/use-agent-actions-query";
 import { useChatSessionStateSync } from "@/hooks/use-chat-session-state";
 import { useMessagesSync } from "@/hooks/use-messages-sync";
 import {
+	computeStudioDowngrade,
 	rewritePresentationPromptToMarp,
 	usePresentationStudioEntitlement,
 } from "@/hooks/use-presentation-studio-entitlement";
@@ -223,30 +224,18 @@ export default function NewChatPage() {
 	// Downgrade ?format=pptx and PPTX prompts to Marp on a resolved free tier (Story 31.4).
 	// Per spec: only rewrite when subscription has resolved and workspace is in presentation_studio mode.
 	useEffect(() => {
-		if (!isPresentationStudioMode || !isResolvedFreeTier) return;
 		if (typeof window === "undefined") return;
-
 		const currentUrl = new URL(window.location.href);
-		let changed = false;
-
-		const currentFormat = currentUrl.searchParams.get("format");
-		if (currentFormat && currentFormat.toLowerCase() === "pptx") {
-			currentUrl.searchParams.set("format", "marp");
-			changed = true;
-		}
-
-		const currentQ = currentUrl.searchParams.get("q");
-		if (currentQ) {
-			const rewritten = rewritePresentationPromptToMarp(currentQ);
-			if (rewritten !== currentQ) {
-				currentUrl.searchParams.set("q", rewritten);
-				changed = true;
-			}
-		}
-
-		if (changed) {
-			window.history.replaceState(null, "", currentUrl.pathname + currentUrl.search);
-		}
+		const downgrade = computeStudioDowngrade(
+			isPresentationStudioMode,
+			isResolvedFreeTier,
+			currentUrl.searchParams.get("format"),
+			currentUrl.searchParams.get("q")
+		);
+		if (!downgrade) return;
+		if (downgrade.format) currentUrl.searchParams.set("format", downgrade.format);
+		if (downgrade.prompt) currentUrl.searchParams.set("q", downgrade.prompt);
+		window.history.replaceState(null, "", currentUrl.pathname + currentUrl.search);
 	}, [isPresentationStudioMode, isResolvedFreeTier, formatParam, rawInitialPrompt]);
 
 	// Durable, cross-navigation streaming state for the viewed thread.

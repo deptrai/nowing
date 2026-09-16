@@ -240,6 +240,8 @@ class WorkspaceEntitlementResponse(BaseModel):
 
     plan_tier: str
     can_use_pptx: bool
+    # True when the deployment is explicitly self-hosted (unlimited licensing).
+    self_hosted: bool = False
 
 
 class WorkspaceSubscriptionResponse(BaseModel):

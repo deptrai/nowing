@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.config import config as app_config
 from app.db import (
     Permission,
     Workspace,
@@ -138,7 +139,11 @@ async def get_workspace_entitlement(
     )
     tier = (limits.plan_tier or "free").strip().lower()
     can_use_pptx = tier in {"team", "growth", "enterprise"}
-    return WorkspaceEntitlementResponse(plan_tier=tier, can_use_pptx=can_use_pptx)
+    return WorkspaceEntitlementResponse(
+        plan_tier=tier,
+        can_use_pptx=can_use_pptx,
+        self_hosted=app_config.SELF_HOSTED_EXPLICIT,
+    )
 
 
 @router.post(

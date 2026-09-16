@@ -9,7 +9,10 @@ from app.capabilities.presentation.generate.schemas import (
     PresentationCapabilityOutput,
 )
 from app.services.presentation.schemas import GeneratePresentationInput
-from app.services.presentation.service import PresentationStudioService
+from app.services.presentation.service import (
+    PlanLimitedError,
+    PresentationStudioService,
+)
 
 
 async def execute_generate_presentation(
@@ -26,7 +29,16 @@ async def execute_generate_presentation(
         language=input_data.language,
     )
 
-    result = await service.generate(build_input, session=session)
+    try:
+        result = await service.generate(build_input, session=session)
+    except PlanLimitedError as exc:
+        # Entitlement gate: surface as a structured capability status so a
+        # direct invocation (not via the chat tool wrapper) does not crash.
+        return PresentationCapabilityOutput(
+            status="plan_limited",
+            workspace_id=input_data.workspace_id,
+            error=str(exc.detail),
+        )
     return PresentationCapabilityOutput(
         status=result.status,
         presentation_id=result.presentation_id,

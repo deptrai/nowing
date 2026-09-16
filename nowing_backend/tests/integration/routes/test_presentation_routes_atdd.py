@@ -318,10 +318,9 @@ async def test_generate_pptx_free_tier_returns_403(
     # so patching the value won't reach it — patch the predicate instead.
     from app.config import config as app_config
 
-    # is_self_hosted() is a classmethod reading a package-level constant bound
-    # at import time, so the reliable seam is the predicate on the shared
-    # config instance (monkeypatch restores it after the test).
-    monkeypatch.setattr(app_config, "is_self_hosted", lambda: False)
+    # The gate keys off SELF_HOSTED_EXPLICIT (env explicitly = self-hosted).
+    # Patch it to exercise the cloud paywall path in CI.
+    monkeypatch.setattr(app_config, "SELF_HOSTED_EXPLICIT", False)
     res = await client_as_regular_user.post(
         "/api/v1/presentations/generate",
         json={

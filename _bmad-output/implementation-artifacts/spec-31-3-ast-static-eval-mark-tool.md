@@ -3,7 +3,7 @@ title: '31-3 AST Static-Eval Policy for Dynamic JSX Expression Matching (Mark To
 type: 'feature'
 created: '2026-09-16'
 status: 'done'
-review_loop_iteration: 1
+review_loop_iteration: 2
 baseline_commit: '35a81b026'
 context: []
 ---
@@ -116,13 +116,13 @@ context: []
 - [x] [Review][Patch] `template_string` `escape_sequence` children are appended verbatim (raw backslash) instead of going through `_decode_js_escapes` — `` `hover\:bg` `` resolves with a literal `\` and fails `.hover:bg` matching. [`mark_tool.py:267`]
 - [x] [Review][Patch] `undefined` collapses to `None` → `_js_str` emits `"null"` not `"undefined"`, corrupting template interpolations (`` `x-${undefined}` `` → `"x-null"`). [`mark_tool.py:259`]
 - [x] [Review][Patch] `_object_key_to_str` returns `_UNKNOWN` for `number` AST nodes — numeric keys in clsx object mappings (`{100: true}`) are dropped. [`mark_tool.py:161`]
-- [x] [Review][Defer] Object literal used as a ternary/`&&` condition evaluates falsy (object→`" "` string path) instead of JS-truthy — deferred: edge case, objects-as-conditions are rare in clsx args. [`mark_tool.py:240`]
-- [x] [Review][Defer] Nested arrays returned from a ternary inside clsx args are only flattened one level — `clsx("a", ok ? ["b","c"] : "d")` drops `b`/`c`. Deferred: nested-array ternary is uncommon. [`mark_tool.py:477`]
-- [x] [Review][Defer] ES6 `\u{…}` variable-length escapes and backslash line-continuations decode incorrectly — deferred: rare in JSX class strings. [`mark_tool.py:90`]
+- [x] [Review][Patch] Object/array literals are always JS-truthy — `&&`, `||`, ternary, and `!` now treat a literal `object`/`array` operand as truthy regardless of its joined string. [`mark_tool.py:366-430`]
+- [x] [Review][Patch] Nested arrays in clsx args now flatten recursively via `_flatten_tokens` — `clsx("a", true ? ["b",["c"]] : "e")` resolves all tokens. [`mark_tool.py:_flatten_tokens`]
+- [x] [Review][Patch] ES6 `\u{…}` variable-length code points and backslash-newline line-continuations now decode correctly (`\u{1F600}`→😀, `a\<nl>b`→`ab`). [`mark_tool.py:_decode_js_escapes`]
 
 **Rejected**
 - `cn(cond)` → `""` false-positive — `false`: dropping dynamic args is correct clsx/cn semantics (`clsx(cond)` → `""`); the surrounding static prefix still resolves and only real tokens match.
-- Legacy octal `077` → `_UNKNOWN` — `false`-severity: TypeScript strict mode forbids legacy octal literals; not worth a special-case parser branch.
-- `_js_truthy(NaN)` returns `True` — `false`-severity: no division/NaN-producing operator is supported in the evaluator, so NaN cannot reach `_js_truthy` from a class expression.
+- Legacy octal `077`/`010`/`08` — PATCHED anyway: leading-zero numerals parse base-8/base-10 instead of `_UNKNOWN`. [`mark_tool.py:number`]
+- `_js_truthy(NaN)` returns `True` — PATCHED anyway: NaN is now falsy for forward-compat. [`mark_tool.py:_js_truthy`]
 - Spread of a string `cn(...'ab')` splitting words not chars — `false`-severity: string-spread inside `cn(...)` is not valid JSX in practice (spread requires an iterable expression, and reviewers' own reproduction used array spread which works).
 - Bare `className={{ "a": true }}` object — `false`: double-brace is not valid JSX for `className`; out of scope.

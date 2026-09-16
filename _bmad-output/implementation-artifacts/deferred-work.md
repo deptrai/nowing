@@ -1790,20 +1790,7 @@ Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_ac
 - Self-hosted deployments skip the PPTX plan-tier paywall (`app_config.is_self_hosted()`); SaaS still hard-blocks free-tier PPTX.
 - `PresentationStudioService.generate` now raises domain `PlanLimitedError` (not FastAPI `HTTPException`); the REST route translates to HTTP 403 and the chat tool to `status="plan_limited"`.
 
-## Deferred from: code review of spec-31-3-ast-static-eval-mark-tool.md (2026-09-16)
 
-- Object literal used as a ternary/`&&` condition evaluates falsy instead of JS-truthy — edge case, objects-as-conditions rare in clsx args. [mark_tool.py:240]
-- Nested arrays returned from a ternary inside clsx args flattened only one level. [mark_tool.py:477]
-- ES6 `\u{…}` variable-length escapes and backslash line-continuations decode incorrectly. [mark_tool.py:90]
+## Resolved: code review of spec-31-3 & spec-31-4 (2026-09-16)
 
-## Deferred from: code review of spec-31-4-presentation-format-entitlement.md (2026-09-16)
-
-- `DEPLOYMENT_MODE` defaults to `"self-hosted"` when unset — misconfigured cloud env bypasses paywall (fail-open). Pre-existing config default. [core.py:33]
-- `execute_generate_presentation` capability executor does not catch `PlanLimitedError` — direct invokes crash instead of `status="plan_limited"`. [executor.py:27]
-- `usePresentationStudioEntitlement` has no self-hosted awareness — self-hosted free hides PPTX chips. Same licensing decision deferred in iteration 1.
-- `marp` path skips `workspace_id` validation — invalid IDs reach downstream FK errors. Pre-existing. [service.py:284]
-- `_PRESENTATION_STUDIO_SYSTEM_PROMPT` lacks plan-tier/`plan_limited` guidance — agent could retry pptx after paywall. [chat_modes.py:42]
-- Tool defaults `output_format="pptx"` — biases LLM to PPTX. Product/UX call. [generate_presentation.py:34]
-- URL `?format`/`?q` downgrade effect and ThreadWelcome free-tier card-hiding lack test coverage.
-- `rewritePresentationPromptToMarp` skips `pptx.` at sentence end (lookahead excludes trailing period). [use-presentation-studio-entitlement.ts:35]
-- Rapid workspace switching could rewrite a paid workspace's PPTX prompt when transitioning from free. [page.tsx:237]
+All items previously deferred from these reviews were resolved in a follow-up pass — none remain open.

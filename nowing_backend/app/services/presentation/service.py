@@ -262,6 +262,18 @@ class PresentationStudioService:
                 workspace_id=build_input.workspace_id,
             )
 
+        # Validate only clearly-invalid (non-null) workspace ids early so the
+        # marp path does not reach a downstream foreign-key crash. A None
+        # workspace_id is handled by the spec's fail-closed rule (treated as
+        # free: pptx blocked, marp allowed) — do NOT reject it here.
+        ws_id = getattr(build_input, "workspace_id", None)
+        if ws_id is not None and ws_id <= 0:
+            return GeneratePresentationOutput(
+                status="validation_failed",
+                error="workspace_id is invalid",
+                workspace_id=build_input.workspace_id,
+            )
+
         prompt = build_input.prompt.strip()
         if not prompt:
             return GeneratePresentationOutput(
@@ -274,7 +286,11 @@ class PresentationStudioService:
         # Placed after input validation so bad input fails with a validation
         # result, and before generation so neither the capability executor nor
         # the REST route can bypass it.
-        if output_format == "pptx" and not app_config.is_self_hosted():
+        # Fail-closed: apply the SaaS paywall unless the deployment is
+        # *explicitly* self-hosted. A cloud SaaS env that forgets to set
+        # NOWING_DEPLOYMENT_MODE would otherwise default to self-hosted and
+        # silently bypass the entitlement gate.
+        if output_format == "pptx" and not app_config.SELF_HOSTED_EXPLICIT:
             # Self-hosted deployments have unlimited licensing — skip the
             # SaaS plan-tier paywall so a local free-tier workspace can
             # still generate PPTX (story 31.4 deferred item).

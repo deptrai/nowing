@@ -21,8 +21,8 @@ from app.services.presentation.service import (
 def _cloud_mode(monkeypatch):
     """Default tests to SaaS/cloud so the plan-tier gate is exercised."""
     monkeypatch.setattr(
-        "app.services.presentation.service.app_config.is_self_hosted",
-        lambda: False,
+        "app.services.presentation.service.app_config.SELF_HOSTED_EXPLICIT",
+        False,
     )
 
 
@@ -219,19 +219,19 @@ async def test_capability_executor_blocked_on_free_tier_pptx(monkeypatch):
         workspace_id=1,
     )
 
-    with pytest.raises(PlanLimitedError) as exc_info:
-        await execute_generate_presentation(session=session, input_data=input_data)
-
-    assert exc_info.value.status_code == 403
-    assert exc_info.value.detail == "PPTX format generation is not enabled on this workspace plan; use Marp or upgrade"
+    # The executor now catches PlanLimitedError and returns a structured
+    # plan_limited output so direct capability invocations do not crash.
+    out = await execute_generate_presentation(session=session, input_data=input_data)
+    assert out.status == "plan_limited"
+    assert "pptx" in (out.error or "").lower()
 
 
 @pytest.mark.asyncio
 async def test_self_hosted_skips_pptx_gate(monkeypatch, mock_deck_llm):
     """Self-hosted deployments skip the SaaS plan-tier PPTX paywall."""
     monkeypatch.setattr(
-        "app.services.presentation.service.app_config.is_self_hosted",
-        lambda: True,
+        "app.services.presentation.service.app_config.SELF_HOSTED_EXPLICIT",
+        True,
     )
     monkeypatch.setattr(
         "app.services.workspace_limits.service.WorkspaceLimitService.get_effective_limits",

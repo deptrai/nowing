@@ -69,6 +69,8 @@ _UNDEFINED = _UndefinedSentinel()
 
 def _js_truthy(val: Any) -> bool:
     """Evaluate JavaScript truthiness of a statically resolved value."""
+    if isinstance(val, float) and val != val:  # NaN is falsy in JS
+        return False
     return not (
         val is _UNKNOWN
         or val is _UNDEFINED
@@ -104,6 +106,16 @@ def _decode_js_escapes(content: str) -> str:
                     continue
                 except ValueError:
                     pass
+            if nxt == "u" and i + 2 < len(content) and content[i + 2] == "{":
+                # ES6 variable-length code point: \u{1F600}
+                end = content.find("}", i + 2)
+                if end != -1:
+                    try:
+                        out.append(chr(int(content[i + 3 : end], 16)))
+                        i = end + 1
+                        continue
+                    except ValueError:
+                        pass
             if nxt == "u" and i + 5 < len(content):
                 try:
                     out.append(chr(int(content[i + 2 : i + 6], 16)))
@@ -111,6 +123,10 @@ def _decode_js_escapes(content: str) -> str:
                     continue
                 except ValueError:
                     pass
+            if nxt == "\n":
+                # Line continuation: backslash-newline is elided in JS strings.
+                i += 2
+                continue
             if nxt in simple:
                 out.append(simple[nxt])
                 i += 2
@@ -269,7 +285,16 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
             if "." in raw or "e" in raw or "E" in raw:
                 return float(raw)
             # Support hex/binary/octal and BigInt (100n) literals.
-            return int(raw.rstrip("n"), 0) if raw[:1] == "0" or raw.endswith("n") else int(raw)
+            if raw.endswith("n"):
+                return int(raw[:-1], 0)
+            if raw[:1] == "0" and len(raw) > 1 and raw[1:2].isdigit():
+                # Legacy octal (077) / leading-zero decimal: int(x,0) rejects,
+                # so parse base-8 when all digits are octal, else base-10.
+                try:
+                    return int(raw, 8)
+                except ValueError:
+                    return int(raw, 10)
+            return int(raw, 0) if raw[:1] == "0" else int(raw)
         except ValueError:
             return _UNKNOWN
 
@@ -351,6 +376,9 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
             left_val = _eval_node(left_node, source_bytes)
             if left_val is _UNKNOWN:
                 return _UNKNOWN
+            # JS object/array literals are always truthy, even when empty.
+            if left_node.type in ("object", "array"):
+                return _eval_node(right_node, source_bytes)
             if not _js_truthy(left_val):
                 return left_val
             return _eval_node(right_node, source_bytes)
@@ -359,6 +387,8 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
             left_val = _eval_node(left_node, source_bytes)
             if left_val is _UNKNOWN:
                 return _UNKNOWN
+            if left_node.type in ("object", "array"):
+                return left_val
             if _js_truthy(left_val):
                 return left_val
             return _eval_node(right_node, source_bytes)
@@ -390,7 +420,13 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
         cond_val = _eval_node(cond_node, source_bytes)
         if cond_val is _UNKNOWN:
             return _UNKNOWN
-        if _js_truthy(cond_val):
+        # JS object/array literals are always truthy as a condition.
+        cond_truthy = (
+            True
+            if cond_node.type in ("object", "array")
+            else _js_truthy(cond_val)
+        )
+        if cond_truthy:
             return _eval_node(conseq_node, source_bytes)
         return _eval_node(alt_node, source_bytes)
 
@@ -408,6 +444,9 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
         if val is _UNKNOWN:
             return _UNKNOWN
         if op == "!":
+            # !{} and ![] are always false — object/array literals are truthy.
+            if arg_node.type in ("object", "array"):
+                return False
             return not _js_truthy(val)
         if (
             op == "-"
@@ -483,14 +522,7 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
                 inner = _eval_spread(arg, source_bytes)
                 if isinstance(inner, list):
                     for item in inner:
-                        if isinstance(item, str):
-                            tokens.extend(item.split())
-                        elif (
-                            isinstance(item, (int, float))
-                            and not isinstance(item, bool)
-                            and _js_truthy(item)
-                        ):
-                            tokens.append(_js_str(item))
+                        _flatten_tokens(item, tokens)
                 return
             if arg.type == "array":
                 for item in arg.children:
@@ -508,14 +540,7 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
                 tokens.extend(val.split())
             elif isinstance(val, list):
                 for item in val:
-                    if isinstance(item, str):
-                        tokens.extend(item.split())
-                    elif (
-                        isinstance(item, (int, float))
-                        and not isinstance(item, bool)
-                        and _js_truthy(item)
-                    ):
-                        tokens.append(_js_str(item))
+                    _flatten_tokens(item, tokens)
             elif (
                 isinstance(val, (int, float))
                 and not isinstance(val, bool)
@@ -543,6 +568,22 @@ def _unescape_selector_ident(ident: str) -> str:
     selector ``.hover\\:bg``.
     """
     return re.sub(r"\\(.)", r"\1", ident)
+
+
+def _flatten_tokens(val: Any, tokens: list[str]) -> None:
+    """Accumulate clsx-style class tokens from a resolved value, recursing into
+    nested lists (e.g. ``cond ? ["a", ["b"]] : "c"``)."""
+    if isinstance(val, str):
+        tokens.extend(val.split())
+    elif isinstance(val, list):
+        for item in val:
+            _flatten_tokens(item, tokens)
+    elif (
+        isinstance(val, (int, float))
+        and not isinstance(val, bool)
+        and _js_truthy(val)
+    ):
+        tokens.append(_js_str(val))
 
 
 @dataclass(frozen=True)

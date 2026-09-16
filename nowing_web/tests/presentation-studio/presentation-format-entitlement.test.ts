@@ -6,6 +6,7 @@
 
 import assert from "node:assert/strict";
 import {
+	computeStudioDowngrade,
 	deriveEntitlementState,
 	isPlanTierEntitledToPptx,
 	rewritePresentationPromptToMarp,
@@ -63,7 +64,7 @@ function testResolutionLifecycleStates() {
 	// local copy would let a regression in the hook slip through untested.
 	const deriveState = (
 		isLoading: boolean,
-		entitlementData: { plan_tier: string; can_use_pptx: boolean } | undefined
+		entitlementData: { plan_tier: string; can_use_pptx: boolean; self_hosted?: boolean } | undefined
 	) => deriveEntitlementState(isLoading, entitlementData);
 
 	// 1. Initial mount (loading, unresolved): MUST NOT trigger downgrade
@@ -88,9 +89,55 @@ function testResolutionLifecycleStates() {
 	assert.equal(missingTierState.isResolved, true);
 	assert.equal(missingTierState.canUsePptx, false);
 	assert.equal(missingTierState.isResolvedFreeTier, true);
+
+	// 5. Self-hosted deployment: always entitled regardless of stored tier —
+	// unlimited licensing means a free-tier row still allows PPTX.
+	const selfHostedState = deriveState(false, {
+		plan_tier: "free",
+		can_use_pptx: false,
+		self_hosted: true,
+	});
+	assert.equal(selfHostedState.canUsePptx, true);
+	assert.equal(selfHostedState.isResolvedFreeTier, false);
+
+	// 6. Loading state must not claim resolved-free even if data present later.
+	const stillLoading = deriveState(true, { plan_tier: "team", can_use_pptx: true });
+	assert.equal(stillLoading.isResolved, false);
+	assert.equal(stillLoading.isResolvedFreeTier, false);
+}
+
+function testPromptRewriteEdgeCases() {
+	// sentence-final "pptx." must still rewrite (trailing period is not a file ext)
+	const sentence = rewritePresentationPromptToMarp("export the deck as pptx.");
+	assert.equal(sentence.includes("marp."), true);
+	assert.equal(/\bpptx\b/i.test(sentence.replace(/marp/g, "")), false);
+
+	// a real .pptx filename is preserved
+	const fname = rewritePresentationPromptToMarp("save to deck.pptx");
+	assert.equal(fname.includes("deck.pptx"), true);
 }
 
 testEntitledPlanTiers();
 testPromptRewriter();
+function testUrlDowngradeDecision() {
+	// presentation_studio + resolved free tier + ?format=pptx -> downgrade
+	const d1 = computeStudioDowngrade(true, true, "pptx", null);
+	assert.deepEqual(d1, { format: "marp" });
+	// format=PPTX case-insensitive
+	const d2 = computeStudioDowngrade(true, true, "PPTX", null);
+	assert.deepEqual(d2, { format: "marp" });
+	// pptx in prompt text is rewritten
+	const d3 = computeStudioDowngrade(true, true, "marp", "make it pptx");
+	assert.equal(d3?.prompt?.includes("marp"), true);
+	// paid tier (not resolved-free) -> no downgrade even with format=pptx
+	assert.equal(computeStudioDowngrade(true, false, "pptx", null), null);
+	// not presentation studio mode -> no downgrade
+	assert.equal(computeStudioDowngrade(false, true, "pptx", null), null);
+	// nothing to downgrade
+	assert.equal(computeStudioDowngrade(true, true, "marp", "hello"), null);
+}
+
 testResolutionLifecycleStates();
+testPromptRewriteEdgeCases();
+testUrlDowngradeDecision();
 console.log("All presentation format entitlement unit checks passed.");

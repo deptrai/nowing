@@ -3,7 +3,7 @@ title: '31-4 Entitlement-driven Presentation Studio Format Selection (PPTX vs Ma
 type: 'feature'
 created: '2026-09-16'
 status: 'done'
-review_loop_iteration: 2
+review_loop_iteration: 3
 baseline_commit: '0c23ea87f'
 context: []
 ---
@@ -150,15 +150,15 @@ context: []
 - [x] [Review][Patch] `presentation.tsx` `isFailed` omits `plan_limited` — added dedicated upgrade card + `presentation_plan_limited_*` i18n keys. [`presentation.tsx:139`] — a `status="plan_limited"` result has no `presentation_id` and is not `isFailed`, so the card renders the "Generating" shimmer forever and no upgrade prompt is shown. Add a dedicated plan-limited/upgrade card. [`presentation.tsx:93`]
 - [x] [Review][Patch] `test_generate_pptx_free_tier_returns_403` skips — now monkeypatches `config.is_self_hosted→False` so 403 is exercised in CI. [`test_presentation_routes_atdd.py:321`] under default `self-hosted` test config, so the REST 403 translation has zero CI coverage. Add a monkeypatch forcing `is_self_hosted()→False` (cloud) inside the test. [`test_presentation_routes_atdd.py:318`]
 - [x] [Review][Patch] `testResolutionLifecycleStates` exercises a copy-pasted local — now calls exported `deriveEntitlementState` from the hook. [`presentation-format-entitlement.test.ts` / `use-presentation-studio-entitlement.ts:49`] `deriveState` helper instead of the real `usePresentationStudioEntitlement` resolution logic — regressions in `isResolvedFreeTier` go undetected. Export/test the real derivation. [`presentation-format-entitlement.test.ts:62`]
-- [x] [Review][Defer] `DEPLOYMENT_MODE` defaults to `"self-hosted"` when unset — a misconfigured cloud SaaS env would bypass the paywall (fail-open). Deferred: pre-existing config default, not introduced by this story; infra/env contract. [`core.py:33`]
-- [x] [Review][Defer] `execute_generate_presentation` capability executor does not catch `PlanLimitedError` — direct capability invocations crash rather than returning `status="plan_limited"`. Deferred: in-contract for this story (tool wrapper + REST route are the intended catchers). [`executor.py:27`]
-- [x] [Review][Defer] `usePresentationStudioEntitlement` has no self-hosted awareness — self-hosted free workspaces hide PPTX chips although backend allows PPTX. Deferred: same self-hosted licensing decision deferred in iteration 1. [`use-presentation-studio-entitlement.ts`]
-- [x] [Review][Defer] `marp` path skips `workspace_id` validation — invalid workspace IDs proceed into downstream FK errors. Deferred: gate is additive; workspace validation is pre-existing behavior unchanged by this story. [`service.py:284`]
-- [x] [Review][Defer] `_PRESENTATION_STUDIO_SYSTEM_PROMPT` lacks plan-tier/`plan_limited` guidance — the agent could retry `output_format="pptx"` after a paywall rejection. Deferred: tool docstring already instructs free→marp; prompt tuning is a follow-up. [`chat_modes.py:42`]
-- [x] [Review][Defer] Tool signature defaults `output_format="pptx"`, biasing the LLM to PPTX. Deferred: docstring already notes paid-only; changing the default is a product/UX call. [`generate_presentation.py:34`]
-- [x] [Review][Defer] URL `?format=pptx`/`?q=` downgrade effect and ThreadWelcome free-tier card-hiding have no test coverage. Deferred: test-coverage follow-up, not a defect. [`page.tsx:250` / `ThreadWelcome.tsx:589`]
-- [x] [Review][Defer] `rewritePresentationPromptToMarp` `(?<!\.)\bpptx\b(?!\.)` skips `pptx.` at sentence end (trailing-period is not a file ext). Deferred: minor prompt-rewrite edge; the prompt still resolves correctly. [`use-presentation-studio-entitlement.ts:35`]
-- [x] [Review][Defer] Rapid workspace switching could rewrite a paid workspace's PPTX prompt when transitioning from a free workspace. Deferred: edge timing, backend gate is the authoritative defense. [`page.tsx:237`]
+- [x] [Review][Defer] `DEPLOYMENT_MODE` defaults to `"self-hosted"` when unset — PATCHED: gate now keys off new `SELF_HOSTED_EXPLICIT` (env explicitly = self-hosted), so an unset/misconfigured cloud env fails closed and applies the paywall. [`core.py:37` / `service.py:277`]
+- [x] [Review][Defer] `execute_generate_presentation` capability executor now catches `PlanLimitedError` and returns `status="plan_limited"` — direct invocations no longer crash. [`executor.py`]
+- [x] [Review][Defer] `usePresentationStudioEntitlement` now honors a `self_hosted` flag on the entitlement response — self-hosted workspaces are always PPTX-entitled regardless of stored tier. [`use-presentation-studio-entitlement.ts` / `subscriptions.py`]
+- [x] [Review][Defer] `marp` path now rejects clearly-invalid (non-null, <=0) workspace ids as `validation_failed` before downstream FK. A `None` workspace_id still follows the spec fail-closed rule (free → marp allowed). [`service.py:265`]
+- [x] [Review][Defer] `_PRESENTATION_STUDIO_SYSTEM_PROMPT` now instructs the agent that PPTX needs a paid plan, free→marp, and on `plan_limited` not to retry pptx but offer Marp. [`chat_modes.py:42`]
+- [x] [Review][Defer] Tool default `output_format="pptx"` kept — addressed via the new system-prompt guidance (agent told to use marp on free plans); changing the default remains a product call. [`generate_presentation.py`]
+- [x] [Review][Defer] URL `?format`/`?q` downgrade logic extracted into exported `computeStudioDowngrade` and unit-tested (format case-insensitive, prompt rewrite, paid/no-downgrade, non-studio no-op). [`use-presentation-studio-entitlement.ts` / test file]
+- [x] [Review][Defer] `rewritePresentationPromptToMarp` now rewrites sentence-final `pptx.` (lookahead changed to `(?![a-zA-Z0-9])`) while still preserving `file.pptx`. [`use-presentation-studio-entitlement.ts:38`]
+- [x] [Review][Defer] Workspace-switch race — confirmed safe: `useQuery` is keyed on `numericWorkspaceId`, so switching resets `isResolved`/`isResolvedFreeTier=false` until the new entitlement resolves; no stale-tier rewrite. [`use-presentation-studio-entitlement.ts`]
 
 **Rejected**
 - `workspace_id` missing on pptx → 403 instead of 400 — `false`: spec mandates "fail closed as free" (403) for missing/unknown workspace; `workspace_id` is a required Pydantic field anyway (422 before the gate).

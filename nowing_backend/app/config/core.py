@@ -31,6 +31,10 @@ if not is_ffmpeg_installed():
 # self-hosted: Full access to local file system connectors (Obsidian, etc.)
 # cloud: Only cloud-based connectors available
 DEPLOYMENT_MODE = os.getenv("NOWING_DEPLOYMENT_MODE", "self-hosted")
+# True only when the operator *explicitly* opted into self-hosted. Used by the
+# presentation entitlement gate so a cloud SaaS that forgets to set the env var
+# fails closed (applies the paywall) instead of silently bypassing it.
+SELF_HOSTED_EXPLICIT = os.getenv("NOWING_DEPLOYMENT_MODE", "").lower() == "self-hosted"
 ENABLE_DESKTOP_LOCAL_FILESYSTEM = (
     os.getenv("ENABLE_DESKTOP_LOCAL_FILESYSTEM", "FALSE").upper() == "TRUE"
 )
@@ -45,4 +49,4 @@ WORKSPACE_PLAN_LIMITS: dict[str, dict[str, Any]] | None = _env_json(
 
 
 
-__all__ = ["DEPLOYMENT_MODE", "ENABLE_DESKTOP_LOCAL_FILESYSTEM", "WORKSPACE_PLAN_LIMITS"]
+__all__ = ["DEPLOYMENT_MODE", "ENABLE_DESKTOP_LOCAL_FILESYSTEM", "SELF_HOSTED_EXPLICIT", "WORKSPACE_PLAN_LIMITS"]

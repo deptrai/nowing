@@ -252,6 +252,7 @@ export const workspaceSubscriptionResponse = z.object({
 export const workspaceEntitlementResponse = z.object({
 	plan_tier: z.string(),
 	can_use_pptx: z.boolean(),
+	self_hosted: z.boolean().optional().default(false),
 });
 
 export const createSubscriptionChangeRequest = z.object({
