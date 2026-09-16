@@ -3,7 +3,7 @@ title: '31-3 AST Static-Eval Policy for Dynamic JSX Expression Matching (Mark To
 type: 'feature'
 created: '2026-09-16'
 status: 'done'
-review_loop_iteration: 0
+review_loop_iteration: 1
 baseline_commit: '35a81b026'
 context: []
 ---
@@ -106,3 +106,23 @@ context: []
   [`test_mark_tool.py:356`](../../nowing_backend/tests/unit/services/web_builder/test_mark_tool.py#L356)
 - `TestStaticEvalEdgeCases` — coercion/falsy/escape/top-level-expr regressions.
   [`test_mark_tool.py`](../../nowing_backend/tests/unit/services/web_builder/test_mark_tool.py)
+
+### Review Findings
+
+- [x] [Review][Decision] None this iteration.
+- [x] [Review][Patch] `apply_patch` invokes `_find_matches` without a `try/except` boundary — unexpected exceptions during recursive AST evaluation (RecursionError on deep ASTs, unhandled surrogates) crash instead of returning a structured `MutationResult`. [`mark_tool.py:574`]
+- [x] [Review][Patch] `_parse_selector` never unescapes CSS-escaped selector chars and `re.split(r"(?=\.)")` splits on escaped dots — standard Tailwind selectors `.w-1\/2`, `.hover\:bg`, `.px-1\.5` can never match resolved class names. [`mark_tool.py:629`]
+- [x] [Review][Patch] `_parse_selector` captures the entire `#…` remainder into `elem_id` — compound selector `#id.class` produces `elem_id="id.class"` and drops the class filter, so a valid selector never matches. [`mark_tool.py:625`]
+- [x] [Review][Patch] `template_string` `escape_sequence` children are appended verbatim (raw backslash) instead of going through `_decode_js_escapes` — `` `hover\:bg` `` resolves with a literal `\` and fails `.hover:bg` matching. [`mark_tool.py:267`]
+- [x] [Review][Patch] `undefined` collapses to `None` → `_js_str` emits `"null"` not `"undefined"`, corrupting template interpolations (`` `x-${undefined}` `` → `"x-null"`). [`mark_tool.py:259`]
+- [x] [Review][Patch] `_object_key_to_str` returns `_UNKNOWN` for `number` AST nodes — numeric keys in clsx object mappings (`{100: true}`) are dropped. [`mark_tool.py:161`]
+- [x] [Review][Defer] Object literal used as a ternary/`&&` condition evaluates falsy (object→`" "` string path) instead of JS-truthy — deferred: edge case, objects-as-conditions are rare in clsx args. [`mark_tool.py:240`]
+- [x] [Review][Defer] Nested arrays returned from a ternary inside clsx args are only flattened one level — `clsx("a", ok ? ["b","c"] : "d")` drops `b`/`c`. Deferred: nested-array ternary is uncommon. [`mark_tool.py:477`]
+- [x] [Review][Defer] ES6 `\u{…}` variable-length escapes and backslash line-continuations decode incorrectly — deferred: rare in JSX class strings. [`mark_tool.py:90`]
+
+**Rejected**
+- `cn(cond)` → `""` false-positive — `false`: dropping dynamic args is correct clsx/cn semantics (`clsx(cond)` → `""`); the surrounding static prefix still resolves and only real tokens match.
+- Legacy octal `077` → `_UNKNOWN` — `false`-severity: TypeScript strict mode forbids legacy octal literals; not worth a special-case parser branch.
+- `_js_truthy(NaN)` returns `True` — `false`-severity: no division/NaN-producing operator is supported in the evaluator, so NaN cannot reach `_js_truthy` from a class expression.
+- Spread of a string `cn(...'ab')` splitting words not chars — `false`-severity: string-spread inside `cn(...)` is not valid JSX in practice (spread requires an iterable expression, and reviewers' own reproduction used array spread which works).
+- Bare `className={{ "a": true }}` object — `false`: double-brace is not valid JSX for `className`; out of scope.

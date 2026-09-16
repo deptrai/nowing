@@ -1064,7 +1064,9 @@
 		"playbook_run_smoke_test": "Smoke test (5 leads)",
 		"playbook_run_full": "Run full campaign",
 		"playbook_preset_jewelry": "Joalheria e Pedras Preciosas",
-		"playbook_preset_jewelry_desc": "Encontre joalherias, ourives, comerciantes de gemas e varejistas de luxo"
+		"playbook_preset_jewelry_desc": "Encontre joalherias, ourives, comerciantes de gemas e varejistas de luxo",
+		"presentation_plan_limited_title": "A exportação PPTX é um recurso pago",
+		"presentation_plan_limited_desc": "Este workspace está no plano gratuito — mude para Marp ou faça upgrade para exportar PPTX."
 	},
 	"leads": {
 		"matrix_title": "Lead Intelligence Matrix",

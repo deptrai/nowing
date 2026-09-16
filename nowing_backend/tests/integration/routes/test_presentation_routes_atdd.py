@@ -303,19 +303,25 @@ async def test_list_presentations_pagination_limit_and_offset(
 
 @pytest.mark.integration
 async def test_generate_pptx_free_tier_returns_403(
-    client_as_regular_user, db_workspace
+    client_as_regular_user, db_workspace, monkeypatch
 ):
     """Story 31.4: free-tier workspace cannot generate PPTX via the REST route.
 
     The gate lives in PresentationStudioService.generate, so the direct
     POST /presentations/generate route (which bypasses the capability
-    executor) is also covered. Self-hosted deployments skip the SaaS
-    paywall (unlimited licensing) — skip this assertion there.
+    executor) is also covered. Force cloud deployment mode so the SaaS
+    paywall is exercised even when the local test env defaults to
+    self-hosted (which would otherwise skip the gate).
     """
+    # is_self_hosted() is a classmethod reading the package-level
+    # DEPLOYMENT_MODE constant (bound at import via `from .core import *`),
+    # so patching the value won't reach it — patch the predicate instead.
     from app.config import config as app_config
 
-    if app_config.is_self_hosted():
-        pytest.skip("self-hosted deployments skip the PPTX plan-tier paywall")
+    # is_self_hosted() is a classmethod reading a package-level constant bound
+    # at import time, so the reliable seam is the predicate on the shared
+    # config instance (monkeypatch restores it after the test).
+    monkeypatch.setattr(app_config, "is_self_hosted", lambda: False)
     res = await client_as_regular_user.post(
         "/api/v1/presentations/generate",
         json={

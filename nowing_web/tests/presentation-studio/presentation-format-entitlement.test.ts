@@ -6,6 +6,7 @@
 
 import assert from "node:assert/strict";
 import {
+	deriveEntitlementState,
 	isPlanTierEntitledToPptx,
 	rewritePresentationPromptToMarp,
 } from "../../hooks/use-presentation-studio-entitlement";
@@ -58,20 +59,12 @@ function testPromptRewriter() {
 }
 
 function testResolutionLifecycleStates() {
-	// Simulate the resolution state transitions used in usePresentationStudioEntitlement
-	function deriveState(
+	// Exercise the REAL deriveEntitlementState exported from the hook — a
+	// local copy would let a regression in the hook slip through untested.
+	const deriveState = (
 		isLoading: boolean,
-		subscriptionData:
-			| { effective_limits?: { plan_tier?: string }; current_plan?: string }
-			| undefined
-	) {
-		const isResolved = !isLoading && subscriptionData !== undefined;
-		const planTier =
-			subscriptionData?.effective_limits?.plan_tier ?? subscriptionData?.current_plan ?? null;
-		const canUsePptx = isPlanTierEntitledToPptx(planTier);
-		const isResolvedFreeTier = isResolved && !canUsePptx;
-		return { isResolved, planTier, canUsePptx, isResolvedFreeTier };
-	}
+		entitlementData: { plan_tier: string; can_use_pptx: boolean } | undefined
+	) => deriveEntitlementState(isLoading, entitlementData);
 
 	// 1. Initial mount (loading, unresolved): MUST NOT trigger downgrade
 	const loadingState = deriveState(true, undefined);
@@ -79,19 +72,19 @@ function testResolutionLifecycleStates() {
 	assert.equal(loadingState.isResolvedFreeTier, false);
 
 	// 2. Resolved with paid tier: MUST NOT trigger downgrade
-	const paidState = deriveState(false, { current_plan: "team" });
+	const paidState = deriveState(false, { plan_tier: "team", can_use_pptx: true });
 	assert.equal(paidState.isResolved, true);
 	assert.equal(paidState.canUsePptx, true);
 	assert.equal(paidState.isResolvedFreeTier, false);
 
 	// 3. Resolved with free tier: MUST trigger downgrade
-	const freeState = deriveState(false, { current_plan: "free" });
+	const freeState = deriveState(false, { plan_tier: "free", can_use_pptx: false });
 	assert.equal(freeState.isResolved, true);
 	assert.equal(freeState.canUsePptx, false);
 	assert.equal(freeState.isResolvedFreeTier, true);
 
 	// 4. Resolved with null/missing tier: fail closed to free tier
-	const missingTierState = deriveState(false, {});
+	const missingTierState = deriveState(false, { plan_tier: "free", can_use_pptx: false });
 	assert.equal(missingTierState.isResolved, true);
 	assert.equal(missingTierState.canUsePptx, false);
 	assert.equal(missingTierState.isResolvedFreeTier, true);

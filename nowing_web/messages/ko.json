@@ -1064,7 +1064,9 @@
 		"modal_setup_outreach": "Open Outreach Agent Setup",
 		"set_it_up": "Set it up",
 		"playbook_preset_jewelry": "보석 및 금은방",
-		"playbook_preset_jewelry_desc": "귀금속 매장, 금세공인, 보석상 및 고급 소매업체 찾기"
+		"playbook_preset_jewelry_desc": "귀금속 매장, 금세공인, 보석상 및 고급 소매업체 찾기",
+		"presentation_plan_limited_title": "PPTX보내기는 유료 기능입니다",
+		"presentation_plan_limited_desc": "이 워크스페이스는 무료 플랜입니다 — Marp로 전환하거나 업그레이드하여 PPTX를보내세요."
 	},
 	"leads": {
 		"matrix_title": "Lead Intelligence Matrix",

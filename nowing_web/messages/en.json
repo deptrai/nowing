@@ -1340,7 +1340,9 @@
     "modal_setup_outreach": "Open Outreach Agent Setup",
     "set_it_up": "Set it up",
     "playbook_preset_jewelry": "Jewelry & Gemstones",
-    "playbook_preset_jewelry_desc": "Find jewelry stores, goldsmiths, gemstone traders & luxury retailers"
+    "playbook_preset_jewelry_desc": "Find jewelry stores, goldsmiths, gemstone traders & luxury retailers",
+    "presentation_plan_limited_title": "PPTX export is a paid feature",
+    "presentation_plan_limited_desc": "This workspace is on the free plan — switch to Marp or upgrade to export PPTX."
   },
   "leads": {
     "matrix_title": "Lead Intelligence Matrix",

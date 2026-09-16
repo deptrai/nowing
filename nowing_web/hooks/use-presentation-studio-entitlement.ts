@@ -35,6 +35,29 @@ export function rewritePresentationPromptToMarp(prompt: string): string {
 		.replace(/(?<!\.)\bpptx\b(?!\.)/gi, "marp");
 }
 
+/** Entitlement payload shape returned by the member-readable endpoint. */
+export interface WorkspaceEntitlementLike {
+	plan_tier: string;
+	can_use_pptx: boolean;
+}
+
+/**
+ * Pure derivation of the resolution lifecycle from a subscription query.
+ * Exported (and unit-tested) so a regression in `isResolvedFreeTier` /
+ * `canUsePptx` is caught by tests rather than only surfacing in the UI.
+ */
+export function deriveEntitlementState(
+	isLoading: boolean,
+	entitlementData: WorkspaceEntitlementLike | undefined
+) {
+	// Per spec: subscription RESOLVED means data !== undefined and not loading.
+	const isResolved = !isLoading && entitlementData !== undefined;
+	const planTier = entitlementData?.plan_tier ?? null;
+	const canUsePptx = entitlementData?.can_use_pptx ?? isPlanTierEntitledToPptx(planTier);
+	const isResolvedFreeTier = isResolved && !canUsePptx;
+	return { isResolved, planTier, canUsePptx, isResolvedFreeTier };
+}
+
 export function usePresentationStudioEntitlement(explicitWorkspaceId?: number | null) {
 	const params = useParams();
 	const numericWorkspaceId =
@@ -43,26 +66,25 @@ export function usePresentationStudioEntitlement(explicitWorkspaceId?: number | 
 			: getWorkspaceIdNumber(params);
 
 	const {
-		data: subscriptionData,
+		data: entitlementData,
 		isLoading,
 		isError,
 	} = useQuery({
-		queryKey: cacheKeys.workspaces.subscription(numericWorkspaceId ?? 0),
-		queryFn: () => workspacesApiService.getWorkspaceSubscription(numericWorkspaceId ?? 0),
+		queryKey: cacheKeys.workspaces.entitlement(numericWorkspaceId ?? 0),
+		// Member-readable endpoint (no SETTINGS_VIEW) so non-admin members on a
+		// paid workspace still resolve their PPTX entitlement correctly.
+		queryFn: () => workspacesApiService.getWorkspaceEntitlement(numericWorkspaceId ?? 0),
 		enabled: typeof numericWorkspaceId === "number" && numericWorkspaceId > 0,
 	});
 
-	// Per spec: subscription RESOLVED means subscriptionData !== undefined and not loading
-	const isResolved = !isLoading && subscriptionData !== undefined;
-	const planTier =
-		subscriptionData?.effective_limits?.plan_tier ?? subscriptionData?.current_plan ?? null;
-
-	const canUsePptx = isPlanTierEntitledToPptx(planTier);
-	const isResolvedFreeTier = isResolved && !canUsePptx;
+	const { isResolved, planTier, canUsePptx, isResolvedFreeTier } = deriveEntitlementState(
+		isLoading,
+		entitlementData
+	);
 
 	return {
 		workspaceId: numericWorkspaceId,
-		subscriptionData,
+		subscriptionData: entitlementData,
 		planTier,
 		isLoading,
 		isError,

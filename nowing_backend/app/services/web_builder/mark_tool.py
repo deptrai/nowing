@@ -40,6 +40,8 @@ def _js_str(val: Any) -> str:
         return "true"
     if val is False:
         return "false"
+    if val is _UNDEFINED:
+        return "undefined"
     if val is None:
         return "null"
     return str(val)
@@ -55,10 +57,25 @@ class _Sentinel:
 _UNKNOWN = _Sentinel()
 
 
+class _UndefinedSentinel:
+    """Sentinel for JS ``undefined`` — distinct from ``null`` for coercion."""
+
+    def __repr__(self) -> str:
+        return "<UNDEFINED>"
+
+
+_UNDEFINED = _UndefinedSentinel()
+
+
 def _js_truthy(val: Any) -> bool:
     """Evaluate JavaScript truthiness of a statically resolved value."""
     return not (
-        val is _UNKNOWN or val is None or val is False or val == 0 or val == ""
+        val is _UNKNOWN
+        or val is _UNDEFINED
+        or val is None
+        or val is False
+        or val == 0
+        or val == ""
     )
 
 
@@ -158,6 +175,10 @@ def _object_key_to_str(key_node: Node, source_bytes: bytes) -> Any:
         if val is _UNKNOWN or val is None:
             return _UNKNOWN
         return _js_str(val)
+    if key_node.type == "number":
+        # clsx object keys may be bare numeric literals: {100: true}.
+        raw = _node_text(key_node, source_bytes).decode("utf-8", errors="replace")
+        return raw.strip() or _UNKNOWN
     return _UNKNOWN
 
 
@@ -256,7 +277,9 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
         return True
     if node.type == "false":
         return False
-    if node.type in ("null", "undefined"):
+    if node.type == "undefined":
+        return _UNDEFINED
+    if node.type == "null":
         return None
 
     if node.type == "template_string":
@@ -264,7 +287,15 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
         for child in node.children:
             if child.type == "`":
                 continue
-            if child.type in ("string_fragment", "escape_sequence"):
+            if child.type == "escape_sequence":
+                parts.append(
+                    _decode_js_escapes(
+                        _node_text(child, source_bytes).decode(
+                            "utf-8", errors="replace"
+                        )
+                    )
+                )
+            elif child.type == "string_fragment":
                 parts.append(
                     _node_text(child, source_bytes).decode("utf-8", errors="replace")
                 )
@@ -336,7 +367,8 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
             left_val = _eval_node(left_node, source_bytes)
             if left_val is _UNKNOWN:
                 return _UNKNOWN
-            if left_val is None:
+            # JS nullish-coalescing covers both null and undefined.
+            if left_val is None or left_val is _UNDEFINED:
                 return _eval_node(right_node, source_bytes)
             return left_val
 
@@ -503,6 +535,16 @@ def _eval_node(node: Node, source_bytes: bytes) -> Any:
     return _UNKNOWN
 
 
+def _unescape_selector_ident(ident: str) -> str:
+    """Decode CSS escape sequences inside a selector identifier.
+
+    Turns ``\\:`` ``\\.`` ``\\/`` ``\\#`` etc. back into their literal
+    characters so a resolved class token like ``hover:bg`` matches the
+    selector ``.hover\\:bg``.
+    """
+    return re.sub(r"\\(.)", r"\1", ident)
+
+
 @dataclass(frozen=True)
 class _ParsedSelector:
     """Simple decomposed CSS-ish selector from the preview iframe."""
@@ -571,7 +613,22 @@ class MarkToolASTMutator:
                 message="Parse error: invalid TSX",
             )
 
-        matches = list(self._find_matches(tree.root_node, source_bytes, parsed))
+        try:
+            matches = list(self._find_matches(tree.root_node, source_bytes, parsed))
+        except RecursionError:
+            # Pathologically deep JSX nests can exhaust the Python stack during
+            # static eval; surface a structured error rather than crashing.
+            return MutationResult(
+                status="error",
+                patched_code=jsx_code,
+                message="Match error: JSX too deeply nested",
+            )
+        except Exception as exc:  # static-eval must never crash the caller
+            return MutationResult(
+                status="error",
+                patched_code=jsx_code,
+                message=f"Match error: {exc}",
+            )
         if not matches:
             return MutationResult(
                 status="mark_unresolvable",
@@ -621,25 +678,22 @@ class MarkToolASTMutator:
             tag#id
             tag#id.class
         """
-        class_names: list[str] = []
-        if selector.startswith("#"):
-            elem_id = selector[1:]
-            return _ParsedSelector(elem_id=elem_id or None)
-        if selector.startswith("."):
-            parts = re.split(r"(?=\.)", selector)
-            class_names = [
-                part[1:] for part in parts if part.startswith(".") and part[1:]
-            ]
-            return _ParsedSelector(class_names=tuple(class_names))
-
-        parts = re.split(r"(?=[.#])", selector)
-        tag = parts[0] or None
+        # Split on unescaped `.` and `#` boundaries only, then unescape each
+        # token — CSS escapes (`\.`, `\/`, `\:`) are how Tailwind fractional /
+        # variant selectors reach us from the preview iframe.
+        parts = re.split(r"(?<!\\)(?=[.#])", selector)
+        tag: str | None = None
         elem_id: str | None = None
-        for part in parts[1:]:
+        class_names: list[str] = []
+        for part in parts:
             if part.startswith("#"):
-                elem_id = part[1:] or None
-            elif part.startswith(".") and part[1:]:
-                class_names.append(part[1:])
+                elem_id = _unescape_selector_ident(part[1:]) or None
+            elif part.startswith("."):
+                name = _unescape_selector_ident(part[1:])
+                if name:
+                    class_names.append(name)
+            elif part and tag is None:
+                tag = part
         return _ParsedSelector(tag=tag, elem_id=elem_id, class_names=tuple(class_names))
 
     def _find_matches(
@@ -738,7 +792,12 @@ class MarkToolASTMutator:
         if inner is None:
             return None
         val = _eval_node(inner, source_bytes)
-        if val is _UNKNOWN or val is None or isinstance(val, bool):
+        if (
+            val is _UNKNOWN
+            or val is _UNDEFINED
+            or val is None
+            or isinstance(val, bool)
+        ):
             return None
         if isinstance(val, str):
             return val

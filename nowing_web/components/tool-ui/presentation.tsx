@@ -7,6 +7,7 @@ import {
 	ExternalLinkIcon,
 	Loader2Icon,
 	PresentationIcon,
+	SparklesIcon,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -90,6 +91,7 @@ export function GeneratePresentationToolUI({
 	const result = useMemo(() => parseToolResult(rawResult), [rawResult]);
 
 	const isRunning = status.type === "running" || status.type === "requires-action";
+	const isPlanLimited = result.status === "plan_limited";
 	const isFailed =
 		result.status === "validation_failed" ||
 		result.status === "error" ||
@@ -130,6 +132,32 @@ export function GeneratePresentationToolUI({
 						Prompt: &ldquo;{prompt}&rdquo;
 					</p>
 				)}
+			</div>
+		);
+	}
+
+	if (isPlanLimited) {
+		return (
+			<div className="my-4 max-w-xl overflow-hidden rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5 shadow-sm">
+				<div className="flex items-center gap-3">
+					<div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+						<SparklesIcon className="size-5" aria-hidden="true" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<h4 className="truncate text-sm font-semibold text-foreground">
+							{tChat("presentation_plan_limited_title")}
+						</h4>
+						<p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+							{result.error || tChat("presentation_plan_limited_desc")}
+						</p>
+					</div>
+					<Badge
+						variant="outline"
+						className="shrink-0 font-medium text-xs border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+					>
+						{tChat("limits_upgrade_cta")}
+					</Badge>
+				</div>
 			</div>
 		);
 	}
