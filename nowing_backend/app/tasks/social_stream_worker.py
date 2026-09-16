@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 CONSUMER_GROUP_NAME = "social_processors"
 MAX_MESSAGES_PER_BATCH = 100
+AUTOCLAIM_MIN_IDLE_TIME_MS = 60_000  # Reclaim messages stuck in PEL > 60s (Story 35.1)
 BATCH_SLEEP_SECONDS = 0.01
 
 SUPPORTED_SCHEMA_VERSION_MAX = 1
@@ -963,17 +964,39 @@ async def run_social_stream_consumer(
         total_processed = 0
 
         for _ in range(max(1, max_loops)):
+            entries = None
+            # Story 35.1: Reclaim pending messages stuck in PEL from dead workers
             try:
-                entries = await redis_client.xreadgroup(
+                claim_res = await redis_client.xautoclaim(
+                    name=STREAM_SOCIAL_RAW_POSTS,
                     groupname=CONSUMER_GROUP_NAME,
                     consumername=consumer_name,
-                    streams={STREAM_SOCIAL_RAW_POSTS: ">"},
+                    min_idle_time=AUTOCLAIM_MIN_IDLE_TIME_MS,
+                    start_id="0-0",
                     count=count,
-                    block=block_ms,
                 )
-            except Exception as exc:  # stream read failure; log error and break consumer loop
-                logger.error("Error reading from social stream: %s", exc)
-                break
+                if claim_res and len(claim_res) >= 2 and claim_res[1]:
+                    logger.info(
+                        "XAUTOCLAIM reclaimed %d pending messages from dead workers",
+                        len(claim_res[1]),
+                    )
+                    entries = [(STREAM_SOCIAL_RAW_POSTS, claim_res[1])]
+            except Exception as claim_exc:
+                logger.debug("XAUTOCLAIM check skipped or failed: %s", claim_exc)
+
+            # Fall back to reading new messages if no pending messages were claimed
+            if not entries:
+                try:
+                    entries = await redis_client.xreadgroup(
+                        groupname=CONSUMER_GROUP_NAME,
+                        consumername=consumer_name,
+                        streams={STREAM_SOCIAL_RAW_POSTS: ">"},
+                        count=count,
+                        block=block_ms,
+                    )
+                except Exception as exc:  # stream read failure; log error and break consumer loop
+                    logger.error("Error reading from social stream: %s", exc)
+                    break
 
             now = time.monotonic()
             if now - _LAG_STATE["last_check"] >= LAG_CHECK_INTERVAL_SECONDS:
