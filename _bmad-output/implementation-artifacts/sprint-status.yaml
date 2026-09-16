@@ -370,7 +370,7 @@ development_status:
 
   epic-34: in-progress
   34-1-bi-directional-deal-stage-activity-synchronization-for-hubsp: done
-  34-2-web-admin-management-endpoints-for-telegram-userbots-monitor: backlog
+  34-2-web-admin-management-endpoints-for-telegram-userbots-monitor: done
   34-3-dedicated-crm-deal-pipeline-customer-activity-timeline-ui-ta: backlog
   epic-34-retrospective: optional
 

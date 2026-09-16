@@ -61,6 +61,7 @@ from app.routes.hybrid_llm_routes import (
     hybrid_public_router,
 )
 from app.routes.lead_batch_routes import router as lead_batch_router
+from app.routes.telegram_channel_routes import router as telegram_channel_router
 from app.routes.narrative_reports_routes import router as narrative_reports_router
 from app.routes.self_host_research import router as self_host_research_router
 from app.routes.users_routes import router as users_router
@@ -512,6 +513,7 @@ app.include_router(chainlens_internal_router, prefix="/v1")
 app.include_router(self_host_research_router, prefix="/v1")
 
 app.include_router(lead_batch_router, prefix="/api/v1", tags=["lead-batch"])
+app.include_router(telegram_channel_router, prefix="/api/v1", tags=["telegram-channels"])
 app.include_router(dsh_public_router, prefix="/api/v1", tags=["dsh"])
 
 # Internal DSH worker checkpoint callback is mounted at /v1.
