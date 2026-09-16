@@ -131,8 +131,8 @@ class TestDerivePlatformAction:
         [
             ("facebook_group", "facebook", "group_posts"),
             ("facebook_page", "facebook", "page_posts"),
-            ("twitter_keyword", "twitter", "search_tweets"),
-            ("twitter_user", "twitter", "user_tweets"),
+            ("twitter_keyword", "twitter", "search"),
+            ("twitter_user", "twitter", "user_timeline"),
         ],
     )
     def test_legacy_platform_kinds_derive_against_static_fallback(
@@ -142,25 +142,31 @@ class TestDerivePlatformAction:
         assert (platform, action) == (expected_platform, expected_action)
 
     def test_static_fallback_matrix_legacy_descriptors(self):
+        # requiredArgs use the live-catalog arg names (groupId/pageId/query),
+        # not the legacy url/username spellings — see adapter_v2 arg binding.
         fb_group = STATIC_FALLBACK_MATRIX["facebook"]["group_posts"]
-        assert fb_group["requiredArgs"] == ["url"]
+        assert fb_group["requiredArgs"] == ["groupId"]
         assert fb_group["optionalArgs"] == ["limit"]
         assert fb_group["match"]["target_kind"] == "group"
 
         fb_page = STATIC_FALLBACK_MATRIX["facebook"]["page_posts"]
-        assert fb_page["requiredArgs"] == ["url"]
+        assert fb_page["requiredArgs"] == ["pageId"]
         assert fb_page["optionalArgs"] == ["limit"]
         assert fb_page["match"]["target_kind"] == "page"
 
-        tw_keyword = STATIC_FALLBACK_MATRIX["twitter"]["search_tweets"]
+        tw_keyword = STATIC_FALLBACK_MATRIX["twitter"]["search"]
         assert tw_keyword["requiredArgs"] == ["query"]
-        assert tw_keyword["optionalArgs"] == ["limit"]
+        assert "limit" in tw_keyword["optionalArgs"]
         assert tw_keyword["match"]["target_kind"] == "keyword"
 
-        tw_user = STATIC_FALLBACK_MATRIX["twitter"]["user_tweets"]
-        assert tw_user["requiredArgs"] == ["username"]
+        # ``twitter_user`` binds a virtual ``user_timeline`` descriptor that
+        # dispatches the real ``search`` action with a ``from`` arg override.
+        tw_user = STATIC_FALLBACK_MATRIX["twitter"]["user_timeline"]
+        assert tw_user["requiredArgs"] == ["query"]
         assert tw_user["optionalArgs"] == ["limit"]
         assert tw_user["match"]["target_kind"] == "user"
+        assert tw_user["xactions_action"] == "search"
+        assert tw_user["arg_override"] == "from"
 
 
 class TestCanonicalActionMatrixCache:
@@ -209,7 +215,7 @@ class TestCanonicalActionMatrixCache:
         # Static-only platforms still available via merge
         assert "shopee" in matrix
         assert "masothue" in matrix
-        assert "b2b_registry" in matrix
+        assert "b2b_registry_extended" in matrix
 
     async def test_get_client_none_returns_fallback(self):
         matrix = await CanonicalActionMatrix.get(None)
@@ -221,14 +227,14 @@ class TestCanonicalActionMatrixCache:
             [
                 {
                     "platform": "tiktok",
-                    "action": "posts_by_hashtag",
-                    "requiredArgs": ["hashtag"],
+                    "action": "hashtag_feed",
+                    "requiredArgs": ["tag"],
                     # no match hint
                 }
             ]
         )
         matrix = await CanonicalActionMatrix.get(client)
-        assert matrix["tiktok"]["posts_by_hashtag"]["match"]["target_kind"] == "hashtag"
+        assert matrix["tiktok"]["hashtag_feed"]["match"]["target_kind"] == "hashtag"
 
 
 class TestGetSync:

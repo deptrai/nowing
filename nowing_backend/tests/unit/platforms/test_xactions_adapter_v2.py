@@ -424,7 +424,7 @@ class TestXActionsSocialAdapterV2:
             assert arguments["platform"] == "facebook"
             assert arguments["action"] == "group_posts"
             assert arguments["args"] == {
-                "url": "https://www.facebook.com/groups/group123",
+                "groupId": "group123",
                 "limit": 20,
             }
             assert arguments["context"] == {"targetId": 10, "workspaceId": 20}

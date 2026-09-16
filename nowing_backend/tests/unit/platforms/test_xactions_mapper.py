@@ -80,12 +80,16 @@ class TestUniversalScrapeTargetMapper:
     def test_tiktok_hashtag_args(self):
         target = _make_target("tiktok_hashtag", "realestate")
         _, args = UniversalScrapeTargetMapper.map(target)
-        assert args == {"platform": "tiktok", "action": "posts", "hashtag": "realestate"}
+        assert args["platform"] == "tiktok"
+        assert args["action"] == "hashtag_feed"
+        assert args["args"] == {"tag": "realestate"}
 
     def test_masothue_lookup_args(self):
         target = _make_target("masothue_lookup", "0123456789")
         _, args = UniversalScrapeTargetMapper.map(target)
-        assert args == {"platform": "masothue", "action": "lookup", "taxCode": "0123456789"}
+        assert args["platform"] == "masothue"
+        assert args["action"] == "detail"
+        assert args["args"] == {"taxCode": "0123456789"}
 
     def test_unsupported_platform_raises(self):
         target = _make_target("invalid_platform", "x")
@@ -113,8 +117,8 @@ class TestUnifiedDispatchFlagOn:
         tool, args = UniversalScrapeTargetMapper.map(target)
         assert tool == "x_scrape"
         assert args["platform"] == "tiktok"
-        assert args["action"] == "posts_by_hashtag"
-        assert args["args"] == {"hashtag": "realestate"}
+        assert args["action"] == "hashtag_feed"
+        assert args["args"] == {"tag": "realestate"}
         assert args["context"] == {"targetId": 42, "workspaceId": 7}
         # No flat top-level fields
         assert "hashtag" not in args
@@ -131,7 +135,7 @@ class TestUnifiedDispatchFlagOn:
         tool, args = UniversalScrapeTargetMapper.map(target)
         assert tool == "x_scrape"
         assert args["platform"] == "masothue"
-        assert args["action"] == "company_by_taxcode"
+        assert args["action"] == "detail"
         assert args["args"] == {"taxCode": "0123456789"}
 
     def test_map_linkedin_company(self):
@@ -139,7 +143,7 @@ class TestUnifiedDispatchFlagOn:
         tool, args = UniversalScrapeTargetMapper.map(target)
         assert args["platform"] == "linkedin"
         assert args["action"] == "company_profile"
-        assert args["args"] == {"company": "acme-corp"}
+        assert args["args"] == {"companySlug": "acme-corp"}
 
     def test_map_legacy_facebook_stays_dedicated(self):
         target = _make_target("facebook_group", "grp123", id=1, workspace_id=2)
@@ -168,8 +172,8 @@ class TestUnifiedDispatchFlagOn:
                 "actions": [
                     {
                         "platform": "tiktok",
-                        "action": "posts_by_hashtag",
-                        "requiredArgs": ["hashtag"],
+                        "action": "hashtag_feed",
+                        "requiredArgs": ["tag"],
                         "match": {"target_kind": "hashtag"},
                     }
                 ]
@@ -178,8 +182,8 @@ class TestUnifiedDispatchFlagOn:
         target = _make_target("tiktok_hashtag", "trending", id=9, workspace_id=3)
         tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
         assert tool == "x_scrape"
-        assert args["action"] == "posts_by_hashtag"
-        assert args["args"] == {"hashtag": "trending"}
+        assert args["action"] == "hashtag_feed"
+        assert args["args"] == {"tag": "trending"}
         client.call_tool.assert_awaited_once_with("x_actions_list", {})
 
     async def test_map_async_flag_on_falls_back_when_fetch_fails(self):
@@ -215,19 +219,17 @@ class TestUnifiedDispatchFlagOff:
         target = _make_target("tiktok_hashtag", "realestate")
         tool, args = UniversalScrapeTargetMapper.map(target)
         assert tool == "x_scrape"
-        # Flag OFF → flat shape (legacy)
-        assert args == {
-            "platform": "tiktok",
-            "action": "posts",
-            "hashtag": "realestate",
-        }
+        # Flag OFF → nested x_scrape envelope w/ canonical action
+        assert args["platform"] == "tiktok"
+        assert args["action"] == "hashtag_feed"
+        assert args["args"] == {"tag": "realestate"}
 
     async def test_map_async_delegates_to_sync(self):
         target = _make_target("tiktok_hashtag", "realestate")
         tool, args = await UniversalScrapeTargetMapper.map_async(target)
         assert tool == "x_scrape"
-        assert args["hashtag"] == "realestate"
-        assert "args" not in args  # flat, not nested
+        assert args["args"]["tag"] == "realestate"
+        assert args["platform"] == "tiktok"  # nested x_scrape envelope
 
 
 class TestLegacyToolDeprecation:
@@ -363,7 +365,7 @@ class TestLegacyToolDeprecation:
             assert tool == "x_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
-            assert args["args"] == {"url": "https://www.facebook.com/groups/group123", "limit": 20}
+            assert args["args"] == {"groupId": "group123", "limit": 20}
             assert args["context"] == {"targetId": 10, "workspaceId": 20}
 
         def test_facebook_group_full_url_passthrough(self):
@@ -373,7 +375,7 @@ class TestLegacyToolDeprecation:
             assert tool == "x_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
-            assert args["args"] == {"url": url, "limit": 20}
+            assert args["args"] == {"groupId": "abc", "limit": 20}
 
         def test_facebook_page_urlified(self):
             target = _make_target("facebook_page", "page456", id=11, workspace_id=21)
@@ -381,7 +383,7 @@ class TestLegacyToolDeprecation:
             assert tool == "x_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "page_posts"
-            assert args["args"] == {"url": "https://www.facebook.com/page456", "limit": 20}
+            assert args["args"] == {"pageId": "page456", "limit": 20}
             assert args["context"] == {"targetId": 11, "workspaceId": 21}
 
         def test_facebook_page_full_url_passthrough(self):
@@ -391,14 +393,14 @@ class TestLegacyToolDeprecation:
             assert tool == "x_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "page_posts"
-            assert args["args"] == {"url": url, "limit": 20}
+            assert args["args"] == {"pageId": "page456", "limit": 20}
 
         def test_twitter_keyword(self):
             target = _make_target("twitter_keyword", "AI agents", id=12, workspace_id=22)
             tool, args = UniversalScrapeTargetMapper.map(target)
             assert tool == "x_scrape"
             assert args["platform"] == "twitter"
-            assert args["action"] == "search_tweets"
+            assert args["action"] == "search"
             assert args["args"] == {"query": "AI agents", "limit": 20}
             assert args["context"] == {"targetId": 12, "workspaceId": 22}
 
@@ -407,15 +409,15 @@ class TestLegacyToolDeprecation:
             tool, args = UniversalScrapeTargetMapper.map(target)
             assert tool == "x_scrape"
             assert args["platform"] == "twitter"
-            assert args["action"] == "user_tweets"
-            assert args["args"] == {"username": "elon", "limit": 20}
+            assert args["action"] == "search"
+            assert args["args"] == {"from": "elon", "limit": 20}
             assert args["context"] == {"targetId": 13, "workspaceId": 23}
 
         def test_twitter_user_without_at_symbol(self):
             target = _make_target("twitter_user", "elon", id=13, workspace_id=23)
             tool, args = UniversalScrapeTargetMapper.map(target)
             assert tool == "x_scrape"
-            assert args["args"] == {"username": "elon", "limit": 20}
+            assert args["args"] == {"from": "elon", "limit": 20}
 
         def test_empty_target_id_raises_value_error(self):
             target = _make_target("facebook_group", "")
@@ -434,7 +436,7 @@ class TestLegacyToolDeprecation:
                         {
                             "platform": "facebook",
                             "action": "group_posts",
-                            "requiredArgs": ["url"],
+                            "requiredArgs": ["groupId"],
                             "optionalArgs": ["limit"],
                             "match": {"target_kind": "group"},
                         }
@@ -446,7 +448,7 @@ class TestLegacyToolDeprecation:
             assert tool == "x_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
-            assert args["args"] == {"url": "https://www.facebook.com/groups/group99", "limit": 20}
+            assert args["args"] == {"groupId": "group99", "limit": 20}
             client.call_tool.assert_awaited_once_with("x_actions_list", {})
 
         async def test_map_async_partial_catalog_merges_static_fallback(self):
@@ -457,8 +459,8 @@ class TestLegacyToolDeprecation:
                     "actions": [
                         {
                             "platform": "tiktok",
-                            "action": "posts_by_hashtag",
-                            "requiredArgs": ["hashtag"],
+                            "action": "hashtag_feed",
+                            "requiredArgs": ["tag"],
                             "match": {"target_kind": "hashtag"},
                         }
                     ]
@@ -468,8 +470,8 @@ class TestLegacyToolDeprecation:
             tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
             assert tool == "x_scrape"
             assert args["platform"] == "twitter"
-            assert args["action"] == "user_tweets"
-            assert args["args"] == {"username": "jack", "limit": 20}
+            assert args["action"] == "search"
+            assert args["args"] == {"from": "jack", "limit": 20}
 
         async def test_map_async_default_client_none_uses_static_fallback(self):
             """map_async(target) without explicit client → STATIC_FALLBACK_MATRIX path."""
@@ -479,7 +481,7 @@ class TestLegacyToolDeprecation:
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
             assert args["args"] == {
-                "url": "https://www.facebook.com/groups/grp_none",
+                "groupId": "grp_none",
                 "limit": 20,
             }
             assert args["context"] == {"targetId": 9, "workspaceId": 11}
@@ -498,7 +500,7 @@ class TestLegacyToolDeprecation:
             target = _make_target("twitter_user", 12345, id=1, workspace_id=2)  # type: ignore[arg-type]
             tool, args = UniversalScrapeTargetMapper.map(target)
             assert tool == "x_scrape"
-            assert args["args"]["username"] == "12345"
+            assert args["args"]["from"] == "12345"
 
         def test_multi_required_args_descriptor_raises(self):
             """Descriptor with 2+ requiredArgs must fail loudly, not guess binding."""
@@ -510,9 +512,9 @@ class TestLegacyToolDeprecation:
         @pytest.mark.parametrize(
             "platform_kind,target_id,expected_action,arg_name,arg_value",
             [
-                ("facebook_page", "page99", "page_posts", "url", "https://www.facebook.com/page99"),
-                ("twitter_keyword", "ai agents", "search_tweets", "query", "ai agents"),
-                ("twitter_user", "@jack", "user_tweets", "username", "jack"),
+                ("facebook_page", "page99", "page_posts", "pageId", "page99"),
+                ("twitter_keyword", "ai agents", "search", "query", "ai agents"),
+                ("twitter_user", "@jack", "search", "from", "jack"),
             ],
         )
         async def test_map_async_other_legacy_kinds(
@@ -525,9 +527,10 @@ class TestLegacyToolDeprecation:
                         {
                             "platform": platform_kind.split("_")[0],
                             "action": expected_action,
-                            "requiredArgs": [arg_name],
+                            "requiredArgs": ["query" if arg_name == "from" else arg_name],
                             "optionalArgs": ["limit"],
                             "match": {"target_kind": platform_kind.split("_", 1)[1]},
+                            **({"xactions_action": "search", "arg_override": "from"} if arg_name == "from" else {}),
                         }
                     ]
                 }

@@ -42,16 +42,26 @@ class ActionDescriptor(BaseModel):
     outputType: str = ""
     requiresAuth: bool = False
     match: dict[str, Any] = Field(default_factory=dict)
+    # Nowing-side binding hints (not part of the XActions descriptor schema):
+    # ``xactions_action`` = the canonical verb actually dispatched on the wire
+    # when this descriptor is only a virtual binding; ``arg_override`` = the
+    # wire arg name ``target_id`` binds to instead of ``requiredArgs[0]``.
+    xactions_action: str = ""
+    arg_override: str = ""
 
 
 # Static fallback matrix — conservative; only platforms that are known to work
 # via `x_scrape` (or legacy tools) today. Action names here use the *canonical*
 # XActions spelling (per REQ-X4) rather than the legacy mistakes still sitting
 # in ``PLATFORM_TOOL_MAP``.
+# Static fallback matrix — mirrors the live ``x_actions_list`` catalog
+# (Epic 20 / REQ-X4 canonical names). ``requiredArgs[0]`` is the arg name the
+# dispatcher binds ``target_id`` to; ``match.target_kind`` binds a Nowing
+# ``{platform}_{kind}`` platform_kind suffix to the right action.
 STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
     "tiktok": {
-        "posts_by_hashtag": {
-            "requiredArgs": ["hashtag"],
+        "hashtag_feed": {
+            "requiredArgs": ["tag"],
             "optionalArgs": ["limit"],
             "match": {"target_kind": "hashtag"},
         }
@@ -72,21 +82,21 @@ STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
     },
     "topcv": {
         "search_jobs": {
-            "requiredArgs": ["query"],
+            "requiredArgs": ["keyword"],
             "optionalArgs": ["limit"],
             "match": {"target_kind": "search"},
         }
     },
     "vietnamworks": {
         "search_jobs": {
-            "requiredArgs": ["query"],
+            "requiredArgs": ["keyword"],
             "optionalArgs": ["limit"],
             "match": {"target_kind": "search"},
         }
     },
     "linkedin": {
         "company_profile": {
-            "requiredArgs": ["company"],
+            "requiredArgs": ["companySlug"],
             "optionalArgs": [],
             "match": {"target_kind": "company"},
         }
@@ -99,15 +109,19 @@ STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
         }
     },
     "masothue": {
-        "company_by_taxcode": {
+        "detail": {
             "requiredArgs": ["taxCode"],
             "optionalArgs": [],
             "match": {"target_kind": "lookup"},
         }
     },
-    "b2b_registry": {
+    # Canonical platform key is ``b2b_registry_extended`` (alias:
+    # hosocongty/muasamcong). Nowing's ``b2b_registry_search`` platform_kind
+    # resolves here via the explicit platform-key normalisation in
+    # ``adapter_v2._unified_envelope``.
+    "b2b_registry_extended": {
         "search": {
-            "requiredArgs": ["query"],
+            "requiredArgs": ["q"],
             "optionalArgs": ["limit"],
             "match": {"target_kind": "search"},
         }
@@ -115,28 +129,41 @@ STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
     # facebook/twitter descriptors — routed through x_scrape when both
     # XACTIONS_USE_UNIFIED_DISPATCH and XACTIONS_LEGACY_TOOL_DEPRECATION are ON
     # (Story 36.6b), and for platform validation when unified dispatch is ON.
+    # requiredArgs use the live catalog names (groupId/pageId/query) rather
+    # than the legacy url/username spellings — ``_build_unified_args`` maps
+    # ``target_id`` onto them.
     "facebook": {
         "group_posts": {
-            "requiredArgs": ["url"],
+            "requiredArgs": ["groupId"],
             "optionalArgs": ["limit"],
             "match": {"target_kind": "group"},
         },
         "page_posts": {
-            "requiredArgs": ["url"],
+            "requiredArgs": ["pageId"],
             "optionalArgs": ["limit"],
             "match": {"target_kind": "page"},
         },
     },
     "twitter": {
-        "search_tweets": {
+        # ``twitter_keyword`` → generic ``search`` (catalog has no
+        # ``search_tweets``); ``twitter_user`` → ``search`` with the advanced
+        # ``from`` arg (catalog has no ``user_tweets``; ``x_get_tweets`` stays a
+        # dedicated legacy tool when deprecation is OFF).
+        "search": {
             "requiredArgs": ["query"],
-            "optionalArgs": ["limit"],
+            "optionalArgs": ["limit", "from", "type"],
             "match": {"target_kind": "keyword"},
         },
-        "user_tweets": {
-            "requiredArgs": ["username"],
+        "user_timeline": {
+            # Virtual binding for the ``user`` target_kind. The dispatched
+            # XActions action is ``search`` (see ``xactions_action``) — the
+            # catalog's only tweet-listing verb. ``_build_unified_args`` binds
+            # ``target_id`` to ``from`` (not ``query``) via ``arg_override``.
+            "requiredArgs": ["query"],
             "optionalArgs": ["limit"],
             "match": {"target_kind": "user"},
+            "xactions_action": "search",
+            "arg_override": "from",
         },
     },
 }
@@ -330,6 +357,20 @@ class CanonicalActionMatrix:
         cls._lock_loop_ref = None
 
 
+# Nowing ``platform_kind`` prefixes that differ from the canonical XActions
+# platform key. ``b2b_registry_search`` splits to ``b2b_registry`` but the
+# catalog platform is ``b2b_registry_extended`` (aliases: hosocongty,
+# muasamcong).
+_PLATFORM_KEY_ALIASES: dict[str, str] = {
+    "b2b_registry": "b2b_registry_extended",
+    # ``legal`` is a XActions alias for the ip-trademark descriptor whose
+    # canonical platform key is ``ipvietnam`` — keep the mapping explicit so
+    # ``legal_*`` targets resolve instead of erroring as unsupported.
+    "legal": "ipvietnam",
+    "ip_legal": "ipvietnam",
+}
+
+
 def derive_platform_action(
     platform_kind: str,
     matrix: dict[str, dict[str, dict[str, Any]]],
@@ -349,10 +390,14 @@ def derive_platform_action(
         platform, kind = platform_kind, None
     elif "_" in platform_kind:
         platform, kind = platform_kind.rsplit("_", 1)
+        platform = _PLATFORM_KEY_ALIASES.get(platform, platform)
         if platform not in matrix:
             raise ValueError(f"Unsupported platform: {platform_kind}")
     else:
-        raise ValueError(f"Unsupported platform: {platform_kind}")
+        platform = _PLATFORM_KEY_ALIASES.get(platform_kind, platform_kind)
+        if platform not in matrix:
+            raise ValueError(f"Unsupported platform: {platform_kind}")
+        platform, kind = platform, None
 
     actions = matrix.get(platform) or {}
     if not actions:
@@ -366,6 +411,9 @@ def derive_platform_action(
         )
 
     # Prefer actions whose match.target_kind equals the kind hint.
+    # Returns the *descriptor key* (not the wire action) — the caller resolves
+    # ``xactions_action`` for the actual dispatched verb so virtual bindings
+    # like ``user_timeline`` keep their own descriptor/arg_override.
     for action, meta in actions.items():
         match = meta.get("match") or {}
         if match.get("target_kind") == kind:

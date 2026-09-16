@@ -31,6 +31,29 @@ from app.proprietary.platforms.xactions.models import SocialPostData
 logger = logging.getLogger(__name__)
 
 
+def _legacy_scrape_args(
+    target: Any, platform: str, action: str, action_args: dict[str, Any]
+) -> dict[str, Any]:
+    """Build the nested ``x_scrape`` envelope for flag-OFF ``PLATFORM_TOOL_MAP``.
+
+    ``x_scrape`` requires ``args`` as a nested object (AD-2) plus a ``context``
+    envelope carrying ``targetId``/``workspaceId`` so the single-writer Redis
+    stream keeps tenant routing (REQ-X2). Earlier builders passed action args
+    flat alongside ``platform``/``action`` — the server dropped them into a
+    missing-``args`` ``XACT_4002``.
+    """
+    target_db_id = getattr(target, "id", None)
+    return {
+        "platform": platform,
+        "action": action,
+        "args": action_args,
+        "context": {
+            "targetId": target_db_id if target_db_id is not None else getattr(target, "target_id", None),
+            "workspaceId": getattr(target, "workspace_id", None),
+        },
+    }
+
+
 # Map Nowing platform targets to XActions tool/action pairs.
 # VN-domain platforms are dispatched via the generic `x_scrape` tool once
 # XActions exposes it (Story 21.8a requirement). Until then, `x_crawl_post`
@@ -52,41 +75,50 @@ PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
         "tool": "x_get_tweets",
         "args_builder": lambda t: {"username": t.target_id.strip("@"), "limit": 20},
     },
+    # NOTE (Epic 36 follow-up): these ``x_scrape`` arg_builders now emit the
+    # *canonical* action names + platform keys from the live ``x_actions_list``
+    # catalog (24 platforms / 189 actions), in the nested
+    # ``{platform, action, args, context}`` envelope per AD-2. The previous
+    # guess-names (``posts``/``lookup``/``company``/``search`` and platform
+    # ``b2b_registry``) all fail server-side ``mapAction`` validation — e.g.
+    # ``tiktok/posts`` → XACT "action not available", ``b2b_registry`` →
+    # "platform not supported". ``context`` forwards targetId/workspaceId so
+    # the single-writer stream carries tenant routing (REQ-X2).
     "tiktok_hashtag": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "tiktok", "action": "posts", "hashtag": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "tiktok", "hashtag_feed", {"tag": t.target_id}),
     },
     "chotot_category": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "chotot", "action": "posts", "category": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "chotot", "search_listings", {"category": t.target_id}),
     },
     "shopee_keyword": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "shopee", "action": "search", "keyword": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "shopee", "search_products", {"keyword": t.target_id}),
     },
     "topcv_search": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "topcv", "action": "search", "query": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "topcv", "search_jobs", {"keyword": t.target_id}),
     },
     "vietnamworks_search": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "vietnamworks", "action": "search", "query": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "vietnamworks", "search_jobs", {"keyword": t.target_id}),
     },
     "linkedin_company": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "linkedin", "action": "company", "company": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "linkedin", "company_profile", {"companySlug": t.target_id}),
     },
     "batdongsan_category": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "batdongsan", "action": "posts", "category": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "batdongsan", "search_listings", {"category": t.target_id}),
     },
     "masothue_lookup": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "masothue", "action": "lookup", "taxCode": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "masothue", "detail", {"taxCode": t.target_id}),
     },
     "b2b_registry_search": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "b2b_registry", "action": "search", "query": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "b2b_registry_extended", "search", {"q": t.target_id}),
     },
 }
 
@@ -106,6 +138,35 @@ def _facebook_page_url(target_id: str) -> str:
     if normalized.lower().startswith(("http://", "https://")):
         return normalized
     return f"https://www.facebook.com/{normalized}"
+
+
+def _facebook_id_from_target(target_id: str, segment: str) -> str:
+    """Extract the numeric/slug id from a Facebook URL or bare id.
+
+    ``x_scrape`` group/page descriptors take ``groupId``/``pageId`` (the bare
+    id), not a URL — unlike the legacy tools that accepted ``url``. Accepts
+    ``"12345"``, ``"…/groups/12345"``, or ``"…/pagename"`` and returns the id.
+    """
+    normalized = str(target_id).strip()
+    if normalized.lower().startswith(("http://", "https://")):
+        # Take the path segment after ``segment`` (``groups``/``pages``) or the
+        # last non-empty path segment for a bare page URL.
+        path = normalized.split("://", 1)[1].split("?", 1)[0].rstrip("/")
+        parts = [p for p in path.split("/") if p]
+        if segment in parts:
+            idx = parts.index(segment)
+            if idx + 1 < len(parts):
+                return parts[idx + 1]
+        return parts[-1] if parts else normalized
+    return normalized
+
+
+def _facebook_group_id(target_id: str) -> str:
+    return _facebook_id_from_target(target_id, "groups")
+
+
+def _facebook_page_id(target_id: str) -> str:
+    return _facebook_id_from_target(target_id, "pages")
 
 
 def _normalize_platform_for_post(platform: str) -> str:
@@ -192,12 +253,15 @@ def _build_unified_args(
     # Normalize: coerce non-string ids to str, strip whitespace.
     raw = str(target_id).strip() if target_id is not None else ""
 
-    arg_name = required_args[0]
-    if platform_kind == "facebook_group" and arg_name == "url":
-        val: Any = _facebook_group_url(raw)
-    elif platform_kind == "facebook_page" and arg_name == "url":
-        val = _facebook_page_url(raw)
-    elif platform_kind == "twitter_user" and arg_name == "username":
+    # ``arg_override`` lets a descriptor bind ``target_id`` to a different wire
+    # arg than ``requiredArgs[0]`` (e.g. ``twitter_user`` → ``search``'s
+    # ``from`` arg rather than ``query``).
+    arg_name = descriptor.get("arg_override") or required_args[0]
+    if platform_kind == "facebook_group" and arg_name in ("url", "groupId"):
+        val: Any = _facebook_group_id(raw)
+    elif platform_kind == "facebook_page" and arg_name in ("url", "pageId"):
+        val = _facebook_page_id(raw)
+    elif platform_kind == "twitter_user" and arg_name in ("username", "from"):
         val = raw.strip("@")
         if not val:
             raise ValueError(
@@ -254,21 +318,25 @@ class UniversalScrapeTargetMapper:
         descriptor's ``requiredArgs`` — the target's ``target_id`` is bound to
         the single required arg (all current matrix entries have exactly one).
         """
-        platform, action = derive_platform_action(platform_kind, matrix)
-        descriptor = matrix[platform][action]
+        platform, action_key = derive_platform_action(platform_kind, matrix)
+        descriptor = matrix[platform][action_key]
+        # A descriptor may declare ``xactions_action`` to dispatch a different
+        # canonical verb on the wire (e.g. ``user_timeline`` → ``search``).
+        action = descriptor.get("xactions_action") or action_key
         required_args = list(descriptor.get("requiredArgs") or [])
 
         target_id_value = getattr(target, "target_id", None)
         args: dict[str, Any] = {}
         if required_args:
-            # If the descriptor's single required arg is ``url``, prefer the
-            # persisted ``target_url`` column over ``target_id`` (which may be
-            # a numeric ID or short slug on some platforms). Story 36.6b review
-            # finding — ``target_url`` is the operator-curated field for the
-            # canonical URL.
+            # Prefer the persisted ``target_url`` column over ``target_id``
+            # when the bound arg consumes a Facebook/URL-shaped value —
+            # ``url`` directly, or ``groupId``/``pageId`` which are extracted
+            # from the canonical URL by ``_facebook_*_id``. Story 36.6b review
+            # finding — ``target_url`` is the operator-curated field.
+            bound_arg = descriptor.get("arg_override") or required_args[0]
             if (
                 len(required_args) == 1
-                and required_args[0] == "url"
+                and bound_arg in ("url", "groupId", "pageId")
                 and getattr(target, "target_url", None)
             ):
                 candidate = getattr(target, "target_url")
