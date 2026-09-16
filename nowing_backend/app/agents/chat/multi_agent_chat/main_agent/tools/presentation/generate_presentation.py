@@ -154,9 +154,15 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         except ValidationError:
             logger.exception("generate_presentation input failed validation")
             return _failed("Invalid presentation input.")
-        except HTTPException as exc:  # plan-entitlement 403 → surface paywall, not a generic error
-            logger.info("generate_presentation blocked: %s", exc.detail)
-            return _failed(str(exc.detail), status="plan_limited")
+        except HTTPException as exc:  # only a 403 is a plan-entitlement paywall
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    await session.rollback()
+            if exc.status_code == 403:
+                logger.info("generate_presentation blocked by plan: %s", exc.detail)
+                return _failed(str(exc.detail), status="plan_limited")
+            logger.exception("generate_presentation HTTP error: %s", exc)
+            return _failed("Error generating presentation.", status="error")
         except Exception as exc:  # presentation generation failure; rollback and return failure output
             if session is not None:
                 with contextlib.suppress(Exception):

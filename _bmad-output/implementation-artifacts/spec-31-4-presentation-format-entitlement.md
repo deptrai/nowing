@@ -122,3 +122,24 @@ context: []
   [`test_presentation_format_entitlement.py`](../../nowing_backend/tests/unit/services/presentation/test_presentation_format_entitlement.py)
 - Route integration: free→403, marp→200, paid→pptx.
   [`test_presentation_routes_atdd.py`](../../nowing_backend/tests/integration/routes/test_presentation_routes_atdd.py)
+
+### Review Findings
+
+- [x] [Review][Patch] Gate ran before input validation — empty/invalid-format on free raised 403 instead of validation_failed. Reordered: format+prompt first, then entitlement. [`service.py:240`]
+- [x] [Review][Patch] `plan_limited` was an undocumented status — added to schema description + `_FAILURE_STATUSES` (thinking.py + emission.py) so chat streaming treats it as a failure, not success. [`schemas.py` / `thinking.py:26` / `emission.py:11`]
+- [x] [Review][Patch] `except HTTPException` mapped 401/404/500 to `plan_limited` and skipped rollback. Now only 403 → `plan_limited`; others → `error`; rollback added. [`generate_presentation.py`]
+- [x] [Review][Patch] Missing unit test for `plan_limited` when service raises 403 — `test_tool_returns_plan_limited_when_service_raises_403` added. [`test_generate_presentation_tool_atdd.py`]
+- [x] [Review][Patch] E2E AC-2 lacked `mockWorkspaceSubscription(..., "team")` so live-run would 403. Added. [`presentation-studio-chat.spec.ts`]
+- [x] [Review][Patch] Backend `plan_tier` lacked `.strip()` (FE had it) — whitespace-padded paid tiers would 403. [`service.py`]
+- [x] [Review][Patch] PPTX chips fail-open on `isError`/loading (layout-shift). Gated chips on `canUsePptx` (true only for resolved paid) — hide while loading/error. [`prompt-picker.tsx` / `ThreadWelcome.tsx`]
+- [x] [Review][Patch] `?format=PPTX` bypassed presentation-mode detection (no lowercase). [`page.tsx`]
+- [x] [Review][Patch] `rewritePresentationPromptToMarp` `\bpptx\b` rewrote `.pptx` filenames to `.marp` (invalid ext). Now `(?<!\.)\bpptx\b(?!\.)`. [`use-presentation-studio-entitlement.ts`]
+- [x] [Review][Patch] `appliedPromptRef` never reset on submit → blocked later initial-prompt apply. Reset on send. [`Composer.tsx`]
+- [x] [Review][Patch] URL-downgrade `useEffect` deps omitted `formatParam`/`rawInitialPrompt`. [`page.tsx`]
+- [x] [Review][Defer] `PresentationStudioService.generate` raises `fastapi.HTTPException` (HTTP coupling) — deferred: in-contract for this story (spec asked 403); domain-exception refactor is follow-up. [`service.py`]
+- [x] [Review][Defer] Self-hosted instances default `plan_tier=free` → PPTX blocked despite unlimited licensing. Product/licensing decision. [`service.py`]
+
+**Rejected**
+- `workspace_id=None` unit test "would IntegrityError in real DB" — `false`: the test only asserts the gate path under a mock session; no persist happens.
+- `execute_generate_presentation` does not catch HTTPException — `false`: the tool wrapper is the intended catcher; REST route FastAPI-handles it; bubbling is the contract.
+- Invalid-format coerced to pptx then 403 — now a `validation_failed` (patched).

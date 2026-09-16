@@ -8,7 +8,7 @@ from app.tasks.chat.streaming.handlers.tools.emission_context import (
     ToolCompletionEmissionContext,
 )
 
-_FAILURE_STATUSES = frozenset({"failed", "error", "validation_failed"})
+_FAILURE_STATUSES = frozenset({"failed", "error", "validation_failed", "plan_limited"})
 
 
 def iter_completion_emission_frames(

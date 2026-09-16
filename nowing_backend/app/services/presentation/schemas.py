@@ -73,7 +73,7 @@ class GeneratePresentationOutput(BaseModel):
     status: str = Field(
         ...,
         max_length=50,
-        description="Status: generating, ready, failed, degraded, validation_failed",
+        description="Status: generating, ready, failed, degraded, validation_failed, plan_limited",
     )
     presentation_id: str | None = Field(default=None, max_length=36)
     workspace_id: int | None = None

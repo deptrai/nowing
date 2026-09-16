@@ -179,7 +179,7 @@ export default function NewChatPage() {
 	const router = useRouter();
 	const params = useParams();
 	const searchParams = useSearchParams();
-	const formatParam = searchParams.get("format");
+	const formatParam = (searchParams.get("format") ?? "").toLowerCase();
 	const isLeadsMode = searchParams.get("mode") === "leads";
 	const isWebBuilderMode = searchParams.get("mode") === "web_builder";
 	const isPresentationStudioMode =
@@ -247,7 +247,7 @@ export default function NewChatPage() {
 		if (changed) {
 			window.history.replaceState(null, "", currentUrl.pathname + currentUrl.search);
 		}
-	}, [isPresentationStudioMode, isResolvedFreeTier]);
+	}, [isPresentationStudioMode, isResolvedFreeTier, formatParam, rawInitialPrompt]);
 
 	// Durable, cross-navigation streaming state for the viewed thread.
 	const streamState = useChatStream(activeThreadId);

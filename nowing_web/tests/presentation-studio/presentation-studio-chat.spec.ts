@@ -79,6 +79,7 @@ test.describe("Story 27.2a — Presentation Studio from Chat", () => {
 	test("AC-2: deliverable card shows PPTX pitch deck ready", async ({ page, workspace }) => {
 		test.setTimeout(300_000);
 		await markWorkspaceSetupReady(page, workspace.id);
+		await mockWorkspaceSubscription(page, workspace.id, "team");
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=presentation_studio`);
 
 		const composer = page.locator('[role="textbox"]').first();

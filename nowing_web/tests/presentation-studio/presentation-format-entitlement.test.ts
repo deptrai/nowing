@@ -38,8 +38,15 @@ function testPromptRewriter() {
 	assert.equal(rewritten.includes("output_format=pptx"), false);
 	assert.equal(rewritten.includes("as Marp Markdown slides"), true);
 	assert.equal(rewritten.includes("as a PowerPoint PPTX file"), false);
-	assert.equal(/pptx/i.test(rewritten), false);
+	assert.equal(/output_format=pptx/i.test(rewritten), false);
 	assert.equal(/powerpoint/i.test(rewritten), false);
+
+	// A literal .pptx filename is left intact — Marp decks are .md, not .marp.
+	const withFilename = "export as presentation.pptx and set output_format=pptx";
+	const filenameRewritten = rewritePresentationPromptToMarp(withFilename);
+	assert.equal(filenameRewritten.includes("presentation.pptx"), true);
+	assert.equal(filenameRewritten.includes("output_format=marp"), true);
+	assert.equal(filenameRewritten.includes("output_format=pptx"), false);
 
 	// Vietnamese translation prompt
 	const vnPrompt =
@@ -47,7 +54,7 @@ function testPromptRewriter() {
 	const vnRewritten = rewritePresentationPromptToMarp(vnPrompt);
 	assert.equal(vnRewritten.includes("output_format=marp"), true);
 	assert.equal(vnRewritten.includes("dạng Marp Markdown"), true);
-	assert.equal(/pptx/i.test(vnRewritten), false);
+	assert.equal(/output_format=pptx/i.test(vnRewritten), false);
 }
 
 function testResolutionLifecycleStates() {

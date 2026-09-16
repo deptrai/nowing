@@ -440,6 +440,7 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 
 		aui.composer().send();
 		editorRef.current?.clear();
+		appliedPromptRef.current = null;
 		setIsComposerInputEmpty(true);
 		setMentionedDocuments([]);
 	}, [

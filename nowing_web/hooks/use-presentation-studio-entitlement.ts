@@ -21,15 +21,18 @@ export function isPlanTierEntitledToPptx(planTier: string | null | undefined): b
 /**
  * Rewrites presentation prompt text from PPTX references to Marp Markdown.
  * Only applied when mode is presentation_studio on a resolved free tier.
+ * Deliberately does NOT touch a ".pptx" file extension — Marp emits Markdown,
+ * not a .marp file, so a literal filename like `deck.pptx` is left alone.
  */
 export function rewritePresentationPromptToMarp(prompt: string): string {
 	return prompt
-		.replace(/output_format=pptx/gi, "output_format=marp")
+		.replace(/output_format\s*=\s*pptx/gi, "output_format=marp")
+		.replace(/\/slides\s+pptx\b/gi, "/slides marp")
 		.replace(/as a PowerPoint PPTX file/gi, "as Marp Markdown slides")
 		.replace(/dạng PowerPoint PPTX/gi, "dạng Marp Markdown")
 		.replace(/PowerPoint PPTX/gi, "Marp Markdown")
 		.replace(/PowerPoint/gi, "Marp")
-		.replace(/\bpptx\b/gi, "marp");
+		.replace(/(?<!\.)\bpptx\b(?!\.)/gi, "marp");
 }
 
 export function usePresentationStudioEntitlement(explicitWorkspaceId?: number | null) {

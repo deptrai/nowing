@@ -239,25 +239,14 @@ class PresentationStudioService:
 
         output_format = build_input.output_format.lower().strip()
         if output_format not in ("pptx", "marp"):
-            logger.warning(
-                "[PresentationStudio] Invalid output_format %r; coercing to pptx",
-                output_format,
+            # Invalid format is a validation error, not an entitlement issue —
+            # surface it before the plan gate so free users get a 4xx validation
+            # result rather than a misleading 403 paywall.
+            return GeneratePresentationOutput(
+                status="validation_failed",
+                error="output_format must be 'pptx' or 'marp'",
+                workspace_id=build_input.workspace_id,
             )
-            output_format = "pptx"
-
-        if output_format == "pptx":
-            tier = "free"
-            workspace_id = getattr(build_input, "workspace_id", None)
-            if workspace_id:
-                limits = await WorkspaceLimitService.get_effective_limits(
-                    session, workspace_id
-                )
-                tier = (limits.plan_tier or "free").lower()
-            if tier not in {"team", "growth", "enterprise"}:
-                raise HTTPException(
-                    status_code=http_status.HTTP_403_FORBIDDEN,
-                    detail="PPTX format generation is not enabled on this workspace plan; use Marp or upgrade",
-                )
 
         prompt = build_input.prompt.strip()
         if not prompt:
@@ -266,6 +255,25 @@ class PresentationStudioService:
                 error="Prompt must not be empty.",
                 workspace_id=build_input.workspace_id,
             )
+
+        # Plan-tier entitlement gate (story 31.4): PPTX requires a paid tier.
+        # Placed after input validation so bad input fails with a validation
+        # result, and before generation so neither the capability executor nor
+        # the REST route can bypass it.
+        if output_format == "pptx":
+            tier = "free"
+            workspace_id = getattr(build_input, "workspace_id", None)
+            if workspace_id:
+                limits = await WorkspaceLimitService.get_effective_limits(
+                    session, workspace_id
+                )
+                tier = (limits.plan_tier or "free").strip().lower()
+            if tier not in {"team", "growth", "enterprise"}:
+                raise HTTPException(
+                    status_code=http_status.HTTP_403_FORBIDDEN,
+                    detail="PPTX format generation is not enabled on this workspace plan; use Marp or upgrade",
+                )
+
 
         if len(prompt) > app_config.PRESENTATION_MAX_PROMPT_CHARS:
             prompt = prompt[: app_config.PRESENTATION_MAX_PROMPT_CHARS]

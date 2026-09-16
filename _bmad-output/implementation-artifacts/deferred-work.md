@@ -1791,3 +1791,7 @@ Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_ac
 - source_spec: `_bmad-output/implementation-artifacts/spec-31-4-presentation-format-entitlement.md`
   summary: Self-hosted instances default plan_tier to free → PPTX generation blocked despite unlimited licensing; consider a `is_self_hosted()` bypass so self-host is not paywalled.
   evidence: Edge-case hunter — self-host has no paid plan but should not lose PPTX. Requires a product/licensing decision on whether self-host gets full features.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-31-4-presentation-format-entitlement.md`
+  summary: PresentationStudioService.generate raises fastapi.HTTPException, coupling the domain service to HTTP transport; a domain-exception + route/executor translation would let CLI/workers/LangGraph callers consume the gate without FastAPI.
+  evidence: Blind-hunter — architectural coupling. Spec explicitly asked for HTTP 403, so the current raise is in-contract; a domain-exception refactor is a follow-up, not a story-31.4 defect.

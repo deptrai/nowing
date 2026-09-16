@@ -22,7 +22,7 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 	const { data: user } = useAtomValue(currentUserAtom);
 	const params = useParams();
 	const workspaceId = params?.workspace_id as string | undefined;
-	const { isResolvedFreeTier } = usePresentationStudioEntitlement();
+	const { canUsePptx } = usePresentationStudioEntitlement();
 
 	const creditsCount = useMemo(() => {
 		if (!user) return 500;
@@ -108,7 +108,7 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 								"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts and download CTA.",
 							mode: "web_builder",
 						},
-						...(isResolvedFreeTier
+						...(!canUsePptx
 							? []
 							: [
 									{

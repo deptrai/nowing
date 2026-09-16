@@ -135,7 +135,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 ) {
 	const router = useRouter();
 	const params = useParams();
-	const { isResolvedFreeTier } = usePresentationStudioEntitlement();
+	const { canUsePptx } = usePresentationStudioEntitlement();
 	const { data: prompts, isLoading, isError } = useAtomValue(promptsAtom);
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -152,11 +152,11 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 	}, [deferredSearch]);
 
 	const availableBuiltins = useMemo(() => {
-		if (isResolvedFreeTier) {
+		if (!canUsePptx) {
 			return BUILTIN_TEMPLATES.filter((item) => item.id !== "slides-pptx");
 		}
 		return BUILTIN_TEMPLATES;
-	}, [isResolvedFreeTier]);
+	}, [canUsePptx]);
 
 	const filteredBuiltins = useMemo(() => {
 		if (!normalizedSearch) return availableBuiltins;
