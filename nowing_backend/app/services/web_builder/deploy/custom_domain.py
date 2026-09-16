@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 import secrets
@@ -188,6 +189,9 @@ async def verify_and_bind_custom_domain(
                     )
                     if txt_detail.get("reason") == "mismatch":
                         msg = f"Domain '{clean_domain}' TXT record at '{txt_host}' did not match the verification token."
+                    elif txt_detail.get("reason") == "invalid":
+                        msg = f"Verification hostname '{txt_host}' exceeds the maximum allowed length of 253 characters."
+                        ttl_hint = ""
                     else:
                         expected_txt = f"{WEB_BUILDER_TXT_VERIFY_PREFIX}{app_entity.custom_domain_verify_token}"
                         msg = f"Domain '{clean_domain}' TXT record at '{txt_host}' with value '{expected_txt}' not found."
@@ -296,6 +300,10 @@ async def verify_and_bind_custom_domain(
                     logger.error(
                         "[WebAppDeployService] Caddy snippet rewrite failed: %s", caddy_err
                     )
+                    # If redeploy started a new container, stop it to prevent leakage
+                    if app_entity.container_id and app_entity.container_id != previous_container_id:
+                        with contextlib.suppress(Exception):
+                            await service._stop_container(app_entity.container_id)
                     app_entity.custom_domain = previous_domain
                     app_entity.custom_domain_status = previous_status or "failed"
                     app_entity.container_id = previous_container_id

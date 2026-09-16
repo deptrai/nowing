@@ -137,3 +137,14 @@ context: ['_bmad-output/implementation-artifacts/spec-31-1-dokploy-container-cgr
 
 - `TestTxtOwnershipVerification`: full I/O matrix incl. split-string, single-quote, empty-token, oversize-host.
   [`test_deploy_service.py:1603`](../../nowing_backend/tests/unit/services/web_builder/test_deploy_service.py#L1603)
+
+
+### Review Findings
+
+- [x] [Review][Patch] Frontend adoption for Token Rotation & Custom Domain Unbind — Wired rotateCustomDomainToken & unbindCustomDomain into webBuilderApiService and added action buttons in CNAME modal [nowing_web/lib/apis/web-builder-api.service.ts, nowing_web/app/dashboard/[workspace_id]/web-builder/page.tsx]
+- [x] [Review][Patch] Check custom_domain_status == 'active' before generating Caddy and Traefik routes [nowing_backend/app/services/web_builder/deploy/service.py:715, nowing_backend/app/services/web_builder/deploy/deploy_app.py:196]
+- [x] [Review][Patch] Use with_for_update() on GET /apps/{app_id} lazy token generation to avoid concurrency race [nowing_backend/app/routes/web_builder/apps.py:465]
+- [x] [Review][Patch] Stop newly created container if Caddy rewrite fails during custom domain binding [nowing_backend/app/services/web_builder/deploy/custom_domain.py:295]
+- [x] [Review][Patch] Differentiate 'invalid' hostname length error message from 'missing' TXT record [nowing_backend/app/services/web_builder/deploy/custom_domain.py:190]
+- [x] [Review][Patch] Add test for lazy token generation on GET /apps/{app_id} [nowing_backend/tests/integration/routes/test_web_builder_deploy_routes.py:228]
+- [x] [Review][Patch] Add quick copy button and toast to TXT verification block in CNAME modal [nowing_web/app/dashboard/[workspace_id]/web-builder/page.tsx:908]

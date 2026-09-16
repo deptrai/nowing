@@ -342,6 +342,39 @@ export default function WebBuilderPage() {
 		},
 	});
 
+	const rotateTokenMutation = useMutation({
+		mutationFn: () => {
+			if (!selectedApp) throw new Error("No app selected");
+			return webBuilderApiService.rotateCustomDomainToken(selectedApp.id, workspaceId);
+		},
+		onSuccess: (_res) => {
+			toast.success("Verification token rotated");
+			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
+			queryClient.invalidateQueries({
+				queryKey: ["web-builder-app", selectedApp?.id, workspaceId],
+			});
+		},
+		onError: (err: Error) => {
+			toast.error(err?.message || "Failed to rotate verification token");
+		},
+	});
+
+	const unbindDomainMutation = useMutation({
+		mutationFn: () => {
+			if (!selectedApp) throw new Error("No app selected");
+			return webBuilderApiService.unbindCustomDomain(selectedApp.id, workspaceId);
+		},
+		onSuccess: () => {
+			toast.success("Custom domain removed");
+			setCustomDomainInput("");
+			setIsDomainModalOpen(false);
+			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
+		},
+		onError: (err: Error) => {
+			toast.error(err?.message || "Failed to remove custom domain");
+		},
+	});
+
 	const localPreviewUrl = selectedApp
 		? `${backendBaseUrl}/api/v1/web-builder/apps/${selectedApp.id}/preview?workspace_id=${workspaceId}`
 		: "";
@@ -901,9 +934,21 @@ export default function WebBuilderPage() {
 						</p>
 						{domainVerifyToken && (
 							<div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
-								<p className="text-[11px] font-medium text-foreground">
-									Verify domain ownership — add this DNS TXT record:
-								</p>
+								<div className="flex items-center justify-between">
+									<p className="text-[11px] font-medium text-foreground">
+										Verify domain ownership — add this DNS TXT record:
+									</p>
+									<button
+										type="button"
+										onClick={() => {
+											navigator.clipboard.writeText(`nowing-verify=${domainVerifyToken}`);
+											toast.success("Copied verification TXT value to clipboard");
+										}}
+										className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium underline"
+									>
+										Copy value
+									</button>
+								</div>
 								<div className="text-[11px] font-mono text-muted-foreground space-y-0.5">
 									<div>
 										<span className="text-foreground">Name/host: </span>
@@ -912,14 +957,24 @@ export default function WebBuilderPage() {
 											{customDomainInput.trim() || "<your-domain>"}
 										</code>
 									</div>
-									<div className="break-all">
-										<span className="text-foreground">Value: </span>
-										<code className="text-indigo-400">nowing-verify={domainVerifyToken}</code>
+									<div className="break-all flex items-center justify-between gap-1">
+										<span>
+											<span className="text-foreground">Value: </span>
+											<code className="text-indigo-400">nowing-verify={domainVerifyToken}</code>
+										</span>
 									</div>
 								</div>
-								<p className="text-[10px] text-muted-foreground">
-									DNS may take a few minutes to propagate (record TTL).
-								</p>
+								<div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
+									<span>DNS may take a few minutes to propagate (record TTL).</span>
+									<button
+										type="button"
+										onClick={() => rotateTokenMutation.mutate()}
+										disabled={rotateTokenMutation.isPending}
+										className="text-amber-400 hover:text-amber-300 underline disabled:opacity-50"
+									>
+										{rotateTokenMutation.isPending ? "Rotating..." : "Rotate token"}
+									</button>
+								</div>
 							</div>
 						)}
 						<input
@@ -929,22 +984,36 @@ export default function WebBuilderPage() {
 							onChange={(e) => setCustomDomainInput(e.target.value)}
 							className="w-full text-sm p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-indigo-500"
 						/>
-						<div className="flex justify-end gap-2">
-							<button
-								type="button"
-								onClick={() => setIsDomainModalOpen(false)}
-								className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted text-foreground"
-							>
-								Cancel
-							</button>
-							<button
-								type="button"
-								onClick={() => customDomainMutation.mutate()}
-								disabled={customDomainMutation.isPending || !customDomainInput.trim()}
-								className="px-4 py-1.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
-							>
-								{customDomainMutation.isPending ? "Verifying DNS..." : "Save Domain"}
-							</button>
+						<div className="flex items-center justify-between">
+							{selectedApp.custom_domain ? (
+								<button
+									type="button"
+									onClick={() => unbindDomainMutation.mutate()}
+									disabled={unbindDomainMutation.isPending}
+									className="px-3 py-1.5 text-xs rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+								>
+									{unbindDomainMutation.isPending ? "Removing..." : "Remove Domain"}
+								</button>
+							) : (
+								<span />
+							)}
+							<div className="flex justify-end gap-2">
+								<button
+									type="button"
+									onClick={() => setIsDomainModalOpen(false)}
+									className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted text-foreground"
+								>
+									Cancel
+								</button>
+								<button
+									type="button"
+									onClick={() => customDomainMutation.mutate()}
+									disabled={customDomainMutation.isPending || !customDomainInput.trim()}
+									className="px-4 py-1.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
+								>
+									{customDomainMutation.isPending ? "Verifying DNS..." : "Save Domain"}
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>

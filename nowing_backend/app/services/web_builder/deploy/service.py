@@ -712,7 +712,12 @@ class WebAppDeployService:
             return
 
         slug = app_entity.slug
-        custom_domain = app_entity.custom_domain
+        # Only configure ingress for custom domains that have passed verification
+        custom_domain = (
+            app_entity.custom_domain
+            if getattr(app_entity, "custom_domain_status", None) == "active"
+            else None
+        )
         workspace_id = app_entity.workspace_id
         target = self._caddy_target_for_app(
             workspace_id, slug, container_id or app_entity.container_id

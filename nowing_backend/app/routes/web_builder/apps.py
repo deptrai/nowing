@@ -159,9 +159,13 @@ async def get_web_app_build_logs(
     """Retrieve build stdout/stderr logs for an application (Story 27.1b AC-5)."""
     check_web_builder_enabled()
     await require_workspace_member(session, auth, workspace_id)
-    stmt = select(WorkspaceApp).where(
-        WorkspaceApp.id == app_id,
-        WorkspaceApp.workspace_id == workspace_id,
+    stmt = (
+        select(WorkspaceApp)
+        .where(
+            WorkspaceApp.id == app_id,
+            WorkspaceApp.workspace_id == workspace_id,
+        )
+        .with_for_update()
     )
     res = await session.execute(stmt)
     app_entity = res.scalars().first()

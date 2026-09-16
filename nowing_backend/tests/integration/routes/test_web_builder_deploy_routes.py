@@ -273,6 +273,49 @@ class TestWebBuilderDeployRoutes:
             == "super-secret-token-32-chars"
         )
 
+    def test_get_app_generates_and_commits_token_when_initially_none(
+        self, client: TestClient, mock_db_session: AsyncMock
+    ):
+        now = datetime.now(UTC)
+        app_entity = WorkspaceApp(
+            id="app-no-tok",
+            workspace_id=1,
+            name="No Token App",
+            slug="no-tok-app",
+            status="published",
+            language="en",
+            custom_domain=None,
+            custom_domain_status=None,
+            custom_domain_verify_token=None,
+            created_at=now,
+            updated_at=now,
+        )
+
+        def mock_execute(stmt, *args, **kwargs):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "workspace_apps" in stmt_str:
+                res.scalars.return_value.first.return_value = app_entity
+            else:
+                membership = MagicMock()
+                res.scalars.return_value.first.return_value = membership
+            return res
+
+        mock_db_session.execute = AsyncMock(side_effect=mock_execute)
+        mock_db_session.commit = AsyncMock()
+        mock_db_session.refresh = AsyncMock()
+
+        detail_res = client.get(
+            "/api/v1/web-builder/apps/app-no-tok", params={"workspace_id": 1}
+        )
+        assert detail_res.status_code == 200
+        data = detail_res.json()
+        token = data.get("custom_domain_verify_token")
+        assert token is not None and len(token) >= 32
+        assert app_entity.custom_domain_verify_token == token
+        mock_db_session.commit.assert_awaited_once()
+        mock_db_session.refresh.assert_awaited_once_with(app_entity)
+
     def test_custom_domain_app_not_found_returns_404(
         self, client: TestClient
     ):

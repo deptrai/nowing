@@ -188,12 +188,17 @@ async def deploy_app(
             port = None
             if app_config.WEB_BUILDER_CONTAINER_DEPLOY_ENABLED:
                 try:
+                    active_custom_domain = (
+                        app_entity.custom_domain
+                        if getattr(app_entity, "custom_domain_status", None) == "active"
+                        else None
+                    )
                     container_id, port = await service.deploy_container(
                         app_id=app_id,
                         workspace_id=workspace_id,
                         project_path=project_path,
                         slug=sanitized_slug,
-                        custom_domain=app_entity.custom_domain,
+                        custom_domain=active_custom_domain,
                         plan_tier=ws.plan_tier,
                     )
                 except Exception as e:  # container deploy failure → mark deploy_failed, stop pipeline
