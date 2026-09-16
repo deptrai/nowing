@@ -322,3 +322,47 @@ async def salesforce_webhook(
     result = await service.handle_salesforce_deal_change(payload)
     await session.commit()
     return {"status": "ok", "result": result}
+
+
+@router.get("/{workspace_id}/crm/activity-timeline", tags=["crm"])
+async def get_workspace_activity_timeline(
+    workspace_id: int,
+    limit: int = 50,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value, "Permission denied")
+    ),
+):
+    """Retrieve chronological CRM activity timeline for a workspace (Story 34.3)."""
+    stmt = (
+        select(CrmSyncLog)
+        .where(CrmSyncLog.workspace_id == workspace_id)
+        .order_by(CrmSyncLog.synced_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(stmt)
+    logs = list(result.scalars().all())
+
+    items = [
+        {
+            "id": str(log.id),
+            "workspace_id": log.workspace_id,
+            "direction": log.direction,
+            "entity_type": log.entity_type,
+            "entity_id": str(log.entity_id),
+            "status": log.status,
+            "error_message": log.error_message,
+            "synced_at": log.synced_at.isoformat() if log.synced_at else None,
+        }
+        for log in logs
+    ]
+
+    return {
+        "items": items,
+        "total": len(items),
+        "limit": limit,
+        "offset": offset,
+    }
