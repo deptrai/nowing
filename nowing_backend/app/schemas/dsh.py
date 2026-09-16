@@ -214,6 +214,7 @@ class CdpResultPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mission_id: UUID
+    command_id: str | None = None
     result: dict | None = None
     error: str | None = None
     requires_human: bool = False

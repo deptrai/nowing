@@ -29,6 +29,10 @@ class CdpExecutionError(RuntimeError):
     """Raised when CDP execution fails but a graceful degradation is possible."""
 
 
+class CdpDebuggerDetachedError(CdpExecutionError):
+    """Raised when Chrome debugger is detached (user canceled infobar or tab closed)."""
+
+
 class BrowserOperatorCdpSubgraph:
     """Subgraph for executing native browser CDP commands via extension."""
 
@@ -148,6 +152,17 @@ class BrowserOperatorCdpSubgraph:
 
         if parsed_result.get("error"):
             error_msg = parsed_result["error"]
+            if isinstance(error_msg, str) and (
+                error_msg.startswith("DEBUGGER_DETACHED")
+                or "Debugger is not attached" in error_msg
+            ):
+                clean_reason = error_msg.removeprefix("DEBUGGER_DETACHED:").strip()
+                logger.warning(
+                    "CDP debugger detached for mission %s: %s",
+                    mission_id,
+                    clean_reason,
+                )
+                raise CdpDebuggerDetachedError(f"CDP debugger detached: {clean_reason}")
             # Degrade on extension-reported CDP errors instead of crashing the mission.
             logger.warning("CDP execution failed for mission %s: %s", mission_id, error_msg)
             raise CdpExecutionError(f"Extension CDP execution failed: {error_msg}")

@@ -123,6 +123,77 @@ async def test_cdp_result_requires_human():
 
 
 @pytest.mark.asyncio
+async def test_cdp_debugger_detached_raises_specific_error():
+    """should raise CdpDebuggerDetachedError immediately when extension reports DEBUGGER_DETACHED."""
+    from app.tasks.dsh_worker_browser_operator import (
+        BrowserOperatorCdpSubgraph,
+        CdpDebuggerDetachedError,
+        CdpExecutionError,
+    )
+
+    redis_mock = AsyncMock()
+    redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 1)]
+    redis_mock.blpop.return_value = (
+        b"key",
+        b'{"command_id": "abc123", "error": "DEBUGGER_DETACHED: canceled_by_user"}',
+    )
+
+    with (
+        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
+        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+    ):
+        subgraph = BrowserOperatorCdpSubgraph(None)
+        state = {
+            "mission_id": "test-mission",
+            "user_id": "user-1",
+            "payload": {"target_url": "https://test.com"},
+            "workspace_id": 1,
+        }
+        with pytest.raises(CdpDebuggerDetachedError, match="canceled_by_user"):
+            await subgraph._cdp_crawl_node(state, {})
+
+    # Ensure CdpDebuggerDetachedError inherits from CdpExecutionError for graceful degradation
+    assert issubclass(CdpDebuggerDetachedError, CdpExecutionError)
+
+
+@pytest.mark.asyncio
+async def test_cdp_debugger_detached_unblocks_without_timeout():
+    """should unblock immediately without hitting 60s timeout when debugger is detached (target_closed)."""
+    from app.tasks.dsh_worker_browser_operator import (
+        _CDP_RESULT_TIMEOUT_SECONDS,
+        BrowserOperatorCdpSubgraph,
+        CdpDebuggerDetachedError,
+    )
+
+    redis_mock = AsyncMock()
+    redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 1)]
+    redis_mock.blpop.return_value = (
+        b"key",
+        b'{"command_id": "abc123", "error": "DEBUGGER_DETACHED: target_closed"}',
+    )
+
+    with (
+        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
+        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+    ):
+        subgraph = BrowserOperatorCdpSubgraph(None)
+        state = {
+            "mission_id": "test-mission",
+            "user_id": "user-1",
+            "payload": {"target_url": "https://test.com"},
+            "workspace_id": 1,
+        }
+        with pytest.raises(CdpDebuggerDetachedError, match="target_closed"):
+            await subgraph._cdp_crawl_node(state, {})
+
+        # Verify blpop was called with timeout=_CDP_RESULT_TIMEOUT_SECONDS and returned the result
+        redis_mock.blpop.assert_awaited_once_with(
+            "cdp_result:user-1:test-mission",
+            timeout=_CDP_RESULT_TIMEOUT_SECONDS,
+        )
+
+
+@pytest.mark.asyncio
 async def test_cdp_invalid_url_rejected():
     """should reject non-http(s) target URLs."""
     from app.tasks.dsh_worker_browser_operator import BrowserOperatorCdpSubgraph

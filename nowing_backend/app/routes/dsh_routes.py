@@ -504,7 +504,7 @@ async def cdp_result(
     key = f"cdp_result:{auth.user.id}:{payload.mission_id}"
 
     redacted_result = _redact_cdp_result_value(payload.result) if payload.result is not None else None
-    command_id = (
+    command_id = payload.command_id or (
         payload.result.get("command_id")
         if isinstance(payload.result, dict)
         else None
