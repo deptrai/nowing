@@ -23,6 +23,7 @@ import {
 	Square,
 	Tablet,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ import { webBuilderApiService } from "@/lib/apis/web-builder-api.service";
 
 export default function WebBuilderPage() {
 	const params = useParams();
+	const t = useTranslations("webBuilder");
 	const workspaceId = Number(params.workspace_id);
 	const queryClient = useQueryClient();
 
@@ -105,10 +107,10 @@ export default function WebBuilderPage() {
 			setSelectedApp(polledApp);
 			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 			if (polledApp.status === "preview_ready") {
-				toast.success("Web application build ready!");
+				toast.success(t("build_ready"));
 				setIframeKey((prev) => prev + 1);
 			} else if (polledApp.status === "build_failed") {
-				toast.error("Web application build failed");
+				toast.error(t("build_failed_toast"));
 				setIsLogsOpen(true);
 			}
 		}
@@ -165,7 +167,7 @@ export default function WebBuilderPage() {
 			setPatchText(data.text || "");
 			setSelectedRect(data.rect);
 			setComponentHint(data.component_hint);
-			toast.info(`Selected element: ${data.selector}`);
+			toast.info(t("selected_element", { selector: data.selector }));
 		},
 		[]
 	);
@@ -178,7 +180,7 @@ export default function WebBuilderPage() {
 		setStreamTokens("");
 		setStreamFiles([]);
 		setStreamPhase("planning");
-		setStreamMessage("Initializing generation engine...");
+		setStreamMessage(t("init_engine"));
 
 		const controller = new AbortController();
 		abortControllerRef.current = controller;
@@ -200,7 +202,7 @@ export default function WebBuilderPage() {
 						setStreamFiles((prev) => (prev.includes(event.path) ? prev : [...prev, event.path]));
 					} else if (event.type === "complete") {
 						const newApp = event.app;
-						toast.success(`Generated "${newApp.name}" successfully!`);
+						toast.success(t("generated_ok", { name: newApp.name }));
 						queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 						setSelectedApp({
 							id: newApp.id,
@@ -223,7 +225,7 @@ export default function WebBuilderPage() {
 		} catch (err: unknown) {
 			const error = err as Error;
 			if (error.name !== "AbortError") {
-				toast.error(error.message || "Streaming generation encountered an error");
+				toast.error(error.message || t("stream_error"));
 			}
 		} finally {
 			setIsStreaming(false);
@@ -235,7 +237,7 @@ export default function WebBuilderPage() {
 		if (abortControllerRef.current) {
 			abortControllerRef.current.abort();
 			setIsStreaming(false);
-			toast.info("Generation cancelled");
+			toast.info(t("generation_cancelled"));
 		}
 	};
 
@@ -243,7 +245,7 @@ export default function WebBuilderPage() {
 	const rebuildMutation = useMutation({
 		mutationFn: (appId: string) => webBuilderApiService.triggerBuild(appId, workspaceId),
 		onSuccess: () => {
-			toast.info("Build started...");
+			toast.info(t("build_started"));
 			if (selectedApp) {
 				setSelectedApp({
 					...selectedApp,
@@ -254,7 +256,7 @@ export default function WebBuilderPage() {
 			queryClient.invalidateQueries({ queryKey: ["web-builder-app-detail", selectedApp?.id] });
 		},
 		onError: (err: Error) => {
-			toast.error(err?.message || "Failed to trigger rebuild");
+			toast.error(err?.message || t("rebuild_failed"));
 		},
 	});
 
@@ -265,7 +267,7 @@ export default function WebBuilderPage() {
 				workspace_id: workspaceId,
 			}),
 		onSuccess: (result) => {
-			toast.success(`Published live to ${result.public_url}`);
+			toast.success(t("published_live", { url: result.public_url ?? "" }));
 			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 			if (selectedApp) {
 				setSelectedApp({
@@ -276,7 +278,7 @@ export default function WebBuilderPage() {
 			}
 		},
 		onError: (err: Error) => {
-			toast.error(err?.message || "Deployment failed");
+			toast.error(err?.message || t("deploy_failed_toast"));
 		},
 	});
 
@@ -299,7 +301,7 @@ export default function WebBuilderPage() {
 		},
 		onSuccess: (res) => {
 			if (res.status === "patched") {
-				toast.success("Visual modification applied. Rebuilding preview…");
+				toast.success(t("patch_applied"));
 				setPatchText("");
 				setSelectedSelector("");
 				setSelectedRect(undefined);
@@ -315,11 +317,11 @@ export default function WebBuilderPage() {
 					queryKey: ["web-builder-app-detail", selectedApp?.id, workspaceId],
 				});
 			} else {
-				toast.warning(res.message || "Could not map selector to JSX element");
+				toast.warning(res.message || t("selector_map_fail"));
 			}
 		},
 		onError: (err: Error) => {
-			toast.error(err?.message || "Mark tool mutation failed");
+			toast.error(err?.message || t("marktool_failed"));
 		},
 	});
 
@@ -333,12 +335,12 @@ export default function WebBuilderPage() {
 			});
 		},
 		onSuccess: (res) => {
-			toast.success(`Domain ${res.custom_domain} configured! Point CNAME to ${res.cname_target}`);
+			toast.success(t("domain_configured", { domain: res.custom_domain ?? "", cname: res.cname_target ?? "" }));
 			setIsDomainModalOpen(false);
 			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 		},
 		onError: (err: Error) => {
-			toast.error(err?.message || "Failed to configure custom domain");
+			toast.error(err?.message || t("domain_config_failed"));
 		},
 	});
 
@@ -348,14 +350,14 @@ export default function WebBuilderPage() {
 			return webBuilderApiService.rotateCustomDomainToken(selectedApp.id, workspaceId);
 		},
 		onSuccess: (_res) => {
-			toast.success("Verification token rotated");
+			toast.success(t("token_rotated"));
 			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 			queryClient.invalidateQueries({
 				queryKey: ["web-builder-app", selectedApp?.id, workspaceId],
 			});
 		},
 		onError: (err: Error) => {
-			toast.error(err?.message || "Failed to rotate verification token");
+			toast.error(err?.message || t("rotate_failed"));
 		},
 	});
 
@@ -365,13 +367,13 @@ export default function WebBuilderPage() {
 			return webBuilderApiService.unbindCustomDomain(selectedApp.id, workspaceId);
 		},
 		onSuccess: () => {
-			toast.success("Custom domain removed");
+			toast.success(t("domain_removed"));
 			setCustomDomainInput("");
 			setIsDomainModalOpen(false);
 			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 		},
 		onError: (err: Error) => {
-			toast.error(err?.message || "Failed to remove custom domain");
+			toast.error(err?.message || t("remove_domain_failed"));
 		},
 	});
 
@@ -401,10 +403,9 @@ export default function WebBuilderPage() {
 				<div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
 					<Sparkles className="w-6 h-6" aria-hidden="true" />
 				</div>
-				<h2 className="text-xl font-bold text-foreground">Web Builder is disabled</h2>
+				<h2 className="text-xl font-bold text-foreground">{t("disabled_title")}</h2>
 				<p className="text-sm text-muted-foreground">
-					Web Builder is not enabled on this workspace plan. Please upgrade your workspace plan to
-					access the AI Web App Builder.
+					{t("disabled_desc")}
 				</p>
 			</div>
 		);
@@ -417,11 +418,10 @@ export default function WebBuilderPage() {
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
 						<Sparkles className="w-6 h-6 text-indigo-500" aria-hidden="true" />
-						Full-Stack Web App Builder
+						{t("page_title")}
 					</h1>
 					<p className="text-sm text-muted-foreground">
-						Generate full-stack Next.js & Tailwind apps with live streaming, interactive preview,
-						Design Mark Tool, and 1-Click hosting.
+						{t("page_sub")}
 					</p>
 				</div>
 
@@ -432,12 +432,12 @@ export default function WebBuilderPage() {
 							onClick={() => rebuildMutation.mutate(selectedApp.id)}
 							disabled={rebuildMutation.isPending || isBuilding}
 							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors disabled:opacity-50"
-							title="Rebuild Application"
+							title={t("rebuild_title")}
 						>
 							<RefreshCw
 								className={`w-3.5 h-3.5 ${rebuildMutation.isPending || isBuilding ? "animate-spin" : ""}`}
 							/>
-							Rebuild
+							{t("rebuild")}
 						</button>
 
 						<button
@@ -450,7 +450,7 @@ export default function WebBuilderPage() {
 							}`}
 						>
 							<MousePointerClick className="w-4 h-4" aria-hidden="true" />
-							{isMarkToolActive ? "Mark Tool: Active" : "Design View Mark Tool"}
+							{isMarkToolActive ? t("marktool_active") : t("marktool")}
 						</button>
 
 						<button
@@ -459,7 +459,7 @@ export default function WebBuilderPage() {
 							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors"
 						>
 							<Settings className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-							Custom Domain
+							{t("custom_domain")}
 						</button>
 
 						<button
@@ -471,17 +471,17 @@ export default function WebBuilderPage() {
 							{publishMutation.isPending ? (
 								<>
 									<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-									Publishing...
+									{t("publishing")}
 								</>
 							) : selectedApp.status === "published" ? (
 								<>
 									<CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-									Published
+									{t("published")}
 								</>
 							) : (
 								<>
 									<Rocket className="w-4 h-4" aria-hidden="true" />
-									1-Click Publish
+									{t("publish")}
 								</>
 							)}
 						</button>
@@ -499,14 +499,14 @@ export default function WebBuilderPage() {
 							htmlFor="web-app-prompt-input"
 							className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block"
 						>
-							Describe Your Web Application
+							{t("describe_title")}
 						</label>
 						<textarea
 							id="web-app-prompt-input"
 							rows={4}
 							value={prompt}
 							onChange={(e) => setPrompt(e.target.value)}
-							placeholder="Describe your web app (e.g. A modern SaaS landing page with dark mode, pricing tiers...)"
+							placeholder={t("prompt_placeholder")}
 							disabled={isStreaming}
 							className="w-full text-sm p-3 rounded-lg border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
 						/>
@@ -517,7 +517,7 @@ export default function WebBuilderPage() {
 								className="w-full py-2.5 px-4 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors"
 							>
 								<Square className="w-4 h-4 fill-current" aria-hidden="true" />
-								Cancel Generation
+								{t("cancel_generation")}
 							</button>
 						) : (
 							<button
@@ -527,7 +527,7 @@ export default function WebBuilderPage() {
 								className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
 							>
 								<Play className="w-4 h-4 fill-current" aria-hidden="true" />
-								Generate App (Live Stream)
+								{t("generate_app")}
 							</button>
 						)}
 					</div>
@@ -535,12 +535,12 @@ export default function WebBuilderPage() {
 					{/* Generated Projects List */}
 					<div className="flex-1 flex flex-col p-4 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
 						<h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-							Generated Projects ({apps.length})
+							{t("generated_projects", { count: apps.length })}
 						</h2>
 						<div className="flex-1 overflow-y-auto space-y-2 pr-1">
 							{apps.length === 0 && !isStreaming && (
 								<div className="text-xs text-muted-foreground text-center py-8">
-									No web applications generated yet.
+									{t("no_apps")}
 								</div>
 							)}
 
@@ -577,18 +577,18 @@ export default function WebBuilderPage() {
 											}`}
 										>
 											{app.status === "published"
-												? "Live HTTPS"
+												? t("status_live")
 												: app.status === "building"
-													? "Building"
+													? t("status_building")
 													: app.status === "build_failed"
-														? "Build Failed"
+														? t("status_build_failed")
 														: app.status === "validation_failed"
-															? "Validation Failed"
+															? t("status_validation_failed")
 															: app.status === "deploy_failed"
-																? "Deploy Failed"
+																? t("status_deploy_failed")
 																: app.status === "preview_ready"
-																	? "Preview Ready"
-																	: "Generated"}
+																	? t("status_preview_ready")
+																	: t("status_generated")}
 										</span>
 									</div>
 									<p className="text-xs text-muted-foreground truncate">
@@ -612,7 +612,7 @@ export default function WebBuilderPage() {
 								<div className="flex items-center gap-2 text-indigo-400">
 									<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
 									<span className="font-semibold uppercase tracking-wider">
-										AI Web Builder — {streamPhase || "Streaming"}
+										{t("stream_title")} — {streamPhase || t("streaming")}
 									</span>
 								</div>
 								<span className="text-slate-400">{streamMessage}</span>
@@ -635,7 +635,7 @@ export default function WebBuilderPage() {
 
 							{/* Live Code Stream Output */}
 							<div className="flex-1 overflow-y-auto rounded-lg bg-slate-900/90 border border-slate-800/80 p-4 leading-relaxed whitespace-pre-wrap select-text">
-								{streamTokens || "Connecting to model stream..."}
+								{streamTokens || t("connecting_stream")}
 							</div>
 						</div>
 					) : selectedApp ? (
@@ -657,12 +657,12 @@ export default function WebBuilderPage() {
 										}`}
 									>
 										{selectedApp.status === "published"
-											? "LIVE HTTPS"
+											? t("status_live_upper")
 											: selectedApp.status === "building"
-												? "BUILDING"
+												? t("status_building_upper")
 												: selectedApp.status === "build_failed"
-													? "BUILD FAILED"
-													: "LOCAL PREVIEW"}
+													? t("status_build_failed_upper")
+													: t("status_local_preview")}
 									</span>
 									<span className="text-xs font-mono text-foreground font-medium truncate">
 										{currentDisplayUrl}
@@ -681,7 +681,7 @@ export default function WebBuilderPage() {
 													? "bg-muted text-foreground"
 													: "text-muted-foreground hover:text-foreground"
 											}`}
-											title="Desktop View (100%)"
+											title={t("desktop_view")}
 										>
 											<Monitor className="w-3.5 h-3.5" aria-hidden="true" />
 										</button>
@@ -693,7 +693,7 @@ export default function WebBuilderPage() {
 													? "bg-muted text-foreground"
 													: "text-muted-foreground hover:text-foreground"
 											}`}
-											title="Tablet View (768px)"
+											title={t("tablet_view")}
 										>
 											<Tablet className="w-3.5 h-3.5" aria-hidden="true" />
 										</button>
@@ -705,7 +705,7 @@ export default function WebBuilderPage() {
 													? "bg-muted text-foreground"
 													: "text-muted-foreground hover:text-foreground"
 											}`}
-											title="Mobile View (375px)"
+											title={t("mobile_view")}
 										>
 											<Smartphone className="w-3.5 h-3.5" aria-hidden="true" />
 										</button>
@@ -723,7 +723,7 @@ export default function WebBuilderPage() {
 											}`}
 										>
 											<Eye className="w-3.5 h-3.5" aria-hidden="true" />
-											Preview
+											{t("tab_preview")}
 										</button>
 										<button
 											type="button"
@@ -735,7 +735,7 @@ export default function WebBuilderPage() {
 											}`}
 										>
 											<Code className="w-3.5 h-3.5" aria-hidden="true" />
-											Code
+											{t("tab_code")}
 										</button>
 									</div>
 
@@ -744,7 +744,7 @@ export default function WebBuilderPage() {
 										type="button"
 										onClick={() => setIframeKey((prev) => prev + 1)}
 										className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-										title="Reload Preview"
+										title={t("reload_preview")}
 									>
 										<RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
 									</button>
@@ -755,7 +755,7 @@ export default function WebBuilderPage() {
 										target="_blank"
 										rel="noreferrer"
 										className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-indigo-500 hover:text-indigo-600 transition-colors"
-										title="Open In New Window"
+										title={t("open_new_window")}
 									>
 										<ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
 									</a>
@@ -790,7 +790,7 @@ export default function WebBuilderPage() {
 										<div className="flex items-center gap-2 text-rose-400">
 											<AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
 											<span className="font-semibold text-xs uppercase tracking-wide">
-												Build Failed
+												{t("build_failed_title")}
 											</span>
 										</div>
 										<div className="flex items-center gap-2">
@@ -804,7 +804,7 @@ export default function WebBuilderPage() {
 												) : (
 													<ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
 												)}
-												{isLogsOpen ? "Hide build logs" : "View build logs"}
+												{isLogsOpen ? t("hide_logs") : t("view_logs")}
 											</button>
 											<button
 												type="button"
@@ -815,20 +815,20 @@ export default function WebBuilderPage() {
 												<RefreshCw
 													className={`w-3.5 h-3.5 ${rebuildMutation.isPending ? "animate-spin" : ""}`}
 												/>
-												Rebuild / Retry
+												{t("rebuild_retry")}
 											</button>
 										</div>
 									</div>
 									<p className="text-xs text-rose-300 font-mono line-clamp-2">
 										{selectedApp.description ||
-											"Next.js compilation or dependency installation failed."}
+											t("build_failed_desc")}
 									</p>
 									{isLogsOpen && (
 										<div
 											data-testid="web-builder-logs-panel"
 											className="p-3 bg-black/80 border border-rose-900/60 rounded-lg max-h-56 overflow-y-auto font-mono text-xs text-rose-200 whitespace-pre-wrap leading-relaxed select-text"
 										>
-											{buildLogs?.logs || "Loading build logs..."}
+											{buildLogs?.logs || t("loading_logs")}
 										</div>
 									)}
 								</div>
@@ -848,10 +848,10 @@ export default function WebBuilderPage() {
 											/>
 											<div className="space-y-1">
 												<h3 className="text-sm font-semibold text-slate-100">
-													Building web application...
+													{t("building_app")}
 												</h3>
 												<p className="text-xs text-slate-400">
-													Installing dependencies and compiling Next.js standalone preview
+													{t("building_desc")}
 												</p>
 											</div>
 										</div>
@@ -902,7 +902,7 @@ export default function WebBuilderPage() {
 									{/* Code Content */}
 									<div className="flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed selection:bg-indigo-500 selection:text-white">
 										<pre className="text-slate-200">
-											{appFiles[selectedFile] || "// File empty or loading..."}
+											{appFiles[selectedFile] || t("file_empty")}
 										</pre>
 									</div>
 								</div>
@@ -915,7 +915,7 @@ export default function WebBuilderPage() {
 								aria-hidden="true"
 							/>
 							<p className="text-sm">
-								Enter a prompt on the left and click Generate App to start live building.
+								{t("empty_state")}
 							</p>
 						</div>
 					)}
@@ -926,32 +926,32 @@ export default function WebBuilderPage() {
 			{isDomainModalOpen && selectedApp && (
 				<div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
 					<div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
-						<h3 className="text-lg font-bold text-foreground">Connect Custom Domain</h3>
+						<h3 className="text-lg font-bold text-foreground">{t("domain_title")}</h3>
 						<p className="text-xs text-muted-foreground">
-							Point your DNS CNAME record to{" "}
+							{t("domain_desc_1")}{" "}
 							<code className="text-indigo-400 font-mono">cname-ingress.apps.nowing.net</code> to
-							bind your custom domain.
+							{t("domain_desc_2")}
 						</p>
 						{domainVerifyToken && (
 							<div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
 								<div className="flex items-center justify-between">
 									<p className="text-[11px] font-medium text-foreground">
-										Verify domain ownership — add this DNS TXT record:
+										{t("verify_ownership")}
 									</p>
 									<button
 										type="button"
 										onClick={() => {
 											navigator.clipboard.writeText(`nowing-verify=${domainVerifyToken}`);
-											toast.success("Copied verification TXT value to clipboard");
+											toast.success(t("txt_copied"));
 										}}
 										className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium underline"
 									>
-										Copy value
+										{t("copy_value")}
 									</button>
 								</div>
 								<div className="text-[11px] font-mono text-muted-foreground space-y-0.5">
 									<div>
-										<span className="text-foreground">Name/host: </span>
+										<span className="text-foreground">{t("name_host")} </span>
 										<code className="text-indigo-400">
 											_nowing-verify.
 											{customDomainInput.trim() || "<your-domain>"}
@@ -959,27 +959,27 @@ export default function WebBuilderPage() {
 									</div>
 									<div className="break-all flex items-center justify-between gap-1">
 										<span>
-											<span className="text-foreground">Value: </span>
+											<span className="text-foreground">{t("value_label")} </span>
 											<code className="text-indigo-400">nowing-verify={domainVerifyToken}</code>
 										</span>
 									</div>
 								</div>
 								<div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
-									<span>DNS may take a few minutes to propagate (record TTL).</span>
+									<span>{t("dns_propagate")}</span>
 									<button
 										type="button"
 										onClick={() => rotateTokenMutation.mutate()}
 										disabled={rotateTokenMutation.isPending}
 										className="text-amber-400 hover:text-amber-300 underline disabled:opacity-50"
 									>
-										{rotateTokenMutation.isPending ? "Rotating..." : "Rotate token"}
+										{rotateTokenMutation.isPending ? t("rotating") : t("rotate_token")}
 									</button>
 								</div>
 							</div>
 						)}
 						<input
 							type="text"
-							placeholder="e.g. app.mycompany.com"
+							placeholder={t("domain_placeholder")}
 							value={customDomainInput}
 							onChange={(e) => setCustomDomainInput(e.target.value)}
 							className="w-full text-sm p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -992,7 +992,7 @@ export default function WebBuilderPage() {
 									disabled={unbindDomainMutation.isPending}
 									className="px-3 py-1.5 text-xs rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-50"
 								>
-									{unbindDomainMutation.isPending ? "Removing..." : "Remove Domain"}
+									{unbindDomainMutation.isPending ? t("removing") : t("remove_domain")}
 								</button>
 							) : (
 								<span />
@@ -1003,7 +1003,7 @@ export default function WebBuilderPage() {
 									onClick={() => setIsDomainModalOpen(false)}
 									className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted text-foreground"
 								>
-									Cancel
+									{t("cancel")}
 								</button>
 								<button
 									type="button"
@@ -1011,7 +1011,7 @@ export default function WebBuilderPage() {
 									disabled={customDomainMutation.isPending || !customDomainInput.trim()}
 									className="px-4 py-1.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
 								>
-									{customDomainMutation.isPending ? "Verifying DNS..." : "Save Domain"}
+									{customDomainMutation.isPending ? t("verifying_dns") : t("save_domain")}
 								</button>
 							</div>
 						</div>
