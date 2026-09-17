@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ArrowRight, Target } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,10 +11,11 @@ interface WizardStepsHeaderProps {
 }
 
 export function WizardStepsHeader({ currentStep, onStepChange }: WizardStepsHeaderProps) {
+	const t = useTranslations("leads");
 	const steps = [
-		{ id: 1 as const, label: "ICP Builder" },
-		{ id: 2 as const, label: "Nguồn & Ngân sách" },
-		{ id: 3 as const, label: "Launch & Lên lịch" },
+		{ id: 1 as const, label: t("step_icp") },
+		{ id: 2 as const, label: t("step_source") },
+		{ id: 3 as const, label: t("step_launch") },
 	];
 
 	return (
@@ -23,16 +25,16 @@ export function WizardStepsHeader({ currentStep, onStepChange }: WizardStepsHead
 					<span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
 						<Target className="w-5 h-5" />
 					</span>
-					<h1 className="text-xl font-bold text-zinc-100">Campaign Builder Wizard</h1>
+					<h1 className="text-xl font-bold text-zinc-100">{t("campaign_wizard")}</h1>
 					<Badge
 						variant="outline"
 						className="bg-emerald-950/40 text-emerald-400 border-emerald-800/60 font-mono text-xs"
 					>
-						Story 21.15
+						{t("story_tag")}
 					</Badge>
 				</div>
 				<p className="text-xs text-zinc-400">
-					Thiết lập tiêu chí ICP, phân bổ nguồn dữ liệu đa kênh & kích hoạt SDR Pipeline tự động
+					{t("campaign_wizard_desc")}
 				</p>
 			</div>
 

@@ -1543,7 +1543,7 @@
 		"tab_all_leads": "Tất cả Leads",
 		"tab_verified": "SĐT Đã Xác Thực",
 		"tab_dnc_clean": "Đã Lọc DNC",
-		"search_placeholder": "Tìm kiếm...",
+		"search_placeholder": "Tìm theo tên công ty, số điện thoại, ngành nghề, vị trí...",
 		"btn_export_csv": "Xuất CSV",
 		"btn_export_lark": "Xuất Lark Base",
 		"btn_bulk_unlock": "Giải mã mục đã chọn ({count})",
@@ -1721,7 +1721,18 @@
 		"graph_toast_email": "Đã khởi tạo chuỗi Email Outreach với người ra quyết định!",
 		"graph_toast_watch": "Đã bật theo dõi biến động nhân sự cho công ty này!",
 		"graph_btn_email": "Khởi Tạo Email Outreach",
-		"graph_btn_watch": "Báo Khi Có Tuyển Thêm"
+		"graph_btn_watch": "Báo Khi Có Tuyển Thêm",
+		"panel_title": "Bảng Thông Tin Lead",
+		"story_tag": "Story 21.15",
+		"panel_desc": "SDR Lead Workbench, Campaign Builder 3-bước, Matrix Bảng tính & Tích hợp 1-Click Reverse-ICP",
+		"tab_workbench": "Lead Workbench",
+		"tab_campaign": "Campaign Builder",
+		"tab_icp": "Reverse-ICP",
+		"campaign_wizard": "Trình Dựng Chiến Dịch",
+		"campaign_wizard_desc": "Thiết lập tiêu chí ICP, phân bổ nguồn dữ liệu đa kênh & kích hoạt SDR Pipeline tự động",
+		"step_icp": "ICP Builder",
+		"step_source": "Nguồn & Ngân sách",
+		"step_launch": "Launch & Lên lịch"
 	},
 	"bulkOps": {
 		"title": "Thao tác Hàng loạt Quản trị",

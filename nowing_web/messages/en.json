@@ -1541,7 +1541,7 @@
 		"tab_all_leads": "All Leads",
 		"tab_verified": "Verified Phones",
 		"tab_dnc_clean": "DNC Clean",
-		"search_placeholder": "Search...",
+		"search_placeholder": "Search by company name, phone, industry, position...",
 		"btn_export_csv": "Export CSV",
 		"btn_export_lark": "Export Lark Base",
 		"btn_bulk_unlock": "Unlock Selected ({count})",
@@ -1719,7 +1719,18 @@
 		"graph_toast_email": "Email outreach sequence initialized with decision maker!",
 		"graph_toast_watch": "Personnel-change tracking enabled for this company!",
 		"graph_btn_email": "Initiate Email Outreach",
-		"graph_btn_watch": "Alert on New Hires"
+		"graph_btn_watch": "Alert on New Hires",
+		"panel_title": "Lead Intelligence Panel",
+		"story_tag": "Story 21.15",
+		"panel_desc": "SDR Lead Workbench, 3-step Campaign Builder, Spreadsheet Matrix & 1-Click Reverse-ICP Integration",
+		"tab_workbench": "Lead Workbench",
+		"tab_campaign": "Campaign Builder",
+		"tab_icp": "Reverse-ICP",
+		"campaign_wizard": "Campaign Builder Wizard",
+		"campaign_wizard_desc": "Set ICP criteria, allocate multi-channel data sources & trigger automated SDR Pipeline",
+		"step_icp": "ICP Builder",
+		"step_source": "Sources & Budget",
+		"step_launch": "Launch & Schedule"
 	},
 	"bulkOps": {
 		"title": "Admin Bulk Operations",
