@@ -504,3 +504,97 @@ class TestReviewPatchedEdgeCases:
         import json
         parsed = json.loads(req.metadata)
         assert parsed["session_id"] == 'sess"quote\\slash'
+
+
+# ---------------------------------------------------------------------------
+# Call Lifecycle Tests (end_call / delete_room / list_active_rooms)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCallLifecycle:
+    """Tests for call termination and room inspection methods."""
+
+    @pytest.mark.asyncio
+    async def test_end_call_removes_participant(
+        self, telephony_client, mock_livekit_api
+    ):
+        """end_call with participant_identity calls room.remove_participant."""
+        mock_livekit_api.room.remove_participant = AsyncMock()
+
+        await telephony_client.end_call(
+            room_name="call_sess_1",
+            participant_identity="sip_0912345678",
+        )
+
+        mock_livekit_api.room.remove_participant.assert_awaited_once()
+        req = mock_livekit_api.room.remove_participant.call_args[0][0]
+        assert req.room == "call_sess_1"
+        assert req.identity == "sip_0912345678"
+
+    @pytest.mark.asyncio
+    async def test_end_call_deletes_room_when_no_identity(
+        self, telephony_client, mock_livekit_api
+    ):
+        """end_call without participant_identity calls room.delete_room."""
+        mock_livekit_api.room.delete_room = AsyncMock()
+
+        await telephony_client.end_call(room_name="call_sess_2")
+
+        mock_livekit_api.room.delete_room.assert_awaited_once()
+        req = mock_livekit_api.room.delete_room.call_args[0][0]
+        assert req.room == "call_sess_2"
+
+    @pytest.mark.asyncio
+    async def test_end_call_not_found_is_silent(
+        self, telephony_client, mock_livekit_api
+    ):
+        """end_call swallows NOT_FOUND — already-gone is not an error."""
+        mock_livekit_api.room.delete_room = AsyncMock(
+            side_effect=TwirpError(
+                code=TwirpErrorCode.NOT_FOUND, msg="room not found", status=404
+            )
+        )
+        # Must not raise
+        await telephony_client.end_call(room_name="call_gone")
+
+    @pytest.mark.asyncio
+    async def test_end_call_other_twirp_error_raises_telephony_error(
+        self, telephony_client, mock_livekit_api
+    ):
+        """end_call wraps non-NOT_FOUND Twirp errors in TelephonyError."""
+        mock_livekit_api.room.delete_room = AsyncMock(
+            side_effect=TwirpError(
+                code=TwirpErrorCode.INTERNAL, msg="internal error", status=500
+            )
+        )
+        with pytest.raises(TelephonyError):
+            await telephony_client.end_call(room_name="call_fail")
+
+    @pytest.mark.asyncio
+    async def test_delete_room_delegates_to_end_call(
+        self, telephony_client, mock_livekit_api
+    ):
+        """delete_room is a convenience alias for end_call with no identity."""
+        mock_livekit_api.room.delete_room = AsyncMock()
+        await telephony_client.delete_room("call_alias")
+        mock_livekit_api.room.delete_room.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_list_active_rooms_filters_by_prefix(
+        self, telephony_client, mock_livekit_api
+    ):
+        """list_active_rooms returns only rooms matching the prefix."""
+        from livekit.api import ListRoomsResponse
+        mock_livekit_api.room.list_rooms = AsyncMock(
+            return_value=ListRoomsResponse(
+                rooms=[
+                    Room(name="call_aaa"),
+                    Room(name="call_bbb"),
+                    Room(name="other_room"),
+                ]
+            )
+        )
+        names = await telephony_client.list_active_rooms()
+        assert "call_aaa" in names
+        assert "call_bbb" in names
+        assert "other_room" not in names

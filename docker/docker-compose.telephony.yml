@@ -6,11 +6,54 @@
 
 name: nowing-telephony
 
+x-livekit-sip-common: &livekit-sip-common
+  image: livekit/sip:v1.15.0   # pinned — do not use :latest in production
+  restart: unless-stopped
+  sysctls:
+    # Raise UDP socket buffers to prevent RTP packet loss under concurrent calls
+    - net.core.rmem_max=16777216   # 16 MB
+    - net.core.wmem_max=16777216   # 16 MB
+    - net.core.netdev_max_backlog=5000
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 15s
+  environment:
+    - LIVEKIT_URL=${LIVEKIT_URL:-http://livekit:7880}
+    - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+    - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    # Set SIP_GATEWAY_PUBLIC_IP to the host's routable/public IP before
+    # deploying to production — required for carrier RTP reachability.
+    - SIP_GATEWAY_PUBLIC_IP=${SIP_GATEWAY_PUBLIC_IP:-}
+    - SIP_USE_EXTERNAL_IP=${SIP_USE_EXTERNAL_IP:-false}
+    - SIP_MEDIA_PUBLIC_IP=${SIP_MEDIA_PUBLIC_IP:-}
+    - SIP_MEDIA_USE_EXTERNAL_IP=${SIP_MEDIA_USE_EXTERNAL_IP:-false}
+    - SIP_LOCAL_NET=${SIP_LOCAL_NET:-}
+  networks:
+    telephony_net: {}
+    dokploy-network: {}
+
 services:
   kamailio:
-    image: kamailio/kamailio:5.8.3
+    image: kamailio/kamailio:5.8.3   # pinned
     container_name: nowing-kamailio
     restart: unless-stopped
+    sysctls:
+      - net.core.rmem_max=16777216
+      - net.core.wmem_max=16777216
+      - net.core.netdev_max_backlog=5000
+    healthcheck:
+      # Kamailio exposes no HTTP health endpoint; use SIP OPTIONS ping
+      test: ["CMD-SHELL", "kamctl ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     ports:
       - "5060:5060/udp"
       - "5060:5060/tcp"
@@ -29,22 +72,24 @@ services:
         condition: service_healthy
 
   livekit-sip-1:
-    image: livekit/sip:latest
+    <<: *livekit-sip-common
     container_name: nowing-livekit-sip-1
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
     volumes:
-      - ./livekit/sip.yaml:/etc/livekit/sip.yaml:ro
+      - ./livekit/sip-1.yaml:/etc/livekit/sip.yaml:ro
     environment:
+      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
       - LIVEKIT_URL=${LIVEKIT_URL:-http://livekit:7880}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
-      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - SIP_GATEWAY_PUBLIC_IP=${SIP_GATEWAY_PUBLIC_IP:-}
+      - SIP_USE_EXTERNAL_IP=${SIP_USE_EXTERNAL_IP:-false}
+      - SIP_MEDIA_PUBLIC_IP=${SIP_MEDIA_PUBLIC_IP:-}
+      - SIP_MEDIA_USE_EXTERNAL_IP=${SIP_MEDIA_USE_EXTERNAL_IP:-false}
+      - SIP_LOCAL_NET=${SIP_LOCAL_NET:-}
+      - SIP_GATEWAY_HOST=livekit-sip-1
     ports:
       - "10000-15000:10000-15000/udp"
     networks:
@@ -54,22 +99,24 @@ services:
       dokploy-network: {}
 
   livekit-sip-2:
-    image: livekit/sip:latest
+    <<: *livekit-sip-common
     container_name: nowing-livekit-sip-2
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
     volumes:
-      - ./livekit/sip.yaml:/etc/livekit/sip.yaml:ro
+      - ./livekit/sip-2.yaml:/etc/livekit/sip.yaml:ro
     environment:
+      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
       - LIVEKIT_URL=${LIVEKIT_URL:-http://livekit:7880}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
-      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - SIP_GATEWAY_PUBLIC_IP=${SIP_GATEWAY_PUBLIC_IP:-}
+      - SIP_USE_EXTERNAL_IP=${SIP_USE_EXTERNAL_IP:-false}
+      - SIP_MEDIA_PUBLIC_IP=${SIP_MEDIA_PUBLIC_IP:-}
+      - SIP_MEDIA_USE_EXTERNAL_IP=${SIP_MEDIA_USE_EXTERNAL_IP:-false}
+      - SIP_LOCAL_NET=${SIP_LOCAL_NET:-}
+      - SIP_GATEWAY_HOST=livekit-sip-2
     ports:
       - "15001-20000:15001-20000/udp"
     networks:

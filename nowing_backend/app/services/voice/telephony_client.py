@@ -21,8 +21,11 @@ from livekit.api import (
     AccessToken,
     CreateRoomRequest,
     CreateSIPParticipantRequest,
+    DeleteRoomRequest,
+    ListRoomsRequest,
     LiveKitAPI,
     Room,
+    RoomParticipantIdentity,
     SIPParticipantInfo,
     TwirpError,
     TwirpErrorCode,
@@ -556,6 +559,109 @@ class LiveKitTelephonyClient:
             trunk_id=trunk_id,
             attempted_trunks=attempted_trunks,
         )
+
+
+    # ---------------------------------------------------------------------------
+    # Call Lifecycle Management
+    # ---------------------------------------------------------------------------
+
+    async def end_call(
+        self,
+        room_name: str,
+        participant_identity: str | None = None,
+    ) -> None:
+        """Terminate an active call by removing the SIP participant or closing the room.
+
+        When ``participant_identity`` is supplied, only that SIP leg is removed
+        (e.g. hang up a single call leg while keeping the room open for logging).
+        When omitted, the entire room is deleted which disconnects all
+        participants and triggers room-cleanup workflows in LiveKit.
+
+        Args:
+            room_name: LiveKit room name (``call_<uuid>``).
+            participant_identity: SIP participant identity to remove, or None
+                to delete the whole room.
+
+        Raises:
+            TelephonyError: If the LiveKit API call fails unexpectedly.
+        """
+        api = await self._get_api()
+        norm_room = self.normalize_room_name(room_name)
+
+        if participant_identity:
+            try:
+                logger.info(
+                    "Removing SIP participant %s from room %s",
+                    participant_identity,
+                    norm_room,
+                )
+                await api.room.remove_participant(
+                    RoomParticipantIdentity(
+                        room=norm_room,
+                        identity=participant_identity,
+                    )
+                )
+                logger.info(
+                    "Participant %s removed from room %s",
+                    participant_identity,
+                    norm_room,
+                )
+            except TwirpError as exc:
+                if exc.code == TwirpErrorCode.NOT_FOUND:
+                    logger.warning(
+                        "Participant %s already absent from room %s",
+                        participant_identity,
+                        norm_room,
+                    )
+                    return
+                raise TelephonyError(
+                    f"Failed to remove participant {participant_identity} "
+                    f"from room {norm_room}: {exc.message}"
+                ) from exc
+        else:
+            try:
+                logger.info("Deleting room %s (all participants will disconnect)", norm_room)
+                await api.room.delete_room(DeleteRoomRequest(room=norm_room))
+                logger.info("Room %s deleted", norm_room)
+            except TwirpError as exc:
+                if exc.code == TwirpErrorCode.NOT_FOUND:
+                    logger.warning("Room %s already deleted or does not exist", norm_room)
+                    return
+                raise TelephonyError(
+                    f"Failed to delete room {norm_room}: {exc.message}"
+                ) from exc
+
+    async def delete_room(self, room_name: str) -> None:
+        """Delete a LiveKit room, disconnecting all participants.
+
+        Convenience wrapper around :meth:`end_call` with no participant filter.
+        """
+        await self.end_call(room_name=room_name, participant_identity=None)
+
+    async def list_active_rooms(self, name_prefix: str | None = None) -> list[str]:
+        """Return names of currently active rooms, optionally filtered by prefix.
+
+        Args:
+            name_prefix: Filter results to rooms whose name starts with this
+                string (e.g. ``"call_"``). Defaults to ``SIP_ROOM_PREFIX``.
+
+        Returns:
+            List of active room names.
+
+        Raises:
+            TelephonyError: If the LiveKit API call fails.
+        """
+        api = await self._get_api()
+        prefix = name_prefix if name_prefix is not None else SIP_ROOM_PREFIX
+        try:
+            response = await api.room.list_rooms(ListRoomsRequest())
+            names = [r.name for r in response.rooms if r.name.startswith(prefix)]
+            logger.debug("Active rooms matching '%s': %s", prefix, names)
+            return names
+        except TwirpError as exc:
+            raise TelephonyError(
+                f"Failed to list rooms: {exc.message}"
+            ) from exc
 
     async def aclose(self) -> None:
         """Close underlying LiveKitAPI resources."""
