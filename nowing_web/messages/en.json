@@ -1342,7 +1342,11 @@
     "playbook_preset_jewelry": "Jewelry & Gemstones",
     "playbook_preset_jewelry_desc": "Find jewelry stores, goldsmiths, gemstone traders & luxury retailers",
     "presentation_plan_limited_title": "PPTX export is a paid feature",
-    "presentation_plan_limited_desc": "This workspace is on the free plan — switch to Marp or upgrade to export PPTX."
+    "presentation_plan_limited_desc": "This workspace is on the free plan — switch to Marp or upgrade to export PPTX.",
+     "unavailable_connect": "Connect a chat model to start chatting.",
+     "unavailable_ask_admin": "No model available. Ask a workspace admin to connect a chat model.",
+     "connect_short": "Connect",
+     "connect_model": "Connect a model"
   },
   "leads": {
     "matrix_title": "Lead Intelligence Matrix",
