@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.config import config
 from app.db import CrmSyncLog, Permission, WorkspaceMembership, get_async_session
 from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.crm.schemas import (
@@ -306,8 +308,19 @@ async def hubspot_webhook(
 async def salesforce_webhook(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
+    x_salesforce_webhook_secret: str | None = Header(None),
 ):
-    """Ingest Salesforce outbound message / webhook event (Story 34.1)."""
+    """Ingest Salesforce outbound message / webhook event (Story 34.1).
+
+    Authenticated via a shared secret header (X-Salesforce-Webhook-Secret)
+    configured in Salesforce outbound message settings.
+    """
+    expected_secret = getattr(config, "SALESFORCE_WEBHOOK_SECRET", "")
+    if expected_secret and x_salesforce_webhook_secret != expected_secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Salesforce webhook secret",
+        )
     try:
         payload = await request.json()
     except Exception as exc:

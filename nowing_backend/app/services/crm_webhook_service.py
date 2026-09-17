@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
-from app.db import CrmSyncLog, Lead, VerifiedContact
+from app.db import CrmConnection, CrmSyncLog, Lead, VerifiedContact
 
 logger = logging.getLogger(__name__)
 
@@ -112,16 +112,30 @@ class CrmWebhookService:
             lead.status = new_status
             lead.updated_at = datetime.now(UTC)
 
-            # Record CRM sync log entry
-            log = CrmSyncLog(
-                workspace_id=lead.workspace_id,
-                connection_id=uuid.uuid4(),  # system inbound connection
-                direction="inbound",
-                entity_type="lead",
-                entity_id=lead.id,
-                status="success",
+            # Record CRM sync log entry: look up HubSpot connection for this workspace
+            conn_stmt = select(CrmConnection).where(
+                CrmConnection.workspace_id == lead.workspace_id,
+                CrmConnection.provider == "hubspot",
             )
-            self.session.add(log)
+            conn_res = await self.session.execute(conn_stmt)
+            connection = conn_res.scalars().first()
+
+            if connection:
+                log = CrmSyncLog(
+                    workspace_id=lead.workspace_id,
+                    connection_id=connection.id,
+                    direction="inbound",
+                    entity_type="lead",
+                    entity_id=lead.id,
+                    status="success",
+                )
+                self.session.add(log)
+            else:
+                logger.warning(
+                    "No HubSpot CRM connection found for workspace %d; "
+                    "lead status updated but sync log not written",
+                    lead.workspace_id,
+                )
             results.append({
                 "deal_id": deal_id,
                 "lead_id": str(lead.id),
@@ -171,15 +185,29 @@ class CrmWebhookService:
         lead.status = new_status
         lead.updated_at = datetime.now(UTC)
 
-        log = CrmSyncLog(
-            workspace_id=lead.workspace_id,
-            connection_id=uuid.uuid4(),
-            direction="inbound",
-            entity_type="lead",
-            entity_id=lead.id,
-            status="success",
+        conn_stmt = select(CrmConnection).where(
+            CrmConnection.workspace_id == lead.workspace_id,
+            CrmConnection.provider == "salesforce",
         )
-        self.session.add(log)
+        conn_res = await self.session.execute(conn_stmt)
+        connection = conn_res.scalars().first()
+
+        if connection:
+            log = CrmSyncLog(
+                workspace_id=lead.workspace_id,
+                connection_id=connection.id,
+                direction="inbound",
+                entity_type="lead",
+                entity_id=lead.id,
+                status="success",
+            )
+            self.session.add(log)
+        else:
+            logger.warning(
+                "No Salesforce CRM connection found for workspace %d; "
+                "lead status updated but sync log not written",
+                lead.workspace_id,
+            )
         await self.session.flush()
 
         return {
