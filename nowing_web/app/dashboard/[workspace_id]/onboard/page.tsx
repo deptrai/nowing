@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
@@ -17,6 +18,7 @@ export default function OnboardPage() {
 	const router = useRouter();
 	const params = useParams();
 	const workspaceId = Number(params.workspace_id);
+	const t = useTranslations("onboard");
 	const session = useSession();
 	const { data: connections = [] } = useAtomValue(modelConnectionsAtom);
 	const { data: setupStatus } = useAtomValue(llmSetupStatusAtomFamily(workspaceId));
@@ -34,9 +36,9 @@ export default function OnboardPage() {
 			<div className="w-full max-w-3xl space-y-6 text-center">
 				<Logo className="mx-auto h-12 w-12" aria-hidden="true" />
 				<div className="space-y-2">
-					<h1 className="text-2xl font-semibold tracking-tight">Choose a model</h1>
+					<h1 className="text-2xl font-semibold tracking-tight">{t("choose_model_title")}</h1>
 					<p className="text-sm text-muted-foreground">
-						Connect any supported provider, then enable the models you want Nowing to use.
+						{t("choose_model_desc")}
 					</p>
 				</div>
 				<ModelProviderConnectionsPanel
@@ -49,7 +51,7 @@ export default function OnboardPage() {
 							disabled={!isReady}
 							onClick={() => router.replace(`/dashboard/${workspaceId}/new-chat`)}
 						>
-							Start
+							{t("start")}
 						</Button>
 					}
 					showAddProviderHeader={false}
