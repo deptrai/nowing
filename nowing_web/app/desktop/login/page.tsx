@@ -1,6 +1,7 @@
 "use client";
 
 import { Crop, Eye, EyeOff, Rocket, RotateCcw, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -48,31 +49,28 @@ function GoogleGLogo({ className }: { className?: string }) {
 	);
 }
 
-const HOTKEY_ROWS: Array<{
-	key: ShortcutKey;
-	label: string;
-	description: string;
-	icon: React.ElementType;
-}> = [
-	{
-		key: "generalAssist",
-		label: "General Assist",
-		description: "Launch Nowing instantly from any application",
-		icon: Rocket,
-	},
-	{
-		key: "screenshotAssist",
-		label: "Screenshot Assist",
-		description: "Draw a region on screen to attach that capture to chat",
-		icon: Crop,
-	},
-	{
-		key: "quickAsk",
-		label: "Quick Assist",
-		description: "Select text anywhere, then ask AI to explain, rewrite, or act on it",
-		icon: Zap,
-	},
-];
+function useHotkeyRows(t: ReturnType<typeof useTranslations>) {
+	return [
+		{
+			key: "generalAssist" as ShortcutKey,
+			label: t("hotkey_general"),
+			description: t("hotkey_general_desc"),
+			icon: Rocket,
+		},
+		{
+			key: "screenshotAssist" as ShortcutKey,
+			label: t("hotkey_screenshot"),
+			description: t("hotkey_screenshot_desc"),
+			icon: Crop,
+		},
+		{
+			key: "quickAsk" as ShortcutKey,
+			label: t("hotkey_quick"),
+			description: t("hotkey_quick_desc"),
+			icon: Zap,
+		},
+	];
+}
 
 function acceleratorToKeys(accel: string, isMac: boolean): string[] {
 	if (!accel) return [];
@@ -110,6 +108,7 @@ function HotkeyRow({
 	onChange: (accelerator: string) => void;
 	onReset: () => void;
 }) {
+	const t = useTranslations("desktopLogin");
 	const [recording, setRecording] = useState(false);
 	const inputRef = useRef<HTMLButtonElement>(null);
 	const isDefault = value === defaultValue;
@@ -153,7 +152,7 @@ function HotkeyRow({
 						size="icon"
 						className="size-7 text-muted-foreground hover:text-foreground"
 						onClick={onReset}
-						title="Reset to default"
+						title={t("reset_default")}
 					>
 						<RotateCcw className="size-3" aria-hidden="true" />
 					</Button>
@@ -162,7 +161,7 @@ function HotkeyRow({
 					ref={inputRef}
 					type="button"
 					variant="ghost"
-					title={recording ? "Press shortcut keys" : "Click to edit shortcut"}
+					title={recording ? t("press_keys") : t("click_edit")}
 					onClick={() => setRecording(true)}
 					onKeyDown={handleKeyDown}
 					onBlur={() => setRecording(false)}
@@ -173,7 +172,7 @@ function HotkeyRow({
 					}
 				>
 					{recording ? (
-						<span className="px-2 text-[9px] text-primary whitespace-nowrap">Press hotkeys</span>
+						<span className="px-2 text-[9px] text-primary whitespace-nowrap">{t("press_hotkeys")}</span>
 					) : (
 						<ShortcutKbd keys={displayKeys} className="ml-0 px-1.5 text-foreground/85" />
 					)}
@@ -185,6 +184,8 @@ function HotkeyRow({
 
 export default function DesktopLoginPage() {
 	const router = useRouter();
+	const t = useTranslations("desktopLogin");
+	const HOTKEY_ROWS = useHotkeyRows(t);
 	const api = useElectronAPI();
 	const isGoogleAuth = useIsGoogleAuth();
 
@@ -218,11 +219,11 @@ export default function DesktopLoginPage() {
 			setShortcuts((prev) => {
 				const updated = { ...prev, [key]: accelerator };
 				api?.setShortcuts?.({ [key]: accelerator }).catch(() => {
-					toast.error("Failed to update shortcut");
+					toast.error(t("shortcut_failed"));
 				});
 				return updated;
 			});
-			toast.success("Shortcut updated");
+			toast.success(t("shortcut_updated"));
 		},
 		[api]
 	);
@@ -243,7 +244,7 @@ export default function DesktopLoginPage() {
 			router.push(getPostLoginRedirectPath());
 		} catch (error) {
 			setIsGoogleRedirecting(false);
-			toast.error(error instanceof Error ? error.message : "Google sign-in failed");
+			toast.error(error instanceof Error ? error.message : t("google_failed"));
 		}
 	};
 
@@ -268,7 +269,7 @@ export default function DesktopLoginPage() {
 
 		try {
 			if (!api?.loginPassword) {
-				throw new Error("Desktop password login is not available");
+				throw new Error(t("pwd_login_unavailable"));
 			}
 			await api.loginPassword(email, password);
 
@@ -281,7 +282,7 @@ export default function DesktopLoginPage() {
 			if (err instanceof Error) {
 				setLoginError(err.message);
 			} else {
-				setLoginError("Login failed. Please check your credentials.");
+				setLoginError(t("login_failed"));
 			}
 		} finally {
 			setIsLoggingIn(false);
@@ -301,9 +302,9 @@ export default function DesktopLoginPage() {
 						height={48}
 						priority
 					/>
-					<h1 className="text-lg font-semibold tracking-tight">Welcome to Nowing Desktop</h1>
+					<h1 className="text-lg font-semibold tracking-tight">{t("title")}</h1>
 					<p className="mt-1 text-sm text-muted-foreground">
-						Configure shortcuts, then sign in to get started
+						{t("subtitle")}
 					</p>
 				</div>
 
@@ -354,7 +355,7 @@ export default function DesktopLoginPage() {
 									onClick={handleGoogleLogin}
 								>
 									<GoogleGLogo className="size-4" aria-hidden="true" />
-									Continue with Google
+									{t("continue_google")}
 								</Button>
 							) : (
 								<form onSubmit={handleLocalLogin} className="flex flex-col gap-3">
@@ -366,7 +367,7 @@ export default function DesktopLoginPage() {
 
 									<div className="flex flex-col gap-1.5">
 										<Label htmlFor="email" className="text-xs">
-											Email
+											{t("email")}
 										</Label>
 										<Input
 											id="email"
@@ -383,13 +384,13 @@ export default function DesktopLoginPage() {
 
 									<div className="flex flex-col gap-1.5">
 										<Label htmlFor="password" className="text-xs">
-											Password
+											{t("password")}
 										</Label>
 										<div className="relative">
 											<Input
 												id="password"
 												type={showPassword ? "text" : "password"}
-												placeholder="Enter your password"
+												placeholder={t("password_placeholder")}
 												required
 												value={password}
 												onChange={(e) => setPassword(e.target.value)}
@@ -413,7 +414,7 @@ export default function DesktopLoginPage() {
 									</div>
 
 									<Button type="submit" disabled={isLoggingIn} className="relative h-9 mt-1">
-										<span className={isLoggingIn ? "opacity-0" : ""}>Sign in</span>
+										<span className={isLoggingIn ? "opacity-0" : ""}>{t("sign_in")}</span>
 										{isLoggingIn && (
 											<Spinner size="sm" className="absolute text-primary-foreground" />
 										)}

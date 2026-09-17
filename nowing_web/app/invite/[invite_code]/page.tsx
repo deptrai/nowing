@@ -13,6 +13,7 @@ import {
 	XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -45,6 +46,7 @@ export default function InviteAcceptPage() {
 	const router = useRouter();
 	const inviteCode = params.invite_code as string;
 	const session = useSession();
+	const t = useTranslations("invite");
 
 	const { data: inviteInfo = null, isLoading: loading } = useQuery({
 		queryKey: cacheKeys.invites.info(inviteCode),
@@ -62,7 +64,7 @@ export default function InviteAcceptPage() {
 
 	const acceptInvite = useCallback(async () => {
 		if (!inviteCode) {
-			toast.error("No invite code provided");
+			toast.error(t("no_code"));
 			return null;
 		}
 
@@ -70,7 +72,7 @@ export default function InviteAcceptPage() {
 			const result = await acceptInviteMutation({ invite_code: inviteCode });
 			return result;
 		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : "Failed to accept invite");
+			toast.error(err instanceof Error ? err.message : t("accept_failed"));
 			throw err;
 		}
 	}, [inviteCode, acceptInviteMutation]);
@@ -101,7 +103,7 @@ export default function InviteAcceptPage() {
 				trackWorkspaceUserAdded(result.workspace_id, result.role_name);
 			}
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "Failed to accept invite");
+			setError(err instanceof Error ? err.message : t("accept_failed"));
 		} finally {
 			setAccepting(false);
 		}
@@ -158,7 +160,7 @@ export default function InviteAcceptPage() {
 							>
 								<Spinner size="xl" className="text-primary" />
 							</motion.div>
-							<p className="mt-4 text-muted-foreground">Loading invite details...</p>
+							<p className="mt-4 text-muted-foreground">{t("loading")}</p>
 						</CardContent>
 					) : accepted && acceptedData ? (
 						<>
@@ -171,9 +173,9 @@ export default function InviteAcceptPage() {
 								>
 									<CheckCircle2 className="h-10 w-10 text-emerald-500" aria-hidden="true" />
 								</motion.div>
-								<CardTitle className="text-2xl">Welcome to the team!</CardTitle>
+								<CardTitle className="text-2xl">{t("joined_title")}</CardTitle>
 								<CardDescription>
-									You've successfully joined {acceptedData.workspace_name}
+									{t("joined_desc", { name: acceptedData.workspace_name })}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
@@ -184,7 +186,7 @@ export default function InviteAcceptPage() {
 										</div>
 										<div>
 											<p className="font-medium">{acceptedData.workspace_name}</p>
-											<p className="text-sm text-muted-foreground">Workspace</p>
+											<p className="text-sm text-muted-foreground">{t("workspace_label")}</p>
 										</div>
 									</div>
 									<div className="flex items-center gap-3">
@@ -193,7 +195,7 @@ export default function InviteAcceptPage() {
 										</div>
 										<div>
 											<p className="font-medium">{acceptedData.role_name}</p>
-											<p className="text-sm text-muted-foreground">Your Role</p>
+											<p className="text-sm text-muted-foreground">{t("your_role")}</p>
 										</div>
 									</div>
 								</div>
@@ -203,7 +205,7 @@ export default function InviteAcceptPage() {
 									className="w-full gap-2"
 									onClick={() => router.push(`/dashboard/${acceptedData.workspace_id}`)}
 								>
-									Go to Workspace
+									{t("go_to_workspace")}
 									<ArrowRight className="h-4 w-4" aria-hidden="true" />
 								</Button>
 							</CardFooter>
@@ -219,15 +221,14 @@ export default function InviteAcceptPage() {
 								>
 									<XCircle className="h-10 w-10 text-destructive" aria-hidden="true" />
 								</motion.div>
-								<CardTitle className="text-2xl">Invalid Invite</CardTitle>
+								<CardTitle className="text-2xl">{t("invalid_title")}</CardTitle>
 								<CardDescription>
-									{inviteInfo?.message || "This invite link is no longer valid"}
+									{inviteInfo?.message || t("invalid_desc")}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="text-center">
 								<p className="text-sm text-muted-foreground">
-									The invite may have expired, reached its maximum uses, or been revoked by the
-									owner.
+									{t("invalid_body")}
 								</p>
 							</CardContent>
 							<CardFooter>
@@ -236,7 +237,7 @@ export default function InviteAcceptPage() {
 									className="w-full"
 									onClick={() => router.push("/dashboard")}
 								>
-									Go to Dashboard
+									{t("go_to_dashboard")}
 								</Button>
 							</CardFooter>
 						</>
@@ -251,9 +252,9 @@ export default function InviteAcceptPage() {
 								>
 									<Sparkles className="h-10 w-10 text-primary" aria-hidden="true" />
 								</motion.div>
-								<CardTitle className="text-2xl">You're Invited!</CardTitle>
+								<CardTitle className="text-2xl">{t("invited_title")}</CardTitle>
 								<CardDescription>
-									Sign in to join {inviteInfo?.workspace_name || "this workspace"}
+									{t("invited_signin_desc", { name: inviteInfo?.workspace_name || t("this_workspace") })}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
@@ -264,7 +265,7 @@ export default function InviteAcceptPage() {
 										</div>
 										<div>
 											<p className="font-medium">{inviteInfo?.workspace_name}</p>
-											<p className="text-sm text-muted-foreground">Workspace</p>
+											<p className="text-sm text-muted-foreground">{t("workspace_label")}</p>
 										</div>
 									</div>
 									{inviteInfo?.role_name && (
@@ -274,7 +275,7 @@ export default function InviteAcceptPage() {
 											</div>
 											<div>
 												<p className="font-medium">{inviteInfo.role_name}</p>
-												<p className="text-sm text-muted-foreground">Role you'll receive</p>
+												<p className="text-sm text-muted-foreground">{t("role_youll_get")}</p>
 											</div>
 										</div>
 									)}
@@ -283,7 +284,7 @@ export default function InviteAcceptPage() {
 							<CardFooter>
 								<Button className="w-full gap-2" onClick={handleLoginRedirect}>
 									<LogIn className="h-4 w-4" aria-hidden="true" />
-									Sign in to Accept
+									{t("sign_in_to_accept")}
 								</Button>
 							</CardFooter>
 						</>
@@ -298,9 +299,9 @@ export default function InviteAcceptPage() {
 								>
 									<Sparkles className="h-10 w-10 text-primary" aria-hidden="true" />
 								</motion.div>
-								<CardTitle className="text-2xl">You're Invited!</CardTitle>
+								<CardTitle className="text-2xl">{t("invited_title")}</CardTitle>
 								<CardDescription>
-									Accept this invite to join {inviteInfo?.workspace_name || "this workspace"}
+									{t("invited_accept_desc", { name: inviteInfo?.workspace_name || t("this_workspace") })}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
@@ -311,7 +312,7 @@ export default function InviteAcceptPage() {
 										</div>
 										<div>
 											<p className="font-medium">{inviteInfo?.workspace_name}</p>
-											<p className="text-sm text-muted-foreground">Workspace</p>
+											<p className="text-sm text-muted-foreground">{t("workspace_label")}</p>
 										</div>
 									</div>
 									{inviteInfo?.role_name && (
@@ -321,7 +322,7 @@ export default function InviteAcceptPage() {
 											</div>
 											<div>
 												<p className="font-medium">{inviteInfo.role_name}</p>
-												<p className="text-sm text-muted-foreground">Role you'll receive</p>
+												<p className="text-sm text-muted-foreground">{t("role_youll_get")}</p>
 											</div>
 										</div>
 									)}
@@ -340,18 +341,18 @@ export default function InviteAcceptPage() {
 							</CardContent>
 							<CardFooter className="flex gap-2">
 								<Button variant="outline" className="flex-1" onClick={handleDecline}>
-									Cancel
+									{t("cancel")}
 								</Button>
 								<Button className="flex-1 gap-2" onClick={handleAccept} disabled={accepting}>
 									{accepting ? (
 										<>
 											<Spinner size="sm" />
-											Accepting...
+											{t("accepting")}
 										</>
 									) : (
 										<>
 											<CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-											Accept Invite
+											{t("accept_invite")}
 										</>
 									)}
 								</Button>
