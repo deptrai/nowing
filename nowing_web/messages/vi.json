@@ -1789,5 +1789,15 @@
 		"password": "Mật khẩu",
 		"password_placeholder": "Nhập mật khẩu của bạn",
 		"sign_in": "Đăng nhập"
+	},
+	"connectorsHub": {
+		"title": "Connector cho mọi nền tảng nơi có câu trả lời",
+		"lede_1": "Mỗi connector là một scraper API gốc nền tảng mà AI agent của bạn có thể gọi trực tiếp, hoặc qua Nowing MCP server. Chúng là dữ liệu trực tiếp phía sau",
+		"lede_platform": "nền tảng nghiên cứu web mở",
+		"explore": "Khám phá",
+		"mcp_server": "Nowing MCP Server",
+		"mcp_server_desc": "Cung cấp cho Claude, Cursor hoặc bất kỳ MCP client nào các công cụ gốc cho workspace của bạn: mọi scraper API cộng tìm kiếm, đọc và ghi knowledge base. Một API key.",
+		"external_mcp": "External MCP Connectors",
+		"external_mcp_desc": "Đưa bất kỳ MCP server nào vào agent của bạn. Dán cấu hình như trong Cursor, tools tự động được phát hiện, và Notion, Slack, Jira, v.v. kết nối bằng OAuth một cú nhấp."
 	}
 }

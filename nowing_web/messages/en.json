@@ -1787,5 +1787,15 @@
 		"password": "Password",
 		"password_placeholder": "Enter your password",
 		"sign_in": "Sign in"
+	},
+	"connectorsHub": {
+		"title": "Connectors for every platform where answers live",
+		"lede_1": "Each connector is a platform-native scraper API your AI agents can call directly, or through the Nowing MCP server. They are the live data behind the Nowing",
+		"lede_platform": "open web research platform",
+		"explore": "Explore",
+		"mcp_server": "Nowing MCP Server",
+		"mcp_server_desc": "Give Claude, Cursor, or any MCP client native tools for your workspace: every scraper API plus knowledge base search, reads, and writes. One API key.",
+		"external_mcp": "External MCP Connectors",
+		"external_mcp_desc": "Bring any MCP server to your agents. Paste a config like you would in Cursor, tools are auto-discovered, and Notion, Slack, Jira, and more connect with one-click OAuth."
 	}
 }
