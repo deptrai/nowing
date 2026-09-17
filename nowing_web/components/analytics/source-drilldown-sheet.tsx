@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { Clock, Database, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ export function SourceDrilldownSheet({
 	onClose,
 	isPublicSnapshot = false,
 }: SourceDrilldownSheetProps) {
+	const t = useTranslations("analytics");
 	const { data, isLoading, isError } = useQuery({
 		queryKey: cacheKeys.workspaces.health.sourceDrilldown(workspaceId, sourceType || ""),
 		queryFn: () => workspaceHealthApiService.getSourceDrilldown(workspaceId, sourceType || ""),
@@ -54,10 +56,10 @@ export function SourceDrilldownSheet({
 						</div>
 						<div>
 							<SheetTitle className="capitalize">
-								{sourceType?.replace(/_/g, " ") || "Source"} Drilldown
+								{sourceType?.replace(/_/g, " ") || t("source_fallback")} {t("drilldown")}
 							</SheetTitle>
 							<SheetDescription>
-								Ingestion history, query citations, and timeline samples
+								{t("drilldown_desc")}
 							</SheetDescription>
 						</div>
 					</div>
@@ -70,7 +72,7 @@ export function SourceDrilldownSheet({
 						</div>
 					) : isError || !data ? (
 						<div className="p-4 border rounded-lg text-center text-sm text-muted-foreground">
-							No historical metrics found for this source.
+							{t("no_metrics")}
 						</div>
 					) : (
 						<>
@@ -79,7 +81,7 @@ export function SourceDrilldownSheet({
 								<Card className="shadow-none">
 									<CardHeader className="p-3 pb-1">
 										<CardTitle className="text-xs font-normal text-muted-foreground">
-											Total Memories
+											{t("total_memories")}
 										</CardTitle>
 									</CardHeader>
 									<CardContent className="p-3 pt-0">
@@ -90,7 +92,7 @@ export function SourceDrilldownSheet({
 								<Card className="shadow-none">
 									<CardHeader className="p-3 pb-1">
 										<CardTitle className="text-xs font-normal text-muted-foreground">
-											Query Citations
+											{t("query_citations")}
 										</CardTitle>
 									</CardHeader>
 									<CardContent className="p-3 pt-0">
@@ -101,13 +103,13 @@ export function SourceDrilldownSheet({
 								<Card className="shadow-none">
 									<CardHeader className="p-3 pb-1">
 										<CardTitle className="text-xs font-normal text-muted-foreground">
-											Cost Attribution
+											{t("cost_attribution")}
 										</CardTitle>
 									</CardHeader>
 									<CardContent className="p-3 pt-0">
 										<div className="text-lg font-bold">
 											{isPublicSnapshot || data.cost_micros === null
-												? "Protected"
+												? t("protected")
 												: formatCostUsd(data.cost_micros)}
 										</div>
 									</CardContent>
@@ -117,7 +119,7 @@ export function SourceDrilldownSheet({
 							{isPublicSnapshot && (
 								<div className="flex items-center gap-2 p-2.5 rounded-md bg-muted/40 text-xs text-muted-foreground">
 									<ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
-									<span>Cost attribution is masked in public snapshot mode.</span>
+									<span>{t("cost_masked")}</span>
 								</div>
 							)}
 
@@ -125,13 +127,13 @@ export function SourceDrilldownSheet({
 							<div className="space-y-3">
 								<div className="flex items-center justify-between">
 									<h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider">
-										Recent Memory Samples ({data.recent_samples.length})
+										{t("recent_samples", { count: data.recent_samples.length })}
 									</h4>
 								</div>
 
 								{data.recent_samples.length === 0 ? (
 									<div className="p-6 border rounded-lg text-center text-xs text-muted-foreground bg-muted/10">
-										No memory samples available for this source.
+										{t("no_samples")}
 									</div>
 								) : (
 									<div className="space-y-3">
@@ -155,7 +157,7 @@ export function SourceDrilldownSheet({
 															variant="secondary"
 															className="text-[10px] px-1.5 py-0 font-normal"
 														>
-															Conf: {(sample.confidence * 100).toFixed(0)}%
+															{t("conf_pct", { pct: (sample.confidence * 100).toFixed(0) })}
 														</Badge>
 														{sample.tags.slice(0, 2).map((tag) => (
 															<Badge
