@@ -44,10 +44,40 @@ SEQUENCER_VOICE_ENABLED = (
     in ("true", "1", "t", "yes")
 )
 
+
+# Voice Agent Worker Pool (Story 38.2)
+VOICE_WORKER_PROCESSES = _positive_int_env("VOICE_WORKER_PROCESSES", 8)
+VOICE_MAX_CALLS_PER_WORKER = _positive_int_env("VOICE_MAX_CALLS_PER_WORKER", 12)
+
+# Silero VAD tuning (Invariant: 180-220ms end-of-utterance detection)
+VOICE_VAD_MIN_SILENCE_MS = _positive_int_env("VOICE_VAD_MIN_SILENCE_MS", 180)
+VOICE_VAD_SPEECH_THRESHOLD = float(os.getenv("VOICE_VAD_SPEECH_THRESHOLD", "0.5"))
+
+# Filler audio directory (pre-loaded to RAM at worker startup)
+VOICE_FILLER_DIR = os.path.normpath(
+    os.getenv(
+        "VOICE_FILLER_DIR",
+        os.path.join(os.path.dirname(__file__), "..", "assets", "voice", "fillers"),
+    )
+)
+
+# Provider selection
+VOICE_LLM_PROVIDER = os.getenv("VOICE_LLM_PROVIDER", "anthropic")
+VOICE_STT_PROVIDER = os.getenv("VOICE_STT_PROVIDER", "deepgram")
+VOICE_TTS_PROVIDER = os.getenv("VOICE_TTS_PROVIDER", "openai")
+
+# External provider keys (leave empty for local fallback)
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
 __all__ = [
+    "ANTHROPIC_API_KEY",
+    "DEEPGRAM_API_KEY",
     "LIVEKIT_API_KEY",
     "LIVEKIT_API_SECRET",
     "LIVEKIT_URL",
+    "OPENAI_API_KEY",
     "SEQUENCER_VOICE_ENABLED",
     "SIP_CALL_MAX_DURATION_SECONDS",
     "SIP_DEFAULT_TRUNK_ID",
@@ -56,4 +86,12 @@ __all__ = [
     "SIP_OUTBOUND_GATEWAY_PORT",
     "SIP_RINGING_TIMEOUT_SECONDS",
     "SIP_ROOM_PREFIX",
+    "VOICE_FILLER_DIR",
+    "VOICE_LLM_PROVIDER",
+    "VOICE_MAX_CALLS_PER_WORKER",
+    "VOICE_STT_PROVIDER",
+    "VOICE_TTS_PROVIDER",
+    "VOICE_VAD_MIN_SILENCE_MS",
+    "VOICE_VAD_SPEECH_THRESHOLD",
+    "VOICE_WORKER_PROCESSES",
 ]

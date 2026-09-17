@@ -10,6 +10,9 @@ VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 # Default allowed channels in MVP (Story 24.1 / AD-41)
 ALLOWED_OUTBOUND_CHANNELS = ["email"]
 
+# Voice channel is gated behind SEQUENCER_VOICE_ENABLED (Story 38.2)
+# Validated at runtime by compliance.validate_step_channel — not a static allowlist entry.
+
 # Opt-out trigger keywords
 OPT_OUT_KEYWORDS = {
     "stop",
