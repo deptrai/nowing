@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { OctagonAlert, Orbit, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -20,6 +21,7 @@ export function QuotaWarningBanner({
 	warningThreshold,
 	className,
 }: QuotaWarningBannerProps) {
+	const t = useTranslations("free");
 	const [dismissed, setDismissed] = useState(false);
 	const isWarning = used >= warningThreshold && used < limit;
 	const isExceeded = used >= limit;
@@ -30,7 +32,7 @@ export function QuotaWarningBanner({
 		return (
 			<Alert variant="destructive" className={className}>
 				<OctagonAlert />
-				<AlertTitle>Free token limit reached</AlertTitle>
+				<AlertTitle>{t("limit_reached")}</AlertTitle>
 				<AlertDescription>
 					<p>
 						You&apos;ve used all {limit.toLocaleString()} free tokens. Create a free account to get
@@ -39,7 +41,7 @@ export function QuotaWarningBanner({
 					<Button asChild size="sm" className="mt-1">
 						<Link href="/register">
 							<Orbit data-icon="inline-start" />
-							Create Free Account
+							{t("create_account")}
 						</Link>
 					</Button>
 				</AlertDescription>
@@ -50,11 +52,11 @@ export function QuotaWarningBanner({
 	return (
 		<Alert variant="warning" className={cn("pr-10", className)}>
 			<OctagonAlert />
-			<AlertTitle>Running low on free tokens</AlertTitle>
+			<AlertTitle>{t("running_low")}</AlertTitle>
 			<AlertDescription>
 				You&apos;ve used {used.toLocaleString()} of {limit.toLocaleString()} free tokens.{" "}
 				<Link href="/register" className="font-medium underline hover:no-underline">
-					Create an account
+					{t("create_account_link")}
 				</Link>{" "}
 				for $5 of premium credit.
 			</AlertDescription>
@@ -63,7 +65,7 @@ export function QuotaWarningBanner({
 				variant="ghost"
 				size="icon"
 				onClick={() => setDismissed(true)}
-				aria-label="Dismiss"
+				aria-label={t("dismiss")}
 				className="absolute top-2 right-2 size-6"
 			>
 				<X />

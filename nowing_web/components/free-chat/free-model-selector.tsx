@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Cpu } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -21,6 +22,7 @@ import { getProviderIcon } from "@/lib/provider-icons";
 import { cn } from "@/lib/utils";
 
 export function FreeModelSelector({ className }: { className?: string }) {
+	const t = useTranslations("free");
 	const router = useRouter();
 	const anonMode = useAnonymousMode();
 	const currentSlug = anonMode.isAnonymous ? anonMode.modelSlug : "";
@@ -83,7 +85,7 @@ export function FreeModelSelector({ className }: { className?: string }) {
 					) : (
 						<>
 							<Cpu className="size-4 text-muted-foreground" />
-							<span className="text-muted-foreground">Select Model</span>
+							<span className="text-muted-foreground">{t("select_model")}</span>
 						</>
 					)}
 					<ChevronDown className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
@@ -93,9 +95,9 @@ export function FreeModelSelector({ className }: { className?: string }) {
 				<Command
 					filter={(value, search) => (value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
 				>
-					<CommandInput placeholder="Search models" />
+					<CommandInput placeholder={t("search_models")} />
 					<CommandList>
-						<CommandEmpty>No models found.</CommandEmpty>
+						<CommandEmpty>{t("no_models")}</CommandEmpty>
 						<CommandGroup>
 							{sortedModels.map((model) => {
 								const isSelected = model.seo_slug === currentSlug;

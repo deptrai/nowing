@@ -574,7 +574,13 @@
 		"no_matching": "Không có tài liệu phù hợp",
 		"try_different": "Thử từ khóa khác",
 		"download_original_named": "Tải file gốc ({name})",
-		"download_original": "Tải file gốc"
+		"download_original": "Tải file gốc",
+		"fetch_failed": "Không tải được tài liệu",
+		"save_failed": "Không lưu được tài liệu",
+		"unsaved": "Thay đổi chưa lưu",
+		"done_editing": "Sửa xong",
+		"start_writing": "Bắt đầu viết...",
+		"download_md": "Tải .md"
 	},
 	"add_connector": {
 		"title": "Kết nối công cụ của bạn",
@@ -1704,7 +1710,7 @@
 		"tier_premium": "Cao cấp",
 		"tier_free": "Miễn phí",
 		"chat_link": "Trò chuyện",
-		"no_models": "Hiện chưa có mô hình nào khả dụng. Vui lòng quay lại sau.",
+		"no_models": "Không tìm thấy model.",
 		"why_title": "Vì sao dùng Nowing để trò chuyện AI miễn phí",
 		"why1_title": "Nhiều mô hình AI trong một nơi",
 		"why1_desc": "Truy cập ChatGPT, Claude AI miễn phí, Gemini, DeepSeek và hơn thế nữa. Hoạt động như các trang giống ChatGPT nhưng có đầy đủ mô hình AI, không chỉ GPT. Một chatbot AI miễn phí thật sự như ChatGPT và hơn thế.",
@@ -1738,7 +1744,23 @@
 		"faq8_q": "Nowing có phải trò chuyện AI miễn phí không cần đăng nhập?",
 		"faq8_a": "Có. Nowing là trò chuyện AI mã nguồn mở miễn phí hoạt động không cần đăng nhập. Nó cho bạn truy cập Claude AI miễn phí, Gemini và các mô hình AI khác cùng hỏi đáp tài liệu kèm trích dẫn, cộng tác nhóm và hơn 30 tích hợp.",
 		"faq9_q": "Dữ liệu của tôi có riêng tư khi dùng trò chuyện AI miễn phí không đăng nhập không?",
-		"faq9_a": "Phiên trò chuyện ẩn danh không được lưu trong cơ sở dữ liệu nào. Không tài khoản nghĩa là không thu thập dữ liệu cá nhân. Nowing là mã nguồn mở, bạn có thể tự lưu trữ để kiểm soát dữ liệu và quyền riêng tư hoàn toàn."
+		"faq9_a": "Phiên trò chuyện ẩn danh không được lưu trong cơ sở dữ liệu nào. Không tài khoản nghĩa là không thu thập dữ liệu cá nhân. Nowing là mã nguồn mở, bạn có thể tự lưu trữ để kiểm soát dữ liệu và quyền riêng tư hoàn toàn.",
+		"reports_title": "Tạo báo cáo",
+		"reports_desc": "Tạo tài khoản miễn phí để tạo báo cáo có cấu trúc từ cuộc trò chuyện.",
+		"editor_title": "Trình soạn tài liệu",
+		"editor_desc": "Tạo tài khoản miễn phí để dùng trình soạn tài liệu AI.",
+		"hitl_title": "Sửa tài liệu Human-in-the-Loop",
+		"hitl_desc": "Tạo tài khoản miễn phí để cộng tác với AI khi sửa tài liệu.",
+		"create_account": "Tạo tài khoản miễn phí",
+		"limit_reached": "Đã đạt giới hạn token miễn phí",
+		"running_low": "Sắp hết token miễn phí",
+		"create_account_link": "Tạo tài khoản",
+		"dismiss": "Bỏ qua",
+		"select_model": "Chọn Model",
+		"search_models": "Tìm model",
+		"adfree_title": "Tắt quảng cáo với tài khoản miễn phí",
+		"upgrade_5m": "Tạo tài khoản miễn phí để có thêm 5M tokens",
+		"quick_verify": "Xác minh nhanh để tiếp tục chat"
 	},
 	"team": {
 		"members_title": "Thành viên",
@@ -2304,5 +2326,40 @@
 		"col_cost": "Chi phí quy kết",
 		"gap_detected": "Phát hiện khoảng trống",
 		"status_active": "Đang hoạt động"
+	},
+	"notifications": {
+		"no_mentions": "Không có mention",
+		"no_mentions_desc": "Mention và reply sẽ hiển thị ở đây.",
+		"no_unread": "Không có thông báo chưa đọc",
+		"no_unread_desc": "Mention mới và cập nhật trạng thái sẽ hiển thị ở đây.",
+		"no_notifications": "Không có thông báo",
+		"no_notifications_desc": "Mention, reply và cập nhật trạng thái sẽ hiển thị ở đây.",
+		"tab_all": "Tất cả",
+		"tab_mentions": "Mention",
+		"tab_unread": "Chưa đọc",
+		"title": "Thông báo"
+	},
+	"desktop": {
+		"manage_folders": "Quản lý thư mục đã chọn",
+		"selected_folders": "Thư mục đã chọn",
+		"clear_folders": "Xóa tất cả thư mục",
+		"no_local_folders": "Chưa chọn thư mục local nào",
+		"add_folder": "Thêm thư mục",
+		"max_folders": "Bạn có thể thêm tối đa {max} thư mục",
+		"search_local": "Tìm file local",
+		"clear_search": "Xóa tìm kiếm local",
+		"read_folder_failed": "Không đọc được thư mục",
+		"no_folder_selected": "Chưa chọn thư mục local",
+		"no_folder_desc": "Thêm thư mục local phía trên để duyệt file ở chế độ desktop.",
+		"load_folder_failed": "Không tải được thư mục local",
+		"resolve_failed": "Không phân giải được mounted root cho thư mục này.",
+		"resolve_mounts_failed": "Không phân giải được mount của thư mục local.",
+		"no_supported_files": "Không tìm thấy file được hỗ trợ trong thư mục này.",
+		"no_matching_files": "Không có file phù hợp trong thư mục này."
+	},
+	"nav": {
+		"open_menu": "Mở menu",
+		"navigation": "Điều hướng",
+		"add_workspace": "Thêm workspace"
 	}
 }

@@ -574,7 +574,13 @@
 		"no_matching": "No matching documents",
 		"try_different": "Try a different search term",
 		"download_original_named": "Download original ({name})",
-		"download_original": "Download original file"
+		"download_original": "Download original file",
+		"fetch_failed": "Failed to fetch document",
+		"save_failed": "Failed to save document",
+		"unsaved": "Unsaved changes",
+		"done_editing": "Done editing",
+		"start_writing": "Start writing...",
+		"download_md": "Download .md"
 	},
 	"add_connector": {
 		"title": "Connect Your Tools",
@@ -1702,7 +1708,7 @@
 		"tier_premium": "Premium",
 		"tier_free": "Free",
 		"chat_link": "Chat",
-		"no_models": "No models are currently available. Please check back later.",
+		"no_models": "No models found.",
 		"why_title": "Why Use Nowing for Free AI Chat",
 		"why1_title": "Multiple AI Models in One Place",
 		"why1_desc": "Access ChatGPT, Claude AI free, Gemini, DeepSeek, and more. Works like sites like ChatGPT but with all AI models available, not just GPT. A true free AI chatbot like ChatGPT and beyond.",
@@ -1736,7 +1742,23 @@
 		"faq8_q": "Is Nowing a free AI chat without login?",
 		"faq8_a": "Yes. Nowing is a free, open-core AI chat that works without login. It gives you access to Claude AI free, Gemini, and other AI models alongside document Q&A with citations, team collaboration, and 30+ integrations.",
 		"faq9_q": "Is my data private when using free AI chat without login?",
-		"faq9_a": "Anonymous chat sessions are not stored in any database. No account means no personal data collected. Nowing is open-core, so you can self-host for complete data control and privacy."
+		"faq9_a": "Anonymous chat sessions are not stored in any database. No account means no personal data collected. Nowing is open-core, so you can self-host for complete data control and privacy.",
+		"reports_title": "Generate Reports",
+		"reports_desc": "Create a free account to generate structured reports from your conversations.",
+		"editor_title": "Document Editor",
+		"editor_desc": "Create a free account to use the AI-powered document editor.",
+		"hitl_title": "Human-in-the-Loop Editing",
+		"hitl_desc": "Create a free account to collaborate with AI on document edits.",
+		"create_account": "Create Free Account",
+		"limit_reached": "Free token limit reached",
+		"running_low": "Running low on free tokens",
+		"create_account_link": "Create an account",
+		"dismiss": "Dismiss",
+		"select_model": "Select Model",
+		"search_models": "Search models",
+		"adfree_title": "Go ad-free with a free account",
+		"upgrade_5m": "Create free account for 5M more tokens",
+		"quick_verify": "Quick verification to continue chatting"
 	},
 	"team": {
 		"members_title": "Members",
@@ -2302,5 +2324,40 @@
 		"col_cost": "Cost Attribution",
 		"gap_detected": "Gap Detected",
 		"status_active": "Active"
+	},
+	"notifications": {
+		"no_mentions": "No mentions",
+		"no_mentions_desc": "Mentions and replies will appear here.",
+		"no_unread": "No unread notifications",
+		"no_unread_desc": "New mentions and status updates will appear here.",
+		"no_notifications": "No notifications",
+		"no_notifications_desc": "Mentions, replies, and status updates will appear here.",
+		"tab_all": "All",
+		"tab_mentions": "Mentions",
+		"tab_unread": "Unread",
+		"title": "Notifications"
+	},
+	"desktop": {
+		"manage_folders": "Manage selected folders",
+		"selected_folders": "Selected folders",
+		"clear_folders": "Clear all folders",
+		"no_local_folders": "No local folders selected",
+		"add_folder": "Add folder",
+		"max_folders": "You can add up to {max} folders",
+		"search_local": "Search local files",
+		"clear_search": "Clear local search",
+		"read_folder_failed": "Failed to read folder",
+		"no_folder_selected": "No local folder selected",
+		"no_folder_desc": "Add a local folder above to browse files in desktop mode.",
+		"load_folder_failed": "Failed to load local folder",
+		"resolve_failed": "Unable to resolve mounted root for this folder.",
+		"resolve_mounts_failed": "Failed to resolve local folder mounts.",
+		"no_supported_files": "No supported files found in this folder.",
+		"no_matching_files": "No matching files in this folder."
+	},
+	"nav": {
+		"open_menu": "Open menu",
+		"navigation": "Navigation",
+		"add_workspace": "Add workspace"
 	}
 }

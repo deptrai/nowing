@@ -6,6 +6,7 @@ import {
 	type ThreadMessageLike,
 	useExternalStoreRuntime,
 } from "@assistant-ui/react";
+import { useTranslations } from "next-intl";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -114,6 +115,7 @@ function toFreeChatHttpError(status: number, body: string): Error & { errorCode?
 }
 
 export function FreeChatPage() {
+	const t = useTranslations("free");
 	const anonMode = useAnonymousMode();
 	const modelSlug = anonMode.isAnonymous ? anonMode.modelSlug : "";
 	const resetKey = anonMode.isAnonymous ? anonMode.resetKey : 0;
@@ -502,7 +504,7 @@ export function FreeChatPage() {
 						<div className="flex justify-center border-b bg-muted/30 px-4 py-4">
 							<Alert className="w-auto max-w-md">
 								<ShieldCheck />
-								<AlertTitle>Quick verification to continue chatting</AlertTitle>
+								<AlertTitle>{t("quick_verify")}</AlertTitle>
 								<AlertDescription>
 									<Turnstile
 										ref={turnstileRef}

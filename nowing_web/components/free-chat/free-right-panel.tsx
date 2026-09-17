@@ -2,6 +2,7 @@
 
 import { Lock } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,9 @@ interface GatedTabProps {
 	description: string;
 }
 
-const GatedTab: FC<GatedTabProps> = ({ title, description }) => (
+const GatedTab: FC<GatedTabProps> = ({ title, description }) => {
+	const t = useTranslations("free");
+	return (
 	<Empty>
 		<EmptyHeader>
 			<EmptyMedia variant="icon">
@@ -29,11 +32,12 @@ const GatedTab: FC<GatedTabProps> = ({ title, description }) => (
 		</EmptyHeader>
 		<EmptyContent>
 			<Button size="sm" asChild>
-				<Link href="/register">Create Free Account</Link>
+				<Link href="/register">{t("create_account")}</Link>
 			</Button>
 		</EmptyContent>
 	</Empty>
-);
+	);
+};
 
 export const ReportsGatedPlaceholder: FC = () => (
 	<GatedTab
