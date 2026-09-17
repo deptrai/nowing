@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ import { useElectronAPI } from "@/hooks/use-platform";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 
 export function DesktopContent() {
+	const t = useTranslations("userSettings");
 	const api = useElectronAPI();
 	const [loading, setLoading] = useState(true);
 
@@ -69,7 +71,7 @@ export function DesktopContent() {
 		return (
 			<div className="flex flex-col items-center justify-center py-12 text-center">
 				<p className="text-sm text-muted-foreground">
-					App preferences are only available in the Nowing desktop app.
+					{t("desktop_only")}
 				</p>
 			</div>
 		);
@@ -146,7 +148,7 @@ export function DesktopContent() {
 		<div className="flex flex-col gap-4 md:gap-6">
 			<section>
 				<div className="pb-2 md:pb-3">
-					<h2 className="text-base md:text-lg font-semibold">Default Workspace</h2>
+					<h2 className="text-base md:text-lg font-semibold">{t("default_workspace")}</h2>
 					<p className="text-xs md:text-sm text-muted-foreground">
 						Choose which workspace General Assist, Screenshot Assist, and Quick Assist use by
 						default.
@@ -156,7 +158,7 @@ export function DesktopContent() {
 					{workspaces.length > 0 ? (
 						<Select value={activeSpaceId ?? undefined} onValueChange={handleWorkspaceChange}>
 							<SelectTrigger className="w-full">
-								<SelectValue placeholder="Select a workspace" />
+								<SelectValue placeholder={t("select_workspace")} />
 							</SelectTrigger>
 							<SelectContent>
 								{workspaces.map((space) => (
@@ -167,7 +169,7 @@ export function DesktopContent() {
 							</SelectContent>
 						</Select>
 					) : (
-						<p className="text-sm text-muted-foreground">No workspaces found. Create one first.</p>
+						<p className="text-sm text-muted-foreground">{t("no_workspaces")}</p>
 					)}
 				</div>
 			</section>
@@ -177,7 +179,7 @@ export function DesktopContent() {
 			<section>
 				<div className="pb-2 md:pb-3">
 					<h2 className="text-base md:text-lg font-semibold flex items-center gap-2">
-						Launch on Startup
+						{t("launch_startup")}
 					</h2>
 					<p className="text-xs md:text-sm text-muted-foreground">
 						Automatically start Nowing when you sign in to your computer so global shortcuts and
@@ -188,7 +190,7 @@ export function DesktopContent() {
 					<div className="flex items-center justify-between rounded-lg bg-accent p-4">
 						<div className="space-y-0.5">
 							<Label htmlFor="auto-launch-toggle" className="text-sm font-medium cursor-pointer">
-								Open Nowing at login
+								{t("launch_startup_desc")}
 							</Label>
 							<p className="text-xs text-muted-foreground">
 								{autoLaunchSupported
@@ -209,10 +211,10 @@ export function DesktopContent() {
 								htmlFor="auto-launch-hidden-toggle"
 								className="text-sm font-medium cursor-pointer"
 							>
-								Start minimized to tray
+								{t("start_minimized")}
 							</Label>
 							<p className="text-xs text-muted-foreground">
-								Skip the main window on boot. Nowing lives in the system tray until you need it.
+								{t("start_minimized_desc")}
 							</p>
 						</div>
 						<Switch

@@ -1,11 +1,13 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import { showMessageTimestampsAtom } from "@/atoms/chat/show-timestamps.atom";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 export function AppearanceContent() {
+	const t = useTranslations("userSettings");
 	const [showTimestamps, setShowTimestamps] = useAtom(showMessageTimestampsAtom);
 
 	return (
@@ -14,7 +16,7 @@ export function AppearanceContent() {
 				<div className="pb-2 md:pb-3">
 					<h2 className="text-base md:text-lg font-semibold">Chat</h2>
 					<p className="text-xs md:text-sm text-muted-foreground">
-						Control how messages are displayed in your conversations.
+						{t("appearance_lede")}
 					</p>
 				</div>
 				<div className="flex flex-col gap-3">
@@ -24,10 +26,10 @@ export function AppearanceContent() {
 								htmlFor="show-timestamps-toggle"
 								className="text-sm font-medium cursor-pointer"
 							>
-								Show message timestamps
+								{t("show_timestamps")}
 							</Label>
 							<p className="text-xs text-muted-foreground">
-								Display the time under each message in a chat. Saved on this device.
+								{t("show_timestamps_desc")}
 							</p>
 						</div>
 						<Switch

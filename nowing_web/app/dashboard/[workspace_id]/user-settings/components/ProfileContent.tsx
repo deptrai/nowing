@@ -22,6 +22,7 @@ function AvatarDisplay({
 	fallback: string;
 	bgColor: string;
 }) {
+	const t = useTranslations("userSettings");
 	const [errorUrl, setErrorUrl] = useState<string>();
 	const hasError = errorUrl === url;
 
@@ -29,7 +30,7 @@ function AvatarDisplay({
 		return (
 			<Image
 				src={url}
-				alt="Avatar"
+				alt={t("avatar")}
 				width={64}
 				height={64}
 				className="h-16 w-16 rounded-full object-cover select-none"

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useQueries } from "@tanstack/react-query";
 import { Coins, FileText, ReceiptText } from "lucide-react";
 import { useMemo } from "react";
@@ -35,36 +36,36 @@ type UnifiedPurchase = {
 	currency: string | null;
 };
 
-const STATUS_STYLES: Record<PurchaseStatus, { label: string; className: string }> = {
+const statusStyles = (t: (k: string) => string): Record<PurchaseStatus, { label: string; className: string }> => ({
 	completed: {
-		label: "Completed",
+		label: t("status_completed"),
 		className: "bg-emerald-600 text-white border-transparent hover:bg-emerald-600",
 	},
 	pending: {
-		label: "Pending",
+		label: t("status_pending"),
 		className: "bg-yellow-600 text-white border-transparent hover:bg-yellow-600",
 	},
 	failed: {
-		label: "Failed",
+		label: t("status_failed"),
 		className: "bg-destructive text-white border-transparent hover:bg-destructive",
 	},
-};
+});
 
-const KIND_META: Record<
+const kindMeta = (t: (k: string) => string): Record<
 	PurchaseKind,
 	{ label: string; icon: React.ComponentType<{ className?: string }>; iconClass: string }
-> = {
+> => ({
 	pages: {
-		label: "Pages",
+		label: t("pages"),
 		icon: FileText,
 		iconClass: "text-sky-500",
 	},
 	credits: {
-		label: "Credits",
+		label: t("credits"),
 		icon: Coins,
 		iconClass: "text-amber-500",
 	},
-};
+});
 
 function formatDate(iso: string): string {
 	return new Date(iso).toLocaleDateString(undefined, {
@@ -118,6 +119,9 @@ function formatGranted(p: UnifiedPurchase): string {
 }
 
 export function PurchaseHistoryContent() {
+	const t = useTranslations("userSettings");
+	const STATUS_STYLES = statusStyles(t);
+	const KIND_META = kindMeta(t);
 	const results = useQueries({
 		queries: [
 			{
@@ -155,9 +159,9 @@ export function PurchaseHistoryContent() {
 		return (
 			<div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
 				<ReceiptText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-				<p className="text-sm font-medium">No purchases yet</p>
+				<p className="text-sm font-medium">{t("no_purchases")}</p>
 				<p className="text-xs text-muted-foreground">
-					Your credit purchases will appear here after checkout.
+					{t("no_purchases_desc")}
 				</p>
 			</div>
 		);
@@ -171,7 +175,7 @@ export function PurchaseHistoryContent() {
 						<TableRow>
 							<TableHead>Date</TableHead>
 							<TableHead>Type</TableHead>
-							<TableHead className="text-right">Granted</TableHead>
+							<TableHead className="text-right">{t("granted")}</TableHead>
 							<TableHead className="text-right">Amount</TableHead>
 							<TableHead className="text-center">Status</TableHead>
 						</TableRow>

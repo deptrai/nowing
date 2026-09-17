@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { AlertTriangle, Info, ShieldCheck, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { agentFlagsAtom } from "@/atoms/agent/agent-flags-query.atom";
@@ -50,17 +51,19 @@ import { AppError } from "@/lib/error";
 import { formatRelativeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 
-const ACTION_DESCRIPTIONS: Record<AgentPermissionAction, string> = {
-	allow: "Always run without prompting",
-	deny: "Block silently",
-	ask: "Pause and ask for approval",
-};
+type T = (k: string) => string;
 
-const ACTION_BADGE: Record<AgentPermissionAction, { label: string; className: string }> = {
-	allow: { label: "Allow", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
-	deny: { label: "Deny", className: "bg-destructive/10 text-destructive border-destructive/30" },
-	ask: { label: "Ask", className: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
-};
+function actionDescriptions(t: T): Record<AgentPermissionAction, string> {
+	return { allow: t("adesc_allow"), deny: t("adesc_deny"), ask: t("adesc_ask") };
+}
+
+function actionBadge(t: T): Record<AgentPermissionAction, { label: string; className: string }> {
+	return {
+		allow: { label: t("effect_allow"), className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+		deny: { label: t("effect_deny"), className: "bg-destructive/10 text-destructive border-destructive/30" },
+		ask: { label: t("effect_ask"), className: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+	};
+}
 
 const EMPTY_FORM: AgentPermissionRuleCreate = {
 	permission: "",
@@ -75,6 +78,7 @@ function permissionRulesQueryKey(workspaceId: number) {
 }
 
 function ScopeBadge({ rule }: { rule: AgentPermissionRule }) {
+	const t = useTranslations("userSettings");
 	if (rule.thread_id !== null) {
 		return (
 			<Badge
@@ -91,7 +95,7 @@ function ScopeBadge({ rule }: { rule: AgentPermissionRule }) {
 				variant="secondary"
 				className="text-[10px] px-1.5 py-0.5 border-0 text-muted-foreground bg-muted"
 			>
-				User-specific
+				{t("user_specific")}
 			</Badge>
 		);
 	}
@@ -100,12 +104,15 @@ function ScopeBadge({ rule }: { rule: AgentPermissionRule }) {
 			variant="secondary"
 			className="text-[10px] px-1.5 py-0.5 border-0 text-muted-foreground bg-muted"
 		>
-			Search space
+			{t("search_space")}
 		</Badge>
 	);
 }
 
 export function AgentPermissionsContent() {
+	const t = useTranslations("userSettings");
+	const ACTION_BADGE = actionBadge(t);
+	const ACTION_DESCRIPTIONS = actionDescriptions(t);
 	const workspaceIdRaw = useAtomValue(activeWorkspaceIdAtom);
 	const workspaceId = workspaceIdRaw ? Number(workspaceIdRaw) : null;
 
@@ -138,7 +145,7 @@ export function AgentPermissionsContent() {
 			});
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to create rule.");
+			toast.error(err instanceof Error ? err.message : t("rule_create_failed"));
 		},
 	});
 
@@ -154,7 +161,7 @@ export function AgentPermissionsContent() {
 			});
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to update rule.");
+			toast.error(err instanceof Error ? err.message : t("rule_update_failed"));
 		},
 	});
 
@@ -168,7 +175,7 @@ export function AgentPermissionsContent() {
 			});
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to delete rule.");
+			toast.error(err instanceof Error ? err.message : t("rule_delete_failed"));
 		},
 	});
 
@@ -211,7 +218,7 @@ export function AgentPermissionsContent() {
 		return (
 			<Alert>
 				<Info />
-				<AlertTitle>Permission middleware is disabled</AlertTitle>
+				<AlertTitle>{t("perm_disabled_title")}</AlertTitle>
 				<AlertDescription>
 					<p>
 						Flip{" "}
@@ -226,7 +233,7 @@ export function AgentPermissionsContent() {
 	}
 
 	if (!workspaceId) {
-		return <p className="text-sm text-muted-foreground">Open a workspace to manage agent rules.</p>;
+		return <p className="text-sm text-muted-foreground">{t("perm_open_workspace")}</p>;
 	}
 
 	return (
@@ -246,7 +253,7 @@ export function AgentPermissionsContent() {
 					}}
 					className="shrink-0 gap-1.5"
 				>
-					New rule
+					{t("new_rule")}
 				</Button>
 			</div>
 
@@ -259,7 +266,7 @@ export function AgentPermissionsContent() {
 			>
 				<DialogContent className="max-w-lg bg-popover text-popover-foreground">
 					<DialogHeader>
-						<DialogTitle>New permission rule</DialogTitle>
+						<DialogTitle>{t("new_rule_title")}</DialogTitle>
 						<DialogDescription>
 							Tell the agent whether matching tool calls should be allowed, denied, or paused for
 							approval.
@@ -269,20 +276,20 @@ export function AgentPermissionsContent() {
 					<div className="space-y-4">
 						<div className="grid gap-3">
 							<div className="space-y-2">
-								<Label htmlFor="permission-name">Permission</Label>
+								<Label htmlFor="permission-name">{t("permission")}</Label>
 								<Input
 									id="permission-name"
 									value={formData.permission}
-									placeholder="e.g. tool:create_linear_issue or tool:*"
+									placeholder={t("perm_placeholder")}
 									onChange={(e) => setFormData((p) => ({ ...p, permission: e.target.value }))}
 								/>
 								<p className="text-[11px] text-muted-foreground">
-									Match a tool capability. Use <code className="font-mono">*</code> for wildcards.
+									{t("perm_match")} <code className="font-mono">*</code> {t("perm_wildcards")}
 								</p>
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor="pattern">Argument pattern</Label>
+								<Label htmlFor="pattern">{t("arg_pattern")}</Label>
 								<Input
 									id="pattern"
 									value={formData.pattern}
@@ -290,7 +297,7 @@ export function AgentPermissionsContent() {
 									onChange={(e) => setFormData((p) => ({ ...p, pattern: e.target.value }))}
 								/>
 								<p className="text-[11px] text-muted-foreground">
-									Wildcard against the canonical argument (e.g. <code>prod-*</code>).
+									{t("arg_wildcard")} <code>prod-*</code>).
 								</p>
 							</div>
 						</div>
@@ -307,9 +314,9 @@ export function AgentPermissionsContent() {
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="allow">Allow (run without asking)</SelectItem>
-									<SelectItem value="ask">Ask (pause for approval)</SelectItem>
-									<SelectItem value="deny">Deny (block silently)</SelectItem>
+									<SelectItem value="allow">{t("opt_allow")}</SelectItem>
+									<SelectItem value="ask">{t("opt_ask")}</SelectItem>
+									<SelectItem value="deny">{t("opt_deny")}</SelectItem>
 								</SelectContent>
 							</Select>
 							<p className="text-[11px] text-muted-foreground">
@@ -362,9 +369,9 @@ export function AgentPermissionsContent() {
 			{isError && (
 				<Alert variant="destructive">
 					<AlertTriangle />
-					<AlertTitle>Failed to load rules</AlertTitle>
+					<AlertTitle>{t("rules_load_failed")}</AlertTitle>
 					<AlertDescription>
-						{error instanceof Error ? error.message : "Unknown error."}
+						{error instanceof Error ? error.message : t("unknown_error")}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -372,9 +379,9 @@ export function AgentPermissionsContent() {
 			{!isLoading && !isError && sortedRules.length === 0 && !showForm && (
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
 					<ShieldCheck className="mx-auto size-8 text-muted-foreground/40" aria-hidden="true" />
-					<p className="mt-2 text-sm text-muted-foreground">No rules yet</p>
+					<p className="mt-2 text-sm text-muted-foreground">{t("no_rules")}</p>
 					<p className="text-xs text-muted-foreground/60">
-						Without rules the agent uses the deployment default for every tool.
+						{t("no_rules_desc")}
 					</p>
 				</div>
 			)}
@@ -441,7 +448,7 @@ export function AgentPermissionsContent() {
 											className="h-7 w-7 rounded-lg p-0 text-muted-foreground hover:text-destructive"
 											onClick={() => setDeleteTarget(rule.id)}
 											disabled={isUpdating || isDeleting}
-											aria-label="Delete rule"
+											aria-label={t("delete_rule")}
 										>
 											<Trash2 className="size-3.5" aria-hidden="true" />
 										</Button>
@@ -459,9 +466,9 @@ export function AgentPermissionsContent() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete this rule?</AlertDialogTitle>
+						<AlertDialogTitle>{t("delete_rule_title")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							The agent will fall back to deployment defaults for matching tool calls.
+							{t("delete_rule_desc")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

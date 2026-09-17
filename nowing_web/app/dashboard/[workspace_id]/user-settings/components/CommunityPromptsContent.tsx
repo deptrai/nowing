@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { AlertTriangle, Copy, Library } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -12,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 
 export function CommunityPromptsContent() {
+	const t = useTranslations("userSettings");
 	const { data: prompts, isLoading, isError } = useAtomValue(publicPromptsAtom);
 	const { mutateAsync: copyPrompt } = useAtomValue(copyPromptMutationAtom);
 	const [copyingIds, setCopyingIds] = useState<Set<number>>(new Set());
@@ -40,7 +42,7 @@ export function CommunityPromptsContent() {
 	return (
 		<div className="space-y-6 min-w-0">
 			<p className="text-sm text-muted-foreground">
-				Prompts shared by other users. Add any to your collection with one click.
+				{t("community_lede")}
 			</p>
 
 			{isLoading && (
@@ -60,17 +62,17 @@ export function CommunityPromptsContent() {
 			{isError && (
 				<Alert variant="destructive">
 					<AlertTriangle />
-					<AlertTitle>Failed to load community prompts</AlertTitle>
-					<AlertDescription>Please try refreshing the page.</AlertDescription>
+					<AlertTitle>{t("community_load_failed")}</AlertTitle>
+					<AlertDescription>{t("try_refresh")}</AlertDescription>
 				</Alert>
 			)}
 
 			{!isLoading && !isError && list.length === 0 && (
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
 					<Library className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-					<p className="mt-2 text-sm text-muted-foreground">No community prompts yet</p>
+					<p className="mt-2 text-sm text-muted-foreground">{t("community_none")}</p>
 					<p className="text-xs text-muted-foreground/60">
-						Share your own prompts from the My Prompts tab
+						{t("community_share_hint")}
 					</p>
 				</div>
 			)}

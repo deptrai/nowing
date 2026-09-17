@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { AlertTriangle, Globe, Lock, MoreHorizontal, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -62,6 +63,7 @@ interface PromptFormData {
 const EMPTY_FORM: PromptFormData = { name: "", prompt: "", mode: "transform", is_public: false };
 
 export function PromptsContent() {
+	const t = useTranslations("userSettings");
 	const { data: prompts, isLoading, isError } = useAtomValue(promptsAtom);
 	const { mutateAsync: createPrompt } = useAtomValue(createPromptMutationAtom);
 	const { mutateAsync: updatePrompt } = useAtomValue(updatePromptMutationAtom);
@@ -151,7 +153,7 @@ export function PromptsContent() {
 		<div className="space-y-6 min-w-0">
 			<div className="flex items-center justify-between">
 				<p className="text-sm text-muted-foreground">
-					Create prompt templates triggered with <ShortcutKbd keys={["/"]} className="ml-0" /> in
+					{t("prompts_triggered")} <ShortcutKbd keys={["/"]} className="ml-0" /> in
 					the chat composer.
 				</p>
 				<Button
@@ -181,7 +183,7 @@ export function PromptsContent() {
 					<DialogHeader>
 						<DialogTitle>{editingId !== null ? "Edit prompt" : "New prompt"}</DialogTitle>
 						<DialogDescription>
-							Create prompt templates triggered with / in the chat composer.
+							{t("prompts_lede")}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -192,12 +194,12 @@ export function PromptsContent() {
 								id="prompt-name"
 								value={formData.name}
 								onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-								placeholder="e.g. Fix grammar"
+								placeholder={t("prompt_name_placeholder")}
 							/>
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="prompt-template">Prompt template</Label>
+							<Label htmlFor="prompt-template">{t("prompt_template")}</Label>
 							<textarea
 								id="prompt-template"
 								value={formData.prompt}
@@ -244,7 +246,7 @@ export function PromptsContent() {
 								onCheckedChange={(checked) => setFormData((p) => ({ ...p, is_public: checked }))}
 							/>
 							<Label htmlFor="prompt-public" className="text-sm font-normal">
-								Share with community
+								{t("share_community")}
 							</Label>
 						</div>
 					</div>
@@ -292,17 +294,17 @@ export function PromptsContent() {
 			{isError && (
 				<Alert variant="destructive">
 					<AlertTriangle />
-					<AlertTitle>Failed to load prompts</AlertTitle>
-					<AlertDescription>Please try refreshing the page.</AlertDescription>
+					<AlertTitle>{t("prompts_load_failed")}</AlertTitle>
+					<AlertDescription>{t("try_refresh")}</AlertDescription>
 				</Alert>
 			)}
 
 			{!isLoading && !isError && list.length === 0 && !showForm && (
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
 					<Sparkles className="mx-auto size-8 text-muted-foreground/40" aria-hidden="true" />
-					<p className="mt-2 text-sm text-muted-foreground">No prompts yet</p>
+					<p className="mt-2 text-sm text-muted-foreground">{t("prompts_none")}</p>
 					<p className="text-xs text-muted-foreground/60">
-						Create prompts to quickly transform or explore text with /
+						{t("prompts_none_desc")}
 					</p>
 				</div>
 			)}
@@ -352,7 +354,7 @@ export function PromptsContent() {
 										className="h-7 w-7 shrink-0 self-center rounded-lg text-muted-foreground opacity-100 pointer-events-auto transition-opacity duration-150 hover:text-accent-foreground sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto"
 									>
 										<MoreHorizontal className="size-3.5" aria-hidden="true" />
-										<span className="sr-only">Prompt actions</span>
+										<span className="sr-only">{t("prompt_actions")}</span>
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end">
@@ -367,7 +369,7 @@ export function PromptsContent() {
 										) : (
 											<Globe className="size-4" aria-hidden="true" />
 										)}
-										{prompt.is_public ? "Make private" : "Share with community"}
+										{prompt.is_public ? t("make_private") : t("share_community")}
 									</DropdownMenuItem>
 									<DropdownMenuItem onClick={() => handleEdit(prompt)}>
 										<Pencil className="size-4" aria-hidden="true" />
@@ -393,9 +395,9 @@ export function PromptsContent() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete prompt</AlertDialogTitle>
+						<AlertDialogTitle>{t("delete_prompt")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							This action cannot be undone. The prompt will be permanently removed.
+							{t("delete_prompt_desc")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
