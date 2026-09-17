@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { type ZnsTemplate, znsApiService } from "@/lib/apis/zns-api.service";
 import { cn } from "@/lib/utils";
 
@@ -33,21 +34,25 @@ export interface ZnsOutreachModalProps {
 export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 	leadId,
 	workspaceId,
-	customerName = "Quý khách",
+	customerName,
 	phone = "",
-	propertyName = "Dự án cao cấp",
-	priceEstimate = "Thỏa thuận",
+	propertyName,
+	priceEstimate,
 	consultantPhone = "0901234567",
 	isDncBlocked = false,
 	onClose,
 	onSuccess,
 }) => {
+	const t = useTranslations("leads");
+	const resolvedCustomerName = customerName ?? t("zns_default_customer");
+	const resolvedPropertyName = propertyName ?? t("zns_default_property");
+	const resolvedPriceEstimate = priceEstimate ?? t("zns_default_price");
 	const [templates, setTemplates] = useState<ZnsTemplate[]>([]);
 	const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 	const [formValues, setFormValues] = useState<Record<string, string>>({
-		customer_name: customerName,
-		property_name: propertyName,
-		price: priceEstimate,
+		customer_name: resolvedCustomerName,
+		property_name: resolvedPropertyName,
+		price: resolvedPriceEstimate,
 		consultant_phone: consultantPhone,
 	});
 	const [recipientPhone, setRecipientPhone] = useState<string>(phone || "");
@@ -103,11 +108,11 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 			const updated: Record<string, string> = {};
 			for (const key of schemaKeys) {
 				if (key === "customer_name") {
-					updated[key] = prev[key] || customerName;
+					updated[key] = prev[key] || resolvedCustomerName;
 				} else if (key === "property_name") {
-					updated[key] = prev[key] || propertyName;
+					updated[key] = prev[key] || resolvedPropertyName;
 				} else if (key === "price") {
-					updated[key] = prev[key] || priceEstimate;
+					updated[key] = prev[key] || resolvedPriceEstimate;
 				} else if (key === "consultant_phone") {
 					updated[key] = prev[key] || consultantPhone;
 				} else {
@@ -116,7 +121,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 			}
 			return updated;
 		});
-	}, [selectedTemplate, customerName, propertyName, priceEstimate, consultantPhone]);
+	}, [selectedTemplate, resolvedCustomerName, resolvedPropertyName, resolvedPriceEstimate, consultantPhone]);
 
 	const handleInputChange = (key: string, value: string) => {
 		setFormValues((prev) => ({ ...prev, [key]: value }));
@@ -125,16 +130,16 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 	const handleSend = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!recipientPhone.trim()) {
-			setError("Vui lòng nhập số điện thoại người nhận");
+			setError(t("zns_err_phone_required"));
 			return;
 		}
 		if (isDncBlocked) {
-			setError("Số điện thoại này thuộc danh sách Từ chối cuộc gọi/tin nhắn (DNC). Không thể gửi.");
+			setError(t("zns_err_dnc"));
 			return;
 		}
 		if (!isSendingWindowOpen) {
 			setError(
-				"Nghị định 91/2020/NĐ-CP cấm gửi tin nhắn ngoài khung giờ 08:00 – 21:30 (Giờ Việt Nam)."
+				t("zns_err_window")
 			);
 			return;
 		}
@@ -150,10 +155,10 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 				template_id: selectedTemplate?.template_id || selectedTemplateId,
 				template_data: formValues,
 			});
-			setSuccessMsg(`Đã gửi ZNS thành công (Mã tin: ${res.msg_id})`);
+			setSuccessMsg(t("zns_sent_ok", { id: res.msg_id }));
 			if (onSuccess) onSuccess();
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "Gửi ZNS thất bại");
+			setError(err instanceof Error ? err.message : t("zns_send_failed"));
 		} finally {
 			setLoading(false);
 		}
@@ -170,7 +175,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 			<button
 				type="button"
-				aria-label="Đóng"
+				aria-label={t("close")}
 				className="fixed inset-0 bg-black/75 backdrop-blur-sm"
 				onClick={onClose}
 			/>
@@ -189,13 +194,13 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 						</div>
 						<div>
 							<h3 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
-								<span>Gửi ZNS Outreach</span>
+								<span>{t("zns_title")}</span>
 								<span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
-									Zalo OpenAPI v3
+									{t("zns_badge")}
 								</span>
 							</h3>
 							<p className="text-xs text-zinc-400">
-								Gửi mẫu tin nhắn thông báo chính thức có tích hợp chữ ký HMAC & chống spam
+								{t("zns_subtitle")}
 							</p>
 						</div>
 					</div>
@@ -213,8 +218,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 					<div className="bg-amber-950/40 border-b border-amber-800/40 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-300">
 						<Clock className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
 						<span>
-							<strong>Khung giờ gửi hạn chế:</strong> Đang ngoài khung giờ hợp lệ 08:00 – 21:30
-							(Nghị định 91/2020/NĐ-CP). Tính năng gửi tạm khóa.
+							<strong>{t("zns_window_warn_title")}:</strong> {t("zns_window_warn_body")}
 						</span>
 					</div>
 				)}
@@ -223,8 +227,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 					<div className="bg-rose-950/40 border-b border-rose-800/40 px-6 py-2.5 flex items-center gap-2 text-xs text-rose-300">
 						<ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" aria-hidden="true" />
 						<span>
-							<strong>Cảnh báo DNC Blacklist:</strong> Số điện thoại này nằm trong danh sách không
-							nhận cuộc gọi/quảng cáo.
+							<strong>{t("zns_dnc_warn_title")}:</strong> {t("zns_dnc_warn_body")}
 						</span>
 					</div>
 				)}
@@ -242,7 +245,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 								htmlFor="zns-recipient-phone"
 								className="block text-xs font-medium text-zinc-300 mb-1.5"
 							>
-								Số điện thoại người nhận
+								{t("zns_recipient_phone")}
 							</label>
 							<div className="relative">
 								<Phone
@@ -267,7 +270,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 								htmlFor="zns-template-select-input"
 								className="block text-xs font-medium text-zinc-300 mb-1.5"
 							>
-								Mẫu tin nhắn ZNS (Template)
+								{t("zns_template_label")}
 							</label>
 							<select
 								id="zns-template-select-input"
@@ -288,13 +291,13 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 						{/* Dynamic Parameter Inputs (UI-01) */}
 						<div className="space-y-3 pt-1">
 							<span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-								Biến động mẫu tin (Parameters)
+								{t("zns_params_label")}
 							</span>
 
 							{templateSchemaKeys.map((key) => (
 								<div key={key}>
 									<label htmlFor={`param-${key}`} className="block text-[11px] text-zinc-400 mb-1">
-										Biến &#123;{key}&#125;
+										{t("zns_param_label", { key })}
 									</label>
 									<input
 										id={`param-${key}`}
@@ -302,7 +305,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 										name={key}
 										value={formValues[key] || ""}
 										onChange={(e) => handleInputChange(key, e.target.value)}
-										placeholder={`Nhập ${key}...`}
+										placeholder={t('zns_param_placeholder', { key })}
 										className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-blue-500"
 									/>
 								</div>
@@ -313,7 +316,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 						<div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800/80 flex items-center justify-between text-xs">
 							<div className="flex items-center gap-2 text-zinc-400">
 								<Info className="w-4 h-4 text-blue-400" aria-hidden="true" />
-								<span>Chi phí tin nhắn:</span>
+								<span>{t("zns_cost_label")}</span>
 							</div>
 							<div className="font-semibold text-zinc-100 flex items-center gap-1.5">
 								<span className="text-emerald-400">300đ</span>
@@ -352,12 +355,12 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 								{loading ? (
 									<>
 										<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-										<span>Đang gửi qua Zalo OA...</span>
+										<span>{t("zns_sending")}</span>
 									</>
 								) : (
 									<>
 										<Send className="w-4 h-4" aria-hidden="true" />
-										<span>Gửi ZNS Template</span>
+										<span>{t("zns_send_btn")}</span>
 									</>
 								)}
 							</button>
@@ -371,7 +374,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 					>
 						<span className="text-xs text-zinc-400 font-medium mb-3 flex items-center gap-1.5">
 							<Smartphone className="w-4 h-4 text-zinc-400" aria-hidden="true" />
-							<span>Xem trước trên Zalo mobile</span>
+							<span>{t("zns_preview_mobile")}</span>
 						</span>
 
 						{/* Phone Shell */}
@@ -397,13 +400,12 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 								{/* Message Content */}
 								<div className="p-3.5 space-y-2 text-xs">
 									<div className="font-semibold text-zinc-900 text-sm">
-										{selectedTemplate?.template_name || "Thông báo thông tin bất động sản"}
+										{selectedTemplate?.template_name || t("zns_default_template_name")}
 									</div>
 
 									<p className="text-zinc-600 text-[11px] leading-relaxed">
-										Kính gửi <strong>{formValues.customer_name || "Quý khách"}</strong>, Nowing xin
-										gửi thông tin chi tiết về nội dung bạn đang quan tâm:
-									</p>
+										{t.rich("zns_greeting", {name: formValues.customer_name || resolvedCustomerName, b: (c) => <strong>{c}</strong>})}
+																			</p>
 
 									<div className="bg-zinc-50 border border-zinc-100 rounded-lg p-2.5 space-y-1.5 text-[11px]">
 										{templateSchemaKeys
@@ -421,7 +423,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 									{/* CTA Button */}
 									<div className="pt-1">
 										<div className="w-full py-2 bg-[#0068FF] text-white text-center rounded-lg font-medium text-xs shadow-sm">
-											Xem chi tiết
+											{t("zns_cta_view")}
 										</div>
 									</div>
 								</div>

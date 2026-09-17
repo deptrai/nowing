@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Bot, Clock, Filter, Play, Save, Send, Sliders, Zap } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -25,55 +26,56 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 	workflow,
 	className,
 }) => {
+	const t = useTranslations("leads");
 	const [scheduleTime, setScheduleTime] = useState(workflow?.scheduleTime || "08:00");
 	const [targetPlatform, setTargetPlatform] = useState(workflow?.triggerPlatform || "batdongsan");
 	const [notifyChannel, setNotifyChannel] = useState(workflow?.notifyChannel || "telegram");
 	const [minFitScore, setMinFitScore] = useState(workflow?.minFitScore || 85);
-	const [workflowName, _setWorkflowName] = useState(workflow?.name || "Quy trình Săn Lead Tự Động");
+	const [workflowName, _setWorkflowName] = useState(workflow?.name || t("auto_workflow_name"));
 	const [isRunningTest, setIsRunningTest] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [testLogs, setTestLogs] = useState<string[]>([]);
 
 	const handleRunTest = async () => {
 		setIsRunningTest(true);
-		setTestLogs(["[00:01] Khởi chạy kiểm thử kết nối Celery Worker..."]);
+		setTestLogs([t("log_test_start")]);
 
 		setTimeout(() => {
 			setTestLogs((prev) => [
 				...prev,
-				`[00:02] Kích hoạt Scraper: Quét thử tin đăng từ ${targetPlatform}...`,
+				t("log_scraper", { platform: targetPlatform }),
 			]);
 		}, 600);
 
 		setTimeout(() => {
 			setTestLogs((prev) => [
 				...prev,
-				`[00:03] Lọc SĐT theo DNC và chấm Fit Score (Ngưỡng >= ${minFitScore})...`,
+				t("log_filter", { score: minFitScore }),
 			]);
 		}, 1200);
 
 		setTimeout(() => {
 			setTestLogs((prev) => [
 				...prev,
-				`[00:04] Gửi mẫu thông báo kiểm thử qua kênh ${notifyChannel.toUpperCase()} thành công!`,
-				"✅ Hoàn tất kiểm thử luồng tự động.",
+				t("log_notify", { channel: notifyChannel.toUpperCase() }),
+				t("log_done"),
 			]);
 			setIsRunningTest(false);
-			toast.success(`Đã kiểm thử thành công luồng ${targetPlatform}!`);
+			toast.success(t("test_success", { platform: targetPlatform }));
 		}, 1800);
 	};
 
 	const handleSaveAutomation = async () => {
 		try {
 			setIsSaving(true);
-			toast.loading("Đang lưu kịch bản tự động hóa lên hệ thống...", { id: "save-automation" });
+			toast.loading(t("saving"), { id: "save-automation" });
 
 			const [hour, minute] = scheduleTime.split(":");
 			const cron = `${minute || "0"} ${hour || "8"} * * *`;
 
 			const autoName =
-				workflowName || `Săn Lead ${targetPlatform.toUpperCase()} Hàng Ngày (${scheduleTime})`;
-			const autoDesc = `Tự động quét ${targetPlatform} lúc ${scheduleTime} và gửi thông báo qua ${notifyChannel}.`;
+				workflowName || t("auto_name", { platform: targetPlatform.toUpperCase(), time: scheduleTime });
+			const autoDesc = t("auto_desc", { platform: targetPlatform, time: scheduleTime, channel: notifyChannel });
 
 			const created = await automationsApiService.createAutomation({
 				workspace_id: Number(workspaceId || 1),
@@ -110,13 +112,13 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 				],
 			});
 
-			toast.success(`Đã kích hoạt kịch bản "${created.name}" thành công!`, {
+			toast.success(t("saved", { name: created.name }), {
 				id: "save-automation",
 				duration: 3000,
 			});
 		} catch (err: unknown) {
 			toast.error(
-				err instanceof Error ? err.message : "Không thể lưu kịch bản tự động hóa lúc này.",
+				err instanceof Error ? err.message : t("save_failed"),
 				{ id: "save-automation" }
 			);
 		} finally {
@@ -160,7 +162,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
 					>
 						<Save className="w-3 h-3" aria-hidden="true" />
-						<span>{isSaving ? "Đang Lưu..." : "Lưu Kịch Bản"}</span>
+						<span>{isSaving ? t("saving_btn") : t("save_btn")}</span>
 					</button>
 				</div>
 			</div>
@@ -170,7 +172,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 				{/* Visual Node Flow Diagram */}
 				<div>
 					<h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-						Sơ Đồ Luồng Tự Động (Visual Workflow Nodes)
+						{t("diagram_title")}
 					</h3>
 
 					<div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -178,10 +180,10 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
 								<Clock className="w-4 h-4 text-blue-500" aria-hidden="true" />
-								<span>1. Lịch Chạy (Trigger)</span>
+								<span>{t("node_trigger")}</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
-								Hàng ngày lúc <strong>{scheduleTime}</strong>
+								{t("node_trigger_desc")} <strong>{scheduleTime}</strong>
 							</p>
 							<div className="mt-2 text-[10px] text-blue-600 dark:text-blue-400 font-mono">
 								Cron: 0 8 * * *
@@ -192,13 +194,13 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
 								<Bot className="w-4 h-4 text-emerald-500" aria-hidden="true" />
-								<span>2. Cào Dữ Liệu</span>
+								<span>{t("node_scrape")}</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
-								Nguồn: <strong>{targetPlatform.toUpperCase()}</strong>
+								{t("node_scrape_source")} <strong>{targetPlatform.toUpperCase()}</strong>
 							</p>
 							<div className="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
-								Query: BĐS Hà Nội mới đăng
+								{t("node_scrape_query")}
 							</div>
 						</div>
 
@@ -206,13 +208,13 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
 								<Filter className="w-4 h-4 text-purple-500" aria-hidden="true" />
-								<span>3. Lọc & Chấm Điểm</span>
+								<span>{t("node_filter")}</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
-								Fit Score &gt;= <strong>{minFitScore}</strong> + Lọc DNC
+								Fit Score &gt;= <strong>{minFitScore}</strong> + {t("node_filter_dnc")}
 							</p>
 							<div className="mt-2 text-[10px] text-purple-600 dark:text-purple-400 font-mono">
-								Nghị định 91 Compliance
+								{t("node_filter_compliance")}
 							</div>
 						</div>
 
@@ -220,13 +222,13 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 						<div className="p-3.5 rounded-xl border border-border bg-card relative shadow-xs">
 							<div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
 								<Send className="w-4 h-4 text-amber-500" aria-hidden="true" />
-								<span>4. Bắn Thông Báo</span>
+								<span>{t("node_notify")}</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
-								Kênh: <strong>{notifyChannel === "telegram" ? "Telegram Bot" : "Zalo OA"}</strong>
+								{t("node_notify_channel")} <strong>{notifyChannel === "telegram" ? "Telegram Bot" : "Zalo OA"}</strong>
 							</p>
 							<div className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 font-mono">
-								Format: Leads Digest Card
+								{t("node_notify_format")}
 							</div>
 						</div>
 					</div>
@@ -264,15 +266,15 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 								className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:ring-1 focus:ring-emerald-500"
 							>
 								<option value="batdongsan">Batdongsan.com.vn</option>
-								<option value="chotot">Chợ Tốt (BĐS & Việc làm)</option>
-								<option value="topcv">TopCV (Doanh nghiệp tuyển dụng)</option>
-								<option value="muasamcong">Đấu Thầu Mua Sắm Công</option>
+								<option value="chotot">{t("platform_chotot")}</option>
+								<option value="topcv">{t("platform_topcv")}</option>
+								<option value="muasamcong">{t("platform_muasamcong")}</option>
 							</select>
 						</label>
 
 						<label htmlFor="auto-min-fit-score" className="block">
 							<span className="text-[11px] font-medium text-muted-foreground block mb-1">
-								Fit Score Tối Thiểu:{" "}
+								{t("min_fit_score")}{" "}
 								<strong className="text-emerald-600 font-mono">{minFitScore}+</strong>
 							</span>
 							<input
@@ -288,7 +290,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 
 						<label htmlFor="auto-notify-channel" className="block">
 							<span className="text-[11px] font-medium text-muted-foreground block mb-1">
-								Kênh Nhận Báo Cáo
+								{t("notify_channel_label")}
 							</span>
 							<select
 								id="auto-notify-channel"
@@ -296,9 +298,9 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 								onChange={(e) => setNotifyChannel(e.target.value)}
 								className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:ring-1 focus:ring-emerald-500"
 							>
-								<option value="telegram">Telegram (@NowingLeadsBot)</option>
-								<option value="zalo">Zalo OA Thông Báo</option>
-								<option value="lark">Lark Base / Lark Webhook</option>
+								<option value="telegram">{t("channel_telegram")}</option>
+								<option value="zalo">{t("channel_zalo")}</option>
+								<option value="lark">{t("channel_lark")}</option>
 							</select>
 						</label>
 					</div>
