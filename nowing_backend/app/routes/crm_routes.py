@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -182,7 +183,6 @@ async def list_crm_sync_logs(
     ),
 ):
     """List sync logs for a CRM connection."""
-    from sqlalchemy import select
 
     result = await session.execute(
         select(CrmSyncLog)
