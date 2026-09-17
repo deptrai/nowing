@@ -111,3 +111,27 @@ async def get_service_breakdown(
         "end_date": norm_end,
         "items": items,
     }
+
+
+workspace_usage_router = APIRouter(prefix="/workspaces/{workspace_id}/usage", tags=["usage"])
+
+@workspace_usage_router.get("/service-breakdown")
+async def get_workspace_service_breakdown(
+    workspace_id: int,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    auth: AuthContext = Depends(require_session_context),
+    session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+):
+    """Return usage breakdown for /workspaces/{workspace_id}/usage/service-breakdown."""
+    _validate_date_range(start_date, end_date)
+    service = UsageService(session, auth.user)
+    norm_start, norm_end = service._normalize_range(start_date, end_date)
+    items = await service.get_service_breakdown(workspace_id, norm_start, norm_end)
+    return {
+        "workspace_id": workspace_id,
+        "start_date": norm_start,
+        "end_date": norm_end,
+        "items": items,
+    }
