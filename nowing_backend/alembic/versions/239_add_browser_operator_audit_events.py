@@ -21,23 +21,23 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.create_table(
         "browser_operator_audit_events",
-        sa.Column("id", sa.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
         sa.Column(
             "mission_id",
             sa.UUID(as_uuid=True),
-            sa.ForeignKey("dsh_missions.id", ondelete="CASCADE"),
+            sa.ForeignKey("dsh_missions.id", ondelete="RESTRICT"),
             nullable=False,
         ),
         sa.Column(
             "workspace_id",
             sa.Integer(),
-            sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
+            sa.ForeignKey("workspaces.id", ondelete="RESTRICT"),
             nullable=False,
         ),
         sa.Column(
             "user_id",
             sa.UUID(as_uuid=True),
-            sa.ForeignKey("user.id", ondelete="CASCADE"),
+            sa.ForeignKey("user.id", ondelete="RESTRICT"),
             nullable=False,
         ),
         sa.Column("command_id", sa.String(64), nullable=False),

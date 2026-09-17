@@ -7,9 +7,13 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import RunnableConfig
 
+from app.db.base import async_session_maker
 from app.redis_client import get_redis_client
 from app.schemas.dsh import BrowserOperatorCdpPayload
-from app.services.browser_operator_audit_service import generate_session_token
+from app.services.browser_operator_audit_service import (
+    BrowserOperatorAuditService,
+    generate_session_token,
+)
 from app.services.pii.redact import redact_pii
 
 MissionState = dict[str, Any]
@@ -125,6 +129,30 @@ class BrowserOperatorCdpSubgraph:
             "user_id": str(resolved_user_id),
             "session_token": session_token,
         }
+
+        # Log command dispatch to audit trail before publishing.
+        try:
+            import uuid as _uuid
+            async with async_session_maker() as audit_session:
+                from app.models.leads import DshMission
+                mission_obj = await audit_session.get(
+                    DshMission, _uuid.UUID(str(mission_id))
+                )
+                if mission_obj:
+                    await BrowserOperatorAuditService.log_command_received(
+                        audit_session,
+                        mission_id=mission_obj.id,
+                        workspace_id=mission_obj.workspace_id,
+                        user_id=mission_obj.user_id,
+                        command_id=command_id,
+                        action="navigate",
+                        target_url=target_url,
+                    )
+                    await audit_session.commit()
+        except Exception as audit_exc:
+            logger.warning(
+                "Failed to log CDP command received audit event: %s", audit_exc
+            )
 
         # Publish command as an SSE event through the Redis pub/sub channel.
         await redis.publish(channel, json.dumps(cmd))

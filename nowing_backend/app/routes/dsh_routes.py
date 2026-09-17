@@ -509,47 +509,55 @@ async def cdp_result(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Receive result from extension's CDP execution with session token validation."""
-    mission = await session.get(DshMission, payload.mission_id)
-    if mission:
-        _require_mission_access(auth, mission)
+    """Receive result from extension's CDP execution with session token validation.
 
-    # Validate CDP session token when provided (required for audit trail).
-    session_token = payload.session_token
-    if session_token:
-        valid, err = validate_session_token(
-            session_token,
-            str(payload.mission_id),
-            str(auth.user.id),
+    Fail-closed: audit log is committed BEFORE the result is pushed to Redis,
+    so a failed audit write prevents the worker from consuming an un-audited result.
+    """
+    mission = await session.get(DshMission, payload.mission_id)
+    if mission is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mission not found",
         )
-        if not valid:
-            # Log failed auth attempt as audit event
-            if mission:
-                await BrowserOperatorAuditService.log_event(
-                    session,
-                    mission_id=payload.mission_id,
-                    workspace_id=mission.workspace_id,
-                    user_id=auth.user.id,
-                    command_id=payload.command_id or "unknown",
-                    action="auth_failure",
-                    success=False,
-                    error_message=f"Session token validation failed: {err}",
-                    metadata={"event_type": "auth_failure"},
-                )
-                await session.commit()
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid CDP session token: {err}",
-            )
+    _require_mission_access(auth, mission)
 
     redis = await get_redis_client()
+
+    # Validate CDP session token (required; missing or invalid → 401)
+    session_token = payload.session_token
+    valid, err = await validate_session_token(
+        session_token,
+        str(payload.mission_id),
+        str(auth.user.id),
+        redis_client=redis,
+    )
+    if not valid:
+        # Log failed auth attempt as audit event
+        await BrowserOperatorAuditService.log_event(
+            session,
+            mission_id=payload.mission_id,
+            workspace_id=mission.workspace_id,
+            user_id=auth.user.id,
+            command_id=payload.command_id or "unknown",
+            action="auth_failure",
+            success=False,
+            error_message=f"Session token validation failed: {err}",
+            metadata={"event_type": "auth_failure"},
+        )
+        await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid CDP session token: {err}",
+        )
+
     key = f"cdp_result:{auth.user.id}:{payload.mission_id}"
 
     redacted_result = _redact_cdp_result_value(payload.result) if payload.result is not None else None
     command_id = payload.command_id or (
         payload.result.get("command_id")
         if isinstance(payload.result, dict)
-        else None
+        else "unknown"
     )
     result_data = {
         "result": redacted_result,
@@ -559,29 +567,34 @@ async def cdp_result(
         "challenge": payload.challenge,
     }
 
-    # Atomic pipeline push + expire + cap list length to avoid OOM.
+    # Extract action and target_url from result payload if present
+    result_dict = payload.result if isinstance(payload.result, dict) else {}
+    action = result_dict.get("action", "cdp_result")
+    target_url = result_dict.get("navigatedUrl") or result_dict.get("url")
+
+    # Fail-closed: commit audit log BEFORE pushing to Redis.
+    success = payload.error is None and not payload.requires_human
+    await BrowserOperatorAuditService.log_command_result(
+        session,
+        mission_id=payload.mission_id,
+        workspace_id=mission.workspace_id,
+        user_id=auth.user.id,
+        command_id=command_id,
+        action=action,
+        target_url=target_url,
+        success=success,
+        error_message=payload.error,
+        challenge=payload.challenge,
+        requires_human=payload.requires_human,
+    )
+    await session.commit()
+
+    # Only push to Redis after the audit event is durably committed.
     pipe = redis.pipeline()
     pipe.rpush(key, json.dumps(result_data))
     pipe.expire(key, 300)
     pipe.ltrim(key, -5, -1)
     await pipe.execute()
-
-    # Log audit event for the command result
-    if mission and command_id:
-        success = payload.error is None and not payload.requires_human
-        await BrowserOperatorAuditService.log_command_result(
-            session,
-            mission_id=payload.mission_id,
-            workspace_id=mission.workspace_id,
-            user_id=auth.user.id,
-            command_id=command_id,
-            action="cdp_result",
-            success=success,
-            error_message=payload.error,
-            challenge=payload.challenge,
-            requires_human=payload.requires_human,
-        )
-        await session.commit()
 
     return {"status": "ok"}
 

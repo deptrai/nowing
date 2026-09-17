@@ -35,17 +35,17 @@ class BrowserOperatorAuditEvent(Base, TimestampMixin):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     mission_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("dsh_missions.id", ondelete="CASCADE"),
+        ForeignKey("dsh_missions.id", ondelete="RESTRICT"),
         nullable=False,
     )
     workspace_id = Column(
         Integer,
-        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        ForeignKey("workspaces.id", ondelete="RESTRICT"),
         nullable=False,
     )
     user_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("user.id", ondelete="CASCADE"),
+        ForeignKey("user.id", ondelete="RESTRICT"),
         nullable=False,
     )
     command_id = Column(String(64), nullable=False)

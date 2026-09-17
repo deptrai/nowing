@@ -228,6 +228,7 @@ class CdpBridge {
 			await this.handleCdpCommand(cmd);
 		} finally {
 			this.currentCommand = null;
+			this.activeSessionToken = null;
 		}
 	}
 
@@ -274,9 +275,13 @@ class CdpBridge {
 			);
 		}
 
-		// Also fail-fast any queued commands waiting on this debugger session
+		// Also fail-fast any queued commands waiting on this debugger session.
+		// Each dropped command carries its own session token, not the shared active one.
 		for (const cmd of droppedCommands) {
-			await this.sendResult(cmd.mission_id, null, errorMessage, cmd.command_id);
+			await this.sendResultWithToken(
+				cmd.mission_id, null, errorMessage, cmd.command_id,
+				false, undefined, cmd.session_token ?? null
+			);
 		}
 	}
 
@@ -749,6 +754,21 @@ class CdpBridge {
 		requiresHuman = false,
 		challenge?: string
 	): Promise<void> {
+		await this.sendResultWithToken(
+			missionId, result, error, commandId, requiresHuman, challenge,
+			this.activeSessionToken
+		);
+	}
+
+	private async sendResultWithToken(
+		missionId: string,
+		result: Record<string, any> | null,
+		error: string | null,
+		commandId: string,
+		requiresHuman: boolean,
+		challenge: string | undefined,
+		sessionToken: string | null
+	): Promise<void> {
 		const token = await this._requireToken();
 		if (!token) {
 			console.error("CdpBridge: cannot send result without auth token");
@@ -764,7 +784,7 @@ class CdpBridge {
 			error,
 			requires_human: requiresHuman,
 			challenge,
-			session_token: this.activeSessionToken,
+			session_token: sessionToken,
 		};
 
 		const isRetryableStatus = (status: number) => status >= 500 || status === 429;

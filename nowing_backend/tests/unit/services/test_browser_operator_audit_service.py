@@ -18,6 +18,15 @@ from app.services.browser_operator_audit_service import (
 pytestmark = [pytest.mark.unit]
 
 
+
+def _make_mock_session() -> MagicMock:
+    """Create a mock AsyncSession where add() is sync but flush/commit are async."""
+    session = MagicMock()
+    session.flush = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    return session
+
 class TestSessionToken:
     """Test CDP session token generation and validation."""
 
@@ -30,17 +39,19 @@ class TestSessionToken:
         assert parts[1] == "mission-123"
         assert parts[2].isdigit()
 
-    def test_validate_session_token_valid(self):
+    @pytest.mark.asyncio
+    async def test_validate_session_token_valid(self):
         """Valid token should pass validation."""
         mission_id = str(uuid.uuid4()).replace("-", "")
         user_id = str(uuid.uuid4()).replace("-", "")
         token = generate_session_token(mission_id, user_id)
 
-        valid, err = validate_session_token(token, mission_id, user_id)
+        valid, err = await validate_session_token(token, mission_id, user_id)
         assert valid is True
         assert err is None
 
-    def test_validate_session_token_expired(self):
+    @pytest.mark.asyncio
+    async def test_validate_session_token_expired(self):
         """Expired token should fail validation."""
         mission_id = str(uuid.uuid4()).replace("-", "")
         user_id = str(uuid.uuid4()).replace("-", "")
@@ -60,28 +71,31 @@ class TestSessionToken:
         ).hexdigest()[:32]
         token = f"cdp_sess.{mission_id}.{old_ts}.{sig}"
 
-        valid, err = validate_session_token(token, mission_id, user_id)
+        valid, err = await validate_session_token(token, mission_id, user_id)
         assert valid is False
         assert "expired" in err.lower()
 
-    def test_validate_session_token_wrong_mission(self):
+    @pytest.mark.asyncio
+    async def test_validate_session_token_wrong_mission(self):
         """Token for different mission should fail."""
         token = generate_session_token("mission-a", "user-1")
-        valid, err = validate_session_token(token, "mission-b", "user-1")
+        valid, err = await validate_session_token(token, "mission-b", "user-1")
         assert valid is False
         assert "mission" in err.lower() or "signature" in err.lower()
 
-    def test_validate_session_token_wrong_user(self):
+    @pytest.mark.asyncio
+    async def test_validate_session_token_wrong_user(self):
         """Token for different user should fail."""
         mission_id = str(uuid.uuid4()).replace("-", "")
         token = generate_session_token(mission_id, "user-1")
-        valid, err = validate_session_token(token, mission_id, "user-2")
+        valid, err = await validate_session_token(token, mission_id, "user-2")
         assert valid is False
         assert "signature" in err.lower()
 
-    def test_validate_session_token_malformed(self):
+    @pytest.mark.asyncio
+    async def test_validate_session_token_malformed(self):
         """Malformed token should fail gracefully."""
-        valid, err = validate_session_token("not-a-token", "m", "u")
+        valid, err = await validate_session_token("not-a-token", "m", "u")
         assert valid is False
         assert "format" in err.lower() or "malformed" in err.lower()
 
@@ -92,7 +106,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_event_creates_record(self):
         """log_event should create and persist an audit event."""
-        session = AsyncMock()
+        session = _make_mock_session()
         event = await BrowserOperatorAuditService.log_event(
             session,
             mission_id=uuid.uuid4(),
@@ -113,7 +127,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_event_redacts_pii_in_url(self):
         """target_url should be PII-redacted before storage."""
-        session = AsyncMock()
+        session = _make_mock_session()
         url_with_pii = "https://example.com/profile?email=user@example.com&phone=0908123456"
 
         event = await BrowserOperatorAuditService.log_event(
@@ -133,7 +147,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_command_result(self):
         """log_command_result should mark event_type correctly."""
-        session = AsyncMock()
+        session = _make_mock_session()
         event = await BrowserOperatorAuditService.log_command_result(
             session,
             mission_id=uuid.uuid4(),

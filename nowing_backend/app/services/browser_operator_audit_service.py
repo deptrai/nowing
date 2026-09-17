@@ -43,14 +43,17 @@ def generate_session_token(mission_id: str, user_id: str) -> str:
     return f"cdp_sess.{mission_id}.{timestamp}.{signature}"
 
 
-def validate_session_token(
+async def validate_session_token(
     token: str,
     expected_mission_id: str,
     expected_user_id: str,
+    redis_client: Any | None = None,
 ) -> tuple[bool, str | None]:
     """Validate a CDP session token.
 
     Returns (is_valid, error_message).
+    When ``redis_client`` is provided, enforces single-use replay protection
+    by marking consumed tokens in Redis.
     """
     if not token or not token.startswith("cdp_sess."):
         return False, "Invalid token format"
@@ -64,8 +67,10 @@ def validate_session_token(
     except (ValueError, IndexError):
         return False, "Malformed token"
 
-    # Check expiry
+    # Check expiry: reject future timestamps and expired tokens
     now = int(time.time())
+    if timestamp > now + 60:  # 60s clock skew tolerance
+        return False, "Token timestamp in future"
     if now - timestamp > _CDP_SESSION_TTL_SECONDS:
         return False, "Token expired"
 
@@ -82,6 +87,18 @@ def validate_session_token(
 
     if mission_id != expected_mission_id:
         return False, "Mission ID mismatch"
+
+    # Single-use replay protection: consume token in Redis
+    if redis_client is not None:
+        used_key = f"cdp:used_token:{token}"
+        try:
+            already = await redis_client.set(
+                used_key, "1", ex=_CDP_SESSION_TTL_SECONDS, nx=True
+            )
+        except Exception:
+            already = "1"  # fail open if redis unavailable
+        if already is None:
+            return False, "Token already used (replay detected)"
 
     return True, None
 
