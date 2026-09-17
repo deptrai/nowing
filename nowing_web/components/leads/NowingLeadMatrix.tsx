@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import {
 	AlertTriangle,
 	Check,
@@ -61,22 +62,22 @@ export interface NowingLeadMatrixProps {
 	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
 }
 
-const SOURCE_OPTIONS: Array<{ id: string; label: string; icon: string }> = [
-	{ id: "all", label: "Tất cả nguồn", icon: "🔍" },
-	{ id: "batdongsan", label: "Batdongsan.com.vn", icon: "🏠" },
-	{ id: "chotot", label: "Chợ Tốt (BĐS & Mua bán)", icon: "🛒" },
-	{ id: "facebook", label: "Facebook Groups", icon: "👥" },
-	{ id: "telegram", label: "Telegram Channels", icon: "✈️" },
-	{ id: "topcv", label: "TopCV / ITviec", icon: "💼" },
-	{ id: "tender", label: "Cổng Đấu Thầu (Mua Sắm Công)", icon: "🏛️" },
-	{ id: "linkedin", label: "LinkedIn Search", icon: "🌐" },
+const SOURCE_OPTIONS: Array<{ id: string; icon: string }> = [
+	{ id: "all", icon: "🔍" },
+	{ id: "batdongsan", icon: "🏠" },
+	{ id: "chotot", icon: "🛒" },
+	{ id: "facebook", icon: "👥" },
+	{ id: "telegram", icon: "✈️" },
+	{ id: "topcv", icon: "💼" },
+	{ id: "tender", icon: "🏛️" },
+	{ id: "linkedin", icon: "🌐" },
 ];
 
-const STATUS_OPTIONS: Array<{ id: string; label: string; dotColor: string }> = [
-	{ id: "all", label: "Tất cả trạng thái", dotColor: "bg-muted-foreground" },
-	{ id: "new", label: "Mới", dotColor: "bg-emerald-500" },
-	{ id: "contacted", label: "Đã liên hệ", dotColor: "bg-blue-500" },
-	{ id: "qualified", label: "Tiềm năng", dotColor: "bg-purple-500" },
+const STATUS_OPTIONS: Array<{ id: string; dotColor: string }> = [
+	{ id: "all", dotColor: "bg-muted-foreground" },
+	{ id: "new", dotColor: "bg-emerald-500" },
+	{ id: "contacted", dotColor: "bg-blue-500" },
+	{ id: "qualified", dotColor: "bg-purple-500" },
 ];
 
 function getCompanyStatusColorClass(status: string): string {
@@ -116,6 +117,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	unlockedPhones = {},
 	onPhoneChange,
 }) => {
+	const t = useTranslations("leads");
 	const [selectedLeadIds, setSelectedLeadIds] = useAtom(selectedLeadIdsAtom);
 	const [selectedLeadContext, setSelectedLeadContext] = useAtom(selectedLeadContextAtom);
 	const [, setActiveDrawerLead] = useAtom(activeDrawerLeadAtom);
@@ -292,7 +294,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 						>
 							<span className="text-sm">{currentSourceOption.icon}</span>
 							<span className="truncate max-w-[110px] sm:max-w-[130px]">
-								{currentSourceOption.label}
+								{t(`src_${currentSourceOption.id}`)}
 							</span>
 							<ChevronDown
 								className={cn(
@@ -306,7 +308,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 						{isSourceOpen && (
 							<div className="absolute left-0 top-full mt-1 w-60 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
 								<div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-									Nguồn dữ liệu
+									{t("sources_heading")}
 								</div>
 								{SOURCE_OPTIONS.map((opt) => (
 									<button
@@ -325,7 +327,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 									>
 										<div className="flex items-center gap-2">
 											<span>{opt.icon}</span>
-											<span>{opt.label}</span>
+											<span>{t(`src_${opt.id}`)}</span>
 										</div>
 										{sourceFilter === opt.id && (
 											<Check
@@ -353,7 +355,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 								className={cn("size-2 rounded-full", currentStatusOption.dotColor)}
 								aria-hidden="true"
 							/>
-							<span className="truncate max-w-[100px]">{currentStatusOption.label}</span>
+							<span className="truncate max-w-[100px]">{t(`status_${currentStatusOption.id}`)}</span>
 							<ChevronDown
 								className={cn(
 									"size-3.5 text-muted-foreground transition-transform duration-150",
@@ -385,7 +387,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 												className={cn("size-2 rounded-full", opt.dotColor)}
 												aria-hidden="true"
 											/>
-											<span className="text-xs">{opt.label}</span>
+											<span className="text-xs">{t(`status_${opt.id}`)}</span>
 										</div>
 										{statusFilter === opt.id && (
 											<Check
@@ -409,7 +411,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							type="text"
 							value={searchQuery}
 							onChange={(e) => onSearchQueryChange(e.target.value)}
-							placeholder="Tìm kiếm..."
+							placeholder={t("search_placeholder")}
 							className="w-full pl-8 pr-2.5 h-8 rounded-lg border border-border/80 bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
 						/>
 					</div>
@@ -422,10 +424,10 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							type="button"
 							onClick={onOpenReverseIcp}
 							className="inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-medium rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
-							title="Tìm leads tương tự qua 1-Click Reverse-ICP"
+							title={t("similar_leads_tooltip")}
 						>
 							<Search className="size-3.5 text-muted-foreground" aria-hidden="true" />
-							<span className="hidden lg:inline">Similar leads</span>
+							<span className="hidden lg:inline">{t("similar_leads")}</span>
 						</button>
 					)}
 
@@ -434,7 +436,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							type="button"
 							onClick={onOpenDnc}
 							className="inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-medium rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
-							title="Quản lý danh sách Do-Not-Call (DNC) tuân thủ Nghị định 13 PDPD"
+							title={t("dnc_tooltip")}
 						>
 							<ShieldAlert
 								className="size-3.5 text-amber-600 dark:text-amber-400"
@@ -456,7 +458,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 						type="button"
 						onClick={onRefresh}
 						disabled={isLoading}
-						title="Làm mới bảng"
+						title={t("refresh_table")}
 						className="size-8 rounded-lg border border-border/80 bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
 					>
 						<RefreshCw
@@ -498,7 +500,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 				<div className="flex items-center gap-2.5 shrink-0">
 					<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-[10px] font-medium">
 						<AlertTriangle className="size-3" aria-hidden="true" />
-						Not sending yet
+						{t("not_sending")}
 					</span>
 					<span className="text-muted-foreground font-medium text-[11px] hidden sm:inline">
 						8 cols
@@ -626,7 +628,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 															<TooltipTrigger asChild>
 																<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[9.5px] font-semibold font-mono tracking-tight shrink-0 cursor-help">
 																	<ShieldCheck className="size-2.5" aria-hidden="true" />
-																	MST Verified
+																	{t("mst_verified")}
 																</span>
 															</TooltipTrigger>
 															<TooltipContent
@@ -674,7 +676,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 															<TooltipTrigger asChild>
 																<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9.5px] font-semibold tracking-tight shrink-0 cursor-help">
 																	<MessageSquare className="size-2.5" aria-hidden="true" />
-																	Zalo Active
+																	{t("zalo_active")}
 																</span>
 															</TooltipTrigger>
 															<TooltipContent
@@ -751,7 +753,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 																	toast.success("Đã sao chép email!");
 																}
 															}}
-															title="Sao chép email"
+															title={t("copy_email")}
 															className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
 														>
 															<Copy className="size-2.5" aria-hidden="true" />
@@ -798,7 +800,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 													<button
 														type="button"
 														onClick={() => onOpenCompanyGraph(lead.company_name)}
-														title="Xem sơ đồ liên kết doanh nghiệp"
+														title={t("company_graph")}
 														className="size-7 p-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer border border-transparent hover:border-border/60"
 													>
 														<Network className="size-3.5" aria-hidden="true" />
