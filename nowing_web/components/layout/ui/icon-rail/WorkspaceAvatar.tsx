@@ -1,6 +1,7 @@
 "use client";
 
 import { Settings, Trash2, Users } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { MouseEvent } from "react";
 import { useCallback, useRef, useState } from "react";
@@ -16,6 +17,8 @@ import { cn } from "@/lib/utils";
 
 interface WorkspaceAvatarProps {
 	name: string;
+	href?: string;
+	prefetch?: boolean;
 	isActive?: boolean;
 	isShared?: boolean;
 	isOwner?: boolean;
@@ -60,6 +63,8 @@ function getInitials(name: string): string {
 
 export function WorkspaceAvatar({
 	name,
+	href,
+	prefetch = true,
 	isActive,
 	isShared,
 	isOwner = true,
@@ -83,11 +88,14 @@ export function WorkspaceAvatar({
 		setMenuOpen(true);
 	}, []);
 
-	const handleContextMenu = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-		event.preventDefault();
-		event.stopPropagation();
-		setMenuOpen(true);
-	}, []);
+	const handleContextMenu = useCallback(
+		(event: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
+			event.preventDefault();
+			event.stopPropagation();
+			setMenuOpen(true);
+		},
+		[]
+	);
 
 	const handleTouchStart = useCallback(() => {
 		touchMoved.current = false;
@@ -124,34 +132,15 @@ export function WorkspaceAvatar({
 		</div>
 	);
 
-	const avatarButton = (withMenuHandlers = false) => (
-		<Button
-			type="button"
-			variant="ghost"
-			size="icon"
-			onClick={onClick}
-			onPointerDown={
-				withMenuHandlers
-					? (event) => {
-							if (event.button === 0) {
-								event.preventDefault();
-							}
-						}
-					: undefined
-			}
-			onContextMenu={withMenuHandlers ? handleContextMenu : undefined}
-			onTouchStart={withMenuHandlers ? handleTouchStart : undefined}
-			onTouchMove={withMenuHandlers ? handleTouchMove : undefined}
-			onTouchEnd={withMenuHandlers ? handleTouchEnd : undefined}
-			onTouchCancel={withMenuHandlers ? handleTouchEnd : undefined}
-			className={cn(
-				"relative rounded-lg font-semibold text-white transition-all select-none",
-				"hover:text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-				sizeClasses,
-				isActive && "ring-2 ring-primary ring-offset-1 ring-offset-rail"
-			)}
-			style={{ backgroundColor: bgColor }}
-		>
+	const avatarClasses = cn(
+		"relative inline-flex items-center justify-center rounded-lg font-semibold text-white transition-all select-none",
+		"hover:text-white hover:opacity-90 active:scale-[0.98] active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+		sizeClasses,
+		isActive && "ring-2 ring-primary ring-offset-1 ring-offset-rail"
+	);
+
+	const avatarChildren = (
+		<>
 			{initials}
 			{/* Shared indicator badge */}
 			{isShared && (
@@ -165,8 +154,65 @@ export function WorkspaceAvatar({
 					<Users className={cn(size === "sm" ? "size-2" : "size-2.5")} />
 				</span>
 			)}
-		</Button>
+		</>
 	);
+
+	const avatarButton = (withMenuHandlers = false) => {
+		if (href) {
+			return (
+				<Link
+					href={href}
+					prefetch={prefetch}
+					onClick={onClick}
+					onPointerDown={
+						withMenuHandlers
+							? (event) => {
+									if (event.button === 0) {
+										event.preventDefault();
+									}
+								}
+							: undefined
+					}
+					onContextMenu={withMenuHandlers ? handleContextMenu : undefined}
+					onTouchStart={withMenuHandlers ? handleTouchStart : undefined}
+					onTouchMove={withMenuHandlers ? handleTouchMove : undefined}
+					onTouchEnd={withMenuHandlers ? handleTouchEnd : undefined}
+					onTouchCancel={withMenuHandlers ? handleTouchEnd : undefined}
+					className={avatarClasses}
+					style={{ backgroundColor: bgColor }}
+				>
+					{avatarChildren}
+				</Link>
+			);
+		}
+
+		return (
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				onClick={onClick}
+				onPointerDown={
+					withMenuHandlers
+						? (event) => {
+								if (event.button === 0) {
+									event.preventDefault();
+								}
+							}
+						: undefined
+				}
+				onContextMenu={withMenuHandlers ? handleContextMenu : undefined}
+				onTouchStart={withMenuHandlers ? handleTouchStart : undefined}
+				onTouchMove={withMenuHandlers ? handleTouchMove : undefined}
+				onTouchEnd={withMenuHandlers ? handleTouchEnd : undefined}
+				onTouchCancel={withMenuHandlers ? handleTouchEnd : undefined}
+				className={avatarClasses}
+				style={{ backgroundColor: bgColor }}
+			>
+				{avatarChildren}
+			</Button>
+		);
+	};
 
 	const menuItems = (
 		<>

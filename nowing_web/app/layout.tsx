@@ -1,7 +1,6 @@
 // auto-deploy verified - trigger-recompile-turbopack
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { RootProvider } from "fumadocs-ui/provider/next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { AnnouncementToastProvider } from "@/components/announcements/AnnouncementToastProvider";
@@ -149,32 +148,30 @@ export default function RootLayout({
 					"font-sans bg-main-panel antialiased h-full w-full"
 				)}
 			>
-				<PostHogProvider>
-					<LocaleProvider>
-						<I18nProvider>
-							<ThemeProvider
-								attribute="class"
-								enableSystem
-								disableTransitionOnChange
-								defaultTheme="system"
-							>
-								<PlatformProvider>
-									<RootProvider>
-										<ReactQueryClientProvider>
-											<AuthCutoverPurge />
-											<ZeroProvider>
-												<GlobalLoadingProvider>{children}</GlobalLoadingProvider>
-											</ZeroProvider>
-										</ReactQueryClientProvider>
+				<ReactQueryClientProvider>
+					<PostHogProvider>
+						<LocaleProvider>
+							<I18nProvider>
+								<ThemeProvider
+									attribute="class"
+									enableSystem
+									disableTransitionOnChange
+									defaultTheme="system"
+								>
+									<PlatformProvider>
+										<AuthCutoverPurge />
+										<ZeroProvider>
+											<GlobalLoadingProvider>{children}</GlobalLoadingProvider>
+										</ZeroProvider>
 										<DesktopUpdateToast />
 										<Toaster />
 										<AnnouncementToastProvider />
-									</RootProvider>
-								</PlatformProvider>
-							</ThemeProvider>
-						</I18nProvider>
-					</LocaleProvider>
-				</PostHogProvider>
+									</PlatformProvider>
+								</ThemeProvider>
+							</I18nProvider>
+						</LocaleProvider>
+					</PostHogProvider>
+				</ReactQueryClientProvider>
 			</body>
 		</html>
 	);

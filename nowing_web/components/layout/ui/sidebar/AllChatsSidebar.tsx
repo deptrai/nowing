@@ -13,6 +13,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -127,6 +128,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 			activateChatThread({
 				id: thread.id,
 				workspaceId,
+				navigate: false,
 			});
 		},
 		[activateChatThread, workspaceId]
@@ -315,6 +317,17 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 							const isArchiving = archivingThreadId === thread.id;
 							const isBusy = isDeleting || isArchiving;
 							const isActive = currentChatId === thread.id;
+							const threadUrl = `/dashboard/${workspaceId}/new-chat/${thread.id}`;
+
+							const itemClassName = cn(
+								"h-auto w-full justify-start gap-2.5 overflow-hidden px-3 py-2.5 text-left text-base font-normal",
+								"active:scale-[0.98] active:bg-accent/80 transition-all duration-100",
+								"group-hover/item:bg-accent group-hover/item:text-accent-foreground",
+								"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+								thread.visibility === "SEARCH_SPACE" && "pr-16",
+								isActive && "bg-accent text-accent-foreground",
+								isBusy && "opacity-50 pointer-events-none"
+							);
 
 							return (
 								<div
@@ -325,11 +338,14 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 									)}
 								>
 									{isMobile ? (
-										<Button
-											type="button"
-											variant="ghost"
-											onClick={() => {
-												if (wasLongPress()) return;
+										<Link
+											href={threadUrl}
+											prefetch={true}
+											onClick={(e) => {
+												if (wasLongPress()) {
+													e.preventDefault();
+													return;
+												}
 												handleThreadClick(thread);
 											}}
 											onMouseEnter={() => prefetchChatThread(thread.id)}
@@ -340,41 +356,25 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 											}}
 											onTouchEnd={longPressHandlers.onTouchEnd}
 											onTouchMove={longPressHandlers.onTouchMove}
-											disabled={isBusy}
-											className={cn(
-												"h-auto w-full justify-start gap-2.5 overflow-hidden px-3 py-2.5 text-left text-base font-normal",
-												"group-hover/item:bg-accent group-hover/item:text-accent-foreground",
-												"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-												thread.visibility === "SEARCH_SPACE" && "pr-16",
-												isActive && "bg-accent text-accent-foreground",
-												isBusy && "opacity-50 pointer-events-none"
-											)}
+											className={itemClassName}
 										>
 											<span className="min-w-0 flex-1 truncate">{thread.title || "New Chat"}</span>
-										</Button>
+										</Link>
 									) : (
 										<Tooltip delayDuration={600}>
 											<TooltipTrigger asChild>
-												<Button
-													type="button"
-													variant="ghost"
+												<Link
+													href={threadUrl}
+													prefetch={true}
 													onClick={() => handleThreadClick(thread)}
 													onMouseEnter={() => prefetchChatThread(thread.id)}
 													onFocus={() => prefetchChatThread(thread.id)}
-													disabled={isBusy}
-													className={cn(
-														"h-auto w-full justify-start gap-2.5 overflow-hidden px-3 py-2.5 text-left text-base font-normal",
-														"group-hover/item:bg-accent group-hover/item:text-accent-foreground",
-														"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-														thread.visibility === "SEARCH_SPACE" && "pr-16",
-														isActive && "bg-accent text-accent-foreground",
-														isBusy && "opacity-50 pointer-events-none"
-													)}
+													className={itemClassName}
 												>
 													<span className="min-w-0 flex-1 truncate">
 														{thread.title || "New Chat"}
 													</span>
-												</Button>
+												</Link>
 											</TooltipTrigger>
 											<TooltipContent side="bottom" align="start">
 												<p>

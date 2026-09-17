@@ -1,7 +1,8 @@
 "use client";
 
 import { Plus, SquarePen } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -63,7 +64,8 @@ export function IconRail({
 							{
 								key: "new-chat",
 								label: "New chat",
-								onClick: onNewChat,
+								href: activeWorkspaceId ? `/dashboard/${activeWorkspaceId}/new-chat` : undefined,
+								onClick: activeWorkspaceId ? undefined : onNewChat,
 								icon: SquarePen,
 								isActive: false,
 							},
@@ -72,6 +74,7 @@ export function IconRail({
 				...navItems.map((item) => ({
 					key: item.url,
 					label: item.title,
+					href: item.url,
 					onClick: () => onNavItemClick?.(item),
 					icon: item.icon,
 					isActive: !!item.isActive,
@@ -87,6 +90,7 @@ export function IconRail({
 						<WorkspaceAvatar
 							key={workspace.id}
 							name={workspace.name}
+							href={`/dashboard/${workspace.id}/new-chat`}
 							isActive={workspace.id === activeWorkspaceId}
 							isShared={workspace.memberCount > 1}
 							isOwner={workspace.isOwner}
@@ -117,21 +121,37 @@ export function IconRail({
 					{actionItems.length > 0 && (
 						<>
 							<div className="my-1 h-px w-8 bg-border/60" />
-							{actionItems.map(({ key, label, onClick, icon: Icon, isActive }) => (
+							{actionItems.map(({ key, label, href, onClick, icon: Icon, isActive }) => (
 								<Tooltip key={key}>
 									<TooltipTrigger asChild>
-										<Button
-											variant="ghost"
-											size="icon"
-											onClick={onClick}
-											className={cn(
-												"h-10 w-10 rounded-lg",
-												isActive && "bg-accent text-accent-foreground"
-											)}
-										>
-											<Icon className="h-4 w-4" />
-											<span className="sr-only">{label}</span>
-										</Button>
+										{href ? (
+											<Link
+												href={href}
+												prefetch={true}
+												onClick={onClick}
+												className={cn(
+													buttonVariants({ variant: "ghost", size: "icon" }),
+													"h-10 w-10 rounded-lg active:scale-[0.98] active:bg-accent/80",
+													isActive && "bg-accent text-accent-foreground"
+												)}
+											>
+												<Icon className="h-4 w-4" />
+												<span className="sr-only">{label}</span>
+											</Link>
+										) : (
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={onClick}
+												className={cn(
+													"h-10 w-10 rounded-lg active:scale-[0.98] active:bg-accent/80",
+													isActive && "bg-accent text-accent-foreground"
+												)}
+											>
+												<Icon className="h-4 w-4" />
+												<span className="sr-only">{label}</span>
+											</Button>
+										)}
 									</TooltipTrigger>
 									<TooltipContent side="right" sideOffset={8}>
 										{label}

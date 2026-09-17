@@ -11,14 +11,15 @@ import { prefetchThreadData } from "./use-thread-queries";
 interface ActivateChatThreadInput {
 	id: number | null;
 	workspaceId: number | string;
+	navigate?: boolean;
 }
 
-function getWorkspaceId(workspaceId: number | string): number {
+export function getWorkspaceId(workspaceId: number | string): number {
 	const parsed = typeof workspaceId === "number" ? workspaceId : Number.parseInt(workspaceId, 10);
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function getChatUrl(workspaceId: number | string, threadId: number | null): string {
+export function getChatUrl(workspaceId: number | string, threadId: number | null): string {
 	return threadId
 		? `/dashboard/${workspaceId}/new-chat/${threadId}`
 		: `/dashboard/${workspaceId}/new-chat`;
@@ -40,7 +41,7 @@ export function useActivateChatThread() {
 	);
 
 	const activateChatThread = useCallback(
-		({ id, workspaceId }: ActivateChatThreadInput) => {
+		({ id, workspaceId, navigate = true }: ActivateChatThreadInput) => {
 			const numericWorkspaceId = getWorkspaceId(workspaceId);
 			const chatUrl = getChatUrl(workspaceId, id);
 
@@ -58,7 +59,9 @@ export function useActivateChatThread() {
 				prefetchThreadData(queryClient, id);
 			}
 
-			router.push(chatUrl);
+			if (navigate) {
+				router.push(chatUrl);
+			}
 		},
 		[queryClient, router, setCurrentThreadMetadata, syncChatTab]
 	);

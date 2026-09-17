@@ -146,6 +146,7 @@ export function NavSection({ items, onItemClick, isCollapsed = false }: NavSecti
 						key={item.url}
 						icon={item.icon}
 						label={item.title}
+						href={item.url}
 						onClick={() => onItemClick?.(item)}
 						isCollapsed={isCollapsed}
 						isActive={item.isActive}

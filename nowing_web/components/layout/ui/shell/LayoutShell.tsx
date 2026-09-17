@@ -27,7 +27,6 @@ import {
 import { MobileSidebar, MobileSidebarTrigger, Sidebar, SidebarCollapseButton } from "../sidebar";
 import type { NotificationsDropdownData } from "../sidebar/NotificationsDropdown";
 import { TabBar } from "../tabs/TabBar";
-import { WorkspacePanel } from "./WorkspacePanel";
 
 const DocumentTabContent = dynamic(
 	() => import("../tabs/DocumentTabContent").then((m) => ({ default: m.DocumentTabContent })),
@@ -40,7 +39,6 @@ const DocumentTabContent = dynamic(
 		),
 	}
 );
-
 
 function MacDesktopTitleBar({
 	isSidebarCollapsed,
@@ -124,6 +122,9 @@ function MainContentPanel({
 	showTabs = true,
 	showRightPanelExpandButton = true,
 	showTopBorder = false,
+	useWorkspacePanel = false,
+	workspacePanelViewportClassName,
+	workspacePanelContentClassName,
 	children,
 }: {
 	isChatPage: boolean;
@@ -133,16 +134,20 @@ function MainContentPanel({
 	showTabs?: boolean;
 	showRightPanelExpandButton?: boolean;
 	showTopBorder?: boolean;
+	useWorkspacePanel?: boolean;
+	workspacePanelViewportClassName?: string;
+	workspacePanelContentClassName?: string;
 	children: React.ReactNode;
 }) {
 	const { tabs: resolvedTabs, activeTab } = useResolvedTabs();
 	const isDocumentTab = activeTab?.type === "document";
 
 	return (
-		<div
+		<main
+			id="main-workspace-root"
 			className={cn("relative isolate flex flex-1 flex-col min-w-0", showTopBorder && "border-t")}
 		>
-			{showTabs && (
+			{showTabs && !useWorkspacePanel && (
 				<TabBar
 					resolvedTabs={resolvedTabs}
 					onTabSwitch={onTabSwitch}
@@ -153,9 +158,9 @@ function MainContentPanel({
 				/>
 			)}
 			<div className="relative flex flex-1 flex-col bg-panel overflow-hidden min-w-0">
-				{!isChatPage && <Header />}
+				{!isChatPage && !useWorkspacePanel && <Header />}
 
-				{showTabs && isDocumentTab && activeTab ? (
+				{showTabs && !useWorkspacePanel && isDocumentTab && activeTab ? (
 					<div className="flex-1 overflow-hidden">
 						<DocumentTabContent
 							key={activeTab.id}
@@ -164,12 +169,30 @@ function MainContentPanel({
 						/>
 					</div>
 				) : (
-					<div className={cn("flex-1", isChatPage ? "overflow-hidden" : "overflow-auto")}>
-						{children}
+					<div
+						className={cn(
+							"flex-1 min-w-0",
+							useWorkspacePanel
+								? cn(
+										"flex min-h-0 items-center justify-center overflow-auto px-4 py-8",
+										workspacePanelViewportClassName
+									)
+								: isChatPage
+									? "overflow-hidden"
+									: "overflow-auto"
+						)}
+					>
+						{useWorkspacePanel ? (
+							<div className={cn("w-full max-w-md", workspacePanelContentClassName)}>
+								{children}
+							</div>
+						) : (
+							children
+						)}
 					</div>
 				)}
 			</div>
-		</div>
+		</main>
 	);
 }
 
@@ -294,18 +317,28 @@ export function LayoutShell({
 							isLoadingChats={isLoadingChats}
 						/>
 
-						{useWorkspacePanel ? (
-							<WorkspacePanel
-								viewportClassName={workspacePanelViewportClassName}
-								contentClassName={workspacePanelContentClassName}
-							>
-								{children}
-							</WorkspacePanel>
-						) : (
-							<main className={cn("flex-1", isChatPage ? "overflow-hidden" : "overflow-auto")}>
-								{children}
-							</main>
-						)}
+						<main
+							id="main-workspace-root-mobile"
+							className={cn(
+								"flex-1 min-w-0",
+								useWorkspacePanel
+									? cn(
+											"flex min-h-0 items-center justify-center overflow-auto px-4 py-8",
+											workspacePanelViewportClassName
+										)
+									: isChatPage
+										? "overflow-hidden"
+										: "overflow-auto"
+							)}
+						>
+							{useWorkspacePanel ? (
+								<div className={cn("w-full max-w-md", workspacePanelContentClassName)}>
+									{children}
+								</div>
+							) : (
+								children
+							)}
+						</main>
 					</div>
 				</TooltipProvider>
 			</SidebarProvider>
@@ -420,35 +453,23 @@ export function LayoutShell({
 							)}
 						</div>
 
-
 						<DesktopWorkspaceRegion>
-							{useWorkspacePanel ? (
-								<WorkspacePanel
-									className={isMacDesktop ? "border-t" : undefined}
-									viewportClassName={workspacePanelViewportClassName}
-									contentClassName={workspacePanelContentClassName}
-								>
-									{children}
-								</WorkspacePanel>
-							) : (
-								<>
-									{/* Main content panel */}
-									<MainContentPanel
-										isChatPage={isChatPage}
-										onTabSwitch={onTabSwitch}
-										onTabPrefetch={onTabPrefetch}
-										onNewChat={onNewChat}
-										showTabs={showTabs}
-										showRightPanelExpandButton={!isMacDesktop}
-										showTopBorder={isMacDesktop}
-									>
-										{children}
-									</MainContentPanel>
+							<MainContentPanel
+								isChatPage={isChatPage}
+								onTabSwitch={onTabSwitch}
+								onTabPrefetch={onTabPrefetch}
+								onNewChat={onNewChat}
+								showTabs={showTabs}
+								showRightPanelExpandButton={!isMacDesktop}
+								showTopBorder={isMacDesktop}
+								useWorkspacePanel={useWorkspacePanel}
+								workspacePanelViewportClassName={workspacePanelViewportClassName}
+								workspacePanelContentClassName={workspacePanelContentClassName}
+							>
+								{children}
+							</MainContentPanel>
 
-									{/* Right panel — Report/Editor/Citations/Artifacts (desktop only) */}
-									<RightPanel showTopBorder={isMacDesktop} />
-								</>
-							)}
+							<RightPanel showTopBorder={isMacDesktop} disabled={useWorkspacePanel} />
 						</DesktopWorkspaceRegion>
 					</div>
 				</div>

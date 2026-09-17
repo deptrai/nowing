@@ -342,11 +342,12 @@ development_status:
   29-6-data-governance-retention-policy-console: done
   epic-29-retrospective: done
 
-  epic-30: done
+  epic-30: in-progress
   30-2-redis-event-bus-subscribe-failure-state-leak: done
   30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
   30-8-epic-13-canonical-entity-cleanup: done
   30-9-technical-debt-retirement-system-hardening: done
+  30-10-frontend-navigation-performance-layout-modernization: done
   epic-30-retrospective: done
 
   epic-31: done
@@ -388,6 +389,27 @@ development_status:
   36-5-stream-consumer-schema-contract-dlq-routing: done
   36-6-canonical-action-matrix-legacy-tool-deprecation: done
   epic-36-retrospective: done
+
+  epic-37: in-progress
+  37-1-proactive-intent-signal-radar-background-ingestion-tele: ready-for-dev
+  37-2-vietnam-cultural-honorific-and-relationship-tone-engine: ready-for-dev
+  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark: ready-for-dev
+  37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper: ready-for-dev
+  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: ready-for-dev
+  37-6-realtime-prospect-engagement-tracker-and-telegram-alert-bot: ready-for-dev
+  37-7-hybrid-pricing-packaging-ui-and-auto-refund-guarantee-sla: ready-for-dev
+  epic-37-retrospective: optional
+
+  epic-38: ready-for-dev
+  38-1-livekit-sip-gateway-kamailio-sbc-and-low-latency-audio-bridge: ready-for-dev
+  38-2-voice-agent-worker-runtime-silero-vad-and-micro-clause-streaming: ready-for-dev
+  38-3-anti-false-interruption-and-multi-tier-barge-in-engine: ready-for-dev
+  38-4-telephony-compliance-gate-national-dnc-5656-and-curfew-scheduler: ready-for-dev
+  38-5-telecom-signal-classifier-amd-and-dead-air-watchdog-engine: ready-for-dev
+  38-6-dynamic-did-and-voice-brandname-multi-tenant-byo-sip-architecture: ready-for-dev
+  38-7-outbound-trigger-engine-speed-to-lead-and-hiring-radar-integration: ready-for-dev
+  38-8-voice-billing-realtime-metering-and-llm-qa-scorecard: ready-for-dev
+  epic-38-retrospective: optional
 validation_reports:
   - story: "3.18"
     type: "code-review"

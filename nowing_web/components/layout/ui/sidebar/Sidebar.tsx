@@ -150,6 +150,7 @@ export function Sidebar({
 		[navItems]
 	);
 
+	const newChatHref = workspace?.id ? `/dashboard/${workspace.id}/new-chat` : undefined;
 	const collapsedWidth = 51;
 
 	return (
@@ -209,7 +210,8 @@ export function Sidebar({
 				<SidebarButton
 					icon={SquarePen}
 					label={t("new_chat")}
-					onClick={onNewChat}
+					href={newChatHref}
+					onClick={newChatHref ? undefined : onNewChat}
 					isCollapsed={isCollapsed}
 				/>
 			</div>
@@ -223,6 +225,7 @@ export function Sidebar({
 						<SidebarButton
 							icon={automationsItem.icon}
 							label={automationsItem.title}
+							href={automationsItem.url}
 							onClick={() => onNavItemClick?.(automationsItem)}
 							isCollapsed={isCollapsed}
 							isActive={automationsItem.isActive}
@@ -233,6 +236,7 @@ export function Sidebar({
 						<SidebarButton
 							icon={playbooksItem.icon}
 							label={playbooksItem.title}
+							href={playbooksItem.url}
 							onClick={() => onNavItemClick?.(playbooksItem)}
 							isCollapsed={isCollapsed}
 							isActive={playbooksItem.isActive}
@@ -243,13 +247,14 @@ export function Sidebar({
 						<SidebarButton
 							icon={artifactsItem.icon}
 							label={artifactsItem.title}
+							href={artifactsItem.url}
 							onClick={() => onNavItemClick?.(artifactsItem)}
 							isCollapsed={isCollapsed}
 							isActive={artifactsItem.isActive}
 							tooltipContent={isCollapsed ? artifactsItem.title : undefined}
 						/>
 					)}
-					</div>
+				</div>
 
 				{/* Chat sections - fills available space */}
 				{isCollapsed ? (
@@ -282,6 +287,7 @@ export function Sidebar({
 											<ChatListItem
 												key={chat.id}
 												name={chat.name}
+												href={chat.url}
 												isActive={chat.id === activeChatId}
 												archived={chat.archived}
 												dropdownOpen={openDropdownChatId === chat.id}

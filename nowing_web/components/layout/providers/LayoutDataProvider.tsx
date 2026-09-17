@@ -499,12 +499,9 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 		[prefetchChatThread]
 	);
 
-	const handleNavItemClick = useCallback(
-		(item: NavItem) => {
-			router.push(item.url);
-		},
-		[router]
-	);
+	const handleNavItemClick = useCallback((_item: NavItem) => {
+		// Semantic <Link> handles navigation directly; no-op callback for compatibility
+	}, []);
 
 	const handleNewChat = useCallback(() => {
 		router.push(`/dashboard/${workspaceId}/new-chat`);
@@ -515,6 +512,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 			activateChatThread({
 				id: chat.id,
 				workspaceId,
+				navigate: false,
 			});
 		},
 		[activateChatThread, workspaceId]
@@ -653,7 +651,6 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 	const isAutomationsPage = pathname?.includes("/automations") === true;
 	const isArtifactsPage = pathname?.endsWith("/artifacts") === true;
 	const isAllChatsPage = pathname?.endsWith("/chats") === true;
-	const isNewChatRoot = pathname?.endsWith("/new-chat") === true;
 	const handleViewAllChats = useCallback(() => {
 		router.push(
 			isAllChatsPage ? `/dashboard/${workspaceId}/new-chat` : `/dashboard/${workspaceId}/chats`
@@ -723,7 +720,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 						? "items-start justify-center px-6 py-8 md:px-10 md:pb-10 md:pt-16"
 						: undefined
 				}
-				workspacePanelContentClassName={useWorkspacePanel ? "max-w-5xl select-none" : undefined}
+				workspacePanelContentClassName={useWorkspacePanel ? "max-w-5xl" : undefined}
 				isLoadingChats={isLoadingThreads}
 				notifications={{
 					totalUnreadCount,

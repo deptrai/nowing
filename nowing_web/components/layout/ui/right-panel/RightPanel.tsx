@@ -69,6 +69,7 @@ const ArtifactsPanelContent = dynamic(
 
 interface RightPanelProps {
 	showTopBorder?: boolean;
+	disabled?: boolean;
 }
 
 interface RightPanelToggleButtonProps {
@@ -196,7 +197,7 @@ function resolveEffectiveTab(
 	return TAB_FALLBACK_ORDER.find((tab) => openByTab[tab]) ?? "sources";
 }
 
-export function RightPanel({ showTopBorder = false }: RightPanelProps) {
+export function RightPanel({ showTopBorder = false, disabled = false }: RightPanelProps) {
 	const [activeTab] = useAtom(rightPanelTabAtom);
 	const reportState = useAtomValue(reportPanelAtom);
 	const closeReport = useSetAtom(closeReportPanelAtom);
@@ -223,7 +224,11 @@ export function RightPanel({ showTopBorder = false }: RightPanelProps) {
 	const citationOpen = citationState.isOpen && citationState.target != null;
 
 	useEffect(() => {
-		if (!reportOpen && !editorOpen && !hitlEditOpen && !citationOpen && !artifactsOpen) return;
+		if (
+			disabled ||
+			(!reportOpen && !editorOpen && !hitlEditOpen && !citationOpen && !artifactsOpen)
+		)
+			return;
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
 				if (hitlEditOpen) closeHitlEdit();
@@ -236,6 +241,7 @@ export function RightPanel({ showTopBorder = false }: RightPanelProps) {
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
 	}, [
+		disabled,
 		reportOpen,
 		editorOpen,
 		hitlEditOpen,
@@ -249,7 +255,9 @@ export function RightPanel({ showTopBorder = false }: RightPanelProps) {
 	]);
 
 	const isVisible =
-		(reportOpen || editorOpen || hitlEditOpen || citationOpen || artifactsOpen) && !collapsed;
+		!disabled &&
+		(reportOpen || editorOpen || hitlEditOpen || citationOpen || artifactsOpen) &&
+		!collapsed;
 
 	const effectiveTab = resolveEffectiveTab(activeTab, {
 		sources: false,
