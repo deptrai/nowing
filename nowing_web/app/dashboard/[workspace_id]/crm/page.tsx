@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, Kanban } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { use, useState } from "react";
 import { WorkspaceActivityTimeline } from "@/components/crm/WorkspaceActivityTimeline";
 import { LeadKanbanBoard } from "@/components/leads/pipeline/LeadKanbanBoard";
@@ -12,14 +13,15 @@ export default function WorkspaceCrmPage({
 }) {
 	const { workspace_id } = use(params);
 	const [activeTab, setActiveTab] = useState<"pipeline" | "timeline">("pipeline");
+	const t = useTranslations("crm");
 
 	return (
 		<div className="flex-1 flex flex-col p-6 space-y-6 max-w-full overflow-hidden">
 			<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-xl font-bold text-foreground">CRM & Sales Pipeline</h1>
+					<h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
 					<p className="text-xs text-muted-foreground">
-						Manage leads, drag-and-drop pipeline stages, and trace customer interaction timeline.
+						{t("subtitle")}
 					</p>
 				</div>
 
@@ -34,7 +36,7 @@ export default function WorkspaceCrmPage({
 						}`}
 					>
 						<Kanban className="w-3.5 h-3.5" />
-						Deal Pipeline
+						{t("tab_pipeline")}
 					</button>
 					<button
 						type="button"
@@ -46,7 +48,7 @@ export default function WorkspaceCrmPage({
 						}`}
 					>
 						<Activity className="w-3.5 h-3.5" />
-						Activity Timeline
+						{t("tab_timeline")}
 					</button>
 				</div>
 			</div>

@@ -1899,5 +1899,54 @@
 		"nav_other": "Connector khác",
 		"nav_all": "Tất cả connector",
 		"nav_ext": "External MCP Connectors"
+	},
+	"crm": {
+		"title": "CRM & Pipeline bán hàng",
+		"subtitle": "Quản lý lead, kéo-thả các giai đoạn pipeline và theo dõi timeline tương tác khách hàng.",
+		"tab_pipeline": "Pipeline giao dịch",
+		"tab_timeline": "Timeline hoạt động"
+	},
+	"dashboardErrors": {
+		"title": "Đã xảy ra lỗi",
+		"desc": "Đã xảy ra lỗi ở phần này. Dashboard của bạn vẫn khả dụng. Nếu lỗi tiếp diễn, vui lòng báo cáo để chúng tôi khắc phục.",
+		"try_again": "Thử lại",
+		"go_home": "Về trang chủ dashboard",
+		"report_issue": "Báo cáo sự cố"
+	},
+	"actionLog": {
+		"open_log": "Mở nhật ký hành động của agent",
+		"title": "Hành động của agent",
+		"desc": "Nhật ký audit mọi lần gọi tool mà agent đã thực hiện trong thread này.",
+		"empty_title": "Chưa có hành động nào được ghi",
+		"empty_desc": "Nhật ký audit đầy đủ mọi tool mà agent dùng trong thread này sẽ xuất hiện ở đây",
+		"disabled_title": "Nhật ký hành động đang tắt",
+		"disabled_desc": "Deployment này chưa bật nhật ký hành động của agent. Admin có thể bật",
+		"refresh": "Làm mới nhật ký hành động",
+		"load_failed": "Tải hành động thất bại",
+		"unknown_error": "Lỗi không xác định",
+		"try_again": "Thử lại",
+		"showing": "Hiển thị {shown}/{total}. Các hành động cũ hơn được phân trang."
+	},
+	"docViewer": {
+		"view_content": "Xem nội dung"
+	},
+	"desktopUpdate": {
+		"title": "Có bản cập nhật",
+		"desc": "Phiên bản Nowing mới ({version}) đã sẵn sàng để cài đặt.",
+		"install": "Cài đặt và khởi động lại",
+		"not_now": "Để sau",
+		"dismiss": "Đóng thông báo cập nhật"
+	},
+	"newChat": {
+		"chat_deleted": "Chat này đã bị xóa.",
+		"load_failed_toast": "Tải chat thất bại. Vui lòng thử lại.",
+		"mode_presentation": "Presentation Studio",
+		"mode_meeting": "Meeting Minutes",
+		"mode_web": "Web Builder",
+		"mode_web_name": "Web App Builder",
+		"mode_disabled": "{name} đang tắt",
+		"mode_disabled_desc": "{label} chưa được bật trên gói workspace này. Vui lòng nâng cấp gói để dùng AI {name}.",
+		"load_failed": "Tải chat thất bại",
+		"try_again": "Thử lại"
 	}
 }

@@ -9,6 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -177,6 +178,7 @@ function ThreadMessagesSkeleton() {
 }
 
 export default function NewChatPage() {
+	const t = useTranslations("newChat");
 	const router = useRouter();
 	const params = useParams();
 	const searchParams = useSearchParams();
@@ -486,11 +488,11 @@ export default function NewChatPage() {
 			setThreadId(null);
 			setCurrentThread(null);
 			setMessages([]);
-			toast.error("This chat was deleted.");
+			toast.error(t("chat_deleted"));
 			return;
 		}
 
-		toast.error("Failed to load chat. Please try again.");
+		toast.error(t("load_failed_toast"));
 	}, [
 		activeThreadId,
 		removeChatTab,
@@ -859,20 +861,19 @@ export default function NewChatPage() {
 
 	const disabledChatMode =
 		isPresentationStudioMode && !isPresentationStudioEnabled
-			? { label: "Presentation Studio", name: "Presentation Studio" }
+			? { label: t("mode_presentation"), name: t("mode_presentation") }
 			: isMeetingMinutesMode && !isMeetingMinutesEnabled
-				? { label: "Meeting Minutes", name: "Meeting Minutes" }
+				? { label: t("mode_meeting"), name: t("mode_meeting") }
 				: isWebBuilderMode && !isWebBuilderEnabled
-					? { label: "Web Builder", name: "Web App Builder" }
+					? { label: t("mode_web"), name: t("mode_web_name") }
 					: null;
 
 	if (disabledChatMode) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center p-8 text-center space-y-4">
-				<h2 className="text-xl font-bold text-foreground">{disabledChatMode.label} is disabled</h2>
+				<h2 className="text-xl font-bold text-foreground">{t("mode_disabled", { name: disabledChatMode.label })}</h2>
 				<p className="text-sm text-muted-foreground max-w-md">
-					{disabledChatMode.label} is not enabled on this workspace plan. Please upgrade your
-					workspace plan to access the AI {disabledChatMode.name}.
+					{t("mode_disabled_desc", { label: disabledChatMode.label, name: disabledChatMode.name })}
 				</p>
 			</div>
 		);
@@ -881,14 +882,14 @@ export default function NewChatPage() {
 	if (shouldShowThreadLoadError) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4">
-				<div className="text-destructive">Failed to load chat</div>
+				<div className="text-destructive">{t("load_failed")}</div>
 				<Button
 					type="button"
 					onClick={() => {
 						void Promise.all([threadDetailQuery.refetch(), threadMessagesQuery.refetch()]);
 					}}
 				>
-					Try Again
+					{t("try_again")}
 				</Button>
 			</div>
 		);

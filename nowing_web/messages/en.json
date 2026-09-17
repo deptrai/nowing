@@ -1897,5 +1897,54 @@
 		"nav_other": "Other connectors",
 		"nav_all": "All connectors",
 		"nav_ext": "External MCP Connectors"
+	},
+	"crm": {
+		"title": "CRM & Sales Pipeline",
+		"subtitle": "Manage leads, drag-and-drop pipeline stages, and trace customer interaction timeline.",
+		"tab_pipeline": "Deal Pipeline",
+		"tab_timeline": "Activity Timeline"
+	},
+	"dashboardErrors": {
+		"title": "Something went wrong",
+		"desc": "An error occurred in this section. Your dashboard is still available. If this keeps happening, please report it so we can fix it.",
+		"try_again": "Try again",
+		"go_home": "Go to dashboard home",
+		"report_issue": "Report Issue"
+	},
+	"actionLog": {
+		"open_log": "Open agent action log",
+		"title": "Agent actions",
+		"desc": "Audit trail of every tool call the agent made in this thread.",
+		"empty_title": "No actions logged yet",
+		"empty_desc": "A complete audit trail of every tool the agent uses in this thread will appear here",
+		"disabled_title": "Action log is disabled",
+		"disabled_desc": "This deployment hasn't enabled the agent action log. An admin can enable",
+		"refresh": "Refresh action log",
+		"load_failed": "Failed to load actions",
+		"unknown_error": "Unknown error",
+		"try_again": "Try again",
+		"showing": "Showing {shown} of {total}. Older actions are paginated."
+	},
+	"docViewer": {
+		"view_content": "View Content"
+	},
+	"desktopUpdate": {
+		"title": "Update available",
+		"desc": "A new version of Nowing ({version}) is now available to install.",
+		"install": "Install and restart",
+		"not_now": "Not now",
+		"dismiss": "Dismiss update toast"
+	},
+	"newChat": {
+		"chat_deleted": "This chat was deleted.",
+		"load_failed_toast": "Failed to load chat. Please try again.",
+		"mode_presentation": "Presentation Studio",
+		"mode_meeting": "Meeting Minutes",
+		"mode_web": "Web Builder",
+		"mode_web_name": "Web App Builder",
+		"mode_disabled": "{name} is disabled",
+		"mode_disabled_desc": "{label} is not enabled on this workspace plan. Please upgrade your workspace plan to access the AI {name}.",
+		"load_failed": "Failed to load chat",
+		"try_again": "Try Again"
 	}
 }
