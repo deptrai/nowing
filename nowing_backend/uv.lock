@@ -6075,6 +6075,35 @@ wheels = [
 ]
 
 [[package]]
+name = "livekit-api"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "livekit-protocol" },
+    { name = "protobuf" },
+    { name = "pyjwt" },
+    { name = "types-protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/da/0d/ff9502faa5e9785563e9648313a030fab65ed7f6ff8cf52d7bc6c9e01c97/livekit_api-1.2.1.tar.gz", hash = "sha256:eee78dba493b736bc8422660debc7cf89340f1b80c63890a36a18d99c938045c", size = 21780, upload-time = "2026-08-27T14:06:57.419Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a1/c8/bc29cf16427fc446aa4487c552503cef42eebfcb920902bb54b7180e40d3/livekit_api-1.2.1-py3-none-any.whl", hash = "sha256:aa15b0a194c9e8167d4261bc61381682df23f98bc6d77760fcded93d2ce4b4ca", size = 27586, upload-time = "2026-08-27T14:06:56.286Z" },
+]
+
+[[package]]
+name = "livekit-protocol"
+version = "1.1.27"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "protobuf" },
+    { name = "types-protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/15/f3/5572f2b58f04534e22e266e113cb49b4f0b2a4e1d2abf385267cb51559ab/livekit_protocol-1.1.27.tar.gz", hash = "sha256:740a4c6e438da763d204f2a6b0fc8f7f33ca96e27b17ce9abc6557dbb0a28dbd", size = 124650, upload-time = "2026-09-16T12:43:25.761Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/04/12a047d5ec0ea5099426d071a0147118767cb231d270cb1d0bece266eb01/livekit_protocol-1.1.27-py3-none-any.whl", hash = "sha256:765bbe0c9c6b626519f6f5952793f81eaf3f5b8c9bd1e1b03994f3177774aa10", size = 151314, upload-time = "2026-09-16T12:43:24.327Z" },
+]
+
+[[package]]
 name = "llama-cloud"
 version = "0.1.46"
 source = { registry = "https://pypi.org/simple" }
@@ -11175,6 +11204,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
     { name = "litellm" },
+    { name = "livekit-api" },
     { name = "llama-cloud-services" },
     { name = "lxml" },
     { name = "markdown" },
@@ -11304,6 +11334,7 @@ requires-dist = [
     { name = "langgraph", specifier = ">=1.1.3" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.0.2" },
     { name = "litellm", specifier = ">=1.83.7" },
+    { name = "livekit-api", specifier = ">=1.0.0" },
     { name = "llama-cloud-services", specifier = ">=0.6.25" },
     { name = "lxml", specifier = ">=4.9.0" },
     { name = "markdown", specifier = ">=3.7" },
@@ -12214,6 +12245,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f2/1e/a27cc02a0cd715118c71fa2aef2c687fdefc3c28d90fd0dd789c5118154c/typer-0.21.2.tar.gz", hash = "sha256:1abd95a3b675e17ff61b0838ac637fe9478d446d62ad17fa4bb81ea57cc54028", size = 120426, upload-time = "2026-02-10T19:33:46.182Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b8/cc/d59f893fbdfb5f58770c05febfc4086a46875f1084453621c35605cec946/typer-0.21.2-py3-none-any.whl", hash = "sha256:c3d8de54d00347ef90b82131ca946274f017cffb46683ae3883c360fa958f55c", size = 56728, upload-time = "2026-02-10T19:33:48.01Z" },
+]
+
+[[package]]
+name = "types-protobuf"
+version = "7.35.1.20260906"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/6c/e3e5b3e10bc328126a39637c138f9ebfd734bf14342b9f3540039b4ab995/types_protobuf-7.35.1.20260906.tar.gz", hash = "sha256:efd1a3862d4c967dad5512ef8d56b1530ac84f182c41735b94004756518c4998", size = 69895, upload-time = "2026-09-06T06:35:28.308Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/4e/f63e826c68f77ef875506d72f225918800346545ee99847bc28f3394f18d/types_protobuf-7.35.1.20260906-py3-none-any.whl", hash = "sha256:5155e48569e0dabff303fdf578db96cd31ea9a4a63b18018a4ceac6b0ae17462", size = 86419, upload-time = "2026-09-06T06:35:27.247Z" },
 ]
 
 [[package]]

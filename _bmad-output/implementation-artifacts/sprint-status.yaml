@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: '09-17-2026 17:44'
+# last_updated: '09-17-2026 23:28'
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-17-2026 17:44'
+last_updated: '09-17-2026 23:28'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -401,7 +401,7 @@ development_status:
   epic-37-retrospective: optional
 
   epic-38: in-progress
-  38-1-livekit-sip-gateway-kamailio-media-infrastructure: backlog
+  38-1-livekit-sip-gateway-kamailio-media-infrastructure: done
   38-2-voice-agent-worker-runtime-silero-vad-streaming: backlog
   38-3-anti-false-interruption-multi-tier-barge-in-engine: backlog
   38-4-telephony-compliance-gate-national-dnc-curfew: backlog

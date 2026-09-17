@@ -1,0 +1,87 @@
+# =============================================================================
+# Nowing Telephony & Voice AI Infrastructure Stack
+# Story 38.1 / Invariant AD-122: Kamailio SBC Edge & LiveKit SIP Gateway Cluster
+# Direct host/internal RTP routing (10000-20000/UDP), no Caddy/Traefik reverse proxy.
+# =============================================================================
+
+name: nowing-telephony
+
+services:
+  kamailio:
+    image: kamailio/kamailio:5.8.3
+    container_name: nowing-kamailio
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+    volumes:
+      - ./kamailio/kamailio.cfg:/etc/kamailio/kamailio.cfg:ro
+      - ./kamailio/dispatcher.list:/etc/kamailio/dispatcher.list:ro
+    environment:
+      - SIP_PORT=5060
+      - KAMAILIO_LOG_LEVEL=2
+    networks:
+      - telephony_net
+    depends_on:
+      livekit-sip-1:
+        condition: service_healthy
+      livekit-sip-2:
+        condition: service_healthy
+
+  livekit-sip-1:
+    image: livekit/sip:latest
+    container_name: nowing-livekit-sip-1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - ./livekit/sip.yaml:/etc/livekit/sip.yaml:ro
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL:-http://livekit:7880}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
+    ports:
+      - "10000-15000:10000-15000/udp"
+    networks:
+      telephony_net:
+        aliases:
+          - livekit-sip-1
+      dokploy-network: {}
+
+  livekit-sip-2:
+    image: livekit/sip:latest
+    container_name: nowing-livekit-sip-2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - ./livekit/sip.yaml:/etc/livekit/sip.yaml:ro
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL:-http://livekit:7880}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
+    ports:
+      - "15001-20000:15001-20000/udp"
+    networks:
+      telephony_net:
+        aliases:
+          - livekit-sip-2
+      dokploy-network: {}
+
+networks:
+  telephony_net:
+    name: nowing_telephony_net
+    driver: bridge
+  # Join dokploy-network so LiveKit SIP can resolve redis:6379 and livekit:7880
+  dokploy-network:
+    external: true
