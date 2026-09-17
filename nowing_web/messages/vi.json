@@ -799,7 +799,9 @@
 		"unauthorized": "Chưa được cấp quyền",
 		"forbidden": "Bị từ chối truy cập",
 		"server_error": "Lỗi máy chủ",
-		"network_error": "Lỗi kết nối mạng"
+		"network_error": "Lỗi kết nối mạng",
+		"unexpected_error": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại, hoặc báo cáo sự cố nếu vẫn tiếp diễn.",
+		"report_issue": "Báo cáo sự cố"
 	},
 	"governance": {
 		"title": "Quản trị dữ liệu",

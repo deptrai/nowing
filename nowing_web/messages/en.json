@@ -799,7 +799,9 @@
 		"unauthorized": "Unauthorized",
 		"forbidden": "Forbidden",
 		"server_error": "Server error",
-		"network_error": "Network error"
+		"network_error": "Network error",
+		"unexpected_error": "An unexpected error occurred. Please try again, or report this issue if it persists.",
+		"report_issue": "Report Issue"
 	},
 	"governance": {
 		"title": "Governance",
