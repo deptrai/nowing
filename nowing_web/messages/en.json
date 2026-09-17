@@ -30,7 +30,16 @@
 		"retry": "Retry",
 		"owner": "Owner",
 		"shared": "Shared",
-		"settings": "Settings"
+		"settings": "Settings",
+		"citation": "Citation",
+		"close_citation": "Close citation panel",
+		"citation_load_failed": "Failed to load citation",
+		"cited_chunk": "Cited chunk",
+		"scraper_run": "Scraper run",
+		"close_run_panel": "Close run panel",
+		"open_workspace_for_run": "Open a workspace to view this run.",
+		"citation_tooltip": "See where this came from",
+		"human_takeover": "Human Live Takeover"
 	},
 	"auth": {
 		"login": "Login",
@@ -2044,7 +2053,15 @@
 		"title": "CRM & Sales Pipeline",
 		"subtitle": "Manage leads, drag-and-drop pipeline stages, and trace customer interaction timeline.",
 		"tab_pipeline": "Deal Pipeline",
-		"tab_timeline": "Activity Timeline"
+		"tab_timeline": "Activity Timeline",
+		"crm_timeline": "Customer & Deal Activity Timeline",
+		"all_directions": "All Directions",
+		"inbound": "Inbound (from CRM)",
+		"outbound": "Outbound (to CRM)",
+		"refresh": "Refresh",
+		"loading_timeline": "Loading activity timeline...",
+		"no_crm_activity": "No CRM activity recorded yet. Deal stage changes and sync events will appear here.",
+		"entity_id": "Entity ID"
 	},
 	"dashboardErrors": {
 		"title": "Something went wrong",

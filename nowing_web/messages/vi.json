@@ -30,7 +30,16 @@
 		"retry": "Thử lại",
 		"owner": "Chủ sở hữu",
 		"shared": "Được chia sẻ",
-		"settings": "Cài đặt"
+		"settings": "Cài đặt",
+		"citation": "Trích dẫn",
+		"close_citation": "Đóng panel trích dẫn",
+		"citation_load_failed": "Không tải được trích dẫn",
+		"cited_chunk": "Đoạn được trích dẫn",
+		"scraper_run": "Lượt chạy scraper",
+		"close_run_panel": "Đóng panel run",
+		"open_workspace_for_run": "Mở một workspace để xem run này.",
+		"citation_tooltip": "Xem nguồn của nội dung này",
+		"human_takeover": "Con người tiếp quản trực tiếp"
 	},
 	"auth": {
 		"login": "Đăng nhập",
@@ -2046,7 +2055,15 @@
 		"title": "CRM & Pipeline bán hàng",
 		"subtitle": "Quản lý lead, kéo-thả các giai đoạn pipeline và theo dõi timeline tương tác khách hàng.",
 		"tab_pipeline": "Pipeline giao dịch",
-		"tab_timeline": "Timeline hoạt động"
+		"tab_timeline": "Timeline hoạt động",
+		"crm_timeline": "Timeline hoạt động khách hàng & deal",
+		"all_directions": "Tất cả chiều",
+		"inbound": "Inbound (từ CRM)",
+		"outbound": "Outbound (tới CRM)",
+		"refresh": "Làm mới",
+		"loading_timeline": "Đang tải timeline hoạt động...",
+		"no_crm_activity": "Chưa có hoạt động CRM nào. Thay đổi stage deal và sự kiện sync sẽ hiển thị ở đây.",
+		"entity_id": "Entity ID"
 	},
 	"dashboardErrors": {
 		"title": "Đã xảy ra lỗi",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
 	Activity,
 	ArrowDownLeft,
@@ -31,6 +32,7 @@ export interface WorkspaceActivityTimelineProps {
 export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps> = ({
 	workspaceId,
 }) => {
+	const t = useTranslations("crm");
 	const [items, setItems] = useState<ActivityTimelineItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 			<div className="flex items-center justify-between pb-4 border-b">
 				<div className="flex items-center gap-2">
 					<Activity className="w-5 h-5 text-primary" />
-					<h2 className="text-lg font-semibold">Customer & Deal Activity Timeline</h2>
+					<h2 className="text-lg font-semibold">{t("crm_timeline")}</h2>
 				</div>
 				<div className="flex items-center gap-2">
 					<select
@@ -73,9 +75,9 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 						onChange={(e) => setDirectionFilter(e.target.value)}
 						className="text-xs rounded-md border bg-background px-2.5 py-1.5"
 					>
-						<option value="all">All Directions</option>
-						<option value="inbound">Inbound (from CRM)</option>
-						<option value="outbound">Outbound (to CRM)</option>
+						<option value="all">{t("all_directions")}</option>
+						<option value="inbound">{t("inbound")}</option>
+						<option value="outbound">{t("outbound")}</option>
 					</select>
 					<button
 						type="button"
@@ -84,7 +86,7 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 						className="inline-flex items-center gap-1 text-xs rounded-md border px-2.5 py-1.5 hover:bg-muted"
 					>
 						<RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-						Refresh
+						{t("refresh")}
 					</button>
 				</div>
 			</div>
@@ -97,13 +99,13 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 
 			{loading && items.length === 0 && (
 				<div className="py-12 text-center text-sm text-muted-foreground">
-					Loading activity timeline...
+					{t("loading_timeline")}
 				</div>
 			)}
 
 			{!loading && filteredItems.length === 0 && (
 				<div className="py-12 text-center text-sm text-muted-foreground">
-					No CRM activity recorded yet. Deal stage changes and sync events will appear here.
+					{t("no_crm_activity")}
 				</div>
 			)}
 
@@ -131,7 +133,7 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 								</span>
 							</div>
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Entity ID: <span className="font-mono">{item.entity_id}</span>
+								{t("entity_id")}: <span className="font-mono">{item.entity_id}</span>
 							</p>
 							{item.error_message && (
 								<p className="text-xs text-destructive mt-1 flex items-center gap-1">

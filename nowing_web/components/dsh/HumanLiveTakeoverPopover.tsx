@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Clock, Hand, XCircle, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
@@ -49,6 +50,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 	onRelease,
 	onAbort,
 }) => {
+	const t = useTranslations("common");
 	const [remainingSeconds, setRemainingSeconds] = useState(TAKEOVER_TTL_SECONDS);
 	const hasTimedOutRef = useRef(false);
 
@@ -98,7 +100,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 				</div>
 				<div className="flex-1 min-w-0">
 					<h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
-						<span>Human Live Takeover</span>
+						<span>{t("human_takeover")}</span>
 						<span className="relative flex h-2 w-2">
 							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
 							<span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600" />
