@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { UIEvent } from "react";
@@ -97,6 +98,7 @@ function groupedModels(models: ChatModel[]) {
 }
 
 export function ModelSelector({ workspaceId, className, onChatModelSelected }: ModelSelectorProps) {
+	const t = useTranslations("newChat");
 	const router = useRouter();
 	const isMobile = useIsMobile();
 	const [open, setOpen] = useState(false);
@@ -163,7 +165,7 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 					<Input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
-						placeholder="Search chat models"
+						placeholder={t("search_chat_models")}
 						className="h-8 border-0 bg-transparent pl-6 text-sm shadow-none"
 					/>
 				</div>
@@ -239,7 +241,7 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 
 											{!model.supports_image_input ? (
 												<Badge variant="outline" className="gap-1">
-													<ImageOff className="h-3 w-3" /> No image
+													<ImageOff className="h-3 w-3" /> {t("no_image")}
 												</Badge>
 											) : null}
 										*/}
@@ -259,8 +261,8 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 			type="button"
 			variant="ghost"
 			size="sm"
-			aria-label="Select chat model"
-			title="Select chat model"
+			aria-label={t("select_chat_model")}
+			title={t("select_chat_model")}
 			className={cn(
 				"h-7 min-w-0 gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-colors",
 				"select-none",
@@ -289,7 +291,7 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 				<DrawerContent className="max-h-[85vh]">
 					<DrawerHandle />
 					<DrawerHeader>
-						<DrawerTitle>Select Chat Model</DrawerTitle>
+						<DrawerTitle>{t("select_chat_model")}</DrawerTitle>
 					</DrawerHeader>
 					{content}
 				</DrawerContent>

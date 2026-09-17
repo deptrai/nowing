@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { useMemo } from "react";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
@@ -76,6 +77,7 @@ export function ConnectorRail({
 	isLoading,
 	onSelect,
 }: ConnectorRailProps) {
+	const t = useTranslations("connectors");
 	const connectors = useLiveConnectors(workspaceId);
 	const { indexingConnectorIds, failedConnectorIds } = useConnectorHealth(connectors);
 
@@ -94,12 +96,12 @@ export function ConnectorRail({
 		<div className="flex h-full w-full flex-col border-r bg-panel">
 			<div className="border-b px-3 py-2">
 				<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-					Connected integrations
+					{t("connected_integrations")}
 				</h3>
 			</div>
 			<div className="flex-1 overflow-y-auto p-1.5">
 				{groups.length === 0 ? (
-					<p className="px-3 py-2 text-xs text-muted-foreground">No connected integrations yet.</p>
+					<p className="px-3 py-2 text-xs text-muted-foreground">{t("no_connected")}</p>
 				) : (
 					<div className="space-y-0.5">
 						{groups.map((group) => {

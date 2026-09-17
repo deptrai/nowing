@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo } from "react";
@@ -53,6 +54,7 @@ function LiveConnectorManageView({
 	onAddAccount,
 	onManage,
 }: LiveConnectorManageViewProps) {
+	const t = useTranslations("connectors");
 	const groupConnectors = connectors.filter((c) => c.connector_type === connectorType);
 
 	// No accounts: prompt for OAuth / connection.
@@ -60,7 +62,7 @@ function LiveConnectorManageView({
 		return (
 			<div className="mt-8 flex flex-col items-center gap-4">
 				<p className="text-sm text-muted-foreground">
-					This connector requires OAuth authentication.
+					{t("oauth_required")}
 				</p>
 				<Button onClick={onAddAccount}>Connect {title}</Button>
 			</div>
@@ -72,7 +74,7 @@ function LiveConnectorManageView({
 		const account = groupConnectors[0];
 		const isSyncing = indexingConnectorIds.has(account.id);
 		const isFailed = failedConnectorIds.has(account.id);
-		const statusLabel = isFailed ? "Failed" : isSyncing ? "Syncing" : "Connected";
+		const statusLabel = isFailed ? t("st_failed") : isSyncing ? t("st_syncing") : t("st_connected");
 
 		return (
 			<div className="mt-8 flex flex-col items-center gap-4">
@@ -113,6 +115,7 @@ export function ConnectorDetailPane({
 	workspaceId,
 	onBack,
 }: ConnectorDetailPaneProps) {
+	const t = useTranslations("connectors");
 	// Reuse the full connector dialog hook — it handles all view routing
 	// (connect/edit/accounts) and mutations. The dialog itself is hidden on
 	// the connectors page (client-layout.tsx: `!isConnectorsPage`), so
@@ -273,7 +276,7 @@ export function ConnectorDetailPane({
 				{accountCount === 0 ? (
 					<>
 						<p className="text-sm text-muted-foreground">
-							{"Configure this connector to start importing data."}
+							{t("configure_hint")}
 						</p>
 						<Button
 							onClick={() => {
@@ -327,7 +330,7 @@ export function ConnectorDetailPane({
 						{isSyncing && (
 							<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
 								<Loader2 className="size-3 animate-spin" aria-hidden="true" />
-								Syncing
+								{t("syncing")}
 							</span>
 						)}
 						{isFailed && (
@@ -343,7 +346,7 @@ export function ConnectorDetailPane({
 								{accountCount} {accountCount === 1 ? "account" : "accounts"} connected
 							</span>
 						) : (
-							<span>Not connected</span>
+							<span>{t("not_connected")}</span>
 						)}
 					</p>
 				</div>

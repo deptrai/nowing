@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
+import { useTranslations } from "next-intl";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import {
@@ -271,6 +272,7 @@ export const DocumentMentionPicker = forwardRef<
 	},
 	ref
 ) {
+	const t = useTranslations("newChat");
 	const search = externalSearch;
 	const debouncedSearch = useDebounced(search, DEBOUNCE_MS);
 	const deferredSearch = useDeferredValue(debouncedSearch);
@@ -494,18 +496,18 @@ export const DocumentMentionPicker = forwardRef<
 		nodes.push(
 			{
 				id: "files-folders",
-				label: "Files & Folders",
-				subtitle: "Browse your knowledge base",
+				label: t("files_folders"),
+				subtitle: t("browse_kb"),
 				icon: <Files className="size-4" />,
 				type: "branch",
 				value: { kind: "view", view: { kind: "files-folders" } },
 			},
 			{
 				id: "connectors",
-				label: "Connectors",
+				label: t("connectors"),
 				subtitle: activeConnectors.length
-					? "Choose the exact account for tool use"
-					: "No connected accounts yet",
+					? t("choose_account")
+					: t("no_accounts"),
 				icon: <Unplug className="size-4" />,
 				type: "branch",
 				disabled: activeConnectors.length === 0,
@@ -515,8 +517,8 @@ export const DocumentMentionPicker = forwardRef<
 		if (enableChatMentions) {
 			nodes.push({
 				id: "chats",
-				label: "Chats",
-				subtitle: "Reference another conversation",
+				label: t("chats"),
+				subtitle: t("ref_conversation"),
 				icon: <MessageSquare className="size-4" />,
 				type: "branch",
 				value: { kind: "view", view: { kind: "chats" } },
@@ -543,7 +545,7 @@ export const DocumentMentionPicker = forwardRef<
 		const folderNodes = folderMentions.map((mention) => ({
 			id: getMentionDocKey(mention),
 			label: mention.title,
-			subtitle: "Folder",
+			subtitle: t("folder"),
 			icon: <FolderIcon className="size-4" />,
 			type: "item" as const,
 			disabled: selectedKeys.has(getMentionDocKey(mention)),
@@ -554,7 +556,7 @@ export const DocumentMentionPicker = forwardRef<
 			.map((mention) => ({
 				id: getMentionDocKey(mention),
 				label: mention.title,
-				subtitle: "Connector account",
+				subtitle: t("connector_account"),
 				icon: getConnectorIcon(mention.connector_type, "size-4") ?? <Unplug className="size-4" />,
 				type: "item" as const,
 				disabled: selectedKeys.has(getMentionDocKey(mention)),
@@ -564,7 +566,7 @@ export const DocumentMentionPicker = forwardRef<
 		const threadNodes = threadMentions.map((mention) => ({
 			id: getMentionDocKey(mention),
 			label: mention.title,
-			subtitle: "Chat",
+			subtitle: t("chat"),
 			icon: <MessageSquare className="size-4" />,
 			type: "item" as const,
 			disabled: selectedKeys.has(getMentionDocKey(mention)),
@@ -601,7 +603,7 @@ export const DocumentMentionPicker = forwardRef<
 			const folders = folderMentions.map((mention) => ({
 				id: getMentionDocKey(mention),
 				label: mention.title,
-				subtitle: "Folder",
+				subtitle: t("folder"),
 				icon: <FolderIcon className="size-4" />,
 				type: "item" as const,
 				disabled: selectedKeys.has(getMentionDocKey(mention)),
@@ -624,7 +626,7 @@ export const DocumentMentionPicker = forwardRef<
 			return threadMentions.map((mention) => ({
 				id: getMentionDocKey(mention),
 				label: mention.title,
-				subtitle: "Chat",
+				subtitle: t("chat"),
 				icon: <MessageSquare className="size-4" />,
 				type: "item" as const,
 				disabled: selectedKeys.has(getMentionDocKey(mention)),
@@ -736,11 +738,11 @@ export const DocumentMentionPicker = forwardRef<
 		hasSearch || view.kind === "root"
 			? null
 			: view.kind === "files-folders"
-				? "Files & Folders"
+				? t("files_folders")
 				: view.kind === "connectors"
-					? "Connectors"
+					? t("connectors")
 					: view.kind === "chats"
-						? "Chats"
+						? t("chats")
 						: view.title;
 
 	return (
@@ -784,10 +786,10 @@ export const DocumentMentionPicker = forwardRef<
 					{visibleNodes.length > 0 ? (
 						<>
 							{hasSearch ? (
-								<ComposerSuggestionGroupHeading>Suggested Context</ComposerSuggestionGroupHeading>
+								<ComposerSuggestionGroupHeading>{t("suggested_context")}</ComposerSuggestionGroupHeading>
 							) : null}
 							{!hasSearch && view.kind === "root" && recentRootNodes.length > 0 ? (
-								<ComposerSuggestionGroupHeading>Recents</ComposerSuggestionGroupHeading>
+								<ComposerSuggestionGroupHeading>{t("recents")}</ComposerSuggestionGroupHeading>
 							) : null}
 							{visibleNodes.map((node, index) => {
 								const showRecentsSeparator =

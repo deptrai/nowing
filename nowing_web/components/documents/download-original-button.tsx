@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface DownloadOriginalButtonProps {
 
 /** Renders only when the document has a stored ORIGINAL file; downloads it on click. */
 export function DownloadOriginalButton({ documentId }: DownloadOriginalButtonProps) {
+	const t = useTranslations("documents");
 	const [originalFilename, setOriginalFilename] = useState<string | null>(null);
 	const [downloading, setDownloading] = useState(false);
 
@@ -70,10 +72,10 @@ export function DownloadOriginalButton({ documentId }: DownloadOriginalButtonPro
 			className="size-6"
 			onClick={handleDownload}
 			disabled={downloading}
-			title={`Download original (${originalFilename})`}
+			title={t("download_original_named", { name: originalFilename })}
 		>
 			{downloading ? <Spinner size="xs" /> : <Download className="size-3.5" />}
-			<span className="sr-only">Download original file</span>
+			<span className="sr-only">{t("download_original")}</span>
 		</Button>
 	);
 }

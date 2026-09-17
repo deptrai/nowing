@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { UIEvent } from "react";
@@ -101,6 +102,7 @@ export function ImageModelSelector({
 	className,
 	mobileIconOnly = false,
 }: ImageModelSelectorProps) {
+	const t = useTranslations("newChat");
 	const router = useRouter();
 	const isMobile = useIsMobile();
 	const [open, setOpen] = useState(false);
@@ -169,7 +171,7 @@ export function ImageModelSelector({
 					<Input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
-						placeholder="Search image models"
+						placeholder={t("search_image_models")}
 						className="h-8 border-0 bg-transparent pl-6 text-sm shadow-none"
 					/>
 				</div>
@@ -247,7 +249,7 @@ export function ImageModelSelector({
 					className="w-full justify-start rounded-md bg-foreground/5 hover:bg-foreground/10 hover:text-foreground"
 					onClick={manageModelConnections}
 				>
-					<SlidersHorizontal className="h-4 w-4" /> Manage models
+					<SlidersHorizontal className="h-4 w-4" /> {t("manage_models")}
 				</Button>
 			</div>
 		</div>
@@ -258,8 +260,8 @@ export function ImageModelSelector({
 			type="button"
 			variant="ghost"
 			size="sm"
-			aria-label="Select image model"
-			title="Select image model"
+			aria-label={t("select_image_model")}
+			title={t("select_image_model")}
 			className={cn(
 				"h-7 min-w-0 gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-colors",
 				"select-none",
@@ -288,7 +290,7 @@ export function ImageModelSelector({
 				<DrawerContent className="max-h-[85vh]">
 					<DrawerHandle />
 					<DrawerHeader>
-						<DrawerTitle>Select Image Model</DrawerTitle>
+						<DrawerTitle>{t("select_image_model")}</DrawerTitle>
 					</DrawerHeader>
 					{content}
 				</DrawerContent>
