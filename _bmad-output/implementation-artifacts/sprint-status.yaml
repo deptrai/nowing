@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: '09-16-2026 21:04'
+# last_updated: '09-17-2026 17:44'
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-16-2026 21:04'
+last_updated: '09-17-2026 17:44'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -400,15 +400,15 @@ development_status:
   37-7-hybrid-pricing-packaging-ui-and-auto-refund-guarantee-sla: ready-for-dev
   epic-37-retrospective: optional
 
-  epic-38: ready-for-dev
-  38-1-livekit-sip-gateway-kamailio-sbc-and-low-latency-audio-bridge: ready-for-dev
-  38-2-voice-agent-worker-runtime-silero-vad-and-micro-clause-streaming: ready-for-dev
-  38-3-anti-false-interruption-and-multi-tier-barge-in-engine: ready-for-dev
-  38-4-telephony-compliance-gate-national-dnc-5656-and-curfew-scheduler: ready-for-dev
-  38-5-telecom-signal-classifier-amd-and-dead-air-watchdog-engine: ready-for-dev
-  38-6-dynamic-did-and-voice-brandname-multi-tenant-byo-sip-architecture: ready-for-dev
-  38-7-outbound-trigger-engine-speed-to-lead-and-hiring-radar-integration: ready-for-dev
-  38-8-voice-billing-realtime-metering-and-llm-qa-scorecard: ready-for-dev
+  epic-38: in-progress
+  38-1-livekit-sip-gateway-kamailio-media-infrastructure: backlog
+  38-2-voice-agent-worker-runtime-silero-vad-streaming: backlog
+  38-3-anti-false-interruption-multi-tier-barge-in-engine: backlog
+  38-4-telephony-compliance-gate-national-dnc-curfew: backlog
+  38-5-telecom-signal-classifier-amd-dead-air-watchdog: backlog
+  38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip: backlog
+  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar: backlog
+  38-8-voice-billing-nowing-wallet-realtime-metering-qa: backlog
   epic-38-retrospective: optional
 validation_reports:
   - story: "3.18"

@@ -135,14 +135,14 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[NEW — READY-FOR-DEV]` **FR-110 Realtime Prospect Engagement Tracker & Telegram Alert Bot Ping** → **E37.6 P1** (Live telemetry on pitch portal views, instant Telegram push alert to sales rep).
 `[NEW — READY-FOR-DEV]` **FR-111 Hybrid Pricing Tiers UI & Auto-Refund Guarantee SLA** → **E37.7 P0** (Starter 990k / Pro 2.490k / Business 5.990k VietQR checkout + 100% credit refund for invalid phones).
 
-`[NEW — READY-FOR-DEV]` **FR-112 LiveKit SIP Gateway & Low-Latency Audio Bridge** → **E38.1 P0** (PJSIP G.711a 8kHz to WebRTC Opus 48kHz transcoding, P99 latency < 3ms).
-`[NEW — READY-FOR-DEV]` **FR-113 Voice Agent Worker Runtime with Silero VAD & Micro-clause Streaming** → **E38.2 P0** (Python Asyncio worker, FPT.AI/Deepgram streaming STT, Cartesia/Vbee TTS, 80ms Local Filler injection).
-`[NEW — READY-FOR-DEV]` **FR-114 Multi-tier Barge-in Engine & Audio Ducking** → **E38.3 P1** (Echo cancellation lockout, -14dB audio ducking, keyword spotting to ignore conversational filler sounds).
-`[NEW — READY-FOR-DEV]` **FR-115 Telephony Compliance Gate & DNC 5656 Filter** → **E38.4 P0** (Decree 91 curfew 09:00-11:30 & 13:30-17:00, 1 call/24h cap, national DNC check, DTMF 9 opt-out).
-`[NEW — READY-FOR-DEV]` **FR-116 Telecom Answering Machine Detection (AMD) & Dead-air Watchdog** → **E38.5 P1** (Disconnects voicemail within 4s, 3s silence warning, 180s hard cap per outbound call).
-`[NEW — READY-FOR-DEV]` **FR-117 Dynamic DID & Voice Brandname Multi-tenant Architecture** → **E38.6 P1** (Day-1 fixed DID onboarding 024/028-7xxx + Enterprise Brandname registration pipeline).
-`[NEW — READY-FOR-DEV]` **FR-118 Speed-to-Lead Outbound Trigger Engine** → **E38.7 P0** (Auto-triggers call within 5m of pitch portal viewing >45s or hiring signal detection).
-`[NEW — READY-FOR-DEV]` **FR-119 Voice Billing, Realtime Metering & LLM QA Scorecard** → **E38.8 P0** (2.500đ/min block 6s+1s, 10s hang-up protection cap 15%, automated BANT qualification scorecard).
+`[NEW — READY-FOR-DEV]` **FR-112 LiveKit SIP Gateway & Kamailio SBC Low-Latency Telephony Bridge** → **E38.1 P0** (SIP Trunk G.711a to WebRTC Opus bridge, sub-5ms internal routing).
+`[NEW — READY-FOR-DEV]` **FR-113 Voice Agent Worker Runtime với Silero VAD & Micro-clause Streaming** → **E38.2 P0** (Silero VAD v5 ONNX, FPT/Deepgram STT, Cartesia/Vbee TTS streaming, Local Filler < 80ms).
+`[NEW — READY-FOR-DEV]` **FR-114 Anti-False-Interruption & Multi-tier Barge-in Engine** → **E38.3 P1** (Audio ducking -14dB, keyword spotting for backchannels, 400ms echo lockout).
+`[NEW — READY-FOR-DEV]` **FR-115 Telephony Compliance Gate, National DNC 5656 & Curfew Scheduler** → **E38.4 P0** (Decree 91 curfew, 1 call/24h frequency cap, 5656 DNC check, DTMF 9/0 opt-out).
+`[NEW — READY-FOR-DEV]` **FR-116 Telecom Signal Classifier, AMD & Dead-air Watchdog Engine** → **E38.5 P1** (AMD sub-4s hangup, dead-air re-prompt and drop before 8s, 180s hard max duration).
+`[NEW — READY-FOR-DEV]` **FR-117 Dynamic DID & Voice Brandname Multi-tenant BYO-SIP Architecture** → **E38.6 P1** (Day-1 instant DID 024/028 provisioning, encrypted BYO-SIP credentials, Brandname portal).
+`[NEW — READY-FOR-DEV]` **FR-118 Outbound Trigger Engine: Speed-to-Lead & Hiring Radar Integration** → **E38.7 P0** (Auto call within 5m of pitch view > 45s, hiring signal trigger, post-call Zalo handoff).
+`[NEW — READY-FOR-DEV]` **FR-119 Voice Billing, Realtime Metering & QA Scorecard** → **E38.8 P0** (2.500đ/min block 6s+1s, 10s hang-up protection cap 15%, automated BANT QA scoring).
 
 ### NonFunctional Requirements
 `[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*.  **NFR-11 Scraping compliance & anti-bot resilience (Vietnam job market)** *(mới 2026-08-05 — ToS review, legal counsel, anti-bot POC, PII pipeline)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
@@ -5056,105 +5056,116 @@ So that pricing matches local willingness-to-pay and eliminates buyer hesitation
 
 ## Epic 38: Autonomous Voice AI SDR & Telephony Workstation
 
-*Status: ready-for-dev.* Governed by `technical-market-deep-recon-epic-38-voice-ai-sdr.md` and Architectural Review (AD-122 to AD-129).
+*Status: in-progress.* Governed by `_bmad-output/planning-artifacts/research/technical-market-deep-recon-epic-38-voice-ai-sdr.md` and Architectural Decisions (AD-122 to AD-129).
 
-> **Strategic Scope:** Mở rộng năng lực Outbound từ Text (Zalo/Email) sang Thoại thời gian thực (Real-time Voice AI SDR). Giải quyết trọn vẹn rào cản viễn thông Việt Nam (G.711a 8kHz), độ trễ nhận thức sub-800ms, tuân thủ nghiêm ngặt Nghị định 91/2020/NĐ-CP (Voice Brandname, DNC 5656, Curfew hành chính), và kết nối khép vòng với Nowing Lead Intelligence và CRM.
+> **Strategic Scope:** Xây dựng trạm thoại AI tự hành đa kênh (Autonomous Voice SDR) chuẩn pháp lý viễn thông Việt Nam theo Nghị định 91/2020/NĐ-CP và Nghị định 13/2023/NĐ-CP. Đạt độ trễ hội thoại thời gian thực sub-800ms perceived latency qua LiveKit SIP Gateway, Kamailio SBC, Silero VAD v5, Streaming STT/TTS và Local Filler Audio.
 
 ### Architectural Invariants (AD-122 – AD-129)
-- **AD-122 (LiveKit SIP Gateway & Kamailio Edge SBC):** Hạ tầng viễn thông sử dụng Kamailio làm Edge Session Border Controller (SBC) kết nối trực tiếp với nhà mạng (FPT, CMC, Viettel) qua SIP Trunking G.711a 8kHz. LiveKit SIP Gateway đảm nhiệm chuyển mã sang WebRTC Opus 48kHz nội bộ với độ trễ truyền dẫn $P99 < 3$ms.
-- **AD-123 (Sub-800ms Perceived Latency via Local Filler Injection):** Để vượt qua độ trễ vật lý của mạng 4G/viễn thông, worker kích hoạt câu đệm âm thanh cục bộ ("Dạ vâng anh...", "Dạ để em kiểm tra...") trong vòng 80ms ngay khi VAD phát hiện khách dứt câu, đưa độ trễ nhận thức của người nghe về mức 300ms–550ms.
-- **AD-124 (Multi-tier Barge-in & Echo Lockout):** Áp dụng 400ms Lockout đầu lượt nói để triệt tiêu âm vọng loa ngoài; khi khách phát ra âm thanh, hạ âm lượng bot xuống -14dB (Audio Ducking); nếu khách nói từ đệm ngắn (< 280ms), bot phục hồi âm lượng; nếu khách cướp lời thực sự, bot gửi ngay SIP Silence Packet (40ms) và hủy task LLM/TTS hiện tại.
-- **AD-125 (Telephony Compliance & National DNC 5656):** Tự động đối chiếu số điện thoại với danh sách DNC 5656 của Cục ATTT; chỉ quay số trong khung giờ 09:00–11:30 và 13:30–17:00 ICT các ngày làm việc (không gọi thứ 7, CN, ngày lễ); trần tần suất tối đa 1 cuộc/24h tới cùng một số thuê bao; nhận diện từ chối ("đừng gọi nữa" hoặc phím DTMF 9/0) để cúp máy trong 2 giây và ghi danh sách đen vĩnh viễn.
-- **AD-126 (Telecom Signal Classifier & Early Hang-up Watchdog):** Module Answering Machine Detection (AMD) ngắt kết nối trong 4 giây nếu gặp tiếng chuông tổng đài hoặc hộp thư thoại; Dead-air Watchdog tự động hỏi lại sau 3 giây im lặng và cúp máy trước 8 giây; giới hạn trần cứng thời lượng cuộc gọi không quá 180 giây (3 phút).
-- **AD-127 (Day-1 Fixed DID Onboarding & Enterprise Brandname Pipeline):** Workspace mới được cấp ngay đầu số cố định DID (024/028-7xxx) để chạy ngay trong ngày cho Warm Leads; cung cấp cổng tiếp nhận hồ sơ đăng ký Voice Brandname chính danh tích hợp API với Viễn thông FPT.
-- **AD-128 (Speed-to-Lead Event-Driven Voice Dispatch):** Cuộc gọi được kích hoạt tự động theo sự kiện: trong vòng 5 phút sau khi prospect mở xem Mini-Pitch portal trên 45 giây (Epic 37.5 & 37.6) hoặc khi Radar phát hiện tín hiệu tuyển dụng trong 48 giờ. Toàn bộ ngữ cảnh (tên, chức vụ, nội dung xem) được nạp vào system prompt trước khi quay số.
-- **AD-129 (Realtime Metering & 10s Hang-up Protection Cap):** Định giá 2.500đ/phút (trừ 2.5 credits trong Nowing Wallet) theo block 6s+1s; miễn phí 100% cuộc gọi dập máy dưới 10 giây trong hạn mức 15% số cuộc chiến dịch; LLM tự động trích xuất tóm tắt và chấm điểm BANT sau cuộc gọi.
+- **AD-122 (Kamailio SBC & LiveKit SIP Gateway Bridge):** Kết nối SIP Trunk viễn thông nội địa (Viettel/VNPT/FPT/CMC) theo chuẩn G.711a 8kHz, chuyển đổi sang WebRTC Audio Track (Opus 48kHz) tại LiveKit SIP Gateway với độ trễ nội bộ $P99 < 3$ms.
+- **AD-123 (Sub-800ms Perceived Latency & Local Filler Audio):** Chèn câu đệm cục bộ ("Dạ vâng anh...", "Dạ để em kiểm tra...") trong vòng 80ms ngay khi VAD dứt câu nếu LLM chưa trả token đầu, đưa độ trễ nhận thức của người nghe về 300ms - 550ms.
+- **AD-124 (Multi-tier Barge-in & Anti-Echo Lockout):** Áp dụng 400ms lockout khi bot bắt đầu nói để triệt tiêu echo; giảm âm lượng bot -14dB (Audio Ducking) và dùng KWS cục bộ lọc từ đệm (< 280ms: "ừ", "dạ") trước khi gửi SIP Silence Packet cắt lời.
+- **AD-125 (Strict Compliance & DNC 5656 Filtering):** Kiểm tra danh sách DNC Quốc gia (5656) trước khi quay số; chỉ gọi trong khung giờ 09:00–11:30 và 13:30–17:00 ICT (Thứ 2 - Thứ 6); tự động ngắt và blacklist khi khách nói "đừng gọi nữa" hoặc nhấn phím 0/9.
+- **AD-126 (AMD & Dead-air Watchdog Protection):** Nhận diện tiếng chuông tổng đài / hộp thư thoại và cúp máy trước 4s; nếu khách nhấc máy nhưng im lặng quá 6s tự động cúp máy trước 8s; trần cuộc gọi tối đa 180s.
+- **AD-127 (Day-1 DID & Multi-tenant Brandname BYO-SIP):** Cấp đầu số cố định DID (024/028-7xxx) để gọi ngay trong ngày; hỗ trợ workspace cấu hình SIP credentials riêng mã hóa AES-256-GCM và gửi hồ sơ đăng ký Voice Brandname chính danh qua aggregator API.
+- **AD-128 (Speed-to-Lead & Post-Call Omnichannel Handoff):** Tự động kích hoạt cuộc gọi trong vòng 5 phút sau khi prospect xem Mini-Pitch Portal > 45s (Story 37.6); sau khi cúp máy tự động gửi tóm tắt qua Zalo ZNS / Zalo Co-pilot (Story 37.4) và đồng bộ CRM.
+- **AD-129 (Realtime Voice Metering & 15% Hang-up Protection):** Trừ credit theo block 6s + 1s (tỷ lệ 2.500đ/phút = 2.5 credits/phút); miễn phí cước cho cuộc gọi dập máy dưới 10s (tối đa 15% số cuộc/campaign); LLM tự động chấm QA Scorecard 1-100 sau cuộc gọi.
 
 ---
 
-### Story 38.1: LiveKit SIP Gateway, Kamailio SBC & Low-Latency Audio Bridge
-As a Telephony Infrastructure Engineer,  
-I want Kamailio SBC and LiveKit SIP Gateway deployed to bridge Vietnamese telco SIP trunks to WebRTC audio tracks,  
-So that the Voice Agent Worker can exchange bi-directional audio streams with telephone callers with P99 internal latency < 3ms.
+### Story 38.1: LiveKit SIP Gateway & Kamailio Media Infrastructure
+
+As a System Architect,
+I want to deploy Kamailio SBC and LiveKit SIP Gateway bridging Vietnamese telco SIP trunks to WebRTC SFU,
+So that telephony audio streams convert to real-time WebRTC audio tracks with sub-5ms internal transport latency.
 
 **Acceptance Criteria:**
-- **Given** an incoming or outgoing call via VN Telco SIP Trunk (G.711a, 8kHz), **When** handled by LiveKit SIP Gateway, **Then** it transcodes audio to WebRTC Opus (48kHz) and mounts it to an isolated LiveKit Room `call_<session_uuid>` within 150ms of call establishment.
-- **And** internal network transmission between Kamailio SBC, LiveKit Gateway, and Media Server SFU maintains $P99 < 3$ms latency.
-- **And** Kamailio SBC rejects unauthorized SIP INVITEs, enforces rate limits, and validates E.164 phone formats before bridging.
+- **Given** SIP Trunking UDP from VN Telco (Viettel/VNPT/FPT/CMC) with G.711 A-law (PCMA 8kHz), **When** incoming/outgoing call is initiated, **Then** Kamailio SBC verifies anti-fraud and relays SIP signaling to LiveKit SIP Gateway.
+- **And** LiveKit SIP Gateway automatically creates a LiveKit Room `call_<session_uuid>` upon receiving SIP `INVITE`.
+- **And** bidirectional codec transcoding between G.711a 8kHz and WebRTC Opus 48kHz executes with no audible distortion.
+- **And** internal routing latency between SBC, SIP Gateway, and Media Server SFU measures $P99 < 3$ms.
 
-### Story 38.2: Voice Agent Worker Runtime with Silero VAD & Micro-clause Streaming
-As a Voice AI Backend Engineer,  
-I want an asynchronous Python worker process running Silero VAD, streaming STT, and micro-clause TTS pipelines,  
-So that voice conversations feel completely natural with perceived conversational latency under 800ms.
+### Story 38.2: Voice Agent Worker Runtime với Silero VAD & Micro-clause Streaming
+
+As a Backend Engineer,
+I want an Asyncio Python Voice Agent Worker connected to LiveKit rooms executing streaming STT, LLM, and TTS with local filler audio injection,
+So that conversational voice round-trip latency stays below 800ms perceived latency.
 
 **Acceptance Criteria:**
-- **Given** an active LiveKit room, **When** caller speaks, **Then** Silero VAD v5 (ONNX Runtime, 30ms frames) detects speech boundaries with $< 200$ms endpointing latency.
-- **Given** speech end detected, **When** LLM generates response tokens, **Then** the worker triggers a Local Filler Audio clip ("Dạ vâng anh...", "Dạ để em kiểm tra...") within 80ms per AD-123.
-- **And** the worker implements Micro-clause Token Accumulator: streaming text chunks to TTS as soon as 3–5 tokens or punctuation marks are generated.
-- **And** bi-directional streaming STT (FPT.AI / Deepgram) and TTS (Cartesia / Vbee) operate over persistent WebSocket connections.
+- **Given** an active LiveKit room, **When** Voice Agent Worker joins as participant, **Then** it reads/writes audio tracks via `livekit-agents` SDK.
+- **And** Silero VAD v5 running on ONNX C++ Runtime processes 30ms audio frames with speech start/stop detection within 180ms - 220ms.
+- **And** WebSocket audio streaming to FPT.AI / Deepgram STT yields partial transcripts with final sentence emitted within 40ms of VAD endpoint.
+- **And** Micro-clause Token Accumulator forwards LLM tokens to Cartesia Sonic / Vbee TTS on first punctuation or 3–5 tokens.
+- **And** Local Filler Audio ("Dạ vâng anh...", "Dạ em hiểu...") injects within 80ms of silence if LLM first token is not yet ready per AD-123.
 
 ### Story 38.3: Anti-False-Interruption & Multi-tier Barge-in Engine (Ducking + KWS)
-As a Telephone Caller,  
-I want to interrupt the AI bot naturally when speaking, without having the bot cut off awkwardly due to background traffic noise or casual filler words ("ừ", "dạ"),  
-So that the conversation flows as smoothly as speaking with a human professional.
+
+As a Call Participant,
+I want natural conversation interruption where the bot smoothly ducks volume on customer speech and ignores short backchannels,
+So that speech flows smoothly without awkward cutoffs from background traffic noise or coughing.
 
 **Acceptance Criteria:**
-- **Given** the bot is currently playing audio, **When** the first 400ms of playback occurs, **Then** Barge-in Lockout Guard temporarily ignores input to prevent acoustic echo feedback per AD-124.
-- **Given** caller audio detected during bot playback ($P \ge 0.88$), **When** speech starts, **Then** the engine ducks bot audio volume by -14dB instead of cutting off immediately.
-- **And** if caller audio is short ($< 280$ms) or recognized as backchannel fillers ("ừ", "dạ", "vâng"), bot volume restores to 0dB and playback continues seamlessly.
-- **And** if verified as an actual user interruption, the engine immediately dispatches a 40ms SIP silence packet, flushes playout buffers, cancels running LLM/TTS asyncio tasks, and records the interrupted phrase into conversation history.
+- **Given** bot audio output, **When** the first 400ms plays, **Then** Barge-in Lockout Guard suppresses VAD triggers to prevent acoustic echo cancellation leaks.
+- **And** when speech probability $P \ge 0.88$ is detected during bot playback, the bot volume ducks by -14dB rather than halting abruptly.
+- **And** local Keyword Spotting (KWS) evaluates utterances $< 280$ms: short backchannels ("ừ", "dạ", "vâng") restore bot volume to 0dB without interrupting dialogue.
+- **And** when customer speech exceeds 280ms with semantic intent, the bot sends a 40ms SIP Silence Packet, cancels pending LLM/TTS asyncio tasks, and logs the truncated utterance for conversational context continuity.
 
 ### Story 38.4: Telephony Compliance Gate, National DNC 5656 & Curfew Scheduler
-As a Compliance Officer,  
-I want automated checks enforcing Decree 91/2020/NĐ-CP curfews, call frequency limits, and DNC 5656 blacklists,  
-So that our outbound calling operations remain 100% legally compliant and safe from telecommunication spam penalties.
+
+As a Compliance Officer,
+I want an automated telephony pre-flight gate enforcing National DNC 5656 registry, business hour curfews, and instant voice opt-out,
+So that 100% of automated outbound calls comply strictly with Decree 91/2020/NĐ-CP and Decree 13/2023/NĐ-CP.
 
 **Acceptance Criteria:**
-- **Given** an outbound call dispatch request, **When** evaluated by the Curfew Scheduler, **Then** calls are strictly blocked outside 09:00–11:30 and 13:30–17:00 ICT, as well as weekends and national holidays per AD-125.
-- **And** the engine enforces a strict frequency limit: no more than 1 call per 24 hours to the same E.164 phone number.
-- **And** phone numbers are checked against the national DNC 5656 database; any matching number immediately halts dispatch with zero credits deducted.
-- **And** outbound calls play a mandatory 3-second recording disclaimer at start, and recognize verbal opt-out ("đừng gọi nữa", "không có nhu cầu") or DTMF 9/0 to terminate the call in $< 2$s and add the contact to the permanent blacklist.
+- **Given** outbound call queue dispatch, **When** current time is outside 09:00–11:30 or 13:30–17:00 ICT, or is Saturday/Sunday/National Holiday, **Then** Curfew Scheduler blocks dispatch.
+- **And** Frequency Cap enforces a hard maximum of 1 call attempt per 24 hours per E.164 phone number.
+- **And** `DncComplianceService` queries the National 5656 DNC list (HMAC hash); if matched, the call is canceled with reason `DNC_NATIONAL_BLOCKED` and credits refunded.
+- **And** the call automatically plays a mandatory call-recording notification in the first 3 seconds.
+- **And** customer verbal rejection ("không có nhu cầu", "đừng gọi nữa") or DTMF 0/9 triggers immediate call termination within 2 seconds and permanent suppression in `WorkspaceDncRecord`.
 
 ### Story 38.5: Telecom Signal Classifier, AMD & Dead-air Watchdog Engine
-As a RevOps Administrator,  
-I want answering machine detection (AMD) and dead-air detection to terminate unproductive calls early,  
-So that telco minutes and credits are not wasted on voicemails or silent lines.
+
+As a System Reliability Engineer,
+I want automated answering machine detection, telco ringback classification, and dead-air watchdogs,
+So that voicemail greetings and silent connections are dropped in under 4 seconds to preserve telco budget.
 
 **Acceptance Criteria:**
-- **Given** a connected call, **When** AMD audio classification runs in the first 3 seconds, **Then** telco ringtones or automated carrier greetings ("Thuê bao quý khách...") trigger a SIP BYE termination within 4 seconds per AD-126.
-- **Given** a caller answers but remains silent, **When** silence exceeds 3 seconds, **Then** the bot plays a re-engagement prompt ("Alo, anh/chị có nghe rõ không ạ?"); if silence continues for another 3 seconds, it disconnects before 8 seconds.
-- **And** every outbound call is bounded by a hard ceiling of 180 seconds (3 minutes), after which the agent gracefully wraps up and disconnects.
-- **And** a 1-second Redis worker heartbeat monitors active RTP streams, terminating dangling SIP channels if RTP packets halt for $> 5$ seconds.
+- **Given** outbound call pickup, **When** Answering Machine Detection (AMD) identifies telco IVR or voicemail audio in the first 3 seconds, **Then** it terminates the call via SIP `BYE` within $< 4$ seconds.
+- **And** Dead-air Watchdog monitors post-answer silence: if silent for 3 seconds, prompts "Alo, anh/chị nghe rõ không ạ?"; if still silent for another 3 seconds, terminates before 8 seconds.
+- **And** an absolute hard ceiling of 180 seconds (3 minutes) is enforced for all outbound SDR calls.
+- **And** 1-second Redis worker heartbeat ensures media gateway forcibly tears down SIP call if worker RTP stream disconnects for $> 5$ seconds.
 
 ### Story 38.6: Dynamic DID & Voice Brandname Multi-tenant BYO-SIP Architecture
-As a Workspace Owner,  
-I want to use instant fixed DID numbers on Day-1 and easily register official Voice Brandnames,  
-So that our outbound calls display authentic company identity on prospect phones.
+
+As a Workspace Administrator,
+I want to configure custom SIP credentials, provision Day-1 fixed DID numbers, and register official Voice Brandnames,
+So that recipient screens display my verified corporate caller ID.
 
 **Acceptance Criteria:**
-- **Given** a newly registered workspace, **When** initiating outbound voice, **Then** the platform provisions a fixed DID line (024/028-7xxx) for immediate Day-1 warm calling per AD-127.
-- **And** workspaces can submit legal business documentation (business registration, Brandname Form 01) through a web portal, automatically transmitting requests to FPT Telecom Aggregator APIs.
-- **And** workspaces can configure Bring-Your-Own SIP (BYO-SIP) credentials stored securely in the PII Vault (AES-256-GCM).
-- **And** an in-flight anti-spam circuit breaker automatically halts campaigns if calls under 5 seconds exceed 40% or spam reports exceed 6%.
+- **Given** Workspace Settings `/dashboard/[workspace_id]/telephony`, **When** admin inputs SIP trunk credentials (domain, port, username, password), **Then** credentials are encrypted with AES-256-GCM in PII Vault.
+- **And** Day-1 Instant Onboarding provisions a verified fixed DID (024/028-7xxx) allowing immediate warm-lead calling without waiting for telco brandname approval.
+- **And** the UI provides a formal Voice Brandname registration portal forwarding business license and Decree 91 Form 01 to telco aggregator APIs.
+- **And** In-flight Anti-Spam Circuit Breaker halts the workspace campaign if calls $< 5$s exceed 40% or user spam complaints exceed 6%.
 
 ### Story 38.7: Outbound Trigger Engine: Speed-to-Lead & Hiring Radar Integration
-As a B2B Sales Representative,  
-I want Voice SDR calls automatically triggered when target prospects exhibit high buying intent,  
-So that prospects are contacted at the exact moment of peak interest.
+
+As a B2B Sales Representative,
+I want automated voice calls triggered within 5 minutes of prospect mini-pitch interaction or upon hiring surge detection,
+So that leads are contacted at the exact moment of peak buying intent.
 
 **Acceptance Criteria:**
-- **Given** a target prospect views their Mini-Pitch portal (Epic 37.5) for $> 45$ seconds, **When** detected by the telemetry beacon, **Then** the Speed-to-Lead engine triggers a voice qualification call within 5 minutes per AD-128.
-- **Given** hiring intent detected by Radar (Epic 37.1) within 48 hours, **When** prioritized, **Then** an outbound qualification sequence initiates during approved curfew hours.
-- **And** the Voice Agent Worker automatically injects the lead's company context, recent hiring roles, and viewed pitch sections into the System Prompt before dialing.
-- **And** upon call completion, summary notes and next-step actions automatically synchronize to Zalo Co-pilot (Epic 37.4) and the CRM timeline.
+- **Given** a prospect viewing `pitch.nowing.ai` for $> 45$ seconds (Epic 37.6), **When** Speed-to-Lead trigger evaluates, **Then** it initiates an outbound AI SDR call within 5 minutes during business hours.
+- **And** when Intent Radar (Story 37.1) detects $\ge 3$ new relevant job postings within 48 hours, a contextual qualification mission is queued.
+- **And** prospect context (company name, contact name, job title, viewed pitch sections) is injected into the Agent System Prompt before dialing.
+- **And** post-call pipeline automatically dispatches summary and action items to Zalo ZNS / Zalo Co-pilot (Story 37.4) and creates a CRM deal timeline activity.
 
-### Story 38.8: Voice Billing, Realtime Metering & LLM QA Scorecard
-As a Sales Manager and Finance Officer,  
-I want voice minutes metered accurately in Nowing Wallet with automated call quality scoring,  
-So that voice spend is transparent, predictable, and aligned with B2B lead conversion quality.
+### Story 38.8: Voice Billing, Realtime Metering & QA Scorecard
+
+As a Product Manager,
+I want call duration metered in 6s+1s blocks, automated 10-second hang-up credit protection, and post-call LLM QA scorecards,
+So that call charges are transparent and conversation quality is audited automatically.
 
 **Acceptance Criteria:**
-- **Given** an outbound call, **When** dialing initiates, **Then** the platform soft-locks 7.500 VNĐ (3 minutes @ 2.500đ/min) in the workspace wallet, rejecting the call if balance is insufficient.
-- **And** per AD-129, calls disconnected under 10 seconds (Hang-up Protection) are refunded 100% within a 15% monthly campaign cap.
-- **And** completed calls are metered on a standard 6s + 1s block schedule, debiting the final amount and releasing excess soft-locked balance.
-- **And** post-call Celery tasks use LLM analysis to extract conversation transcripts, verify BANT qualification criteria, and generate a 1–100 QA Scorecard with coaching feedback in the CRM.
+- **Given** an outbound call dispatch, **When** initiated, **Then** 7.500 VNĐ (3-minute buffer = 7.5 credits) is soft-locked in Nowing Wallet; calls are rejected if balance is insufficient.
+- **And** calls terminated in $< 10$ seconds are 100% refunded under Hang-up Protection up to 15% of campaign volume per AD-129.
+- **And** completed calls are billed at 2.500 VNĐ/minute (2.5 credits) calculated on standard viễn thông 6s + 1s blocks.
+- **And** post-call Celery task `process_post_call_analytics` generates structured Call Summary, BANT qualification status, and QA Score (1–100) recorded in CRM timeline.
