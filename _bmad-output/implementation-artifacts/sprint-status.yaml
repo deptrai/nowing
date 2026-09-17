@@ -402,7 +402,7 @@ development_status:
 
   epic-38: in-progress
   38-1-livekit-sip-gateway-kamailio-media-infrastructure: done
-  38-2-voice-agent-worker-runtime-silero-vad-streaming: backlog
+  38-2-voice-agent-worker-runtime-silero-vad-streaming: done
   38-3-anti-false-interruption-multi-tier-barge-in-engine: backlog
   38-4-telephony-compliance-gate-national-dnc-curfew: backlog
   38-5-telecom-signal-classifier-amd-dead-air-watchdog: backlog
