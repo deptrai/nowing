@@ -40,6 +40,30 @@ class TelegramChannelService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
+    async def _get_userbot_status(self, workspace_id: int) -> dict[str, Any]:
+        """Query real userbot session lock state from Redis."""
+        try:
+            from app.redis_client import get_redis_client
+
+            redis = await get_redis_client()
+            # Check for any active session lock keys for this workspace's accounts
+            # Pattern: telegram:session:lock:{account_id}
+            lock_keys = await redis.keys("telegram:session:lock:*")
+            is_locked = bool(lock_keys)
+            lock_ttl = await redis.ttl(lock_keys[0]) if lock_keys else 0
+            return {
+                "is_connected": is_locked,
+                "session_active": is_locked,
+                "lock_ttl_seconds": lock_ttl,
+            }
+        except Exception as exc:
+            logger.warning("Failed to check userbot lock status: %s", exc)
+            return {
+                "is_connected": False,
+                "session_active": False,
+                "lock_ttl_seconds": 0,
+            }
+
     async def list_channels(
         self,
         workspace_id: int,
@@ -73,12 +97,11 @@ class TelegramChannelService:
             for t in targets
         ]
 
-        # Check userbot session status (active lock / state)
-        userbot_status = {
-            "is_connected": True,  # Heuristic / system userbot availability
-            "session_active": True,
-            "active_channels_count": sum(1 for c in channels if c["is_active"]),
-        }
+        # Check userbot session status via TelegramSessionService lock state
+        userbot_status = await self._get_userbot_status(workspace_id)
+        userbot_status["active_channels_count"] = sum(
+            1 for c in channels if c["is_active"]
+        )
 
         return {
             "channels": channels,
