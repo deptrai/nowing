@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ interface SignInButtonProps {
 
 export const SignInButton = ({ variant = "desktop" }: SignInButtonProps) => {
 	const [isRedirecting, setIsRedirecting] = useState(false);
+	const t = useTranslations("auth");
 
 	const handleGoogleLogin = () => {
 		if (isRedirecting) return;
@@ -89,10 +91,10 @@ export const SignInButton = ({ variant = "desktop" }: SignInButtonProps) => {
 				)}
 			>
 				<GoogleLogo className="h-4 w-4" aria-hidden="true" />
-				<span>Sign In</span>
+				<span>{t("sign_in")}</span>
 			</Button>
 			<Link href="/login" className={cn("runtime-auth-local", getLocalClassName())}>
-				Sign In
+				{t("sign_in")}
 			</Link>
 		</>
 	);

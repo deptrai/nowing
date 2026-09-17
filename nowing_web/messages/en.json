@@ -1586,5 +1586,8 @@
 	"announcements": {
 		"empty_title": "Nothing new yet",
 		"empty_desc": "You're all caught up! New updates will appear here."
+	},
+	"theme": {
+		"toggle_theme": "Toggle theme"
 	}
 }

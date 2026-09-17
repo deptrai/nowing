@@ -1588,5 +1588,8 @@
 	"announcements": {
 		"empty_title": "Chưa có gì mới",
 		"empty_desc": "Bạn đã xem hết! Cập nhật mới sẽ xuất hiện ở đây."
+	},
+	"theme": {
+		"toggle_theme": "Chuyển đổi giao diện"
 	}
 }
