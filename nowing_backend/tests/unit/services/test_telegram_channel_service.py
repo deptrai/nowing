@@ -12,6 +12,18 @@ from app.services.telegram_channel_service import (
     _clean_channel_target,
 )
 
+
+def _make_mock_session() -> MagicMock:
+    """Mock AsyncSession where add() is sync, execute/flush/commit are async."""
+    session = MagicMock()
+    session.flush = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.delete = AsyncMock()
+    session.execute = AsyncMock()
+    session.get = AsyncMock()
+    return session
+
 pytestmark = [pytest.mark.unit]
 
 
@@ -40,7 +52,7 @@ class TestTelegramChannelService:
     @pytest.mark.asyncio
     async def test_add_channel_creates_new_target(self):
         """add_channel inserts a new SocialMonitoredTarget."""
-        session = AsyncMock()
+        session = _make_mock_session()
 
         # Mock no existing channel
         scalars_mock = MagicMock()
@@ -64,7 +76,7 @@ class TestTelegramChannelService:
     @pytest.mark.asyncio
     async def test_add_channel_reactivates_if_existing(self):
         """add_channel reactivates inactive existing channel."""
-        session = AsyncMock()
+        session = _make_mock_session()
 
         existing = MagicMock(spec=SocialMonitoredTarget)
         existing.id = 42
@@ -90,7 +102,7 @@ class TestTelegramChannelService:
     @pytest.mark.asyncio
     async def test_toggle_channel_flips_active_state(self):
         """toggle_channel flips is_active from True to False."""
-        session = AsyncMock()
+        session = _make_mock_session()
 
         target = MagicMock(spec=SocialMonitoredTarget)
         target.id = 10
@@ -111,7 +123,7 @@ class TestTelegramChannelService:
     @pytest.mark.asyncio
     async def test_delete_channel_removes_record(self):
         """delete_channel removes the target and returns True."""
-        session = AsyncMock()
+        session = _make_mock_session()
 
         target = MagicMock(spec=SocialMonitoredTarget)
         scalars_mock = MagicMock()

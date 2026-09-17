@@ -16,6 +16,18 @@ from app.services.crm_webhook_service import (
 
 pytestmark = [pytest.mark.unit]
 
+def _make_mock_session() -> MagicMock:
+    """Mock AsyncSession where add() is sync, execute/flush/commit are async."""
+    session = MagicMock()
+    session.flush = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.delete = AsyncMock()
+    session.execute = AsyncMock()
+    session.get = AsyncMock()
+    return session
+
+
 
 class TestStageMapping:
     """Test external deal stage to lead status mapping."""
@@ -58,7 +70,7 @@ class TestCrmWebhookService:
     @pytest.mark.asyncio
     async def test_handle_hubspot_deal_change_updates_lead(self):
         """HubSpot deal change should update Lead status and record log."""
-        session = AsyncMock()
+        session = _make_mock_session()
 
         lead = MagicMock(spec=Lead)
         lead.id = uuid.uuid4()
