@@ -73,16 +73,14 @@ function getRunErrorMessage(error: unknown): string {
 	const status = error instanceof AppError ? error.status : undefined;
 
 	if (status === 402) {
-		return "Insufficient credits. Add credits to run this API.";
+		return "Không đủ tín dụng. Hãy nạp thêm credit để chạy API này.";
 	}
 
 	if (status === 422) {
-		return "Invalid input. Check the fields above and try again.";
+		return "Dữ liệu không hợp lệ. Vui lòng kiểm tra các trường phía trên và thử lại.";
 	}
 
-	return error instanceof Error && error.message
-		? error.message
-		: "Something went wrong. Please try again.";
+	return error instanceof Error && error.message ? error.message : "Đã xảy ra lỗi. Vui lòng thử lại.";
 }
 
 function EndpointCopyButton({ endpoint }: { endpoint: string }) {
@@ -271,9 +269,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 										<Link
 											href={capability.docs_url}
 											className="font-medium text-foreground underline-offset-4 hover:underline"
-										>
-											Read docs
-										</Link>{" "}
+										>{t("pg_read_docs")}</Link>{" "}
 										{t('for_more_info')}
 									</>
 								) : null}
@@ -321,9 +317,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 					{isRunning ? (
 						<RunProgressPanel latest={run.latest} events={run.events} elapsedMs={run.elapsedMs} />
 					) : run.status === "cancelled" ? (
-						<div className="flex h-64 items-center justify-center rounded-md border border-border/60 px-4 text-center text-sm text-muted-foreground">
-							Run cancelled.
-						</div>
+						<div className="flex h-64 items-center justify-center rounded-md border border-border/60 px-4 text-center text-sm text-muted-foreground">{t("pg_run_cancelled")}</div>
 					) : run.status === "success" && output ? (
 						<>
 							<div className="flex flex-wrap gap-2">

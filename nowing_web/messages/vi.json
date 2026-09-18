@@ -3424,7 +3424,18 @@
 		"showing_first": "Hiển thị {max} đầu tiên trong tổng số {total} mục. Chuyển sang JSON để xem đầy đủ.",
 		"run": "Chạy",
 		"cancel": "Hủy",
-		"for_more_info": "để biết thêm thông tin."
+		"for_more_info": "để biết thêm thông tin.",
+		"pg_something_went_wrong_please": "Đã xảy ra lỗi. Vui lòng thử lại.",
+		"pg_read_docs": "Xem tài liệu",
+		"pg_run_cancelled": "Đã hủy lượt chạy.",
+		"pg_running": "Đang chạy",
+		"pg_success": "Thành công",
+		"pg_cancelled": "Đã hủy",
+		"pg_appearance": "Giao diện",
+		"pg_my_prompts": "Prompt của tôi",
+		"pg_community_prompts": "Prompt cộng đồng",
+		"pg_agent_permissions": "Quyền hạn của Agent",
+		"pg_messaging_channels": "Kênh nhắn tin"
 	},
 	"saved_searches": {
 		"not_found": "Không tìm thấy tìm kiếm đã lưu",

@@ -55,7 +55,7 @@ export function UserSettingsLayoutShell({ workspaceId, children }: UserSettingsL
 			},
 			{
 				value: "appearance" as const,
-				label: "Appearance",
+				label: t("pg_appearance"),
 				href: `/dashboard/${workspaceId}/user-settings/appearance`,
 				icon: <Palette className="h-4 w-4" aria-hidden="true" />,
 			},
@@ -67,25 +67,25 @@ export function UserSettingsLayoutShell({ workspaceId, children }: UserSettingsL
 			},
 			{
 				value: "prompts" as const,
-				label: "My Prompts",
+				label: t("pg_my_prompts"),
 				href: `/dashboard/${workspaceId}/user-settings/prompts`,
 				icon: <WandSparkles className="h-4 w-4" aria-hidden="true" />,
 			},
 			{
 				value: "community-prompts" as const,
-				label: "Community Prompts",
+				label: t("pg_community_prompts"),
 				href: `/dashboard/${workspaceId}/user-settings/community-prompts`,
 				icon: <Library className="h-4 w-4" aria-hidden="true" />,
 			},
 			{
 				value: "agent-permissions" as const,
-				label: "Agent Permissions",
+				label: t("pg_agent_permissions"),
 				href: `/dashboard/${workspaceId}/user-settings/agent-permissions`,
 				icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" />,
 			},
 			{
 				value: "messaging-channels" as const,
-				label: "Messaging Channels",
+				label: t("pg_messaging_channels"),
 				href: `/dashboard/${workspaceId}/user-settings/messaging-channels`,
 				icon: <MessageCircle className="h-4 w-4" aria-hidden="true" />,
 			},

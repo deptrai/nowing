@@ -3422,7 +3422,18 @@
 		"showing_first": "Showing first {max} of {total} items. Switch to JSON for the full output.",
 		"run": "Run",
 		"cancel": "Cancel",
-		"for_more_info": "for more info."
+		"for_more_info": "for more info.",
+		"pg_something_went_wrong_please": "Something went wrong. Please try again.",
+		"pg_read_docs": "Read docs",
+		"pg_run_cancelled": "Run cancelled.",
+		"pg_running": "Running",
+		"pg_success": "Success",
+		"pg_cancelled": "Cancelled",
+		"pg_appearance": "Appearance",
+		"pg_my_prompts": "My Prompts",
+		"pg_community_prompts": "Community Prompts",
+		"pg_agent_permissions": "Agent Permissions",
+		"pg_messaging_channels": "Messaging Channels"
 	},
 	"saved_searches": {
 		"not_found": "Saved search not found",
