@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { ArrowLeft } from "lucide-react";
@@ -48,6 +49,7 @@ export const ConnectorConnectView: FC<ConnectorConnectViewProps> = ({
 	onBack,
 	isSubmitting,
 }) => {
+	const t = useTranslations("assistant");
 	const formContainerRef = useRef<HTMLDivElement | null>(null);
 	// Get connector-specific form component
 	const ConnectFormComponent = useMemo(
@@ -96,9 +98,7 @@ export const ConnectorConnectView: FC<ConnectorConnectViewProps> = ({
 					onClick={onBack}
 					className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
-					<ArrowLeft data-icon="inline-start" />
-					Back to connectors
-				</Button>
+					<ArrowLeft data-icon="inline-start" />{t("asst_back_to_connectors")}</Button>
 
 				<div className="flex items-center gap-4 mb-6">
 					<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-slate-400/30">

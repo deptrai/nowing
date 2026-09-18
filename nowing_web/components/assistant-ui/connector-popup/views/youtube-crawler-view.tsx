@@ -17,6 +17,7 @@ import { baseApiService } from "@/lib/apis/base-api.service";
 
 const YOUTUBE_VIDEO_URL_RE =
 	/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?[^\s]*v=[\w-]{11}|youtu\.be\/[\w-]{11})[^\s]*/;
+	const t = useTranslations("assistant");
 
 const YOUTUBE_PLAYLIST_URL_RE =
 	/(?:https?:\/\/)?(?:www\.)?youtube\.com\/[^\s]*[?&]list=[\w-]+[^\s]*/;
@@ -223,9 +224,7 @@ export const YouTubeCrawlerView: FC<YouTubeCrawlerViewProps> = ({ workspaceId, o
 					onClick={onBack}
 					className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
-					<ArrowLeft data-icon="inline-start" />
-					Back to connectors
-				</Button>
+					<ArrowLeft data-icon="inline-start" />{t("asst_back_to_connectors")}</Button>
 
 				<div className="flex items-center gap-4 mb-6">
 					<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-slate-400/30">
@@ -311,7 +310,7 @@ export const YouTubeCrawlerView: FC<YouTubeCrawlerViewProps> = ({ workspaceId, o
 												width="100%"
 												height="100%"
 												src={`https://www.youtube.com/embed/${videoId}`}
-												title="YouTube video player"
+												title={t("asst_youtube_video_player")}
 												allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
 												allowFullScreen
 											/>

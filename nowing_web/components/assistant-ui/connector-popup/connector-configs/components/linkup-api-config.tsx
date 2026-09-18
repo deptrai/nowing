@@ -64,9 +64,7 @@ export const LinkupApiConfig: FC<LinkupApiConfigProps> = ({
 
 				<div className="space-y-2">
 					<Label className="flex items-center gap-2 text-xs sm:text-sm">
-						<KeyRound className="h-4 w-4" aria-hidden="true" />
-						Linkup API Key
-					</Label>
+						<KeyRound className="h-4 w-4" aria-hidden="true" />{t("asst_linkup_api_key")}</Label>
 					<Input
 						type="password"
 						value={apiKey}

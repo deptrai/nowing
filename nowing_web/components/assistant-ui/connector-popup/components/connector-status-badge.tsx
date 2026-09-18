@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { AlertTriangle, Ban, Wrench } from "lucide-react";
@@ -17,6 +18,7 @@ export const ConnectorStatusBadge: FC<ConnectorStatusBadgeProps> = ({
 	statusMessage,
 	className,
 }) => {
+	const t = useTranslations("assistant");
 	if (status === "active") {
 		return null;
 	}

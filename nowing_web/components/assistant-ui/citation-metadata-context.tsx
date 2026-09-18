@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { createContext, type FC, type ReactNode, useContext } from "react";
@@ -17,6 +18,7 @@ const CitationMetadataContext = createContext<CitationMetadataMap>(EMPTY_CITATIO
 // with the multi-engine web_search tool. Agent citation logic is being reworked
 // wholesale, so this provider currently yields no web citation metadata.
 export const CitationMetadataProvider: FC<{ children: ReactNode }> = ({ children }) => {
+	const t = useTranslations("assistant");
 	return (
 		<CitationMetadataContext.Provider value={EMPTY_CITATION_METADATA}>
 			{children}

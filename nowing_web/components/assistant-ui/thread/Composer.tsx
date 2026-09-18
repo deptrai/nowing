@@ -53,6 +53,7 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 	initialPrompt,
 	hasActiveThread,
 }) => {
+	const t = useTranslations("assistant");
 	const [mentionedDocuments, setMentionedDocuments] = useAtom(mentionedDocumentsAtom);
 	const setSubmittedMentions = useSetAtom(submittedMentionsAtom);
 	const [showDocumentPopover, setShowDocumentPopover] = useState(false);

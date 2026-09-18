@@ -64,9 +64,7 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 
 			{/* API Key Field */}
 			<div className="space-y-2">
-				<Label htmlFor="api-key" className="text-xs sm:text-sm">
-					Firecrawl API Key (Optional)
-				</Label>
+				<Label htmlFor="api-key" className="text-xs sm:text-sm">{t("asst_firecrawl_api_key_optional")}</Label>
 				<div className="relative">
 					<Input
 						id="api-key"

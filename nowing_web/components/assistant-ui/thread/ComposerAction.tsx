@@ -83,6 +83,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 	workspaceId,
 	onChatModelSelected,
 }) => {
+	const t = useTranslations("assistant");
 	const tChat = useTranslations("chat");
 	const tCommon = useTranslations("common");
 
@@ -192,7 +193,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 
 		const ungrouped = filteredTools.filter((t) => !placed.has(t.name));
 		if (ungrouped.length > 0) {
-			result.push({ label: "Other", tools: ungrouped });
+			result.push({ label: t("asst_other"), tools: ungrouped });
 		}
 
 		return result;

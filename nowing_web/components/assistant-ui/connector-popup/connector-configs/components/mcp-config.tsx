@@ -152,9 +152,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 			{/* Server Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="name" className="text-xs sm:text-sm">
-						Server Name
-					</Label>
+					<Label htmlFor="name" className="text-xs sm:text-sm">{t("asst_server_name")}</Label>
 					<Input
 						id="name"
 						value={name}
@@ -172,9 +170,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 			{/* Server Configuration */}
 			<div className="space-y-4">
 				<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
-					<Server className="h-4 w-4" aria-hidden="true" />
-					Server Configuration
-				</h3>
+					<Server className="h-4 w-4" aria-hidden="true" />{t("asst_server_configuration")}</h3>
 
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4">
 					<div className="space-y-2">
@@ -221,9 +217,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 						>
 							{isTesting ? (
 								<>
-									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-									Testing Connection...
-								</>
+									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />{t("asst_testing_connection")}</>
 							) : (
 								t("test_connection")
 							)}

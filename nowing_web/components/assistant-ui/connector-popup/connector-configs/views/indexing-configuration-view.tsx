@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { ArrowLeft, Check, Info } from "lucide-react";
@@ -66,6 +67,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 	onStartIndexing,
 	onSkip,
 }) => {
+	const t = useTranslations("assistant");
 	const isLive = LIVE_CONNECTOR_TYPES.has(config.connectorType);
 
 	// Get connector-specific config component
@@ -132,9 +134,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						onClick={onSkip}
 						className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 					>
-						<ArrowLeft data-icon="inline-start" />
-						Back to connectors
-					</Button>
+						<ArrowLeft data-icon="inline-start" />{t("asst_back_to_connectors")}</Button>
 				)}
 
 				{/* Success header */}
@@ -222,9 +222,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						{connector?.is_indexable && !isLive && (
 							<Alert>
 								<Info />
-								<AlertDescription>
-									You can continue using Nowing while we sync your data. Check inbox for updates.
-								</AlertDescription>
+								<AlertDescription>{t("asst_you_can_continue_using")}</AlertDescription>
 							</Alert>
 						)}
 					</div>
@@ -251,7 +249,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						disabled={isStartingIndexing}
 						className="text-xs sm:text-sm relative"
 					>
-						<span className={isStartingIndexing ? "opacity-0" : ""}>Start Indexing</span>
+						<span className={isStartingIndexing ? "opacity-0" : ""}>{t("asst_start_indexing")}</span>
 						{isStartingIndexing && <Spinner size="sm" className="absolute" />}
 					</Button>
 				)}

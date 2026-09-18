@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useSetAtom } from "jotai";
@@ -39,6 +40,7 @@ interface InlineCitationProps {
  * survive in old persisted messages.
  */
 export const InlineCitation: FC<InlineCitationProps> = ({ chunkId, isDocsChunk = false }) => {
+	const t = useTranslations("assistant");
 	if (chunkId < 0 || isDocsChunk) {
 		return (
 			<Tooltip>
@@ -62,6 +64,7 @@ export const InlineCitation: FC<InlineCitationProps> = ({ chunkId, isDocsChunk =
 };
 
 const NumericChunkCitation: FC<{ chunkId: number }> = ({ chunkId }) => {
+	const t = useTranslations("assistant");
 	const isTouchLike = useMediaQuery("(hover: none), (pointer: coarse)");
 	const openCitationPanel = useSetAtom(openCitationPanelAtom);
 	const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
@@ -97,7 +100,7 @@ const NumericChunkCitation: FC<{ chunkId: number }> = ({ chunkId }) => {
 				>
 					<DrawerHandle />
 					<DrawerHeader className="pb-0">
-						<DrawerTitle>Citation</DrawerTitle>
+						<DrawerTitle>{t("asst_citation")}</DrawerTitle>
 					</DrawerHeader>
 					<div className="min-h-0 flex-1 flex flex-col overflow-hidden">
 						<CitationPanelContent chunkId={chunkId} showHeader={false} />

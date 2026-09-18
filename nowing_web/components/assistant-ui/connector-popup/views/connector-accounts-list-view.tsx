@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useAtomValue } from "jotai";
@@ -44,6 +45,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 	isConnecting = false,
 	addButtonText,
 }) => {
+	const t = useTranslations("assistant");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const [reauthingId, setReauthingId] = useState<number | null>(null);
 	const [confirmDisconnectId, setConfirmDisconnectId] = useState<number | null>(null);
@@ -119,9 +121,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 					onClick={onBack}
 					className="mb-6 h-auto w-fit gap-2 px-0 py-0 text-xs font-normal text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
-					<ArrowLeft className="size-4" aria-hidden="true" />
-					Back to connectors
-				</Button>
+					<ArrowLeft className="size-4" aria-hidden="true" />{t("asst_back_to_connectors")}</Button>
 
 				{/* Connector header */}
 				<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
@@ -225,9 +225,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										</p>
 										{isIndexing ? (
 											<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
-												<Spinner size="xs" />
-												Syncing
-											</p>
+												<Spinner size="xs" />{t("asst_syncing")}</p>
 										) : !isLive ? (
 											<p className="text-[10px] mt-1 whitespace-nowrap truncate text-muted-foreground">
 												{connector.last_indexed_at
@@ -245,22 +243,18 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										>
 											<RefreshCw
 												className={cn("size-3.5", reauthingId === connector.id && "animate-spin")}
-											/>
-											Re-authenticate
-										</Button>
+											/>{t("asst_re_authenticate")}</Button>
 									) : needsReconnect ? (
 										<Button
 											size="sm"
 											className="h-8 text-[11px] px-3 font-medium bg-amber-600 hover:bg-amber-700 text-white border-0 shadow-xs shrink-0"
 											onClick={() => handleReauth(connector)}
 											disabled={reauthingId === connector.id}
-											title="This connector moved to MCP. Reconnect to use it with the agent."
+											title={t("asst_this_connector_moved_to")}
 										>
 											<RefreshCw
 												className={cn("size-3.5", reauthingId === connector.id && "animate-spin")}
-											/>
-											Reconnect via MCP
-										</Button>
+											/>{t("asst_reconnect_via_mcp")}</Button>
 									) : isLive && onDisconnect ? (
 										confirmDisconnectId === connector.id ? (
 											<div className="flex items-center gap-1.5 shrink-0">
@@ -301,9 +295,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 												size="sm"
 												className="h-8 text-[11px] px-3 font-medium shrink-0"
 												onClick={() => setConfirmDisconnectId(connector.id)}
-											>
-												Disconnect
-											</Button>
+											>{t("asst_disconnect")}</Button>
 										)
 									) : (
 										<Button

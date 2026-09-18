@@ -36,6 +36,7 @@ interface AuthorMetadata {
 }
 
 const UserAvatar: FC<AuthorMetadata> = ({ displayName, avatarUrl }) => {
+	const t = useTranslations("assistant");
 	const [hasError, setHasError] = useState(false);
 
 	const initials = displayName

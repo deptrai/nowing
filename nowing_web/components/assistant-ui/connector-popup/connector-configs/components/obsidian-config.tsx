@@ -66,9 +66,7 @@ const LegacyBanner: FC = () => {
 					<a
 						href={OBSIDIAN_SETUP_DOCS_URL}
 						className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
-					>
-						Obsidian setup guide
-					</a>{" "}
+					>{t("asst_obsidian_setup_guide")}</a>{" "}
 					to reconnect this vault through the plugin.
 				</p>
 				<p className="text-[11px] leading-relaxed text-amber-600 dark:text-amber-400 sm:text-xs">
