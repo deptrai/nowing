@@ -12,6 +12,7 @@ import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { baseApiService } from "@/lib/apis/base-api.service";
+import { useTranslations } from "next-intl";
 
 /**
  * Zod schemas for runtime validation
@@ -75,11 +76,12 @@ function ContentSkeleton() {
 }
 
 function ReportGeneratingState({ topic }: { topic: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground line-clamp-2">{topic}</p>
-				<TextShimmerLoader text="Putting things together" size="sm" />
+				<TextShimmerLoader text={t("report_putting_together")} size="sm" />
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 pt-3 pb-4">
@@ -90,10 +92,11 @@ function ReportGeneratingState({ topic }: { topic: string }) {
 }
 
 function ReportErrorState({ title, error }: { title: string; error: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Report Generation Failed</p>
+				<p className="text-sm font-semibold text-destructive">{t("report_gen_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -109,11 +112,12 @@ function ReportErrorState({ title, error }: { title: string; error: string }) {
 }
 
 function ReportCancelledState() {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-muted-foreground">Report Cancelled</p>
-				<p className="text-xs text-muted-foreground mt-0.5">Report generation was cancelled</p>
+				<p className="text-sm font-semibold text-muted-foreground">{t("report_cancelled")}</p>
+				<p className="text-xs text-muted-foreground mt-0.5">{t("report_gen_cancelled")}</p>
 			</div>
 		</div>
 	);
@@ -132,6 +136,7 @@ function ReportCard({
 	shareToken?: string | null;
 	autoOpen?: boolean;
 }) {
+	const t = useTranslations("toolUi");
 	const openPanel = useSetAtom(openReportPanelAtom);
 	const panelState = useAtomValue(reportPanelAtom);
 	const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -158,7 +163,7 @@ function ReportCard({
 				const parsed = ReportContentResponseSchema.safeParse(rawData);
 				if (parsed.success) {
 					if (parsed.data.report_metadata?.status === "failed") {
-						setError(parsed.data.report_metadata?.error_message || "Report generation failed");
+						setError(parsed.data.report_metadata?.error_message || t("report_gen_failed"));
 					} else {
 						let versionLabel: string | null = null;
 						const versions = parsed.data.versions;
@@ -187,7 +192,7 @@ function ReportCard({
 					}
 				}
 			} catch {
-				if (!cancelled) setError("No report found");
+				if (!cancelled) setError(t("report_not_found"));
 			} finally {
 				if (!cancelled) setIsLoading(false);
 			}
@@ -261,7 +266,7 @@ function ReportCard({
 							/>
 						</div>
 					) : (
-						<p className="text-sm text-muted-foreground italic">No content available</p>
+						<p className="text-sm text-muted-foreground italic">{t("report_no_content")}</p>
 					)}
 				</div>
 			</Button>
@@ -278,6 +283,7 @@ export const GenerateReportToolUI = ({
 	result,
 	status,
 }: ToolCallMessagePartProps<GenerateReportArgs, GenerateReportResult>) => {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const pathname = usePathname();
 	const isPublicRoute = pathname?.startsWith("/public/");
@@ -302,7 +308,7 @@ export const GenerateReportToolUI = ({
 			return (
 				<ReportErrorState
 					title={topic}
-					error={typeof status.error === "string" ? status.error : "An error occurred"}
+					error={typeof status.error === "string" ? status.error : t("common_error_occurred")}
 				/>
 			);
 		}
@@ -314,7 +320,7 @@ export const GenerateReportToolUI = ({
 
 	if (result.status === "failed") {
 		return (
-			<ReportErrorState title={result.title || topic} error={result.error || "Generation failed"} />
+			<ReportErrorState title={result.title || topic} error={result.error || t("report_gen_failed")} />
 		);
 	}
 
@@ -330,5 +336,5 @@ export const GenerateReportToolUI = ({
 		);
 	}
 
-	return <ReportErrorState title={topic} error="Missing report ID" />;
+	return <ReportErrorState title={topic} error={t("report_missing_id")} />;
 };

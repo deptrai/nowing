@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,15 @@ export const COVERAGE_BADGE_VARIANTS: Record<CoverageQualityTier, CoverageVarian
 	},
 };
 
+export function getCoverageBadgeVariants(t: (k: string) => string): Record<CoverageQualityTier, CoverageVariantConfig> {
+	return {
+		high: { ...COVERAGE_BADGE_VARIANTS.high, label: t("coverage_high"), description: t("coverage_high_desc") },
+		medium: { ...COVERAGE_BADGE_VARIANTS.medium, label: t("coverage_medium"), description: t("coverage_medium_desc") },
+		low: { ...COVERAGE_BADGE_VARIANTS.low, label: t("coverage_low"), description: t("coverage_low_desc") },
+		none: { ...COVERAGE_BADGE_VARIANTS.none, label: t("coverage_none"), description: t("coverage_none_desc") },
+	};
+}
+
 export function getCoverageQualityTier(score: number | null | undefined): CoverageQualityTier {
 	if (score === null || score === undefined) return "none";
 	if (score >= 0.9) return "high";
@@ -64,12 +74,13 @@ export const SourceCoverageBadge: React.FC<SourceCoverageBadgeProps> = ({
 	className,
 	showTooltip = true,
 }) => {
+	const t = useTranslations("leads");
 	const validTier: CoverageQualityTier =
-		quality && quality in COVERAGE_BADGE_VARIANTS
+		quality && quality in getCoverageBadgeVariants(t)
 			? (quality as CoverageQualityTier)
 			: getCoverageQualityTier(score);
 
-	const variant = COVERAGE_BADGE_VARIANTS[validTier] ?? COVERAGE_BADGE_VARIANTS.none;
+	const variant = getCoverageBadgeVariants(t)[validTier] ?? getCoverageBadgeVariants(t).none;
 	const pctText = formatCoveragePercentage(score);
 
 	const tierTextColor: Record<CoverageQualityTier, string> = {

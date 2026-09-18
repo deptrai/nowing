@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Cloud, FileSpreadsheet, Shield, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 
@@ -19,6 +20,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 	totalLeadsCount,
 	onConfirmSync,
 }) => {
+	const t = useTranslations("leads");
 	const [maskPii, setMaskPii] = useState<boolean>(true);
 	const [loading, setLoading] = useState<boolean>(false);
 
@@ -155,9 +157,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 							</div>
 
 							<div>
-								<label htmlFor="gsheet-range" className="block text-zinc-300 font-medium mb-1">
-									Sheet Range
-								</label>
+								<label htmlFor="gsheet-range" className="block text-zinc-300 font-medium mb-1">{t("sheet_range_label")}</label>
 								<input
 									id="gsheet-range"
 									type="text"

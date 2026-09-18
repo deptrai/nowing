@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy, Download } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +79,7 @@ function ResultTable({ items }: { items: Record<string, unknown>[] }) {
 }
 
 export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBase?: string }) {
+	const t = useTranslations("playground");
 	const items = useMemo(() => extractItems(data), [data]);
 	const [view, setView] = useState<"table" | "json">(items ? "table" : "json");
 	const [copied, setCopied] = useState(false);
@@ -111,7 +113,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 			<div className="flex items-center justify-between">
 				<Tabs value={view} onValueChange={(value) => setView(value as "table" | "json")}>
 					<TabsList className="h-auto">
-						{items && <TabsTrigger value="table">Table</TabsTrigger>}
+						{items && <TabsTrigger value="table">{t('table')}</TabsTrigger>}
 						<TabsTrigger value="json">JSON</TabsTrigger>
 					</TabsList>
 				</Tabs>
@@ -119,7 +121,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 					{items && items.length > 0 && (
 						<Button type="button" variant="ghost" size="sm" onClick={exportCsv} className="gap-1.5">
 							<Download className="h-3.5 w-3.5" aria-hidden="true" />
-							Export CSV
+							{t('export_csv')}
 						</Button>
 					)}
 					<Button
@@ -127,7 +129,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 						variant="ghost"
 						size="sm"
 						onClick={copy}
-						aria-label={copied ? "Copied JSON" : "Copy JSON"}
+						aria-label={copied ? t('copied_json') : t('copy_json')}
 						className="h-8 w-8 p-0"
 					>
 						{copied ? (
@@ -141,7 +143,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 
 			{items && items.length === 0 && (
 				<p className="rounded-md border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
-					No items returned.
+					{t('no_items')}
 				</p>
 			)}
 
@@ -150,8 +152,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 					<ResultTable items={items} />
 					{truncated && (
 						<p className="text-xs text-muted-foreground">
-							Showing first {MAX_TABLE_ROWS} of {items.length} items. Switch to JSON for the full
-							output.
+							{t('showing_first', { max: MAX_TABLE_ROWS, total: items.length })}
 						</p>
 					)}
 				</>

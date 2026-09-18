@@ -1,8 +1,10 @@
+import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 /** Scraper runs: ``running`` (async, in-flight), ``success``, ``error``, ``cancelled``. */
 export function RunStatusBadge({ status }: { status: string }) {
+	const t = useTranslations("playground");
 	const normalized = status.toLowerCase();
 	if (normalized === "running") {
 		return (

@@ -23,6 +23,7 @@ import {
 	X,
 } from "lucide-react";
 import type React from "react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { LeadActivityLog } from "@/contracts/types/lead-pipeline.types";
@@ -53,6 +54,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	unlockedPhone: externalUnlockedPhone,
 	onPhoneChange,
 }) => {
+	const t = useTranslations("leads");
 	const [activities, setActivities] = useState<LeadActivityLog[]>([]);
 	const [timelineError, setTimelineError] = useState<string | null>(null);
 	const [newNote, setNewNote] = useState("");
@@ -139,7 +141,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 			{/* Backdrop */}
 			<button
 				type="button"
-				aria-label="Đóng chi tiết lead"
+				aria-label={t("close_lead_detail")}
 				className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer w-full h-full border-0 p-0"
 				onClick={onClose}
 			/>
@@ -148,7 +150,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 				<aside
 					role="dialog"
 					aria-modal="true"
-					aria-label="Chi tiết khách hàng tiềm năng"
+					aria-label={t("lead_detail_title")}
 					data-testid="lead-detail-flyout-drawer"
 					className="w-screen max-w-[480px] bg-card border-l border-border shadow-2xl flex flex-col text-foreground z-10 animate-in slide-in-from-right duration-200"
 				>
@@ -297,7 +299,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 													toast.success("Đã sao chép email!");
 												}
 											}}
-											title="Sao chép email"
+											title={t("copy_email")}
 											className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
 										>
 											<Copy className="w-3.5 h-3.5" aria-hidden="true" />
@@ -355,7 +357,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 										className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer"
 									>
 										<Network className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
-										Company Graph
+										{t("view_company_graph")}
 									</button>
 								)}
 							</div>
@@ -437,7 +439,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									type="text"
 									value={newNote}
 									onChange={(e) => setNewNote(e.target.value)}
-									placeholder="Thêm ghi chú nội bộ..."
+									placeholder={t("add_internal_note")}
 									className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
 								/>
 								<button

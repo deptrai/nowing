@@ -3,6 +3,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import { GripVertical, MessageSquare, Table } from "lucide-react";
 import type React from "react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { dockExpandedAtom, dockOpenAtom } from "@/atoms/layout/dock.atom";
@@ -52,6 +53,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	onSendPrompt: _onSendPrompt,
 	className,
 }) => {
+	const t = useTranslations("leads");
 	const isMobile = useIsMobile();
 	const [leftWidth, setLeftWidth] = useAtom(canvasLeftWidthAtom);
 	const [isCollapsed, setIsCollapsed] = useAtom(isLeftPanelCollapsedAtom);
@@ -269,7 +271,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 		return (
 			<main
 				ref={containerRef}
-				aria-label="Không gian làm việc Nowing Mobile"
+				aria-label={t("split_canvas_mobile")}
 				data-testid="nowing-split-canvas-mobile"
 				className={cn(
 					"relative w-full h-full flex flex-col bg-background text-foreground overflow-hidden",
@@ -425,7 +427,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	return (
 		<main
 			ref={containerRef}
-			aria-label="Không gian làm việc Nowing Split-View"
+			aria-label={t("split_canvas_desktop")}
 			data-testid="nowing-split-canvas"
 			className={cn(
 				"relative w-full h-full flex bg-background text-foreground overflow-hidden",
@@ -453,7 +455,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 				<div
 					role="slider"
 					tabIndex={0}
-					aria-label="Điều chỉnh kích thước panel"
+					aria-label={t("resize_panel")}
 					aria-valuenow={leftWidth}
 					aria-valuemin={MIN_LEFT_WIDTH}
 					aria-valuemax={MAX_LEFT_WIDTH}
@@ -467,7 +469,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 							setLeftWidth((w) => Math.min(MAX_LEFT_WIDTH, w + 20));
 						}
 					}}
-					title="Kéo để điều chỉnh kích thước / Nhấp đúp để đặt lại 340px"
+					title={t("resize_panel_hint")}
 					className={cn(
 						"relative w-1.5 h-full bg-border hover:bg-emerald-500/80 cursor-col-resize flex items-center justify-center transition-colors z-20 group focus:outline-none focus:ring-1 focus:ring-emerald-500",
 						isDragging && "bg-emerald-500 shadow-md shadow-emerald-500/50"

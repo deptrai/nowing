@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { ConnectorConfigProps } from "../index";
+import { useTranslations } from "next-intl";
 
 export interface SearxngConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;
@@ -34,6 +35,7 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
+	const t = useTranslations("assistant");
 	const [host, setHost] = useState<string>((connector.config?.SEARXNG_HOST as string) || "");
 	const [apiKey, setApiKey] = useState<string>((connector.config?.SEARXNG_API_KEY as string) || "");
 	const [engines, setEngines] = useState<string>(arrayToString(connector.config?.SEARXNG_ENGINES));
@@ -164,15 +166,15 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 			{/* Connector Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Connector Name</Label>
+					<Label className="text-xs sm:text-sm">{t("connector_name")}</Label>
 					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="My SearxNG Connector"
+						placeholder={t("my_searxng_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
 					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
+						{t("friendly_name")}
 					</p>
 				</div>
 			</div>
@@ -180,14 +182,14 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 			{/* Configuration */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Configuration</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("configuration")}</h3>
 				</div>
 
 				<div className="space-y-4">
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
 							<Globe className="h-4 w-4" aria-hidden="true" />
-							SearxNG Host
+							{t("searxng_host")}
 						</Label>
 						<Input
 							value={host}
@@ -196,58 +198,58 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Update the SearxNG Host if needed.
+							{t("update_searxng_host")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
 							<KeyRound className="h-4 w-4" aria-hidden="true" />
-							API Key (optional)
+							{t("api_key_optional")}
 						</Label>
 						<Input
 							type="password"
 							value={apiKey}
 							onChange={(e) => handleApiKeyChange(e.target.value)}
-							placeholder="Enter API key if your instance requires one"
+							placeholder={t("enter_api_key_instance")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Leave empty if your SearxNG instance does not enforce API keys.
+							{t("leave_empty_no_keys")}
 						</p>
 					</div>
 
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div className="space-y-2">
-							<Label className="text-xs sm:text-sm">Engines (optional)</Label>
+							<Label className="text-xs sm:text-sm">{t("engines_optional")}</Label>
 							<Input
 								value={engines}
 								onChange={(e) => handleEnginesChange(e.target.value)}
-								placeholder="google,bing,duckduckgo"
+								placeholder={t("engines_placeholder")}
 								className="border-slate-400/20 focus-visible:border-slate-400/40"
 							/>
 							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								Comma-separated list to target specific engines.
+								{t("engines_desc")}
 							</p>
 						</div>
 
 						<div className="space-y-2">
-							<Label className="text-xs sm:text-sm">Categories (optional)</Label>
+							<Label className="text-xs sm:text-sm">{t("categories_optional")}</Label>
 							<Input
 								value={categories}
 								onChange={(e) => handleCategoriesChange(e.target.value)}
-								placeholder="general,it,science"
+								placeholder={t("categories_placeholder")}
 								className="border-slate-400/20 focus-visible:border-slate-400/40"
 							/>
 							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								Comma-separated list of SearxNG categories.
+								{t("categories_desc")}
 							</p>
 						</div>
 					</div>
 
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div className="space-y-2">
-							<Label className="text-xs sm:text-sm">Preferred Language (optional)</Label>
+							<Label className="text-xs sm:text-sm">{t("preferred_language_optional")}</Label>
 							<Input
 								value={language}
 								onChange={(e) => handleLanguageChange(e.target.value)}
@@ -255,16 +257,16 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 								className="border-slate-400/20 focus-visible:border-slate-400/40"
 							/>
 							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								IETF language tag (e.g. en, en-US). Leave blank to inherit defaults.
+								{t("language_tag_desc")}
 							</p>
 						</div>
 
 						<div className="space-y-2">
-							<Label className="text-xs sm:text-sm">SafeSearch Level (optional)</Label>
+							<Label className="text-xs sm:text-sm">{t("safesearch_optional")}</Label>
 							<Input
 								value={safesearch}
 								onChange={(e) => handleSafesearchChange(e.target.value)}
-								placeholder="0 (off), 1 (moderate), 2 (strict)"
+								placeholder={t("safesearch_placeholder")}
 								className="border-slate-400/20 focus-visible:border-slate-400/40"
 							/>
 							<p className="text-[10px] sm:text-xs text-muted-foreground">
@@ -276,9 +278,9 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 
 					<div className="flex items-center justify-between rounded-lg border border-slate-400/20 p-3 sm:p-4">
 						<div>
-							<Label className="text-xs sm:text-sm">Verify SSL Certificates</Label>
+							<Label className="text-xs sm:text-sm">{t("verify_ssl")}</Label>
 							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								Disable only when connecting to instances with self-signed certificates.
+								{t("verify_ssl_desc")}
 							</p>
 						</div>
 						<Switch checked={verifySsl} onCheckedChange={handleVerifySslChange} />

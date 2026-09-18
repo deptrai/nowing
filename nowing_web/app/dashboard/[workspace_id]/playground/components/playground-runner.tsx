@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Coins, Copy, Hash, Info, Timer } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -81,7 +82,7 @@ function getRunErrorMessage(error: unknown): string {
 
 	return error instanceof Error && error.message
 		? error.message
-		: "Something went wrong running this API.";
+		: "Something went wrong. Please try again.";
 }
 
 function EndpointCopyButton({ endpoint }: { endpoint: string }) {
@@ -121,6 +122,7 @@ function usePlaygroundBase(workspaceId: number) {
 }
 
 export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunnerProps) {
+	const t = useTranslations("playground");
 	const catalogVerb = findVerb(platform, verb);
 	const {
 		data: capabilities,
@@ -272,7 +274,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 										>
 											Read docs
 										</Link>{" "}
-										for more info.
+										{t('for_more_info')}
 									</>
 								) : null}
 							</p>
@@ -284,7 +286,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 					<div className="space-y-2">
 						<EndpointCopyButton endpoint={endpoint} />
 						<div className="text-xs text-muted-foreground">
-							<span>Pricing: </span>
+							<span>{t('pricing')} </span>
 							<span className="font-medium tabular-nums text-foreground">
 								{formatPricing(capability.pricing)}
 							</span>
@@ -303,7 +305,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 
 					<div className="flex items-center gap-2">
 						<Button type="button" onClick={handleRun} disabled={isRunning} className="relative">
-							<span className={isRunning ? "opacity-0" : ""}>Run</span>
+							<span className={isRunning ? "opacity-0" : ""}>{t('run')}</span>
 							{isRunning && <Spinner size="sm" className="absolute" />}
 						</Button>
 						{isRunning && (
@@ -315,7 +317,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 				</div>
 
 				<div className="space-y-3" data-testid="playground-output">
-					<h2 className="text-sm font-medium text-muted-foreground">Output</h2>
+					<h2 className="text-sm font-medium text-muted-foreground">{t('output')}</h2>
 					{isRunning ? (
 						<RunProgressPanel latest={run.latest} events={run.events} elapsedMs={run.elapsedMs} />
 					) : run.status === "cancelled" ? (
@@ -327,21 +329,21 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 							<div className="flex flex-wrap gap-2">
 								<RunStat
 									icon={Hash}
-									label="Items"
+									label={t('items')}
 									value={String(run.detail?.item_count ?? output.items.length)}
 								/>
 								<RunStat
 									icon={Timer}
-									label="Time"
+									label={t('time')}
 									value={formatDuration(run.detail?.duration_ms ?? run.elapsedMs)}
 								/>
-								<RunStat icon={Coins} label="Cost" value={formatCost(run.detail?.cost_micros)} />
+								<RunStat icon={Coins} label={t('cost')} value={formatCost(run.detail?.cost_micros)} />
 							</div>
 							<OutputViewer data={output} filenameBase={`${platform}-${verb}`} />
 						</>
 					) : (
 						<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 px-4 text-center text-sm text-muted-foreground">
-							Run the API to see output here.
+							{t('run_to_see_output')}
 						</div>
 					)}
 				</div>

@@ -16,12 +16,14 @@ import {
 	testMCPConnection,
 } from "../../utils/mcp-config-validator";
 import type { ConnectorConfigProps } from "../index";
+import { useTranslations } from "next-intl";
 
 interface MCPConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;
 }
 
 export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNameChange }) => {
+	const t = useTranslations("assistant");
 	const [name, setName] = useState<string>("");
 	const [configJson, setConfigJson] = useState("");
 	const [jsonError, setJsonError] = useState<string | null>(null);
@@ -114,7 +116,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 		if (!serverConfig) {
 			setTestResult({
 				status: "error",
-				message: jsonError || "Invalid configuration",
+				message: jsonError || t("invalid_config"),
 				tools: [],
 			});
 			return;
@@ -139,8 +141,8 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 		return (
 			<Alert className="border-red-500/50 bg-red-500/10">
 				<XCircle className="h-4 w-4 text-red-600" aria-hidden="true" />
-				<AlertTitle>Invalid Connector Type</AlertTitle>
-				<AlertDescription>This component can only be used with MCP connectors.</AlertDescription>
+				<AlertTitle>{t("invalid_connector_type")}</AlertTitle>
+				<AlertDescription>{t("mcp_only_desc")}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -157,12 +159,12 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 						id="name"
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="e.g., Filesystem Server"
+						placeholder={t("server_name_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 						required
 					/>
 					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
+						{t("friendly_name")}
 					</p>
 				</div>
 			</div>
@@ -176,7 +178,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="config">MCP Server Configuration (JSON)</Label>
+						<Label htmlFor="config">{t("mcp_server_config_json")}</Label>
 						<Textarea
 							id="config"
 							value={configJson}
@@ -200,11 +202,11 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 							rows={16}
 							className={`font-mono text-xs ${jsonError ? "border-red-500" : ""}`}
 						/>
-						{jsonError && <p className="text-xs text-red-500">JSON Error: {jsonError}</p>}
+						{jsonError && <p className="text-xs text-red-500">{t("json_error")} {jsonError}</p>}
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							<strong>Local (stdio):</strong> command, args, env, transport: "stdio"
+							<strong>{t("local_stdio")}</strong> command, args, env, transport: "stdio"
 							<br />
-							<strong>Remote (HTTP):</strong> url, headers, transport: "streamable-http"
+							<strong>{t("remote_http")}</strong> url, headers, transport: "streamable-http"
 						</p>
 					</div>
 
@@ -223,7 +225,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 									Testing Connection...
 								</>
 							) : (
-								"Test Connection"
+								t("test_connection")
 							)}
 						</Button>
 					</div>
@@ -244,7 +246,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 							)}
 							<div className="col-start-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
 								<AlertTitle className="text-sm">
-									{testResult.status === "success" ? "Connection Successful" : "Connection Failed"}
+									{testResult.status === "success" ? t("connection_successful") : t("connection_failed")}
 								</AlertTitle>
 								{testResult.tools.length > 0 && (
 									<Button
@@ -261,14 +263,14 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 										{showDetails ? (
 											<>
 												<ChevronUp className="h-3 w-3 mr-1" aria-hidden="true" />
-												<span className="hidden sm:inline">Hide Details</span>
-												<span className="sm:hidden">Hide</span>
+												<span className="hidden sm:inline">{t("hide_details")}</span>
+												<span className="sm:hidden">{t("hide")}</span>
 											</>
 										) : (
 											<>
 												<ChevronDown className="h-3 w-3 mr-1" aria-hidden="true" />
-												<span className="hidden sm:inline">Show Details</span>
-												<span className="sm:hidden">Show</span>
+												<span className="hidden sm:inline">{t("show_details")}</span>
+												<span className="sm:hidden">{t("show")}</span>
 											</>
 										)}
 									</Button>
@@ -278,7 +280,7 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 								{testResult.message}
 								{showDetails && testResult.tools.length > 0 && (
 									<div className="mt-3 pt-3 border-t border-green-500/20">
-										<p className="font-semibold mb-2">Available tools:</p>
+										<p className="font-semibold mb-2">{t("available_tools")}</p>
 										<ul className="list-disc list-inside text-xs space-y-0.5">
 											{testResult.tools.map((tool) => (
 												<li key={tool.name}>{tool.name}</li>

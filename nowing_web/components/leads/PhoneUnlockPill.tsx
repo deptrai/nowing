@@ -4,6 +4,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { Check, Phone } from "lucide-react";
 import { motion } from "motion/react";
 import type React from "react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fastUnlockSessionAtom, makeFastUnlockKey } from "@/atoms/leads/leads-canvas.atoms";
@@ -45,6 +46,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 	onUnlock,
 	onPhoneChange,
 }) => {
+	const t = useTranslations("leads");
 	const { data: currentUser } = useAtomValue(currentUserAtom);
 	const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
 	const [fastUnlockSession, setFastUnlockSession] = useAtom(fastUnlockSessionAtom(fastUnlockKey));
@@ -165,7 +167,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 				),
 			});
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Không thể mở khóa";
+			const message = err instanceof Error ? err.message : t("unlock_failed");
 			toast.error(message);
 		} finally {
 			setIsUnlocking(false);
@@ -186,7 +188,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 			onPhoneChange?.(lead.id, null, false);
 			toast.success("Đã hoàn tác mở khóa - +1.5 credits");
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Không thể hoàn tác";
+			const message = err instanceof Error ? err.message : t("undo_failed");
 			toast.error(message);
 		} finally {
 			setIsRelocking(false);
@@ -287,8 +289,8 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 			<button
 				type="button"
 				disabled={isDisabled}
-				aria-label="Mở khóa số điện thoại"
-				title={isDisabled ? "Không thể mở khóa" : "Click để mở khóa SĐT"}
+				aria-label={t("unlock_phone")}
+				title={isDisabled ? t("unlock_failed") : "Click để mở khóa SĐT"}
 				onClick={handlePillClick}
 				className="inline-flex disabled:cursor-not-allowed"
 			>

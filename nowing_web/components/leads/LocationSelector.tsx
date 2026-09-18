@@ -2,6 +2,7 @@
 
 import { Check, ChevronsUpDown, MapPin, Sparkles, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,28 +34,28 @@ export interface LocationSelectorProps {
 	className?: string;
 }
 
-const LOCATION_TYPE_OPTIONS: Array<{ value: LocationType; label: string; description: string }> = [
+function getLocationTypeOptions(t: (k: string) => string): Array<{ value: LocationType; label: string; description: string }> { return [
 	{
 		value: "both",
-		label: "Cả hai (Mặc định)",
-		description: "Nơi cư trú & địa bàn giao dịch",
+		label: t("location_both"),
+		description: t("location_both_desc"),
 	},
 	{
 		value: "customer_residence",
-		label: "Nơi cư trú",
-		description: "Khu vực khách hàng sinh sống",
+		label: t("location_residence"),
+		description: t("location_residence_desc"),
 	},
 	{
 		value: "customer_work",
-		label: "Nơi làm việc",
-		description: "Trụ sở công ty hoặc nơi làm việc",
+		label: t("location_work"),
+		description: t("location_work_desc"),
 	},
 	{
 		value: "transaction",
-		label: "Địa bàn giao dịch",
-		description: "Khu vực phát sinh dự án / giao dịch",
+		label: t("location_transaction"),
+		description: t("location_project"),
 	},
-];
+]; }
 
 export function LocationSelector({
 	value,
@@ -62,6 +63,7 @@ export function LocationSelector({
 	errorMessage,
 	className,
 }: LocationSelectorProps) {
+	const t = useTranslations("leads");
 	const [provinceOpen, setProvinceOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [showAdvanced, setShowAdvanced] = useState(
@@ -242,7 +244,7 @@ export function LocationSelector({
 					<PopoverContent className="w-[320px] p-0" align="start">
 						<Command shouldFilter={false}>
 							<CommandInput
-								placeholder="Nhập tên tỉnh hoặc viết tắt (hn, hcm, sg)..."
+								placeholder={t("province_placeholder")}
 								value={searchQuery}
 								onValueChange={setSearchQuery}
 								className="h-9 text-xs"
@@ -287,7 +289,7 @@ export function LocationSelector({
 						Mục tiêu nhắm chọn (Location Semantics)
 					</Label>
 					<div className="grid grid-cols-2 gap-2" data-testid="location-type-options">
-						{LOCATION_TYPE_OPTIONS.map((opt) => {
+						{getLocationTypeOptions(t).map((opt) => {
 							const isChecked = (value?.location_type || "both") === opt.value;
 							return (
 								<button
@@ -382,7 +384,7 @@ export function LocationSelector({
 											handleAddCustomWard();
 										}
 									}}
-									placeholder="Ví dụ: Phường Bến Nghé, KĐT Ciputra..."
+									placeholder={t("district_placeholder")}
 									className="flex-1 h-8 px-2.5 rounded-md border text-xs bg-background focus:outline-hidden focus:ring-1 focus:ring-primary"
 									data-testid="input-custom-ward"
 								/>

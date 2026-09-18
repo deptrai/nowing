@@ -15,6 +15,7 @@ import {
 	Wand2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ export function PlanSummaryCard({
 	inRightCanvas = false,
 	workspaceId,
 }: PlanSummaryCardProps) {
+	const t = useTranslations("leads");
 	const userQuery = useAtomValue(currentUserAtom);
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -252,7 +254,7 @@ export function PlanSummaryCard({
 							size="sm"
 							onClick={onRequestPlan}
 							className="text-[11px] h-7 px-2 text-zinc-400 hover:text-zinc-200 shrink-0"
-							title="Cập nhật lại kế hoạch"
+							title={t("update_plan")}
 						>
 							<RefreshCw className="w-3 h-3" />
 						</Button>
@@ -367,9 +369,7 @@ export function PlanSummaryCard({
 													data-testid={`badge-degraded-${alloc.source_name}`}
 													variant="outline"
 													className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] py-0"
-												>
-													Degraded
-												</Badge>
+												>{t("status_degraded")}</Badge>
 											)}
 										</div>
 										<div className="flex items-center gap-2">

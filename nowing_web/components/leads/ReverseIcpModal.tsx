@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type {
 	BuyerPersona,
@@ -48,6 +49,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 	onApplyFilterPresets,
 	onCreateTableFromIcp,
 }) => {
+	const t = useTranslations("leads");
 	const router = useRouter();
 	const [url, setUrl] = useState<string>("");
 	const [customInstructions, setCustomInstructions] = useState<string>("");
@@ -104,7 +106,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 			const errMsg =
 				err instanceof Error
 					? err.message
-					: "Không thể phân tích URL. Vui lòng kiểm tra lại liên kết.";
+					: t("reverse_icp_url_error");
 			setError(errMsg);
 		} finally {
 			setLoading(false);
@@ -199,7 +201,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 										type="text"
 										value={url}
 										onChange={(e) => setUrl(e.target.value)}
-										placeholder="Nhập tên miền hoặc link: vinhomes.vn, topcv.vn, haravan.com..."
+										placeholder={t("reverse_icp_url_placeholder")}
 										disabled={loading}
 										className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
 									/>
@@ -247,7 +249,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 								type="text"
 								value={customInstructions}
 								onChange={(e) => setCustomInstructions(e.target.value)}
-								placeholder="Tùy chọn: Nhập yêu cầu tập trung (VD: Chỉ tập trung phân khúc biệt thự cao cấp...)"
+								placeholder={t("reverse_icp_focus_placeholder")}
 								disabled={loading}
 								className="w-full px-3.5 py-2 text-[11px] rounded-lg bg-zinc-950/50 border border-zinc-800/80 text-zinc-300 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 disabled:opacity-50"
 							/>

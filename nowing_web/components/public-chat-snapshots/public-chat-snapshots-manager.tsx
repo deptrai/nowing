@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PublicChatSnapshotDetail } from "@/contracts/types/chat-threads.types";
 import { PublicChatSnapshotsList } from "./public-chat-snapshots-list";
+import { useTranslations } from "next-intl";
 
 interface PublicChatSnapshotsManagerProps {
 	workspaceId: number;
@@ -20,6 +21,7 @@ interface PublicChatSnapshotsManagerProps {
 export function PublicChatSnapshotsManager({
 	workspaceId: _workspaceId,
 }: PublicChatSnapshotsManagerProps) {
+	const t = useTranslations("publicChat");
 	const [deletingId, setDeletingId] = useState<number | undefined>();
 
 	// Data fetching
@@ -69,7 +71,7 @@ export function PublicChatSnapshotsManager({
 				});
 			} catch (error) {
 				console.error("Failed to delete snapshot:", error);
-				toast.error("Failed to delete snapshot");
+				toast.error(t("delete_failed"));
 			} finally {
 				setDeletingId(undefined);
 			}
@@ -114,7 +116,7 @@ export function PublicChatSnapshotsManager({
 		return (
 			<Alert variant="destructive">
 				<AlertCircle className="h-4 w-4" />
-				<AlertDescription>Failed to load public chats. Please try again later.</AlertDescription>
+				<AlertDescription>{t("load_failed")}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -125,7 +127,7 @@ export function PublicChatSnapshotsManager({
 			<Alert>
 				<Info />
 				<AlertDescription>
-					You don't have permission to view public chats in this workspace.
+					{t("no_permission")}
 				</AlertDescription>
 			</Alert>
 		);
@@ -138,8 +140,7 @@ export function PublicChatSnapshotsManager({
 			<Alert>
 				<Info />
 				<AlertDescription>
-					Public chats allow anyone with the URL to view a snapshot of a chat. They do not update
-					when the original chat changes.
+					{t("explainer")}
 				</AlertDescription>
 			</Alert>
 

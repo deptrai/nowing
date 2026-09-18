@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { PlaygroundIndex } from "../../playground/components/playground-index";
 
 
-export const metadata: Metadata = {
-	title: "API Playground",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("playground");
+	return {
+		title: t("api_playground"),
+	};
+}
 
 export default async function PlaygroundSettingsPage({
 	params,

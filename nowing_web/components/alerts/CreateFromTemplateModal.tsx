@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import type { AlertRule, AlertTemplateRead } from "@/contracts/types/alert-rules.types";
 import { alertRulesApiService } from "@/lib/apis/alert-rules-api.service";
+import { useTranslations } from "next-intl";
 
 interface CreateFromTemplateModalProps {
 	workspaceId: number;
@@ -50,6 +51,7 @@ export default function CreateFromTemplateModal({
 	onOpenChange,
 	onCreated,
 }: CreateFromTemplateModalProps) {
+	const t = useTranslations("alerts");
 	const [templates, setTemplates] = useState<AlertTemplateRead[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [selectedTemplate, setSelectedTemplate] = useState<AlertTemplateRead | null>(null);
@@ -93,7 +95,7 @@ export default function CreateFromTemplateModal({
 				})
 				.catch((err) => {
 					console.error("Failed to fetch alert templates:", err);
-					toast.error("Could not load alert templates");
+					toast.error(t("load_templates_failed"));
 				})
 				.finally(() => setLoading(false));
 		}
@@ -106,7 +108,7 @@ export default function CreateFromTemplateModal({
 	const handleCreate = async () => {
 		if (!selectedTemplate) return;
 		if (!ruleName.trim()) {
-			toast.error("Please enter a name for the alert rule");
+			toast.error(t("enter_name_error"));
 			return;
 		}
 
@@ -119,7 +121,7 @@ export default function CreateFromTemplateModal({
 				schedule,
 				notification_channels: channels,
 			});
-			toast.success(`Alert "${rule.name}" created successfully!`);
+			toast.success(t("alert_created", { name: rule.name }));
 			onCreated?.(rule);
 			onOpenChange(false);
 		} catch (err: unknown) {
@@ -127,7 +129,7 @@ export default function CreateFromTemplateModal({
 			const errorMsg =
 				err && typeof err === "object" && "message" in err
 					? String((err as { message: unknown }).message)
-					: "Could not create alert rule";
+					: t("create_failed");
 			toast.error(errorMsg);
 		} finally {
 			setSubmitting(false);
@@ -158,23 +160,23 @@ export default function CreateFromTemplateModal({
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Tag className="h-5 w-5 text-primary" />
-						Create Alert from Vertical Template
+						{t("modal_title")}
 					</DialogTitle>
 					<DialogDescription>
-						1-Click intelligent monitoring for stocks, news, companies, and e-commerce prices.
+						{t("modal_desc")}
 					</DialogDescription>
 				</DialogHeader>
 
 				{loading ? (
 					<div className="py-12 text-center text-sm text-muted-foreground animate-pulse">
-						Loading vertical templates...
+						{t("loading_templates")}
 					</div>
 				) : (
 					<div className="grid grid-cols-1 md:grid-cols-5 gap-6 py-2 overflow-y-auto">
 						{/* Template selector list */}
 						<div className="md:col-span-2 space-y-2 border-r pr-4">
 							<Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-								Available Templates
+								{t("available_templates")}
 							</Label>
 							<div className="space-y-1.5">
 								{templates.map((tmpl) => {
@@ -203,7 +205,7 @@ export default function CreateFromTemplateModal({
 															variant="outline"
 															className="text-[10px] h-3.5 px-1 text-rose-500 border-rose-200"
 														>
-															Unavailable
+															{t("unavailable")}
 														</Badge>
 													)}
 												</div>
@@ -228,12 +230,12 @@ export default function CreateFromTemplateModal({
 									<p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
 									<div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground">
 										<span>
-											Strategy:{" "}
+											{t("strategy")}:{" "}
 											<code className="text-foreground">{selectedTemplate.diff_strategy}</code>
 										</span>
 										<span>•</span>
 										<span>
-											Capability:{" "}
+											{t("capability")}:{" "}
 											<code className="text-foreground">
 												{selectedTemplate.required_capability}
 											</code>
@@ -246,7 +248,7 @@ export default function CreateFromTemplateModal({
 										<AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
 										<span>
 											{selectedTemplate.unavailable_reason ||
-												"This template requires an unavailable capability."}
+												t("capability_unavailable")}
 										</span>
 									</div>
 								)}
@@ -254,13 +256,13 @@ export default function CreateFromTemplateModal({
 								<div className="space-y-3">
 									<div className="space-y-1.5">
 										<Label htmlFor="alert-name" className="text-xs">
-											Alert Name <span className="text-destructive">*</span>
+											{t("alert_name")} <span className="text-destructive">*</span>
 										</Label>
 										<Input
 											id="alert-name"
 											value={ruleName}
 											onChange={(e) => setRuleName(e.target.value)}
-											placeholder="e.g. Vinamilk Drop Alert"
+											placeholder={t("alert_name_placeholder")}
 											className="h-8 text-xs"
 											data-testid="input-alert-name"
 										/>
@@ -284,7 +286,7 @@ export default function CreateFromTemplateModal({
 													onValueChange={(val) => handleParamChange(param.name, val)}
 												>
 													<SelectTrigger id={`param-${param.name}`} className="h-8 text-xs">
-														<SelectValue placeholder="Select an option" />
+														<SelectValue placeholder={t("select_option")} />
 													</SelectTrigger>
 													<SelectContent>
 														{param.options.map((opt) => (
@@ -313,7 +315,7 @@ export default function CreateFromTemplateModal({
 									<div className="space-y-1.5 pt-1">
 										<Label htmlFor="alert-schedule" className="text-xs flex items-center gap-1">
 											<Clock className="h-3 w-3 text-muted-foreground" />
-											Monitoring Schedule
+											{t("monitoring_schedule")}
 										</Label>
 										<Select
 											value={schedule}
@@ -324,13 +326,13 @@ export default function CreateFromTemplateModal({
 											</SelectTrigger>
 											<SelectContent>
 												<SelectItem value="daily" className="text-xs">
-													Daily check (midnight UTC)
+													{t("schedule_daily")}
 												</SelectItem>
 												<SelectItem value="weekly" className="text-xs">
-													Weekly check (Monday)
+													{t("schedule_weekly")}
 												</SelectItem>
 												<SelectItem value="none" className="text-xs">
-													Manual run only
+													{t("schedule_manual")}
 												</SelectItem>
 											</SelectContent>
 										</Select>
@@ -339,11 +341,11 @@ export default function CreateFromTemplateModal({
 									<div className="space-y-1.5 pt-1">
 										<Label className="text-xs flex items-center gap-1">
 											<Bell className="h-3 w-3 text-muted-foreground" />
-											Notification Channels
+											{t("notification_channels")}
 										</Label>
 										<div className="flex items-center gap-2 pt-0.5">
 											{[
-												{ id: "in_app" as const, label: "In-App", icon: Bell },
+												{ id: "in_app" as const, label: t("channel_in_app"), icon: Bell },
 												{ id: "telegram" as const, label: "Telegram", icon: Send },
 												{ id: "email" as const, label: "Email", icon: Mail },
 											].map((ch) => {
@@ -381,7 +383,7 @@ export default function CreateFromTemplateModal({
 						onClick={() => onOpenChange(false)}
 						disabled={submitting}
 					>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button
 						size="sm"
@@ -389,7 +391,7 @@ export default function CreateFromTemplateModal({
 						disabled={submitting || !selectedTemplate || !selectedTemplate.is_available}
 						data-testid="btn-create-alert-from-template"
 					>
-						{submitting ? "Creating..." : "Create Alert"}
+						{submitting ? t("creating") : t("create_alert")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

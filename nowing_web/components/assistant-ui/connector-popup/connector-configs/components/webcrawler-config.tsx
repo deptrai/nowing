@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ConnectorConfigProps } from "../index";
+import { useTranslations } from "next-intl";
 
 export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfigChange }) => {
+	const t = useTranslations("assistant");
 	// Initialize with existing config values
 	const existingApiKey = (connector.config?.FIRECRAWL_API_KEY as string | undefined) || "";
 	const existingUrls = (connector.config?.INITIAL_URLS as string | undefined) || "";
@@ -44,7 +46,7 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 	return (
 		<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4 sm:space-y-6">
 			<div className="space-y-1 sm:space-y-2">
-				<h3 className="font-medium text-sm sm:text-base">Web Crawler Configuration</h3>
+				<h3 className="font-medium text-sm sm:text-base">{t("webcrawler_config")}</h3>
 				<p className="text-xs sm:text-sm text-muted-foreground">
 					Add webpages to your knowledge base for periodic indexing. Configure a Firecrawl API key
 					for enhanced crawling or use the free fallback option.
@@ -81,7 +83,7 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 						onClick={() => setShowApiKey((prev) => !prev)}
 						className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs text-muted-foreground hover:text-accent-foreground"
 					>
-						{showApiKey ? "Hide" : "Show"}
+						{showApiKey ? t("hide") : t("show")}
 					</Button>
 				</div>
 				<p className="text-[10px] sm:text-xs text-muted-foreground">
@@ -101,7 +103,7 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 			{/* Initial URLs Field */}
 			<div className="space-y-2">
 				<Label htmlFor="initial-urls" className="text-xs sm:text-sm">
-					Initial URLs (Optional)
+					{t("initial_urls")}
 				</Label>
 				<Textarea
 					id="initial-urls"
@@ -111,7 +113,7 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 					className="min-h-[100px] font-mono text-xs sm:text-sm bg-slate-400/5 dark:bg-white/5 border-slate-400/20 resize-none"
 				/>
 				<p className="text-[10px] sm:text-xs text-muted-foreground">
-					Enter URLs to crawl (one per line). You can add more URLs later.
+					{t("initial_urls_desc")}
 				</p>
 			</div>
 
@@ -119,8 +121,7 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 			<Alert>
 				<Info />
 				<AlertDescription>
-					Configuration is saved when you start indexing. You can update these settings anytime from
-					the connector management page.
+					{t("config_saved_on_index")}
 				</AlertDescription>
 			</Alert>
 		</div>

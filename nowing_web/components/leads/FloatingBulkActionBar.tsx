@@ -3,6 +3,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import { CheckSquare, Download, MessageSquare, PhoneCall, X } from "lucide-react";
 import type React from "react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { fastUnlockSessionAtom, makeFastUnlockKey } from "@/atoms/leads/leads-canvas.atoms";
@@ -40,6 +41,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 	unlockedPhones = {},
 	onPhoneChange,
 }) => {
+	const t = useTranslations("leads");
 	const { data: currentUser } = useAtomValue(currentUserAtom);
 	const fastUnlockKey = makeFastUnlockKey(workspaceId, currentUser?.id);
 	const [fastUnlockSession, setFastUnlockSession] = useAtom(fastUnlockSessionAtom(fastUnlockKey));
@@ -159,7 +161,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 
 	return (
 		<aside
-			aria-label="Thao tác hàng loạt"
+			aria-label={t("bulk_actions")}
 			data-testid="floating-bulk-action-bar"
 			className={cn(
 				"fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-2.5",
@@ -242,7 +244,7 @@ export const FloatingBulkActionBar: React.FC<FloatingBulkActionBarProps> = ({
 			<button
 				type="button"
 				onClick={onClearSelection}
-				title="Bỏ chọn tất cả"
+				title={t("deselect_all")}
 				className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer ml-1"
 			>
 				<X className="w-4 h-4" aria-hidden="true" />

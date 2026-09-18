@@ -5,6 +5,7 @@ import { type FC, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { connectorsApiService, type ObsidianStats } from "@/lib/apis/connectors-api.service";
 import type { ConnectorConfigProps } from "../index";
+import { useTranslations } from "next-intl";
 
 const OBSIDIAN_SETUP_DOCS_URL = "/docs/connectors/external/obsidian";
 
@@ -45,11 +46,12 @@ export const ObsidianConfig: FC<ConnectorConfigProps> = ({ connector }) => {
 };
 
 const LegacyBanner: FC = () => {
+	const t = useTranslations("assistant");
 	return (
 		<div className="space-y-6">
 			<Alert variant="warning">
 				<AlertTriangle />
-				<AlertTitle>Sync stopped, install the plugin to migrate</AlertTitle>
+				<AlertTitle>{t("sync_stopped_migrate")}</AlertTitle>
 				<AlertDescription>
 					This Obsidian connector used the legacy server-path scanner, which has been removed. The
 					notes already indexed remain searchable, but they no longer reflect changes made in your
@@ -58,7 +60,7 @@ const LegacyBanner: FC = () => {
 			</Alert>
 
 			<div className="rounded-xl border border-border bg-slate-400/5 p-3 sm:p-6 dark:bg-white/5">
-				<h3 className="mb-3 text-sm font-medium sm:text-base">Migration required</h3>
+				<h3 className="mb-3 text-sm font-medium sm:text-base">{t("migration_required")}</h3>
 				<p className="mb-3 text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
 					Follow the{" "}
 					<a
@@ -70,7 +72,7 @@ const LegacyBanner: FC = () => {
 					to reconnect this vault through the plugin.
 				</p>
 				<p className="text-[11px] leading-relaxed text-amber-600 dark:text-amber-400 sm:text-xs">
-					Heads up: Disconnect also deletes every document this connector previously indexed.
+					{t("disconnect_deletes_docs")}
 				</p>
 			</div>
 		</div>
@@ -78,6 +80,7 @@ const LegacyBanner: FC = () => {
 };
 
 const PluginStats: FC<{ config: Record<string, unknown> }> = ({ config }) => {
+	const t = useTranslations("assistant");
 	const vaultId = typeof config.vault_id === "string" ? config.vault_id : null;
 	const [stats, setStats] = useState<ObsidianStats | null>(null);
 	const [statsError, setStatsError] = useState(false);
@@ -106,13 +109,13 @@ const PluginStats: FC<{ config: Record<string, unknown> }> = ({ config }) => {
 	const tileRows = useMemo(() => {
 		const placeholder = statsError ? "—" : stats ? null : "…";
 		return [
-			{ label: "Vault name", value: (config.vault_name as string) || "—" },
+			{ label: t("vault_name"), value: (config.vault_name as string) || "—" },
 			{
-				label: "Last sync",
+				label: t("last_sync"),
 				value: placeholder ?? formatTimestamp(stats?.last_sync_at ?? null),
 			},
 			{
-				label: "Files synced",
+				label: t("files_synced"),
 				value:
 					placeholder ??
 					(typeof stats?.files_synced === "number" ? stats.files_synced.toLocaleString() : "—"),
@@ -124,7 +127,7 @@ const PluginStats: FC<{ config: Record<string, unknown> }> = ({ config }) => {
 		<div className="space-y-4">
 			<Alert>
 				<Info />
-				<AlertTitle>Plugin connected</AlertTitle>
+				<AlertTitle>{t("plugin_connected")}</AlertTitle>
 				<AlertDescription>
 					Your notes stay synced automatically. To stop syncing, disable or uninstall the plugin in
 					Obsidian, or delete this connector.
@@ -132,7 +135,7 @@ const PluginStats: FC<{ config: Record<string, unknown> }> = ({ config }) => {
 			</Alert>
 
 			<div className="rounded-xl bg-slate-400/5 p-3 sm:p-6 dark:bg-white/5">
-				<h3 className="mb-3 text-sm font-medium sm:text-base">Vault Status</h3>
+				<h3 className="mb-3 text-sm font-medium sm:text-base">{t("vault_status")}</h3>
 				<dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					{tileRows.map((stat) => (
 						<div key={stat.label} className="rounded-lg bg-background/50 p-3">
@@ -148,13 +151,13 @@ const PluginStats: FC<{ config: Record<string, unknown> }> = ({ config }) => {
 	);
 };
 
-const UnknownConnectorState: FC = () => (
-	<Alert>
-		<Info />
-		<AlertTitle>Unrecognized config</AlertTitle>
-		<AlertDescription>
-			This connector is missing plugin metadata and may predate the Obsidian plugin migration. You
-			can safely delete it and reinstall the Nowing Obsidian plugin to resume syncing.
-		</AlertDescription>
-	</Alert>
-);
+const UnknownConnectorState: FC = () => {
+	const t = useTranslations("assistant");
+	return (
+		<Alert>
+			<Info />
+			<AlertTitle>{t("unrecognized_config")}</AlertTitle>
+			<AlertDescription>{t("unrecognized_config_desc")}</AlertDescription>
+		</Alert>
+	);
+};

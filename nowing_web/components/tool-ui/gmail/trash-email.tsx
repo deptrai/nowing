@@ -347,7 +347,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Email moved to trash successfully"}
+					{result.message || t("gmail_moved_to_trash_success")}
 				</p>
 			</div>
 			{result.deleted_from_kb && (
