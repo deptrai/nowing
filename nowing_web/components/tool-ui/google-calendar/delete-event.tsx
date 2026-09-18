@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import { isInterruptResult, useHitlDecision, useHitlPhase } from "@/features/chat-messages/hitl";
 
@@ -144,6 +145,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<CalendarDeleteEventContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [deleteFromKb, setDeleteFromKb] = useState(false);
 
@@ -185,20 +187,20 @@ function ApprovalCard({
 					<div>
 						<p className="text-sm font-semibold text-foreground">
 							{phase === "rejected"
-								? "Calendar Event Deletion Rejected"
+								? t("gcal_delete_rejected")
 								: phase === "processing" || phase === "complete"
-									? "Calendar Event Deletion Approved"
-									: "Delete Calendar Event"}
+									? t("gcal_delete_approved")
+									: t("gcal_delete_title")}
 						</p>
 						{phase === "processing" ? (
-							<TextShimmerLoader text="Deleting event" size="sm" />
+							<TextShimmerLoader text={t("gcal_deleting_event")} size="sm" />
 						) : phase === "complete" ? (
-							<p className="text-xs text-muted-foreground mt-0.5">Event deleted</p>
+							<p className="text-xs text-muted-foreground mt-0.5">{t("gcal_event_deleted")}</p>
 						) : phase === "rejected" ? (
-							<p className="text-xs text-muted-foreground mt-0.5">Event deletion was cancelled</p>
+							<p className="text-xs text-muted-foreground mt-0.5">{t("gcal_delete_cancelled")}</p>
 						) : (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Requires your approval to proceed
+								{t("common_requires_approval")}
 							</p>
 						)}
 					</div>
@@ -216,7 +218,7 @@ function ApprovalCard({
 								{account && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											Google Calendar Account
+											{t("gcal_account_label")}
 										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
@@ -226,7 +228,7 @@ function ApprovalCard({
 
 								{event && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Event to Delete</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("gcal_event_to_delete")}</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 											<div className="flex items-center gap-1.5">
 												<CalendarIcon
@@ -273,9 +275,9 @@ function ApprovalCard({
 								className="shrink-0"
 							/>
 							<label htmlFor="calendar-delete-from-kb" className="flex-1 cursor-pointer">
-								<span className="text-sm text-foreground">Also remove from knowledge base</span>
+								<span className="text-sm text-foreground">{t("common_also_remove_kb")}</span>
 								<p className="text-xs text-muted-foreground mt-0.5">
-									This will permanently delete the event from your knowledge base (cannot be undone)
+									{t("common_delete_kb_warning_undone")}
 								</p>
 							</label>
 						</div>
@@ -289,7 +291,7 @@ function ApprovalCard({
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
 						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
-							Approve
+							{t("common_approve")}
 							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
@@ -301,7 +303,7 @@ function ApprovalCard({
 								onDecision({ type: "reject", message: "User rejected the action." });
 							}}
 						>
-							Reject
+							{t("common_reject")}
 						</Button>
 					</div>
 				</>
@@ -311,10 +313,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to delete calendar event</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_delete_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -325,11 +328,12 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Google Calendar authentication expired
+					{t("gcal_auth_expired")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -341,11 +345,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Additional Google Calendar permissions required
+					{t("gcal_insufficient_perms")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -357,12 +362,13 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function NotFoundCard({ result }: { result: NotFoundResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border border-amber-500/50 bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
 					<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
-						Event not found
+						{t("gcal_event_not_found")}
 					</p>
 				</div>
 			</div>
@@ -375,10 +381,11 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function WarningCard({ result }: { result: WarningResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="flex items-start gap-3 border-b px-5 py-4">
-				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">Partial success</p>
+				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">{t("common_partial_success")}</p>
 			</div>
 			<div className="px-5 py-4 space-y-2 text-xs">
 				<p className="text-sm text-muted-foreground">{result.warning}</p>
@@ -388,11 +395,12 @@ function WarningCard({ result }: { result: WarningResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Calendar event deleted successfully"}
+					{result.message || t("gcal_event_deleted_success")}
 				</p>
 			</div>
 			{result.deleted_from_kb && (
@@ -400,7 +408,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 text-xs">
 						<span className="text-green-600 dark:text-green-500">
-							Also removed from knowledge base
+							{t("common_also_removed_kb")}
 						</span>
 					</div>
 				</>
