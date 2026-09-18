@@ -87,7 +87,8 @@
 		"inference_key": "Khóa",
 		"inference_actions": "Thao tác",
 		"inference_delete_parameter": "Xóa tham số {key}",
-		"json_view_metadata": "Xem siêu dữ liệu"
+		"json_view_metadata": "Xem siêu dữ liệu",
+		"schema_json_value": "Giá trị JSON"
 	},
 	"auth": {
 		"login": "Đăng nhập",
@@ -4775,7 +4776,44 @@
 		"tavily_api_key": "Tavily API Key",
 		"tavily_api_key_placeholder": "Nhập Tavily API key của bạn",
 		"tavily_what_you_get": "Bạn sẽ có gì với Tavily API:",
-		"tavily_get_key_desc": "Bạn cần Tavily API key để sử dụng bộ kết nối này. Bạn có thể lấy một key bằng cách đăng ký tại"
+		"tavily_get_key_desc": "Bạn cần Tavily API key để sử dụng bộ kết nối này. Bạn có thể lấy một key bằng cách đăng ký tại",
+		"configuration": "Cấu hình",
+		"connected_oauth": "Đã kết nối qua OAuth",
+		"oauth_reconnect": "Để cập nhật kết nối, hãy kết nối lại bộ kết nối này.",
+		"update_api_key": "Cập nhật {name} API Key nếu cần.",
+		"baidu_update_key": "Cập nhật Baidu API Key nếu cần.",
+		"bookstack_base_url_short": "URL cơ sở của BookStack instance của bạn.",
+		"bookstack_update_secret": "Cập nhật BookStack Token Secret của bạn nếu cần.",
+		"circleback_webhook_config": "Cấu hình Webhook",
+		"circleback_loading": "Đang tải thông tin webhook...",
+		"circleback_webhook_url": "Webhook URL",
+		"circleback_copied": "Đã sao chép!",
+		"circleback_webhook_desc": "Sử dụng URL này trong cài đặt automation Circleback của bạn để gửi dữ liệu cuộc họp đến Nowing.",
+		"circleback_webhook_error": "Không thể tải webhook URL. Vui lòng thử làm mới trang.",
+		"circleback_config_instructions": "Hướng dẫn cấu hình",
+		"clickup_name_placeholder": "Bộ kết nối ClickUp của tôi",
+		"clickup_api_token": "ClickUp API Token",
+		"clickup_pat_placeholder": "pk_...",
+		"folder_file_selection": "Chọn thư mục & tệp",
+		"folder_file_selection_desc": "Chọn các thư mục cụ thể và/hoặc tệp riêng lẻ để lập chỉ mục từ Google Drive của bạn.",
+		"indexing_options": "Tùy chọn lập chỉ mục",
+		"indexing_options_desc": "Cấu hình cách tệp được lập chỉ mục từ Google Drive của bạn.",
+		"max_files_per_folder": "Số tệp tối đa mỗi thư mục",
+		"max_files_per_folder_desc": "Số tệp tối đa để lập chỉ mục từ mỗi thư mục",
+		"select_limit": "Chọn giới hạn",
+		"include_subfolders": "Bao gồm thư mục con",
+		"include_subfolders_desc": "Lập chỉ mục đệ quy các tệp trong thư mục con của các thư mục đã chọn",
+		"confluence_oauth_desc": "Bộ kết nối này được xác thực bằng OAuth 2.0. Confluence instance của bạn là:",
+		"confluence_name_placeholder": "Bộ kết nối Confluence của tôi",
+		"confluence_base_url": "Confluence Base URL",
+		"confluence_base_url_desc": "URL cơ sở của Confluence instance của bạn.",
+		"confluence_update_token": "Cập nhật Confluence API Token của bạn nếu cần.",
+		"confluence_email": "Địa chỉ email",
+		"confluence_email_placeholder": "your-email@example.com",
+		"confluence_email_desc": "Địa chỉ email liên kết với tài khoản Atlassian của bạn.",
+		"confluence_api_token": "API Token",
+		"confluence_api_token_placeholder": "API Token của bạn",
+		"confluence_update_token_2": "Cập nhật Confluence API Token của bạn nếu cần."
 	},
 	"layout": {
 		"free_workspace_name": "Nowing Miễn phí",
@@ -4894,6 +4932,9 @@
 		"setup_hosted_hint": "mcp.nowing.com, không cần cài đặt",
 		"setup_self_host": "Tự host",
 		"setup_self_host_hint": "chạy máy chủ với backend của riêng bạn",
-		"connect_agent": "Kết nối agent của bạn"
+		"connect_agent": "Kết nối agent của bạn",
+		"connect_new": "Mới",
+		"connect_dialog_title": "Kết nối với Claude Code, Codex, OpenCode…",
+		"connect_dialog_desc": "Cấp cho coding agent của bạn quyền truy cập scraper Nowing và cơ sở tri thức. Tạo API key trong mục API Keys, chọn agent của bạn, rồi dán cấu hình."
 	}
 }

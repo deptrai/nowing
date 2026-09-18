@@ -87,7 +87,8 @@
 		"inference_key": "Key",
 		"inference_actions": "Actions",
 		"inference_delete_parameter": "Delete parameter {key}",
-		"json_view_metadata": "View Metadata"
+		"json_view_metadata": "View Metadata",
+		"schema_json_value": "JSON value"
 	},
 	"auth": {
 		"login": "Login",
@@ -4773,7 +4774,44 @@
 		"tavily_api_key": "Tavily API Key",
 		"tavily_api_key_placeholder": "Enter your Tavily API key",
 		"tavily_what_you_get": "What you get with Tavily API:",
-		"tavily_get_key_desc": "You'll need a Tavily API key to use this connector. You can get one by signing up at"
+		"tavily_get_key_desc": "You'll need a Tavily API key to use this connector. You can get one by signing up at",
+		"configuration": "Configuration",
+		"connected_oauth": "Connected via OAuth",
+		"oauth_reconnect": "To update your connection, reconnect this connector.",
+		"update_api_key": "Update the {name} API Key if needed.",
+		"baidu_update_key": "Update the Baidu API Key if needed.",
+		"bookstack_base_url_short": "The base URL of your BookStack instance.",
+		"bookstack_update_secret": "Update your BookStack Token Secret if needed.",
+		"circleback_webhook_config": "Webhook Configuration",
+		"circleback_loading": "Loading webhook information...",
+		"circleback_webhook_url": "Webhook URL",
+		"circleback_copied": "Copied!",
+		"circleback_webhook_desc": "Use this URL in your Circleback automation settings to send meeting data to Nowing.",
+		"circleback_webhook_error": "Unable to load webhook URL. Please try refreshing the page.",
+		"circleback_config_instructions": "Configuration Instructions",
+		"clickup_name_placeholder": "My ClickUp Connector",
+		"clickup_api_token": "ClickUp API Token",
+		"clickup_pat_placeholder": "pk_...",
+		"folder_file_selection": "Folder & File Selection",
+		"folder_file_selection_desc": "Select specific folders and/or individual files to index from your Google Drive.",
+		"indexing_options": "Indexing Options",
+		"indexing_options_desc": "Configure how files are indexed from your Google Drive.",
+		"max_files_per_folder": "Max files per folder",
+		"max_files_per_folder_desc": "Maximum number of files to index from each folder",
+		"select_limit": "Select limit",
+		"include_subfolders": "Include subfolders",
+		"include_subfolders_desc": "Recursively index files in subfolders of selected folders",
+		"confluence_oauth_desc": "This connector is authenticated using OAuth 2.0. Your Confluence instance is:",
+		"confluence_name_placeholder": "My Confluence Connector",
+		"confluence_base_url": "Confluence Base URL",
+		"confluence_base_url_desc": "The base URL of your Confluence instance.",
+		"confluence_update_token": "Update your Confluence API Token instance.",
+		"confluence_email": "Email Address",
+		"confluence_email_placeholder": "your-email@example.com",
+		"confluence_email_desc": "The email address associated with your Atlassian account.",
+		"confluence_api_token": "API Token",
+		"confluence_api_token_placeholder": "Your API Token",
+		"confluence_update_token_2": "Update your Confluence API Token if needed."
 	},
 	"layout": {
 		"free_workspace_name": "Nowing Free",
@@ -4892,6 +4930,9 @@
 		"setup_hosted_hint": "mcp.nowing.com, nothing to install",
 		"setup_self_host": "Self-host",
 		"setup_self_host_hint": "run the server against your own backend",
-		"connect_agent": "Connect your agent"
+		"connect_agent": "Connect your agent",
+		"connect_new": "New",
+		"connect_dialog_title": "Connect to Claude Code, Codex, OpenCode…",
+		"connect_dialog_desc": "Give your coding agent access to Nowing scrapers and your knowledge base. Create an API key under API Keys, choose your agent, then paste the config."
 	}
 }
