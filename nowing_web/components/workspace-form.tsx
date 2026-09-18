@@ -36,13 +36,14 @@ import { Tilt } from "@/components/ui/tilt";
 import { cn } from "@/lib/utils";
 
 // Define the form schema with Zod
-const workspaceFormSchema = z.object({
-	name: z.string().min(1, "Name is required"),
-	description: z.string().optional(),
-});
+const makeWorkspaceFormSchema = (t: (k: string) => string) =>
+	z.object({
+		name: z.string().min(1, t("name_required")),
+		description: z.string().optional(),
+	});
 
 // Define the type for the form values
-type WorkspaceFormValues = z.infer<typeof workspaceFormSchema>;
+type WorkspaceFormValues = z.infer<ReturnType<typeof makeWorkspaceFormSchema>>;
 
 interface WorkspaceFormProps {
 	onSubmit?: (data: { name: string; description?: string }) => void;
@@ -62,6 +63,7 @@ export function WorkspaceForm({
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 	const router = useRouter();
 	const t = useTranslations("common");
+	const workspaceFormSchema = makeWorkspaceFormSchema(t);
 
 	// Initialize the form with React Hook Form and Zod validation
 	const form = useForm<WorkspaceFormValues>({

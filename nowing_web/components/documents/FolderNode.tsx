@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
+import { useTranslations } from "next-intl";
 import { SidebarListItem } from "@/components/layout/ui/sidebar/SidebarListItem";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -125,6 +126,7 @@ export const FolderNode = React.memo(function FolderNode({
 	onStopWatching,
 	onExportFolder,
 }: FolderNodeProps) {
+	const t = useTranslations("documents");
 	const isMobile = useIsMobile();
 	const [renameValue, setRenameValue] = useState(folder.name);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -308,8 +310,8 @@ export const FolderNode = React.memo(function FolderNode({
 								</TooltipTrigger>
 								<TooltipContent side="top">
 									{processingState === "processing"
-										? "Syncing folder contents"
-										: "Some files failed to process"}
+										? t("syncing_folder_contents")
+										: t("files_failed_to_process")}
 								</TooltipContent>
 							</Tooltip>
 						) : (
@@ -330,7 +332,7 @@ export const FolderNode = React.memo(function FolderNode({
 												? "indeterminate"
 												: false
 									}
-									aria-label={`Select ${folder.name}`}
+									aria-label={t("select_folder", { name: folder.name })}
 									onCheckedChange={handleCheckChange}
 									onClick={(e) => e.stopPropagation()}
 									className={cn(
@@ -353,7 +355,7 @@ export const FolderNode = React.memo(function FolderNode({
 							onBlur={handleRenameSubmit}
 							onKeyDown={handleRenameKeyDown}
 							onClick={(e) => e.stopPropagation()}
-							placeholder="Enter folder name"
+							placeholder={t("enter_folder_name")}
 							className="flex-1 min-w-0 bg-transparent px-1 py-0.5 text-sm outline-none caret-primary placeholder:text-muted-foreground/50"
 						/>
 					) : (
@@ -384,7 +386,7 @@ export const FolderNode = React.memo(function FolderNode({
 											dropdownOpen && "bg-accent hover:bg-accent"
 										)}
 										onClick={(e) => e.stopPropagation()}
-										aria-label={`Folder actions for ${folder.name}`}
+										aria-label={t("folder_actions", { name: folder.name })}
 									>
 										<MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
 									</Button>
@@ -397,9 +399,7 @@ export const FolderNode = React.memo(function FolderNode({
 												handleRescan();
 											}}
 										>
-											<RefreshCw className={cn("mr-2 h-4 w-4", isRescanning && "animate-spin")} />
-											Re-scan
-										</DropdownMenuItem>
+											<RefreshCw className={cn("mr-2 h-4 w-4", isRescanning && "animate-spin")} />{t("rescan")}</DropdownMenuItem>
 									)}
 									{isWatched && onStopWatching && (
 										<DropdownMenuItem
@@ -408,9 +408,7 @@ export const FolderNode = React.memo(function FolderNode({
 												onStopWatching(folder);
 											}}
 										>
-											<EyeOff className="mr-2 h-4 w-4" />
-											Stop watching
-										</DropdownMenuItem>
+											<EyeOff className="mr-2 h-4 w-4" />{t("stop_watching")}</DropdownMenuItem>
 									)}
 									<DropdownMenuItem
 										onClick={(e) => {
@@ -418,27 +416,21 @@ export const FolderNode = React.memo(function FolderNode({
 											onCreateSubfolder(folder.id);
 										}}
 									>
-										<FolderPlus className="mr-2 h-4 w-4" />
-										New subfolder
-									</DropdownMenuItem>
+										<FolderPlus className="mr-2 h-4 w-4" />{t("new_subfolder")}</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={(e) => {
 											e.stopPropagation();
 											startRename();
 										}}
 									>
-										<Pencil className="mr-2 h-4 w-4" />
-										Rename
-									</DropdownMenuItem>
+										<Pencil className="mr-2 h-4 w-4" />{t("rename")}</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={(e) => {
 											e.stopPropagation();
 											onMove(folder);
 										}}
 									>
-										<Move className="mr-2 h-4 w-4" />
-										Move to...
-									</DropdownMenuItem>
+										<Move className="mr-2 h-4 w-4" />{t("move_to")}</DropdownMenuItem>
 									{onExportFolder && (
 										<DropdownMenuItem
 											onClick={(e) => {
@@ -446,9 +438,7 @@ export const FolderNode = React.memo(function FolderNode({
 												onExportFolder(folder);
 											}}
 										>
-											<Download className="mr-2 h-4 w-4" />
-											Export folder
-										</DropdownMenuItem>
+											<Download className="mr-2 h-4 w-4" />{t("export_folder")}</DropdownMenuItem>
 									)}
 									<DropdownMenuItem
 										onClick={(e) => {
@@ -456,9 +446,7 @@ export const FolderNode = React.memo(function FolderNode({
 											onDelete(folder);
 										}}
 									>
-										<Trash2 className="mr-2 h-4 w-4" />
-										Delete
-									</DropdownMenuItem>
+										<Trash2 className="mr-2 h-4 w-4" />{t("delete")}</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
 						</div>
@@ -470,38 +458,24 @@ export const FolderNode = React.memo(function FolderNode({
 				<ContextMenuContent className="w-40">
 					{isWatched && onRescan && (
 						<ContextMenuItem onClick={() => handleRescan()}>
-							<RefreshCw className={cn("mr-2 h-4 w-4", isRescanning && "animate-spin")} />
-							Re-scan
-						</ContextMenuItem>
+							<RefreshCw className={cn("mr-2 h-4 w-4", isRescanning && "animate-spin")} />{t("rescan")}</ContextMenuItem>
 					)}
 					{isWatched && onStopWatching && (
 						<ContextMenuItem onClick={() => onStopWatching(folder)}>
-							<EyeOff className="mr-2 h-4 w-4" />
-							Stop watching
-						</ContextMenuItem>
+							<EyeOff className="mr-2 h-4 w-4" />{t("stop_watching")}</ContextMenuItem>
 					)}
 					<ContextMenuItem onClick={() => onCreateSubfolder(folder.id)}>
-						<FolderPlus className="mr-2 h-4 w-4" />
-						New subfolder
-					</ContextMenuItem>
+						<FolderPlus className="mr-2 h-4 w-4" />{t("new_subfolder")}</ContextMenuItem>
 					<ContextMenuItem onClick={() => startRename()}>
-						<Pencil className="mr-2 h-4 w-4" />
-						Rename
-					</ContextMenuItem>
+						<Pencil className="mr-2 h-4 w-4" />{t("rename")}</ContextMenuItem>
 					<ContextMenuItem onClick={() => onMove(folder)}>
-						<Move className="mr-2 h-4 w-4" />
-						Move to...
-					</ContextMenuItem>
+						<Move className="mr-2 h-4 w-4" />{t("move_to")}</ContextMenuItem>
 					{onExportFolder && (
 						<ContextMenuItem onClick={() => onExportFolder(folder)}>
-							<Download className="mr-2 h-4 w-4" />
-							Export folder
-						</ContextMenuItem>
+							<Download className="mr-2 h-4 w-4" />{t("export_folder")}</ContextMenuItem>
 					)}
 					<ContextMenuItem onClick={() => onDelete(folder)}>
-						<Trash2 className="mr-2 h-4 w-4" />
-						Delete
-					</ContextMenuItem>
+						<Trash2 className="mr-2 h-4 w-4" />{t("delete")}</ContextMenuItem>
 				</ContextMenuContent>
 			)}
 		</ContextMenu>
