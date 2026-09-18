@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ interface InferenceParamsEditorProps {
 const PARAM_KEYS = ["temperature", "max_tokens", "top_k", "top_p"] as const;
 
 export default function InferenceParamsEditor({ params, setParams }: InferenceParamsEditorProps) {
+	const t = useTranslations("common");
 	const [selectedKey, setSelectedKey] = useState<string>("");
 	const [value, setValue] = useState<string>("");
 
@@ -28,7 +30,7 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 		if (!selectedKey || value === "") return;
 
 		if (params[selectedKey]) {
-			alert(`${selectedKey} already exists`);
+			alert(t("inference_param_exists", { key: selectedKey }));
 			return;
 		}
 
@@ -38,7 +40,7 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 			(selectedKey === "temperature" || selectedKey === "top_p") &&
 			(isNaN(numericValue) || numericValue < 0 || numericValue > 1)
 		) {
-			alert("Value must be a number between 0 and 1");
+			alert(t("inference_value_between_0_1"));
 			return;
 		}
 
@@ -46,7 +48,7 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 			(selectedKey === "max_tokens" || selectedKey === "top_k") &&
 			(!Number.isInteger(numericValue) || numericValue < 0)
 		) {
-			alert("Value must be a non-negative integer");
+			alert(t("inference_value_nonnegative_int"));
 			return;
 		}
 
@@ -70,11 +72,11 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_auto] md:gap-3 items-end">
 				<div className="flex flex-col space-y-1">
 					<Label htmlFor="param-key" className="text-xs sm:text-sm font-medium">
-						Parameter Key
+						{t("inference_parameter_key")}
 					</Label>
 					<Select value={selectedKey} onValueChange={setSelectedKey}>
 						<SelectTrigger id="param-key" className="w-full">
-							<SelectValue placeholder="Select parameter" />
+							<SelectValue placeholder={t("inference_select_parameter")} />
 						</SelectTrigger>
 						<SelectContent>
 							{PARAM_KEYS.map((key) => (
@@ -88,11 +90,11 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 
 				<div className="flex flex-col space-y-1">
 					<Label htmlFor="param-value" className="text-xs sm:text-sm font-medium">
-						Value
+						{t("inference_value")}
 					</Label>
 					<Input
 						id="param-value"
-						placeholder="Enter value (e.g., 0.7 or 512)"
+						placeholder={t("inference_enter_value")}
 						value={value}
 						onChange={(e) => setValue(e.target.value)}
 						className="w-full"
@@ -104,7 +106,7 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 					onClick={handleAdd}
 					disabled={!selectedKey || value === ""}
 				>
-					Add Parameter
+					{t("inference_add_parameter")}
 				</Button>
 			</div>
 
@@ -116,13 +118,13 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 						<thead className="bg-black dark:bg-black">
 							<tr>
 								<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-									Key
+									{t("inference_key")}
 								</th>
 								<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-									Value
+									{t("inference_value")}
 								</th>
 								<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 sr-only md:not-sr-only">
-									Actions
+									{t("inference_actions")}
 								</th>
 							</tr>
 						</thead>
@@ -140,7 +142,7 @@ export default function InferenceParamsEditor({ params, setParams }: InferencePa
 											size="icon"
 											className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:text-red-500"
 											onClick={() => handleDelete(key)}
-											aria-label={`Delete parameter ${key}`}
+											aria-label={t("inference_delete_parameter", { key })}
 										>
 											<Trash2 className="w-4 h-4" aria-hidden="true" />
 										</Button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useId, useMemo, useRef } from "react";
 import { type ControllerRenderProps, useForm, useFormContext, useWatch } from "react-hook-form";
@@ -69,10 +70,12 @@ export function SchemaForm({
 	defaultValues = {},
 	onSubmit,
 	onChange,
-	submitLabel = "Submit",
+	submitLabel,
 	className,
 	disabled = false,
 }: SchemaFormProps) {
+	const t = useTranslations("common");
+	const effectiveSubmitLabel = submitLabel ?? t("submit");
 	const zodSchema = useMemo(
 		() =>
 			jsonSchemaToZod(schema, true, "", fieldUi(schema)) as unknown as z.ZodType<
@@ -134,7 +137,7 @@ export function SchemaForm({
 				{onSubmit && (
 					<div className="flex justify-end pt-2">
 						<Button type="submit" disabled={!isValid || disabled}>
-							{submitLabel}
+							{effectiveSubmitLabel}
 						</Button>
 					</div>
 				)}
@@ -555,6 +558,7 @@ function ArrayField({ name, schema, required: _required }: SchemaFieldProps) {
 }
 
 function JsonObjectField({ name, schema, required: _required }: SchemaFieldProps) {
+	const t = useTranslations("common");
 	const { control } = useFormContext();
 	const labelName = name.split(".").pop() ?? name;
 	return (
@@ -586,7 +590,7 @@ function JsonObjectField({ name, schema, required: _required }: SchemaFieldProps
 										}
 									}
 								}}
-								placeholder="JSON value"
+								placeholder={t("schema_json_value")}
 							/>
 						</FormControl>
 						<FormMessage>{fieldState.error?.message}</FormMessage>

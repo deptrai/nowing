@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { SidebarButtonBadge } from "@/components/layout/ui/sidebar/SidebarButton";
 import { AgentSetupTabs } from "@/components/mcp/agent-setup-tabs";
 import {
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
  * (Claude Code, Codex, OpenCode, ...), copy its config, done.
  */
 export function ConnectAgentDialog({ className }: { className?: string }) {
+	const t = useTranslations("mcp");
 	return (
 		<Dialog>
 			<DialogTrigger
@@ -37,17 +39,14 @@ export function ConnectAgentDialog({ className }: { className?: string }) {
 					}}
 				/>
 				<span className="flex min-w-0 flex-1 items-center gap-1.5">
-					<span className="min-w-0 truncate">Connect your agent</span>
-					<SidebarButtonBadge>New</SidebarButtonBadge>
+					<span className="min-w-0 truncate">{t("connect_agent")}</span>
+					<SidebarButtonBadge>{t("connect_new")}</SidebarButtonBadge>
 				</span>
 			</DialogTrigger>
 			<DialogContent className="max-h-[85vh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-2xl">
 				<DialogHeader>
-					<DialogTitle>Connect to Claude Code, Codex, OpenCode…</DialogTitle>
-					<DialogDescription>
-						Give your coding agent access to Nowing scrapers and your knowledge base. Create an API
-						key under API Keys, choose your agent, then paste the config.
-					</DialogDescription>
+					<DialogTitle>{t("connect_dialog_title")}</DialogTitle>
+					<DialogDescription>{t("connect_dialog_desc")}</DialogDescription>
 				</DialogHeader>
 				<AgentSetupTabs options={{ baseUrl: BACKEND_URL || undefined }} />
 			</DialogContent>

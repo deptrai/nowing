@@ -1,4 +1,5 @@
 import { FileJson } from "lucide-react";
+import { useTranslations } from "next-intl";
 import React from "react";
 import { JsonView } from "@/components/json-view";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export function JsonMetadataViewer({
 	onOpenChange,
 	loading,
 }: JsonMetadataViewerProps) {
+	const t = useTranslations("common");
 	// Ensure metadata is a valid object
 	const jsonData = React.useMemo(() => {
 		if (!metadata) return {};
@@ -76,7 +78,7 @@ export function JsonMetadataViewer({
 				{trigger || (
 					<Button variant="ghost" size="sm" className="flex items-center gap-1">
 						<FileJson size={16} />
-						<span>View Metadata</span>
+						<span>{t("json_view_metadata")}</span>
 					</Button>
 				)}
 			</DialogTrigger>

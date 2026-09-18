@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +15,7 @@ import {
 } from "@/lib/mcp/clients";
 
 function CopyButton({ text }: { text: string }) {
+	const t = useTranslations("mcp");
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = async () => {
@@ -32,16 +34,16 @@ function CopyButton({ text }: { text: string }) {
 			size="sm"
 			className="absolute top-2 right-2 size-7 p-0"
 			onClick={handleCopy}
-			aria-label={copied ? "Configuration copied" : "Copy configuration"}
+			aria-label={copied ? t("setup_config_copied") : t("setup_copy_config")}
 		>
 			{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
 		</Button>
 	);
 }
 
-const TRANSPORTS: { id: McpTransport; label: string; hint: string }[] = [
-	{ id: "remote", label: "Hosted", hint: "mcp.nowing.com, nothing to install" },
-	{ id: "stdio", label: "Self-host", hint: "run the server against your own backend" },
+const TRANSPORTS = (t: (k: string) => string): { id: McpTransport; label: string; hint: string }[] => [
+	{ id: "remote", label: t("setup_hosted"), hint: t("setup_hosted_hint") },
+	{ id: "stdio", label: t("setup_self_host"), hint: t("setup_self_host_hint") },
 ];
 
 /**
@@ -51,6 +53,8 @@ const TRANSPORTS: { id: McpTransport; label: string; hint: string }[] = [
  * has them.
  */
 export function AgentSetupTabs({ options }: { options?: Partial<McpSnippetOptions> }) {
+	const t = useTranslations("mcp");
+	const transports = TRANSPORTS(t);
 	const [transport, setTransport] = useState<McpTransport>("remote");
 
 	const resolved: McpSnippetOptions = {
@@ -60,13 +64,13 @@ export function AgentSetupTabs({ options }: { options?: Partial<McpSnippetOption
 		serverDir: options?.serverDir || DEFAULT_SERVER_DIR,
 	};
 
-	const active = TRANSPORTS.find((t) => t.id === transport) ?? TRANSPORTS[0];
+	const active = transports.find((tr) => tr.id === transport) ?? transports[0];
 
 	return (
 		<div className="min-w-0 space-y-4">
 			<div className="flex flex-wrap items-center gap-3">
 				<div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
-					{TRANSPORTS.map((t) => (
+					{transports.map((t) => (
 						<Button
 							key={t.id}
 							variant={t.id === transport ? "secondary" : "ghost"}
