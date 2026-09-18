@@ -135,7 +135,14 @@
 		"passwords_no_match_desc": "Mật khẩu bạn nhập không trùng khớp",
 		"creating_account": "Đang tạo tài khoản của bạn",
 		"creating_account_btn": "Đang tạo tài khoản",
-		"redirecting_login": "Đang chuyển hướng đến trang đăng nhập"
+		"redirecting_login": "Đang chuyển hướng đến trang đăng nhập",
+		"home_error_icon": "Biểu tượng lỗi",
+		"home_dismiss_error": "Đóng lỗi",
+		"home_enter_your_password": "Nhập mật khẩu của bạn",
+		"home_registration_is_disabled": "Tính năng đăng ký đã bị tắt",
+		"home_confirm_your_password": "Xác nhận mật khẩu",
+		"home_retry": "Thử lại",
+		"home_you_have_been_securely": "Bạn đã được đăng xuất an toàn"
 	},
 	"workspace": {
 		"create_title": "Tạo Workspace",

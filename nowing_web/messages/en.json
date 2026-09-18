@@ -135,7 +135,14 @@
 		"passwords_no_match_desc": "The passwords you entered do not match",
 		"creating_account": "Creating your account",
 		"creating_account_btn": "Creating account",
-		"redirecting_login": "Redirecting to login page"
+		"redirecting_login": "Redirecting to login page",
+		"home_error_icon": "Error Icon",
+		"home_dismiss_error": "Dismiss error",
+		"home_enter_your_password": "Enter your password",
+		"home_registration_is_disabled": "Registration is disabled",
+		"home_confirm_your_password": "Confirm your password",
+		"home_retry": "Retry",
+		"home_you_have_been_securely": "You have been securely logged out"
 	},
 	"workspace": {
 		"create_title": "Create Workspace",
