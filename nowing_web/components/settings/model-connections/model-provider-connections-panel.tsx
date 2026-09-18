@@ -280,7 +280,7 @@ export function ModelProviderConnectionsPanel({
 										</span>
 									</span>
 								</span>
-								<span className="shrink-0 text-sm font-medium text-muted-foreground">Connect</span>
+								<span className="shrink-0 text-sm font-medium text-muted-foreground">{t("mc_connect")}</span>
 							</Button>
 						);
 					})}
