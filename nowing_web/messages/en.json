@@ -725,7 +725,22 @@
 		"unsaved": "Unsaved changes",
 		"done_editing": "Done editing",
 		"start_writing": "Start writing...",
-		"download_md": "Download .md"
+		"download_md": "Download .md",
+		"just_now": "Just now",
+		"minutes_ago": "{count} min ago",
+		"hours_ago": "{count} hr ago",
+		"hist_load_failed": "Failed to load version history",
+		"hist_content_failed": "Failed to load version content",
+		"hist_restore_failed": "Failed to restore version",
+		"hist_restored": "Restored version {n}",
+		"copied": "Copied",
+		"copy": "Copy",
+		"restore": "Restore",
+		"empty": "(empty)",
+		"version_n": "Version {n}",
+		"processing_failed": "Processing failed",
+		"download_started": "Download started",
+		"download_failed": "Failed to download original file"
 	},
 	"add_connector": {
 		"title": "Connect Your Tools",

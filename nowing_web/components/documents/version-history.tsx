@@ -72,15 +72,15 @@ export function VersionHistoryDialog({
 	);
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(t: (k: string, o?: Record<string, string | number | Date>) => string, dateStr: string): string {
 	const now = Date.now();
 	const then = new Date(dateStr).getTime();
 	const diffMs = now - then;
 	const diffMin = Math.floor(diffMs / 60_000);
-	if (diffMin < 1) return "Just now";
-	if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? "s" : ""} ago`;
+	if (diffMin < 1) return t("just_now");
+	if (diffMin < 60) return t("minutes_ago",{count:diffMin});
 	const diffHr = Math.floor(diffMin / 60);
-	if (diffHr < 24) return `${diffHr} hour${diffHr !== 1 ? "s" : ""} ago`;
+	if (diffHr < 24) return t("hours_ago",{count:diffHr});
 	return new Date(dateStr).toLocaleDateString(undefined, {
 		weekday: "short",
 		month: "short",
@@ -107,7 +107,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 			const data = await documentsApiService.listDocumentVersions(documentId);
 			setVersions(data as DocumentVersionSummary[]);
 		} catch {
-			toast.error("Failed to load version history");
+			toast.error(t("hist_load_failed"));
 		} finally {
 			setLoading(false);
 		}
@@ -127,7 +127,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 			};
 			setVersionContent(data.source_markdown || "");
 		} catch {
-			toast.error("Failed to load version content");
+			toast.error(t("hist_content_failed"));
 		} finally {
 			setContentLoading(false);
 		}
@@ -137,10 +137,10 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 		setRestoring(true);
 		try {
 			await documentsApiService.restoreDocumentVersion(documentId, versionNumber);
-			toast.success(`Restored version ${versionNumber}`);
+			toast.success(t("hist_restored",{n:versionNumber}));
 			await loadVersions();
 		} catch {
-			toast.error("Failed to restore version");
+			toast.error(t("hist_restore_failed"));
 		} finally {
 			setRestoring(false);
 		}
@@ -196,8 +196,8 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 								<div className="flex-1 min-w-0 space-y-0.5">
 									<p className="text-sm font-medium truncate">
 										{v.created_at
-											? formatRelativeTime(v.created_at)
-											: `Version ${v.version_number}`}
+											? formatRelativeTime(t, v.created_at)
+											: t("version_n",{n:v.version_number})}
 									</p>
 									{v.title && <p className="text-xs text-muted-foreground truncate">{v.title}</p>}
 								</div>
@@ -214,7 +214,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 					<>
 						<div className="flex items-center justify-between pl-6 pr-14 pt-5 pb-2">
 							<h2 className="text-sm font-semibold truncate">
-								{selectedVersionData.title || `Version ${selectedVersion}`}
+								{selectedVersionData.title || t("version_n",{n:selectedVersion})}
 							</h2>
 							<div className="flex items-center gap-1.5 shrink-0">
 								<Button
@@ -225,7 +225,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 									disabled={contentLoading || copied}
 								>
 									{copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-									{copied ? "Copied" : "Copy"}
+									{copied ? t("copied") : t("copy")}
 								</Button>
 								<Button
 									variant="outline"
@@ -247,7 +247,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 								</div>
 							) : (
 								<pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground/90">
-									{versionContent || "(empty)"}
+									{versionContent || t("empty")}
 								</pre>
 							)}
 						</div>

@@ -57,9 +57,9 @@ export function DownloadOriginalButton({ documentId }: DownloadOriginalButtonPro
 			anchor.click();
 			anchor.remove();
 			URL.revokeObjectURL(url);
-			toast.success("Download started");
+			toast.success(t("download_started"));
 		} catch {
-			toast.error("Failed to download original file");
+			toast.error(t("download_failed"));
 		} finally {
 			setDownloading(false);
 		}

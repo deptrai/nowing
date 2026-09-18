@@ -725,7 +725,22 @@
 		"unsaved": "Thay đổi chưa lưu",
 		"done_editing": "Sửa xong",
 		"start_writing": "Bắt đầu viết...",
-		"download_md": "Tải .md"
+		"download_md": "Tải .md",
+		"just_now": "Vừa xong",
+		"minutes_ago": "{count} phút trước",
+		"hours_ago": "{count} giờ trước",
+		"hist_load_failed": "Không thể tải lịch sử phiên bản",
+		"hist_content_failed": "Không thể tải nội dung phiên bản",
+		"hist_restore_failed": "Không thể khôi phục phiên bản",
+		"hist_restored": "Đã khôi phục phiên bản {n}",
+		"copied": "Đã sao chép",
+		"copy": "Sao chép",
+		"restore": "Khôi phục",
+		"empty": "(trống)",
+		"version_n": "Phiên bản {n}",
+		"processing_failed": "Xử lý thất bại",
+		"download_started": "Đang tải xuống",
+		"download_failed": "Không thể tải file gốc"
 	},
 	"add_connector": {
 		"title": "Kết nối công cụ của bạn",

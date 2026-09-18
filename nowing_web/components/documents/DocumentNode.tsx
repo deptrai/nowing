@@ -212,7 +212,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 										</span>
 									</TooltipTrigger>
 									<TooltipContent side="top">
-										{doc.status?.reason || "Processing failed"}
+										{doc.status?.reason || t("processing_failed")}
 									</TooltipContent>
 								</Tooltip>
 							);
