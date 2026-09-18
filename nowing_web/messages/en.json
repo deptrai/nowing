@@ -72,7 +72,8 @@
 		"workspace_update_btn": "Update",
 		"workspace_create_btn": "Create",
 		"workspace_info_desc": "A workspace is your personal workspace. Connect external sources, upload documents, take notes, and get work done with AI agents.",
-		"workspace_label": "Workspace"
+		"workspace_label": "Workspace",
+		"name_required": "Name is required"
 	},
 	"auth": {
 		"login": "Login",
@@ -2866,7 +2867,29 @@
 		"load_failed": "Failed to load actions",
 		"unknown_error": "Unknown error",
 		"try_again": "Try again",
-		"showing": "Showing {shown} of {total}. Older actions are paginated."
+		"showing": "Showing {shown} of {total}. Older actions are paginated.",
+		"copy_args_success": "Arguments copied",
+		"copy_args_failed": "Failed to copy arguments.",
+		"revert_success": "Action reverted successfully.",
+		"revert_failed": "Failed to revert action.",
+		"revert_badge": "Revert",
+		"error_badge": "Error",
+		"reversible_badge": "Reversible",
+		"reverted_badge": "Reverted",
+		"arguments_label": "Arguments",
+		"args_copied_aria": "Arguments copied",
+		"copy_args_aria": "Copy arguments",
+		"error_label": "Error",
+		"reverse_plan_label": "Reverse plan",
+		"action_id_label": "Action ID:",
+		"revert_btn": "Revert",
+		"revert_confirm_title": "Revert this action?",
+		"revert_confirm_desc": "This will undo {name} and append a new audit entry. The agent's chat history is preserved — only the tool's effects on your knowledge base or connectors will be reversed where possible.",
+		"revert_confirm_reverting": "Reverting…",
+		"already_reverted": "Already reverted",
+		"revert_entry": "Revert entry",
+		"cannot_revert_error": "Cannot revert errored action",
+		"not_reversible": "Not reversible"
 	},
 	"docViewer": {
 		"view_content": "View Content"
@@ -3089,7 +3112,35 @@
 		"col_cost": "Cost",
 		"col_when": "When",
 		"loading": "Loading…",
-		"load_more": "Load more"
+		"load_more": "Load more",
+		"api_keys_title": "API keys",
+		"api_keys_desc": "Create user API keys and choose whether they can access this workspace.",
+		"api_keys_alert": "External API calls need both a user API key and workspace API key access enabled.",
+		"export_csv": "Export CSV",
+		"no_items": "No items returned.",
+		"something_wrong": "Something went wrong running this API.",
+		"read_docs": "Read docs",
+		"pricing": "Pricing:",
+		"run_cancelled": "Run cancelled.",
+		"items": "Items",
+		"time": "Time",
+		"cost": "Cost",
+		"run_to_see_output": "Run the API to see output here.",
+		"running": "Running",
+		"success": "Success",
+		"cancelled": "Cancelled",
+		"select": "Select…",
+		"one_value_per_line": "One value per line",
+		"api_playground": "API Playground",
+		"playground": "Playground",
+		"table": "Table",
+		"json": "JSON",
+		"copied_json": "Copied JSON",
+		"copy_json": "Copy JSON",
+		"showing_first": "Showing first {max} of {total} items. Switch to JSON for the full output.",
+		"run": "Run",
+		"cancel": "Cancel",
+		"for_more_info": "for more info."
 	},
 	"saved_searches": {
 		"not_found": "Saved search not found",
@@ -4029,7 +4080,8 @@
 		"common_expired_retry": "expired, retry after re-auth",
 		"common_delete_email_kb_warning_undone": "This will permanently delete the email from your knowledge base (cannot be undone)",
 		"gmail_from": "From",
-		"gmail_date": "Date"
+		"gmail_date": "Date",
+		"gcal_primary": "primary"
 	},
 	"telemetry": {
 		"failed_load_celery": "Failed to load Celery queues",

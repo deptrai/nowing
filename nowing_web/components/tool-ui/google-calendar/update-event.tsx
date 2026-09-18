@@ -21,6 +21,7 @@ import {
 	useHitlDecision,
 	useHitlPhase,
 } from "@/features/chat-messages/hitl";
+import { useTranslations } from "next-intl";
 
 interface GoogleCalendarAccount {
 	id: number;
@@ -148,6 +149,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<CalendarUpdateEventContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const actionArgs = interruptData.action_requests[0]?.args ?? {};
 	const context = interruptData.context;
@@ -189,21 +191,21 @@ function ApprovalCard({
 
 	if (effectiveNewSummary && String(effectiveNewSummary) !== (event?.summary ?? "")) {
 		changes.push({
-			label: "Summary",
+			label: t("gcal_summary"),
 			oldVal: event?.summary ?? "",
 			newVal: String(effectiveNewSummary),
 		});
 	}
 	if (effectiveNewStartDatetime && String(effectiveNewStartDatetime) !== (event?.start ?? "")) {
 		changes.push({
-			label: "Start",
+			label: t("gcal_start"),
 			oldVal: event?.start ? formatDateTime(event.start) : "",
 			newVal: formatDateTime(String(effectiveNewStartDatetime)),
 		});
 	}
 	if (effectiveNewEndDatetime && String(effectiveNewEndDatetime) !== (event?.end ?? "")) {
 		changes.push({
-			label: "End",
+			label: t("gcal_end"),
 			oldVal: event?.end ? formatDateTime(event.end) : "",
 			newVal: formatDateTime(String(effectiveNewEndDatetime)),
 		});
@@ -213,7 +215,7 @@ function ApprovalCard({
 		String(effectiveNewLocation ?? "") !== (event?.location ?? "")
 	) {
 		changes.push({
-			label: "Location",
+			label: t("gcal_location"),
 			oldVal: event?.location ?? "",
 			newVal: String(effectiveNewLocation ?? ""),
 		});
@@ -222,7 +224,7 @@ function ApprovalCard({
 		const oldStr = currentAttendees.join(", ");
 		const newStr = effectiveNewAttendees.join(", ");
 		if (oldStr !== newStr) {
-			changes.push({ label: "Attendees", oldVal: oldStr, newVal: newStr });
+			changes.push({ label: t("gcal_attendees"), oldVal: oldStr, newVal: newStr });
 		}
 	}
 
@@ -323,25 +325,25 @@ function ApprovalCard({
 					<div>
 						<p className="text-sm font-semibold text-foreground">
 							{phase === "rejected"
-								? "Calendar Event Update Rejected"
+								? t("gcal_event_update_rejected")
 								: phase === "processing" || phase === "complete"
-									? "Calendar Event Update Approved"
-									: "Update Calendar Event"}
+									? t("gcal_event_update_approved")
+									: t("gcal_update_event_title")}
 						</p>
 						{phase === "processing" ? (
 							<TextShimmerLoader
-								text={wasEdited ? "Updating event with your changes" : "Updating event"}
+								text={wasEdited ? t("gcal_updating_event_with_changes") : t("gcal_updating_event")}
 								size="sm"
 							/>
 						) : phase === "complete" ? (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								{wasEdited ? "Event updated with your changes" : "Event updated"}
+								{wasEdited ? t("gcal_event_updated_with_changes") : t("gcal_event_updated")}
 							</p>
 						) : phase === "rejected" ? (
-							<p className="text-xs text-muted-foreground mt-0.5">Event update was cancelled</p>
+							<p className="text-xs text-muted-foreground mt-0.5">{t("gcal_update_cancelled")}</p>
 						) : (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Requires your approval to proceed
+								{t("common_requires_approval")}
 							</p>
 						)}
 					</div>
@@ -418,7 +420,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -432,7 +434,7 @@ function ApprovalCard({
 					<>
 						{phase === "pending" && account && (
 							<div className="space-y-2">
-								<p className="text-xs font-medium text-muted-foreground">Google Calendar Account</p>
+								<p className="text-xs font-medium text-muted-foreground">{t("gcal_account_label")}</p>
 								<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 									{account.name}
 								</div>
@@ -441,7 +443,7 @@ function ApprovalCard({
 
 						{event && (
 							<div className="space-y-2">
-								<p className="text-xs font-medium text-muted-foreground">Current Event</p>
+								<p className="text-xs font-medium text-muted-foreground">{t("gcal_current_event")}</p>
 								<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 									<div className="font-medium">{event.summary}</div>
 									{(event.start || event.end) && (
@@ -473,7 +475,7 @@ function ApprovalCard({
 						{/* Proposed Changes - visible in all phases */}
 						{(changes.length > 0 || hasDescriptionChange) && (
 							<div className="space-y-2">
-								<p className="text-xs font-medium text-muted-foreground">Proposed Changes</p>
+								<p className="text-xs font-medium text-muted-foreground">{t("gcal_proposed_changes")}</p>
 								<div className="space-y-2">
 									{changes.map((change) => (
 										<div key={change.label} className="text-xs space-y-0.5">
@@ -494,7 +496,7 @@ function ApprovalCard({
 									))}
 									{hasDescriptionChange && (
 										<div className="text-xs space-y-0.5">
-											<span className="text-muted-foreground">Description</span>
+											<span className="text-muted-foreground">{t("gcal_description")}</span>
 											<div
 												className="mt-1 max-h-[5rem] overflow-hidden"
 												style={{
@@ -518,7 +520,7 @@ function ApprovalCard({
 						)}
 
 						{event && changes.length === 0 && !hasDescriptionChange && (
-							<p className="text-sm text-muted-foreground italic">No changes proposed</p>
+							<p className="text-sm text-muted-foreground italic">{t("common_no_changes_proposed")}</p>
 						)}
 					</>
 				)}
@@ -536,7 +538,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -551,7 +553,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -562,10 +564,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to update calendar event</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_update_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -576,11 +579,12 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Google Calendar authentication expired
+					{t("gcal_auth_expired")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -592,11 +596,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Additional Google Calendar permissions required
+					{t("gcal_insufficient_perms")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -608,12 +613,13 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function NotFoundCard({ result }: { result: NotFoundResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border border-amber-500/50 bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
 					<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
-						Event not found
+						{t("gcal_event_not_found")}
 					</p>
 				</div>
 			</div>
@@ -626,11 +632,12 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Calendar event updated successfully"}
+					{result.message || t("gcal_updated_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -643,7 +650,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Google Calendar
+							{t("gcal_open_in_gcal")}
 						</a>
 					</div>
 				)}

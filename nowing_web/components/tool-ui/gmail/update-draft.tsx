@@ -14,6 +14,7 @@ import {
 	useHitlDecision,
 	useHitlPhase,
 } from "@/features/chat-messages/hitl";
+import { useTranslations } from "next-intl";
 
 interface GmailAccount {
 	id: number;
@@ -128,6 +129,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<GmailUpdateDraftContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -215,25 +217,25 @@ function ApprovalCard({
 					<div>
 						<p className="text-sm font-semibold text-foreground">
 							{phase === "rejected"
-								? "Draft Update Rejected"
+								? t("gmail_draft_update_rejected")
 								: phase === "processing" || phase === "complete"
-									? "Draft Update Approved"
-									: "Update Gmail Draft"}
+									? t("gmail_draft_update_approved")
+									: t("gmail_update_title")}
 						</p>
 						{phase === "processing" ? (
 							<TextShimmerLoader
-								text={pendingEdits ? "Updating draft with your changes" : "Updating draft"}
+								text={pendingEdits ? t("gmail_updating_draft_with_changes") : t("gmail_updating_draft")}
 								size="sm"
 							/>
 						) : phase === "complete" ? (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								{pendingEdits ? "Draft updated with your changes" : "Draft updated"}
+								{pendingEdits ? t("gmail_draft_updated_with_changes") : t("gmail_draft_updated")}
 							</p>
 						) : phase === "rejected" ? (
-							<p className="text-xs text-muted-foreground mt-0.5">Draft update was cancelled</p>
+							<p className="text-xs text-muted-foreground mt-0.5">{t("gmail_update_cancelled")}</p>
 						) : (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Requires your approval to proceed
+								{t("common_requires_approval")}
 							</p>
 						)}
 					</div>
@@ -286,7 +288,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -302,7 +304,7 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Gmail Account</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("gmail_account_label")}</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -311,7 +313,7 @@ function ApprovalCard({
 
 								{email && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Draft to Update</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("gmail_draft_to_update")}</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1">
 											<div className="flex items-center gap-1.5">
 												<MailIcon
@@ -335,19 +337,19 @@ function ApprovalCard({
 				{currentTo && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UserIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>To: {currentTo}</span>
+						<span>{t("gmail_to")}: {currentTo}</span>
 					</div>
 				)}
 				{currentCc && currentCc.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>CC: {currentCc}</span>
+						<span>{t("gmail_cc")}: {currentCc}</span>
 					</div>
 				)}
 				{currentBcc && currentBcc.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>BCC: {currentBcc}</span>
+						<span>{t("gmail_bcc")}: {currentBcc}</span>
 					</div>
 				)}
 			</div>
@@ -387,7 +389,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -405,7 +407,7 @@ function ApprovalCard({
 									});
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -416,10 +418,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to update Gmail draft</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_update_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -430,10 +433,11 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Gmail authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -444,11 +448,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Additional Gmail permissions required
+					{t("gmail_insufficient_perms")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -460,12 +465,13 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function NotFoundCard({ result }: { result: NotFoundResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border border-amber-500/50 bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
 					<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
-						Draft not found
+						{t("gmail_draft_not_found")}
 					</p>
 				</div>
 			</div>
@@ -478,11 +484,12 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Gmail draft updated successfully"}
+					{result.message || t("gmail_updated_success")}
 				</p>
 			</div>
 		</div>
