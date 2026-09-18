@@ -3329,7 +3329,8 @@
 		"modal_paste_desc": "AI will automatically redact sensitive data (phone, email per AD-25), deconstruct 4 post components, and classify Hook Taxonomy.",
 		"modal_paste_placeholder": "Paste full post content here for analysis...",
 		"cancel": "Cancel",
-		"btn_deconstruct": "Deconstruct & Analyze"
+		"btn_deconstruct": "Deconstruct & Analyze",
+		"content_mode": "Content Mode"
 	},
 	"admin": {
 		"healthy": "Healthy",

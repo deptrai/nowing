@@ -33,6 +33,7 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { getToolDisplayName } from "@/contracts/enums/toolIcons";
 import {
@@ -52,6 +53,8 @@ interface RevertTurnButtonProps {
 }
 
 export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnButtonProps) {
+	const t = useTranslations("assistantUi");
+	const tCommon = useTranslations("common");
 	const session = useAtomValue(chatSessionStateAtom);
 	const threadId = session?.threadId ?? null;
 	const queryClient = useQueryClient();
@@ -116,7 +119,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 					? err.message
 					: err instanceof Error
 						? err.message
-						: "Failed to revert turn.";
+						: t("failed_revert_turn");
 			toast.error(message);
 		} finally {
 			setIsReverting(false);
@@ -136,7 +139,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 						}}
 					>
 						<RotateCcw className="size-3.5" aria-hidden="true" />
-						<span>Revert turn</span>
+						<span>{t("revert_turn")}</span>
 						<span className="ml-auto text-xs tabular-nums opacity-70">
 							{reversibleCount}/{totalCount}
 						</span>
@@ -153,7 +156,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 							}}
 						>
 							<RotateCcw className="size-3.5" aria-hidden="true" />
-							<span>Revert turn</span>
+							<span>{t("revert_turn")}</span>
 							<span className="text-xs tabular-nums opacity-70">
 								{reversibleCount}/{totalCount}
 							</span>
@@ -162,16 +165,16 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 				)}
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Revert this turn?</AlertDialogTitle>
+						<AlertDialogTitle>{t("revert_turn_title")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will undo {reversibleCount} of {totalCount} action
-							{totalCount === 1 ? "" : "s"} from this turn in reverse order. The chat history and
-							any read-only actions are preserved. Some rows may not be reversible — partial success
-							is normal.
+							{t("revert_turn_desc", {
+								revertCount: reversibleCount,
+								totalCount: totalCount,
+							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isReverting}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={isReverting}>{tCommon("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={(e) => {
 								e.preventDefault();
@@ -179,7 +182,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 							}}
 							disabled={isReverting}
 						>
-							{isReverting ? "Reverting…" : "Revert turn"}
+							{isReverting ? t("reverting") : t("revert_turn")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -188,9 +191,9 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 			<AlertDialog open={resultsOpen} onOpenChange={setResultsOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Revert results</AlertDialogTitle>
+						<AlertDialogTitle>{t("revert_results_title")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							Some actions could not be reverted. Review per-row outcomes below.
+							{t("revert_results_desc")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ul className="max-h-72 overflow-y-auto space-y-2 text-sm">
@@ -199,7 +202,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 						))}
 					</ul>
 					<AlertDialogFooter>
-						<AlertDialogAction onClick={() => setResultsOpen(false)}>Close</AlertDialogAction>
+						<AlertDialogAction onClick={() => setResultsOpen(false)}>{tCommon("close")}</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

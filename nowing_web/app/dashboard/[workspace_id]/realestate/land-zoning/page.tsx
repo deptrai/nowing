@@ -5,8 +5,10 @@ import { useState } from "react";
 
 import { LandZoningModal } from "@/components/realestate/land-zoning/land-zoning-modal";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export default function LandZoningPage() {
+	const t = useTranslations("realestate");
 	const params = useParams<{ workspace_id: string }>();
 	const searchParams = useSearchParams();
 	const [open, setOpen] = useState(true);
@@ -16,7 +18,7 @@ export default function LandZoningPage() {
 
 	return (
 		<div className="mx-auto w-full max-w-3xl py-6 md:py-8">
-			<Button onClick={() => setOpen(true)}>Mở Thẩm định Quy hoạch Đất đai</Button>
+			<Button onClick={() => setOpen(true)}>{t("open_land_zoning")}</Button>
 			<LandZoningModal
 				workspaceId={params.workspace_id}
 				open={open}

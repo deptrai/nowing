@@ -7,6 +7,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { materialDark, materialLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import { MermaidDiagram } from "@/components/assistant-ui/mermaid-diagram";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn, copyToClipboard } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ function MarkdownCodeBlockComponent({
 	codeText,
 	isDarkMode,
 }: MarkdownCodeBlockProps) {
+	const t = useTranslations("assistantUi");
 	const [hasCopied, setHasCopied] = useState(false);
 	const normalizedLanguage = language.toLowerCase();
 
@@ -62,9 +64,9 @@ function MarkdownCodeBlockComponent({
 						const ok = await copyToClipboard(codeText);
 						if (ok) setHasCopied(true);
 					}}
-					aria-label={hasCopied ? "Copied code" : "Copy code"}
+					aria-label={hasCopied ? t("copied_code") : t("copy_code")}
 				>
-					<span className="sr-only">Copy</span>
+					<span className="sr-only">{t("copy")}</span>
 					{hasCopied ? (
 						<CheckIcon className="!size-3" aria-hidden="true" />
 					) : (

@@ -23,6 +23,7 @@ import { messageDocumentsMapAtom } from "@/atoms/chat/mentioned-documents.atom";
 import { openEditorPanelAtom } from "@/atoms/editor/editor-panel.atom";
 import { MentionChip } from "@/components/assistant-ui/mention-chip";
 import { MessageTimestamp } from "@/components/assistant-ui/message-timestamp";
+import { useTranslations } from "next-intl";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { getConnectorIcon } from "@/contracts/enums/connectorIcons";
 import { getMentionDocKey } from "@/lib/chat/mention-doc-key";
@@ -192,6 +193,8 @@ export const UserMessage: FC = () => {
 };
 
 const UserActionBar: FC = () => {
+	const t = useTranslations("assistantUi");
+	const tCommon = useTranslations("common");
 	const isThreadRunning = useAuiState(({ thread }) => thread.isRunning);
 
 	// Get current message ID
@@ -220,7 +223,7 @@ const UserActionBar: FC = () => {
 			className="aui-user-action-bar-root flex items-center justify-end gap-1 text-muted-foreground"
 		>
 			<ActionBarPrimitive.Copy asChild>
-				<TooltipIconButton tooltip="Copy">
+				<TooltipIconButton tooltip={t("copy")}>
 					<AuiIf condition={({ message }) => message.isCopied}>
 						<CheckIcon />
 					</AuiIf>
@@ -231,7 +234,7 @@ const UserActionBar: FC = () => {
 			</ActionBarPrimitive.Copy>
 			{canEdit && (
 				<ActionBarPrimitive.Edit asChild>
-					<TooltipIconButton tooltip="Edit" className="aui-user-action-edit">
+					<TooltipIconButton tooltip={tCommon("edit")} className="aui-user-action-edit">
 						<Pencil />
 					</TooltipIconButton>
 				</ActionBarPrimitive.Edit>

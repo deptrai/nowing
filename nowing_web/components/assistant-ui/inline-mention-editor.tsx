@@ -25,6 +25,7 @@ import {
 	useMemo,
 	useRef,
 } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { getConnectorIcon } from "@/contracts/enums/connectorIcons";
 import type { Document } from "@/contracts/types/document.types";
@@ -162,6 +163,7 @@ const MentionElement: FC<PlateElementProps<MentionElementNode>> = ({
 	children,
 	element,
 }) => {
+	const t = useTranslations("assistantUi");
 	const statusClass =
 		element.statusKind === "failed"
 			? "text-destructive"
@@ -201,8 +203,8 @@ const MentionElement: FC<PlateElementProps<MentionElementNode>> = ({
 								type="button"
 								variant="ghost"
 								size="icon"
-								aria-label={`Remove mention ${element.title}`}
-								title={`Remove ${element.title}`}
+								aria-label={t("remove_mention", { title: element.title })}
+								title={t("remove_mention_title", { title: element.title })}
 								onMouseDown={(e) => e.preventDefault()}
 								onClick={(e) => {
 									e.stopPropagation();
@@ -393,7 +395,7 @@ function getSelectionAnchorRect(root: HTMLElement | null): SuggestionAnchorRect 
 export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMentionEditorProps>(
 	(
 		{
-			placeholder = "Type @ to mention documents...",
+			placeholder,
 			onMentionTrigger,
 			onMentionClose,
 			onActionTrigger,
@@ -409,6 +411,7 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 		},
 		ref
 	) => {
+		const t = useTranslations("assistantUi");
 		const editableRef = useRef<HTMLDivElement | null>(null);
 		const editor = usePlateEditor({
 			readOnly: disabled,
@@ -741,7 +744,7 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 			() => ({
 				placeholder,
 				role: "textbox",
-				"aria-label": placeholder || "Chat message input",
+				"aria-label": placeholder ?? t("chat_input_placeholder"),
 				"data-testid": dataTestId ?? "chat-composer-input",
 				"aria-multiline": true,
 				"aria-disabled": disabled,

@@ -3318,7 +3318,7 @@
 		"toast_ingest_success": "Đã bóc tách cấu trúc bài viết mẫu thành công!",
 		"toast_ingest_failed": "Không thể phân tích bài viết",
 		"badge_content_mode": "Content Mode",
-		"title": "Viral Social Outbound Co-pilot",
+		"title": "Trợ lý Viral Social Outbound",
 		"description": "Phân tích các bài viết viral ngoại lệ, học giọng văn cá nhân độc bản và viết lại thành bản thảo thu hút khách hàng tiềm năng.",
 		"generating": "Đang tạo...",
 		"btn_generate_draft": "Tạo bản thảo",
@@ -3331,7 +3331,8 @@
 		"modal_paste_desc": "AI sẽ tự động khử thông tin nhạy cảm (SĐT, email theo AD-25), bóc tách 4 thành phần bài viết và phân loại Hook Taxonomy.",
 		"modal_paste_placeholder": "Dán toàn bộ nội dung bài viết cần phân tích vào đây...",
 		"cancel": "Hủy",
-		"btn_deconstruct": "Bóc tách & Phân tích"
+		"btn_deconstruct": "Bóc tách & Phân tích",
+		"content_mode": "Chế độ Nội dung"
 	},
 	"admin": {
 		"healthy": "Hoạt động tốt",

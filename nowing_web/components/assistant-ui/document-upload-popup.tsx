@@ -12,6 +12,7 @@ import {
 } from "react";
 import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms";
 import { DocumentUploadTab } from "@/components/sources/DocumentUploadTab";
+import { useTranslations } from "next-intl";
 import {
 	Dialog,
 	DialogContent,
@@ -90,6 +91,7 @@ const DocumentUploadPopupContent: FC<{
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 }> = ({ isOpen, onOpenChange }) => {
+	const t = useTranslations("documents");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 
 	if (!workspaceId) return null;
@@ -109,10 +111,10 @@ const DocumentUploadPopupContent: FC<{
 				<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
 					<DialogHeader className="sticky top-0 z-20 bg-popover px-4 sm:px-6 pt-6 sm:pt-8 pb-10">
 						<DialogTitle className="text-xl sm:text-3xl font-semibold tracking-tight pr-8 sm:pr-0">
-							Upload Documents
+							{t("upload_documents")}
 						</DialogTitle>
 						<DialogDescription className="text-xs sm:text-base text-muted-foreground/80 line-clamp-1">
-							Upload and sync your documents to your workspace
+							{t("upload_documents_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
