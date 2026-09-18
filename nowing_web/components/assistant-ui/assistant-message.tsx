@@ -22,6 +22,7 @@ import {
 	RefreshCwIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { commentsEnabledAtom, targetCommentIdAtom } from "@/atoms/chat/current-thread.atom";
@@ -149,6 +150,7 @@ function useCitationsFromMetadata(): SerializableCitation[] {
 }
 
 const MobileCitationDrawer: FC = () => {
+	const t = useTranslations("assistant");
 	const [open, setOpen] = useState(false);
 	const citations = useCitationsFromMetadata();
 
@@ -214,7 +216,7 @@ const MobileCitationDrawer: FC = () => {
 					)}
 				</div>
 				<span className="text-muted-foreground text-sm tabular-nums">
-					{citations.length} source{citations.length !== 1 && "s"}
+					{t("sources_count", { count: citations.length })}
 				</span>
 			</Button>
 
@@ -222,7 +224,7 @@ const MobileCitationDrawer: FC = () => {
 				<DrawerContent className="max-h-[85vh] flex flex-col">
 					<DrawerHandle />
 					<DrawerHeader className="text-left">
-						<DrawerTitle className="text-base font-semibold">Sources</DrawerTitle>
+						<DrawerTitle className="text-base font-semibold">{t("sources")}</DrawerTitle>
 					</DrawerHeader>
 					<div className="overflow-y-auto flex-1 min-h-0 px-1 pb-6">
 						{citations.map((citation) => (
@@ -565,6 +567,7 @@ function parseMessageId(assistantUiMessageId: string | undefined): number | null
 }
 
 export const AssistantMessage: FC = () => {
+	const t = useTranslations("assistant");
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
 	const [isInlineOpen, setIsInlineOpen] = useState(false);
 	const messageRef = useRef<HTMLDivElement>(null);
@@ -677,10 +680,10 @@ export const AssistantMessage: FC = () => {
 					/>
 					{hasComments ? (
 						<span>
-							{commentCount} {commentCount === 1 ? "comment" : "comments"}
+							{t("comments_count", { count: commentCount })}
 						</span>
 					) : (
-						<span>Add comment</span>
+						<span>{t("add_comment")}</span>
 					)}
 				</Button>
 			</div>
@@ -712,6 +715,7 @@ export const AssistantMessage: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+	const t = useTranslations("assistant");
 	const isLast = useAuiState((s) => s.message.isLast);
 	const aui = useAui();
 	const api = useElectronAPI();
@@ -733,7 +737,7 @@ const AssistantActionBar: FC = () => {
 			className="aui-assistant-action-bar-root -ml-1 col-start-3 row-start-2 flex gap-1 text-muted-foreground md:data-floating:absolute md:data-floating:rounded-md md:data-floating:p-1 [&>button]:opacity-100 md:[&>button]:opacity-[var(--aui-button-opacity,1)]"
 		>
 			<ActionBarPrimitive.Copy asChild>
-				<TooltipIconButton tooltip="Copy">
+				<TooltipIconButton tooltip={t("copy")}>
 					<AuiIf condition={({ message }) => message.isCopied}>
 						<CheckIcon />
 					</AuiIf>
@@ -743,20 +747,20 @@ const AssistantActionBar: FC = () => {
 				</TooltipIconButton>
 			</ActionBarPrimitive.Copy>
 			<ActionBarPrimitive.ExportMarkdown asChild>
-				<TooltipIconButton tooltip="Download as Markdown">
+				<TooltipIconButton tooltip={t("download_markdown")}>
 					<DownloadIcon />
 				</TooltipIconButton>
 			</ActionBarPrimitive.ExportMarkdown>
 			{isLast && (
 				<ActionBarPrimitive.Reload asChild>
-					<TooltipIconButton tooltip="Regenerate response">
+					<TooltipIconButton tooltip={t("regenerate_response")}>
 						<RefreshCwIcon />
 					</TooltipIconButton>
 				</ActionBarPrimitive.Reload>
 			)}
 			{isQuickAssist && (
 				<TooltipIconButton
-					tooltip="Paste back into source app"
+					tooltip={t("paste_back")}
 					onClick={() => {
 						const text = aui.message().getCopyText();
 						api?.replaceText(text);
