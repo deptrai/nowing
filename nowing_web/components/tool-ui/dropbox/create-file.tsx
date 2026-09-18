@@ -14,6 +14,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -93,6 +94,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<DropboxCreateFileContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -102,8 +104,8 @@ function ApprovalCard({
 	const validAccounts = accounts.filter((a) => !a.auth_expired);
 	const expiredAccounts = accounts.filter((a) => a.auth_expired);
 	const supportedTypes = interruptData.context?.supported_types ?? [
-		{ value: "paper", label: "Dropbox Paper (.paper)" },
-		{ value: "docx", label: "Word Document (.docx)" },
+		{ value: "paper", label: t("dropbox_paper_label") },
+		{ value: "docx", label: t("dropbox_docx_label") },
 	];
 
 	const defaultAccountId = useMemo(() => {
@@ -376,10 +378,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create Dropbox file</p>
+				<p className="text-sm font-semibold text-destructive">{t("dropbox_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -390,10 +393,11 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Dropbox authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("dropbox_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -404,11 +408,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Dropbox file created successfully"}
+					{result.message || t("dropbox_create_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -425,7 +430,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Dropbox
+							{t("dropbox_open_in_dropbox")}
 						</a>
 					</div>
 				)}

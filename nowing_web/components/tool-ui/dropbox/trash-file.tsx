@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import { isInterruptResult, useHitlDecision, useHitlPhase } from "@/features/chat-messages/hitl";
 
@@ -88,6 +89,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<DropboxTrashFileContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [deleteFromKb, setDeleteFromKb] = useState(false);
 
@@ -228,10 +230,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to delete file</p>
+				<p className="text-sm font-semibold text-destructive">{t("common_failed_to_delete")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -253,10 +256,11 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Dropbox authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("dropbox_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -267,11 +271,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "File deleted from Dropbox"}
+					{result.message || t("dropbox_deleted_success")}
 				</p>
 			</div>
 			{result.deleted_from_kb && (
@@ -279,7 +284,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 text-xs">
 						<span className="text-green-600 dark:text-green-500">
-							Also removed from knowledge base
+							{t("common_also_removed_kb")}
 						</span>
 					</div>
 				</>

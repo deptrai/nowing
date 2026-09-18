@@ -14,6 +14,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -108,6 +109,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<DriveCreateFileContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -138,7 +140,9 @@ function ApprovalCard({
 	}, []);
 
 	const fileTypeLabel =
-		FILE_TYPE_LABELS[selectedFileType] ?? FILE_TYPE_LABELS[args.file_type] ?? "Google Drive File";
+		(selectedFileType === "google_sheet" || args.file_type === "google_sheet")
+			? t("gdrive_google_sheet")
+			: t("gdrive_google_doc");
 
 	const isNameValid = useMemo(() => {
 		const name = pendingEdits?.name ?? args.name;
@@ -395,11 +399,12 @@ function ApprovalCard({
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Additional Google Drive permissions required
+					{t("gdrive_insufficient_perms")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -411,10 +416,11 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create Google Drive file</p>
+				<p className="text-sm font-semibold text-destructive">{t("gdrive_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -425,11 +431,12 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Google Drive authentication expired
+					{t("gdrive_auth_expired")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -441,11 +448,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Google Drive file created successfully"}
+					{result.message || t("gdrive_create_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -462,7 +470,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Google Drive
+							{t("gdrive_open_in_drive")}
 						</a>
 					</div>
 				)}
