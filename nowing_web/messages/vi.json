@@ -1045,7 +1045,20 @@
 		"mc_delete": "Xóa",
 		"mc_api_key_opt": "API Key (tùy chọn)",
 		"mc_enter_key": "Nhập API key của bạn",
-		"mc_connect_provider": "Kết nối {name}"
+		"mc_connect_provider": "Kết nối {name}",
+		"mc_hint_local": "Với server local, dùng host.docker.internal thay localhost.",
+		"mc_hint_v1": "Nhập URL endpoint đầy đủ. Provider này yêu cầu endpoint tương thích /v1.",
+		"mc_hint_exact": "Nhập đúng API base URL chat-completions. Nowing sẽ không thêm /v1.",
+		"mc_hint_proxy": "Chỉ override nếu bạn route qua proxy hoặc gateway.",
+		"mc_sel_azure": "Chọn model để bật cho Azure OpenAI",
+		"mc_sel_bedrock": "Chọn model để bật cho Amazon Bedrock",
+		"mc_sel_gemini": "Chọn model để bật cho Gemini",
+		"mc_sel_provider": "Chọn model để bật cho provider này",
+		"mc_add_provider": "Thêm Provider",
+		"mc_add_provider_desc": "Nowing hỗ trợ các provider phổ biến và endpoint model tự host.",
+		"mc_available_providers": "Provider khả dụng",
+		"mc_ws_loading": "Workspace vẫn đang tải. Vui lòng thử lại.",
+		"mc_select_one": "Chọn ít nhất một model trước khi kết nối"
 	},
 	"logs": {
 		"title": "Nhật ký tác vụ",

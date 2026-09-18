@@ -1045,7 +1045,20 @@
 		"mc_delete": "Delete",
 		"mc_api_key_opt": "API Key (optional)",
 		"mc_enter_key": "Enter your API key",
-		"mc_connect_provider": "Connect {name}"
+		"mc_connect_provider": "Connect {name}",
+		"mc_hint_local": "For local servers, use host.docker.internal instead of localhost.",
+		"mc_hint_v1": "Enter the full endpoint URL. This provider expects a /v1-compatible endpoint.",
+		"mc_hint_exact": "Enter the exact chat-completions API base URL. Nowing will not append /v1.",
+		"mc_hint_proxy": "Override only if you route through a proxy or gateway.",
+		"mc_sel_azure": "Select the models to enable for Azure OpenAI",
+		"mc_sel_bedrock": "Select the models to enable for Amazon Bedrock",
+		"mc_sel_gemini": "Select the models to enable for Gemini",
+		"mc_sel_provider": "Select the models to enable for this provider",
+		"mc_add_provider": "Add Provider",
+		"mc_add_provider_desc": "Nowing supports popular providers and self-hosted model endpoints.",
+		"mc_available_providers": "Available Providers",
+		"mc_ws_loading": "Workspace is still loading. Please try again.",
+		"mc_select_one": "Select at least one model before connecting"
 	},
 	"logs": {
 		"title": "Task Logs",

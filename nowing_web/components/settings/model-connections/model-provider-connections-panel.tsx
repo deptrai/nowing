@@ -15,6 +15,7 @@ import type { ConnectionRead, ModelSelection } from "@/contracts/types/model-con
 import { ConnectionCard } from "./connection-card";
 import { capability, type SelectableModel } from "./model-utils";
 import { ProviderConnectDialog } from "./provider-connect-dialog";
+import { useTranslations } from "next-intl";
 import {
 	type ConnectionDraft,
 	PROVIDER_ORDER,
@@ -52,12 +53,16 @@ export function ModelProviderConnectionsPanel({
 	workspaceId,
 	connections,
 	className,
-	addProviderTitle = "Add Provider",
-	addProviderDescription = "Nowing supports popular providers and self-hosted model endpoints.",
-	availableProvidersTitle = "Available Providers",
+	addProviderTitle,
+	addProviderDescription,
+	availableProvidersTitle,
 	footerAction,
 	showAddProviderHeader = true,
 }: ModelProviderConnectionsPanelProps) {
+	const t = useTranslations("settings");
+	const resolvedAddTitle = addProviderTitle ?? t("mc_add_provider");
+	const resolvedAddDesc = addProviderDescription ?? t("mc_add_provider_desc");
+	const resolvedAvailTitle = availableProvidersTitle ?? t("mc_available_providers");
 	const { data: providers = [] } = useAtomValue(modelProvidersAtom);
 	const createConnection = useAtomValue(createModelConnectionMutationAtom);
 	const previewModels = useAtomValue(previewConnectionModelsMutationAtom);
@@ -127,14 +132,14 @@ export function ModelProviderConnectionsPanel({
 	// resolver (`to_litellm`) forwards `extra.litellm_params` straight to LiteLLM.
 	function handleCreate(draft: ConnectionDraft) {
 		if (!Number.isFinite(workspaceId) || workspaceId <= 0) {
-			toast.error("Workspace is still loading. Please try again.");
+			toast.error(t("mc_ws_loading"));
 			return;
 		}
 
 		const models = connectionModelsForDraft(draft);
 		const testModel = representativeTestModel(models);
 		if (!testModel) {
-			toast.error("Select at least one model before connecting");
+			toast.error(t("mc_select_one"));
 			return;
 		}
 
@@ -171,7 +176,7 @@ export function ModelProviderConnectionsPanel({
 		setIsAddProviderOpen(true);
 		if (providerId === "vertex_ai") {
 			if (!Number.isFinite(workspaceId) || workspaceId <= 0) {
-				toast.error("Workspace is still loading. Please try again.");
+				toast.error(t("mc_ws_loading"));
 				return;
 			}
 
@@ -195,7 +200,7 @@ export function ModelProviderConnectionsPanel({
 
 	function refreshConnectModels(draft: ConnectionDraft) {
 		if (!Number.isFinite(workspaceId) || workspaceId <= 0) {
-			toast.error("Workspace is still loading. Please try again.");
+			toast.error(t("mc_ws_loading"));
 			return;
 		}
 
@@ -250,8 +255,8 @@ export function ModelProviderConnectionsPanel({
 			<div className="flex flex-col gap-3">
 				{showAddProviderHeader ? (
 					<div>
-						<h3 className="text-base font-semibold">{addProviderTitle}</h3>
-						<p className="text-sm text-muted-foreground">{addProviderDescription}</p>
+						<h3 className="text-base font-semibold">{resolvedAddTitle}</h3>
+						<p className="text-sm text-muted-foreground">{resolvedAddDesc}</p>
 					</div>
 				) : null}
 				<div className="grid gap-3 md:grid-cols-2">
@@ -300,7 +305,7 @@ export function ModelProviderConnectionsPanel({
 			{connections.length > 0 ? (
 				<div className="flex flex-col gap-3">
 					<Separator />
-					<h3 className="text-base font-semibold">{availableProvidersTitle}</h3>
+					<h3 className="text-base font-semibold">{resolvedAvailTitle}</h3>
 					<div className="flex flex-col gap-3">
 						{connections.map((connection) => (
 							<ConnectionCard key={connection.id} connection={connection} />

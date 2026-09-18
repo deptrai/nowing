@@ -85,15 +85,15 @@ export function ProviderConnectDialog({
 
 	const modelDescription = (() => {
 		if (isAzure) {
-			return "Select the models to enable for Azure OpenAI";
+			return t("mc_sel_azure");
 		}
 		if (isBedrock) {
-			return "Select the models to enable for Amazon Bedrock";
+			return t("mc_sel_bedrock");
 		}
 		if (isVertex) {
-			return "Select the models to enable for Gemini";
+			return t("mc_sel_gemini");
 		}
-		return "Select the models to enable for this provider";
+		return t("mc_sel_provider");
 	})();
 
 	const canRefreshModels = !isAzure && !isVertex && (!isBedrock || canSubmit);
