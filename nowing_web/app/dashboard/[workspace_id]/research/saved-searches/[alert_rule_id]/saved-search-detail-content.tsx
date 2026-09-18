@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SearchX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { AlertRule, AlertSnapshot } from "@/contracts/types/alert-rules.types";
 import { alertRulesApiService } from "@/lib/apis/alert-rules-api.service";
 
@@ -31,6 +32,7 @@ export function SavedSearchDetailContent({
 	workspaceId,
 	alertRuleId,
 }: SavedSearchDetailContentProps) {
+	const t = useTranslations("saved_searches");
 	const searchParams = useSearchParams();
 	const rawSnapshotId = searchParams.get("snapshot");
 	const snapshotId = isValidUuid(rawSnapshotId) ? rawSnapshotId : null;
@@ -73,9 +75,9 @@ export function SavedSearchDetailContent({
 		return (
 			<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-12 text-center">
 				<SearchX className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden />
-				<h2 className="mt-3 text-base font-semibold text-foreground">Saved search not found</h2>
+				<h2 className="mt-3 text-base font-semibold text-foreground">{t("not_found")}</h2>
 				<p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-					This saved search may have been deleted or you don't have access to it.
+					{t("not_found_description")}
 				</p>
 			</div>
 		);
@@ -86,8 +88,8 @@ export function SavedSearchDetailContent({
 			<div>
 				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">{rule.name}</h1>
 				<p className="mt-1 text-xs text-muted-foreground font-mono">
-					Saved search · {rule.capability_id} ·{" "}
-					{rule.schedule === "none" ? "manual" : rule.schedule}
+					{t("saved_search_label")} · {rule.capability_id} ·{" "}
+					{rule.schedule === "none" ? t("manual") : rule.schedule}
 				</p>
 			</div>
 
@@ -95,8 +97,10 @@ export function SavedSearchDetailContent({
 				<div className="rounded-lg border border-border/60">
 					<div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
 						<h2 className="text-sm font-medium">
-							Latest run{" "}
-							{selectedSnapshotId && selectedSnapshot.id !== selectedSnapshotId ? "— selected" : ""}
+							{t("latest_run")}{" "}
+							{selectedSnapshotId && selectedSnapshot.id !== selectedSnapshotId
+								? t("selected_marker")
+								: ""}
 						</h2>
 						<span className="text-xs text-muted-foreground">
 							{new Date(selectedSnapshot.created_at).toLocaleString()}
@@ -104,47 +108,47 @@ export function SavedSearchDetailContent({
 					</div>
 					<div className="grid grid-cols-2 gap-4 px-4 py-4 sm:grid-cols-4">
 						<div>
-							<p className="text-xs text-muted-foreground">New items</p>
+							<p className="text-xs text-muted-foreground">{t("new_items")}</p>
 							<p className="mt-0.5 text-lg font-semibold">{selectedSnapshot.new_items_count}</p>
 						</div>
 						<div>
-							<p className="text-xs text-muted-foreground">Changed</p>
+							<p className="text-xs text-muted-foreground">{t("changed")}</p>
 							<p className="mt-0.5 text-lg font-semibold">{selectedSnapshot.changed_items_count}</p>
 						</div>
 						<div>
-							<p className="text-xs text-muted-foreground">Removed</p>
+							<p className="text-xs text-muted-foreground">{t("removed")}</p>
 							<p className="mt-0.5 text-lg font-semibold">{selectedSnapshot.removed_items_count}</p>
 						</div>
 						<div>
-							<p className="text-xs text-muted-foreground">Status</p>
+							<p className="text-xs text-muted-foreground">{t("status")}</p>
 							<p className="mt-0.5 text-lg font-semibold">{selectedSnapshot.run_status}</p>
 						</div>
 					</div>
 					{selectedSnapshot.degradation_reasons?.length ? (
 						<p className="border-t border-border/60 px-4 py-2 text-xs text-amber-600 dark:text-amber-400">
-							Some sources were unavailable: {selectedSnapshot.degradation_reasons.join(", ")}
+							{t("degraded_sources")} {selectedSnapshot.degradation_reasons.join(", ")}
 						</p>
 					) : null}
 				</div>
 			) : snapshotMissing ? (
 				<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-10 text-center">
-					<p className="text-sm font-medium">Linked snapshot not found</p>
+					<p className="text-sm font-medium">{t("snapshot_not_found")}</p>
 					<p className="mt-1 text-xs text-muted-foreground">
-						The run this notification pointed to no longer exists. Showing the latest run instead.
+						{t("snapshot_not_found_description")}
 					</p>
 				</div>
 			) : (
 				<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-10 text-center">
-					<p className="text-sm font-medium">No runs yet</p>
+					<p className="text-sm font-medium">{t("no_runs")}</p>
 					<p className="mt-1 text-xs text-muted-foreground">
-						This saved search hasn't run yet. New matches will appear here.
+						{t("no_runs_description")}
 					</p>
 				</div>
 			)}
 
 			{snapshots.length > 1 ? (
 				<div className="rounded-lg border border-border/60">
-					<h2 className="border-b border-border/60 px-4 py-3 text-sm font-medium">Run history</h2>
+					<h2 className="border-b border-border/60 px-4 py-3 text-sm font-medium">{t("run_history")}</h2>
 					<ul className="divide-y divide-border/60">
 						{snapshots.map((snapshot) => (
 							<li key={snapshot.id}>
@@ -155,7 +159,7 @@ export function SavedSearchDetailContent({
 								>
 									<span className="text-sm">{new Date(snapshot.created_at).toLocaleString()}</span>
 									<span className="flex items-center gap-3 text-xs text-muted-foreground">
-										<span>+{snapshot.new_items_count} new</span>
+										<span>{t("new_count", { count: snapshot.new_items_count })}</span>
 										<span>{snapshot.run_status}</span>
 									</span>
 								</button>

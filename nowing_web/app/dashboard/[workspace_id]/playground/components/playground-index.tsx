@@ -4,6 +4,7 @@ import { ArrowRight, History, Info, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { PLAYGROUND_PLATFORMS } from "@/lib/playground/catalog";
@@ -17,6 +18,7 @@ function usePlaygroundBase(workspaceId: number) {
 }
 
 export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
+	const t = useTranslations("playground");
 	const base = usePlaygroundBase(workspaceId);
 
 	// The grid renders from the static catalog immediately; pricing fills in
@@ -33,15 +35,16 @@ export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
 				<Info />
 				<AlertDescription>
 					<p>
-						Manually run Nowing's platform-native APIs and inspect their output. To use these APIs
-						outside Nowing,{" "}
-						<Link
-							href={`${base}/api-keys`}
-							className="font-medium text-foreground underline-offset-4 hover:underline"
-						>
-							create an API key
-						</Link>
-						.
+						{t.rich("intro", {
+							link: (chunks) => (
+								<Link
+									href={`${base}/api-keys`}
+									className="font-medium text-foreground underline-offset-4 hover:underline"
+								>
+									{chunks}
+								</Link>
+							),
+						})}
 					</p>
 				</AlertDescription>
 			</Alert>
@@ -54,8 +57,8 @@ export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
 					<div className="flex items-center gap-3">
 						<History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 						<div>
-							<p className="text-sm font-medium">API Runs</p>
-							<p className="text-xs text-muted-foreground">See every API run in this workspace</p>
+							<p className="text-sm font-medium">{t("api_runs")}</p>
+							<p className="text-xs text-muted-foreground">{t("api_runs_description")}</p>
 						</div>
 					</div>
 					<ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -67,8 +70,8 @@ export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
 					<div className="flex items-center gap-3">
 						<KeyRound className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 						<div>
-							<p className="text-sm font-medium">API Keys</p>
-							<p className="text-xs text-muted-foreground">Manage keys and workspace API access</p>
+							<p className="text-sm font-medium">{t("api_keys")}</p>
+							<p className="text-xs text-muted-foreground">{t("api_keys_description")}</p>
 						</div>
 					</div>
 					<ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />

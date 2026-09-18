@@ -14,6 +14,7 @@ import {
 	Tag,
 } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import CreateFromTemplateModal from "@/components/alerts/CreateFromTemplateModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface SavedSearchesListContentProps {
 }
 
 export function SavedSearchesListContent({ workspaceId }: SavedSearchesListContentProps) {
+	const t = useTranslations("saved_searches");
 	const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
 	const {
@@ -58,10 +60,9 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 		<div className="p-6 space-y-6 max-w-7xl mx-auto">
 			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 				<div>
-					<h1 className="text-2xl font-bold tracking-tight">Saved Searches & Alert Rules</h1>
+					<h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
 					<p className="text-sm text-muted-foreground">
-						Automated continuous research monitoring for news, stock prices, corporate changes, and
-						e-commerce.
+						{t("subtitle")}
 					</p>
 				</div>
 				<div className="flex items-center gap-2.5">
@@ -71,14 +72,14 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 						data-testid="btn-open-template-modal"
 					>
 						<Tag className="h-4 w-4" />
-						Create from Template
+						{t("create_from_template")}
 					</Button>
 				</div>
 			</div>
 
 			{isLoading ? (
 				<div className="py-16 text-center text-sm text-muted-foreground animate-pulse">
-					Loading alert rules...
+					{t("loading")}
 				</div>
 			) : rules.length === 0 ? (
 				<div className="text-center py-16 border border-dashed rounded-xl space-y-4 bg-muted/10">
@@ -86,10 +87,9 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 						<Search className="h-6 w-6" />
 					</div>
 					<div className="space-y-1">
-						<h3 className="font-semibold text-base">No active alert rules yet</h3>
+						<h3 className="font-semibold text-base">{t("no_rules")}</h3>
 						<p className="text-xs text-muted-foreground max-w-md mx-auto">
-							Activate 1-click intelligent monitoring for Vietnam stocks, business registry updates,
-							or e-commerce price drops.
+							{t("no_rules_description")}
 						</p>
 					</div>
 					<Button
@@ -100,7 +100,7 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 						data-testid="btn-empty-create-template"
 					>
 						<Plus className="h-4 w-4" />
-						Browse Vertical Templates
+						{t("browse_templates")}
 					</Button>
 				</div>
 			) : (
@@ -124,16 +124,16 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 										variant={rule.enabled ? "default" : "outline"}
 										className="text-[10px] shrink-0"
 									>
-										{rule.enabled ? "Active" : "Paused"}
+										{rule.enabled ? t("active") : t("paused")}
 									</Badge>
 								</div>
 
 								<div className="text-xs text-muted-foreground space-y-1">
 									<p className="truncate">
-										Capability: <code className="text-foreground">{rule.capability_id}</code>
+										{t("capability_label")} <code className="text-foreground">{rule.capability_id}</code>
 									</p>
 									<p>
-										Strategy:{" "}
+										{t("strategy_label")}{" "}
 										<span className="font-medium text-foreground">{rule.diff_strategy}</span>
 									</p>
 								</div>
@@ -141,7 +141,7 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 								<div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2 border-t">
 									<span className="flex items-center gap-1">
 										<Clock className="h-3 w-3" />
-										Schedule: {rule.schedule}
+										{t("schedule_label")} {rule.schedule}
 									</span>
 									<span className="flex items-center gap-1">
 										<CheckCircle2 className="h-3 w-3 text-emerald-500" />

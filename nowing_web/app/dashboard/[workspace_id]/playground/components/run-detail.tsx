@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Spinner } from "@/components/ui/spinner";
 import { useScraperRun } from "@/hooks/use-scraper-runs";
 import { OutputViewer } from "./output-viewer";
@@ -36,6 +37,7 @@ function parseJsonl(text: string | null): { items: unknown[]; total: number } {
 }
 
 export function RunDetail({ workspaceId, runId }: { workspaceId: number; runId: string }) {
+	const t = useTranslations("playground");
 	const { data: run, isLoading, error } = useScraperRun(workspaceId, runId);
 
 	const parsed = useMemo(() => parseJsonl(run?.output_text ?? null), [run?.output_text]);
@@ -51,7 +53,7 @@ export function RunDetail({ workspaceId, runId }: { workspaceId: number; runId: 
 	if (error) {
 		return (
 			<p className="p-4 text-sm text-destructive">
-				Couldn't load run{error.message ? `: ${error.message}` : "."}
+				{t("load_run_error")}{error.message ? `: ${error.message}` : "."}
 			</p>
 		);
 	}
@@ -68,7 +70,7 @@ export function RunDetail({ workspaceId, runId }: { workspaceId: number; runId: 
 
 			{run.progress && run.progress.length > 0 && (
 				<div>
-					<h4 className="mb-1.5 text-xs font-medium text-muted-foreground">Progress</h4>
+					<h4 className="mb-1.5 text-xs font-medium text-muted-foreground">{t("progress")}</h4>
 					<div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border/60 bg-background p-3 font-mono text-xs text-muted-foreground">
 						{run.progress.map((event, i) => (
 							<div key={i} className="truncate">
@@ -80,7 +82,7 @@ export function RunDetail({ workspaceId, runId }: { workspaceId: number; runId: 
 			)}
 
 			<div>
-				<h4 className="mb-1.5 text-xs font-medium text-muted-foreground">Input</h4>
+				<h4 className="mb-1.5 text-xs font-medium text-muted-foreground">{t("input")}</h4>
 				<pre className="max-h-64 overflow-auto rounded-md border border-border/60 bg-background p-3 text-xs">
 					<code>{JSON.stringify(run.input ?? {}, null, 2)}</code>
 				</pre>
@@ -88,7 +90,7 @@ export function RunDetail({ workspaceId, runId }: { workspaceId: number; runId: 
 
 			<div>
 				<h4 className="mb-1.5 text-xs font-medium text-muted-foreground">
-					Output {parsed.total > 0 && `(${parsed.total} items)`}
+					{t("output")} {parsed.total > 0 && t("output_items", { count: parsed.total })}
 				</h4>
 				{run.output_text ? (
 					<>
@@ -98,12 +100,12 @@ export function RunDetail({ workspaceId, runId }: { workspaceId: number; runId: 
 						/>
 						{parsed.total > MAX_OUTPUT_LINES && (
 							<p className="mt-2 text-xs text-muted-foreground">
-								Showing first {MAX_OUTPUT_LINES} of {parsed.total} stored items.
+								{t("showing_first_items", { max: MAX_OUTPUT_LINES, total: parsed.total })}
 							</p>
 						)}
 					</>
 				) : (
-					<p className="text-sm text-muted-foreground">No output stored for this run.</p>
+					<p className="text-sm text-muted-foreground">{t("no_output")}</p>
 				)}
 			</div>
 		</div>
