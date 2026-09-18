@@ -1573,6 +1573,9 @@
 		}
 	},
 	"public_chat": {
+		"copy_continue": "Sao chép và tiếp tục đoạn chat này",
+		"copy_failed": "Không thể sao chép đoạn chat",
+		"copy_tooltip": "Sao chép",
 		"not_found_title": "Đoạn chat này đã bị xóa.",
 		"click_here": "Nhấp vào đây",
 		"sign_in_prompt": "để đăng nhập vào Nowing và bắt đầu đoạn chat của riêng bạn."
@@ -2251,6 +2254,12 @@
 		"new_balance": "Số dư credit mới: {balance}"
 	},
 	"announcements": {
+		"category_feature": "Tính năng",
+		"category_update": "Cập nhật",
+		"category_maintenance": "Bảo trì",
+		"category_info": "Thông tin",
+		"badge_important": "Quan trọng",
+		"whats_new": "Có gì mới",
 		"empty_title": "Chưa có gì mới",
 		"empty_desc": "Bạn đã xem hết! Cập nhật mới sẽ xuất hiện ở đây."
 	},

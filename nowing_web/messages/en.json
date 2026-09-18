@@ -1573,6 +1573,9 @@
 		}
 	},
 	"public_chat": {
+		"copy_continue": "Copy and continue this chat",
+		"copy_failed": "Failed to copy chat",
+		"copy_tooltip": "Copy",
 		"not_found_title": "This chat has been deleted.",
 		"click_here": "Click here",
 		"sign_in_prompt": "to log in to Nowing and start your own."
@@ -2249,6 +2252,12 @@
 		"new_balance": "New credit balance: {balance}"
 	},
 	"announcements": {
+		"category_feature": "Feature",
+		"category_update": "Update",
+		"category_maintenance": "Maintenance",
+		"category_info": "Info",
+		"badge_important": "Important",
+		"whats_new": "What's New",
 		"empty_title": "Nothing new yet",
 		"empty_desc": "You're all caught up! New updates will appear here."
 	},

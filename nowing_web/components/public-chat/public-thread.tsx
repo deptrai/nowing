@@ -16,6 +16,7 @@ import { CitationMetadataProvider } from "@/components/assistant-ui/citation-met
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ReasoningMessagePart } from "@/components/assistant-ui/reasoning-message-part";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { useTranslations } from "next-intl";
 import { GenerateImageToolUI } from "@/components/tool-ui/generate-image";
 import { GenerateReportToolUI } from "@/components/tool-ui/generate-report";
 import { GenerateResumeToolUI } from "@/components/tool-ui/generate-resume";
@@ -186,6 +187,7 @@ const PublicAssistantMessage: FC = () => {
 };
 
 const PublicAssistantActionBar: FC = () => {
+	const t = useTranslations("public_chat");
 	return (
 		<ActionBarPrimitive.Root
 			autohide="not-last"
@@ -193,7 +195,7 @@ const PublicAssistantActionBar: FC = () => {
 			className="aui-assistant-action-bar-root -ml-1 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
 		>
 			<ActionBarPrimitive.Copy asChild>
-				<TooltipIconButton tooltip="Copy">
+				<TooltipIconButton tooltip={t("copy_tooltip")}>
 					<AuiIf condition={({ message }) => message.isCopied}>
 						<CheckIcon />
 					</AuiIf>

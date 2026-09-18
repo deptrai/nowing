@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useSession } from "@/hooks/use-session";
 import { publicChatApiService } from "@/lib/apis/public-chat-api.service";
+import { useTranslations } from "next-intl";
 
 interface PublicChatFooterProps {
 	shareToken: string;
 }
 
 export function PublicChatFooter({ shareToken }: PublicChatFooterProps) {
+	const t = useTranslations("public_chat");
 	const router = useRouter();
 	const session = useSession();
 	const [isCloning, setIsCloning] = useState(false);
@@ -30,7 +32,7 @@ export function PublicChatFooter({ shareToken }: PublicChatFooterProps) {
 			// Redirect to the new chat page with cloned content
 			router.push(`/dashboard/${response.workspace_id}/new-chat/${response.thread_id}`);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Failed to copy chat";
+			const message = error instanceof Error ? error.message : t("copy_failed");
 			toast.error(message);
 			setIsCloning(false);
 		}
@@ -69,7 +71,7 @@ export function PublicChatFooter({ shareToken }: PublicChatFooterProps) {
 				className="gap-2 rounded-full px-6 shadow-lg transition-al select-none duration-200 hover:scale-[1.02] hover:shadow-xl hover:brightness-110 hover:bg-primary"
 			>
 				{isCloning ? <Spinner size="sm" /> : <Copy className="size-4" />}
-				Copy and continue this chat
+				{t("copy_continue")}
 			</Button>
 		</div>
 	);

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/co
 import type { AnnouncementCategory } from "@/contracts/types/announcement.types";
 import type { AnnouncementWithState } from "@/hooks/use-announcements";
 import { formatRelativeDate } from "@/lib/format-date";
+import { useTranslations } from "next-intl";
 
 const categoryConfig: Record<
 	AnnouncementCategory,
@@ -46,6 +47,13 @@ const categoryConfig: Record<
 };
 
 export function AnnouncementCard({ announcement }: { announcement: AnnouncementWithState }) {
+	const t = useTranslations("announcements");
+	const categoryLabels: Record<AnnouncementCategory, string> = {
+		feature: t("category_feature"),
+		update: t("category_update"),
+		maintenance: t("category_maintenance"),
+		info: t("category_info"),
+	};
 	const config = categoryConfig[announcement.category] ?? categoryConfig.info;
 	const Icon = config.icon;
 
@@ -76,12 +84,12 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 									{announcement.title}
 								</h2>
 								<Badge variant={config.badgeVariant} className="text-[10px] px-1.5 py-0">
-									{config.label}
+									{categoryLabels[announcement.category] ?? config.label}
 								</Badge>
 								{announcement.isImportant && (
 									<Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
 										<Bell className="h-2.5 w-2.5" aria-hidden="true" />
-										Important
+										{t("badge_important")}
 									</Badge>
 								)}
 							</div>
