@@ -2,6 +2,7 @@
 
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
 	adminGlobalModelConnectionsAtom,
@@ -190,6 +191,7 @@ function modelDraftFromPreview(
 }
 
 export default function GlobalModelConnectionsAdminPage() {
+	const t = useTranslations("admin");
 	const [{ data: user, isLoading: userLoading }] = useAtom(currentUserAtom);
 	const [{ data: connections = [], isLoading: listLoading }] = useAtom(
 		adminGlobalModelConnectionsAtom
@@ -287,7 +289,7 @@ export default function GlobalModelConnectionsAdminPage() {
 
 	async function handleDiscoverPreview() {
 		if (!isCreateValid) {
-			toast.error("Provider and model ID are required to discover models");
+			toast.error(t("models_discover_required"));
 			return;
 		}
 		try {
@@ -301,7 +303,7 @@ export default function GlobalModelConnectionsAdminPage() {
 
 	async function handleTestPreview() {
 		if (!isCreateValid) {
-			toast.error("Provider and model ID are required to test");
+			toast.error(t("models_test_required"));
 			return;
 		}
 		try {
@@ -314,7 +316,7 @@ export default function GlobalModelConnectionsAdminPage() {
 
 	async function handleCreate() {
 		if (!isCreateValid) {
-			toast.error("Provider and model ID are required");
+			toast.error(t("models_required"));
 			return;
 		}
 		try {
@@ -452,8 +454,8 @@ export default function GlobalModelConnectionsAdminPage() {
 	if (!user?.is_superuser) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-				<h1 className="text-2xl font-semibold">Access denied</h1>
-				<p className="text-muted-foreground">You must be a superuser to view this page.</p>
+				<h1 className="text-2xl font-semibold">{t("models_access_denied")}</h1>
+				<p className="text-muted-foreground">{t("models_access_denied_desc")}</p>
 			</div>
 		);
 	}
@@ -462,12 +464,12 @@ export default function GlobalModelConnectionsAdminPage() {
 		<div className="container mx-auto max-w-5xl p-6">
 			<div className="mb-6 flex items-center justify-between">
 				<div>
-					<h1 className="font-serif text-2xl sm:text-3xl font-normal">Global model connections</h1>
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal">{t("models_title")}</h1>
 					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
-						Manage platform-level LLM connections and models.
+						{t("models_subtitle")}
 					</p>
 				</div>
-				<Button onClick={() => setCreateOpen(true)}>Add managed connection</Button>
+				<Button onClick={() => setCreateOpen(true)}>{t("models_add_connection")}</Button>
 			</div>
 
 			{listLoading ? (
@@ -477,7 +479,7 @@ export default function GlobalModelConnectionsAdminPage() {
 			) : connections.length === 0 ? (
 				<Card>
 					<CardContent className="flex h-40 items-center justify-center text-muted-foreground">
-						No global model connections found.
+						{t("models_empty")}
 					</CardContent>
 				</Card>
 			) : (
@@ -522,11 +524,11 @@ export default function GlobalModelConnectionsAdminPage() {
 												<Switch
 													checked={connection.enabled}
 													onCheckedChange={() => handleToggleConnectionEnabled(connection)}
-													aria-label="Toggle connection"
+													aria-label={t("models_toggle_connection")}
 												/>
 											) : (
 												<span className="text-sm text-muted-foreground">
-													{connection.enabled ? "Enabled" : "Disabled"}
+													{connection.enabled ? t("models_enabled") : t("models_disabled")}
 												</span>
 											)}
 										</div>
@@ -540,7 +542,7 @@ export default function GlobalModelConnectionsAdminPage() {
 												size="sm"
 												onClick={() => setEditDialog({ open: true, connection })}
 											>
-												Edit
+												{t("models_edit")}
 											</Button>
 											<Button
 												variant="outline"
@@ -548,21 +550,21 @@ export default function GlobalModelConnectionsAdminPage() {
 												onClick={() => openTestDialog(connection)}
 												disabled={connection.models.length === 0}
 											>
-												Test
+												{t("models_test")}
 											</Button>
 											<Button
 												variant="outline"
 												size="sm"
 												onClick={() => handleDiscoverSaved(connection)}
 											>
-												Discover
+												{t("models_discover")}
 											</Button>
 											<Button
 												variant="outline"
 												size="sm"
 												onClick={() => setDeleteDialog({ open: true, connection })}
 											>
-												Delete
+												{t("models_delete")}
 											</Button>
 											<Button
 												variant="secondary"
@@ -572,8 +574,8 @@ export default function GlobalModelConnectionsAdminPage() {
 												}
 											>
 												{connection.models.every((m) => m.enabled)
-													? "Disable all models"
-													: "Enable all models"}
+													? t("models_disable_all")
+													: t("models_enable_all")}
 											</Button>
 										</div>
 									)}
@@ -581,9 +583,9 @@ export default function GlobalModelConnectionsAdminPage() {
 									<Separator />
 
 									<div className="space-y-2">
-										<h4 className="text-sm font-medium">Models</h4>
+										<h4 className="text-sm font-medium">{t("models_models")}</h4>
 										{connection.models.length === 0 ? (
-											<p className="text-sm text-muted-foreground">No models</p>
+											<p className="text-sm text-muted-foreground">{t("models_no_models")}</p>
 										) : (
 											<div className="divide-y rounded-md border">
 												{connection.models.map((modelItem) => (
@@ -607,7 +609,7 @@ export default function GlobalModelConnectionsAdminPage() {
 														</div>
 														<div className="flex items-center gap-2">
 															<span className="text-xs text-muted-foreground">
-																{modelItem.enabled ? "Enabled" : "Disabled"}
+																{modelItem.enabled ? t("models_enabled") : t("models_disabled")}
 															</span>
 															{isManaged && modelItem.can_edit && (
 																<>
@@ -616,14 +618,14 @@ export default function GlobalModelConnectionsAdminPage() {
 																		onCheckedChange={() =>
 																			handleToggleModelEnabled(connection, modelItem)
 																		}
-																		aria-label="Toggle model"
+																		aria-label={t("models_toggle_model")}
 																	/>
 																	<Button
 																		variant="ghost"
 																		size="sm"
 																		onClick={() => openEditModelDialog(connection, modelItem)}
 																	>
-																		Edit
+																		{t("models_edit")}
 																	</Button>
 																</>
 															)}
@@ -644,21 +646,21 @@ export default function GlobalModelConnectionsAdminPage() {
 			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 				<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>Add global connection</DialogTitle>
+						<DialogTitle>{t("models_add_title")}</DialogTitle>
 						<DialogDescription>
-							Configure a provider, test it, and save it as a managed global connection.
+							{t("models_add_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-6 py-4">
 						<div className="space-y-3">
-							<h3 className="text-sm font-medium">Provider</h3>
+							<h3 className="text-sm font-medium">{t("models_provider")}</h3>
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 								<div className="space-y-2">
-									<Label htmlFor="provider">Provider</Label>
+									<Label htmlFor="provider">{t("models_provider")}</Label>
 									<Select value={draft.provider} onValueChange={handleProviderChange}>
 										<SelectTrigger id="provider">
-											<SelectValue placeholder="Select a provider" />
+											<SelectValue placeholder={t("models_provider_placeholder")} />
 										</SelectTrigger>
 										<SelectContent>
 											{sortedProviders.map((p) => (
@@ -670,7 +672,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									</Select>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="base_url">Base URL</Label>
+									<Label htmlFor="base_url">{t("models_base_url")}</Label>
 									<Input
 										id="base_url"
 										value={draft.base_url}
@@ -681,7 +683,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="api_key">API key</Label>
+									<Label htmlFor="api_key">{t("models_api_key")}</Label>
 									<Input
 										id="api_key"
 										type="password"
@@ -699,7 +701,7 @@ export default function GlobalModelConnectionsAdminPage() {
 											setDraft((prev) => ({ ...prev, enabled: checked }))
 										}
 									/>
-									<Label htmlFor="enabled">Enabled on save</Label>
+									<Label htmlFor="enabled">{t("models_enabled_on_save")}</Label>
 								</div>
 							</div>
 						</div>
@@ -707,10 +709,10 @@ export default function GlobalModelConnectionsAdminPage() {
 						<Separator />
 
 						<div className="space-y-3">
-							<h3 className="text-sm font-medium">Model</h3>
+							<h3 className="text-sm font-medium">{t("models_model")}</h3>
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 								<div className="space-y-2">
-									<Label htmlFor="model_id">Model ID</Label>
+									<Label htmlFor="model_id">{t("models_model_id")}</Label>
 									<Input
 										id="model_id"
 										value={model.model_id}
@@ -721,7 +723,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="display_name">Display name</Label>
+									<Label htmlFor="display_name">{t("models_display_name")}</Label>
 									<Input
 										id="display_name"
 										value={model.display_name}
@@ -731,7 +733,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="max_input_tokens">Max input tokens</Label>
+									<Label htmlFor="max_input_tokens">{t("models_max_input")}</Label>
 									<Input
 										id="max_input_tokens"
 										type="number"
@@ -742,7 +744,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="cost_per_1k_input_tokens">Cost per 1k input tokens</Label>
+									<Label htmlFor="cost_per_1k_input_tokens">{t("models_cost_input")}</Label>
 									<Input
 										id="cost_per_1k_input_tokens"
 										type="number"
@@ -757,7 +759,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="cost_per_1k_output_tokens">Cost per 1k output tokens</Label>
+									<Label htmlFor="cost_per_1k_output_tokens">{t("models_cost_output")}</Label>
 									<Input
 										id="cost_per_1k_output_tokens"
 										type="number"
@@ -800,7 +802,7 @@ export default function GlobalModelConnectionsAdminPage() {
 											setModel((prev) => ({ ...prev, supports_chat: checked }))
 										}
 									/>
-									<Label htmlFor="supports_chat">Chat</Label>
+									<Label htmlFor="supports_chat">{t("models_chat")}</Label>
 								</div>
 								<div className="flex items-center gap-2">
 									<Switch
@@ -810,7 +812,7 @@ export default function GlobalModelConnectionsAdminPage() {
 											setModel((prev) => ({ ...prev, supports_image_input: checked }))
 										}
 									/>
-									<Label htmlFor="supports_image_input">Vision</Label>
+									<Label htmlFor="supports_image_input">{t("models_vision")}</Label>
 								</div>
 								<div className="flex items-center gap-2">
 									<Switch
@@ -820,7 +822,7 @@ export default function GlobalModelConnectionsAdminPage() {
 											setModel((prev) => ({ ...prev, supports_tools: checked }))
 										}
 									/>
-									<Label htmlFor="supports_tools">Tools</Label>
+									<Label htmlFor="supports_tools">{t("models_tools")}</Label>
 								</div>
 								<div className="flex items-center gap-2">
 									<Switch
@@ -830,14 +832,14 @@ export default function GlobalModelConnectionsAdminPage() {
 											setModel((prev) => ({ ...prev, supports_image_generation: checked }))
 										}
 									/>
-									<Label htmlFor="supports_image_generation">Image</Label>
+									<Label htmlFor="supports_image_generation">{t("models_image")}</Label>
 								</div>
 							</div>
 						</div>
 
 						{previewModels.length > 0 && (
 							<div className="space-y-2">
-								<h3 className="text-sm font-medium">Discovered models</h3>
+								<h3 className="text-sm font-medium">{t("models_discovered")}</h3>
 								<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 									{previewModels.map((previewModel) => (
 										<Button
@@ -860,17 +862,17 @@ export default function GlobalModelConnectionsAdminPage() {
 								onClick={handleDiscoverPreview}
 								disabled={preview.isPending}
 							>
-								{preview.isPending ? <Spinner size="xs" /> : "Discover models"}
+								{preview.isPending ? <Spinner size="xs" /> : t("models_discover_models")}
 							</Button>
 							<Button
 								variant="outline"
 								onClick={handleTestPreview}
 								disabled={testPreview.isPending}
 							>
-								{testPreview.isPending ? <Spinner size="xs" /> : "Test model"}
+								{testPreview.isPending ? <Spinner size="xs" /> : t("models_test_model")}
 							</Button>
 							<Button onClick={handleCreate} disabled={!isCreateValid || create.isPending}>
-								{create.isPending ? <Spinner size="xs" /> : "Save connection"}
+								{create.isPending ? <Spinner size="xs" /> : t("models_save_connection")}
 							</Button>
 						</div>
 					</div>
@@ -884,11 +886,11 @@ export default function GlobalModelConnectionsAdminPage() {
 			>
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
-						<DialogTitle>Edit connection</DialogTitle>
+						<DialogTitle>{t("models_edit_connection")}</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<div className="space-y-2">
-							<Label htmlFor="edit_provider">Provider</Label>
+							<Label htmlFor="edit_provider">{t("models_provider")}</Label>
 							<Input
 								id="edit_provider"
 								value={editDraft.provider}
@@ -898,7 +900,7 @@ export default function GlobalModelConnectionsAdminPage() {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="edit_base_url">Base URL</Label>
+							<Label htmlFor="edit_base_url">{t("models_base_url")}</Label>
 							<Input
 								id="edit_base_url"
 								value={editDraft.base_url}
@@ -908,7 +910,7 @@ export default function GlobalModelConnectionsAdminPage() {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="edit_api_key">API key (leave blank to keep unchanged)</Label>
+							<Label htmlFor="edit_api_key">{t("models_api_key_hint")}</Label>
 							<Input
 								id="edit_api_key"
 								type="password"
@@ -926,7 +928,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									setEditDraft((prev) => ({ ...prev, enabled: checked }))
 								}
 							/>
-							<Label htmlFor="edit_enabled">Enabled</Label>
+							<Label htmlFor="edit_enabled">{t("models_enabled_label")}</Label>
 						</div>
 					</div>
 					<DialogFooter>
@@ -934,10 +936,10 @@ export default function GlobalModelConnectionsAdminPage() {
 							variant="outline"
 							onClick={() => setEditDialog({ open: false, connection: null })}
 						>
-							Cancel
+							{t("models_cancel")}
 						</Button>
 						<Button onClick={handleUpdate} disabled={update.isPending}>
-							{update.isPending ? <Spinner size="xs" /> : "Save"}
+							{update.isPending ? <Spinner size="xs" /> : t("models_save")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -952,14 +954,14 @@ export default function GlobalModelConnectionsAdminPage() {
 			>
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
-						<DialogTitle>Test model</DialogTitle>
+						<DialogTitle>{t("models_test_model")}</DialogTitle>
 						<DialogDescription>
-							Select a model from {testDialog.connection?.provider} to test.
+							{t("models_test_desc", {provider: testDialog.connection?.provider ?? ""})}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<div className="space-y-2">
-							<Label htmlFor="test_model">Model</Label>
+							<Label htmlFor="test_model">{t("models_model")}</Label>
 							<Select
 								value={testDialog.modelId}
 								onValueChange={(value) => setTestDialog((prev) => ({ ...prev, modelId: value }))}
@@ -982,10 +984,10 @@ export default function GlobalModelConnectionsAdminPage() {
 							variant="outline"
 							onClick={() => setTestDialog({ open: false, connection: null, modelId: "" })}
 						>
-							Cancel
+							{t("models_cancel")}
 						</Button>
 						<Button onClick={handleTestSaved} disabled={testSaved.isPending}>
-							{testSaved.isPending ? <Spinner size="xs" /> : "Test"}
+							{testSaved.isPending ? <Spinner size="xs" /> : t("models_test")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1004,14 +1006,14 @@ export default function GlobalModelConnectionsAdminPage() {
 			>
 				<DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>Discovered models</DialogTitle>
+						<DialogTitle>{t("models_discovered")}</DialogTitle>
 						<DialogDescription>
-							Models found for {discoverDialog.connection?.provider}. These are not saved yet.
+							{t("models_discovered_desc", {provider: discoverDialog.connection?.provider ?? ""})}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-3 py-4">
 						{discoverDialog.models.length === 0 ? (
-							<p className="text-muted-foreground">No models discovered.</p>
+							<p className="text-muted-foreground">{t("models_none_discovered")}</p>
 						) : (
 							discoverDialog.models.map((modelItem) => (
 								<div key={modelItem.model_id} className="rounded-md border p-3">
@@ -1025,7 +1027,7 @@ export default function GlobalModelConnectionsAdminPage() {
 						<Button
 							onClick={() => setDiscoverDialog({ open: false, connection: null, models: [] })}
 						>
-							Close
+							{t("models_close")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1038,16 +1040,16 @@ export default function GlobalModelConnectionsAdminPage() {
 			>
 				<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>Edit model</DialogTitle>
+						<DialogTitle>{t("models_edit_model")}</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div className="space-y-2">
-								<Label htmlFor="edit_model_id">Model ID</Label>
+								<Label htmlFor="edit_model_id">{t("models_model_id")}</Label>
 								<Input id="edit_model_id" value={modelEditDialog.draft.model_id} disabled />
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="edit_model_display_name">Display name</Label>
+								<Label htmlFor="edit_model_display_name">{t("models_display_name")}</Label>
 								<Input
 									id="edit_model_display_name"
 									value={modelEditDialog.draft.display_name}
@@ -1060,7 +1062,7 @@ export default function GlobalModelConnectionsAdminPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="edit_model_max_input_tokens">Max input tokens</Label>
+								<Label htmlFor="edit_model_max_input_tokens">{t("models_max_input")}</Label>
 								<Input
 									id="edit_model_max_input_tokens"
 									type="number"
@@ -1074,7 +1076,7 @@ export default function GlobalModelConnectionsAdminPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="edit_model_cost_input">Cost per 1k input</Label>
+								<Label htmlFor="edit_model_cost_input">{t("models_cost_input_short")}</Label>
 								<Input
 									id="edit_model_cost_input"
 									type="number"
@@ -1089,7 +1091,7 @@ export default function GlobalModelConnectionsAdminPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="edit_model_cost_output">Cost per 1k output</Label>
+								<Label htmlFor="edit_model_cost_output">{t("models_cost_output_short")}</Label>
 								<Input
 									id="edit_model_cost_output"
 									type="number"
@@ -1145,7 +1147,7 @@ export default function GlobalModelConnectionsAdminPage() {
 										}))
 									}
 								/>
-								<Label htmlFor="edit_model_supports_chat">Chat</Label>
+								<Label htmlFor="edit_model_supports_chat">{t("models_chat")}</Label>
 							</div>
 							<div className="flex items-center gap-2">
 								<Switch
@@ -1158,7 +1160,7 @@ export default function GlobalModelConnectionsAdminPage() {
 										}))
 									}
 								/>
-								<Label htmlFor="edit_model_supports_image_input">Vision</Label>
+								<Label htmlFor="edit_model_supports_image_input">{t("models_vision")}</Label>
 							</div>
 							<div className="flex items-center gap-2">
 								<Switch
@@ -1171,7 +1173,7 @@ export default function GlobalModelConnectionsAdminPage() {
 										}))
 									}
 								/>
-								<Label htmlFor="edit_model_supports_tools">Tools</Label>
+								<Label htmlFor="edit_model_supports_tools">{t("models_tools")}</Label>
 							</div>
 							<div className="flex items-center gap-2">
 								<Switch
@@ -1184,7 +1186,7 @@ export default function GlobalModelConnectionsAdminPage() {
 										}))
 									}
 								/>
-								<Label htmlFor="edit_model_supports_image_generation">Image</Label>
+								<Label htmlFor="edit_model_supports_image_generation">{t("models_image")}</Label>
 							</div>
 						</div>
 
@@ -1199,7 +1201,7 @@ export default function GlobalModelConnectionsAdminPage() {
 									}))
 								}
 							/>
-							<Label htmlFor="edit_model_enabled">Enabled</Label>
+							<Label htmlFor="edit_model_enabled">{t("models_enabled_label")}</Label>
 						</div>
 					</div>
 					<DialogFooter>
@@ -1214,10 +1216,10 @@ export default function GlobalModelConnectionsAdminPage() {
 								})
 							}
 						>
-							Cancel
+							{t("models_cancel")}
 						</Button>
 						<Button onClick={handleUpdateModel} disabled={updateModel.isPending}>
-							{updateModel.isPending ? <Spinner size="xs" /> : "Save"}
+							{updateModel.isPending ? <Spinner size="xs" /> : t("models_save")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1230,9 +1232,9 @@ export default function GlobalModelConnectionsAdminPage() {
 			>
 				<DialogContent className="max-w-md">
 					<DialogHeader>
-						<DialogTitle>Delete connection?</DialogTitle>
+						<DialogTitle>{t("models_delete_title")}</DialogTitle>
 						<DialogDescription>
-							This will remove the managed connection for {deleteDialog.connection?.provider}.
+							{t("models_delete_desc", {provider: deleteDialog.connection?.provider ?? ""})}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -1240,14 +1242,14 @@ export default function GlobalModelConnectionsAdminPage() {
 							variant="outline"
 							onClick={() => setDeleteDialog({ open: false, connection: null })}
 						>
-							Cancel
+							{t("models_cancel")}
 						</Button>
 						<Button
 							variant="destructive"
 							onClick={handleDelete}
 							disabled={deleteConnection.isPending}
 						>
-							{deleteConnection.isPending ? <Spinner size="xs" /> : "Delete"}
+							{deleteConnection.isPending ? <Spinner size="xs" /> : t("models_delete")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
