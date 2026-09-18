@@ -9,6 +9,7 @@ import {
 import { Component, type ReactNode, useEffect, useRef, useState } from "react";
 import { LinkedInEmbed, TikTokEmbed, XEmbed, YouTubeEmbed } from "react-social-media-embed";
 import { Reveal } from "@/components/connectors-marketing/reveal";
+import { useTranslations } from "next-intl";
 
 type Post =
 	| { kind: "youtube"; url: string; title: string; channel: string }
@@ -153,6 +154,7 @@ class EmbedBoundary extends Component<
 }
 
 function FallbackCard({ post }: { post: Post }) {
+	const t = useTranslations("homepage");
 	const { Icon, label } = META[post.kind];
 	const href = post.kind === "linkedin" ? post.postUrl : post.url;
 	return (
@@ -164,7 +166,7 @@ function FallbackCard({ post }: { post: Post }) {
 				className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-brand"
 			>
 				<Icon className="size-8" aria-hidden />
-				<span>View this post on {label}</span>
+				<span>{t("view_post_on")} {label}</span>
 			</a>
 		</div>
 	);
@@ -243,6 +245,7 @@ function Row({
 }
 
 export function SocialProof() {
+	const t = useTranslations("homepage");
 	// Third-party embeds are heavy; only mount them once the section scrolls near view.
 	const ref = useRef<HTMLDivElement>(null);
 	const [visible, setVisible] = useState(false);
