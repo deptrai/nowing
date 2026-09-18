@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ExternalLink, Info } from "lucide-react";
 import Link from "next/link";
@@ -31,31 +32,32 @@ import { Switch } from "@/components/ui/switch";
 import { EnumConnectorName } from "@/contracts/enums/connector";
 import type { ConnectFormProps } from "../index";
 
-const githubConnectorFormSchema = z.object({
+const createGithubConnectorFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
 	name: z.string().min(3, {
-		message: "Connector name must be at least 3 characters.",
+		message: t("connector_name_min"),
 	}),
 	github_pat: z
 		.string()
 		.optional()
 		.refine((pat) => !pat || pat.startsWith("ghp_") || pat.startsWith("github_pat_"), {
-			message: "GitHub PAT should start with 'ghp_' or 'github_pat_'",
+			message: t("github_pat_invalid"),
 		}),
 	repo_full_names: z.string().min(1, {
-		message: "At least one repository is required.",
+		message: t("github_repo_required"),
 	}),
 });
 
 type GithubConnectorFormValues = z.infer<typeof githubConnectorFormSchema>;
 
 export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const [periodicEnabled, setPeriodicEnabled] = useState(false);
 	const [frequencyMinutes, setFrequencyMinutes] = useState("1440");
 	const form = useForm<GithubConnectorFormValues>({
-		resolver: zodResolver(githubConnectorFormSchema),
+		resolver: zodResolver(createGithubConnectorFormSchema(t)),
 		defaultValues: {
-			name: "GitHub Connector",
+			name: t("github_name_default"),
 			github_pat: "",
 			repo_full_names: "",
 		},
@@ -107,7 +109,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 		<div className="space-y-6 pb-6">
 			<Alert>
 				<Info />
-				<AlertTitle>Personal Access Token (Optional)</AlertTitle>
+				<AlertTitle>{t("pat_optional")}</AlertTitle>
 				<AlertDescription>
 					<p>
 						A GitHub PAT is only required for private repositories. Public repos work without a
@@ -118,7 +120,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 							rel="noopener noreferrer"
 							className="font-medium underline underline-offset-4 inline-flex items-center gap-1.5"
 						>
-							Get your token
+							{t("get_token")}
 							<ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
 						</a>
 					</p>
@@ -137,17 +139,17 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Connector Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("connector_name")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="My GitHub Connector"
+											placeholder={t("github_name_placeholder")}
 											className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										A friendly name to identify this connector.
+										{t("connector_name_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -166,7 +168,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 									<FormControl>
 										<Input
 											type="password"
-											placeholder="ghp_..."
+											placeholder={t("github_pat_placeholder")}
 											className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
@@ -186,10 +188,10 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 							name="repo_full_names"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Repository Names</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("repo_names")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="owner/repo1, owner/repo2"
+											placeholder={t("github_repos_placeholder")}
 											className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
@@ -207,7 +209,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 						{/* Show parsed repositories as badges */}
 						{form.watch("repo_full_names")?.trim() && (
 							<div className="rounded-lg border border-border bg-muted/50 p-3">
-								<h4 className="text-[10px] sm:text-xs font-medium mb-2">Selected Repositories:</h4>
+								<h4 className="text-[10px] sm:text-xs font-medium mb-2">{t("selected_repos")}</h4>
 								<div className="flex flex-wrap gap-2">
 									{stringToArray(form.watch("repo_full_names") ?? "").map((repo) => (
 										<Badge key={repo} variant="secondary" className="text-[10px]">
@@ -220,7 +222,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 
 						{/* Indexing Configuration */}
 						<div className="space-y-4 pt-4 border-t border-slate-400/20">
-							<h3 className="text-sm sm:text-base font-medium">Sync Configuration</h3>
+							<h3 className="text-sm sm:text-base font-medium">{t("sync_config")}</h3>
 
 							{/* Note: No date range for GitHub - it indexes full repo snapshots */}
 
@@ -228,9 +230,9 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 							<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 								<div className="flex items-center justify-between">
 									<div className="space-y-1">
-										<h3 className="font-medium text-sm sm:text-base">Enable Periodic Sync</h3>
+										<h3 className="font-medium text-sm sm:text-base">{t("enable_periodic_sync")}</h3>
 										<p className="text-xs sm:text-sm text-muted-foreground">
-											Automatically re-index at regular intervals
+											{t("periodic_sync_desc")}
 										</p>
 									</div>
 									<Switch
@@ -244,7 +246,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 									<div className="mt-4 pt-4 border-t border-slate-400/20 space-y-3">
 										<div className="space-y-2">
 											<Label htmlFor="frequency" className="text-xs sm:text-sm">
-												Sync Frequency
+												{t("sync_frequency")}
 											</Label>
 											<Select
 												value={frequencyMinutes}
@@ -255,29 +257,29 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 													id="frequency"
 													className="w-full bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 text-xs sm:text-sm"
 												>
-													<SelectValue placeholder="Select frequency" />
+													<SelectValue placeholder={t("select_frequency")} />
 												</SelectTrigger>
 												<SelectContent className="z-[100]">
 													<SelectItem value="5" className="text-xs sm:text-sm">
-														Every 5 minutes
+														{t("every_5_minutes")}
 													</SelectItem>
 													<SelectItem value="15" className="text-xs sm:text-sm">
-														Every 15 minutes
+														{t("every_15_minutes")}
 													</SelectItem>
 													<SelectItem value="60" className="text-xs sm:text-sm">
-														Every hour
+														{t("every_hour")}
 													</SelectItem>
 													<SelectItem value="360" className="text-xs sm:text-sm">
-														Every 6 hours
+														{t("every_6_hours")}
 													</SelectItem>
 													<SelectItem value="720" className="text-xs sm:text-sm">
-														Every 12 hours
+														{t("every_12_hours")}
 													</SelectItem>
 													<SelectItem value="1440" className="text-xs sm:text-sm">
-														Daily
+														{t("daily")}
 													</SelectItem>
 													<SelectItem value="10080" className="text-xs sm:text-sm">
-														Weekly
+														{t("weekly")}
 													</SelectItem>
 												</SelectContent>
 											</Select>
@@ -298,7 +300,7 @@ export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting
 					rel="noopener noreferrer"
 					className="text-xs sm:text-sm font-medium underline underline-offset-4 hover:text-primary transition-colors inline-flex items-center gap-1.5"
 				>
-					View GitHub Connector Documentation
+					{t("view_docs")}
 					<ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
 				</Link>
 			</div>

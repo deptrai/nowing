@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import type { FC } from "react";
@@ -21,23 +22,24 @@ import { EnumConnectorName } from "@/contracts/enums/connector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const linkupApiFormSchema = z.object({
+const createLinkupApiFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
 	name: z.string().min(3, {
-		message: "Connector name must be at least 3 characters.",
+		message: t("connector_name_min"),
 	}),
 	api_key: z.string().min(10, {
-		message: "API key is required and must be valid.",
+		message: t("api_key_required_valid"),
 	}),
 });
 
 type LinkupApiFormValues = z.infer<typeof linkupApiFormSchema>;
 
 export const LinkupApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const form = useForm<LinkupApiFormValues>({
-		resolver: zodResolver(linkupApiFormSchema),
+		resolver: zodResolver(createLinkupApiFormSchema(t)),
 		defaultValues: {
-			name: "Linkup API Connector",
+			name: t("linkup_name_default"),
 			api_key: "",
 		},
 	});
@@ -72,10 +74,10 @@ export const LinkupApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitt
 		<div className="space-y-6 pb-6">
 			<Alert>
 				<Info />
-				<AlertTitle>API Key Required</AlertTitle>
+				<AlertTitle>{t("api_key_required")}</AlertTitle>
 				<AlertDescription>
 					<p>
-						You'll need a Linkup API key to use this connector. You can get one by signing up at{" "}
+						{t("linkup_get_key_desc")}{" "}
 						<a
 							href="https://linkup.so"
 							target="_blank"
@@ -100,17 +102,17 @@ export const LinkupApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitt
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Connector Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("connector_name")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="My Linkup API Connector"
+											placeholder={t("linkup_name_placeholder")}
 											className="border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										A friendly name to identify this connector.
+										{t("connector_name_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -122,18 +124,18 @@ export const LinkupApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitt
 							name="api_key"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Linkup API Key</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("linkup_api_key")}</FormLabel>
 									<FormControl>
 										<Input
 											type="password"
-											placeholder="Enter your Linkup API key"
+											placeholder={t("linkup_api_key_placeholder")}
 											className="border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										Your API key will be encrypted and stored securely.
+										{t("api_key_encrypted")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -146,7 +148,7 @@ export const LinkupApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitt
 			{/* What you get section */}
 			{getConnectorBenefits(EnumConnectorName.LINKUP_API) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
-					<h4 className="text-xs sm:text-sm font-medium">What you get with Linkup API:</h4>
+					<h4 className="text-xs sm:text-sm font-medium">{t("linkup_what_you_get")}</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.LINKUP_API)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Webhook } from "lucide-react";
 import type { FC } from "react";
@@ -21,20 +22,21 @@ import { EnumConnectorName } from "@/contracts/enums/connector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const circlebackFormSchema = z.object({
+const createCirclebackFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
 	name: z.string().min(3, {
-		message: "Connector name must be at least 3 characters.",
+		message: t("connector_name_min"),
 	}),
 });
 
 type CirclebackFormValues = z.infer<typeof circlebackFormSchema>;
 
 export const CirclebackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const form = useForm<CirclebackFormValues>({
-		resolver: zodResolver(circlebackFormSchema),
+		resolver: zodResolver(createCirclebackFormSchema(t)),
 		defaultValues: {
-			name: "Circleback Connector",
+			name: t("circleback_name_default"),
 		},
 	});
 
@@ -66,7 +68,7 @@ export const CirclebackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmit
 		<div className="space-y-6 pb-6">
 			<Alert className="bg-slate-400/5 dark:bg-white/5 border-slate-400/20 p-2 sm:p-3">
 				<Webhook className="size-4 shrink-0" aria-hidden="true" />
-				<AlertTitle className="text-xs sm:text-sm">Webhook-Based Integration</AlertTitle>
+				<AlertTitle className="text-xs sm:text-sm">{t("webhook_integration")}</AlertTitle>
 				<AlertDescription className="text-[10px] sm:text-xs">
 					Circleback uses webhooks to automatically send meeting data. After connecting, you'll
 					receive a webhook URL to configure in your Circleback settings.
@@ -85,17 +87,17 @@ export const CirclebackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmit
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Connector Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("connector_name")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="My Circleback Connector"
+											placeholder={t("circleback_name_placeholder")}
 											className="border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										A friendly name to identify this connector.
+										{t("connector_name_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -108,7 +110,7 @@ export const CirclebackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmit
 			{/* What you get section */}
 			{getConnectorBenefits(EnumConnectorName.CIRCLEBACK_CONNECTOR) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
-					<h4 className="text-xs sm:text-sm font-medium">What you get with Circleback:</h4>
+					<h4 className="text-xs sm:text-sm font-medium">{t("circleback_what_you_get")}</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.CIRCLEBACK_CONNECTOR)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

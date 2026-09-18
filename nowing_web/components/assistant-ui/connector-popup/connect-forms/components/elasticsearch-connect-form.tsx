@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import type { FC } from "react";
@@ -39,12 +40,12 @@ import { DateRangeSelector } from "../../components/date-range-selector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const elasticsearchConnectorFormSchema = z
+const createElasticsearchConnectorFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z
 	.object({
 		name: z.string().min(3, {
-			message: "Connector name must be at least 3 characters.",
+			message: t("connector_name_min"),
 		}),
-		endpoint_url: z.string().url({ message: "Please enter a valid Elasticsearch endpoint URL." }),
+		endpoint_url: z.string().url({ message: t("elasticsearch_endpoint_invalid") }),
 		auth_method: z.enum(["basic", "api_key"]),
 		username: z.string().optional(),
 		password: z.string().optional(),
@@ -65,7 +66,7 @@ const elasticsearchConnectorFormSchema = z
 			return true;
 		},
 		{
-			message: "Authentication credentials are required for the selected method.",
+			message: t("elasticsearch_auth_required"),
 			path: ["auth_method"],
 		}
 	);
@@ -73,6 +74,7 @@ const elasticsearchConnectorFormSchema = z
 type ElasticsearchConnectorFormValues = z.infer<typeof elasticsearchConnectorFormSchema>;
 
 export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const authBasicId = useId();
 	const authApiKeyId = useId();
@@ -82,9 +84,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 	const [frequencyMinutes, setFrequencyMinutes] = useState("1440");
 
 	const form = useForm<ElasticsearchConnectorFormValues>({
-		resolver: zodResolver(elasticsearchConnectorFormSchema),
+		resolver: zodResolver(createElasticsearchConnectorFormSchema(t)),
 		defaultValues: {
-			name: "Elasticsearch Connector",
+			name: t("elasticsearch_name_default"),
 			endpoint_url: "",
 			auth_method: "api_key",
 			username: "",
@@ -174,9 +176,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 		<div className="space-y-6 pb-6">
 			<Alert>
 				<Info />
-				<AlertTitle>API Key Required</AlertTitle>
+				<AlertTitle>{t("api_key_required")}</AlertTitle>
 				<AlertDescription>
-					Enter your Elasticsearch cluster endpoint URL and authentication credentials to connect.
+					{t("elasticsearch_desc")}
 				</AlertDescription>
 			</Alert>
 
@@ -192,33 +194,33 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Connector Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("connector_name")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="My Elasticsearch Connector"
+											placeholder={t("elasticsearch_name_placeholder")}
 											className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										A friendly name to identify this connector.
+										{t("connector_name_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
 
-						{/* Connection Details */}
+						{/* {t("connection_details")} */}
 						<div className="space-y-4">
-							<h3 className="text-sm sm:text-base font-medium">Connection Details</h3>
+							<h3 className="text-sm sm:text-base font-medium">{t("connection_details")}</h3>
 
 							<FormField
 								control={form.control}
 								name="endpoint_url"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel className="text-xs sm:text-sm">Elasticsearch Endpoint URL</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">{t("elasticsearch_endpoint")}</FormLabel>
 										<FormControl>
 											<Input
 												type="url"
@@ -242,7 +244,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 							{form.watch("endpoint_url") && (
 								<div className="rounded-lg border border-border bg-muted/50 p-3">
 									<h4 className="text-[10px] sm:text-xs font-medium mb-2">
-										Parsed Connection Details:
+										Parsed {t("connection_details")}:
 									</h4>
 									<div className="text-[10px] sm:text-xs text-muted-foreground space-y-1">
 										{(() => {
@@ -251,7 +253,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 												return (
 													<>
 														<div>
-															<strong>Hostname:</strong> {url.hostname}
+															<strong>{t("hostname")}</strong> {url.hostname}
 														</div>
 														<div>
 															<strong>Port:</strong>{" "}
@@ -264,7 +266,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 													</>
 												);
 											} catch {
-												return <div className="text-destructive">Invalid URL format</div>;
+												return <div className="text-destructive">{t("invalid_url")}</div>;
 											}
 										})()}
 									</div>
@@ -272,9 +274,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 							)}
 						</div>
 
-						{/* Authentication */}
+						{/* {t("authentication")} */}
 						<div className="space-y-4">
-							<h3 className="text-sm sm:text-base font-medium">Authentication</h3>
+							<h3 className="text-sm sm:text-base font-medium">{t("authentication")}</h3>
 
 							<FormField
 								control={form.control}
@@ -299,14 +301,14 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 												<div className="flex items-center gap-2">
 													<RadioGroupItem value="api_key" id={authApiKeyId} />
 													<Label htmlFor={authApiKeyId} className="text-xs sm:text-sm">
-														API Key
+														{t("api_key")}
 													</Label>
 												</div>
 
 												<div className="flex items-center gap-2">
 													<RadioGroupItem value="basic" id={authBasicId} />
 													<Label htmlFor={authBasicId} className="text-xs sm:text-sm">
-														Username & Password
+														{t("username_password")}
 													</Label>
 												</div>
 											</RadioGroup>
@@ -324,10 +326,10 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 										name="username"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel className="text-xs sm:text-sm">Username</FormLabel>
+												<FormLabel className="text-xs sm:text-sm">{t("username")}</FormLabel>
 												<FormControl>
 													<Input
-														placeholder="elastic"
+														placeholder={t("elastic_placeholder")}
 														autoComplete="username"
 														className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 														disabled={isSubmitting}
@@ -344,11 +346,11 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 										name="password"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel className="text-xs sm:text-sm">Password</FormLabel>
+												<FormLabel className="text-xs sm:text-sm">{t("password")}</FormLabel>
 												<FormControl>
 													<Input
 														type="password"
-														placeholder="Password"
+														placeholder={t("password")}
 														autoComplete="current-password"
 														className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 														disabled={isSubmitting}
@@ -369,11 +371,11 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 									name="ELASTICSEARCH_API_KEY"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel className="text-xs sm:text-sm">API Key</FormLabel>
+											<FormLabel className="text-xs sm:text-sm">{t("api_key")}</FormLabel>
 											<FormControl>
 												<Input
 													type="password"
-													placeholder="Your API Key Here"
+													placeholder={t("elasticsearch_api_key_placeholder")}
 													autoComplete="off"
 													className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 													disabled={isSubmitting}
@@ -391,16 +393,16 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 							)}
 						</div>
 
-						{/* Index Selection */}
+						{/* {t("index_selection")} */}
 						<FormField
 							control={form.control}
 							name="indices"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Index Selection</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("index_selection")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="logs-*, documents-*, app-logs"
+											placeholder={t("elasticsearch_indices_placeholder")}
 											className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
@@ -417,7 +419,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 						{/* Show parsed indices as badges */}
 						{form.watch("indices")?.trim() && (
 							<div className="rounded-lg border border-border bg-muted/50 p-3">
-								<h4 className="text-[10px] sm:text-xs font-medium mb-2">Selected Indices:</h4>
+								<h4 className="text-[10px] sm:text-xs font-medium mb-2">{t("selected_indices")}</h4>
 								<div className="flex flex-wrap gap-2">
 									{stringToArray(form.watch("indices") ?? "").map((index) => (
 										<Badge key={index} variant="secondary" className="text-[10px]">
@@ -430,22 +432,22 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 
 						<Alert>
 							<Info />
-							<AlertTitle>Index Selection Tips</AlertTitle>
+							<AlertTitle>{t("index_selection")} Tips</AlertTitle>
 							<AlertDescription>
 								<ul className="list-disc pl-4 space-y-1">
 									<li>Use wildcards like "logs-*" to match multiple indices</li>
-									<li>Separate multiple indices with commas</li>
-									<li>Leave empty to search all accessible indices including internal ones</li>
-									<li>Choosing specific indices improves search performance</li>
+									<li>{t("index_tip_1")}</li>
+									<li>{t("index_tip_2")}</li>
+									<li>{t("index_tip_3")}</li>
 								</ul>
 							</AlertDescription>
 						</Alert>
 
-						{/* Advanced Configuration */}
+						{/* {t("advanced_config")} */}
 						<Accordion type="single" collapsible className="w-full">
 							<AccordionItem value="advanced">
 								<AccordionTrigger className="text-xs sm:text-sm">
-									Advanced Configuration
+									{t("advanced_config")}
 								</AccordionTrigger>
 								<AccordionContent className="space-y-4">
 									{/* Default Search Query */}
@@ -482,11 +484,11 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 										render={({ field }) => (
 											<FormItem>
 												<FormLabel className="text-xs sm:text-sm">
-													Search Fields <span className="text-muted-foreground">(Optional)</span>
+													{t("search_fields")} <span className="text-muted-foreground">(Optional)</span>
 												</FormLabel>
 												<FormControl>
 													<Input
-														placeholder="title, content, description"
+														placeholder={t("elasticsearch_fields_placeholder")}
 														className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 														disabled={isSubmitting}
 														{...field}
@@ -504,7 +506,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 									{/* Show parsed search fields as badges */}
 									{form.watch("search_fields")?.trim() && (
 										<div className="rounded-lg border border-border bg-muted/50 p-3">
-											<h4 className="text-[10px] sm:text-xs font-medium mb-2">Search Fields:</h4>
+											<h4 className="text-[10px] sm:text-xs font-medium mb-2">{t("search_fields")}:</h4>
 											<div className="flex flex-wrap gap-2">
 												{stringToArray(form.watch("search_fields") ?? "").map((field) => (
 													<Badge key={field} variant="outline" className="text-[10px]">
@@ -552,9 +554,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 							</AccordionItem>
 						</Accordion>
 
-						{/* Indexing Configuration */}
+						{/* {t("indexing_config")} */}
 						<div className="space-y-4 pt-4 border-t border-slate-400/20">
-							<h3 className="text-sm sm:text-base font-medium">Indexing Configuration</h3>
+							<h3 className="text-sm sm:text-base font-medium">{t("indexing_config")}</h3>
 
 							{/* Date Range Selector */}
 							<DateRangeSelector
@@ -568,9 +570,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 							<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 								<div className="flex items-center justify-between">
 									<div className="space-y-1">
-										<h3 className="font-medium text-sm sm:text-base">Enable Periodic Sync</h3>
+										<h3 className="font-medium text-sm sm:text-base">{t("enable_periodic_sync")}</h3>
 										<p className="text-xs sm:text-sm text-muted-foreground">
-											Automatically re-index at regular intervals
+											{t("periodic_sync_desc")}
 										</p>
 									</div>
 									<Switch
@@ -584,7 +586,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 									<div className="mt-4 pt-4 border-t border-slate-400/20 space-y-3">
 										<div className="space-y-2">
 											<Label htmlFor="frequency" className="text-xs sm:text-sm">
-												Sync Frequency
+												{t("sync_frequency")}
 											</Label>
 											<Select
 												value={frequencyMinutes}
@@ -595,29 +597,29 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 													id="frequency"
 													className="w-full bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 text-xs sm:text-sm"
 												>
-													<SelectValue placeholder="Select frequency" />
+													<SelectValue placeholder={t("select_frequency")} />
 												</SelectTrigger>
 												<SelectContent className="z-[100]">
 													<SelectItem value="5" className="text-xs sm:text-sm">
-														Every 5 minutes
+														{t("every_5_minutes")}
 													</SelectItem>
 													<SelectItem value="15" className="text-xs sm:text-sm">
-														Every 15 minutes
+														{t("every_15_minutes")}
 													</SelectItem>
 													<SelectItem value="60" className="text-xs sm:text-sm">
-														Every hour
+														{t("every_hour")}
 													</SelectItem>
 													<SelectItem value="360" className="text-xs sm:text-sm">
-														Every 6 hours
+														{t("every_6_hours")}
 													</SelectItem>
 													<SelectItem value="720" className="text-xs sm:text-sm">
-														Every 12 hours
+														{t("every_12_hours")}
 													</SelectItem>
 													<SelectItem value="1440" className="text-xs sm:text-sm">
-														Daily
+														{t("daily")}
 													</SelectItem>
 													<SelectItem value="10080" className="text-xs sm:text-sm">
-														Weekly
+														{t("weekly")}
 													</SelectItem>
 												</SelectContent>
 											</Select>
@@ -634,7 +636,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 			{getConnectorBenefits(EnumConnectorName.ELASTICSEARCH_CONNECTOR) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
 					<h4 className="text-xs sm:text-sm font-medium">
-						What you get with Elasticsearch integration:
+						{t("elasticsearch_what_you_get")}
 					</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.ELASTICSEARCH_CONNECTOR)?.map((benefit) => (

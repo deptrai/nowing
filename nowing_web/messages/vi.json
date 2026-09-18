@@ -4558,7 +4558,8 @@
 		"linkup_api_key": "Linkup API Key",
 		"linkup_api_key_placeholder": "Nhập Linkup API key của bạn",
 		"linkup_what_you_get": "Bạn sẽ có gì với Linkup API:",
-		"linkup_get_key_desc": "Bạn cần Linkup API key để sử dụng bộ kết nối này. Bạn có thể lấy một key bằng cách đăng ký tại"
+		"linkup_get_key_desc": "Bạn cần Linkup API key để sử dụng bộ kết nối này. Bạn có thể lấy một key bằng cách đăng ký tại",
+		"elastic_placeholder": "elastic"
 	},
 	"layout": {
 		"free_workspace_name": "Nowing Miễn phí",

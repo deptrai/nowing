@@ -4556,7 +4556,8 @@
 		"linkup_api_key": "Linkup API Key",
 		"linkup_api_key_placeholder": "Enter your Linkup API key",
 		"linkup_what_you_get": "What you get with Linkup API:",
-		"linkup_get_key_desc": "You'll need a Linkup API key to use this connector. You can get one by signing up at"
+		"linkup_get_key_desc": "You'll need a Linkup API key to use this connector. You can get one by signing up at",
+		"elastic_placeholder": "elastic"
 	},
 	"layout": {
 		"free_workspace_name": "Nowing Free",
