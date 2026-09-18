@@ -8,6 +8,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 import { ApiKeyField } from "./connect-fields";
 import {
 	AWS_REGION_OPTIONS,
@@ -22,6 +23,7 @@ import {
  * are collected; everything rides along in `extra.litellm_params`.
  */
 export function BedrockConnectForm({ onDraftChange }: ProviderConnectFormProps) {
+	const t = useTranslations("settings");
 	const [region, setRegion] = useState("");
 	const [authMethod, setAuthMethod] = useState(BEDROCK_AUTH_ACCESS_KEY);
 	const [accessKeyId, setAccessKeyId] = useState("");
@@ -53,10 +55,10 @@ export function BedrockConnectForm({ onDraftChange }: ProviderConnectFormProps) 
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex flex-col gap-2">
-				<Label>AWS Region</Label>
+				<Label>{t("aws_region")}</Label>
 				<Select value={region || undefined} onValueChange={setRegion}>
 					<SelectTrigger>
-						<SelectValue placeholder="Select a region" />
+						<SelectValue placeholder={t("select_region")} />
 					</SelectTrigger>
 					<SelectContent>
 						{AWS_REGION_OPTIONS.map((option) => (
@@ -68,33 +70,33 @@ export function BedrockConnectForm({ onDraftChange }: ProviderConnectFormProps) 
 				</Select>
 			</div>
 			<div className="flex flex-col gap-2">
-				<Label>Authentication Method</Label>
+				<Label>{t("auth_method")}</Label>
 				<Select value={authMethod} onValueChange={setAuthMethod}>
 					<SelectTrigger>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value={BEDROCK_AUTH_IAM}>Environment IAM Role</SelectItem>
-						<SelectItem value={BEDROCK_AUTH_ACCESS_KEY}>Access Key</SelectItem>
-						<SelectItem value={BEDROCK_AUTH_LONG_TERM_API_KEY}>Long-term API Key</SelectItem>
+						<SelectItem value={BEDROCK_AUTH_IAM}>{t("env_iam_role")}</SelectItem>
+						<SelectItem value={BEDROCK_AUTH_ACCESS_KEY}>{t("access_key")}</SelectItem>
+						<SelectItem value={BEDROCK_AUTH_LONG_TERM_API_KEY}>{t("long_term_api_key")}</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
 			{authMethod === BEDROCK_AUTH_ACCESS_KEY ? (
 				<>
 					<div className="flex flex-col gap-2">
-						<Label>AWS Access Key ID</Label>
+						<Label>{t("aws_access_key_id")}</Label>
 						<Input
 							value={accessKeyId}
 							onChange={(event) => setAccessKeyId(event.target.value)}
-							placeholder="Enter your AWS access key ID"
+							placeholder={t("enter_aws_access_key_id")}
 						/>
 					</div>
 					<ApiKeyField
 						value={secretAccessKey}
 						onChange={setSecretAccessKey}
-						label="AWS Secret Access Key"
-						placeholder="Enter your AWS secret access key"
+						label={t("aws_secret_access_key")}
+						placeholder={t("enter_aws_secret_access_key")}
 					/>
 				</>
 			) : null}
@@ -102,18 +104,17 @@ export function BedrockConnectForm({ onDraftChange }: ProviderConnectFormProps) 
 				<ApiKeyField
 					value={bearerToken}
 					onChange={setBearerToken}
-					label="Long-term API Key"
-					placeholder="Your long-term API key"
+					label={t("long_term_api_key")}
+					placeholder={t("your_long_term_api_key")}
 				/>
 			) : null}
 			{authMethod === BEDROCK_AUTH_IAM ? (
 				<p className="text-xs text-muted-foreground">
-					Nowing will use the IAM role attached to the environment it&apos;s running in to
-					authenticate.
+					{t('bedrock_iam_hint')}
 				</p>
 			) : null}
 			<p className="text-xs text-muted-foreground">
-				Add Bedrock model IDs from the provider&apos;s settings after connecting.
+				{t('bedrock_add_models_hint')}
 			</p>
 		</div>
 	);

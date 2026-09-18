@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Info } from "lucide-react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const dollarsToMicros = (value: string): number | null => {
 const formatUsd = (micros: number) => `$${(Math.max(0, micros) / 1_000_000).toFixed(2)}`;
 
 export function AutoReloadSettings() {
+	const t = useTranslations("settings");
 	const params = useParams();
 	const router = useRouter();
 	const pathname = usePathname();
@@ -69,10 +71,10 @@ export function AutoReloadSettings() {
 		const setupResult = searchParams.get("auto_reload_setup");
 		if (!setupResult) return;
 		if (setupResult === "success") {
-			toast.success("Card saved. You can now enable top-ups.");
+			toast.success(t("topup_card_saved"));
 			queryClient.invalidateQueries({ queryKey: ["auto-reload-settings"] });
 		} else if (setupResult === "cancel") {
-			toast.info("Card setup canceled.");
+			toast.info(t("topup_card_setup_canceled"));
 		}
 		// Strip the query param so refreshes don't re-toast.
 		router.replace(pathname);
@@ -84,7 +86,7 @@ export function AutoReloadSettings() {
 			window.location.assign(response.checkout_url);
 		},
 		onError: () => {
-			toast.error("Couldn't start card setup. Please try again.");
+			toast.error(t("topup_start_card_setup_failed"));
 		},
 	});
 
@@ -92,14 +94,14 @@ export function AutoReloadSettings() {
 		mutationFn: stripeApiService.updateAutoReloadSettings,
 		onSuccess: (updated) => {
 			queryClient.setQueryData(["auto-reload-settings"], updated);
-			toast.success(updated.enabled ? "Top-ups are on." : "Top-up settings saved.");
+			toast.success(updated.enabled ? t("topup_enabled_toast") : t("topup_settings_saved"));
 		},
 		onError: (error) => {
 			if (error instanceof AppError && error.message) {
 				toast.error(error.message);
 				return;
 			}
-			toast.error("Couldn't save top-up settings. Please try again.");
+			toast.error(t("topup_save_failed"));
 		},
 	});
 
@@ -127,11 +129,11 @@ export function AutoReloadSettings() {
 		const amountMicros = dollarsToMicros(amountInput);
 
 		if (!thresholdMicros || thresholdMicros <= 0) {
-			toast.error("Enter a low-balance threshold greater than $0.");
+			toast.error(t("topup_threshold_invalid"));
 			return;
 		}
 		if (amountMicros == null || amountMicros < settings.min_amount_micros) {
-			toast.error(`Top-up amount must be at least $${minAmountDollars}.`);
+			toast.error(t("topup_min_amount", { min: minAmountDollars }));
 			return;
 		}
 
@@ -151,10 +153,10 @@ export function AutoReloadSettings() {
 			{setupMutation.isPending ? (
 				<>
 					<Spinner size="xs" />
-					Redirecting
+					{t("redirecting")}
 				</>
 			) : (
-				"Add a card"
+				t("add_card")
 			)}
 		</Button>
 	);
@@ -165,10 +167,9 @@ export function AutoReloadSettings() {
 				{settings.failed_at && (
 					<Alert variant="destructive">
 						<AlertTriangle className="h-4 w-4" aria-hidden="true" />
-						<AlertTitle>Last top-up failed</AlertTitle>
+						<AlertTitle>{t("topup_failed_title")}</AlertTitle>
 						<AlertDescription>
-							Your saved card was declined and top-ups were turned off. Update your card and
-							re-enable top-ups below.
+							{t("topup_failed_desc")}
 						</AlertDescription>
 					</Alert>
 				)}
@@ -178,9 +179,12 @@ export function AutoReloadSettings() {
 						<div className="flex min-w-0 items-start gap-3">
 							<Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
 							<p className="text-sm leading-relaxed text-muted-foreground">
-								Automatically top up your credit balance when it drops below a threshold, using a
-								saved card. Current balance:{" "}
-								<span className="font-medium text-foreground">{formatUsd(balanceMicros)}</span>.
+								{t.rich("topup_intro", {
+									balance: formatUsd(balanceMicros),
+									b: (chunks) => (
+										<span className="font-medium text-foreground">{chunks}</span>
+									),
+								})}
 							</p>
 						</div>
 						{addCardButton}
@@ -196,10 +200,9 @@ export function AutoReloadSettings() {
 			{settings.failed_at && (
 				<Alert variant="destructive">
 					<AlertTriangle className="h-4 w-4" aria-hidden="true" />
-					<AlertTitle>Last top-up failed</AlertTitle>
+					<AlertTitle>{t("topup_failed_title")}</AlertTitle>
 					<AlertDescription>
-						Your saved card was declined and top-ups were turned off. Update your card and re-enable
-						top-ups below.
+						{t("topup_failed_desc")}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -207,10 +210,14 @@ export function AutoReloadSettings() {
 			<section className="space-y-5">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div className="space-y-1">
-						<h2 className="text-base font-semibold tracking-tight">Automatic top-ups</h2>
+						<h2 className="text-base font-semibold tracking-tight">{t("auto_topups")}</h2>
 						<p className="text-sm text-muted-foreground">
-							Current balance:{" "}
-							<span className="font-medium text-foreground">{formatUsd(balanceMicros)}</span>
+							{t.rich("topup_current_balance", {
+								balance: formatUsd(balanceMicros),
+								b: (chunks) => (
+									<span className="font-medium text-foreground">{chunks}</span>
+								),
+							})}
 						</p>
 					</div>
 					<Button
@@ -221,10 +228,10 @@ export function AutoReloadSettings() {
 						{setupMutation.isPending ? (
 							<>
 								<Spinner size="xs" />
-								Redirecting
+								{t("redirecting")}
 							</>
 						) : (
-							"Update card"
+							t("update_card")
 						)}
 					</Button>
 				</div>
@@ -234,9 +241,7 @@ export function AutoReloadSettings() {
 						<Label htmlFor="top-ups-toggle" className="text-sm font-medium">
 							Enable top-ups
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							Charge your saved card when the balance gets low.
-						</p>
+						<p className="text-xs text-muted-foreground">{t("enable_topups_desc")}</p>
 					</div>
 					<Switch id="top-ups-toggle" checked={enabled} onCheckedChange={setEnabled} />
 				</div>
@@ -244,7 +249,7 @@ export function AutoReloadSettings() {
 				<div className="grid gap-4 sm:grid-cols-2">
 					<div className="space-y-1.5">
 						<Label htmlFor="top-ups-threshold" className="text-xs">
-							When balance falls below
+							{t("topup_threshold_label")}
 						</Label>
 						<div className="relative">
 							<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -266,7 +271,7 @@ export function AutoReloadSettings() {
 					</div>
 					<div className="space-y-1.5">
 						<Label htmlFor="top-ups-amount" className="text-xs">
-							Add this much credit
+							{t("topup_amount_label")}
 						</Label>
 						<div className="relative">
 							<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -285,7 +290,7 @@ export function AutoReloadSettings() {
 								placeholder="10"
 							/>
 						</div>
-						<p className="text-[11px] text-muted-foreground">Minimum ${minAmountDollars}.</p>
+						<p className="text-[11px] text-muted-foreground">{t("topup_minimum", { min: minAmountDollars })}</p>
 					</div>
 				</div>
 
@@ -298,10 +303,10 @@ export function AutoReloadSettings() {
 						{saveMutation.isPending ? (
 							<>
 								<Spinner size="xs" />
-								Saving
+								{t("saving")}
 							</>
 						) : (
-							"Save"
+							t("save")
 						)}
 					</Button>
 				</div>

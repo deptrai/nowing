@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { updateWorkspaceMcpToolMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,11 @@ interface WorkspaceMcpToolsControlProps {
 	className?: string;
 }
 
-const groupLabels: Record<string, string> = {
-	workspace: "Workspace",
-	scraper: "Scrapers",
-	run_history: "Run history",
-	knowledge_base: "Knowledge base",
+const groupLabelKeys: Record<string, string> = {
+	workspace: "mcp_group_workspace",
+	scraper: "mcp_group_scraper",
+	run_history: "mcp_group_run_history",
+	knowledge_base: "mcp_group_knowledge_base",
 };
 
 export function WorkspaceMcpToolsControl({
@@ -32,6 +33,7 @@ export function WorkspaceMcpToolsControl({
 	isOwner,
 	className,
 }: WorkspaceMcpToolsControlProps) {
+	const t = useTranslations("settings");
 	const { mutateAsync: updateTool } = useAtomValue(updateWorkspaceMcpToolMutationAtom);
 
 	const {
@@ -57,14 +59,14 @@ export function WorkspaceMcpToolsControl({
 	const handleToggle = useCallback(
 		async (toolName: string, enabled: boolean) => {
 			if (!isOwner) {
-				toast.error("Only workspace owners can change MCP tool settings");
+				toast.error(t("mcp_only_owners"));
 				return;
 			}
 			try {
 				await updateTool({ id: workspaceId, tool_name: toolName, enabled });
 			} catch (error) {
 				console.error("Error updating MCP tool:", error);
-				toast.error(error instanceof Error ? error.message : "Failed to update tool");
+				toast.error(error instanceof Error ? error.message : t("mcp_update_failed"));
 			}
 		},
 		[isOwner, updateTool, workspaceId]
@@ -89,28 +91,28 @@ export function WorkspaceMcpToolsControl({
 	if (isError) {
 		return (
 			<div className={cn("space-y-2", className)}>
-				<Label>MCP tools</Label>
-				<p className="text-xs text-destructive">Failed to load MCP tools.</p>
+				<Label>{t("mcp_tools")}</Label>
+				<p className="text-xs text-destructive">{t("mcp_load_failed")}</p>
 				<Button variant="outline" size="sm" onClick={() => refetch()}>
-					Retry
+					{t("retry")}
 				</Button>
 			</div>
 		);
 	}
 
 	return (
-		<section aria-label="MCP tools" className={cn("space-y-6", className)}>
+		<section aria-label={t("mcp_tools")} className={cn("space-y-6", className)}>
 			<div className="space-y-1">
-				<Label>MCP tools</Label>
+				<Label>{t("mcp_tools")}</Label>
 				<p className="text-xs text-muted-foreground">
-					Control which built-in MCP tools are available in this workspace.
+					{t("mcp_tools_desc")}
 				</p>
 			</div>
 
 			{Object.entries(groupedTools).map(([group, groupTools]) => (
 				<div key={group} className="space-y-3">
 					<h4 className="text-sm font-semibold">
-						{groupLabels[group] ??
+						{t(groupLabelKeys[group] ?? "mcp_group_fallback", { group: group.replace(/_/g, " ") }) ??
 							group.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
 					</h4>
 					<div className="space-y-3">
@@ -123,7 +125,7 @@ export function WorkspaceMcpToolsControl({
 											{displayName}
 										</p>
 										{tool.is_system && (
-											<p className="text-xs text-muted-foreground">Always enabled</p>
+											<p className="text-xs text-muted-foreground">{t("mcp_always_enabled")}</p>
 										)}
 									</div>
 									<Switch
