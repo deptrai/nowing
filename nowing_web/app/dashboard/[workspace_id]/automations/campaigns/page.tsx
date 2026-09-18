@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { BarChart3, Clock, Pause, Play, Plus, RefreshCw, Send } from "lucide-react";
@@ -8,6 +9,7 @@ import type { Sequence } from "@/contracts/types/sequence.types";
 import { sequenceApiService } from "@/lib/apis/sequence-api.service";
 
 export default function CampaignsListPage() {
+	const t = useTranslations("automations");
 	const params = useParams();
 	const workspaceId = Number(params?.workspace_id);
 
@@ -69,7 +71,7 @@ export default function CampaignsListPage() {
 						type="button"
 						onClick={fetchSequences}
 						className="p-2 border rounded-lg hover:bg-accent text-muted-foreground transition-colors"
-						title="Tải lại"
+						title={t("auto_t_i_l_i")}
 					>
 						<RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
 					</button>

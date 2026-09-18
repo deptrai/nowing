@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { useAtomValue } from "jotai";
 import { MoreHorizontal, Pause, Play, Trash2 } from "lucide-react";
@@ -31,6 +32,7 @@ export function AutomationRowActions({
 	canUpdate,
 	canDelete,
 }: AutomationRowActionsProps) {
+	const t = useTranslations("automations");
 	const { mutateAsync: updateAutomation, isPending: updating } = useAtomValue(
 		updateAutomationMutationAtom
 	);

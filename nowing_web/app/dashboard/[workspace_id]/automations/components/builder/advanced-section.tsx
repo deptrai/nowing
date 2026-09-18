@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -18,19 +19,19 @@ interface AdvancedSectionProps {
 	onTagsChange: (tags: string[]) => void;
 }
 
-const BACKOFF_OPTIONS: ReadonlyArray<{ value: BuilderExecution["retryBackoff"]; label: string }> = [
-	{ value: "exponential", label: "Exponential" },
-	{ value: "linear", label: "Linear" },
-	{ value: "none", label: "None" },
+const getBackoffOptions = (t: (k: string) => string): ReadonlyArray<{ value: BuilderExecution["retryBackoff"]; label: string }> => [
+	{ value: "exponential", label: t("auto_exponential") },
+	{ value: "linear", label: t("auto_linear") },
+	{ value: "none", label: t("auto_none") },
 ];
 
-const CONCURRENCY_OPTIONS: ReadonlyArray<{
+const getConcurrencyOptions = (t: (k: string) => string): ReadonlyArray<{
 	value: BuilderExecution["concurrency"];
 	label: string;
-}> = [
-	{ value: "drop_if_running", label: "Skip if already running" },
-	{ value: "queue", label: "Queue the next run" },
-	{ value: "always", label: "Always run" },
+}> => [
+	{ value: "drop_if_running", label: t("auto_skip_if_already_running") },
+	{ value: "queue", label: t("auto_queue_the_next_run") },
+	{ value: "always", label: t("auto_always_run") },
 ];
 
 function clampInt(raw: string, min: number, fallback: number): number {
@@ -45,6 +46,7 @@ export function AdvancedSection({
 	onExecutionChange,
 	onTagsChange,
 }: AdvancedSectionProps) {
+	const t = useTranslations("automations");
 	const [tagsText, setTagsText] = useState(tags.join(", "));
 
 	function commitTags(text: string) {
@@ -58,7 +60,7 @@ export function AdvancedSection({
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<Field label="Timeout (seconds)" hint="Wall-clock cap for the whole run">
+				<Field label={t("auto_timeout_seconds")} hint="Wall-clock cap for the whole run">
 					<Input
 						type="number"
 						min={1}
@@ -68,7 +70,7 @@ export function AdvancedSection({
 						}
 					/>
 				</Field>
-				<Field label="Max retries" hint="Per-step retry budget">
+				<Field label={t("auto_max_retries")} hint="Per-step retry budget">
 					<Input
 						type="number"
 						min={0}
@@ -76,7 +78,7 @@ export function AdvancedSection({
 						onChange={(e) => onExecutionChange({ maxRetries: clampInt(e.target.value, 0, 2) })}
 					/>
 				</Field>
-				<Field label="Retry backoff">
+				<Field label={t("auto_retry_backoff")}>
 					<Select
 						value={execution.retryBackoff}
 						onValueChange={(value) =>
@@ -87,7 +89,7 @@ export function AdvancedSection({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent matchTriggerWidth={false} className="w-auto min-w-48">
-							{BACKOFF_OPTIONS.map((option) => (
+							{getBackoffOptions(t).map((option) => (
 								<SelectItem key={option.value} value={option.value}>
 									{option.label}
 								</SelectItem>
@@ -95,7 +97,7 @@ export function AdvancedSection({
 						</SelectContent>
 					</Select>
 				</Field>
-				<Field label="If already running">
+				<Field label={t("auto_if_already_running")}>
 					<Select
 						value={execution.concurrency}
 						onValueChange={(value) =>
@@ -106,7 +108,7 @@ export function AdvancedSection({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent matchTriggerWidth={false} className="w-auto min-w-64">
-							{CONCURRENCY_OPTIONS.map((option) => (
+							{getConcurrencyOptions(t).map((option) => (
 								<SelectItem key={option.value} value={option.value}>
 									{option.label}
 								</SelectItem>
@@ -116,10 +118,10 @@ export function AdvancedSection({
 				</Field>
 			</div>
 
-			<Field label="Tags" hint="Comma-separated. Optional.">
+			<Field label={t("auto_tags")} hint="Comma-separated. Optional.">
 				<Input
 					value={tagsText}
-					placeholder="research, weekly"
+					placeholder={t("auto_research_weekly")}
 					onChange={(e) => setTagsText(e.target.value)}
 					onBlur={(e) => commitTags(e.target.value)}
 				/>

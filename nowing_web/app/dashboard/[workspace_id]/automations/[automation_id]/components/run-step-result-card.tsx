@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { CheckCircle2, ChevronDown, MinusCircle, XCircle } from "lucide-react";
 import { memo, useState } from "react";
@@ -15,17 +16,20 @@ import { cn } from "@/lib/utils";
 
 type BadgeVariant = React.ComponentProps<typeof Badge>["variant"];
 
-const STATUS_BADGE: Record<
+function getStatusBadge(t: (k: string) => string): Record<
 	string,
 	{ label: string; variant: BadgeVariant; icon: typeof CheckCircle2 }
-> = {
-	succeeded: { label: "Succeeded", variant: "outline", icon: CheckCircle2 },
-	failed: { label: "Failed", variant: "destructive", icon: XCircle },
-	skipped: { label: "Skipped", variant: "secondary", icon: MinusCircle },
-};
+> {
+	return {
+	succeeded: { label: t("auto_succeeded"), variant: "outline", icon: CheckCircle2 },
+	failed: { label: t("auto_failed"), variant: "destructive", icon: XCircle },
+	skipped: { label: t("auto_skipped"), variant: "secondary", icon: MinusCircle },
+	};
+}
 
 function StepStatusBadge({ status }: { status: string }) {
-	const meta = STATUS_BADGE[status] ?? {
+	const t = useTranslations("automations");
+	const meta = getStatusBadge(t)[status] ?? {
 		label: status,
 		variant: "outline" as const,
 		icon: MinusCircle,

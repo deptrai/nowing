@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ export function AutomationRunsSection({
 	automationId,
 	highlightedRunId,
 }: AutomationRunsSectionProps) {
+	const t = useTranslations("automations");
 	const { data, isLoading, error } = useAutomationRuns(automationId, { limit: LIMIT });
 	const runs = data?.items ?? [];
 
@@ -33,12 +35,8 @@ export function AutomationRunsSection({
 					<CardTitle
 							data-testid="automation-recent-runs-heading"
 							className="text-base font-semibold inline-flex items-center gap-2"
-						>
-							Recent runs
-						</CardTitle>
-					<p className="text-xs text-muted-foreground">
-						Most recent first. Click a row to inspect step results, output and artifacts.
-					</p>
+						>{t("auto_recent_runs")}</CardTitle>
+					<p className="text-xs text-muted-foreground">{t("auto_most_recent_first_click")}</p>
 				</div>
 				{!isLoading && !error && data && (
 					<span className="text-xs text-muted-foreground">{data.total} total</span>
@@ -54,7 +52,7 @@ export function AutomationRunsSection({
 				) : runs.length === 0 ? (
 					<div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-4 py-8 text-center">
 						<History className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
-						<p className="mt-2 text-sm font-medium text-foreground">No runs yet</p>
+						<p className="mt-2 text-sm font-medium text-foreground">{t("auto_no_runs_yet")}</p>
 						<p className="mt-1 text-xs text-muted-foreground">
 							This automation hasn't fired. Once a trigger fires (or you invoke it manually), runs
 							will appear here.

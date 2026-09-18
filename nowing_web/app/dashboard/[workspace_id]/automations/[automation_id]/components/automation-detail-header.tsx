@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -58,6 +59,7 @@ export function AutomationDetailHeader({
 	canUpdate,
 	canDelete,
 }: AutomationDetailHeaderProps) {
+	const t = useTranslations("automations");
 	const router = useRouter();
 	const { mutateAsync: updateAutomation, isPending: updating } = useAtomValue(
 		updateAutomationMutationAtom
@@ -135,9 +137,7 @@ export function AutomationDetailHeader({
 						href={`/dashboard/${workspaceId}/automations`}
 						className="text-xs text-muted-foreground"
 					>
-						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-						Back to automations
-					</Link>
+						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{t("auto_back_to_automations")}</Link>
 				</Button>
 
 				<div className="flex items-start justify-between gap-4 flex-wrap">
@@ -165,9 +165,7 @@ export function AutomationDetailHeader({
 								onClick={openSaveDialog}
 								className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 							>
-								<BookOpen className="mr-1 h-4 w-4" aria-hidden="true" />
-								Save as Playbook
-							</Button>
+								<BookOpen className="mr-1 h-4 w-4" aria-hidden="true" />{t("auto_save_as_playbook")}</Button>
 						)}
 						{canUpdate && (
 							<Button
@@ -229,33 +227,31 @@ export function AutomationDetailHeader({
 			<Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
-						<DialogTitle>Save as Playbook</DialogTitle>
-						<DialogDescription>Create a reusable template from this automation.</DialogDescription>
+						<DialogTitle>{t("auto_save_as_playbook")}</DialogTitle>
+						<DialogDescription>{t("auto_create_a_reusable_template")}</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-2">
 						<div className="space-y-2">
-							<Label htmlFor="playbook-name">Name</Label>
+							<Label htmlFor="playbook-name">{t("auto_name")}</Label>
 							<Input
 								id="playbook-name"
 								value={playbookName}
 								onChange={(e) => setPlaybookName(e.target.value)}
-								placeholder="Playbook name"
+								placeholder={t("auto_playbook_name")}
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="playbook-description">Description</Label>
+							<Label htmlFor="playbook-description">{t("auto_description")}</Label>
 							<Input
 								id="playbook-description"
 								value={playbookDescription}
 								onChange={(e) => setPlaybookDescription(e.target.value)}
-								placeholder="Optional description"
+								placeholder={t("auto_optional_description")}
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label>Verticals</Label>
-							<p className="text-xs text-muted-foreground">
-								Tag the industries this playbook applies to.
-							</p>
+							<Label>{t("auto_verticals")}</Label>
+							<p className="text-xs text-muted-foreground">{t("auto_tag_the_industries_this")}</p>
 							<div className="flex flex-wrap gap-3 pt-1">
 								{PLAYBOOK_VERTICALS.map((vertical) => {
 									const verticalId = `playbook-vertical-${vertical}`;

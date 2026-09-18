@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { AlertCircle } from "lucide-react";
 import type { ReactNode } from "react";
@@ -20,6 +21,7 @@ interface FieldProps {
  * stay focused on their inputs.
  */
 export function Field({ label, htmlFor, hint, error, required, className, children }: FieldProps) {
+	const t = useTranslations("automations");
 	return (
 		<div className={cn("space-y-1.5", className)}>
 			{label && (

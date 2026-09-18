@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import type { PlanStep } from "@/contracts/types/automation.types";
 
@@ -11,8 +12,9 @@ interface PlanStepCardProps {
  * step does and only show advanced step controls when they are explicitly set.
  */
 export function PlanStepCard({ step, index }: PlanStepCardProps) {
+	const t = useTranslations("automations");
 	const title = getStepTitle(step);
-	const details = getStepDetails(step);
+	const details = getStepDetails(step, t);
 
 	return (
 		<div className="rounded-md border border-border/60 bg-background/30 px-4 py-3">
@@ -51,36 +53,36 @@ function getStepTitle(step: PlanStep): string {
 	return sentenceCase(formatAction(step.action));
 }
 
-function getStepDetails(step: PlanStep): { label: string; value: string }[] {
+function getStepDetails(step: PlanStep, t: (k: string) => string): { label: string; value: string }[] {
 	const details: { label: string; value: string }[] = [];
 
 	if (step.action === "agent_task") {
 		if (typeof step.params.auto_approve_all === "boolean") {
 			details.push({
-				label: "Approval",
+				label: t("auto_approval"),
 				value: step.params.auto_approve_all ? "Auto-approve agent actions" : "Ask before actions",
 			});
 		}
 
 		const mentionSummary = summarizeMentions(step.params);
 		if (mentionSummary) {
-			details.push({ label: "Scope", value: mentionSummary });
+			details.push({ label: t("auto_scope"), value: mentionSummary });
 		}
 	} else {
 		const readableParams = Object.entries(step.params)
 			.filter(([, value]) => value !== null && value !== undefined && value !== "")
 			.map(([key, value]) => `${sentenceCase(formatKey(key))}: ${formatValue(value)}`);
 		if (readableParams.length > 0) {
-			details.push({ label: "Details", value: readableParams.join(" · ") });
+			details.push({ label: t("auto_details"), value: readableParams.join(" · ") });
 		}
 	}
 
-	if (step.when) details.push({ label: "Runs when", value: step.when });
-	if (step.output_as) details.push({ label: "Saves output as", value: step.output_as });
+	if (step.when) details.push({ label: t("auto_runs_when"), value: step.when });
+	if (step.output_as) details.push({ label: t("auto_saves_output_as"), value: step.output_as });
 	if (step.max_retries != null)
-		details.push({ label: "Max retries", value: String(step.max_retries) });
+		details.push({ label: t("auto_max_retries"), value: String(step.max_retries) });
 	if (step.timeout_seconds != null)
-		details.push({ label: "Timeout", value: `${step.timeout_seconds}s` });
+		details.push({ label: t("auto_timeout"), value: `${step.timeout_seconds}s` });
 
 	return details;
 }

@@ -1,9 +1,11 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const ROW_KEYS = ["a", "b", "c"] as const;
 
 export function RunsLoading() {
+	const t = useTranslations("automations");
 	return (
 		<div className="space-y-2">
 			{ROW_KEYS.map((key) => (

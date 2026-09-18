@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { Dot } from "lucide-react";
 import { useState } from "react";
@@ -18,6 +19,7 @@ interface AutomationDefinitionSectionProps {
  * raw persisted schema.
  */
 export function AutomationDefinitionSection({ definition }: AutomationDefinitionSectionProps) {
+	const t = useTranslations("automations");
 	const hasTags = definition.metadata.tags.length > 0;
 	const hasInputs = !!definition.inputs;
 	const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -26,17 +28,17 @@ export function AutomationDefinitionSection({ definition }: AutomationDefinition
 	return (
 		<Card className="border-border/60 bg-accent">
 			<CardHeader className="pb-4">
-				<CardTitle className="text-base font-semibold">Automation details</CardTitle>
+				<CardTitle className="text-base font-semibold">{t("auto_automation_details")}</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-6">
 				{definition.goal && (
-					<Field label="Goal">
+					<Field label={t("auto_goal")}>
 						<p className="text-sm text-foreground">{definition.goal}</p>
 					</Field>
 				)}
 
 				{hasTags && (
-					<Field label="Tags">
+					<Field label={t("auto_tags")}>
 						<div className="flex flex-wrap gap-1.5">
 							{definition.metadata.tags.map((tag) => (
 								<span
@@ -51,7 +53,7 @@ export function AutomationDefinitionSection({ definition }: AutomationDefinition
 				)}
 
 				{hasInputs && (
-					<Field label="Inputs">
+					<Field label={t("auto_inputs")}>
 						{definition.inputs && <InputsSchemaPreview inputs={definition.inputs} />}
 					</Field>
 				)}
@@ -76,9 +78,7 @@ export function AutomationDefinitionSection({ definition }: AutomationDefinition
 						</CollapsibleTrigger>
 						<CollapsibleContent>
 							<div className="mt-3 rounded-md border border-border/60 bg-background/30 p-3">
-								<div className="mb-2 text-sm font-medium text-muted-foreground">
-									Execution defaults
-								</div>
+								<div className="mb-2 text-sm font-medium text-muted-foreground">{t("auto_execution_defaults")}</div>
 								<ExecutionSummary execution={definition.execution} />
 							</div>
 						</CollapsibleContent>

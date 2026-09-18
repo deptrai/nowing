@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -28,10 +29,11 @@ export function AutomationsHeader({
 	canCreate,
 	showCreateCta = true,
 }: AutomationsHeaderProps) {
+	const t = useTranslations("automations");
 	return (
 		<div className="flex items-center justify-between gap-4 flex-wrap">
 			<div className="flex items-baseline gap-3">
-				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">Automations</h1>
+				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">{t("page_title")}</h1>
 				{!loading && (
 					<span className="text-xs text-muted-foreground font-mono">
 						{total} {total === 1 ? "automation" : "automations"}
@@ -46,10 +48,10 @@ export function AutomationsHeader({
 						variant="ghost"
 						className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 					>
-						<Link href={`/dashboard/${workspaceId}/automations/new`}>Create manually</Link>
+						<Link href={`/dashboard/${workspaceId}/automations/new`}>{t("auto_create_manually")}</Link>
 					</Button>
 					<Button asChild size="sm">
-						<Link href={`/dashboard/${workspaceId}/new-chat`}>Create via chat</Link>
+						<Link href={`/dashboard/${workspaceId}/new-chat`}>{t("auto_create_via_chat")}</Link>
 					</Button>
 				</div>
 			)}

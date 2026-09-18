@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { ChevronDown, ChevronRight, Hand } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -19,6 +20,7 @@ interface RunRowProps {
  * panel itself only fetches the heavy REST fields on first expand.
  */
 export function RunRow({ run, automationId, highlightedRunId }: RunRowProps) {
+	const t = useTranslations("automations");
 	const isHighlighted = run.id === highlightedRunId;
 	const [open, setOpen] = useState(isHighlighted);
 	const hasScrolled = useRef(false);

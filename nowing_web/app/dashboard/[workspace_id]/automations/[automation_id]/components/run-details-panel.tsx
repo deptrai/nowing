@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import {
 	AlertCircle,
@@ -50,6 +51,7 @@ export function RunDetailsPanel({
 	liveSteps,
 	liveStatus,
 }: RunDetailsPanelProps) {
+	const t = useTranslations("automations");
 	const isTerminal = liveStatus !== "pending" && liveStatus !== "running";
 	// Defer the REST round-trip until the run can actually carry heavy
 	// fields — output/artifacts/error are only written at terminal mark.
@@ -73,7 +75,7 @@ export function RunDetailsPanel({
 			{runError ? <RunErrorSection error={runError} /> : null}
 
 			{hasOutput ? (
-				<Section icon={FileOutput} label="Output">
+				<Section icon={FileOutput} label={t("auto_output")}>
 					<JsonBlock value={run.output} />
 				</Section>
 			) : null}
@@ -107,7 +109,7 @@ export function RunDetailsPanel({
 						</Section>
 					) : null}
 					{hasInputs ? (
-						<Section icon={Settings2} label="Resolved inputs">
+						<Section icon={Settings2} label={t("auto_resolved_inputs")}>
 							<JsonBlock value={run?.inputs} />
 						</Section>
 					) : null}
@@ -122,12 +124,13 @@ export function RunDetailsPanel({
  * with the full structured error available behind a raw toggle.
  */
 function RunErrorSection({ error }: { error: Record<string, unknown> }) {
+	const t = useTranslations("automations");
 	const [rawOpen, setRawOpen] = useState(false);
 	const message = typeof error.message === "string" ? error.message : null;
 	const type = typeof error.type === "string" ? error.type : "Run failed";
 
 	return (
-		<Section icon={AlertCircle} label="Error" tone="destructive">
+		<Section icon={AlertCircle} label={t("auto_error")} tone="destructive">
 			{message ? (
 				<Alert variant="destructive">
 					<AlertCircle aria-hidden />

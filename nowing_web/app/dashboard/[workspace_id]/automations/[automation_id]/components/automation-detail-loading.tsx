@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * doesn't reflow when data arrives.
  */
 export function AutomationDetailLoading() {
+	const t = useTranslations("automations");
 	return (
 		<>
 			<div className="space-y-3">

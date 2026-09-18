@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
@@ -41,6 +42,7 @@ export function DeleteAutomationDialog({
 	workspaceId,
 	onDeleted,
 }: DeleteAutomationDialogProps) {
+	const t = useTranslations("automations");
 	const { mutateAsync: deleteAutomation } = useAtomValue(deleteAutomationMutationAtom);
 	const [submitting, setSubmitting] = useState(false);
 
@@ -59,7 +61,7 @@ export function DeleteAutomationDialog({
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Delete this automation?</AlertDialogTitle>
+					<AlertDialogTitle>{t("auto_delete_this_automation")}</AlertDialogTitle>
 					<AlertDialogDescription>
 						<span className="font-medium text-foreground">{automationName}</span> and all of its
 						triggers and run history will be removed. This cannot be undone.

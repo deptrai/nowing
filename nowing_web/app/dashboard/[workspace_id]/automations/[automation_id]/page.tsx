@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { AutomationDetailContent } from "./automation-detail-content";
 
 export default async function AutomationDetailPage({
@@ -5,6 +6,7 @@ export default async function AutomationDetailPage({
 }: {
 	params: Promise<{ workspace_id: string; automation_id: string }>;
 }) {
+	const t = useTranslations("automations");
 	const { workspace_id, automation_id } = await params;
 
 	return (

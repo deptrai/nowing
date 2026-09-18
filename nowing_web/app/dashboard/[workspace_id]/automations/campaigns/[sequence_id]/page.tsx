@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import {
@@ -26,6 +27,7 @@ import type {
 import { sequenceApiService } from "@/lib/apis/sequence-api.service";
 
 export default function CampaignAnalyticsPage() {
+	const t = useTranslations("automations");
 	const params = useParams();
 	const workspaceId = Number(params?.workspace_id);
 	const sequenceId = String(params?.sequence_id || "");
@@ -96,7 +98,7 @@ export default function CampaignAnalyticsPage() {
 						type="button"
 						onClick={loadData}
 						className="p-2 border rounded-lg hover:bg-accent text-muted-foreground transition-colors"
-						title="Làm mới"
+						title={t("auto_l_m_m_i")}
 					>
 						<RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
 					</button>

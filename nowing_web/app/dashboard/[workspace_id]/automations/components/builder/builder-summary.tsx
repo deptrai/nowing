@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { Dot } from "lucide-react";
 import { type BuilderForm, scheduleToCron } from "@/lib/automations/builder-schema";
@@ -30,6 +31,7 @@ function taskSummary(task: BuilderForm["tasks"][number]): string {
 }
 
 export function BuilderSummary({ form }: BuilderSummaryProps) {
+	const t = useTranslations("automations");
 	const automationName = form.name.trim() || "Untitled automation";
 	const scheduleDescription = form.schedule ? describeCron(scheduleToCron(form.schedule)) : null;
 	const taskCountLabel = `${form.tasks.length} task${form.tasks.length === 1 ? "" : "s"}`;
@@ -47,7 +49,7 @@ export function BuilderSummary({ form }: BuilderSummaryProps) {
 			<div className="h-px bg-border/60" />
 
 			<div className="flex flex-col gap-3">
-				<SummaryRow label="Schedule">
+				<SummaryRow label={t("auto_schedule")}>
 					{scheduleDescription ? (
 						<span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
 							<span>{scheduleDescription}</span>
@@ -73,7 +75,7 @@ export function BuilderSummary({ form }: BuilderSummaryProps) {
 					</ol>
 				</SummaryRow>
 
-				<SummaryRow label="Approvals">
+				<SummaryRow label={t("auto_approvals")}>
 					{form.unattended ? "Runs without approval prompts" : "Approval prompts are rejected"}
 				</SummaryRow>
 			</div>

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { ShieldAlert } from "lucide-react";
 import { useAutomation } from "@/hooks/use-automation";
@@ -18,6 +19,7 @@ interface AutomationEditContentProps {
  * can read but not update is bounced to the access-denied panel.
  */
 export function AutomationEditContent({ workspaceId, automationId }: AutomationEditContentProps) {
+	const t = useTranslations("automations");
 	const perms = useAutomationPermissions();
 	const validId = Number.isInteger(automationId) && automationId > 0;
 	const { data: automation, isLoading, error } = useAutomation(validId ? automationId : undefined);
@@ -30,10 +32,8 @@ export function AutomationEditContent({ workspaceId, automationId }: AutomationE
 		return (
 			<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-12 text-center">
 				<ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden />
-				<h2 className="mt-3 text-base font-semibold text-foreground">Access denied</h2>
-				<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-					You don't have permission to edit automations in this workspace.
-				</p>
+				<h2 className="mt-3 text-base font-semibold text-foreground">{t("auto_access_denied")}</h2>
+				<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">{t("auto_you_don_t_have_2")}</p>
 			</div>
 		);
 	}

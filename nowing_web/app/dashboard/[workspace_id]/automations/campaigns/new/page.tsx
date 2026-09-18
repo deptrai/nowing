@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { ArrowLeft } from "lucide-react";
@@ -9,6 +10,7 @@ import type { SequenceCreate } from "@/contracts/types/sequence.types";
 import { sequenceApiService } from "@/lib/apis/sequence-api.service";
 
 export default function NewCampaignPage() {
+	const t = useTranslations("automations");
 	const params = useParams();
 	const router = useRouter();
 	const workspaceId = Number(params?.workspace_id);

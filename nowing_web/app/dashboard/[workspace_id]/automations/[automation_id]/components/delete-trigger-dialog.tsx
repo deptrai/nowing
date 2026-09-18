@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
@@ -34,6 +35,7 @@ export function DeleteTriggerDialog({
 	triggerId,
 	triggerLabel,
 }: DeleteTriggerDialogProps) {
+	const t = useTranslations("automations");
 	const { mutateAsync: removeTrigger } = useAtomValue(removeTriggerMutationAtom);
 	const [submitting, setSubmitting] = useState(false);
 
@@ -51,7 +53,7 @@ export function DeleteTriggerDialog({
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Remove this trigger?</AlertDialogTitle>
+					<AlertDialogTitle>{t("auto_remove_this_trigger")}</AlertDialogTitle>
 					<AlertDialogDescription>
 						<span className="font-medium text-foreground">{triggerLabel}</span> will be detached.
 						The automation itself stays, but it won't fire on this trigger anymore.

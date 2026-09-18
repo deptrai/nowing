@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface TaskListProps {
  * Reordering is done with up/down buttons to avoid a drag-and-drop dependency.
  */
 export function TaskList({ tasks, errors, workspaceId, onChange }: TaskListProps) {
+	const t = useTranslations("automations");
 	function updateAt(index: number, patch: Partial<BuilderTask>) {
 		onChange(tasks.map((task, i) => (i === index ? { ...task, ...patch } : task)));
 	}
@@ -52,9 +54,7 @@ export function TaskList({ tasks, errors, workspaceId, onChange }: TaskListProps
 			{errors.tasks && <p className="text-xs text-destructive">{errors.tasks}</p>}
 
 			<Button type="button" size="sm" onClick={() => onChange([...tasks, emptyTask()])}>
-				<Plus className="h-4 w-4" aria-hidden="true" />
-				Add task
-			</Button>
+				<Plus className="h-4 w-4" aria-hidden="true" />{t("auto_add_task")}</Button>
 		</div>
 	);
 }

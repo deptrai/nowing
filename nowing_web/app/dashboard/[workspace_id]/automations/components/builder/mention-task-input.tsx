@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -33,6 +34,7 @@ type AnchorPoint = { left: number; top: number };
 // Mirror of thread.tsx's getComposerSuggestionAnchorPoint -- kept local so the
 // chat composer stays untouched.
 function getAnchorPoint(rect: SuggestionAnchorRect | null): AnchorPoint | null {
+	const t = useTranslations("automations");
 	if (!rect) return null;
 	return { left: rect.left, top: rect.bottom };
 }

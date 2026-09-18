@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import Link from "next/link";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -25,6 +26,7 @@ export function AutomationRow({
 	canUpdate,
 	canDelete,
 }: AutomationRowProps) {
+	const t = useTranslations("automations");
 	return (
 		<TableRow className="h-12 border-b border-border/60 hover:bg-muted/40">
 			<TableCell className="px-4 md:px-6 py-2.5 border-r border-border/60 align-middle">

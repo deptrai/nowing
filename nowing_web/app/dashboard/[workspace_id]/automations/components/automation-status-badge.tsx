@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import type { AutomationStatus } from "@/contracts/types/automation.types";
 import { cn } from "@/lib/utils";
@@ -8,23 +9,26 @@ interface AutomationStatusBadgeProps {
 }
 
 // Small borderless status pills, matching model-selector badges.
-const STATUS_STYLES: Record<AutomationStatus, { label: string; classes: string }> = {
+function getStatusStyles(t: (k: string) => string): Record<AutomationStatus, { label: string; classes: string }> {
+	return {
 	active: {
-		label: "Active",
+		label: t("auto_active"),
 		classes: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
 	},
 	paused: {
-		label: "Paused",
+		label: t("auto_paused"),
 		classes: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
 	},
 	archived: {
-		label: "Archived",
+		label: t("auto_archived"),
 		classes: "bg-muted text-muted-foreground",
 	},
-};
+	};
+}
 
 export function AutomationStatusBadge({ status, className }: AutomationStatusBadgeProps) {
-	const { label, classes } = STATUS_STYLES[status];
+	const t = useTranslations("automations");
+	const { label, classes } = getStatusStyles(t)[status];
 	return (
 		<span
 			className={cn(

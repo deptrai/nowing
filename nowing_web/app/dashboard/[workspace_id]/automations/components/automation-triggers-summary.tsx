@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { CalendarClock, Pause } from "lucide-react";
 import type { Trigger } from "@/contracts/types/automation.types";
@@ -18,8 +19,9 @@ interface AutomationTriggersSummaryProps {
  * The detail page renders the full per-trigger editor.
  */
 export function AutomationTriggersSummary({ triggers }: AutomationTriggersSummaryProps) {
+	const t = useTranslations("automations");
 	if (triggers.length === 0) {
-		return <span className="text-xs text-muted-foreground">No triggers</span>;
+		return <span className="text-xs text-muted-foreground">{t("auto_no_triggers")}</span>;
 	}
 
 	if (triggers.length > 1) {

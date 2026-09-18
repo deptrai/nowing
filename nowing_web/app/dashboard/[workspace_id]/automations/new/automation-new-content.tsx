@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { ShieldAlert } from "lucide-react";
 import { AutomationBuilderForm } from "../components/builder/automation-builder-form";
@@ -19,6 +20,7 @@ interface AutomationNewContentProps {
  * exist, and block submit until each slot resolves.
  */
 export function AutomationNewContent({ workspaceId }: AutomationNewContentProps) {
+	const t = useTranslations("automations");
 	const perms = useAutomationPermissions();
 
 	if (perms.loading) {
@@ -29,10 +31,8 @@ export function AutomationNewContent({ workspaceId }: AutomationNewContentProps)
 		return (
 			<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-12 text-center">
 				<ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden />
-				<h2 className="mt-3 text-base font-semibold text-foreground">Access denied</h2>
-				<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-					You don't have permission to create automations in this workspace.
-				</p>
+				<h2 className="mt-3 text-base font-semibold text-foreground">{t("auto_access_denied")}</h2>
+				<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">{t("auto_you_don_t_have")}</p>
 			</div>
 		);
 	}

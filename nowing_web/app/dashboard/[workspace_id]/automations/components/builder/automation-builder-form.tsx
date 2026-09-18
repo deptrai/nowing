@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 import { useAtomValue } from "jotai";
 import { AlertCircle, Code2, LayoutList } from "lucide-react";
@@ -85,6 +86,7 @@ export function AutomationBuilderForm({
 	submitDisabledReason,
 	renderModeSwitcher,
 }: AutomationBuilderFormProps) {
+	const t = useTranslations("automations");
 	const router = useRouter();
 	const { mutateAsync: createAutomation } = useAtomValue(createAutomationMutationAtom);
 	const { mutateAsync: updateAutomation } = useAtomValue(updateAutomationMutationAtom);
@@ -348,7 +350,7 @@ export function AutomationBuilderForm({
 					className="h-5 gap-1 px-1.5 text-[11px] select-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=active]:bg-muted-foreground/25 data-[state=active]:text-foreground data-[state=active]:shadow-none"
 				>
 					<Code2 className="size-3 shrink-0" aria-hidden="true" />
-					<span className="leading-none">Edit as JSON</span>
+					<span className="leading-none">{t("auto_edit_as_json")}</span>
 				</TabsTrigger>
 			</TabsList>
 		</Tabs>
@@ -407,7 +409,7 @@ export function AutomationBuilderForm({
 							<Separator className="mx-auto data-[orientation=horizontal]:w-[calc(100%-6rem)]" />
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Schedule</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("auto_schedule")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<ScheduleSection
@@ -435,7 +437,7 @@ export function AutomationBuilderForm({
 							<Separator className="mx-auto data-[orientation=horizontal]:w-[calc(100%-6rem)]" />
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Settings</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("auto_settings")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<AdvancedSection
@@ -454,7 +456,7 @@ export function AutomationBuilderForm({
 					<div className="lg:col-span-1">
 						<Card className="rounded-md border-accent bg-accent/20 lg:sticky lg:top-4">
 							<CardHeader className="pb-3">
-								<CardTitle className="text-sm font-semibold">Summary</CardTitle>
+								<CardTitle className="text-sm font-semibold">{t("auto_summary")}</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<BuilderSummary form={form} />
