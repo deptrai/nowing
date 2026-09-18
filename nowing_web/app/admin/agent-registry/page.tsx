@@ -413,7 +413,7 @@ export default function AgentRegistryAdminPage() {
 									}
 								/>
 								<Label htmlFor="citations_enabled" className="cursor-pointer">
-									Citations
+									{t("agents_citations")}
 								</Label>
 							</div>
 

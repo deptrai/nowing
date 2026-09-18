@@ -45,19 +45,19 @@ function getStatusBadge(status: string, t: (k: string) => string) {
 		case "scheduled":
 			return (
 				<span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-500 border border-blue-500/20">
-					Scheduled
+					{t("broadcasts_status_scheduled")}
 				</span>
 			);
 		case "expired":
 			return (
 				<span className="rounded-full bg-zinc-500/10 px-2 py-0.5 text-xs font-semibold text-zinc-500 border border-zinc-500/20">
-					Expired
+					{t("broadcasts_status_expired")}
 				</span>
 			);
 		default:
 			return (
 				<span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-xs font-semibold text-rose-500 border border-rose-500/20">
-					Inactive
+					{t("broadcasts_status_inactive")}
 				</span>
 			);
 	}

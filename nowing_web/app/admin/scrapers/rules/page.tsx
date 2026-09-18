@@ -191,10 +191,10 @@ export default function ScraperRulesPage() {
 							Save
 						</Button>
 						<Button variant="secondary" onClick={handleTrip} disabled={loading}>
-							Trip Circuit Breaker
+							{t("scrapers_trip")}
 						</Button>
 						<Button variant="outline" onClick={handleReset} disabled={loading}>
-							Reset Circuit Breaker
+							{t("scrapers_reset")}
 						</Button>
 					</div>
 				</CardContent>

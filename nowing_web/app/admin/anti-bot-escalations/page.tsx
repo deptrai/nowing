@@ -133,7 +133,7 @@ export default function AntiBotEscalationsAdminPage() {
 											onClick={() => handleResolve(escalation.id)}
 											disabled={escalation.status === "resolved"}
 										>
-											Resolve
+											{t("antibot_resolve")}
 										</Button>
 										<Button variant="outline" size="sm" onClick={() => handleRetry(escalation.id)}>
 											{t("antibot_retry")}

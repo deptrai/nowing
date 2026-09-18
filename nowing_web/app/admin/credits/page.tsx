@@ -205,7 +205,7 @@ export default function AdminCreditsPage() {
 					onClick={handleExportCSV}
 					className="h-9 rounded border px-3 text-sm hover:bg-slate-50"
 				>
-					Export CSV
+					{t("credits_export_csv")}
 				</button>
 			</div>
 

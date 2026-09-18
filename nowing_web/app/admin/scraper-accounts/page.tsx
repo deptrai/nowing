@@ -540,7 +540,7 @@ export default function ScraperAccountsPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					<Button onClick={() => setTelegramModalOpen(true)} variant="outline">
-						Add Telegram Account
+						{t("scrapers_acc_add_tg")}
 					</Button>
 					<Button onClick={() => setCreateOpen(true)}>{t("scrapers_acc_add")}</Button>
 				</div>
@@ -643,25 +643,25 @@ export default function ScraperAccountsPage() {
 									<thead>
 										<tr className="border-b text-muted-foreground">
 											<th className="py-3 px-2 font-medium" scope="col">
-												Phone Number
+												{t("scrapers_acc_col_phone")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Platform
+												{t("scrapers_acc_col_platform")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Status
+												{t("scrapers_acc_col_status")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Token Quota
+												{t("scrapers_acc_col_token_quota")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Proxy
+												{t("scrapers_acc_col_proxy")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Last Used
+												{t("scrapers_acc_col_last_used")}
 											</th>
 											<th className="py-3 px-2 font-medium text-right" scope="col">
-												Actions
+												{t("scrapers_acc_col_actions")}
 											</th>
 										</tr>
 									</thead>
@@ -727,8 +727,8 @@ export default function ScraperAccountsPage() {
 									alerts.
 								</CardDescription>
 							</div>
-							<Button size="sm" onClick={() => toast.info("Add channel modal")}>
-								Monitor New Channel
+							<Button size="sm" onClick={() => toast.info(t("scrapers_acc_monitor_new"))}>
+								{t("scrapers_acc_monitor_new")}
 							</Button>
 						</CardHeader>
 						<CardContent>
