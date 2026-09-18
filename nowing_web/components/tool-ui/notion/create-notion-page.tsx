@@ -14,6 +14,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -97,6 +98,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<NotionCreatePageContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -181,25 +183,25 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-							? "Notion Page Rejected"
+							? t("notion_rejected_title")
 							: phase === "processing" || phase === "complete"
-								? "Notion Page Approved"
-								: "Create Notion Page"}
+								? t("notion_approved_title")
+								: t("notion_create_title")}
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? "Creating page with your changes" : "Creating page"}
+							text={pendingEdits ? t("notion_creating_page_with_changes") : t("notion_creating_page")}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{pendingEdits ? "Page created with your changes" : "Page created"}
+							{pendingEdits ? t("common_page_created_with_changes") : t("common_page_created")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Page creation was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("notion_creation_cancelled")}</p>
 					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("common_requires_approval")}
 						</p>
 					)}
 				</div>
@@ -223,7 +225,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -240,7 +242,7 @@ function ApprovalCard({
 								{accounts.length > 0 && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											Notion Account <span className="text-destructive">*</span>
+											{t("notion_account_label")} <span className="text-destructive">*</span>
 										</p>
 										<Select
 											value={selectedAccountId}
@@ -250,7 +252,7 @@ function ApprovalCard({
 											}}
 										>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select an account" />
+												<SelectValue placeholder={t("notion_select_account")} />
 											</SelectTrigger>
 											<SelectContent>
 												{validAccounts.map((account) => (
@@ -274,14 +276,14 @@ function ApprovalCard({
 								{selectedAccountId && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											Parent Page (optional)
+											{t("notion_parent_page")}
 										</p>
 										<Select value={selectedParentPageId} onValueChange={setSelectedParentPageId}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="None" />
+												<SelectValue placeholder={t("notion_none")} />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="__none__">None</SelectItem>
+												<SelectItem value="__none__">{t("notion_none")}</SelectItem>
 												{availableParentPages.map((page) => (
 													<SelectItem key={page.page_id} value={page.page_id}>
 														{page.title}
@@ -291,7 +293,7 @@ function ApprovalCard({
 										</Select>
 										{availableParentPages.length === 0 && selectedAccountId && (
 											<p className="text-xs text-muted-foreground">
-												No pages available. Page will be created at workspace root.
+												{t("notion_no_pages_available")}
 											</p>
 										)}
 									</div>
@@ -341,7 +343,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!selectedAccountId || !isTitleValid || isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -356,7 +358,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -367,10 +369,11 @@ function ApprovalCard({
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Notion authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("notion_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -381,10 +384,11 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create Notion page</p>
+				<p className="text-sm font-semibold text-destructive">{t("notion_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -395,17 +399,18 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Notion page created successfully"}
+					{result.message || t("notion_created_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4 space-y-2 text-xs">
 				<div>
-					<span className="font-medium text-muted-foreground">Title: </span>
+					<span className="font-medium text-muted-foreground">{t("notion_title_label")} </span>
 					<span>{result.title}</span>
 				</div>
 				{result.url && (
@@ -416,7 +421,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Notion
+							{t("notion_open_in_notion")}
 						</a>
 					</div>
 				)}
