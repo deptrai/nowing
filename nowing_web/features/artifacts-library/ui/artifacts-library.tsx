@@ -20,6 +20,7 @@ import type { LibraryArtifact, LibraryArtifactKind } from "../model/artifact";
 import { ArtifactCard } from "./artifact-card";
 import { KIND_META, KIND_ORDER } from "./kind-meta";
 import { MediaViewerDialog } from "./media-viewer-dialog";
+import { useTranslations } from "next-intl";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6"];
 
@@ -34,43 +35,45 @@ function LoadingState() {
 }
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
+	const t = useTranslations("artifacts");
 	return (
 		<div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-center">
 			<span className="flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
 				<TriangleAlert className="size-5" aria-hidden="true" />
 			</span>
 			<div>
-				<p className="text-sm font-semibold text-foreground">Couldn't load artifacts</p>
+				<p className="text-sm font-semibold text-foreground">{t("couldnt_load")}</p>
 				<p className="mt-1 text-xs text-muted-foreground">
-					Something went wrong fetching this workspace's deliverables.
+					{t("load_error_desc")}
 				</p>
 			</div>
 			<Button variant="outline" size="sm" onClick={onRetry} className="h-8 text-xs">
 				<RefreshCw className="size-3.5 mr-1.5" aria-hidden="true" />
-				Retry
+				{t("retry")}
 			</Button>
 		</div>
 	);
 }
 
 function EmptyState() {
+	const t = useTranslations("artifacts");
 	return (
 		<div className="rounded-xl border border-dashed border-border/70 bg-card p-8 sm:p-12 text-center">
 			<div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
 				<Boxes className="h-5 w-5" aria-hidden />
 			</div>
 			<h3 className="mt-3 font-serif text-lg sm:text-xl font-normal text-foreground">
-				No artifacts yet
+				{t("no_artifacts")}
 			</h3>
 			<p className="mt-1.5 text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-				Artifacts collect the reports, resumes, podcasts, presentations, and images Nowing creates
-				for this workspace. Generated deliverables from your chats will appear here automatically.
+				{t("empty_desc")}
 			</p>
 		</div>
 	);
 }
 
 export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
+	const t = useTranslations("artifacts");
 	const { artifacts, loading, error, refresh } = useLibraryArtifacts(workspaceId);
 	const openReportPanel = useSetAtom(openReportPanelAtom);
 	const [selectedMedia, setSelectedMedia] = useState<LibraryArtifact | null>(null);
@@ -119,11 +122,11 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 	};
 
 	const filterTabs = [
-		{ id: "all", label: "Tất cả", icon: Boxes },
-		{ id: "report", label: "Reports", icon: FileText },
-		{ id: "podcast", label: "Podcasts", icon: Mic },
-		{ id: "video", label: "Presentations", icon: Presentation },
-		{ id: "image", label: "Images", icon: Image },
+		{ id: "all", label: t("tab_all"), icon: Boxes },
+		{ id: "report", label: t("tab_reports"), icon: FileText },
+		{ id: "podcast", label: t("tab_podcasts"), icon: Mic },
+		{ id: "video", label: t("tab_presentations"), icon: Presentation },
+		{ id: "image", label: t("tab_images"), icon: Image },
 	];
 
 	return (
@@ -131,11 +134,11 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 			<header className="flex items-center justify-between gap-4 flex-wrap pb-1 border-b border-border/40">
 				<div className="flex items-baseline gap-2.5">
 					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground tracking-tight">
-						Artifacts
+						{t("title")}
 					</h1>
 					{!loading && artifacts.length > 0 ? (
 						<span className="text-[11.5px] text-muted-foreground font-mono bg-muted/60 px-2 py-0.5 rounded-md">
-							{artifacts.length} deliverables
+							{artifacts.length} {t("deliverables")}
 						</span>
 					) : null}
 				</div>
@@ -147,7 +150,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 							aria-hidden="true"
 						/>
 						<Input
-							placeholder="Tìm kiếm artifacts..."
+							placeholder={t("search_placeholder")}
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
 							className="h-8 pl-8 text-xs rounded-lg bg-background"
@@ -158,7 +161,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 						size="sm"
 						onClick={() => refresh()}
 						className="h-8 px-2.5 text-xs shrink-0"
-						title="Làm mới danh sách"
+						title={t("refresh_list")}
 					>
 						<RefreshCw className="size-3.5" aria-hidden="true" />
 					</Button>
@@ -210,7 +213,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 			) : filteredArtifacts.length === 0 ? (
 				<div className="rounded-xl border border-dashed border-border/70 p-8 text-center">
 					<p className="text-xs text-muted-foreground">
-						Không tìm thấy artifact nào phù hợp với bộ lọc.
+						{t("no_match_filter")}
 					</p>
 					<Button
 						variant="ghost"
@@ -221,7 +224,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 						}}
 						className="mt-2 h-7 text-xs text-primary"
 					>
-						Đặt lại bộ lọc
+						{t("reset_filter")}
 					</Button>
 				</div>
 			) : (

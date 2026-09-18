@@ -3,44 +3,19 @@
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { ExpandedGifOverlay, useExpandedGif } from "@/components/ui/expanded-gif-overlay";
+import { useTranslations } from "next-intl";
 
-const useCases = [
-	{
-		title: "Search & Citation",
-		description: "Ask questions and get Perplexity-style cited responses from your knowledge base.",
-		src: "/homepage/hero_tutorial/BSNCGif.gif",
-	},
-	{
-		title: "Document Mention QNA",
-		description: "Mention specific documents in your queries for targeted answers.",
-		src: "/homepage/hero_tutorial/BQnaGif_compressed.gif",
-	},
-	{
-		title: "Report Generation",
-		description: "Generate and export reports in many formats.",
-		src: "/homepage/hero_tutorial/ReportGenGif_compressed.gif",
-	},
-	{
-		title: "Podcast Generation",
-		description: "Turn your knowledge into podcasts in under 20 seconds.",
-		src: "/homepage/hero_tutorial/PodcastGenGif.gif",
-	},
-	{
-		title: "Image Generation",
-		description: "Generate images directly from your conversations.",
-		src: "/homepage/hero_tutorial/ImageGenGif.gif",
-	},
-	{
-		title: "Realtime Chat",
-		description: "Chat together in realtime with your team.",
-		src: "/homepage/hero_realtime/RealTimeChatGif.gif",
-	},
-	{
-		title: "Realtime Comments",
-		description: "Add comments and tag teammates on any message.",
-		src: "/homepage/hero_realtime/RealTimeCommentsFlow.gif",
-	},
-];
+function getUseCases(t: (k: string) => string) {
+	return [
+		{ title: t("g1_title"), description: t("g1_desc"), src: "/homepage/hero_tutorial/BSNCGif.gif" },
+		{ title: t("g2_title"), description: t("g2_desc"), src: "/homepage/hero_tutorial/BQnaGif_compressed.gif" },
+		{ title: t("g3_title"), description: t("g3_desc"), src: "/homepage/hero_tutorial/ReportGenGif_compressed.gif" },
+		{ title: t("g4_title"), description: t("g4_desc"), src: "/homepage/hero_tutorial/PodcastGenGif.gif" },
+		{ title: t("g5_title"), description: t("g5_desc"), src: "/homepage/hero_tutorial/ImageGenGif.gif" },
+		{ title: t("g6_title"), description: t("g6_desc"), src: "/homepage/hero_realtime/RealTimeChatGif.gif" },
+		{ title: t("g7_title"), description: t("g7_desc"), src: "/homepage/hero_realtime/RealTimeCommentsFlow.gif" },
+	];
+}
 
 function UseCaseCard({
 	title,
@@ -110,6 +85,8 @@ function UseCaseCard({
 }
 
 export function UseCasesGrid() {
+	const t = useTranslations("homepage");
+	const useCases = getUseCases(t);
 	return (
 		<section className="relative mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
 			<div className="mb-6 text-center">
