@@ -3,6 +3,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { Plus, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { activeTabIdAtom, closeTabAtom, switchTabAtom } from "@/atoms/tabs/tabs.atom";
 import { Button } from "@/components/ui/button";
 import type { ResolvedTab } from "@/lib/hooks/use-resolved-tabs";
@@ -41,6 +42,7 @@ export function TabBar({
 	rightActions,
 	className,
 }: TabBarProps) {
+	const t = useTranslations("layout");
 	const activeTabId = useAtomValue(activeTabIdAtom);
 	const switchTab = useSetAtom(switchTabAtom);
 	const closeTab = useSetAtom(closeTabAtom);
@@ -196,7 +198,7 @@ export function TabBar({
 			<div
 				ref={scrollRef}
 				role="tablist"
-				aria-label="Open chats and documents"
+				aria-label={t("open_chats_and_documents")}
 				className="flex h-8 items-center flex-1 gap-0 pl-2 overflow-x-auto overflow-y-hidden scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0"
 			>
 				{resolvedTabs.map((tab, index) => {
@@ -278,8 +280,8 @@ export function TabBar({
 							size="icon"
 							onClick={onNewChat}
 							className="size-8 shrink-0 text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-accent-foreground"
-							aria-label="New Chat"
-							title="New Chat"
+							aria-label={t("new_chat")}
+							title={t("new_chat")}
 						>
 							<Plus data-icon="inline-start" aria-hidden="true" />
 						</Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@rocicorp/zero/react";
+import { useTranslations } from "next-intl";
 import { useIsAnonymous } from "@/contexts/anonymous-mode";
 import { cn } from "@/lib/utils";
 import { queries } from "@/zero/queries";
@@ -30,6 +31,7 @@ function formatUsd(micros: number): string {
  * automatic top-ups.
  */
 export function CreditBalanceDisplay() {
+	const t = useTranslations("layout");
 	const isAnonymous = useIsAnonymous();
 	const [me] = useQuery(queries.user.me({}));
 
@@ -40,13 +42,13 @@ export function CreditBalanceDisplay() {
 
 	return (
 		<div className="flex items-center justify-between text-xs">
-			<span className="text-muted-foreground">Credits</span>
+			<span className="text-muted-foreground">{t("credits")}</span>
 			<span
 				className={cn(
 					"font-medium tabular-nums",
 					isLow ? "text-amber-600 dark:text-amber-500" : "text-foreground"
 				)}
-				title={isLow ? "Low balance: add credits or enable top-ups" : undefined}
+				title={isLow ? t("low_balance_tooltip") : undefined}
 			>
 				{formatUsd(balanceMicros)}
 			</span>

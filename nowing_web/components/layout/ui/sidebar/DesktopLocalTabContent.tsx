@@ -3,6 +3,7 @@
 import { useAtom } from "jotai";
 import { Folder, FolderPlus, Search, X } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { localExpandedFolderKeysAtom } from "@/atoms/documents/folder.atoms";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +45,7 @@ export function DesktopLocalTabContent({
 	onOpenLocalFile,
 	electronAvailable,
 }: DesktopLocalTabContentProps) {
+	const t = useTranslations("layout");
 	const [localSearch, setLocalSearch] = useState("");
 	const debouncedLocalSearch = useDebouncedValue(localSearch, 250);
 	const localSearchInputRef = useRef<HTMLInputElement>(null);
@@ -75,19 +77,18 @@ export function DesktopLocalTabContent({
 									size="sm"
 									className="min-w-0 flex-1 h-full justify-start gap-1 px-2 text-left text-[11px] text-muted-foreground"
 									title={localRootPaths.join("\n")}
-									aria-label="Manage selected folders"
+									aria-label={t("manage_selected_folders")}
 								>
 									<Folder className="size-3 shrink-0" />
 									<span className="truncate">
 										{localRootPaths.length === 1
-											? "1 folder selected"
-											: `${localRootPaths.length} folders selected`}
+											? t("one_folder_selected") : t("folders_selected", { count: localRootPaths.length })}
 									</span>
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="start" className="w-56 select-none p-0.5">
 								<DropdownMenuLabel className="px-1.5 pt-1.5 pb-0.5 text-xs font-medium text-muted-foreground">
-									Selected folders
+									{t("selected_folders")}
 								</DropdownMenuLabel>
 								{localRootPaths.map((rootPath) => (
 									<DropdownMenuItem
@@ -108,7 +109,7 @@ export function DesktopLocalTabContent({
 												event.stopPropagation();
 												void onRemoveFilesystemRoot(rootPath);
 											}}
-											aria-label={`Remove ${getFolderDisplayName(rootPath)}`}
+											aria-label={t("remove_folder", { name: getFolderDisplayName(rootPath) })}
 										>
 											<X className="size-3" />
 										</Button>
@@ -121,17 +122,17 @@ export function DesktopLocalTabContent({
 										void onClearFilesystemRoots();
 									}}
 								>
-									Clear all folders
+									{t("clear_all_folders")}
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					) : (
 						<div
 							className="min-w-0 flex-1 flex items-center gap-1 px-2 transition-colors hover:bg-accent hover:text-accent-foreground"
-							title="No local folders selected"
+							title={t("no_local_folders_selected")}
 						>
 							<Folder className="size-3 shrink-0" />
-							<span className="truncate">No local folders selected</span>
+							<span className="truncate">{t("no_local_folders_selected")}</span>
 						</div>
 					)}
 					<Separator
@@ -151,16 +152,14 @@ export function DesktopLocalTabContent({
 											void onPickFilesystemRoot();
 										}}
 										disabled={!canAddMoreLocalRoots}
-										aria-label="Add folder"
+										aria-label={t("add_folder")}
 									>
 										<FolderPlus className="size-3.5" />
 									</Button>
 								</span>
 							</TooltipTrigger>
 							<TooltipContent side="top" className="text-xs">
-								{canAddMoreLocalRoots
-									? "Add folder"
-									: `You can add up to ${maxLocalFilesystemRoots} folders`}
+								{canAddMoreLocalRoots ? t("add_folder") : t("max_folders_limit", { max: maxLocalFilesystemRoots })}
 							</TooltipContent>
 						</Tooltip>
 					) : null}
@@ -176,9 +175,9 @@ export function DesktopLocalTabContent({
 						className="peer h-8 w-full border-0 bg-muted pl-8 pr-8 text-sm shadow-none select-none focus:select-text"
 						value={localSearch}
 						onChange={(e) => setLocalSearch(e.target.value)}
-						placeholder="Search local files"
+						placeholder={t("search_local_files")}
 						type="text"
-						aria-label="Search local files"
+						aria-label={t("search_local_files")}
 					/>
 					{Boolean(localSearch) && (
 						<Button
@@ -186,7 +185,7 @@ export function DesktopLocalTabContent({
 							variant="ghost"
 							size="icon"
 							className="absolute inset-y-0 right-0 h-full w-8 text-muted-foreground hover:text-accent-foreground"
-							aria-label="Clear local search"
+							aria-label={t("clear_local_search")}
 							onClick={() => {
 								setLocalSearch("");
 								localSearchInputRef.current?.focus();

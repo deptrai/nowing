@@ -4,6 +4,7 @@ import { useAtom } from "jotai";
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { setTargetCommentIdAtom } from "@/atoms/chat/current-thread.atom";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +92,7 @@ export function NotificationsDropdown({
 	notifications,
 	onCloseMobileSidebar,
 }: NotificationsDropdownProps) {
+	const t = useTranslations("layout");
 	const router = useRouter();
 	const isMobile = useIsMobile();
 	const [, setTargetCommentId] = useAtom(setTargetCommentIdAtom);
@@ -316,23 +318,23 @@ export function NotificationsDropdown({
 	const emptyStateCopy =
 		activeFilter === "mentions"
 			? {
-					title: "No mentions",
-					description: "Mentions and replies will appear here.",
+					title: t("no_mentions"),
+					description: t("mentions_appear_here"),
 				}
 			: activeFilter === "unread"
 				? {
-						title: "No unread notifications",
-						description: "New mentions and status updates will appear here.",
+						title: t("no_unread_notifications"),
+						description: t("unread_notifications_hint"),
 					}
 				: {
-						title: "No notifications",
-						description: "Mentions, replies, and status updates will appear here.",
+						title: t("no_notifications"),
+						description: t("notifications_hint"),
 					};
 
 	const tabs: { value: NotificationFilter; label: string; count: number }[] = [
-		{ value: "all", label: "All", count: allCount },
-		{ value: "mentions", label: "Mentions", count: mentionsCount },
-		{ value: "unread", label: "Unread", count: notifications.totalUnreadCount },
+		{ value: "all", label: t("all"), count: allCount },
+		{ value: "mentions", label: t("mentions"), count: mentionsCount },
+		{ value: "unread", label: t("unread"), count: notifications.totalUnreadCount },
 	];
 
 	const triggerButton = (
@@ -340,7 +342,7 @@ export function NotificationsDropdown({
 			type="button"
 			variant="ghost"
 			size="icon"
-			aria-label="Notifications"
+			aria-label={t("notifications")}
 			className={cn(
 				"relative h-10 w-10 rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground",
 				open && "bg-accent text-accent-foreground"
@@ -359,7 +361,7 @@ export function NotificationsDropdown({
 		<>
 			<div className="flex shrink-0 items-center justify-between gap-3 border-b px-3.5 py-2.5">
 				<div className="min-w-0">
-					<h2 className="text-xs font-semibold tracking-tight text-foreground">Notifications</h2>
+					<h2 className="text-xs font-semibold tracking-tight text-foreground">{t("notifications")}</h2>
 				</div>
 				<Button
 					type="button"
@@ -370,7 +372,7 @@ export function NotificationsDropdown({
 					className="h-6 shrink-0 gap-1 px-1.5 text-[10.5px] text-muted-foreground hover:text-accent-foreground"
 				>
 					{markingAllAsRead ? <Spinner size="xs" /> : null}
-					Mark all read
+					{t("mark_all_read")}
 				</Button>
 			</div>
 
@@ -491,7 +493,7 @@ export function NotificationsDropdown({
 					overlayClassName="z-80"
 				>
 					<DrawerHandle className="mt-3 h-1.5 w-10" />
-					<DrawerTitle className="sr-only">Notifications</DrawerTitle>
+					<DrawerTitle className="sr-only">{t("notifications")}</DrawerTitle>
 					<div className="flex min-h-0 flex-1 select-none flex-col">{panelContent}</div>
 				</DrawerContent>
 			</Drawer>
@@ -504,9 +506,7 @@ export function NotificationsDropdown({
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
 				</TooltipTrigger>
-				<TooltipContent side="right" sideOffset={8}>
-					Notifications
-				</TooltipContent>
+				<TooltipContent side="right" sideOffset={8}>{t("notifications")}</TooltipContent>
 			</Tooltip>
 			<PopoverContent
 				side="right"

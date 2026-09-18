@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, CircleAlert, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "../../types/layout.types";
@@ -12,34 +13,34 @@ interface NavSectionProps {
 	isCollapsed?: boolean;
 }
 
-function getStatusInfo(status: NavItem["statusIndicator"]) {
+function getStatusInfo(status: NavItem["statusIndicator"], t: (k: string) => string) {
 	switch (status) {
 		case "processing":
 			return {
-				tooltip: "New or updated documents are still being prepared for search.",
+				tooltip: t("sync_preparing_docs"),
 			};
 		case "background_sync":
 			return {
-				pillLabel: "Background sync",
+				pillLabel: t("background_sync"),
 				tooltip:
-					"Periodic sync is checking for updates in the background. Existing documents stay searchable while this runs.",
+					t("sync_checking_updates"),
 			};
 		case "success":
 			return {
-				tooltip: "All document updates are fully synced.",
+				tooltip: t("sync_fully_synced"),
 			};
 		case "error":
 			return {
-				pillLabel: "Needs attention",
-				tooltip: "Some documents failed to sync. Open Documents or Inbox for details.",
+				pillLabel: t("needs_attention"),
+				tooltip: t("sync_failed"),
 			};
 		default:
 			return {};
 	}
 }
 
-function StatusPill({ status }: { status: NavItem["statusIndicator"] }) {
-	const { pillLabel } = getStatusInfo(status);
+function StatusPill({ status, t }: { status: NavItem["statusIndicator"]; t: (k: string) => string }) {
+	const { pillLabel } = getStatusInfo(status, t);
 
 	if (!pillLabel) {
 		return null;
@@ -136,10 +137,11 @@ function CollapsedOverlay({ item }: { item: NavItem }) {
 }
 
 export function NavSection({ items, onItemClick, isCollapsed = false }: NavSectionProps) {
+	const t = useTranslations("layout");
 	return (
 		<div className="flex flex-col gap-0.5 py-2">
 			{items.map((item) => {
-				const { tooltip } = getStatusInfo(item.statusIndicator);
+				const { tooltip } = getStatusInfo(item.statusIndicator, t);
 
 				return (
 					<SidebarButton
@@ -159,7 +161,7 @@ export function NavSection({ items, onItemClick, isCollapsed = false }: NavSecti
 								className="h-3.5 w-3.5"
 							/>
 						}
-						trailingContent={<StatusPill status={item.statusIndicator} />}
+						trailingContent={<StatusPill status={item.statusIndicator} t={t} />}
 						tooltipContent={tooltip}
 					/>
 				);
