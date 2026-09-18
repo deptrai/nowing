@@ -1033,7 +1033,19 @@
 		"mc_save_filter": "Save filter",
 		"mc_filter_desc": "Leave empty to discover all models. Recommended for providers with large catalogs.",
 		"mc_refresh_provider": "Refresh {provider} models",
-		"mc_update": "Update"
+		"mc_update": "Update",
+		"mc_target_uri": "Target URI",
+		"mc_target_uri_desc": "Paste your endpoint target URI from Azure OpenAI (including API base, deployment name, and API version).",
+		"mc_azure_key_ph": "Paste your API key from Azure",
+		"mc_default": "Default",
+		"mc_default_endpoint_short": "Provider default endpoint",
+		"mc_delete_provider": "Delete {provider}",
+		"mc_delete_title": "Delete this provider?",
+		"mc_delete_desc": "<b>{provider}</b> and all of its models will be removed from this workspace. This cannot be undone.",
+		"mc_delete": "Delete",
+		"mc_api_key_opt": "API Key (optional)",
+		"mc_enter_key": "Enter your API key",
+		"mc_connect_provider": "Connect {name}"
 	},
 	"logs": {
 		"title": "Task Logs",

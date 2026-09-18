@@ -19,8 +19,10 @@ import { Button } from "@/components/ui/button";
 import type { ConnectionRead } from "@/contracts/types/model-connections.types";
 import { ConnectionSettingsDialog } from "./connection-settings-dialog";
 import { providerDisplay, providerIcon } from "./provider-metadata";
+import { useTranslations } from "next-intl";
 
 export function ConnectionCard({ connection }: { connection: ConnectionRead }) {
+	const t = useTranslations("settings");
 	const deleteConnection = useAtomValue(deleteModelConnectionMutationAtom);
 
 	const providerMeta = providerDisplay(connection.provider);
@@ -39,12 +41,12 @@ export function ConnectionCard({ connection }: { connection: ConnectionRead }) {
 						<span className="truncate">{providerLabel}</span>
 						{connection.scope === "GLOBAL" ? (
 							<Badge variant="outline" className="text-[10px]">
-								Default
+								{t("mc_default")}
 							</Badge>
 						) : null}
 					</div>
 					<div className="truncate text-sm text-muted-foreground">
-						{connection.base_url || "Provider default endpoint"}
+						{connection.base_url || t("mc_default_endpoint_short")}
 					</div>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
@@ -56,27 +58,26 @@ export function ConnectionCard({ connection }: { connection: ConnectionRead }) {
 								size="icon"
 								className="text-muted-foreground hover:text-accent-foreground"
 								disabled={deleteConnection.isPending}
-								aria-label={`Delete ${providerLabel}`}
+								aria-label={t("mc_delete_provider",{provider:providerLabel})}
 							>
 								<Trash2 className="h-4 w-4" aria-hidden="true" />
 							</Button>
 						</AlertDialogTrigger>
 						<AlertDialogContent>
 							<AlertDialogHeader>
-								<AlertDialogTitle>Delete this provider?</AlertDialogTitle>
+								<AlertDialogTitle>{t("mc_delete_title")}</AlertDialogTitle>
 								<AlertDialogDescription>
-									<span className="font-medium text-foreground">{providerLabel}</span> and all of
-									its models will be removed from this workspace. This cannot be undone.
+{t.rich("mc_delete_desc",{provider:providerLabel,b:(c)=><span className="font-medium text-foreground">{c}</span>})}
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
-								<AlertDialogCancel disabled={deleteConnection.isPending}>Cancel</AlertDialogCancel>
+								<AlertDialogCancel disabled={deleteConnection.isPending}>{t("mc_cancel")}</AlertDialogCancel>
 								<AlertDialogAction
 									onClick={deleteCurrentConnection}
 									disabled={deleteConnection.isPending}
 									className="bg-destructive text-white hover:bg-destructive/90"
 								>
-									Delete
+									{t("mc_delete")}
 								</AlertDialogAction>
 							</AlertDialogFooter>
 						</AlertDialogContent>

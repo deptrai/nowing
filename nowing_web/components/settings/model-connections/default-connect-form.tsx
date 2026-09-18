@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiBaseUrlField, ApiKeyField } from "./connect-fields";
 import type { ProviderConnectFormProps } from "./provider-metadata";
+import { useTranslations } from "next-intl";
 
 const OPTIONAL_API_KEY_PROVIDERS = new Set(["ollama_chat", "lm_studio", "openai_compatible"]);
 
@@ -36,6 +37,7 @@ export function DefaultConnectForm({
 	baseUrlRequired,
 	onDraftChange,
 }: ProviderConnectFormProps) {
+	const t = useTranslations("settings");
 	const [baseUrl, setBaseUrl] = useState(defaultBaseUrl);
 	const [apiKey, setApiKey] = useState("");
 	const isApiKeyOptional = OPTIONAL_API_KEY_PROVIDERS.has(provider);
@@ -62,8 +64,8 @@ export function DefaultConnectForm({
 			<ApiKeyField
 				value={apiKey}
 				onChange={setApiKey}
-				label={isApiKeyOptional ? "API Key (optional)" : "API Key"}
-				placeholder="Enter your API key"
+				label={isApiKeyOptional ? t("mc_api_key_opt") : t("mc_api_key")}
+				placeholder={t("mc_enter_key")}
 			/>
 		</div>
 	);

@@ -1033,7 +1033,19 @@
 		"mc_save_filter": "Lưu bộ lọc",
 		"mc_filter_desc": "Để trống để khám phá tất cả model. Khuyến nghị cho provider có catalog lớn.",
 		"mc_refresh_provider": "Làm mới model {provider}",
-		"mc_update": "Cập nhật"
+		"mc_update": "Cập nhật",
+		"mc_target_uri": "URI đích",
+		"mc_target_uri_desc": "Dán URI đích từ Azure OpenAI (gồm API base, tên deployment và phiên bản API).",
+		"mc_azure_key_ph": "Dán API key từ Azure",
+		"mc_default": "Mặc định",
+		"mc_default_endpoint_short": "Endpoint mặc định của provider",
+		"mc_delete_provider": "Xóa {provider}",
+		"mc_delete_title": "Xóa provider này?",
+		"mc_delete_desc": "<b>{provider}</b> và tất cả model của nó sẽ bị xóa khỏi workspace này. Không thể hoàn tác.",
+		"mc_delete": "Xóa",
+		"mc_api_key_opt": "API Key (tùy chọn)",
+		"mc_enter_key": "Nhập API key của bạn",
+		"mc_connect_provider": "Kết nối {name}"
 	},
 	"logs": {
 		"title": "Nhật ký tác vụ",
