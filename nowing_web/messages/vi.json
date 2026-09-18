@@ -1769,7 +1769,10 @@
 			"viral_feat1": "Phân loại hook mở đầu: Tương phản, Câu chuyện, Danh sách giá trị",
 			"viral_feat2": "Xác thực có người kiểm duyệt & phê duyệt tùy chỉnh",
 			"viral_demo_hook_title": "✨ Hook do AI tạo (Phong cách: Chuyên gia BĐS B2B)",
-			"viral_demo_hook_content": "\"Lý do các nhà đầu tư hàng đầu đang chuyển dòng vốn về Thủ Đức trước khi tuyến metro vận hành — 3 lý do dựa trên dữ liệu bạn cần biết...\""
+			"viral_demo_hook_content": "\"Lý do các nhà đầu tư hàng đầu đang chuyển dòng vốn về Thủ Đức trước khi tuyến metro vận hành — 3 lý do dựa trên dữ liệu bạn cần biết...\"",
+			"row1_desc": "Mặt tiền Đặng Văn Bi, TP. Thủ Đức (8,5 tỷ)",
+			"row2_desc": "Nhà hẻm Võ Văn Ngân, Thủ Đức",
+			"row3_desc": "Tuyển dụng 5 Kỹ sư Senior Node.js & React"
 		},
 		"metrics": {
 			"leads_count": "2.400.000+",
@@ -3647,7 +3650,8 @@
 		"common_page_created": "Trang đã được tạo",
 		"common_page_created_with_changes": "Trang đã được tạo với các thay đổi của bạn",
 		"common_page_updated": "Trang đã được cập nhật",
-		"common_page_updated_with_changes": "Trang đã được cập nhật với các thay đổi của bạn"
+		"common_page_updated_with_changes": "Trang đã được cập nhật với các thay đổi của bạn",
+		"confluence_space": "Không gian"
 	},
 	"telemetry": {
 		"failed_load_celery": "Không thể tải hàng đợi Celery",

@@ -32,13 +32,13 @@ export const NowingPricingSection: React.FC = () => {
 								{t("chat_free_title")}
 							</span>
 							<h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-								AI Co-pilot Core
+								{t("plan_free_name")}
 							</h3>
 							<div className="mt-4 mb-6">
 								<span className="text-4xl font-extrabold text-slate-900 dark:text-white font-mono">
 									$0
 								</span>
-								<span className="text-slate-400 text-xs ml-1">/ lifetime</span>
+								<span className="text-slate-400 text-xs ml-1">{t("per_lifetime")}</span>
 							</div>
 
 							<p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
@@ -59,7 +59,7 @@ export const NowingPricingSection: React.FC = () => {
 					{/* Plan 2: Pay-as-you-go Credits (Featured) */}
 					<div className="relative p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-950 border-2 border-emerald-500 shadow-xl shadow-emerald-500/10 flex flex-col justify-between">
 						<div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm">
-							Pay-As-You-Go
+							{t("badge_payg")}
 						</div>
 
 						<div>
@@ -67,13 +67,13 @@ export const NowingPricingSection: React.FC = () => {
 								{t("credit_payg_title")}
 							</span>
 							<h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-								Lead Decryption Credits
+								{t("plan_payg_name")}
 							</h3>
 							<div className="mt-4 mb-6">
 								<span className="text-4xl font-extrabold text-emerald-600 font-mono">
 									1.5 credits
 								</span>
-								<span className="text-slate-400 text-xs ml-1">($0.0015 / phone)</span>
+								<span className="text-slate-400 text-xs ml-1">{t("per_phone_cost")}</span>
 							</div>
 
 							<p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
@@ -95,30 +95,30 @@ export const NowingPricingSection: React.FC = () => {
 					<div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
 						<div>
 							<span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-								Enterprise
+								{t("badge_enterprise")}
 							</span>
 							<h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-								Agency & Scale
+								{t("plan_enterprise_name")}
 							</h3>
 							<div className="mt-4 mb-6">
 								<span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono">
-									Custom
+									{t("price_custom")}
 								</span>
-								<span className="text-slate-400 text-xs ml-1">/ volume pricing</span>
+								<span className="text-slate-400 text-xs ml-1">{t("per_volume")}</span>
 							</div>
 
 							<ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
 								<li className="flex items-center gap-2">
 									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
-									<span>Dedicated Proxy Pool & Custom Scrapers</span>
+									<span>{t("feat_dedicated_proxies")}</span>
 								</li>
 								<li className="flex items-center gap-2">
 									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
-									<span>Direct CRM & Webhook Sync (HubSpot, Lark)</span>
+									<span>{t("feat_crm_sync")}</span>
 								</li>
 								<li className="flex items-center gap-2">
 									<Check className="w-4 h-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
-									<span>RBAC Multi-Seat Workspace Control</span>
+									<span>{t("feat_rbac_control")}</span>
 								</li>
 							</ul>
 						</div>
@@ -128,7 +128,7 @@ export const NowingPricingSection: React.FC = () => {
 								href="/contact"
 								className="w-full inline-flex items-center justify-center py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
 							>
-								Contact Sales
+								{t("btn_contact_sales")}
 							</Link>
 						</div>
 					</div>

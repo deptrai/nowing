@@ -1769,7 +1769,10 @@
 			"viral_feat1": "Hook classification: Contrast, Story, Value List",
 			"viral_feat2": "Human-in-the-loop verification & custom approval",
 			"viral_demo_hook_title": "✨ AI Generated Hook (Voice: B2B Real Estate Specialist)",
-			"viral_demo_hook_content": "\"Why top investors are shifting capital to Thu Duc before the metro line connects — 3 data-backed reasons you should know...\""
+			"viral_demo_hook_content": "\"Why top investors are shifting capital to Thu Duc before the metro line connects — 3 data-backed reasons you should know...\"",
+			"row1_desc": "Dang Van Bi Streetfront, Thu Duc City ($350k)",
+			"row2_desc": "Vo Van Ngan Alley House, Thu Duc",
+			"row3_desc": "Hiring 5 Senior Node.js & React Engineers"
 		},
 		"metrics": {
 			"leads_count": "2,400,000+",
@@ -3645,7 +3648,8 @@
 		"common_page_created": "Page created",
 		"common_page_created_with_changes": "Page created with your changes",
 		"common_page_updated": "Page updated",
-		"common_page_updated_with_changes": "Page updated with your changes"
+		"common_page_updated_with_changes": "Page updated with your changes",
+		"confluence_space": "Space"
 	},
 	"telemetry": {
 		"failed_load_celery": "Failed to load Celery queues",

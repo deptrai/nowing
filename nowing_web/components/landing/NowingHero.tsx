@@ -91,7 +91,7 @@ export const NowingHero: React.FC = () => {
 				<div
 					className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 mb-4 shadow-xs"
 					role="tablist"
-					aria-label="Search mode"
+					aria-label={t("aria_search_mode")}
 				>
 					<button
 						type="button"
@@ -148,7 +148,7 @@ export const NowingHero: React.FC = () => {
 						rows={3}
 						value={prompt}
 						onChange={(e) => setPrompt(e.target.value)}
-						aria-label="Ask anything about your leads, data, or market"
+						aria-label={t("aria_prompt_input")}
 						placeholder={
 							mode === "lead_gen"
 								? t("placeholder_lead_gen")
