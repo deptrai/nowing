@@ -11,6 +11,7 @@ import {
 	Trash2,
 	Wrench,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type {
 	BannerType,
@@ -33,7 +34,7 @@ function getBannerIcon(type: BannerType) {
 	}
 }
 
-function getStatusBadge(status: string) {
+function getStatusBadge(status: string, t: (k: string) => string) {
 	switch (status) {
 		case "active":
 			return (
@@ -63,6 +64,7 @@ function getStatusBadge(status: string) {
 }
 
 export default function AdminBroadcastsPage() {
+	const t = useTranslations("admin");
 	const [items, setItems] = useState<BroadcastRead[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -89,7 +91,7 @@ export default function AdminBroadcastsPage() {
 			const res = await broadcastsApiService.listAdmin();
 			setItems(res.items);
 		} catch (err) {
-			console.error("Failed to load broadcasts:", err);
+			console.error(t("broadcasts_load_failed"), err);
 		} finally {
 			setIsLoading(false);
 		}
@@ -172,7 +174,7 @@ export default function AdminBroadcastsPage() {
 			setIsModalOpen(false);
 			await loadBroadcasts();
 		} catch (err: unknown) {
-			const errorMsg = err instanceof Error ? err.message : "Failed to save announcement";
+			const errorMsg = err instanceof Error ? err.message : t("broadcasts_save_failed");
 			setFormError(errorMsg);
 		} finally {
 			setIsSubmitting(false);
@@ -180,13 +182,13 @@ export default function AdminBroadcastsPage() {
 	};
 
 	const handleDelete = async (id: string) => {
-		if (!confirm("Are you sure you want to delete this broadcast?")) return;
+		if (!confirm(t("broadcasts_confirm_delete"))) return;
 		try {
 			await broadcastsApiService.delete(id);
 			await loadBroadcasts();
 		} catch (err: unknown) {
-			const errorMsg = err instanceof Error ? err.message : "Unknown error";
-			alert(`Failed to delete broadcast: ${errorMsg}`);
+			const errorMsg = err instanceof Error ? err.message : t("broadcasts_unknown_error");
+			alert(t("broadcasts_delete_failed", {errorMsg}));
 		}
 	};
 
@@ -197,11 +199,10 @@ export default function AdminBroadcastsPage() {
 				<div>
 					<div className="flex items-center gap-2">
 						<Megaphone className="h-6 w-6 text-primary" />
-						<h1 className="text-2xl font-bold tracking-tight">In-App Broadcast Announcements</h1>
+						<h1 className="text-2xl font-bold tracking-tight">{t("broadcasts_title")}</h1>
 					</div>
 					<p className="text-sm text-muted-foreground">
-						Publish system-wide maintenance banners, product updates, and promotional alerts to
-						users.
+						{t("broadcasts_subtitle")}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -212,7 +213,7 @@ export default function AdminBroadcastsPage() {
 						className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
 					>
 						<RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-						Refresh
+						{t("broadcasts_refresh")}
 					</button>
 					<button
 						type="button"
@@ -220,7 +221,7 @@ export default function AdminBroadcastsPage() {
 						className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
 					>
 						<Plus className="h-4 w-4" />
-						New Broadcast
+						{t("broadcasts_new")}
 					</button>
 				</div>
 			</div>
@@ -231,25 +232,25 @@ export default function AdminBroadcastsPage() {
 					<table className="w-full text-left text-sm">
 						<thead className="border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground uppercase">
 							<tr>
-								<th className="px-4 py-3">Type</th>
-								<th className="px-4 py-3">Title & Message</th>
-								<th className="px-4 py-3">Targeting</th>
-								<th className="px-4 py-3">Active Schedule</th>
-								<th className="px-4 py-3">Status</th>
-								<th className="px-4 py-3 text-right">Actions</th>
+								<th className="px-4 py-3">{t("broadcasts_col_type")}</th>
+								<th className="px-4 py-3">{t("broadcasts_col_title_msg")}</th>
+								<th className="px-4 py-3">{t("broadcasts_col_targeting")}</th>
+								<th className="px-4 py-3">{t("broadcasts_col_schedule")}</th>
+								<th className="px-4 py-3">{t("broadcasts_col_status")}</th>
+								<th className="px-4 py-3 text-right">{t("broadcasts_col_actions")}</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
 							{isLoading ? (
 								<tr>
 									<td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-										Loading broadcasts...
+										{t("broadcasts_loading")}
 									</td>
 								</tr>
 							) : items.length === 0 ? (
 								<tr>
 									<td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-										No broadcast announcements created yet.
+										{t("broadcasts_empty")}
 									</td>
 								</tr>
 							) : (
@@ -270,26 +271,26 @@ export default function AdminBroadcastsPage() {
 										<td className="px-4 py-3 text-xs">
 											{b.target_all ? (
 												<span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
-													All Workspaces
+													{t("broadcasts_all_workspaces")}
 												</span>
 											) : (
 												<span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-primary">
-													Workspaces: {b.target_workspace_ids.join(", ")}
+													{t("broadcasts_workspaces_label")}: {b.target_workspace_ids.join(", ")}
 												</span>
 											)}
 										</td>
 										<td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-											<div>Start: {new Date(b.starts_at).toLocaleString()}</div>
-											{b.expires_at && <div>Exp: {new Date(b.expires_at).toLocaleString()}</div>}
+											<div>{t("broadcasts_start")}: {new Date(b.starts_at).toLocaleString()}</div>
+											{b.expires_at && <div>{t("broadcasts_exp")}: {new Date(b.expires_at).toLocaleString()}</div>}
 										</td>
-										<td className="px-4 py-3 whitespace-nowrap">{getStatusBadge(b.status)}</td>
+										<td className="px-4 py-3 whitespace-nowrap">{getStatusBadge(b.status, t)}</td>
 										<td className="px-4 py-3 text-right whitespace-nowrap">
 											<div className="flex justify-end gap-1">
 												<button
 													type="button"
 													onClick={() => openEditModal(b)}
 													className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-													title="Edit"
+													title={t("broadcasts_edit")}
 												>
 													<Edit2 className="h-4 w-4" />
 												</button>
@@ -297,7 +298,7 @@ export default function AdminBroadcastsPage() {
 													type="button"
 													onClick={() => handleDelete(b.id)}
 													className="rounded p-1.5 text-rose-500 hover:bg-rose-500/10"
-													title="Delete"
+													title={t("broadcasts_delete")}
 												>
 													<Trash2 className="h-4 w-4" />
 												</button>
@@ -317,7 +318,7 @@ export default function AdminBroadcastsPage() {
 					<div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
 						<div className="flex items-center justify-between">
 							<h3 className="text-lg font-bold">
-								{editingItem ? "Edit Broadcast Announcement" : "Create Broadcast Announcement"}
+								{editingItem ? t("broadcasts_edit_title") : t("broadcasts_create_title")}
 							</h3>
 							<button
 								type="button"
@@ -338,13 +339,13 @@ export default function AdminBroadcastsPage() {
 									htmlFor="broadcast-title"
 									className="text-xs font-medium text-muted-foreground"
 								>
-									Announcement Title
+									{t("broadcasts_field_title")}
 								</label>
 								<input
 									id="broadcast-title"
 									type="text"
 									required
-									placeholder="e.g. Scheduled System Maintenance"
+									placeholder={t("broadcasts_title_placeholder")}
 									value={title}
 									onChange={(e) => setTitle(e.target.value)}
 									className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
@@ -356,13 +357,13 @@ export default function AdminBroadcastsPage() {
 									htmlFor="broadcast-message"
 									className="text-xs font-medium text-muted-foreground"
 								>
-									Message Content (Markdown supported)
+									{t("broadcasts_field_message")}
 								</label>
 								<textarea
 									id="broadcast-message"
 									rows={3}
 									required
-									placeholder="e.g. Our servers will be undergoing scheduled upgrades on Saturday between 02:00 and 04:00 UTC."
+									placeholder={t("broadcasts_message_placeholder")}
 									value={message}
 									onChange={(e) => setMessage(e.target.value)}
 									className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
@@ -375,7 +376,7 @@ export default function AdminBroadcastsPage() {
 										htmlFor="broadcast-banner-type"
 										className="text-xs font-medium text-muted-foreground"
 									>
-										Banner Type
+										{t("broadcasts_banner_type")}
 									</label>
 									<select
 										id="broadcast-banner-type"
@@ -383,10 +384,10 @@ export default function AdminBroadcastsPage() {
 										onChange={(e) => setBannerType(e.target.value as BannerType)}
 										className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
 									>
-										<option value="info">Info (Blue)</option>
-										<option value="warning">Warning (Yellow)</option>
-										<option value="maintenance">Maintenance (Red)</option>
-										<option value="promo">Promo (Purple)</option>
+										<option value="info">{t("broadcasts_type_info")}</option>
+										<option value="warning">{t("broadcasts_type_warning")}</option>
+										<option value="maintenance">{t("broadcasts_type_maintenance")}</option>
+										<option value="promo">{t("broadcasts_type_promo")}</option>
 									</select>
 								</div>
 
@@ -398,7 +399,7 @@ export default function AdminBroadcastsPage() {
 											onChange={(e) => setDismissible(e.target.checked)}
 											className="rounded"
 										/>
-										Dismissible
+										{t("broadcasts_dismissible")}
 									</label>
 									<label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
 										<input
@@ -407,7 +408,7 @@ export default function AdminBroadcastsPage() {
 											onChange={(e) => setIsActive(e.target.checked)}
 											className="rounded"
 										/>
-										Active
+										{t("broadcasts_active")}
 									</label>
 								</div>
 							</div>
@@ -420,7 +421,7 @@ export default function AdminBroadcastsPage() {
 										onChange={(e) => setTargetAll(e.target.checked)}
 										className="rounded"
 									/>
-									Target All Workspaces
+									{t("broadcasts_target_all")}
 								</label>
 
 								{!targetAll && (
@@ -429,7 +430,7 @@ export default function AdminBroadcastsPage() {
 											htmlFor="broadcast-target-workspaces"
 											className="text-xs text-muted-foreground"
 										>
-											Target Workspace IDs (comma separated, e.g. 1, 2, 446)
+											{t("broadcasts_target_ids")}
 										</label>
 										<input
 											id="broadcast-target-workspaces"
@@ -449,7 +450,7 @@ export default function AdminBroadcastsPage() {
 										htmlFor="broadcast-starts-at"
 										className="text-xs font-medium text-muted-foreground"
 									>
-										Starts At
+										{t("broadcasts_starts_at")}
 									</label>
 									<input
 										id="broadcast-starts-at"
@@ -464,7 +465,7 @@ export default function AdminBroadcastsPage() {
 										htmlFor="broadcast-expires-at"
 										className="text-xs font-medium text-muted-foreground"
 									>
-										Expires At (Optional)
+										{t("broadcasts_expires_at")}
 									</label>
 									<input
 										id="broadcast-expires-at"
@@ -482,14 +483,14 @@ export default function AdminBroadcastsPage() {
 									onClick={() => setIsModalOpen(false)}
 									className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
 								>
-									Cancel
+									{t("broadcasts_cancel")}
 								</button>
 								<button
 									type="submit"
 									disabled={isSubmitting || !title.trim() || !message.trim()}
 									className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 								>
-									{isSubmitting ? "Saving..." : "Save Announcement"}
+									{isSubmitting ? t("broadcasts_saving") : t("broadcasts_save")}
 								</button>
 							</div>
 						</form>
