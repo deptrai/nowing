@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Home } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -33,6 +34,7 @@ export function FolderPickerDialog({
 	disabledFolderIds,
 	onSelect,
 }: FolderPickerDialogProps) {
+	const t = useTranslations("documents");
 	const [selectedId, setSelectedId] = useState<number | null>(null);
 	const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
@@ -94,7 +96,7 @@ export function FolderPickerDialog({
 							disabled={isDisabled}
 							className="absolute top-1/2 z-10 size-4 -translate-y-1/2 p-0"
 							style={{ left: `${depth * 16 + 8}px` }}
-							aria-label={isExpanded ? `Collapse ${f.name}` : `Expand ${f.name}`}
+							aria-label={isExpanded ? t("collapse_folder", { name: f.name }) : t("expand_folder", { name: f.name })}
 							onClick={(e) => {
 								e.stopPropagation();
 								toggleExpand(f.id);
@@ -159,7 +161,7 @@ export function FolderPickerDialog({
 					>
 						<span className="size-4 shrink-0" />
 						<Home data-icon="inline-start" className="text-muted-foreground" />
-						<span>Root</span>
+						<span>{t("root")}</span>
 					</Button>
 					{renderPickerLevel(null, 1)}
 				</div>
@@ -169,12 +171,8 @@ export function FolderPickerDialog({
 						variant="secondary"
 						onClick={() => onOpenChange(false)}
 						className="h-8 sm:h-9 text-xs sm:text-sm"
-					>
-						Cancel
-					</Button>
-					<Button onClick={handleConfirm} className="h-8 sm:h-9 text-xs sm:text-sm">
-						Move here
-					</Button>
+					>{t("cancel")}</Button>
+					<Button onClick={handleConfirm} className="h-8 sm:h-9 text-xs sm:text-sm">{t("move_here")}</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

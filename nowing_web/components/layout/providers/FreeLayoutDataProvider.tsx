@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAnonymousMode } from "@/contexts/anonymous-mode";
 import { useLoginGate } from "@/contexts/login-gate";
 import { useAnnouncements } from "@/hooks/use-announcements";
@@ -14,20 +15,26 @@ interface FreeLayoutDataProviderProps {
 	children: ReactNode;
 }
 
-const GUEST_SPACE: Workspace = {
-	id: 0,
-	name: "Nowing Free",
-	description: "Free AI chat without login",
-	isOwner: false,
-	memberCount: 1,
-};
+
 
 export function FreeLayoutDataProvider({ children }: FreeLayoutDataProviderProps) {
+	const t = useTranslations("layout");
 	const router = useRouter();
 	const { gate } = useLoginGate();
 	const anonMode = useAnonymousMode();
 	const { unreadCount: announcementUnreadCount } = useAnnouncements();
 	const [quota, setQuota] = useState<{ used: number; limit: number } | null>(null);
+
+	const GUEST_SPACE: Workspace = useMemo(
+		() => ({
+			id: 0,
+			name: t("free_workspace_name"),
+			description: t("free_workspace_desc"),
+			isOwner: false,
+			memberCount: 1,
+		}),
+		[t]
+	);
 
 	useEffect(() => {
 		anonymousChatApiService
@@ -50,36 +57,36 @@ export function FreeLayoutDataProvider({ children }: FreeLayoutDataProviderProps
 		? { pagesUsed: quota.used, pagesLimit: quota.limit }
 		: undefined;
 
-	const handleChatSelect = useCallback((_chat: ChatItem) => gate("view chat history"), [gate]);
+	const handleChatSelect = useCallback((_chat: ChatItem) => gate(t("view_chat_history")), [gate]);
 
 	const handleAnnouncements = useCallback(() => gate("see what's new"), [gate]);
 
-	const handleWorkspaceSelect = useCallback((_id: number) => gate("switch workspaces"), [gate]);
+	const handleWorkspaceSelect = useCallback((_id: number) => gate(t("switch_workspaces")), [gate]);
 
 	return (
 		<LayoutShell
 			workspaces={[GUEST_SPACE]}
 			activeWorkspaceId={0}
 			onWorkspaceSelect={handleWorkspaceSelect}
-			onWorkspaceSettings={gatedAction("workspace settings")}
-			onAddWorkspace={gatedAction("create workspaces")}
+			onWorkspaceSettings={gatedAction(t("workspace_settings"))}
+			onAddWorkspace={gatedAction(t("create_workspaces"))}
 			workspace={GUEST_SPACE}
 			navItems={[]}
 			chats={[]}
 			activeChatId={null}
 			onNewChat={resetChat}
 			onChatSelect={handleChatSelect}
-			onChatRename={gatedAction("rename chats")}
-			onChatDelete={gatedAction("delete chats")}
-			onChatArchive={gatedAction("archive chats")}
-			onViewAllChats={gatedAction("view chat history")}
+			onChatRename={gatedAction(t("rename_chats"))}
+			onChatDelete={gatedAction(t("delete_chats"))}
+			onChatArchive={gatedAction(t("archive_chats"))}
+			onViewAllChats={gatedAction(t("view_chat_history"))}
 			user={{
-				email: "Guest",
-				name: "Guest",
+				email: t("guest_user"),
+				name: t("guest_user"),
 			}}
-			onSettings={gatedAction("workspace settings")}
-			onManageMembers={gatedAction("team management")}
-			onUserSettings={gatedAction("account settings")}
+			onSettings={gatedAction(t("workspace_settings"))}
+			onManageMembers={gatedAction(t("team_management"))}
+			onUserSettings={gatedAction(t("account_settings"))}
 			onAnnouncements={handleAnnouncements}
 			announcementUnreadCount={announcementUnreadCount}
 			onLogout={() => router.push("/register")}

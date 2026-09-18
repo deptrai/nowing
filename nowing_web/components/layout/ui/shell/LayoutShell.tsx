@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Logo } from "@/components/Logo";
 import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -243,6 +244,7 @@ export function LayoutShell({
 	onTabSwitch,
 	onTabPrefetch,
 }: LayoutShellProps) {
+	const t = useTranslations("layout");
 	const isMobile = useIsMobile();
 	const electronAPI = useElectronAPI();
 	const isMacDesktop = electronAPI?.versions.platform === "darwin";
@@ -437,7 +439,7 @@ export function LayoutShell({
 							{!isCollapsed && (
 								<hr
 									aria-orientation="vertical"
-									aria-label="Resize sidebar"
+									aria-label={t("resize_sidebar")}
 									aria-valuemin={SIDEBAR_MIN_WIDTH}
 									aria-valuemax={SIDEBAR_MAX_WIDTH}
 									aria-valuenow={sidebarWidth}

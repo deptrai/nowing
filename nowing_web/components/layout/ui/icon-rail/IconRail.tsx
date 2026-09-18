@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, SquarePen } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -57,13 +58,14 @@ export function IconRail({
 	setTheme,
 	className,
 }: IconRailProps) {
+	const t = useTranslations("layout");
 	const actionItems = isSingleRailMode
 		? [
 				...(onNewChat
 					? [
 							{
 								key: "new-chat",
-								label: "New chat",
+								label: t("new_chat"),
 								href: activeWorkspaceId ? `/dashboard/${activeWorkspaceId}/new-chat` : undefined,
 								onClick: activeWorkspaceId ? undefined : onNewChat,
 								icon: SquarePen,
@@ -110,12 +112,10 @@ export function IconRail({
 								className="h-10 w-10 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
 							>
 								<Plus className="h-5 w-5 text-muted-foreground" />
-								<span className="sr-only">Add workspace</span>
+								<span className="sr-only">{t("add_workspace")}</span>
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent side="right" sideOffset={8}>
-							Add workspace
-						</TooltipContent>
+						<TooltipContent side="right" sideOffset={8}>{t("add_workspace")}</TooltipContent>
 					</Tooltip>
 
 					{actionItems.length > 0 && (

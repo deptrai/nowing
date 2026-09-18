@@ -3,6 +3,7 @@
 import { usePathname, useSelectedLayoutSegments } from "next/navigation";
 import type React from "react";
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
 	getPlaygroundNavGroups,
 	getPlaygroundNavItems,
@@ -22,11 +23,12 @@ function usePlaygroundBase(workspaceId: string, pathname: string | null) {
 }
 
 export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayoutShellProps) {
+	const t = useTranslations("layout");
 	const pathname = usePathname();
 	const base = usePlaygroundBase(workspaceId, pathname);
 	const segments = useSelectedLayoutSegments();
 
-	const topLevelItems = useMemo(() => getPlaygroundNavItems(base), [base]);
+	const topLevelItems = useMemo(() => getPlaygroundNavItems(base, t), [base, t]);
 	const providerGroups = useMemo(() => getPlaygroundNavGroups(base), [base]);
 
 	const activeValue =
@@ -36,11 +38,11 @@ export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayou
 				? segments[0]
 				: "overview";
 
-	const selectedLabel = getPlaygroundSelectedLabel(activeValue, topLevelItems, providerGroups);
+	const selectedLabel = getPlaygroundSelectedLabel(activeValue, topLevelItems, providerGroups, t);
 
 	return (
 		<RoutedSectionShell
-			title="API Playground"
+			title={t('api_playground')}
 			items={topLevelItems}
 			groups={providerGroups}
 			activeValue={activeValue}
