@@ -29,9 +29,7 @@ export function CompareTable() {
 	return (
 		<MarketingSection>
 			<Reveal>
-				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
-					How Nowing compares
-				</h2>
+				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">{t("home_how_nowing_compares")}</h2>
 				<p className="mt-2.5 max-w-2xl text-sm sm:text-[15px] text-muted-foreground font-sans leading-relaxed">
 					{t("compare_lede")}
 				</p>

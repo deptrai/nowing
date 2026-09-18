@@ -16,9 +16,7 @@ export function ConnectorGrid() {
 		<MarketingSection>
 			<Reveal>
 				<div className="flex flex-wrap items-center gap-3">
-					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						Connectors for every platform where answers live
-					</h2>
+					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("home_connectors_for_every_platform")}</h2>
 					<Badge variant="outline" className="py-1">
 						{connectors.length} {t("connectors_count")}
 					</Badge>
@@ -59,9 +57,7 @@ export function ConnectorGrid() {
 				</div>
 				<div className="mt-6">
 					<Button asChild variant="outline">
-						<Link href="/connectors">
-							View all connectors
-							<ArrowRight className="size-4" aria-hidden="true" />
+						<Link href="/connectors">{t("home_view_all_connectors")}<ArrowRight className="size-4" aria-hidden="true" />
 						</Link>
 					</Button>
 				</div>

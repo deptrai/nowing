@@ -46,7 +46,7 @@ function LoginContent() {
 		// Show logout confirmation
 		if (logout === "true") {
 			toast.success(tCommon("success"), {
-				description: "You have been securely logged out",
+				description: t("home_you_have_been_securely"),
 				duration: 3000,
 			});
 		}
@@ -78,7 +78,7 @@ function LoginContent() {
 			// Add retry action if the error is retryable
 			if (shouldRetry(error)) {
 				toastOptions.action = {
-					label: "Retry",
+					label: t("home_retry"),
 					onClick: () => router.refresh(),
 				};
 			}
@@ -136,7 +136,7 @@ function LoginContent() {
 									className="flex-shrink-0 mt-0.5 text-red-500 dark:text-red-400"
 									aria-hidden="true"
 								>
-									<title>Error Icon</title>
+									<title>{t("home_error_icon")}</title>
 									<circle cx="12" cy="12" r="10" />
 									<line x1="15" y1="9" x2="9" y2="15" />
 									<line x1="9" y1="9" x2="15" y2="15" />
@@ -151,7 +151,7 @@ function LoginContent() {
 									size="icon"
 									onClick={() => setUrlError(null)}
 									className="size-6 flex-shrink-0 text-red-500 hover:bg-transparent hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
-									aria-label="Dismiss error"
+									aria-label={t("home_dismiss_error")}
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"

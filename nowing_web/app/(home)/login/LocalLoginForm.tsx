@@ -109,7 +109,7 @@ export function LocalLoginForm() {
 									className="flex-shrink-0 mt-0.5 text-destructive"
 									aria-hidden="true"
 								>
-									<title>Error Icon</title>
+									<title>{t("home_error_icon")}</title>
 									<circle cx="12" cy="12" r="10" />
 									<line x1="15" y1="9" x2="9" y2="15" />
 									<line x1="9" y1="9" x2="15" y2="15" />
@@ -125,7 +125,7 @@ export function LocalLoginForm() {
 										setError({ title: null, message: null });
 									}}
 									className="size-6 flex-shrink-0 text-destructive hover:bg-transparent hover:text-destructive/90"
-									aria-label="Dismiss error"
+									aria-label={t("home_dismiss_error")}
 									type="button"
 								>
 									<svg
@@ -182,7 +182,7 @@ export function LocalLoginForm() {
 							type={showPassword ? "text" : "password"}
 							autoComplete="current-password"
 							required
-							placeholder="Enter your password"
+							placeholder={t("home_enter_your_password")}
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							className={`block w-full rounded-md border pr-10 px-3 py-1.5 md:py-2 shadow-sm focus:outline-none focus:ring-1 bg-background text-foreground transition-all ${

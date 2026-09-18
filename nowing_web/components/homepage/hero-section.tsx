@@ -85,18 +85,17 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 			{
 				id: "deep-research",
 				title: t("title_deep_research"),
-				description:
-					"The agent crawls dozens of live sources on a question and synthesizes a cited answer, not a stale index.",
+				description: t("hero_the_agent_crawls_dozens"),
 				src: null,
 				demo: {
 					prompt: "Research the AI note-taking market and build a landscape brief with citations.",
 					steps: [
 						{
-							title: "Research",
+							title: t("hero_research"),
 							items: ["Crawling 38 live sources", "Vendor sites, reviews, pricing pages"],
 						},
 						{
-							title: "Generate report",
+							title: t("hero_generate_report"),
 							items: ["Landscape brief · 24 inline citations"],
 						},
 					],
@@ -110,29 +109,28 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "3 vendors moved upmarket this quarter",
 						},
 					],
-					summary: "Landscape brief saved · 24 inline citations you can check",
+					summary: t("hero_landscape_brief_saved_24"),
 				},
 			},
 			{
 				id: "academic-research",
 				title: t("title_academic_research"),
-				description:
-					"Sweep recent papers, preprints, and technical blogs on a topic and get the main approaches mapped with citations.",
+				description: t("hero_sweep_recent_papers_preprints"),
 				src: null,
 				demo: {
 					prompt:
 						"Survey the last year of research on LLM hallucination detection and map the main approaches.",
 					steps: [
 						{
-							title: "Google Search",
+							title: t("hero_google_search"),
 							items: ["12 SERPs · arXiv, ACL, technical blogs"],
 						},
 						{
-							title: "Web Crawler",
+							title: t("hero_web_crawler"),
 							items: ["Reading 21 papers and posts", "Extracting methods and benchmarks"],
 						},
 						{
-							title: "Generate report",
+							title: t("hero_generate_report"),
 							items: ["Literature brief · grouped by approach"],
 						},
 					],
@@ -146,29 +144,28 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "used in 9 of the 21 papers reviewed",
 						},
 					],
-					summary: "Literature brief saved · every claim links to its paper",
+					summary: t("hero_literature_brief_saved_every"),
 				},
 			},
 			{
 				id: "financial-research",
 				title: t("title_financial_research"),
-				description:
-					"Pull earnings coverage, analyst breakdowns, and retail sentiment on any company into one cited brief.",
+				description: t("hero_pull_earnings_coverage_analyst"),
 				src: null,
 				demo: {
 					prompt:
 						"Summarize the reaction to NVIDIA's latest earnings across news, YouTube, and Reddit.",
 					steps: [
 						{
-							title: "Google Search",
+							title: t("hero_google_search"),
 							items: ["10 SERPs · earnings coverage and recaps"],
 						},
 						{
-							title: "Youtube",
+							title: t("hero_youtube"),
 							items: ["8 analyst breakdowns · transcripts pulled"],
 						},
 						{
-							title: "Reddit",
+							title: t("hero_reddit"),
 							items: ["r/investing + r/stocks · 31 threads"],
 						},
 					],
@@ -186,7 +183,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "top threads focus on supply constraints",
 						},
 					],
-					summary: "Cited earnings brief saved to your workspace",
+					summary: t("hero_cited_earnings_brief_saved"),
 				},
 			},
 			{
@@ -199,11 +196,11 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 					prompt: "Which of our target keywords trigger an AI Overview, and who gets cited?",
 					steps: [
 						{
-							title: "Google Search",
+							title: t("hero_google_search"),
 							items: ["Scraping 25 SERPs", "Capturing AI Overviews and citations"],
 						},
 						{
-							title: "Plan tasks",
+							title: t("hero_plan_tasks"),
 							items: ["Map citations to competitors", "Compute your citation gap"],
 						},
 					],
@@ -217,7 +214,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "their listicle wins 3 of those citations",
 						},
 					],
-					summary: "Citation gap report saved · weekly re-check scheduled",
+					summary: t("hero_citation_gap_report_saved"),
 				},
 			},
 		],
@@ -229,27 +226,26 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 			{
 				id: "launch-impact",
 				title: t("title_launch_impact"),
-				description:
-					"One prompt chains Google Search, Reddit, and YouTube into a single cited brief on how a competitor launch actually landed.",
+				description: t("hero_one_prompt_chains_google"),
 				src: null,
 				demo: {
 					prompt:
 						"Our competitor launched v2 yesterday. Measure the reaction across search, Reddit, and YouTube.",
 					steps: [
 						{
-							title: "Google Search",
+							title: t("hero_google_search"),
 							items: ["Scraping 8 SERPs · launch coverage + AI Overviews"],
 						},
 						{
-							title: "Reddit",
+							title: t("hero_reddit"),
 							items: ['"competitor v2" · 23 threads in the past 48h'],
 						},
 						{
-							title: "Youtube",
+							title: t("hero_youtube"),
 							items: ["6 launch videos · 1,904 comments pulled"],
 						},
 						{
-							title: "Plan tasks",
+							title: t("hero_plan_tasks"),
 							items: ["Merge all three signals into one launch-impact brief"],
 						},
 					],
@@ -273,23 +269,22 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 			{
 				id: "local-teardown",
 				title: t("title_local_teardown"),
-				description:
-					"Google Maps finds the players, the Web Crawler reads their sites, and Google Search shows who wins the query, in one run.",
+				description: t("hero_google_maps_finds_the"),
 				src: null,
 				demo: {
 					prompt:
 						'Tear down the top-rated gyms in Austin: reviews, pricing pages, and who ranks for "gym austin".',
 					steps: [
 						{
-							title: "Google Maps",
+							title: t("hero_google_maps"),
 							items: ['"gym austin" · top 10 places + 2,400 reviews'],
 						},
 						{
-							title: "Web Crawler",
+							title: t("hero_web_crawler"),
 							items: ["Visiting 10 gym sites", "Extracting pricing and membership pages"],
 						},
 						{
-							title: "Google Search",
+							title: t("hero_google_search"),
 							items: ['SERP for "gym austin" · organic, ads, map pack'],
 						},
 					],
@@ -307,7 +302,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "map pack and organic top 3 don't overlap",
 						},
 					],
-					summary: "Maps + Crawler + Search in one run · teardown saved",
+					summary: t("hero_maps_crawler_search_in"),
 				},
 			},
 			{
@@ -320,11 +315,11 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 					prompt: "Extract every plan, price, and limit from our top 3 competitors' pricing pages.",
 					steps: [
 						{
-							title: "Plan tasks",
+							title: t("hero_plan_tasks"),
 							items: ["Crawl 3 pricing pages", "Extract plans, prices, limits into one table"],
 						},
 						{
-							title: "Web Crawler",
+							title: t("hero_web_crawler"),
 							items: [
 								"competitor-a.com/pricing · 4 plans",
 								"competitor-b.com/pricing · 3 plans",
@@ -332,7 +327,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							],
 						},
 						{
-							title: "Create automation",
+							title: t("hero_create_automation"),
 							items: ["Daily pricing re-check · alert on any change"],
 						},
 					],
@@ -364,14 +359,14 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 						"Every Monday, crawl our competitors' changelogs and brief me on what they shipped.",
 					steps: [
 						{
-							title: "Web Crawler",
+							title: t("hero_web_crawler"),
 							items: [
 								"competitor-a.com/changelog · 6 entries",
 								"competitor-b.com/whats-new · 3 entries",
 							],
 						},
 						{
-							title: "Create automation",
+							title: t("hero_create_automation"),
 							items: ["Weekly changelog brief · Mondays 8:00"],
 						},
 					],
@@ -385,28 +380,27 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "whats-new · Jul 2 · targets developers",
 						},
 					],
-					summary: "Brief saved to workspace · automation runs Mondays 8:00",
+					summary: t("hero_brief_saved_to_workspace"),
 				},
 			},
 			{
 				id: "serp-watch",
 				title: t("title_serp_watch"),
-				description:
-					"Automations track the Google rankings, paid ads, and AI Overview citations your audience actually sees.",
+				description: t("hero_automations_track_the_google"),
 				src: null,
 				demo: {
 					prompt: "Track who ranks and runs ads for our top 10 keywords in the US.",
 					steps: [
 						{
-							title: "Google Search",
+							title: t("hero_google_search"),
 							items: ["Scraping 10 SERPs (US) · organic, ads, AI Overviews"],
 						},
 						{
-							title: "Plan tasks",
+							title: t("hero_plan_tasks"),
 							items: ["Diff against last capture", "Flag rank and ad movements"],
 						},
 						{
-							title: "Create automation",
+							title: t("hero_create_automation"),
 							items: ["Daily rank + ad watch on these keywords"],
 						},
 					],
@@ -426,21 +420,20 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 			{
 				id: "switcher-mining",
 				title: t("title_switcher_mining"),
-				description:
-					"Find the people actively looking for an alternative to a competitor, ranked by how ready they are to move.",
+				description: t("hero_find_the_people_actively"),
 				src: null,
 				demo: {
 					prompt: "Find people asking for alternatives to our biggest competitor this month.",
 					steps: [
 						{
-							title: "Reddit",
+							title: t("hero_reddit"),
 							items: [
 								'Searching "alternative" mentions · past month',
 								"12 active switcher threads",
 							],
 						},
 						{
-							title: "Plan tasks",
+							title: t("hero_plan_tasks"),
 							items: ["Rank by recency and engagement", "Extract switching triggers"],
 						},
 					],
@@ -454,7 +447,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "mentioned in 7 of 12 threads",
 						},
 					],
-					summary: "Outreach-ready summaries drafted for the 5 hottest threads",
+					summary: t("hero_outreach_ready_summaries_drafted"),
 				},
 			},
 		],
@@ -496,31 +489,30 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 			{
 				id: "competitor-360",
 				title: t("title_competitor_360"),
-				description:
-					"An automation chains four connectors every week: site changes, rank movements, Reddit sentiment, and YouTube reaction.",
+				description: t("hero_an_automation_chains_four"),
 				src: null,
 				demo: {
 					prompt:
 						"Every Monday, build me a 360 on our top competitor: site changes, rankings, Reddit, and YouTube.",
 					steps: [
 						{
-							title: "Web Crawler",
+							title: t("hero_web_crawler"),
 							items: ["pricing + changelog pages · 2 changes detected"],
 						},
 						{
-							title: "Google Search",
+							title: t("hero_google_search"),
 							items: ["12 shared keywords · rank movements captured"],
 						},
 						{
-							title: "Reddit",
+							title: t("hero_reddit"),
 							items: ["18 mentions this week · sentiment tagged"],
 						},
 						{
-							title: "Youtube",
+							title: t("hero_youtube"),
 							items: ["2 new videos · comments and transcripts pulled"],
 						},
 						{
-							title: "Create automation",
+							title: t("hero_create_automation"),
 							items: ["Weekly 360 brief · Mondays 8:00"],
 						},
 					],
@@ -544,18 +536,17 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 			{
 				id: "cited-briefs",
 				title: t("title_cited_briefs"),
-				description:
-					"Everything the agents gather lands in your workspace as briefs and alerts with sources you can check.",
+				description: t("hero_everything_the_agents_gather"),
 				src: null,
 				demo: {
 					prompt: "Send me a Monday brief of every change my agents detected last week.",
 					steps: [
 						{
-							title: "Plan tasks",
+							title: t("hero_plan_tasks"),
 							items: ["Collect pricing, changelog, SERP, Reddit signals"],
 						},
 						{
-							title: "Create automation",
+							title: t("hero_create_automation"),
 							items: ["Weekly brief · Mondays 8:00 · workspace + email"],
 						},
 					],
@@ -569,21 +560,20 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "every claim links to its source",
 						},
 					],
-					summary: "Automation created · first brief lands Monday 8:00",
+					summary: t("hero_automation_created_first_brief"),
 				},
 			},
 			{
 				id: "event-triggers",
 				title: t("title_event_triggers"),
-				description:
-					"Automations can fire on events, not just schedules: a document landing in a folder kicks off the workflow.",
+				description: t("hero_automations_can_fire_on"),
 				src: null,
 				demo: {
 					prompt:
 						"Whenever a new file lands in my Research folder, summarize it and post the summary to Slack.",
 					steps: [
 						{
-							title: "Create automation",
+							title: t("hero_create_automation"),
 							items: [
 								"Trigger: new document in Research folder",
 								"Action: summarize → post to #research",
@@ -600,7 +590,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "summary posted to #research · 42s after upload",
 						},
 					],
-					summary: "Event-triggered automation live · no schedule needed",
+					summary: t("hero_event_triggered_automation_live"),
 				},
 			},
 		],
@@ -630,8 +620,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 			{
 				id: "folder-watch",
 				title: t("title_folder_watch"),
-				description:
-					"Auto-sync a local folder to your knowledge base. Point it at your Obsidian vault to keep your notes searchable.",
+				description: t("hero_auto_sync_a_local"),
 				src: `${HERO_TUTORIAL}/folder_watch.mp4`,
 			},
 		],
@@ -639,6 +628,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 ];
 
 export function HeroSection() {
+	const t = useTranslations("home");
 	return (
 		<div className="mx-auto w-full max-w-7xl min-w-0 pt-36">
 			<div className="mt-4 flex w-full min-w-0 flex-col items-start px-2 md:px-8 xl:px-0">
@@ -649,7 +639,7 @@ export function HeroSection() {
 				>
 					<Balancer>
 						Open-core research memory{" "}
-						<span className="italic font-serif font-normal">for AI agents.</span>
+						<span className="italic font-serif font-normal">{t("hero_for_ai_agents")}</span>
 					</Balancer>
 				</h1>
 				<div className="mt-4 flex w-full flex-col items-start justify-between gap-4 md:mt-6 md:flex-row md:items-end md:gap-10">
@@ -678,6 +668,7 @@ export function HeroSection() {
 }
 
 function GetStartedButton() {
+	const t = useTranslations("home");
 	const [isRedirecting, setIsRedirecting] = useState(false);
 
 	const handleGoogleLogin = () => {
@@ -697,20 +688,21 @@ function GetStartedButton() {
 				className="runtime-auth-google h-14 w-full cursor-pointer gap-3 rounded-lg border border-white bg-white text-center text-base font-medium text-[#1f1f1f] shadow-sm transition duration-150 hover:bg-zinc-100 hover:text-[#1f1f1f] sm:w-56 dark:border-white"
 			>
 				<GoogleLogo className="h-5 w-5" aria-hidden="true" />
-				<span>Continue with Google</span>
+				<span>{t("hero_continue_with_google")}</span>
 			</Button>
 			<Button
 				asChild
 				variant="ghost"
 				className="runtime-auth-local h-14 w-full rounded-lg bg-black text-center text-base font-medium text-white shadow-sm ring-1 shadow-black/10 ring-black/10 transition duration-150 active:scale-98 hover:bg-black sm:w-52 dark:bg-white dark:text-black dark:hover:bg-white"
 			>
-				<Link href="/login">Get Started</Link>
+				<Link href="/login">{t("hero_get_started")}</Link>
 			</Button>
 		</>
 	);
 }
 
 function DownloadButton() {
+	const t = useTranslations("home");
 	const { os, primary, alternatives, isMobileOS } = usePrimaryDownload();
 
 	const fallbackUrl = GITHUB_RELEASES_URL;
@@ -762,7 +754,7 @@ function DownloadButton() {
 					<Button
 						type="button"
 						variant="ghost"
-						aria-label="More download options"
+						aria-label={t("hero_more_download_options")}
 						className="h-auto rounded-l-none rounded-r-lg border border-neutral-200 bg-white px-2.5 text-neutral-500 shadow-sm transition duration-150 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800"
 					>
 						<ChevronDown className="size-4" aria-hidden />

@@ -101,7 +101,7 @@ export default function RegisterPage() {
 						const friendlyMessage =
 							"Registrations are currently closed. If you need access, contact your administrator.";
 						trackRegistrationFailure("Registration disabled");
-						setError({ title: "Registration is disabled", message: friendlyMessage });
+						setError({ title: t("home_registration_is_disabled"), message: friendlyMessage });
 						toast.error("Registration is disabled", {
 							description: friendlyMessage,
 							duration: 6000,
@@ -198,7 +198,7 @@ export default function RegisterPage() {
 											className="flex-shrink-0 mt-0.5 text-red-500 dark:text-red-400"
 											aria-hidden="true"
 										>
-											<title>Error Icon</title>
+											<title>{t("home_error_icon")}</title>
 											<circle cx="12" cy="12" r="10" />
 											<line x1="15" y1="9" x2="9" y2="15" />
 											<line x1="9" y1="9" x2="15" y2="15" />
@@ -214,7 +214,7 @@ export default function RegisterPage() {
 												setError({ title: null, message: null });
 											}}
 											className="size-6 flex-shrink-0 text-red-500 hover:bg-transparent hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
-											aria-label="Dismiss error"
+											aria-label={t("home_dismiss_error")}
 											type="button"
 										>
 											<svg
@@ -270,7 +270,7 @@ export default function RegisterPage() {
 								type="password"
 								autoComplete="new-password"
 								required
-								placeholder="Enter your password"
+								placeholder={t("home_enter_your_password")}
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
 								className={`mt-1 block w-full rounded-md border px-3 py-1.5 md:py-2 shadow-sm focus:outline-none focus:ring-1 bg-background text-foreground transition-all ${
@@ -294,7 +294,7 @@ export default function RegisterPage() {
 								type="password"
 								autoComplete="new-password"
 								required
-								placeholder="Confirm your password"
+								placeholder={t("home_confirm_your_password")}
 								value={confirmPassword}
 								onChange={(e) => setConfirmPassword(e.target.value)}
 								className={`mt-1 block w-full rounded-md border px-3 py-1.5 md:py-2 shadow-sm focus:outline-none focus:ring-1 bg-background text-foreground transition-all ${

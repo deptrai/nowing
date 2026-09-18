@@ -486,9 +486,7 @@ export default function PartnerDashboardPage() {
 						</div>
 
 						{commissions.length === 0 ? (
-							<div className="p-12 text-center text-neutral-500 text-sm">
-								No commissions earned yet. Share your referral link to get started!
-							</div>
+							<div className="p-12 text-center text-neutral-500 text-sm">{t("home_no_commissions_earned_yet")}</div>
 						) : (
 							<div className="overflow-x-auto">
 								<table className="w-full text-left text-sm">
@@ -546,9 +544,7 @@ export default function PartnerDashboardPage() {
 						</div>
 
 						{referrals.length === 0 ? (
-							<div className="p-12 text-center text-neutral-500 text-sm">
-								No referred users registered yet.
-							</div>
+							<div className="p-12 text-center text-neutral-500 text-sm">{t("home_no_referred_users_registered")}</div>
 						) : (
 							<div className="overflow-x-auto">
 								<table className="w-full text-left text-sm">

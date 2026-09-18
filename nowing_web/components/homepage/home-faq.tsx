@@ -22,9 +22,7 @@ export function HomeFaq() {
 		<MarketingSection>
 			<FAQJsonLd questions={HOME_FAQ} />
 			<Reveal>
-				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
-					Frequently asked questions
-				</h2>
+				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">{t("home_frequently_asked_questions")}</h2>
 			</Reveal>
 			<Reveal>
 				{/* Accordion capped at a readable measure; left edge stays on the page grid. */}

@@ -90,9 +90,7 @@ export function UseCasesGrid() {
 	return (
 		<section className="relative mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
 			<div className="mb-6 text-center">
-				<h2 className="font-serif text-3xl font-normal tracking-tight text-neutral-900 sm:text-4xl dark:text-white">
-					What You Can Do
-				</h2>
+				<h2 className="font-serif text-3xl font-normal tracking-tight text-neutral-900 sm:text-4xl dark:text-white">{t("home_what_you_can_do")}</h2>
 			</div>
 
 			{/* Row 1: 2 larger cards */}
@@ -116,9 +114,7 @@ export function UseCasesGrid() {
 				))}
 			</div>
 
-			<p className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
-				And more coming soon.
-			</p>
+			<p className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">{t("home_and_more_coming_soon")}</p>
 		</section>
 	);
 }

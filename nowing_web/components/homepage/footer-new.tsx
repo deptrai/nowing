@@ -13,15 +13,15 @@ export function FooterNew() {
 	const t = useTranslations("homepage");
 	const pages = [
 		// {
-		//   title: "All Products",
+		//   title: t("home_all_products"),
 		//   href: "#",
 		// },
 		// {
-		//   title: "Studio",
+		//   title: t("home_studio"),
 		//   href: "#",
 		// },
 		// {
-		//   title: "Clients",
+		//   title: t("home_clients"),
 		//   href: "#",
 		// },
 		{
