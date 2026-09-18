@@ -3,6 +3,7 @@
 import { BadgeCheck, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function UserDropdown({
 	};
 }) {
 	const router = useRouter();
+	const t = useTranslations("common");
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
 
 	const handleLogout = async () => {
@@ -89,7 +91,7 @@ export function UserDropdown({
 					) : (
 						<LogOut className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" aria-hidden="true" />
 					)}
-					{isLoggingOut ? "Logging out..." : "Log out"}
+					{isLoggingOut ? t("user_dropdown_logging_out") : t("user_dropdown_log_out")}
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

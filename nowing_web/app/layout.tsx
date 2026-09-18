@@ -1,5 +1,6 @@
 // auto-deploy verified - trigger-recompile-turbopack
 import type { Metadata, Viewport } from "next";
+import { getTranslations } from "next-intl/server";
 import "./globals.css";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
@@ -58,14 +59,18 @@ export const viewport: Viewport = {
 	interactiveWidget: "resizes-content",
 };
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("common");
+	const title = t("layout_meta_title");
+	const description = t("layout_meta_description");
+	const ogDescription = t("layout_meta_og_description");
+	return {
 	metadataBase: new URL("https://www.nowing.com"),
 	alternates: {
 		canonical: "https://www.nowing.com",
 	},
-	title: "Nowing - Open-Core Long-Term Research Memory for AI Agents",
-	description:
-		"Open-core research memory for AI agents — it remembers what it went and found, not just what you told it. Your agents pull live, structured data from Reddit, YouTube, Amazon, and any page via one API or MCP server.",
+	title,
+	description,
 	keywords: [
 		"open core research memory",
 		"long-term research memory",
@@ -82,9 +87,8 @@ export const metadata: Metadata = {
 		"Nowing",
 	],
 	openGraph: {
-		title: "Nowing - Open-Core Long-Term Research Memory for AI Agents",
-		description:
-			"Open-core long-term research memory for AI agents — it remembers what it went and found, not just what you told it. Research the live web with structured data from Reddit, YouTube, Amazon, Google Maps, and Google Search, through one API or MCP server.",
+		title,
+		description: ogDescription,
 		url: "https://www.nowing.com",
 		siteName: "Nowing",
 		type: "website",
@@ -100,9 +104,8 @@ export const metadata: Metadata = {
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Nowing - Open-Core Long-Term Research Memory for AI Agents",
-		description:
-			"Open-core long-term research memory for AI agents — it remembers what it went and found, not just what you told it. Research the live web with structured data from Reddit, YouTube, Amazon, Google Maps, and Google Search, through one API or MCP server.",
+		title,
+		description: ogDescription,
 		creator: "@NowingAI",
 		site: "@NowingAI",
 		images: [
@@ -114,7 +117,8 @@ export const metadata: Metadata = {
 			},
 		],
 	},
-};
+	};
+}
 
 export default function RootLayout({
 	children,
