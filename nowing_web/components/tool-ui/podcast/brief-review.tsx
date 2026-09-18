@@ -346,7 +346,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="seconds">{t("tu_seconds")}</SelectItem>
-							<SelectItem value="minutes">Minutes</SelectItem>
+							<SelectItem value="minutes">{t("f_minutes")}</SelectItem>
 							<SelectItem value="hours">Hours</SelectItem>
 						</SelectContent>
 					</Select>
@@ -398,10 +398,10 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 			</div>
 
 			<div className="flex flex-col gap-2">
-				<Label htmlFor="podcast-focus">Focus (optional)</Label>
+				<Label htmlFor="podcast-focus">{t("f_focus_optional")}</Label>
 				<Textarea
 					id="podcast-focus"
-					placeholder="What should the episode emphasise?"
+					placeholder={t("f_what_should_the_episode")}
 					maxLength={2000}
 					value={draft.focus ?? ""}
 					onChange={(e) => setDraft((current) => ({ ...current, focus: e.target.value || null }))}
@@ -415,9 +415,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						variant="ghost"
 						onClick={() => setDraft(spec)}
 						disabled={isSubmitting}
-					>
-						Discard
-					</Button>
+					>{t("f_discard")}</Button>
 				) : null}
 				<Button
 					type="button"

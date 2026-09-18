@@ -329,7 +329,11 @@
 		"fallback_message": "Fallback Message",
 		"fallback_placeholder": "Fallback message when no relevant documents are found...",
 		"hotlead_chat_id": "Hot-Lead Recipient Chat ID",
-		"hotlead_placeholder": "e.g. @sales_channel or Telegram chat id"
+		"hotlead_placeholder": "e.g. @sales_channel or Telegram chat id",
+		"f_purchase_history": "Purchase History",
+		"f_app_preferences": "App Preferences",
+		"f_hotkeys": "Hotkeys",
+		"f_api_playground": "API Playground"
 	},
 	"dashboard": {
 		"title": "Dashboard",
@@ -1280,7 +1284,12 @@
 		"x_failed_to_revert_plan": "Failed to revert plan change",
 		"x_audit_trail_of_plan": "Audit trail of plan upgrades, downgrades, and cancellations.",
 		"x_effective_date": "Effective Date",
-		"x_requested": "Requested"
+		"x_requested": "Requested",
+		"f_manage_files_notes_and": "Manage files, notes, and content",
+		"f_view_workspace_analytics_adoption": "View workspace analytics & adoption metrics",
+		"f_choose_the_plan_that": "Choose the plan that best matches your team's workflow and intelligence requirements.",
+		"f_current": "Current",
+		"f_understood": "Understood"
 	},
 	"logs": {
 		"title": "Task Logs",
@@ -4948,7 +4957,15 @@
 		"tu_open_live_website": "Open live website",
 		"tu_open_editor": "Open Editor",
 		"tu_publishing": "Publishing...",
-		"tu_publish": "Publish"
+		"tu_publish": "Publish",
+		"f_minutes": "Minutes",
+		"f_focus_optional": "Focus (optional)",
+		"f_what_should_the_episode": "What should the episode emphasise?",
+		"f_discard": "Discard",
+		"f_preparing_brief": "Preparing brief",
+		"f_drafting_transcript": "Drafting transcript",
+		"f_rendering_audio": "Rendering audio",
+		"f_this_podcast_was_drafted": "This podcast was drafted before audio rendering became automatic."
 	},
 	"telemetry": {
 		"failed_load_celery": "Failed to load Celery queues",
@@ -5984,7 +6001,14 @@
 		"ui_subscript": "Subscript",
 		"ui_insert": "Insert",
 		"ui_turn_into": "Turn into",
-		"ui_inline": "Inline"
+		"ui_inline": "Inline",
+		"f_collaborative_ai_chat": "Collaborative AI Chat",
+		"f_collaborate_on_ai_powered": "Collaborate on AI-powered conversations in realtime with your team.",
+		"f_realtime_comments": "Realtime Comments",
+		"f_add_comments_and_tag": "Add comments and tag teammates on any message.",
+		"f_previous_slide": "Previous slide",
+		"f_next_slide": "Next slide",
+		"f_no_results_found": "No results found."
 	},
 	"chatMessages": {
 		"x_doom_loop_user_requested": "Doom loop: user requested stop.",
@@ -6007,6 +6031,9 @@
 		"x_workspace_kb": "Workspace KB",
 		"x_progress": "Progress",
 		"x_failed_to_revert_action": "Failed to revert action.",
-		"x_revert_this_action": "Revert this action?"
+		"x_revert_this_action": "Revert this action?",
+		"f_last_arguments": "Last arguments",
+		"f_stop_and_rethink": "Stop and rethink",
+		"f_continue_anyway": "Continue anyway"
 	}
 }

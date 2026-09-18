@@ -94,13 +94,13 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	documents: {
 		label: "Documents",
 		icon: FileText,
-		description: "Manage files, notes, and content",
+		description: t("f_manage_files_notes_and"),
 		order: 1,
 	},
 	analytics: {
 		label: "Analytics",
 		icon: BarChart3,
-		description: "View workspace analytics & adoption metrics",
+		description: t("f_view_workspace_analytics_adoption"),
 		order: 1.5,
 	},
 	chats: {

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -32,6 +33,7 @@ import { adminAffiliatesApiService } from "@/lib/apis/admin-affiliates-api.servi
 const LIMIT = 100;
 
 export default function AffiliatePayoutsPage() {
+	const t = useTranslations("admin");
 	const [statusFilter, setStatusFilter] = useState<string>("all");
 	const [selectedPayout, setSelectedPayout] = useState<AdminPayoutItem | null>(null);
 	const [offset, setOffset] = useState<number>(0);
@@ -100,7 +102,7 @@ export default function AffiliatePayoutsPage() {
 							variant="outline"
 							className="border-primary/40 bg-primary/10 text-primary text-xs font-semibold"
 						>
-							Affiliate Desk
+							{t("affiliate_desk")}
 						</Badge>
 					</div>
 					<p className="mt-1 text-sm text-muted-foreground">

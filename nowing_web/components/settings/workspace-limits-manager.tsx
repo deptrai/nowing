@@ -513,9 +513,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 				<DialogContent className="max-w-3xl">
 					<DialogHeader>
 						<DialogTitle>{t("limits_select_plan")}</DialogTitle>
-						<DialogDescription>
-							Choose the plan that best matches your team's workflow and intelligence requirements.
-						</DialogDescription>
+						<DialogDescription>{t("f_choose_the_plan_that")}</DialogDescription>
 					</DialogHeader>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
@@ -542,9 +540,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 												{plan.plan_tier}
 											</CardTitle>
 											{isCurrent && (
-												<Badge variant="outline" className="text-[10px] px-1.5 py-0">
-													Current
-												</Badge>
+												<Badge variant="outline" className="text-[10px] px-1.5 py-0">{t("f_current")}</Badge>
 											)}
 										</div>
 										<div className="text-lg font-bold text-foreground mt-1">
@@ -659,9 +655,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 					</div>
 
 					<DialogFooter>
-						<Button variant="default" onClick={() => setConflictData(null)}>
-							Understood
-						</Button>
+						<Button variant="default" onClick={() => setConflictData(null)}>{t("f_understood")}</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

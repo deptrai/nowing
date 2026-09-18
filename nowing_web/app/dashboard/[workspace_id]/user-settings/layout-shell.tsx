@@ -91,7 +91,7 @@ export function UserSettingsLayoutShell({ workspaceId, children }: UserSettingsL
 			},
 			{
 				value: "purchases" as const,
-				label: "Purchase History",
+				label: t("f_purchase_history"),
 				href: `/dashboard/${workspaceId}/user-settings/purchases`,
 				icon: <ReceiptText className="h-4 w-4" aria-hidden="true" />,
 			},
@@ -99,13 +99,13 @@ export function UserSettingsLayoutShell({ workspaceId, children }: UserSettingsL
 				? [
 						{
 							value: "desktop" as const,
-							label: "App Preferences",
+							label: t("f_app_preferences"),
 							href: `/dashboard/${workspaceId}/user-settings/desktop`,
 							icon: <Monitor className="h-4 w-4" aria-hidden="true" />,
 						},
 						{
 							value: "hotkeys" as const,
-							label: "Hotkeys",
+							label: t("f_hotkeys"),
 							href: `/dashboard/${workspaceId}/user-settings/hotkeys`,
 							icon: <Keyboard className="h-4 w-4" aria-hidden="true" />,
 						},
@@ -113,7 +113,7 @@ export function UserSettingsLayoutShell({ workspaceId, children }: UserSettingsL
 				: []),
 			{
 				value: "playground" as const,
-				label: "API Playground",
+				label: t("f_api_playground"),
 				href: `/dashboard/${workspaceId}/user-settings/playground`,
 				icon: <SquareTerminal className="h-4 w-4" aria-hidden="true" />,
 			},

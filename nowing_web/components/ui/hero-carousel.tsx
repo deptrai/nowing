@@ -49,13 +49,13 @@ const getCarouselItems = (t: (k: string) => string) => [
 		src: "/homepage/hero_tutorial/ImageGenGif.mp4",
 	},
 	{
-		title: "Collaborative AI Chat",
-		description: "Collaborate on AI-powered conversations in realtime with your team.",
+		title: t("f_collaborative_ai_chat"),
+		description: t("f_collaborate_on_ai_powered"),
 		src: "/homepage/hero_realtime/RealTimeChatGif.mp4",
 	},
 	{
-		title: "Realtime Comments",
-		description: "Add comments and tag teammates on any message.",
+		title: t("f_realtime_comments"),
+		description: t("f_add_comments_and_tag"),
 		src: "/homepage/hero_realtime/RealTimeCommentsFlow.mp4",
 	},
 ];
@@ -211,7 +211,7 @@ function HeroCarousel() {
 					size="icon"
 					onClick={() => !isGifExpanded && goToPrev()}
 					className="size-11 rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm hover:bg-neutral-100 touch-manipulation dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-					aria-label="Previous slide"
+					aria-label={t("f_previous_slide")}
 				>
 					<ChevronLeft className="size-5" aria-hidden="true" />
 				</Button>
@@ -244,7 +244,7 @@ function HeroCarousel() {
 					size="icon"
 					onClick={() => !isGifExpanded && goToNext()}
 					className="size-11 rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm hover:bg-neutral-100 touch-manipulation dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-					aria-label="Next slide"
+					aria-label={t("f_next_slide")}
 				>
 					<ChevronRight className="size-5" aria-hidden="true" />
 				</Button>

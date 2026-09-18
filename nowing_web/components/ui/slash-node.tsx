@@ -178,7 +178,7 @@ export function SlashInputElement({ children, ...props }: PlateElementProps) {
 				<InlineComboboxInput />
 
 				<InlineComboboxContent>
-					<InlineComboboxEmpty>No results found.</InlineComboboxEmpty>
+					<InlineComboboxEmpty>{t("f_no_results_found")}</InlineComboboxEmpty>
 
 					{getSlashCommandGroups(t).map(({ heading, items }) => (
 						<InlineComboboxGroup key={heading}>

@@ -241,16 +241,16 @@ function LivePodcastCard({
 
 	switch (podcast.status) {
 		case "pending":
-			return <WorkingState title={title} label="Preparing brief" />;
+			return <WorkingState title={title} label={t("f_preparing_brief")} />;
 		case "drafting":
-			return <WorkingState title={title} label="Drafting transcript" action={backOut} />;
+			return <WorkingState title={title} label={t("f_drafting_transcript")} action={backOut} />;
 		case "rendering":
-			return <WorkingState title={title} label="Rendering audio" action={backOut} />;
+			return <WorkingState title={title} label={t("f_rendering_audio")} action={backOut} />;
 		case "awaiting_brief":
 			// The gate lives right in the chat: the form is the card, so there
 			// is nothing to open and nothing to dismiss.
 			if (!podcast.spec) {
-				return <WorkingState title={title} label="Preparing brief" />;
+				return <WorkingState title={title} label={t("f_preparing_brief")} />;
 			}
 			return (
 				<div className="my-4 max-w-xl overflow-hidden rounded-2xl border bg-muted/30">
@@ -277,9 +277,7 @@ function LivePodcastCard({
 				<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 					<div className="px-5 pt-5 pb-4">
 						<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
-						<p className="text-xs text-muted-foreground mt-0.5">
-							This podcast was drafted before audio rendering became automatic.
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("f_this_podcast_was_drafted")}</p>
 					</div>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="flex justify-end px-5 py-3">
