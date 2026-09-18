@@ -89,7 +89,7 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 			toast.success("Knowledge base exported");
 		} catch (err) {
 			console.error("KB export failed:", err);
-			toast.error(err instanceof Error ? err.message : "Export failed");
+			toast.error(err instanceof Error ? err.message: t("x_export_failed"));
 		} finally {
 			setIsExporting(false);
 		}
@@ -127,7 +127,7 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 			await fetchWorkspace();
 		} catch (error: unknown) {
 			console.error("Error saving workspace details:", error);
-			toast.error(error instanceof Error ? error.message : "Failed to save workspace details");
+			toast.error(error instanceof Error ? error.message: t("x_failed_to_save_workspace"));
 		} finally {
 			setSaving(false);
 		}
@@ -152,7 +152,7 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 	if (isError) {
 		return (
 			<div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-				<p className="text-sm text-destructive">Failed to load settings.</p>
+				<p className="text-sm text-destructive">{t("x_failed_to_load_settings")}</p>
 				<Button variant="outline" size="sm" onClick={() => fetchWorkspace()}>
 					Retry
 				</Button>
@@ -231,10 +231,8 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 
 			<div className="border-t pt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 				<div className="space-y-1">
-					<Label>Export knowledge base</Label>
-					<p className="text-xs text-muted-foreground">
-						Download all documents in this workspace as a ZIP of markdown files.
-					</p>
+					<Label>{t("x_export_knowledge_base")}</Label>
+					<p className="text-xs text-muted-foreground">{t("x_download_all_documents_in")}</p>
 				</div>
 				<Button
 					type="button"

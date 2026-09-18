@@ -145,7 +145,7 @@ export function DataRetentionManager({
 				await refetch();
 			} catch (error) {
 				console.error("Error saving data retention settings:", error);
-				toast.error(error instanceof Error ? error.message : "Failed to save settings");
+				toast.error(error instanceof Error ? error.message: t("x_failed_to_save_settings"));
 			} finally {
 				setSaving(false);
 			}

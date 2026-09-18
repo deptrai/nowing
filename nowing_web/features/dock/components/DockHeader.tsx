@@ -61,7 +61,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 							className="size-7 -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted"
 						>
 							<X className="size-3.5" aria-hidden="true" />
-							<span className="sr-only">Close canvas</span>
+							<span className="sr-only">{t("x_close_canvas")}</span>
 						</Button>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">{t("close_canvas")}</TooltipContent>

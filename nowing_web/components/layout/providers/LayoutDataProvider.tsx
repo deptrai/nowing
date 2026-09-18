@@ -193,7 +193,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 				duration: 8000,
 				icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
 				action: {
-					label: "Buy credits",
+					label: t("x_buy_credits"),
 					onClick: () => router.push(`/dashboard/${workspaceId}/buy-more`),
 				},
 			});
@@ -317,7 +317,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 						isActive: isUsageActive,
 					},
 					{
-						title: "Integrations",
+						title: t("x_integrations"),
 						url: `/dashboard/${workspaceId}/connectors`,
 						icon: Puzzle,
 						isActive: isConnectorsActive,
@@ -329,19 +329,19 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 						isActive: isMemoryBrowserActive,
 					},
 					{
-						title: "Automations",
+						title: t("x_automations"),
 						url: `/dashboard/${workspaceId}/automations`,
 						icon: AlarmClock,
 						isActive: isAutomationsActive,
 					},
 					{
-						title: "Playbooks",
+						title: t("x_playbooks"),
 						url: `/dashboard/${workspaceId}/playbooks`,
 						icon: BookOpen,
 						isActive: isPlaybooksActive,
 					},
 					{
-						title: "Artifacts",
+						title: t("x_artifacts"),
 						url: `/dashboard/${workspaceId}/artifacts`,
 						icon: Shapes,
 						isActive: isArtifactsActive,

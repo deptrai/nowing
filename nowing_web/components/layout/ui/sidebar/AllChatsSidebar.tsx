@@ -241,7 +241,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 									variant="secondary"
 									className="h-7 gap-1.5 rounded-md px-2.5 text-xs font-medium"
 								>
-									<span className="font-semibold text-muted-foreground">Filter by</span>
+									<span className="font-semibold text-muted-foreground">{t("x_filter_by")}</span>
 									<span>{selectedFilterLabel}</span>
 									<ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
 								</Button>
@@ -257,7 +257,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 									/>
 								</DropdownMenuItem>
 								<DropdownMenuItem onClick={() => setShowArchived(true)}>
-									<span className="flex-1">Archived</span>
+									<span className="flex-1">{t("x_archived")}</span>
 									<Check
 										className={cn(
 											"h-4 w-4 text-primary",

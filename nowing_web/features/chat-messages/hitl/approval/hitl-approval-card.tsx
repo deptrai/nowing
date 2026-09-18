@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
@@ -31,6 +32,7 @@ function sliceForStep(
 	reviewConfig: InterruptReviewConfig | undefined,
 	stagedDecision: HitlDecision | undefined
 ): InterruptResult {
+	const t = useTranslations("chatMessages");
 	const baseAction =
 		stagedDecision?.type === "edit" && stagedDecision.edited_action
 			? { ...action, args: stagedDecision.edited_action.args }
@@ -61,6 +63,7 @@ export const HitlApprovalCard: FC<{
 	pendingInterrupt: PendingInterruptState;
 	onSubmit: (decisions: HitlDecision[]) => void;
 }> = ({ pendingInterrupt, onSubmit }) => {
+	const t = useTranslations("layout");
 	const interruptData = pendingInterrupt.interruptData as InterruptResult & Record<string, unknown>;
 	const actionRequests = (interruptData.action_requests ?? []) as InterruptActionRequest[];
 	const reviewConfigs = (interruptData.review_configs ?? []) as InterruptReviewConfig[];
@@ -219,7 +222,9 @@ const PagerBar: FC<{
 	onPrev,
 	onNext,
 	onSubmit,
-}) => (
+}) => {
+	const t = useTranslations("chatMessages");
+	return (
 	<div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-sm">
 		<Button
 			type="button"
@@ -227,7 +232,7 @@ const PagerBar: FC<{
 			variant="outline"
 			onClick={onPrev}
 			disabled={currentStep === 0}
-			aria-label="Previous approval"
+			aria-label={t("x_previous_approval")}
 		>
 			<ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
 		</Button>
@@ -244,7 +249,7 @@ const PagerBar: FC<{
 			variant="outline"
 			onClick={onNext}
 			disabled={!canAdvance || currentStep >= total - 1}
-			aria-label="Next approval"
+			aria-label={t("x_next_approval")}
 			title={!canAdvance ? "Decide on this action first" : undefined}
 		>
 			<ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
@@ -259,9 +264,8 @@ const PagerBar: FC<{
 				onClick={onSubmit}
 				disabled={!canSubmit}
 				title={canSubmit ? "Submit decisions" : "Decide every action first"}
-			>
-				Submit decisions
-			</Button>
+			>{t("x_submit_decisions")}</Button>
 		</div>
 	</div>
-);
+	);
+};

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
@@ -13,6 +14,7 @@ import {
 
 /** Header toggle that opens the artifacts sidebar. Hidden when the thread has none. */
 export function ArtifactsToggleButton() {
+	const t = useTranslations("artifacts");
 	const artifacts = useAtomValue(chatArtifactsAtom);
 	const isOpen = useAtomValue(artifactsPanelOpenAtom);
 	const toggle = useSetAtom(toggleArtifactsPanelAtom);

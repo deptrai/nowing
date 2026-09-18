@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import {
@@ -29,6 +30,7 @@ export interface WebBuilderDockTabProps {
 type ViewportMode = "desktop" | "tablet" | "mobile";
 
 export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProps) {
+	const t = useTranslations("dock");
 	const appId = result.app_id;
 	const appName = result.name || "Web App";
 	const slug = result.slug;
@@ -65,7 +67,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 				toast.error(deployRes.message || "Failed to publish web app");
 			}
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Publish request failed";
+			const msg = err instanceof Error ? err.message: t("x_publish_request_failed");
 			toast.error(msg);
 		} finally {
 			setIsPublishing(false);
@@ -91,9 +93,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 
 	if (!appId) {
 		return (
-			<div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-				No web app selected.
-			</div>
+			<div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">{t("x_no_web_app_selected")}</div>
 		);
 	}
 
@@ -156,9 +156,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 								onClick={handleOpenLive}
 								className="gap-1 text-xs h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white"
 							>
-								<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-								Live Site
-							</Button>
+								<ExternalLinkIcon className="size-3.5" aria-hidden="true" />{t("x_live_site")}</Button>
 						)}
 
 						{isPublished && effectivePublicUrl && (
@@ -185,9 +183,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							className="gap-1 text-xs h-7 rounded-lg"
 							onClick={() => toast.info("Code editor tab coming in next iteration.")}
 						>
-							<SparklesIcon className="size-3.5" aria-hidden="true" />
-							Edit Prompt
-						</Button>
+							<SparklesIcon className="size-3.5" aria-hidden="true" />{t("x_edit_prompt")}</Button>
 					</div>
 
 					{/* Device Viewport Selector */}

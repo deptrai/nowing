@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { ChevronRightIcon } from "lucide-react";
@@ -18,6 +19,7 @@ import type { ItemStatus, TimelineItem, ToolCallItem } from "./types";
  * is aborted or disconnected.
  */
 function effectiveStatus(status: ItemStatus, isThreadRunning: boolean): ItemStatus {
+	const t = useTranslations("chatMessages");
 	if (status === "running" && !isThreadRunning) return "completed";
 	return status;
 }

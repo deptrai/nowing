@@ -178,7 +178,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 					return;
 				}
 			}
-			toast.error(err instanceof Error ? err.message : "Failed to change subscription plan");
+			toast.error(err instanceof Error ? err.message: t("x_failed_to_change_subscription"));
 		},
 	});
 
@@ -194,7 +194,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			toast.success("Scheduled plan change cancelled.");
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to cancel change");
+			toast.error(err instanceof Error ? err.message: t("x_failed_to_cancel_change"));
 		},
 	});
 
@@ -211,7 +211,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			toast.success("Plan reverted successfully.");
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to revert plan change");
+			toast.error(err instanceof Error ? err.message: t("x_failed_to_revert_plan"));
 		},
 	});
 
@@ -415,9 +415,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			<Card>
 				<CardHeader>
 					<CardTitle className="text-base font-medium">{t("limits_history_title")}</CardTitle>
-					<CardDescription className="text-xs">
-						Audit trail of plan upgrades, downgrades, and cancellations.
-					</CardDescription>
+					<CardDescription className="text-xs">{t("x_audit_trail_of_plan")}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{isHistoryLoading ? (
@@ -436,8 +434,8 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 									<TableHead>From</TableHead>
 									<TableHead>To</TableHead>
 									<TableHead>Status</TableHead>
-									<TableHead>Effective Date</TableHead>
-									<TableHead>Requested</TableHead>
+									<TableHead>{t("x_effective_date")}</TableHead>
+									<TableHead>{t("x_requested")}</TableHead>
 									<TableHead className="text-right">Action</TableHead>
 								</TableRow>
 							</TableHeader>

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useAtomValue } from "jotai";
@@ -15,6 +16,7 @@ interface HeaderProps {
 }
 
 export function Header({ mobileMenuTrigger }: HeaderProps) {
+	const t = useTranslations("layout");
 	const pathname = usePathname();
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const activeTab = useAtomValue(activeTabAtom);

@@ -121,6 +121,7 @@ export function EmbeddedDocumentsMenu({
 	onToggleType: (type: DocumentTypeEnum, checked: boolean) => void;
 	onCreateFolder: () => void;
 }) {
+	const t = useTranslations("layout");
 	const isMobile = useIsMobile();
 	const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 	const documentTypes = useMemo(
@@ -137,7 +138,7 @@ export function EmbeddedDocumentsMenu({
 						variant="ghost"
 						size="icon"
 						className="relative h-6 w-6 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-						aria-label="Document actions"
+						aria-label={t("x_document_actions")}
 					>
 						<SlidersVertical className="size-3.5" />
 						{activeTypes.length > 0 ? (
@@ -147,20 +148,16 @@ export function EmbeddedDocumentsMenu({
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-44">
 					<DropdownMenuItem onSelect={onCreateFolder}>
-						<FolderPlus className="h-4 w-4" aria-hidden="true" />
-						New folder
-					</DropdownMenuItem>
+						<FolderPlus className="h-4 w-4" aria-hidden="true" />{t("x_new_folder")}</DropdownMenuItem>
 					{isMobile ? (
 						<DropdownMenuItem onSelect={() => setFilterDrawerOpen(true)}>
 							<ListFilter className="h-4 w-4" aria-hidden="true" />
-							<span className="flex-1">Filter by type</span>
+							<span className="flex-1">{t("x_filter_by_type")}</span>
 						</DropdownMenuItem>
 					) : (
 						<DropdownMenuSub>
 							<DropdownMenuSubTrigger>
-								<ListFilter className="h-4 w-4" aria-hidden="true" />
-								Filter by type
-							</DropdownMenuSubTrigger>
+								<ListFilter className="h-4 w-4" aria-hidden="true" />{t("x_filter_by_type")}</DropdownMenuSubTrigger>
 							<DropdownMenuSubContent className="w-52 max-h-72 overflow-y-auto">
 								{documentTypes.length > 0 ? (
 									documentTypes.map((type) => (
@@ -178,7 +175,7 @@ export function EmbeddedDocumentsMenu({
 										</DropdownMenuCheckboxItem>
 									))
 								) : (
-									<DropdownMenuItem disabled>No document types</DropdownMenuItem>
+									<DropdownMenuItem disabled>{t("x_no_document_types")}</DropdownMenuItem>
 								)}
 							</DropdownMenuSubContent>
 						</DropdownMenuSub>
@@ -196,9 +193,7 @@ export function EmbeddedDocumentsMenu({
 					overlayClassName="z-80"
 				>
 					<DrawerHandle className="mt-3 h-1.5 w-10" />
-					<DrawerTitle className="px-4 pb-2 pt-3 text-center text-base font-semibold">
-						Filter by type
-					</DrawerTitle>
+					<DrawerTitle className="px-4 pb-2 pt-3 text-center text-base font-semibold">{t("x_filter_by_type")}</DrawerTitle>
 					<div className="px-4 pb-6 pt-1">
 						{documentTypes.length > 0 ? (
 							documentTypes.map((type, index) => {
@@ -220,7 +215,7 @@ export function EmbeddedDocumentsMenu({
 								);
 							})
 						) : (
-							<p className="px-3 py-4 text-sm text-muted-foreground">No document types</p>
+							<p className="px-3 py-4 text-sm text-muted-foreground">{t("x_no_document_types")}</p>
 						)}
 					</div>
 				</DrawerContent>
@@ -248,6 +243,7 @@ export function EmbeddedImportMenu({
 	gate?: (feature: string) => void;
 	onFolderWatched?: () => void;
 }) {
+	const t = useTranslations("layout");
 	const { openDialog } = useDocumentUploadDialog();
 
 	// Watch Local Folder is a desktop-app feature (needs the Electron folder watcher).
@@ -264,16 +260,14 @@ export function EmbeddedImportMenu({
 					variant="ghost"
 					size="icon"
 					className="h-6 w-6 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-					aria-label="Import documents"
+					aria-label={t("x_import_documents")}
 				>
 					<FilePlus className="size-3.5" aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-56">
 				<DropdownMenuItem onSelect={() => (gate ? gate("upload files") : openDialog())}>
-					<Upload className="h-4 w-4" aria-hidden="true" />
-					Upload Files
-				</DropdownMenuItem>
+					<Upload className="h-4 w-4" aria-hidden="true" />{t("x_upload_files")}</DropdownMenuItem>
 				{isDesktop && (
 					<DropdownMenuItem
 						onSelect={() => (gate ? gate("watch local folders") : setFolderWatchOpen(true))}
@@ -698,7 +692,7 @@ function AuthenticatedDocumentsSidebarBase({
 			toast.success(`Folder "${ctx.folder.name}" exported`);
 		} catch (err) {
 			console.error("Folder export failed:", err);
-			toast.error(err instanceof Error ? err.message : "Export failed");
+			toast.error(err instanceof Error ? err.message: t("x_export_failed"));
 		} finally {
 			isExportingKBRef.current = false;
 		}
@@ -752,7 +746,7 @@ function AuthenticatedDocumentsSidebarBase({
 				toast.success(`Folder "${folder.name}" exported`);
 			} catch (err) {
 				console.error("Folder export failed:", err);
-				toast.error(err instanceof Error ? err.message : "Export failed");
+				toast.error(err instanceof Error ? err.message: t("x_export_failed"));
 			} finally {
 				isExportingKBRef.current = false;
 			}
@@ -781,7 +775,7 @@ function AuthenticatedDocumentsSidebarBase({
 					return;
 				} catch (err) {
 					console.error("Memory export failed:", err);
-					toast.error(err instanceof Error ? err.message : "Export failed");
+					toast.error(err instanceof Error ? err.message: t("x_export_failed"));
 					return;
 				}
 			}

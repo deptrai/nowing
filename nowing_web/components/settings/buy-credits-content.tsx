@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
@@ -28,6 +29,7 @@ const clampQuantity = (value: number) =>
 	Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, Math.floor(value)));
 
 const formatUsd = (micros: number) => {
+	const t = useTranslations("settings");
 	const dollars = Math.max(0, micros) / 1_000_000;
 	if (dollars >= 100) return `$${dollars.toFixed(0)}`;
 	if (dollars >= 1) return `$${dollars.toFixed(2)}`;
@@ -36,6 +38,7 @@ const formatUsd = (micros: number) => {
 };
 
 export function BuyCreditsContent() {
+	const t = useTranslations("layout");
 	const params = useParams();
 	const workspaceId = getWorkspaceIdNumber(params) ?? 0;
 	const [quantity, setQuantity] = useState(5);
@@ -175,7 +178,7 @@ export function BuyCreditsContent() {
 							}}
 							onBlur={() => commitQuantity(Number.parseInt(amountInput, 10))}
 							disabled={purchaseMutation.isPending}
-							aria-label="Credit amount in US dollars"
+							aria-label={t("x_credit_amount_in_us")}
 							className="w-20 rounded-md border bg-transparent px-2 py-1 text-center text-lg font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
 						/>
 						<span className="text-sm text-muted-foreground">

@@ -238,9 +238,7 @@ export function AutoReloadSettings() {
 
 				<div className="flex items-center justify-between gap-4">
 					<div className="space-y-0.5">
-						<Label htmlFor="top-ups-toggle" className="text-sm font-medium">
-							Enable top-ups
-						</Label>
+						<Label htmlFor="top-ups-toggle" className="text-sm font-medium">{t("x_enable_top_ups")}</Label>
 						<p className="text-xs text-muted-foreground">{t("enable_topups_desc")}</p>
 					</div>
 					<Switch id="top-ups-toggle" checked={enabled} onCheckedChange={setEnabled} />

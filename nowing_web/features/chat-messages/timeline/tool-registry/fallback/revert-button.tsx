@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,6 +50,7 @@ export function ToolCardRevertButton({
 	toolName: string;
 	langchainToolCallId?: string;
 }) {
+	const t = useTranslations("chatMessages");
 	const queryClient = useQueryClient();
 	const { threadId, action } = useToolAction({
 		toolCallId,
@@ -81,8 +83,7 @@ export function ToolCardRevertButton({
 				err instanceof AppError
 					? err.message
 					: err instanceof Error
-						? err.message
-						: "Failed to revert action.";
+						? err.message: t("x_failed_to_revert_action");
 			toast.error(message);
 		} finally {
 			setIsReverting(false);
@@ -109,7 +110,7 @@ export function ToolCardRevertButton({
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Revert this action?</AlertDialogTitle>
+					<AlertDialogTitle>{t("x_revert_this_action")}</AlertDialogTitle>
 					<AlertDialogDescription>
 						This will undo{" "}
 						<span className="font-medium">{getToolDisplayName(action.tool_name)}</span> and add a

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -86,10 +87,10 @@ import { rolesApiService } from "@/lib/apis/roles-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { cn } from "@/lib/utils";
 
-const CATEGORY_CONFIG: Record<
+const getCategoryConfig = (t: (k: string) => string): Record<
 	string,
 	{ label: string; icon: LucideIcon; description: string; order: number }
-> = {
+> => ({
 	documents: {
 		label: "Documents",
 		icon: FileText,
@@ -139,13 +140,13 @@ const CATEGORY_CONFIG: Record<
 		order: 4.3,
 	},
 	podcasts: {
-		label: "Podcasts",
+		label: t("x_podcasts"),
 		icon: Mic,
 		description: "Generate AI podcasts from content",
 		order: 5,
 	},
 	automations: {
-		label: "Automations",
+		label: t("x_automations"),
 		icon: Workflow,
 		description: "Scheduled and event-driven agent tasks",
 		order: 5.5,
@@ -216,7 +217,7 @@ const CATEGORY_CONFIG: Record<
 		description: "General workspace permissions",
 		order: 12,
 	},
-};
+});
 
 const ACTION_LABELS: Record<string, string> = {
 	create: "Create",
@@ -463,6 +464,7 @@ function RolesContent({
 	canDelete: boolean;
 	canCreate: boolean;
 }) {
+	const t = useTranslations("settings");
 	const [showCreateRole, setShowCreateRole] = useState(false);
 	const [cloningRole, setCloningRole] = useState<Role | null>(null);
 	const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
@@ -539,8 +541,8 @@ function RolesContent({
 						}
 					}
 					const sortedCategories = Object.keys(grouped).sort((a, b) => {
-						const orderA = CATEGORY_CONFIG[a]?.order ?? 99;
-						const orderB = CATEGORY_CONFIG[b]?.order ?? 99;
+						const orderA = getCategoryConfig(t)[a]?.order ?? 99;
+						const orderB = getCategoryConfig(t)[b]?.order ?? 99;
 						return orderA - orderB;
 					});
 
@@ -675,7 +677,7 @@ function RolesContent({
 										<div className="divide-y divide-border/30">
 											{sortedCategories.map((category) => {
 												const actions = grouped[category];
-												const config = CATEGORY_CONFIG[category] || {
+												const config = getCategoryConfig(t)[category] || {
 													label: category,
 													icon: FileText,
 												};
@@ -732,12 +734,13 @@ function PermissionsEditor({
 	onToggleCategory: (category: string) => void;
 	templateBaseline?: string[] | null;
 }) {
+	const t = useTranslations("layout");
 	const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
 	const sortedCategories = useMemo(() => {
 		return Object.keys(groupedPermissions).sort((a, b) => {
-			const orderA = CATEGORY_CONFIG[a]?.order ?? 99;
-			const orderB = CATEGORY_CONFIG[b]?.order ?? 99;
+			const orderA = getCategoryConfig(t)[a]?.order ?? 99;
+			const orderB = getCategoryConfig(t)[b]?.order ?? 99;
 			return orderA - orderB;
 		});
 	}, [groupedPermissions]);
@@ -784,7 +787,7 @@ function PermissionsEditor({
 
 			<div className="space-y-1.5">
 				{sortedCategories.map((category) => {
-					const config = CATEGORY_CONFIG[category] || {
+					const config = getCategoryConfig(t)[category] || {
 						label: category,
 						icon: FileText,
 						description: "",

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import {
@@ -31,6 +32,7 @@ import { ToolCardRevertButton } from "./revert-button";
  * is the generic fallback's coarse summary.
  */
 function deriveResultMessage(result: unknown): string | null {
+	const t = useTranslations("chatMessages");
 	if (result == null) return null;
 	if (typeof result === "string") return result;
 	if (typeof result !== "object") return null;
@@ -108,6 +110,7 @@ function researchSubtitle(result: ResearchResult): string | null {
 }
 
 function ResearchResultView({ result }: { result: ResearchResult }) {
+	const t = useTranslations("layout");
 	return (
 		<div className="flex flex-col gap-3">
 			{result.answer && (
@@ -164,9 +167,7 @@ function ResearchResultView({ result }: { result: ResearchResult }) {
 											<p className="text-xs text-muted-foreground line-clamp-2">{source.content}</p>
 										)}
 										{isKb && (
-											<span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-												Workspace KB
-											</span>
+											<span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("x_workspace_kb")}</span>
 										)}
 									</div>
 								</div>
@@ -201,6 +202,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 	progress,
 	degraded,
 }) => {
+	const t = useTranslations("layout");
 	const isCancelled = status === "cancelled";
 	const isError = status === "error";
 	const isRunning = status === "running";
@@ -381,7 +383,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 							<>
 								<Separator />
 								<div className="flex flex-col gap-1 min-w-0">
-									<p className="text-xs font-medium text-muted-foreground">Progress</p>
+									<p className="text-xs font-medium text-muted-foreground">{t("x_progress")}</p>
 									<div className="flex flex-col gap-1.5 rounded-md bg-muted/40 px-3 py-2">
 										{liveProgress.map((line) => (
 											<div

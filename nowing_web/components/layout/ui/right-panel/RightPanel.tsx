@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -83,6 +84,7 @@ export function RightPanelToggleButton({
 	iconClassName,
 	disabled = false,
 }: RightPanelToggleButtonProps) {
+	const t = useTranslations("layout");
 	const [collapsed, setCollapsed] = useAtom(rightPanelCollapsedAtom);
 	const reportState = useAtomValue(reportPanelAtom);
 	const editorState = useAtomValue(editorPanelAtom);

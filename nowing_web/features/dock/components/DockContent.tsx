@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import {
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 import type { DockTabPayload, ToolCallContentPart } from "../lib/parse-dock-content";
 
 function buildToolCallProps(part: ToolCallContentPart) {
+	const t = useTranslations("dock");
 	return {
 		type: part.type,
 		toolCallId: part.toolCallId,
@@ -120,8 +122,9 @@ function ResearchDockContent({
 	payload: Extract<DockTabPayload, { kind: "research" }>;
 	workspaceId: string | number;
 }) {
+	const t = useTranslations("layout");
 	if (!payload.report) {
-		return <Placeholder icon={FileText} title="No research data available" />;
+		return <Placeholder icon={FileText} title={t("x_no_research_data_available")} />;
 	}
 	return (
 		<div className="h-full overflow-hidden">
@@ -199,8 +202,9 @@ function SlidesDockContent({
 	payload: Extract<DockTabPayload, { kind: "slides" }>;
 	workspaceId: string | number;
 }) {
+	const t = useTranslations("layout");
 	const result = parseSlidesResult(payload.result);
-	const title = typeof result?.title === "string" ? result.title : "Slide deck";
+	const title = typeof result?.title === "string" ? result.title: t("x_slide_deck_2");
 	const format = typeof result?.format === "string" ? result.format : "pptx";
 	const fileExt = presentationFileExtension(format);
 	const slideCount = typeof result?.slide_count === "number" ? result.slide_count : 0;
@@ -238,9 +242,7 @@ function SlidesDockContent({
 				{previewUrl && (
 					<Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
 						<a href={previewUrl} target="_blank" rel="noopener noreferrer">
-							<ExternalLink className="size-3.5" aria-hidden="true" />
-							Preview
-						</a>
+							<ExternalLink className="size-3.5" aria-hidden="true" />{t("x_preview")}</a>
 					</Button>
 				)}
 			</div>

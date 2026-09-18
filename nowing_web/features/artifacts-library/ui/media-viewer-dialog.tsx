@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import dynamic from "next/dynamic";
@@ -25,6 +26,7 @@ const VideoPresentationViewer = dynamic(
 
 // `stretch` overrides the players' inline-chat max-w/margins so they fill the dialog.
 function dialogLayout(kind: LibraryArtifactKind): { width: string; stretch: boolean } {
+	const t = useTranslations("common");
 	if (kind === "video") return { width: "max-w-4xl", stretch: true };
 	if (kind === "podcast") return { width: "max-w-2xl", stretch: true };
 	return { width: "max-w-2xl", stretch: false };

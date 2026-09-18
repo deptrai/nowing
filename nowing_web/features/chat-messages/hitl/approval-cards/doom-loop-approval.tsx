@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { CornerDownLeftIcon, OctagonAlert } from "lucide-react";
@@ -33,6 +34,7 @@ function DoomLoopCardView({
 	interruptData: InterruptResult;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("chatMessages");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 
 	const context = (interruptData.context ?? {}) as Record<string, unknown>;
@@ -62,7 +64,7 @@ function DoomLoopCardView({
 	const handleStop = useCallback(() => {
 		if (phase !== "pending") return;
 		setRejected();
-		onDecision({ type: "reject", message: "Doom loop: user requested stop." });
+		onDecision({ type: "reject", message: t("x_doom_loop_user_requested") });
 	}, [phase, setRejected, onDecision]);
 
 	useEffect(() => {
@@ -102,16 +104,11 @@ function DoomLoopCardView({
 				{phase === "processing" ? (
 					<TextShimmerLoader text="Resuming…" size="sm" />
 				) : phase === "rejected" ? (
-					<p className="text-xs">
-						I stopped retrying <span className="font-medium">{displayName}</span> as you asked.
-					</p>
+					<p className="text-xs">{t("x_i_stopped_retrying")}<span className="font-medium">{displayName}</span>{t("x_as_you_asked")}</p>
 				) : phase === "complete" ? (
-					<p className="text-xs">
-						Continuing to call <span className="font-medium">{displayName}</span> as you asked.
-					</p>
+					<p className="text-xs">{t("x_continuing_to_call")}<span className="font-medium">{displayName}</span>{t("x_as_you_asked")}</p>
 				) : (
-					<p className="text-xs">
-						I called <span className="font-medium">{displayName}</span> {threshold} times in a row
+					<p className="text-xs">{t("x_i_called")}<span className="font-medium">{displayName}</span> {threshold} times in a row
 						with similar arguments. Should I keep going or stop and rethink?
 					</p>
 				)}
