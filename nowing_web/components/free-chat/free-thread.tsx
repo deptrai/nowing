@@ -7,13 +7,15 @@ import { ChatViewport } from "@/components/assistant-ui/chat-viewport";
 import { EditComposer } from "@/components/assistant-ui/edit-composer";
 import { UserMessage } from "@/components/assistant-ui/user-message";
 import { FreeComposer } from "./free-composer";
+import { useTranslations } from "next-intl";
 
 const FreeThreadWelcome: FC = () => {
+	const t = useTranslations("freeChat");
 	return (
 		<div className="aui-thread-welcome-root mx-auto flex w-full max-w-(--thread-max-width) grow flex-col items-center px-4 relative">
 			<div className="aui-thread-welcome-message absolute bottom-[calc(50%+5rem)] left-0 right-0 flex flex-col items-center text-center">
 				<h1 className="aui-thread-welcome-message-inner text-3xl md:text-5xl select-none">
-					What can I help with?
+					{t("what_can_i_help")}
 				</h1>
 			</div>
 			<div className="w-full flex items-start justify-center absolute top-[calc(50%-3.5rem)] left-0 right-0">

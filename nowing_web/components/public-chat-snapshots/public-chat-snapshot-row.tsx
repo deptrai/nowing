@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { PublicChatSnapshotDetail } from "@/contracts/types/chat-threads.types";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 function getInitials(name: string): string {
 	const parts = name.trim().split(/\s+/);
@@ -44,12 +45,13 @@ export function PublicChatSnapshotRow({
 	isDeleting = false,
 	memberMap,
 }: PublicChatSnapshotRowProps) {
+	const t = useTranslations("publicChat");
 	const [dropdownOpen, setDropdownOpen] = useState(false);
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 
 	const handleCopyClick = useCallback(() => {
 		onCopy(snapshot);
-		toast.success("Link copied to clipboard");
+		toast.success(t("link_copied"));
 	}, [onCopy, snapshot]);
 
 	const formattedDate = new Date(snapshot.created_at).toLocaleDateString(undefined, {
@@ -93,18 +95,18 @@ export function PublicChatSnapshotRow({
 						<DropdownMenuContent align="end" className="w-40">
 							<DropdownMenuItem onClick={handleCopyClick}>
 								<Copy className="mr-2 h-4 w-4" />
-								Copy link
+								{t("copy_link")}
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<a href={snapshot.public_url} target="_blank" rel="noopener noreferrer">
 									<ExternalLink className="mr-2 h-4 w-4" />
-									Open link
+									{t("open_link")}
 								</a>
 							</DropdownMenuItem>
 							{canDelete && (
 								<DropdownMenuItem onClick={() => onDelete(snapshot)} disabled={isDeleting}>
 									<Trash2 className="mr-2 h-4 w-4" />
-									Delete
+									{t("delete")}
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuContent>

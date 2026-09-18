@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatRelativeDate } from "@/lib/format-date";
 import type { LibraryArtifact } from "../model/artifact";
 import { KIND_META } from "./kind-meta";
+import { useTranslations } from "next-intl";
 
 export function ArtifactCard({
 	artifact,
@@ -13,14 +14,15 @@ export function ArtifactCard({
 	workspaceId: number;
 	onOpen: (artifact: LibraryArtifact) => void;
 }) {
+	const t = useTranslations("artifacts");
 	const meta = KIND_META[artifact.kind];
 	const Icon = meta.icon;
 
 	const subtitle =
 		artifact.status === "running"
-			? "Generating…"
+			? t("generating")
 			: artifact.status === "error"
-				? "Failed"
+				? t("failed")
 				: meta.label;
 
 	return (
@@ -31,7 +33,7 @@ export function ArtifactCard({
 				onClick={() => onOpen(artifact)}
 				className="absolute inset-0 rounded-xl"
 			>
-				<span className="sr-only">Open {artifact.title}</span>
+				<span className="sr-only">{t("open")} {artifact.title}</span>
 			</button>
 
 			<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -51,11 +53,11 @@ export function ArtifactCard({
 			{artifact.sourceThreadId ? (
 				<Link
 					href={`/dashboard/${workspaceId}/new-chat/${artifact.sourceThreadId}`}
-					title="Open original chat"
+					title={t("open_original_chat")}
 					className="relative z-10 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
 				>
 					<MessageSquareText className="size-4" aria-hidden="true" />
-					<span className="sr-only">Open original chat</span>
+					<span className="sr-only">{t("open_original_chat")}</span>
 				</Link>
 			) : null}
 		</div>

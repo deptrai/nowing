@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { BreadcrumbJsonLd } from "./json-ld";
+import { useTranslations } from "next-intl";
 
 interface BreadcrumbItem {
 	name: string;
@@ -13,6 +14,7 @@ interface BreadcrumbNavProps {
 }
 
 export function BreadcrumbNav({ items, className }: BreadcrumbNavProps) {
+	const t = useTranslations("seo");
 	const jsonLdItems = items.map((item) => ({
 		name: item.name,
 		url: `https://www.nowing.com${item.href}`,
@@ -21,7 +23,7 @@ export function BreadcrumbNav({ items, className }: BreadcrumbNavProps) {
 	return (
 		<>
 			<BreadcrumbJsonLd items={jsonLdItems} />
-			<nav aria-label="Breadcrumb" className={className}>
+			<nav aria-label={t("breadcrumb")} className={className}>
 				<ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
 					{items.map((item, index) => {
 						const isLast = index === items.length - 1;

@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import type { DockTab as DockTabType } from "../hooks/useDockTabs";
 import { DockTab } from "./DockTab";
+import { useTranslations } from "next-intl";
 
 interface DockHeaderProps {
 	tabs: DockTabType[];
@@ -35,6 +36,7 @@ const TAB_ORDER: DockTabId[] = [
 ];
 
 export function DockHeader({ tabs }: DockHeaderProps) {
+	const t = useTranslations("dock");
 	const [activeTab, setActiveTab] = useAtom(dockActiveTabAtom);
 	const setOpen = useSetAtom(dockOpenAtom);
 	const [verbose, setVerbose] = useAtom(dockVerboseModeAtom);
@@ -62,7 +64,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 							<span className="sr-only">Close canvas</span>
 						</Button>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">Close canvas</TooltipContent>
+					<TooltipContent side="bottom">{t("close_canvas")}</TooltipContent>
 				</Tooltip>
 
 				<Tooltip>
@@ -91,7 +93,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 
 				<div
 					role="tablist"
-					aria-label="Dock tabs"
+					aria-label={t("dock_tabs")}
 					className="flex flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar min-w-0"
 				>
 					{sortedTabs.map((tab) => (
@@ -125,7 +127,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 						) : (
 							<PanelRightOpen className="size-3.5" aria-hidden="true" />
 						)}
-						<span className="sr-only">Toggle verbose mode</span>
+						<span className="sr-only">{t("toggle_verbose")}</span>
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent side="bottom">

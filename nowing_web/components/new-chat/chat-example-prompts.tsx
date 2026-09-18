@@ -14,6 +14,7 @@ import { memo, useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CHAT_EXAMPLE_CATEGORIES } from "@/lib/chat/example-prompts";
+import { useTranslations } from "next-intl";
 
 interface ChatExamplePromptsProps {
 	/** Called with the chosen prompt text; the caller prefills the composer. */
@@ -50,6 +51,7 @@ const ExamplePromptButton = memo(function ExamplePromptButton({
 });
 
 export function ChatExamplePrompts({ onSelect }: ChatExamplePromptsProps) {
+	const t = useTranslations("newChat");
 	const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 	const activeCategory = CHAT_EXAMPLE_CATEGORIES.find(
 		(category) => category.id === activeCategoryId
@@ -91,7 +93,7 @@ export function ChatExamplePrompts({ onSelect }: ChatExamplePromptsProps) {
 							variant="ghost"
 							size="icon"
 							onClick={() => setActiveCategoryId(null)}
-							aria-label="Close example prompts"
+							aria-label={t("close_example_prompts")}
 							className="size-7 shrink-0 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground sm:size-8"
 						>
 							<X aria-hidden="true" className="size-3.5 sm:size-4" />

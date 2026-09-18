@@ -4,6 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // ---------------------------------------------------------------------------
 // Accelerator <-> display helpers
@@ -84,6 +85,7 @@ export function ShortcutRecorder({
 	description: string;
 	icon: React.ElementType;
 }) {
+	const t = useTranslations("desktop");
 	const [recording, setRecording] = useState(false);
 	const inputRef = useRef<HTMLButtonElement>(null);
 
@@ -131,7 +133,7 @@ export function ShortcutRecorder({
 						size="icon"
 						className="size-6 opacity-0 group-hover:opacity-100 transition-opacity"
 						onClick={onReset}
-						title="Reset to default"
+						title={t("reset_to_default")}
 					>
 						<RotateCcw className="size-3" />
 					</Button>
@@ -152,7 +154,7 @@ export function ShortcutRecorder({
 				>
 					{recording ? (
 						<span className="text-[11px] text-primary animate-pulse whitespace-nowrap">
-							Press keys…
+							{t("press_keys")}
 						</span>
 					) : (
 						<Kbd keys={displayKeys} />

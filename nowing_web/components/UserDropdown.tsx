@@ -76,7 +76,7 @@ export function UserDropdown({
 					<DropdownMenuItem asChild className="text-xs md:text-sm">
 						<Link href="/dashboard/api-key">
 							<BadgeCheck className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" aria-hidden="true" />
-							API Key
+							{t("user_dropdown_api_key")}
 						</Link>
 					</DropdownMenuItem>
 				</DropdownMenuGroup>

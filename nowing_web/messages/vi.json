@@ -74,7 +74,8 @@
 		"workspace_info_desc": "Workspace là không gian làm việc cá nhân của bạn. Kết nối các nguồn bên ngoài, tải lên tài liệu, ghi chú và hoàn thành công việc với AI agents.",
 		"workspace_label": "Workspace",
 		"name_required": "Tên là bắt buộc",
-		"user_dropdown_api_key": "API Key"
+		"user_dropdown_api_key": "API Key",
+		"documents": "Tài liệu"
 	},
 	"auth": {
 		"login": "Đăng nhập",
@@ -2965,7 +2966,8 @@
 		"no_enabled_image_models": "Chưa có model ảnh nào. Thêm hoặc bật model trong Cài đặt.",
 		"toast_shared": "Đã chia sẻ chat với workspace",
 		"toast_private": "Chat hiện ở chế độ riêng tư",
-		"toast_share_failed": "Không thể cập nhật cài đặt chia sẻ"
+		"toast_share_failed": "Không thể cập nhật cài đặt chia sẻ",
+		"close_example_prompts": "Đóng gợi ý mẫu"
 	},
 	"analytics": {
 		"trend_sparkline": "Biểu đồ xu hướng",
@@ -3071,7 +3073,9 @@
 		"resolve_failed": "Không phân giải được mounted root cho thư mục này.",
 		"resolve_mounts_failed": "Không phân giải được mount của thư mục local.",
 		"no_supported_files": "Không tìm thấy file được hỗ trợ trong thư mục này.",
-		"no_matching_files": "Không có file phù hợp trong thư mục này."
+		"no_matching_files": "Không có file phù hợp trong thư mục này.",
+		"reset_to_default": "Đặt lại mặc định",
+		"press_keys": "Nhấn phím…"
 	},
 	"nav": {
 		"open_menu": "Mở menu",
@@ -4625,9 +4629,45 @@
 		"folders_selected": "Đã chọn {count} thư mục",
 		"remove_folder": "Xóa {name}",
 		"max_folders_limit": "Bạn có thể thêm tối đa {max} thư mục",
-		"loading_folder": "Đang tải {name}..."
+		"loading_folder": "Đang tải {name}...",
+		"background_sync": "Đồng bộ nền",
+		"needs_attention": "Cần chú ý"
 	},
 	"automations": {
 		"page_title": "Tự động hóa"
+	},
+	"broadcasts": {
+		"dismiss": "Bỏ qua",
+		"dismiss_banner": "Bỏ qua banner"
+	},
+	"freeChat": {
+		"upload_failed": "Tải lên thất bại",
+		"ask_anything": "Hỏi bất cứ điều gì...",
+		"send": "Gửi",
+		"cancel": "Hủy",
+		"what_can_i_help": "Tôi có thể giúp gì cho bạn?"
+	},
+	"publicChat": {
+		"copy_link": "Sao chép liên kết",
+		"open_link": "Mở liên kết",
+		"delete": "Xóa",
+		"link_copied": "Đã sao chép liên kết"
+	},
+	"seo": {
+		"breadcrumb": "Đường dẫn"
+	},
+	"artifacts": {
+		"generating": "Đang tạo…",
+		"failed": "Thất bại",
+		"open_original_chat": "Mở cuộc trò chuyện gốc",
+		"open": "Mở",
+		"loading_image": "Đang tải ảnh",
+		"image_not_available": "Ảnh không khả dụng"
+	},
+	"dock": {
+		"open_canvas": "Mở canvas",
+		"close_canvas": "Đóng canvas",
+		"dock_tabs": "Tab dock",
+		"toggle_verbose": "Bật/tắt chế độ chi tiết"
 	}
 }

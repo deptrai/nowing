@@ -74,7 +74,8 @@
 		"workspace_info_desc": "A workspace is your personal workspace. Connect external sources, upload documents, take notes, and get work done with AI agents.",
 		"workspace_label": "Workspace",
 		"name_required": "Name is required",
-		"user_dropdown_api_key": "API Key"
+		"user_dropdown_api_key": "API Key",
+		"documents": "Documents"
 	},
 	"auth": {
 		"login": "Login",
@@ -2963,7 +2964,8 @@
 		"no_enabled_image_models": "No enabled image models. Add or enable models in Settings.",
 		"toast_shared": "Chat shared with workspace",
 		"toast_private": "Chat is now private",
-		"toast_share_failed": "Failed to update sharing settings"
+		"toast_share_failed": "Failed to update sharing settings",
+		"close_example_prompts": "Close example prompts"
 	},
 	"analytics": {
 		"trend_sparkline": "Trend sparkline",
@@ -3069,7 +3071,9 @@
 		"resolve_failed": "Unable to resolve mounted root for this folder.",
 		"resolve_mounts_failed": "Failed to resolve local folder mounts.",
 		"no_supported_files": "No supported files found in this folder.",
-		"no_matching_files": "No matching files in this folder."
+		"no_matching_files": "No matching files in this folder.",
+		"reset_to_default": "Reset to default",
+		"press_keys": "Press keys…"
 	},
 	"nav": {
 		"open_menu": "Open menu",
@@ -4623,9 +4627,45 @@
 		"folders_selected": "{count} folders selected",
 		"remove_folder": "Remove {name}",
 		"max_folders_limit": "You can add up to {max} folders",
-		"loading_folder": "Loading {name}..."
+		"loading_folder": "Loading {name}...",
+		"background_sync": "Background sync",
+		"needs_attention": "Needs attention"
 	},
 	"automations": {
 		"page_title": "Automations"
+	},
+	"broadcasts": {
+		"dismiss": "Dismiss",
+		"dismiss_banner": "Dismiss banner"
+	},
+	"freeChat": {
+		"upload_failed": "Upload failed",
+		"ask_anything": "Ask anything...",
+		"send": "Send",
+		"cancel": "Cancel",
+		"what_can_i_help": "What can I help with?"
+	},
+	"publicChat": {
+		"copy_link": "Copy link",
+		"open_link": "Open link",
+		"delete": "Delete",
+		"link_copied": "Link copied to clipboard"
+	},
+	"seo": {
+		"breadcrumb": "Breadcrumb"
+	},
+	"artifacts": {
+		"generating": "Generating…",
+		"failed": "Failed",
+		"open_original_chat": "Open original chat",
+		"open": "Open",
+		"loading_image": "Loading image",
+		"image_not_available": "Image not available"
+	},
+	"dock": {
+		"open_canvas": "Open canvas",
+		"close_canvas": "Close canvas",
+		"dock_tabs": "Dock tabs",
+		"toggle_verbose": "Toggle verbose mode"
 	}
 }
