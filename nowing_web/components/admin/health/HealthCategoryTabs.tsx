@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { HealthOverviewResponse } from "@/lib/apis/admin-health-api.service";
+import { useTranslations } from "next-intl";
 
 interface HealthCategoryTabsProps {
 	categories: string[];
@@ -17,6 +18,7 @@ export default function HealthCategoryTabs({
 	onSelectCategory,
 	overview,
 }: HealthCategoryTabsProps) {
+	const t = useTranslations("admin");
 	const categoryMeta = overview?.categories || {};
 
 	const formatCategoryTitle = (cat: string) => {

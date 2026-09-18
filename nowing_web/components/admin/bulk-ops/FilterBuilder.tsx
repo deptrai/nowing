@@ -18,6 +18,7 @@ import {
 	type FilterClause,
 	type FilterOperator,
 } from "@/contracts/types/admin-bulk-ops.types";
+import { useTranslations } from "next-intl";
 
 interface FilterBuilderProps {
 	action: BulkAction;
@@ -28,17 +29,6 @@ interface FilterBuilderProps {
 	disabled?: boolean;
 }
 
-const OPERATOR_LABELS: Record<FilterOperator, string> = {
-	eq: "= (equals)",
-	neq: "≠ (not equals)",
-	gt: "> (greater than)",
-	gte: "≥ (greater or equal)",
-	lt: "< (less than)",
-	lte: "≤ (less or equal)",
-	in: "IN (comma-separated)",
-	not_in: "NOT IN (comma-separated)",
-};
-
 export function FilterBuilder({
 	action,
 	filters,
@@ -47,8 +37,20 @@ export function FilterBuilder({
 	onActionParamsChange,
 	disabled = false,
 }: FilterBuilderProps) {
+	const t = useTranslations("bulkOps");
 	const meta = ACTION_METADATA[action];
 	const availableFields = meta ? Object.keys(meta.fields) : [];
+
+	const operatorLabels: Record<FilterOperator, string> = {
+		eq: t("operator_eq"),
+		neq: t("operator_neq"),
+		gt: t("operator_gt"),
+		gte: t("operator_gte"),
+		lt: t("operator_lt"),
+		lte: t("operator_lte"),
+		in: t("operator_in"),
+		not_in: t("operator_not_in"),
+	};
 
 	const handleAddFilter = () => {
 		if (availableFields.length === 0) return;
@@ -127,7 +129,7 @@ export function FilterBuilder({
 			{meta.requiredParams && Object.keys(meta.requiredParams).length > 0 && (
 				<div className="rounded-lg border p-4 bg-muted/20 space-y-3">
 					<h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-						Required Parameters
+						{t("required_parameters")}
 					</h4>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						{Object.entries(meta.requiredParams).map(([key, def]) => (
@@ -141,7 +143,7 @@ export function FilterBuilder({
 									value={(actionParams[key] as string | number | undefined) ?? ""}
 									onChange={(e) => handleParamChange(key, e.target.value, def.type)}
 									disabled={disabled}
-									placeholder={`Enter ${def.label.toLowerCase()}...`}
+									placeholder={t("enter_param_placeholder", { param: def.label.toLowerCase() })}
 								/>
 							</div>
 						))}
@@ -157,8 +159,9 @@ export function FilterBuilder({
 				>
 					<Info className="h-4 w-4 text-amber-600" />
 					<AlertDescription className="text-xs">
-						Safety constraint: To protect active workspaces, a filter with{" "}
-						<strong>inactive_days &gt; 0</strong> is required before executing archive operations.
+						{t("safety_constraint_prefix")}{" "}
+						<strong>inactive_days &gt; 0</strong>{" "}
+						{t("safety_constraint_suffix")}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -166,7 +169,7 @@ export function FilterBuilder({
 			{/* Structured Filter List */}
 			<div className="space-y-3">
 				<div className="flex items-center justify-between">
-					<Label className="text-sm font-medium">Target Filters</Label>
+					<Label className="text-sm font-medium">{t("target_filters")}</Label>
 					<Button
 						type="button"
 						variant="outline"
@@ -176,14 +179,13 @@ export function FilterBuilder({
 						className="h-8 gap-1.5 text-xs"
 					>
 						<Plus className="h-3.5 w-3.5" />
-						Add Filter Clause
+						{t("add_filter")}
 					</Button>
 				</div>
 
 				{filters.length === 0 ? (
 					<div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-						No filters configured. Click &quot;Add Filter Clause&quot; to specify which entities to
-						target.
+						{t("no_filters_configured")}
 					</div>
 				) : (
 					<div className="space-y-2">
@@ -205,7 +207,7 @@ export function FilterBuilder({
 											disabled={disabled}
 										>
 											<SelectTrigger className="h-9 text-xs">
-												<SelectValue placeholder="Field" />
+												<SelectValue placeholder={t("field_placeholder")} />
 											</SelectTrigger>
 											<SelectContent>
 												{availableFields.map((f) => (
@@ -225,12 +227,12 @@ export function FilterBuilder({
 											disabled={disabled}
 										>
 											<SelectTrigger className="h-9 text-xs">
-												<SelectValue placeholder="Operator" />
+												<SelectValue placeholder={t("operator_placeholder")} />
 											</SelectTrigger>
 											<SelectContent>
 												{ops.map((op) => (
 													<SelectItem key={op} value={op} className="text-xs">
-														{OPERATOR_LABELS[op]}
+														{operatorLabels[op]}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -253,8 +255,8 @@ export function FilterBuilder({
 											onChange={(e) => handleValueChange(index, e.target.value)}
 											placeholder={
 												filter.op === "in" || filter.op === "not_in"
-													? "val1, val2, val3"
-													: "Value..."
+													? t("value_list_placeholder")
+													: t("value_placeholder")
 											}
 											disabled={disabled}
 											className="h-9 text-xs"

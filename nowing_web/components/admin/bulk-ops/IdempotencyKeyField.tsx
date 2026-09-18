@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTranslations } from "next-intl";
 
 interface IdempotencyKeyFieldProps {
 	idempotencyKey: string;
@@ -18,16 +19,17 @@ export function IdempotencyKeyField({
 	onRegenerate,
 	disabled = false,
 }: IdempotencyKeyFieldProps) {
+	const t = useTranslations("bulkOps");
 	const [copied, setCopied] = React.useState(false);
 
 	const handleCopy = async () => {
 		try {
 			await navigator.clipboard.writeText(idempotencyKey);
 			setCopied(true);
-			toast.success("Idempotency key copied to clipboard");
+			toast.success(t("copied_toast"));
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
-			toast.error("Failed to copy key");
+			toast.error(t("copy_failed_toast"));
 		}
 	};
 
@@ -35,9 +37,9 @@ export function IdempotencyKeyField({
 		<div className="space-y-1.5">
 			<div className="flex items-center justify-between">
 				<Label htmlFor="idempotency-key" className="text-xs font-medium text-muted-foreground">
-					Idempotency Key (UUID v4)
+					{t("idempotency_key_label")}
 				</Label>
-				<span className="text-[11px] text-muted-foreground">Guards against duplicate runs</span>
+				<span className="text-[11px] text-muted-foreground">{t("guards_duplicate_runs")}</span>
 			</div>
 			<div className="flex items-center gap-2">
 				<Input
@@ -53,7 +55,7 @@ export function IdempotencyKeyField({
 					size="icon"
 					onClick={handleCopy}
 					disabled={disabled || !idempotencyKey}
-					title="Copy key"
+					title={t("copy_key")}
 					className="h-9 w-9 shrink-0"
 				>
 					{copied ? (
@@ -71,7 +73,7 @@ export function IdempotencyKeyField({
 					className="h-9 gap-1.5 text-xs shrink-0"
 				>
 					<RefreshCw className="h-3.5 w-3.5" />
-					Regenerate
+					{t("regenerate")}
 				</Button>
 			</div>
 		</div>

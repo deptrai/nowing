@@ -4,6 +4,7 @@ import { Activity, AlertTriangle, CheckCircle2, Clock, MinusCircle, XCircle } fr
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { HealthStatusItem } from "@/lib/apis/admin-health-api.service";
+import { useTranslations } from "next-intl";
 
 interface HealthStatusCardProps {
 	item: HealthStatusItem;
@@ -11,6 +12,7 @@ interface HealthStatusCardProps {
 }
 
 export default function HealthStatusCard({ item, onClick }: HealthStatusCardProps) {
+	const t = useTranslations("admin");
 	const getStatusConfig = (status: string) => {
 		switch (status) {
 			case "healthy":
@@ -19,7 +21,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 					badgeClass: "bg-emerald-500 hover:bg-emerald-600 text-white",
 					borderClass: "hover:border-emerald-500/50",
 					icon: CheckCircle2,
-					label: "Healthy",
+					label: t("healthy"),
 				};
 			case "degraded":
 				return {
@@ -27,7 +29,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 					badgeClass: "bg-amber-500 hover:bg-amber-600 text-white",
 					borderClass: "border-amber-500/30 hover:border-amber-500",
 					icon: AlertTriangle,
-					label: "Degraded",
+					label: t("degraded"),
 				};
 			case "unavailable":
 				return {
@@ -35,7 +37,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 					badgeClass: "bg-rose-500 hover:bg-rose-600 text-white",
 					borderClass: "border-rose-500/40 hover:border-rose-500",
 					icon: XCircle,
-					label: "Unavailable",
+					label: t("unavailable"),
 				};
 			case "not_configured":
 				return {
@@ -43,7 +45,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 					badgeClass: "text-slate-500 border-slate-300",
 					borderClass: "border-dashed hover:border-slate-400",
 					icon: MinusCircle,
-					label: "Not Configured",
+					label: t("not_configured"),
 				};
 			default:
 				return {
@@ -87,7 +89,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 						<span>{item.latency_ms !== null ? `${item.latency_ms} ms` : "N/A"}</span>
 					</div>
 					<div className="text-right">
-						<span>Success: {item.success_rate_15m.toFixed(0)}%</span>
+						<span>{t("success_rate", { rate: item.success_rate_15m.toFixed(0) })}</span>
 					</div>
 				</div>
 
@@ -96,7 +98,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 						className="text-xs text-rose-500 truncate pt-1 bg-rose-50/50 dark:bg-rose-950/20 px-2 py-1 rounded"
 						title={item.last_error}
 					>
-						Error: {item.last_error}
+						{t("error_prefix", { error: item.last_error })}
 					</p>
 				)}
 
@@ -105,7 +107,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 						className="text-xs text-amber-600 dark:text-amber-400 truncate pt-0.5"
 						title={item.suggested_action}
 					>
-						Action: {item.suggested_action}
+						{t("action_prefix", { action: item.suggested_action })}
 					</p>
 				)}
 
@@ -119,7 +121,7 @@ export default function HealthStatusCard({ item, onClick }: HealthStatusCardProp
 									minute: "2-digit",
 									second: "2-digit",
 								})
-							: "Never"}
+							: t("never")}
 					</span>
 				</div>
 			</CardContent>

@@ -24,6 +24,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { BulkOpErrorRead, JobStatusResponse } from "@/contracts/types/admin-bulk-ops.types";
+import { useTranslations } from "next-intl";
 
 interface JobProgressProps {
 	job: JobStatusResponse | null;
@@ -38,6 +39,7 @@ export function JobProgress({
 	onCancel,
 	isCancelling = false,
 }: JobProgressProps) {
+	const t = useTranslations("bulkOps");
 	const [showErrors, setShowErrors] = useState(false);
 
 	if (!job) return null;
@@ -57,7 +59,7 @@ export function JobProgress({
 						className="border-blue-500/50 text-blue-600 bg-blue-500/10 gap-1"
 					>
 						<Clock className="h-3 w-3 animate-pulse" />
-						Queued
+						{t("status_queued")}
 					</Badge>
 				);
 			case "running":
@@ -67,7 +69,7 @@ export function JobProgress({
 						className="border-amber-500/50 text-amber-600 bg-amber-500/10 gap-1"
 					>
 						<div className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
-						Running ({percentage}%)
+						{t("status_running", { percentage })}
 					</Badge>
 				);
 			case "completed":
@@ -77,7 +79,7 @@ export function JobProgress({
 						className="border-green-500/50 text-green-600 bg-green-500/10 gap-1"
 					>
 						<CheckCircle className="h-3 w-3" />
-						Completed
+						{t("status_completed")}
 					</Badge>
 				);
 			case "partial":
@@ -87,21 +89,21 @@ export function JobProgress({
 						className="border-amber-500/50 text-amber-600 bg-amber-500/10 gap-1"
 					>
 						<AlertTriangle className="h-3 w-3" />
-						Partial Success
+						{t("status_partial")}
 					</Badge>
 				);
 			case "failed":
 				return (
 					<Badge variant="destructive" className="gap-1">
 						<XCircle className="h-3 w-3" />
-						Failed
+						{t("status_failed")}
 					</Badge>
 				);
 			case "cancelled":
 				return (
 					<Badge variant="secondary" className="gap-1">
 						<Ban className="h-3 w-3" />
-						Cancelled
+						{t("status_cancelled")}
 					</Badge>
 				);
 			default:
@@ -145,7 +147,7 @@ export function JobProgress({
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
 					<div>
 						<div className="flex items-center gap-2">
-							<CardTitle className="text-base font-semibold">Bulk Operation Job</CardTitle>
+							<CardTitle className="text-base font-semibold">{t("bulk_operation_job")}</CardTitle>
 							{renderStatusBadge()}
 						</div>
 						<CardDescription className="font-mono text-xs mt-1">
@@ -163,7 +165,7 @@ export function JobProgress({
 							className="text-xs text-destructive hover:bg-destructive/10 border-destructive/30 h-8 self-start sm:self-auto"
 						>
 							<Ban className="h-3.5 w-3.5 mr-1.5" />
-							{isCancelling ? "Cancelling..." : "Cancel Job"}
+							{isCancelling ? t("cancelling") : t("cancel_job")}
 						</Button>
 					)}
 				</div>
@@ -174,7 +176,7 @@ export function JobProgress({
 				<div className="space-y-1.5">
 					<div className="flex justify-between text-xs text-muted-foreground">
 						<span>
-							Progress: {processed} / {total} processed
+							{t("progress_text", { processed, total })}
 						</span>
 						<span>{percentage}%</span>
 					</div>
@@ -184,19 +186,19 @@ export function JobProgress({
 				{/* Metrics Grid */}
 				<div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
 					<div className="p-2.5 rounded-md border bg-card text-center">
-						<span className="text-[11px] text-muted-foreground block">Total</span>
+						<span className="text-[11px] text-muted-foreground block">{t("total")}</span>
 						<span className="text-lg font-bold">{total}</span>
 					</div>
 					<div className="p-2.5 rounded-md border bg-card text-center">
-						<span className="text-[11px] text-muted-foreground block">Processed</span>
+						<span className="text-[11px] text-muted-foreground block">{t("processed")}</span>
 						<span className="text-lg font-bold">{processed}</span>
 					</div>
 					<div className="p-2.5 rounded-md border bg-card text-center">
-						<span className="text-[11px] text-muted-foreground block">Affected</span>
+						<span className="text-[11px] text-muted-foreground block">{t("affected")}</span>
 						<span className="text-lg font-bold text-green-600">{job.affected_count}</span>
 					</div>
 					<div className="p-2.5 rounded-md border bg-card text-center">
-						<span className="text-[11px] text-muted-foreground block">Errors</span>
+						<span className="text-[11px] text-muted-foreground block">{t("errors")}</span>
 						<span className="text-lg font-bold text-destructive">{job.error_count}</span>
 					</div>
 				</div>
@@ -204,14 +206,14 @@ export function JobProgress({
 				{/* Timestamps */}
 				<div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground pt-1 border-t">
 					<div>
-						Created:{" "}
+						{t("created")}:{" "}
 						<span className="font-mono text-foreground">
 							{new Date(job.created_at).toLocaleString()}
 						</span>
 					</div>
 					{job.started_at && (
 						<div>
-							Started:{" "}
+							{t("started")}:{" "}
 							<span className="font-mono text-foreground">
 								{new Date(job.started_at).toLocaleString()}
 							</span>
@@ -219,7 +221,7 @@ export function JobProgress({
 					)}
 					{job.completed_at && (
 						<div>
-							Completed:{" "}
+							{t("completed")}:{" "}
 							<span className="font-mono text-foreground">
 								{new Date(job.completed_at).toLocaleString()}
 							</span>
@@ -230,7 +232,7 @@ export function JobProgress({
 				{/* Error Message if failed */}
 				{job.error_message && (
 					<div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-						<strong>Error:</strong> {job.error_message}
+						<strong>{t("error_prefix")}:</strong> {job.error_message}
 					</div>
 				)}
 
@@ -250,7 +252,7 @@ export function JobProgress({
 								) : (
 									<ChevronDown className="h-4 w-4 mr-1" />
 								)}
-								{showErrors ? "Hide Error Log" : `View Error Log (${job.error_count})`}
+								{showErrors ? t("hide_error_log") : t("view_error_log", { count: job.error_count })}
 							</Button>
 							{errors.length > 0 && (
 								<Button
@@ -261,7 +263,7 @@ export function JobProgress({
 									className="text-xs h-7 gap-1"
 								>
 									<Download className="h-3 w-3" />
-									Download Errors CSV
+									{t("download_errors_csv")}
 								</Button>
 							)}
 						</div>
@@ -271,16 +273,16 @@ export function JobProgress({
 								<Table className="text-xs">
 									<TableHeader>
 										<TableRow className="h-8">
-											<TableHead className="w-[100px]">Subject</TableHead>
-											<TableHead className="w-[120px]">Subject ID</TableHead>
-											<TableHead>Error Message</TableHead>
+											<TableHead className="w-[100px]">{t("subject")}</TableHead>
+											<TableHead className="w-[120px]">{t("subject_id")}</TableHead>
+											<TableHead>{t("error_message")}</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
 										{errors.length === 0 ? (
 											<TableRow>
 												<TableCell colSpan={3} className="text-center text-muted-foreground py-4">
-													Loading error details...
+													{t("loading_errors")}
 												</TableCell>
 											</TableRow>
 										) : (
