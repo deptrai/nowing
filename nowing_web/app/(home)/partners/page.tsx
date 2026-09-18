@@ -10,6 +10,7 @@ import {
 	IconSparkles,
 } from "@tabler/icons-react";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { PartnerEarningsCalculator } from "@/components/partners/PartnerEarningsCalculator";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -50,41 +51,35 @@ export const metadata: Metadata = {
 	},
 };
 
-const valueProps = [
+const valueProps = (t: (k: string) => string) => [
 	{
-		title: "15% Lifetime Recurring Commission",
-		description:
-			"You earn 15% on every credit purchase made by your referred users, for as long as they use Nowing. No expiration dates or caps.",
+		title: t("vp1_title"),
+		description: t("vp1_desc"),
 		icon: IconChartLine,
 	},
 	{
-		title: "Instant VietQR Napas 24/7 Payouts",
-		description:
-			"Withdraw directly to your Vietnamese bank account (VCB, TCB, MB, ACB, etc.) in seconds with zero transaction fees.",
+		title: t("vp2_title"),
+		description: t("vp2_desc"),
 		icon: IconQrcode,
 	},
 	{
-		title: "+10% Credit Wallet Conversion",
-		description:
-			"Choose to convert commissions directly into platform credits with an automatic +10% bonus for your agency outreach campaigns.",
+		title: t("vp3_title"),
+		description: t("vp3_desc"),
 		icon: IconCoins,
 	},
 	{
-		title: "Transparent Realtime Ledger",
-		description:
-			"Track link clicks, signups, and exact commission amounts in realtime through our dedicated partner dashboard.",
+		title: t("vp4_title"),
+		description: t("vp4_desc"),
 		icon: IconDeviceDesktopAnalytics,
 	},
 	{
-		title: "30-Day Cookie Attribution",
-		description:
-			"Visitors who click your link are tracked for 30 days. Even if they sign up weeks later, you receive full credit.",
+		title: t("vp5_title"),
+		description: t("vp5_desc"),
 		icon: IconShieldCheck,
 	},
 	{
-		title: "Marketing Assets & Support",
-		description:
-			"Access ready-to-use banners, case studies, product videos, and dedicated partner support on Discord.",
+		title: t("vp6_title"),
+		description: t("vp6_desc"),
 		icon: IconSparkles,
 	},
 ];
@@ -104,7 +99,8 @@ const supportedBanks = [
 	"Agribank",
 ];
 
-export default function PartnersPage() {
+export default async function PartnersPage() {
+	const t = await getTranslations("partners");
 	return (
 		<div className="relative min-h-screen pb-24 overflow-hidden">
 			<JsonLd
@@ -124,33 +120,31 @@ export default function PartnersPage() {
 						className="size-4 text-emerald-600 dark:text-emerald-400"
 						aria-hidden="true"
 					/>
-					<span>Official Affiliate & Agency Partner Program</span>
+					<span>{t("hero_badge")}</span>
 				</div>
 
 				<h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight text-neutral-900 dark:text-white max-w-4xl mx-auto leading-tight">
-					Earn{" "}
-					<span className="text-emerald-600 dark:text-emerald-400 italic">
-						15% Lifetime Recurring
-					</span>{" "}
-					Commission
+					{t.rich("hero_title", {
+						i: (c) => (
+							<span className="text-emerald-600 dark:text-emerald-400 italic">{c}</span>
+						),
+					})}
 				</h1>
 
 				<p className="mt-4 text-sm sm:text-base md:text-lg text-neutral-600 dark:text-neutral-300 max-w-3xl mx-auto font-sans leading-relaxed">
-					Recommend Nowing’s AI Agents, B2B Scrapers & Phone Unlock Engine to your clients, agency
-					network, or sales audience. Receive passive payouts via VietQR Napas 24/7 on every single
-					top-up.
+					{t("hero_subtitle")}
 				</p>
 
 				<div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
 					<Link href="/partners/dashboard">
 						<Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold px-6 py-5 rounded-xl flex items-center justify-center gap-2 text-sm transition-all shadow-lg shadow-emerald-500/20">
-							<span>Go to Partner Dashboard</span>
+							<span>{t("cta_dashboard")}</span>
 							<IconArrowRight className="size-4" aria-hidden="true" />
 						</Button>
 					</Link>
 					<Link href="/pricing">
 						<Button variant="outline" className="w-full sm:w-auto px-6 py-5 rounded-xl text-sm">
-							Explore Platform Pricing ($0 Free Tier)
+							{t("cta_pricing")}
 						</Button>
 					</Link>
 				</div>
@@ -163,16 +157,15 @@ export default function PartnersPage() {
 			<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 my-20">
 				<div className="text-center mb-12">
 					<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight text-neutral-900 dark:text-white">
-						Why Partner with Nowing?
+						{t("why_title")}
 					</h2>
 					<p className="text-neutral-600 dark:text-neutral-400 mt-2 text-base max-w-2xl mx-auto">
-						Built from the ground up to empower Vietnamese and international growth agencies,
-						creators, and sales consultants.
+						{t("why_subtitle")}
 					</p>
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{valueProps.map((prop) => {
+					{valueProps(t).map((prop) => {
 						const Icon = prop.icon;
 						return (
 							<div
@@ -202,7 +195,7 @@ export default function PartnersPage() {
 							className="size-5 text-emerald-600 dark:text-emerald-400"
 							aria-hidden="true"
 						/>
-						<span>Supported VietQR Napas 24/7 Banks for Instant Payouts</span>
+						<span>{t("banks_title")}</span>
 					</div>
 					<div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
 						{supportedBanks.map((bank) => (
@@ -221,7 +214,7 @@ export default function PartnersPage() {
 			<div className="max-w-5xl mx-auto px-4 my-20">
 				<div className="text-center mb-12">
 					<h2 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
-						How It Works in 3 Steps
+						{t("how_title")}
 					</h2>
 				</div>
 
@@ -230,10 +223,9 @@ export default function PartnersPage() {
 						<div className="size-10 rounded-full bg-emerald-500 text-neutral-950 font-black text-lg flex items-center justify-center mx-auto mb-4">
 							1
 						</div>
-						<h3 className="font-bold text-lg mb-2">Create Partner Account</h3>
+						<h3 className="font-bold text-lg mb-2">{t("step1_title")}</h3>
 						<p className="text-sm text-neutral-600 dark:text-neutral-400">
-							Claim your unique referral code in 5 seconds and generate your custom referral link
-							and QR code.
+							{t("step1_desc")}
 						</p>
 					</div>
 
@@ -241,10 +233,9 @@ export default function PartnersPage() {
 						<div className="size-10 rounded-full bg-emerald-500 text-neutral-950 font-black text-lg flex items-center justify-center mx-auto mb-4">
 							2
 						</div>
-						<h3 className="font-bold text-lg mb-2">Share With Your Network</h3>
+						<h3 className="font-bold text-lg mb-2">{t("step2_title")}</h3>
 						<p className="text-sm text-neutral-600 dark:text-neutral-400">
-							Recommend Nowing to real estate brokers, sales leads, digital marketers, and agencies
-							looking for automated intelligence.
+							{t("step2_desc")}
 						</p>
 					</div>
 
@@ -252,10 +243,9 @@ export default function PartnersPage() {
 						<div className="size-10 rounded-full bg-emerald-500 text-neutral-950 font-black text-lg flex items-center justify-center mx-auto mb-4">
 							3
 						</div>
-						<h3 className="font-bold text-lg mb-2">Earn & Withdraw 24/7</h3>
+						<h3 className="font-bold text-lg mb-2">{t("step3_title")}</h3>
 						<p className="text-sm text-neutral-600 dark:text-neutral-400">
-							Receive 15% lifetime recurring commissions on every credit pack they purchase.
-							Withdraw to your bank in seconds.
+							{t("step3_desc")}
 						</p>
 					</div>
 				</div>
@@ -265,15 +255,14 @@ export default function PartnersPage() {
 			<div className="max-w-5xl mx-auto px-4 mt-20">
 				<div className="rounded-3xl bg-emerald-600 text-white p-10 md:p-14 text-center relative overflow-hidden shadow-2xl">
 					<h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-						Ready to Start Earning with Nowing?
+						{t("cta_title")}
 					</h3>
 					<p className="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto mb-8">
-						Join dozens of agencies and creators monetizing their networks with our high-retention
-						AI lead intelligence platform.
+						{t("cta_subtitle")}
 					</p>
 					<Link href="/partners/dashboard">
 						<Button className="bg-neutral-950 hover:bg-neutral-900 text-white font-bold px-8 py-6 rounded-2xl text-base shadow-xl">
-							Get Your Partner Link Today
+							{t("cta_button")}
 						</Button>
 					</Link>
 				</div>

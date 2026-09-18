@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import FuzzySearch from "fuzzy-search";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Container } from "@/components/container";
 import type { BlogEntry } from "./page";
@@ -35,11 +36,12 @@ function SearchIcon({ className }: { className?: string }) {
 }
 
 export function BlogWithSearchMagazine({ blogs }: { blogs: BlogEntry[] }) {
+	const t = useTranslations("blog");
 	if (blogs.length === 0) {
 		return (
 			<div className="relative overflow-hidden bg-neutral-50 px-4 md:px-8 dark:bg-neutral-950">
 				<Container className="relative pt-12 pb-24 md:pt-20">
-					<p className="text-center text-neutral-500">No blog posts yet.</p>
+					<p className="text-center text-neutral-500">{t("no_posts")}</p>
 				</Container>
 			</div>
 		);
@@ -77,13 +79,14 @@ export function BlogWithSearchMagazine({ blogs }: { blogs: BlogEntry[] }) {
 }
 
 function MoreFeatured({ blogs }: { blogs: BlogEntry[] }) {
+	const t = useTranslations("blog");
 	return (
 		<section aria-labelledby="more-featured-heading" className="mb-14">
 			<h2
 				id="more-featured-heading"
 				className="mb-6 font-serif text-2xl font-medium text-neutral-900 dark:text-neutral-100"
 			>
-				More featured
+				{t("more_featured")}
 			</h2>
 			<ul className="grid gap-6 sm:grid-cols-2">
 				{blogs.map((blog) => (
@@ -97,6 +100,7 @@ function MoreFeatured({ blogs }: { blogs: BlogEntry[] }) {
 }
 
 function MagazineFeatured({ blog }: { blog: BlogEntry }) {
+	const t = useTranslations("blog");
 	return (
 		<Link
 			href={blog.url}
@@ -113,7 +117,7 @@ function MagazineFeatured({ blog }: { blog: BlogEntry }) {
 				<div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-transparent" />
 				<div className="absolute inset-0 flex flex-col justify-end p-6 md:p-10">
 					<span className="mb-2 inline-flex w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
-						Cover story
+						{t("cover_story")}
 					</span>
 					<h2 className="max-w-3xl font-serif text-2xl leading-tight font-medium text-white md:text-4xl">
 						{blog.title}
@@ -149,6 +153,7 @@ function MagazineSearchGrid({
 	/** Slugs already shown above the archive (cover story + "More featured"). */
 	excludedSlugs: Set<string>;
 }) {
+	const t = useTranslations("blog");
 	const [search, setSearch] = useState("");
 
 	const searcher = useMemo(
@@ -177,16 +182,16 @@ function MagazineSearchGrid({
 					id="archive-heading"
 					className="font-serif text-2xl font-medium text-neutral-900 dark:text-neutral-100"
 				>
-					From the archive
+					{t("from_archive")}
 				</h2>
 				<label className="relative w-full sm:max-w-md">
-					<span className="sr-only">Search articles</span>
+					<span className="sr-only">{t("search_articles")}</span>
 					<SearchIcon className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-neutral-400" />
 					<input
 						type="search"
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Search"
+						placeholder={t("search_placeholder")}
 						className="w-full rounded-full bg-white py-3 pr-4 pl-12 text-sm text-neutral-800 shadow-sm ring-1 shadow-black/10 ring-black/10 transition outline-none placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/80 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-500 dark:focus:ring-neutral-700/50"
 					/>
 				</label>
@@ -194,7 +199,7 @@ function MagazineSearchGrid({
 
 			{gridItems.length === 0 ? (
 				<p className="rounded-2xl border border-dashed border-neutral-300 py-16 text-center text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
-					No articles match that search.
+					{t("no_articles_match")}
 				</p>
 			) : (
 				<ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -210,6 +215,7 @@ function MagazineSearchGrid({
 }
 
 function MagazineCard({ blog }: { blog: BlogEntry }) {
+	const t = useTranslations("blog");
 	return (
 		<Link
 			href={blog.url}
@@ -223,7 +229,7 @@ function MagazineCard({ blog }: { blog: BlogEntry }) {
 						className="h-full w-full object-cover transition duration-300 group-hover/card:scale-105"
 					/>
 				) : (
-					<div className="flex h-full items-center justify-center text-neutral-400">No image</div>
+					<div className="flex h-full items-center justify-center text-neutral-400">{t("no_image")}</div>
 				)}
 			</div>
 			<div className="flex flex-1 flex-col p-5">

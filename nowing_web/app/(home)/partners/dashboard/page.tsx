@@ -12,6 +12,7 @@ import {
 	IconRefresh,
 	IconWallet,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -45,6 +46,7 @@ import { partnersApiService } from "@/lib/apis/partners-api.service";
 import { PayoutHistoryTable } from "./components/PayoutHistoryTable";
 
 export default function PartnerDashboardPage() {
+	const t = useTranslations("partners_dashboard");
 	const [isLoading, setIsLoading] = useState(true);
 	const [profile, setProfile] = useState<PartnerProfileResponse | null>(null);
 	const [banks, setBanks] = useState<VietQrBankItem[]>([]);
@@ -94,7 +96,7 @@ export default function PartnerDashboardPage() {
 		} catch (err: unknown) {
 			const errorObj = err as { status?: number; message?: string };
 			if (errorObj?.status !== 404) {
-				toast.error(errorObj?.message || "Failed to load partner dashboard");
+				toast.error(errorObj?.message || t("toast_load_failed"));
 			}
 			setProfile(null);
 		} finally {
@@ -109,7 +111,7 @@ export default function PartnerDashboardPage() {
 	const handleApply = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!claimCode.trim()) {
-			toast.error("Please enter a referral code");
+			toast.error(t("toast_enter_code"));
 			return;
 		}
 		setIsSubmittingApply(true);
@@ -127,12 +129,12 @@ export default function PartnerDashboardPage() {
 					account_holder: accountName.trim().toUpperCase(),
 				},
 			});
-			toast.success("Welcome to the Nowing Partner Program!");
+			toast.success(t("toast_welcome"));
 			setProfile(newProfile);
 			loadDashboard();
 		} catch (err: unknown) {
 			const errorObj = err as { message?: string };
-			toast.error(errorObj?.message || "Failed to create partner profile");
+			toast.error(errorObj?.message || t("toast_apply_failed"));
 		} finally {
 			setIsSubmittingApply(false);
 		}
@@ -142,7 +144,7 @@ export default function PartnerDashboardPage() {
 		if (!profile?.referral_url) return;
 		navigator.clipboard.writeText(profile.referral_url);
 		setCopied(true);
-		toast.success("Referral link copied to clipboard!");
+		toast.success(t("toast_link_copied"));
 		setTimeout(() => setCopied(false), 2000);
 	};
 
@@ -150,12 +152,12 @@ export default function PartnerDashboardPage() {
 		e.preventDefault();
 		const amount = parseFloat(payoutAmountUsd);
 		if (Number.isNaN(amount) || amount < 20) {
-			toast.error("Minimum payout is $20.00");
+			toast.error(t("toast_min_payout"));
 			return;
 		}
 		const amountMicros = Math.round(amount * 1_000_000);
 		if (profile && profile.balance_micros < amountMicros) {
-			toast.error("Insufficient balance");
+			toast.error(t("toast_insufficient"));
 			return;
 		}
 
@@ -167,15 +169,13 @@ export default function PartnerDashboardPage() {
 				payout_details: profile?.payout_details,
 			});
 			toast.success(
-				payoutMethod === "credit_wallet"
-					? "Credits with +10% bonus added to your wallet!"
-					: "Payout request submitted! Transfer will be processed via VietQR Napas 24/7."
+				payoutMethod === "credit_wallet" ? t("toast_credit_added") : t("toast_payout_submitted")
 			);
 			setIsPayoutOpen(false);
 			loadDashboard();
 		} catch (err: unknown) {
 			const errorObj = err as { message?: string };
-			toast.error(errorObj?.message || "Failed to request payout");
+			toast.error(errorObj?.message || t("toast_payout_failed"));
 		} finally {
 			setIsSubmittingPayout(false);
 		}
@@ -185,7 +185,7 @@ export default function PartnerDashboardPage() {
 		return (
 			<div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
 				<IconLoader2 className="size-8 animate-spin text-emerald-600" aria-hidden="true" />
-				<p className="text-sm text-neutral-500">Loading your partner portal...</p>
+				<p className="text-sm text-neutral-500">{t("loading")}</p>
 			</div>
 		);
 	}
@@ -200,21 +200,20 @@ export default function PartnerDashboardPage() {
 							<IconAffiliate className="size-6" aria-hidden="true" />
 						</div>
 						<h1 className="font-serif text-2xl md:text-3xl font-normal text-neutral-900 dark:text-white">
-							Join the Nowing Partner Program
+							{t("join_title")}
 						</h1>
 						<p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
-							Claim your unique code to earn 15% lifetime recurring commissions with instant VietQR
-							Napas 24/7 payouts.
+							{t("join_subtitle")}
 						</p>
 					</div>
 
 					<form onSubmit={handleApply} className="space-y-5">
 						<div className="space-y-2">
-							<Label htmlFor="refCode">Choose Custom Referral Code</Label>
+							<Label htmlFor="refCode">{t("choose_code_label")}</Label>
 							<div className="relative">
 								<Input
 									id="refCode"
-									placeholder="e.g. AGENCY2026 or YOURNAME"
+									placeholder={t("code_placeholder")}
 									value={claimCode}
 									onChange={(e) =>
 										setClaimCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))
@@ -225,36 +224,36 @@ export default function PartnerDashboardPage() {
 								/>
 							</div>
 							<p className="text-xs text-neutral-500">
-								Your link will be: https://nowing.net/?ref={claimCode || "CODE"}
+								{t("your_link_prefix")} https://nowing.net/?ref={claimCode || "CODE"}
 							</p>
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="partnerType">Partner Category</Label>
+							<Label htmlFor="partnerType">{t("partner_category")}</Label>
 							<Select value={partnerType} onValueChange={setPartnerType}>
 								<SelectTrigger>
-									<SelectValue placeholder="Select type" />
+									<SelectValue placeholder={t("select_type")} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="agency">Marketing & Growth Agency</SelectItem>
-									<SelectItem value="b2b_sales">B2B Sales & Outreach Consultant</SelectItem>
-									<SelectItem value="real_estate">Real Estate & Broker Network</SelectItem>
-									<SelectItem value="creator">Creator / Educator / Tech Blogger</SelectItem>
-									<SelectItem value="other">Individual Affiliate</SelectItem>
+									<SelectItem value="agency">{t("type_agency")}</SelectItem>
+									<SelectItem value="b2b_sales">{t("type_b2b")}</SelectItem>
+									<SelectItem value="real_estate">{t("type_real_estate")}</SelectItem>
+									<SelectItem value="creator">{t("type_creator")}</SelectItem>
+									<SelectItem value="other">{t("type_other")}</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
 
 						<div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-4">
 							<h3 className="font-semibold text-sm text-neutral-800 dark:text-neutral-200">
-								Default VietQR Bank Details (Napas 24/7)
+								{t("bank_details_title")}
 							</h3>
 
 							<div className="space-y-2">
-								<Label htmlFor="bank">Receiving Bank</Label>
+								<Label htmlFor="bank">{t("receiving_bank")}</Label>
 								<Select value={selectedBank} onValueChange={setSelectedBank}>
 									<SelectTrigger>
-										<SelectValue placeholder="Select Bank" />
+										<SelectValue placeholder={t("select_bank")} />
 									</SelectTrigger>
 									<SelectContent className="max-h-60">
 										{banks.map((b) => (
@@ -268,20 +267,20 @@ export default function PartnerDashboardPage() {
 
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<Label htmlFor="accNo">Bank Account Number</Label>
+									<Label htmlFor="accNo">{t("account_number")}</Label>
 									<Input
 										id="accNo"
-										placeholder="e.g. 1903333333"
+										placeholder={t("account_number_placeholder")}
 										value={accountNumber}
 										onChange={(e) => setAccountNumber(e.target.value)}
 										className="font-mono"
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="accName">Account Holder Name</Label>
+									<Label htmlFor="accName">{t("account_holder")}</Label>
 									<Input
 										id="accName"
-										placeholder="NGUYEN VAN A"
+										placeholder={t("account_holder_placeholder")}
 										value={accountName}
 										onChange={(e) => setAccountName(e.target.value.toUpperCase())}
 									/>
@@ -297,7 +296,7 @@ export default function PartnerDashboardPage() {
 							{isSubmittingApply ? (
 								<IconLoader2 className="size-5 animate-spin" aria-hidden="true" />
 							) : (
-								"Create Partner Profile & Get Link"
+								t("create_profile_button")
 							)}
 						</Button>
 					</form>
@@ -317,17 +316,17 @@ export default function PartnerDashboardPage() {
 				<div>
 					<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
 						<IconAffiliate className="size-3.5" aria-hidden="true" />
-						<span>Affiliate Partner Dashboard</span>
+						<span>{t("dashboard_badge")}</span>
 					</div>
 					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-neutral-900 dark:text-white">
-						Partner Portal
+						{t("partner_portal")}
 					</h1>
 					<p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-						Referral Code:{" "}
+						{t("referral_code")}{" "}
 						<span className="font-mono font-bold text-emerald-600">{profile.referral_code}</span> •
-						Rate:{" "}
+						{t("rate")}{" "}
 						<span className="font-semibold text-neutral-800 dark:text-neutral-200">
-							15% Lifetime Recurring
+							{t("rate_value")}
 						</span>
 					</p>
 				</div>
@@ -340,14 +339,14 @@ export default function PartnerDashboardPage() {
 						className="flex items-center gap-1.5 text-xs"
 					>
 						<IconRefresh className="size-3.5" aria-hidden="true" />
-						<span>Refresh Data</span>
+						<span>{t("refresh_data")}</span>
 					</Button>
 					<Button
 						onClick={() => setIsPayoutOpen(true)}
 						className="bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold text-xs md:text-sm px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
 					>
 						<IconWallet className="size-4" aria-hidden="true" />
-						<span>Request Payout</span>
+						<span>{t("request_payout")}</span>
 					</Button>
 				</div>
 			</div>
@@ -358,11 +357,10 @@ export default function PartnerDashboardPage() {
 					<div className="space-y-3 max-w-2xl">
 						<h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
 							<IconQrcode className="size-5 text-emerald-600" aria-hidden="true" />
-							<span>Your Unique Referral Link</span>
+							<span>{t("your_referral_link")}</span>
 						</h2>
 						<p className="text-sm text-neutral-600 dark:text-neutral-400">
-							Share this link with your audience. Any user who registers within 30 days of clicking
-							is bound to your account permanently.
+							{t("referral_link_desc")}
 						</p>
 
 						<div className="flex items-center gap-2">
@@ -378,7 +376,7 @@ export default function PartnerDashboardPage() {
 								) : (
 									<IconCopy className="size-4" aria-hidden="true" />
 								)}
-								<span>{copied ? "Copied" : "Copy Link"}</span>
+								<span>{copied ? t("copied") : t("copy_link")}</span>
 							</Button>
 						</div>
 					</div>
@@ -387,15 +385,15 @@ export default function PartnerDashboardPage() {
 					<div className="flex items-center gap-4 bg-white dark:bg-neutral-800/80 p-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-2xs shrink-0 self-start lg:self-auto">
 						<Image
 							src={qrCodeUrl}
-							alt="Partner QR Code"
+							alt={t("qr_alt")}
 							width={96}
 							height={96}
 							unoptimized
 							className="size-24 rounded-lg bg-white p-1"
 						/>
 						<div className="text-xs space-y-1">
-							<div className="font-bold text-neutral-800 dark:text-neutral-200">Scan QR Code</div>
-							<div className="text-neutral-500">Scan on phone to test</div>
+							<div className="font-bold text-neutral-800 dark:text-neutral-200">{t("scan_qr")}</div>
+							<div className="text-neutral-500">{t("scan_hint")}</div>
 							<a
 								href={qrCodeUrl}
 								target="_blank"
@@ -403,7 +401,7 @@ export default function PartnerDashboardPage() {
 								className="inline-flex items-center gap-1 text-emerald-600 hover:underline font-medium"
 							>
 								<IconDownload className="size-3" aria-hidden="true" />
-								<span>Download QR</span>
+								<span>{t("download_qr")}</span>
 							</a>
 						</div>
 					</div>
@@ -415,7 +413,7 @@ export default function PartnerDashboardPage() {
 				{/* Card 1: Available Balance */}
 				<div className="p-6 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs relative overflow-hidden">
 					<div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-						Available Balance
+						{t("available_balance")}
 					</div>
 					<div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
 						${profile.balance_usd.toFixed(2)}
@@ -428,7 +426,7 @@ export default function PartnerDashboardPage() {
 				{/* Card 2: Total Lifetime Earned */}
 				<div className="p-6 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs">
 					<div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-						Total Lifetime Earned
+						{t("total_earned")}
 					</div>
 					<div className="text-3xl font-black font-mono text-neutral-900 dark:text-white">
 						${profile.total_earned_usd.toFixed(2)}
@@ -441,25 +439,25 @@ export default function PartnerDashboardPage() {
 				{/* Card 3: Total Referrals */}
 				<div className="p-6 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs">
 					<div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-						Referred Customers
+						{t("referred_customers")}
 					</div>
 					<div className="text-3xl font-black font-mono text-neutral-900 dark:text-white">
 						{profile.total_referrals}
 					</div>
 					<div className="text-xs text-neutral-500 mt-1">
-						{profile.total_clicks} estimated link clicks
+						{t("link_clicks", { count: profile.total_clicks })}
 					</div>
 				</div>
 
 				{/* Card 4: Active Paying Referrals */}
 				<div className="p-6 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs">
 					<div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-						Active Paying Customers
+						{t("active_paying")}
 					</div>
 					<div className="text-3xl font-black font-mono text-neutral-900 dark:text-white">
 						{profile.active_paying_referrals}
 					</div>
-					<div className="text-xs text-neutral-500 mt-1">15% lifetime recurring split</div>
+					<div className="text-xs text-neutral-500 mt-1">{t("recurring_split_hint")}</div>
 				</div>
 			</div>
 
@@ -467,13 +465,13 @@ export default function PartnerDashboardPage() {
 			<Tabs defaultValue="commissions" className="space-y-6">
 				<TabsList className="bg-neutral-100 dark:bg-neutral-800/60 p-1 rounded-2xl">
 					<TabsTrigger value="commissions" className="rounded-xl text-xs md:text-sm font-semibold">
-						Commissions ({commissions.length})
+						{t("tab_commissions", { count: commissions.length })}
 					</TabsTrigger>
 					<TabsTrigger value="referrals" className="rounded-xl text-xs md:text-sm font-semibold">
-						Referred Accounts ({referrals.length})
+						{t("tab_referrals", { count: referrals.length })}
 					</TabsTrigger>
 					<TabsTrigger value="payouts" className="rounded-xl text-xs md:text-sm font-semibold">
-						Payout History ({payouts.length})
+						{t("tab_payouts", { count: payouts.length })}
 					</TabsTrigger>
 				</TabsList>
 
@@ -482,9 +480,9 @@ export default function PartnerDashboardPage() {
 					<div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs">
 						<div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
 							<h3 className="font-bold text-neutral-900 dark:text-white text-base">
-								Commission Ledger
+								{t("commission_ledger")}
 							</h3>
-							<span className="text-xs text-neutral-500 font-mono">15% Recurring Split</span>
+							<span className="text-xs text-neutral-500 font-mono">{t("recurring_split")}</span>
 						</div>
 
 						{commissions.length === 0 ? (
@@ -496,11 +494,11 @@ export default function PartnerDashboardPage() {
 								<table className="w-full text-left text-sm">
 									<thead className="bg-neutral-50 dark:bg-neutral-800/50 text-xs text-neutral-500 uppercase font-semibold">
 										<tr>
-											<th className="px-6 py-3.5">Date</th>
-											<th className="px-6 py-3.5">Customer Purchase</th>
-											<th className="px-6 py-3.5">Your Cut (15%)</th>
-											<th className="px-6 py-3.5">Amount (VND)</th>
-											<th className="px-6 py-3.5">Status</th>
+											<th className="px-6 py-3.5">{t("col_date")}</th>
+											<th className="px-6 py-3.5">{t("col_purchase")}</th>
+											<th className="px-6 py-3.5">{t("col_your_cut")}</th>
+											<th className="px-6 py-3.5">{t("col_amount_vnd")}</th>
+											<th className="px-6 py-3.5">{t("col_status")}</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -540,10 +538,10 @@ export default function PartnerDashboardPage() {
 					<div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs">
 						<div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
 							<h3 className="font-bold text-neutral-900 dark:text-white text-base">
-								Referred Accounts
+								{t("referred_accounts")}
 							</h3>
 							<span className="text-xs text-neutral-500 font-mono">
-								{referrals.length} customers
+								{t("customers_count", { count: referrals.length })}
 							</span>
 						</div>
 
@@ -556,11 +554,11 @@ export default function PartnerDashboardPage() {
 								<table className="w-full text-left text-sm">
 									<thead className="bg-neutral-50 dark:bg-neutral-800/50 text-xs text-neutral-500 uppercase font-semibold">
 										<tr>
-											<th className="px-6 py-3.5">Customer Email</th>
-											<th className="px-6 py-3.5">Attribution</th>
-											<th className="px-6 py-3.5">Total Spent</th>
-											<th className="px-6 py-3.5">Your Earnings</th>
-											<th className="px-6 py-3.5">Joined Date</th>
+											<th className="px-6 py-3.5">{t("col_email")}</th>
+											<th className="px-6 py-3.5">{t("col_attribution")}</th>
+											<th className="px-6 py-3.5">{t("col_total_spent")}</th>
+											<th className="px-6 py-3.5">{t("col_earnings")}</th>
+											<th className="px-6 py-3.5">{t("col_joined")}</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -603,16 +601,15 @@ export default function PartnerDashboardPage() {
 			<Dialog open={isPayoutOpen} onOpenChange={setIsPayoutOpen}>
 				<DialogContent className="sm:max-w-md rounded-3xl">
 					<DialogHeader>
-						<DialogTitle className="text-xl font-bold">Request Commission Payout</DialogTitle>
+						<DialogTitle className="text-xl font-bold">{t("payout_dialog_title")}</DialogTitle>
 						<DialogDescription>
-							Available balance: ${profile.balance_usd.toFixed(2)} (
-							{profile.balance_vnd.toLocaleString("vi-VN")} VND). Minimum withdrawal is $20.00.
+							{t("payout_dialog_desc", { usd: profile.balance_usd.toFixed(2), vnd: profile.balance_vnd.toLocaleString("vi-VN") })}
 						</DialogDescription>
 					</DialogHeader>
 
 					<form onSubmit={handleRequestPayout} className="space-y-4 py-2">
 						<div className="space-y-2">
-							<Label>Payout Method</Label>
+							<Label>{t("payout_method")}</Label>
 							<div className="grid grid-cols-2 gap-3">
 								<button
 									type="button"
@@ -624,8 +621,8 @@ export default function PartnerDashboardPage() {
 									}`}
 								>
 									<IconBuildingBank className="size-4 mb-1 text-emerald-600" aria-hidden="true" />
-									<div className="font-bold">VietQR Napas 24/7</div>
-									<div className="text-[10px] text-neutral-500">Direct to bank (0% fee)</div>
+									<div className="font-bold">{t("method_vietqr")}</div>
+									<div className="text-[10px] text-neutral-500">{t("method_vietqr_desc")}</div>
 								</button>
 
 								<button
@@ -638,14 +635,14 @@ export default function PartnerDashboardPage() {
 									}`}
 								>
 									<IconCoins className="size-4 mb-1 text-emerald-600" aria-hidden="true" />
-									<div className="font-bold">Platform Credits</div>
-									<div className="text-[10px] text-emerald-600 font-bold">+10% Bonus added</div>
+									<div className="font-bold">{t("method_credits")}</div>
+									<div className="text-[10px] text-emerald-600 font-bold">{t("method_credits_desc")}</div>
 								</button>
 							</div>
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="payoutAmount">Amount (USD)</Label>
+							<Label htmlFor="payoutAmount">{t("amount_usd")}</Label>
 							<Input
 								id="payoutAmount"
 								type="number"
@@ -659,8 +656,7 @@ export default function PartnerDashboardPage() {
 								≈ {(parseFloat(payoutAmountUsd || "0") * 25400).toLocaleString("vi-VN")} VND
 								{payoutMethod === "credit_wallet" && (
 									<span className="text-emerald-600 font-semibold ml-1">
-										(+10% bonus = ${(parseFloat(payoutAmountUsd || "0") * 1.1).toFixed(2)} in
-										platform credits)
+										{t("credit_bonus_hint", { usd: (parseFloat(payoutAmountUsd || "0") * 1.1).toFixed(2) })}
 									</span>
 								)}
 							</p>
@@ -669,7 +665,7 @@ export default function PartnerDashboardPage() {
 						{payoutMethod === "vietqr" && profile.payout_details && (
 							<div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700 text-xs space-y-1">
 								<div className="font-semibold text-neutral-700 dark:text-neutral-300">
-									Receiving Account:
+									{t("receiving_account")}
 								</div>
 								<div className="text-neutral-600 dark:text-neutral-400 font-mono">
 									{String(
@@ -692,7 +688,7 @@ export default function PartnerDashboardPage() {
 								onClick={() => setIsPayoutOpen(false)}
 								className="rounded-xl"
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								type="submit"
@@ -702,7 +698,7 @@ export default function PartnerDashboardPage() {
 								{isSubmittingPayout ? (
 									<IconLoader2 className="size-4 animate-spin" aria-hidden="true" />
 								) : (
-									"Confirm Withdrawal"
+									t("confirm_withdrawal")
 								)}
 							</Button>
 						</DialogFooter>
