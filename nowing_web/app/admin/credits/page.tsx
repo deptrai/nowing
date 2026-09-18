@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ManualCreditModal from "@/components/admin/ManualCreditModal";
@@ -55,6 +56,7 @@ function toCSV(rows: ManualCreditLedgerEntry[]): string {
 }
 
 export default function AdminCreditsPage() {
+	const t = useTranslations("admin");
 	const [ledger, setLedger] = useState<ManualCreditLedgerEntry[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,33 +126,33 @@ export default function AdminCreditsPage() {
 	return (
 		<div className="p-6">
 			<div className="mb-6 flex items-center justify-between">
-				<h1 className="text-2xl font-bold">Admin: Manual Credits</h1>
+				<h1 className="text-2xl font-bold">{t("credits_title")}</h1>
 				<button
 					type="button"
 					onClick={() => setIsModalOpen(true)}
 					className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
 				>
-					+ New Adjustment
+					+ {t("credits_new_adjustment")}
 				</button>
 			</div>
 
 			<div className="mb-6 grid grid-cols-4 gap-4">
 				<div className="rounded border p-3">
-					<div className="text-xs text-slate-500">Total Credits Minted</div>
+					<div className="text-xs text-slate-500">{t("credits_minted")}</div>
 					<div className="font-mono text-lg font-semibold">
 						{stats.creditsMinted.toLocaleString()}
 					</div>
 				</div>
 				<div className="rounded border p-3">
-					<div className="text-xs text-slate-500">Total Manual Debits</div>
+					<div className="text-xs text-slate-500">{t("credits_debits")}</div>
 					<div className="font-mono text-lg font-semibold">{stats.debits.toLocaleString()}</div>
 				</div>
 				<div className="rounded border p-3">
-					<div className="text-xs text-slate-500">Today&apos;s Adjustments Count</div>
+					<div className="text-xs text-slate-500">{t("credits_today_count")}</div>
 					<div className="font-mono text-lg font-semibold">{stats.todayCount.toLocaleString()}</div>
 				</div>
 				<div className="rounded border p-3">
-					<div className="text-xs text-slate-500">High-Value Flags</div>
+					<div className="text-xs text-slate-500">{t("credits_high_value")}</div>
 					<div className="font-mono text-lg font-semibold text-amber-600">
 						{stats.highValueCount.toLocaleString()}
 					</div>
@@ -160,14 +162,14 @@ export default function AdminCreditsPage() {
 			<div className="mb-4 flex flex-wrap items-end gap-3">
 				<input
 					type="number"
-					placeholder="Workspace ID"
+					placeholder={t("credits_workspace_id")}
 					className="h-9 rounded border px-2 text-sm"
 					value={filters.workspace_id}
 					onChange={(e) => setFilters((prev) => ({ ...prev, workspace_id: e.target.value }))}
 				/>
 				<input
 					type="text"
-					placeholder="Admin UUID"
+					placeholder={t("credits_admin_uuid")}
 					className="h-9 rounded border px-2 text-sm font-mono"
 					value={filters.admin_id}
 					onChange={(e) => setFilters((prev) => ({ ...prev, admin_id: e.target.value }))}
@@ -186,7 +188,7 @@ export default function AdminCreditsPage() {
 				/>
 				<input
 					type="text"
-					placeholder="Reason contains"
+					placeholder={t("credits_reason_contains")}
 					className="h-9 rounded border px-2 text-sm"
 					value={filters.reason}
 					onChange={(e) => setFilters((prev) => ({ ...prev, reason: e.target.value }))}
@@ -212,26 +214,26 @@ export default function AdminCreditsPage() {
 					<thead>
 						<tr className="border-b bg-slate-50 text-left dark:bg-slate-800">
 							<th className="h-9 px-2 font-medium">ID</th>
-							<th className="h-9 px-2 font-medium">Workspace</th>
-							<th className="h-9 px-2 font-medium">Admin</th>
-							<th className="h-9 px-2 font-medium">Direction</th>
-							<th className="h-9 px-2 font-medium text-right">Credits</th>
-							<th className="h-9 px-2 font-medium">Reason</th>
-							<th className="h-9 px-2 font-medium">Ticket Ref</th>
-							<th className="h-9 px-2 font-medium">Created At</th>
+							<th className="h-9 px-2 font-medium">{t("credits_col_workspace")}</th>
+							<th className="h-9 px-2 font-medium">{t("credits_col_admin")}</th>
+							<th className="h-9 px-2 font-medium">{t("credits_col_direction")}</th>
+							<th className="h-9 px-2 font-medium text-right">{t("credits_col_credits")}</th>
+							<th className="h-9 px-2 font-medium">{t("credits_col_reason")}</th>
+							<th className="h-9 px-2 font-medium">{t("credits_col_ticket_ref")}</th>
+							<th className="h-9 px-2 font-medium">{t("credits_col_created_at")}</th>
 						</tr>
 					</thead>
 					<tbody>
 						{isLoading ? (
 							<tr>
 								<td colSpan={8} className="h-9 px-2 text-center text-slate-500">
-									Loading...
+									{t("credits_loading")}
 								</td>
 							</tr>
 						) : ledger.length === 0 ? (
 							<tr>
 								<td colSpan={8} className="h-9 px-2 text-center text-slate-500">
-									No adjustments found.
+									{t("credits_empty")}
 								</td>
 							</tr>
 						) : (
