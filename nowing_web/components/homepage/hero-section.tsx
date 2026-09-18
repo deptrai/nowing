@@ -2,6 +2,7 @@
 import { ChevronDown, Download } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import Balancer from "react-wrap-balancer";
 import { HeroChatDemo, type HeroChatDemoScript } from "@/components/homepage/hero-chat-demo";
@@ -76,14 +77,14 @@ const HERO_TUTORIAL = "/homepage/hero_tutorial";
  * end-to-end (see backend agent e2e suite). Recorded videos take precedence via
  * `src`; everything else plays the chat demo.
  */
-const CATEGORIES: HeroCategory[] = [
+const getCategories = (t: (key: string) => string): HeroCategory[] => [
 	{
 		id: "live-research",
-		label: "Live Web Research",
+		label: t("cat_live_research"),
 		useCases: [
 			{
 				id: "deep-research",
-				title: "Deep Research on the Live Web",
+				title: t("title_deep_research"),
 				description:
 					"The agent crawls dozens of live sources on a question and synthesizes a cited answer, not a stale index.",
 				src: null,
@@ -114,7 +115,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "academic-research",
-				title: "Academic Literature Scan",
+				title: t("title_academic_research"),
 				description:
 					"Sweep recent papers, preprints, and technical blogs on a topic and get the main approaches mapped with citations.",
 				src: null,
@@ -150,7 +151,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "financial-research",
-				title: "Financial & Market Research",
+				title: t("title_financial_research"),
 				description:
 					"Pull earnings coverage, analyst breakdowns, and retail sentiment on any company into one cited brief.",
 				src: null,
@@ -190,7 +191,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "geo-monitoring",
-				title: "AI Overview & GEO Tracking",
+				title: t("title_geo_monitoring"),
 				description:
 					"Capture when Google's AI Overviews answer the queries you care about, and exactly which sources they cite.",
 				src: null,
@@ -223,11 +224,11 @@ const CATEGORIES: HeroCategory[] = [
 	},
 	{
 		id: "ci-workflows",
-		label: "Competitive Intelligence Workflows",
+		label: t("cat_ci_workflows"),
 		useCases: [
 			{
 				id: "launch-impact",
-				title: "Launch Impact, Across Every Platform",
+				title: t("title_launch_impact"),
 				description:
 					"One prompt chains Google Search, Reddit, and YouTube into a single cited brief on how a competitor launch actually landed.",
 				src: null,
@@ -271,7 +272,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "local-teardown",
-				title: "Local Competitor Teardown",
+				title: t("title_local_teardown"),
 				description:
 					"Google Maps finds the players, the Web Crawler reads their sites, and Google Search shows who wins the query, in one run.",
 				src: null,
@@ -311,7 +312,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "pricing-watch",
-				title: "Competitor Pricing Watch",
+				title: t("title_pricing_watch"),
 				description:
 					"The agent extracts every plan from a competitor's pricing page, and an automation re-checks it so you hear about changes first.",
 				src: null,
@@ -354,7 +355,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "site-diff",
-				title: "Product & Changelog Tracking",
+				title: t("title_site_diff"),
 				description:
 					"An automation crawls a rival's product, changelog, and careers pages and briefs you on what shipped.",
 				src: null,
@@ -389,7 +390,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "serp-watch",
-				title: "Rank & Ad Monitoring",
+				title: t("title_serp_watch"),
 				description:
 					"Automations track the Google rankings, paid ads, and AI Overview citations your audience actually sees.",
 				src: null,
@@ -424,7 +425,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "switcher-mining",
-				title: "Switcher & Intent Mining",
+				title: t("title_switcher_mining"),
 				description:
 					"Find the people actively looking for an alternative to a competitor, ranked by how ready they are to move.",
 				src: null,
@@ -460,41 +461,41 @@ const CATEGORIES: HeroCategory[] = [
 	},
 	{
 		id: "artifacts",
-		label: "Artifacts (Podcasts, Videos & More)",
+		label: t("cat_artifacts"),
 		useCases: [
 			{
 				id: "report",
-				title: "AI Report Generator",
-				description: "Turn your research into cited reports, then export to PDF or Markdown.",
+				title: t("title_report"),
+				description: t("desc_report"),
 				src: `${HERO_TUTORIAL}/ReportGenGif_compressed.mp4`,
 			},
 			{
 				id: "podcast",
-				title: "AI Podcast Generator",
-				description: "Turn any brief or folder into a two-host AI podcast in under 20 seconds.",
+				title: t("title_podcast"),
+				description: t("desc_podcast"),
 				src: `${HERO_TUTORIAL}/PodcastGenGif.mp4`,
 			},
 			{
 				id: "presentation",
-				title: "AI Presentation & Video Maker",
-				description: "Create editable slide decks and narrated video overviews from your findings.",
+				title: t("title_presentation"),
+				description: t("desc_presentation"),
 				src: `${HERO_TUTORIAL}/video_gen_surf.mp4`,
 			},
 			{
 				id: "image-gen",
-				title: "AI Image Generation",
-				description: "Generate images inside your workspace for decks, briefs, and posts.",
+				title: t("title_image_gen"),
+				description: t("desc_image_gen"),
 				src: `${HERO_TUTORIAL}/ImageGenGif.mp4`,
 			},
 		],
 	},
 	{
 		id: "automations",
-		label: "Automations",
+		label: t("cat_automations"),
 		useCases: [
 			{
 				id: "competitor-360",
-				title: "Competitor 360, on a Schedule",
+				title: t("title_competitor_360"),
 				description:
 					"An automation chains four connectors every week: site changes, rank movements, Reddit sentiment, and YouTube reaction.",
 				src: null,
@@ -542,7 +543,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "cited-briefs",
-				title: "Scheduled Briefs & Alerts",
+				title: t("title_cited_briefs"),
 				description:
 					"Everything the agents gather lands in your workspace as briefs and alerts with sources you can check.",
 				src: null,
@@ -573,7 +574,7 @@ const CATEGORIES: HeroCategory[] = [
 			},
 			{
 				id: "event-triggers",
-				title: "Event-Triggered Workflows",
+				title: t("title_event_triggers"),
 				description:
 					"Automations can fire on events, not just schedules: a document landing in a folder kicks off the workflow.",
 				src: null,
@@ -606,29 +607,29 @@ const CATEGORIES: HeroCategory[] = [
 	},
 	{
 		id: "desktop-app",
-		label: "Desktop App",
+		label: t("cat_desktop_app"),
 		useCases: [
 			{
 				id: "general-assist",
-				title: "General Assist",
-				description: "Launch Nowing from any application on your computer with a global shortcut.",
+				title: t("title_general_assist"),
+				description: t("desc_general_assist"),
 				src: `${HERO_TUTORIAL}/general_assist.mp4`,
 			},
 			{
 				id: "quick-assist",
-				title: "Quick Assist",
-				description: "Select text anywhere, then ask AI to explain, rewrite, or act on it.",
+				title: t("title_quick_assist"),
+				description: t("desc_quick_assist"),
 				src: `${HERO_TUTORIAL}/quick_assist.mp4`,
 			},
 			{
 				id: "screenshot-assist",
-				title: "Screenshot Assist",
-				description: "Capture any region of your screen and ask AI about it.",
+				title: t("title_screenshot_assist"),
+				description: t("desc_screenshot_assist"),
 				src: `${HERO_TUTORIAL}/screenshot_assist.mp4`,
 			},
 			{
 				id: "folder-watch",
-				title: "Watch Local Folder",
+				title: t("title_folder_watch"),
 				description:
 					"Auto-sync a local folder to your knowledge base. Point it at your Obsidian vault to keep your notes searchable.",
 				src: `${HERO_TUTORIAL}/folder_watch.mp4`,
@@ -953,7 +954,9 @@ const CategoryPanel = memo(function CategoryPanel({
 });
 
 const BrowserWindow = () => {
-	const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].id);
+	const t = useTranslations("homepage");
+	const categories = getCategories(t);
+	const [activeCategory, setActiveCategory] = useState(categories[0].id);
 	const reduceMotion = useReducedMotion() ?? false;
 
 	return (
@@ -970,7 +973,7 @@ const BrowserWindow = () => {
 				</div>
 				<ScrollArea className="min-w-0 flex-1">
 					<TabsList className="flex h-auto w-max items-center gap-1 bg-transparent p-0 pr-4">
-						{CATEGORIES.map((category, index) => (
+						{categories.map((category, index) => (
 							<React.Fragment key={category.id}>
 								<TabsTrigger
 									value={category.id}
@@ -978,7 +981,7 @@ const BrowserWindow = () => {
 								>
 									{category.label}
 								</TabsTrigger>
-								{index !== CATEGORIES.length - 1 && (
+								{index !== categories.length - 1 && (
 									<Separator
 										orientation="vertical"
 										className="h-4 bg-neutral-300 dark:bg-neutral-700"
@@ -991,7 +994,7 @@ const BrowserWindow = () => {
 				</ScrollArea>
 			</div>
 			<div className="w-full overflow-hidden bg-gray-100/50 px-4 pt-4 dark:bg-neutral-950">
-				{CATEGORIES.map((category) => (
+				{categories.map((category) => (
 					<TabsContent key={category.id} value={category.id} className="mt-0">
 						<CategoryPanel category={category} reduceMotion={reduceMotion} />
 					</TabsContent>

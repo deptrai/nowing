@@ -6,9 +6,11 @@ import {
 	IconBrandTwitter,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Logo } from "@/components/Logo";
 
 export function FooterNew() {
+	const t = useTranslations("homepage");
 	const pages = [
 		// {
 		//   title: "All Products",
@@ -23,27 +25,27 @@ export function FooterNew() {
 		//   href: "#",
 		// },
 		{
-			title: "Connectors",
+			title: t("connectors"),
 			href: "/connectors",
 		},
 		{
-			title: "Pricing",
+			title: t("pricing"),
 			href: "/pricing",
 		},
 		{
-			title: "Blog",
+			title: t("blog"),
 			href: "/blog",
 		},
 		{
-			title: "Docs",
+			title: t("docs"),
 			href: "/docs",
 		},
 		{
-			title: "Contact Us",
+			title: t("contact_us"),
 			href: "/contact",
 		},
 		{
-			title: "What's New",
+			title: t("whats_new"),
 			href: "/announcements",
 		},
 	];
@@ -77,11 +79,11 @@ export function FooterNew() {
 	];
 	const legals = [
 		{
-			title: "Privacy Policy",
+			title: t("privacy_policy"),
 			href: "/privacy",
 		},
 		{
-			title: "Terms of Service",
+			title: t("terms_of_service"),
 			href: "/terms",
 		},
 		// {
@@ -92,7 +94,7 @@ export function FooterNew() {
 
 	const signups = [
 		{
-			title: "Sign In",
+			title: t("sign_in"),
 			href: "/login",
 		},
 		// {
@@ -114,7 +116,7 @@ export function FooterNew() {
 					</div>
 
 					<div className="mt-2 ml-2">
-						&copy; Nowing {new Date().getFullYear()}. All rights reserved.
+						&copy; Nowing {new Date().getFullYear()}. {t("all_rights_reserved")}
 					</div>
 				</div>
 				<div className="grid grid-cols-2 lg:grid-cols-4 gap-10 items-start mt-10 sm:mt-0 md:mt-0">
@@ -135,7 +137,7 @@ export function FooterNew() {
 
 					<div className="flex justify-center space-y-4 flex-col">
 						<p className="transition-colors hover:text-text-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold">
-							Socials
+							{t("socials_title")}
 						</p>
 						<ul className="transition-colors hover:text-text-neutral-800 text-neutral-600 dark:text-neutral-300 list-none space-y-4">
 							{socials.map((social, idx) => {
@@ -159,7 +161,7 @@ export function FooterNew() {
 
 					<div className="flex justify-center space-y-4 flex-col">
 						<p className="transition-colors hover:text-text-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold">
-							Legal
+							{t("legal_title")}
 						</p>
 						<ul className="transition-colors hover:text-text-neutral-800 text-neutral-600 dark:text-neutral-300 list-none space-y-4">
 							{legals.map((legal, idx) => (
@@ -176,7 +178,7 @@ export function FooterNew() {
 					</div>
 					<div className="flex justify-center space-y-4 flex-col">
 						<p className="transition-colors hover:text-text-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold">
-							Register
+							{t("register_title")}
 						</p>
 						<ul className="transition-colors hover:text-text-neutral-800 text-neutral-600 dark:text-neutral-300 list-none space-y-4">
 							{signups.map((auth, idx) => (

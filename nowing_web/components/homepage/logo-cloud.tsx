@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
 
@@ -68,6 +69,7 @@ function LogoItem({ title, file }: { title: string; file: string }) {
 }
 
 export function LogoCloud() {
+	const t = useTranslations("homepage");
 	const [currentSet, setCurrentSet] = useState(0);
 
 	useEffect(() => {
@@ -87,7 +89,7 @@ export function LogoCloud() {
 		<MarketingSection>
 			<Reveal>
 				<h2 className="mx-auto max-w-xl text-center text-lg font-medium text-neutral-600 dark:text-neutral-400">
-					Used by people at
+					{t("logo_cloud_title")}
 				</h2>
 			</Reveal>
 			<div className="mx-auto mt-10 grid max-w-4xl grid-cols-3 gap-8 sm:grid-cols-5">

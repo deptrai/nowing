@@ -13,6 +13,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { SignInButton } from "@/components/auth/sign-in-button";
 import { NavbarGitHubStars } from "@/components/homepage/github-stars-badge";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -31,29 +32,29 @@ interface ResourceItem extends NavItem {
 	icon: typeof IconNews;
 }
 
-const resourceItems: ResourceItem[] = [
+const getResourceItems = (t: (key: string) => string): ResourceItem[] => [
 	{
-		name: "Blog",
+		name: t("blog"),
 		link: "/blog",
-		description: "Guides, comparisons, and deep dives",
+		description: t("blog_desc"),
 		icon: IconNews,
 	},
 	{
-		name: "Announcements",
+		name: t("announcements"),
 		link: "/announcements",
-		description: "Product news and updates",
+		description: t("announcements_desc"),
 		icon: IconSpeakerphone,
 	},
 	{
-		name: "Changelog",
+		name: t("changelog"),
 		link: "/changelog",
-		description: "What's new in Nowing",
+		description: t("changelog_desc"),
 		icon: IconSparkles,
 	},
 	{
-		name: "Docs",
+		name: t("docs"),
 		link: "/docs",
-		description: "Setup, connectors, and API reference",
+		description: t("docs_desc"),
 		icon: IconBook,
 	},
 ];
@@ -76,14 +77,15 @@ interface MobileNavProps {
 }
 
 export const Navbar = ({ scrolledBgClassName }: NavbarProps = {}) => {
+	const t = useTranslations("homepage");
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const navItems: NavItem[] = [
-		{ name: "Connectors", link: "/connectors" },
-		{ name: "Pricing", link: "/pricing" },
-		{ name: "Partners", link: "/partners" },
-		{ name: "Contact\u00A0Us", link: "/contact" },
-		{ name: "Free\u00A0AI", link: "/free" },
+		{ name: t("connectors"), link: "/connectors" },
+		{ name: t("pricing"), link: "/pricing" },
+		{ name: t("partners"), link: "/partners" },
+		{ name: t("contact_us"), link: "/contact" },
+		{ name: t("free_ai"), link: "/free" },
 	];
 
 	useEffect(() => {
@@ -115,6 +117,7 @@ export const Navbar = ({ scrolledBgClassName }: NavbarProps = {}) => {
 };
 
 const ResourcesDropdown = () => {
+	const t = useTranslations("homepage");
 	const [open, setOpen] = useState(false);
 	const shouldReduceMotion = useReducedMotion();
 	const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,7 +155,7 @@ const ResourcesDropdown = () => {
 					open && "bg-gray-100 dark:bg-neutral-800"
 				)}
 			>
-				Resources
+				{t("resources")}
 				<IconChevronDown
 					className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")}
 				/>
@@ -176,7 +179,7 @@ const ResourcesDropdown = () => {
 							transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
 							className="w-72 origin-top overflow-hidden rounded-2xl border border-white/20 bg-white/90 p-2 shadow-2xl backdrop-blur-xl dark:border-neutral-800/50 dark:bg-neutral-950/90"
 						>
-							{resourceItems.map((item) => (
+							{getResourceItems(t).map((item) => (
 								<Link
 									key={item.link}
 									href={item.link}
@@ -205,6 +208,7 @@ const ResourcesDropdown = () => {
 };
 
 const DesktopNav = ({ navItems, isScrolled, scrolledBgClassName }: DesktopNavProps) => {
+	const t = useTranslations("homepage");
 	const [hovered, setHovered] = useState<number | null>(null);
 	return (
 		<motion.div
@@ -252,7 +256,7 @@ const DesktopNav = ({ navItems, isScrolled, scrolledBgClassName }: DesktopNavPro
 					href="https://discord.gg/ejRNvftDp9"
 					target="_blank"
 					rel="noopener noreferrer"
-					aria-label="Nowing on Discord"
+					aria-label={t("aria_discord")}
 					className="hidden rounded-full p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors md:flex items-center justify-center"
 				>
 					<IconBrandDiscord
@@ -264,7 +268,7 @@ const DesktopNav = ({ navItems, isScrolled, scrolledBgClassName }: DesktopNavPro
 					href="https://www.reddit.com/r/Nowing/"
 					target="_blank"
 					rel="noopener noreferrer"
-					aria-label="Nowing on Reddit"
+					aria-label={t("aria_reddit")}
 					className="hidden rounded-full p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors md:flex items-center justify-center"
 				>
 					<IconBrandReddit className="h-5 w-5 text-neutral-600 dark:text-neutral-300" aria-hidden />
@@ -279,6 +283,7 @@ const DesktopNav = ({ navItems, isScrolled, scrolledBgClassName }: DesktopNavPro
 };
 
 const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps) => {
+	const t = useTranslations("homepage");
 	const [open, setOpen] = useState(false);
 	const navRef = useRef<HTMLDivElement>(null);
 
@@ -326,7 +331,7 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 					size="icon"
 					onClick={() => setOpen((prev) => !prev)}
 					className="relative z-50 -mr-2 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 touch-manipulation"
-					aria-label={open ? "Close menu" : "Open menu"}
+					aria-label={open ? t("aria_close_menu") : t("aria_open_menu")}
 				>
 					{open ? (
 						<IconX className="h-6 w-6 text-black dark:text-white" aria-hidden="true" />
@@ -354,7 +359,7 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 									<motion.span className="block">{navItem.name} </motion.span>
 								</Link>
 								{navItem.link === "/pricing" &&
-									resourceItems.map((item) => (
+									getResourceItems(t).map((item) => (
 										<Link
 											key={item.link}
 											href={item.link}
@@ -370,7 +375,7 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 								href="https://discord.gg/ejRNvftDp9"
 								target="_blank"
 								rel="noopener noreferrer"
-								aria-label="Nowing on Discord"
+								aria-label={t("aria_discord")}
 								className="flex items-center justify-center rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors touch-manipulation"
 							>
 								<IconBrandDiscord
@@ -382,7 +387,7 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 								href="https://www.reddit.com/r/Nowing/"
 								target="_blank"
 								rel="noopener noreferrer"
-								aria-label="Nowing on Reddit"
+								aria-label={t("aria_reddit")}
 								className="flex items-center justify-center rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors touch-manipulation"
 							>
 								<IconBrandReddit
