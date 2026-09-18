@@ -2536,7 +2536,8 @@
 		"reverse_icp_focus_placeholder": "Tùy chọn: Nhập yêu cầu tập trung (VD: Chỉ tập trung phân khúc biệt thự cao cấp...)",
 		"reverse_icp_url_error": "Không thể phân tích URL. Vui lòng kiểm tra lại liên kết.",
 		"sheet_range_label": "Sheet Range",
-		"location_transaction": "Địa bàn giao dịch"
+		"location_transaction": "Địa bàn giao dịch",
+		"token_usage_sparkline": "Biểu đồ sử dụng token"
 	},
 	"bulkOps": {
 		"title": "Thao tác Hàng loạt Quản trị",

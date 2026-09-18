@@ -24,6 +24,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { type PickerResult, useGooglePicker } from "@/hooks/use-google-picker";
 import type { ConnectorConfigProps } from "../index";
+import { useTranslations } from "next-intl";
 
 interface SelectedItem {
 	id: string;
@@ -83,6 +84,7 @@ function getFileIconFromName(fileName: string, className: string = "size-3.5 shr
 }
 
 export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigChange }) => {
+	const t = useTranslations("assistant");
 	const existingFolders = (connector.config?.selected_folders as SelectedItem[] | undefined) || [];
 	const existingFiles = (connector.config?.selected_files as SelectedItem[] | undefined) || [];
 	const existingIndexingOptions =
@@ -155,9 +157,9 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 			{/* Folder & File Selection */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Folder & File Selection</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("folder_file_selection")}</h3>
 					<p className="text-xs sm:text-sm text-muted-foreground">
-						Select specific folders and/or individual files to index.
+						{t("select_folders_files_gdrive")}
 					</p>
 				</div>
 
@@ -195,7 +197,7 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 										size="icon"
 										onClick={() => handleRemoveFolder(folder.id)}
 										className="size-5 shrink-0 rounded p-0 hover:bg-accent hover:text-accent-foreground"
-										aria-label={`Remove ${folder.name}`}
+										aria-label={t("remove_item", { name: folder.name })}
 									>
 										<X className="size-3.5" aria-hidden="true" />
 									</Button>
@@ -215,7 +217,7 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 										size="icon"
 										onClick={() => handleRemoveFile(file.id)}
 										className="size-5 shrink-0 rounded p-0 hover:bg-accent hover:text-accent-foreground"
-										aria-label={`Remove ${file.name}`}
+										aria-label={t("remove_item", { name: file.name })}
 									>
 										<X className="size-3.5" aria-hidden="true" />
 									</Button>
@@ -233,7 +235,7 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 					className="bg-slate-400/5 dark:bg-white/5 border-slate-400/20 hover:bg-accent hover:text-accent-foreground text-xs sm:text-sm h-8 sm:h-9"
 				>
 					{pickerLoading && <Spinner size="xs" className="mr-1.5" />}
-					{totalSelected > 0 ? "Change Selection" : "Select from Google Drive"}
+					{totalSelected > 0 ? t("change_selection") : t("select_from_gdrive")}
 				</Button>
 
 				{isAuthExpired && (
@@ -247,9 +249,9 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 			{/* Indexing Options */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Indexing Options</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("indexing_options")}</h3>
 					<p className="text-xs sm:text-sm text-muted-foreground">
-						Configure how files are indexed from your Google Drive.
+						{t("configure_indexing_gdrive")}
 					</p>
 				</div>
 
@@ -258,10 +260,10 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 					<div className="flex items-center justify-between">
 						<div className="space-y-0.5">
 							<Label htmlFor="max-files" className="text-sm font-medium">
-								Max files per folder
+								{t("max_files_per_folder")}
 							</Label>
 							<p className="text-xs text-muted-foreground">
-								Maximum number of files to index from each folder
+								{t("max_files_desc")}
 							</p>
 						</div>
 						<Select
@@ -274,23 +276,23 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 								id="max-files"
 								className="w-[140px] bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 text-xs sm:text-sm"
 							>
-								<SelectValue placeholder="Select limit" />
+								<SelectValue placeholder={t("select_limit")} />
 							</SelectTrigger>
 							<SelectContent className="z-[100]">
 								<SelectItem value="50" className="text-xs sm:text-sm">
-									50 files
+									{t("files_count", { count: 50 })}
 								</SelectItem>
 								<SelectItem value="100" className="text-xs sm:text-sm">
-									100 files
+									{t("files_count", { count: 100 })}
 								</SelectItem>
 								<SelectItem value="250" className="text-xs sm:text-sm">
-									250 files
+									{t("files_count", { count: 250 })}
 								</SelectItem>
 								<SelectItem value="500" className="text-xs sm:text-sm">
-									500 files
+									{t("files_count", { count: 500 })}
 								</SelectItem>
 								<SelectItem value="1000" className="text-xs sm:text-sm">
-									1000 files
+									{t("files_count", { count: 1000 })}
 								</SelectItem>
 							</SelectContent>
 						</Select>
@@ -301,10 +303,10 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 				<div className="flex items-center justify-between pt-2 border-t border-slate-400/20">
 					<div className="space-y-0.5">
 						<Label htmlFor="incremental-sync" className="text-sm font-medium">
-							Incremental sync
+							{t("incremental_sync")}
 						</Label>
 						<p className="text-xs text-muted-foreground">
-							Only sync changes since last index (faster). Disable for a full re-index.
+							{t("incremental_sync_desc")}
 						</p>
 					</div>
 					<Switch
@@ -318,10 +320,10 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 				<div className="flex items-center justify-between pt-2 border-t border-slate-400/20">
 					<div className="space-y-0.5">
 						<Label htmlFor="include-subfolders" className="text-sm font-medium">
-							Include subfolders
+							{t("include_subfolders")}
 						</Label>
 						<p className="text-xs text-muted-foreground">
-							Recursively index files in subfolders of selected folders
+							{t("include_subfolders_desc")}
 						</p>
 					</div>
 					<Switch
