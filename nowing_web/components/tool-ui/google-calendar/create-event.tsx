@@ -293,7 +293,7 @@ function ApprovalCard({
 							const extraFields: ExtraField[] = [
 								{
 									key: "start_datetime",
-									label: "Start",
+									label: t("gcal_start"),
 									type: "datetime-local",
 									value: pendingEdits?.start_datetime ?? args.start_datetime ?? "",
 								},
@@ -305,13 +305,13 @@ function ApprovalCard({
 								},
 								{
 									key: "location",
-									label: "Location",
+									label: t("gcal_location"),
 									type: "text",
 									value: pendingEdits?.location ?? args.location ?? "",
 								},
 								{
 									key: "attendees",
-									label: "Attendees",
+									label: t("gcal_attendees"),
 									type: "emails",
 									value: pendingEdits?.attendees ?? attendeesList.join(", "),
 								},
@@ -510,7 +510,7 @@ function ApprovalCard({
 								disabled={isPanelOpen}
 								onClick={() => {
 									setRejected();
-									onDecision({ type: "reject", message: "User rejected the action." });
+									onDecision({ type: "reject", message: t("common_user_rejected_action") });
 								}}
 							>
 								{t("common_reject")}

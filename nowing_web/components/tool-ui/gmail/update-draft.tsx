@@ -403,7 +403,7 @@ function ApprovalCard({
 									setRejected();
 									onDecision({
 										type: "reject",
-										message: "User rejected the action.",
+										message: t("common_user_rejected_action"),
 									});
 								}}
 							>

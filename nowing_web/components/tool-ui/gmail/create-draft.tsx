@@ -375,7 +375,7 @@ function ApprovalCard({
 								disabled={isPanelOpen}
 								onClick={() => {
 									setRejected();
-									onDecision({ type: "reject", message: "User rejected the action." });
+									onDecision({ type: "reject", message: t("common_user_rejected_action") });
 								}}
 							>
 								{t("common_reject")}

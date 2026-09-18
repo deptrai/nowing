@@ -355,7 +355,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 text-xs">
 						<span className="text-green-600 dark:text-green-500">
-							Also removed from knowledge base
+							{t("gmail_removed_from_kb")}
 						</span>
 					</div>
 				</>
