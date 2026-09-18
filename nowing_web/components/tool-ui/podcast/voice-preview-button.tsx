@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { Loader2, Play, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

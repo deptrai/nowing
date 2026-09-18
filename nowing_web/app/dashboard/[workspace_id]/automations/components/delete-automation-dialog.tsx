@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { deleteAutomationMutationAtom } from "@/atoms/automations/automations-mutation.atoms";

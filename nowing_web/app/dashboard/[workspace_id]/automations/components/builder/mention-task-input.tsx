@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MentionedDocumentInfo } from "@/atoms/chat/mentioned-documents.atom";

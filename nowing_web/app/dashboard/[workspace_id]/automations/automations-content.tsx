@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { AlertCircle, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAutomations } from "@/hooks/use-automations";

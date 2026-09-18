@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { CalendarClock, Pause } from "lucide-react";
 import type { Trigger } from "@/contracts/types/automation.types";
 import { describeCron } from "@/lib/automations/describe-cron";

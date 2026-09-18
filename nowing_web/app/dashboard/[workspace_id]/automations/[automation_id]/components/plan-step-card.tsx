@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import type { PlanStep } from "@/contracts/types/automation.types";
 
 interface PlanStepCardProps {

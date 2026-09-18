@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { AlertCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";

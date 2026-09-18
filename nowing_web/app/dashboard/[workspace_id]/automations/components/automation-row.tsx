@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { AutomationSummary } from "@/contracts/types/automation.types";

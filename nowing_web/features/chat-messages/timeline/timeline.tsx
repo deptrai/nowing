@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { ChevronRightIcon } from "lucide-react";
 import { type FC, useEffect, useMemo, useState } from "react";

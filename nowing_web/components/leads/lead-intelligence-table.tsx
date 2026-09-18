@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { Building2, ExternalLink, MapPin, Share2 } from "lucide-react";
 import type React from "react";

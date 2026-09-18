@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { Boxes, XIcon } from "lucide-react";

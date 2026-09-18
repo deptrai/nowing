@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { ArrowLeft, Check, Info } from "lucide-react";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";

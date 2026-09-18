@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useAtom, useSetAtom } from "jotai";
 import { ChevronDown, ChevronRight, Table as TableIcon } from "lucide-react";

@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useSetAtom } from "jotai";
 import { FileText } from "lucide-react";

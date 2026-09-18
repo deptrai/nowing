@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { ShieldAlert } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAutomation } from "@/hooks/use-automation";

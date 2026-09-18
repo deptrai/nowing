@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { AlertCircle, CheckCircle2, Clock, Loader2, TimerOff, XCircle } from "lucide-react";
 import type { RunStatus } from "@/contracts/types/automation.types";
 import { cn } from "@/lib/utils";

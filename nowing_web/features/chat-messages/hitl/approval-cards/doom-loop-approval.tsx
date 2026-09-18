@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { CornerDownLeftIcon, OctagonAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";

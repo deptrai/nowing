@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, ChevronDown, MinusCircle, XCircle } from "lucide-react";
 import { memo, useState } from "react";
 import { JsonView } from "@/components/json-view";

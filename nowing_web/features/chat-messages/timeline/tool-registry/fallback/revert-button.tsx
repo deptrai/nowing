@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";

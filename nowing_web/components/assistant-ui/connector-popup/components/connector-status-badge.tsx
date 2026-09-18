@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { AlertTriangle, Ban, Wrench } from "lucide-react";
 import type { FC } from "react";

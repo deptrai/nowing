@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { Check, Loader2, MessageCircle, Send, Sparkles } from "lucide-react";
 import type React from "react";

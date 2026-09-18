@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { AlertTriangle, Check, Loader2, Send, X } from "lucide-react";
 import { useState } from "react";

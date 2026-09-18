@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { CalloutPlugin } from "@platejs/callout/react";
 import { cva } from "class-variance-authority";

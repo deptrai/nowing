@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";

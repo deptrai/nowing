@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useAtomValue } from "jotai";

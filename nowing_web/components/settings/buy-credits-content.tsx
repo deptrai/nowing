@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useMutation, useQuery } from "@tanstack/react-query";

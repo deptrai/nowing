@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { MoreHorizontal, Pause, Play, Trash2 } from "lucide-react";
 import { useState } from "react";

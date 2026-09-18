@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating";
 import { getLinkAttributes } from "@platejs/link";

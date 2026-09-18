@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown, ChevronRight, ChevronUp, Code2, Trash2 } from "lucide-react";

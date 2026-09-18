@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { Search, Unplug } from "lucide-react";
 import type { FC } from "react";

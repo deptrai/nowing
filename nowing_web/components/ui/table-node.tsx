@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useDraggable, useDropLine } from "@platejs/dnd";
 import { BlockSelectionPlugin, useBlockSelected } from "@platejs/selection/react";

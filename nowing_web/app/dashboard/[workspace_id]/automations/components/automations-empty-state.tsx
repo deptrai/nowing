@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { AlarmClock } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

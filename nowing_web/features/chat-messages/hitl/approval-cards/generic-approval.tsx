@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";

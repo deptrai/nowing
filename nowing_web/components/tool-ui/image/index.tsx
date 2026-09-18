@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 
 import { ExternalLinkIcon, ImageIcon, SparklesIcon } from "lucide-react";
 import NextImage from "next/image";

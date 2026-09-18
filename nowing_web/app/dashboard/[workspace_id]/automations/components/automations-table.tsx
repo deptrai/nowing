@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 "use client";
+import { useTranslations } from "next-intl";
 import { AlarmClock, CalendarDays, Info } from "lucide-react";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AutomationSummary } from "@/contracts/types/automation.types";
