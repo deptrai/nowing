@@ -1,6 +1,7 @@
 import { useAtomValue } from "jotai";
 import { Eye, EyeOff, Settings } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
 	addManualModelMutationAtom,
 	bulkUpdateModelsMutationAtom,
@@ -47,6 +48,7 @@ export function ConnectionSettingsDialog({
 	connection,
 	providerLabel,
 }: ConnectionSettingsDialogProps) {
+	const t = useTranslations("settings");
 	const discoverModels = useAtomValue(discoverConnectionModelsMutationAtom);
 	const testPreviewModel = useAtomValue(testPreviewModelMutationAtom);
 	const updateConnection = useAtomValue(updateModelConnectionMutationAtom);
@@ -218,7 +220,7 @@ export function ConnectionSettingsDialog({
 					variant="ghost"
 					size="icon"
 					className="text-muted-foreground hover:text-accent-foreground"
-					aria-label={`Configure ${providerLabel}`}
+					aria-label={t("mc_configure_provider",{provider:providerLabel})}
 				>
 					<Settings className="h-4 w-4" aria-hidden="true" />
 				</Button>
@@ -229,10 +231,10 @@ export function ConnectionSettingsDialog({
 						{providerIcon(connection.provider, "size-5")}
 						<div>
 							<DialogTitle>
-								Configure <span className="italic">{providerLabel}</span>
+								{t("mc_configure")} <span className="italic">{providerLabel}</span>
 							</DialogTitle>
 							<DialogDescription>
-								Manage credentials and choose which models are available from this provider.
+								{t("mc_manage_creds")}
 							</DialogDescription>
 						</div>
 					</div>
@@ -241,24 +243,24 @@ export function ConnectionSettingsDialog({
 				<div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
 					<div className="space-y-6">
 						<div className="space-y-2">
-							<Label>API Base URL</Label>
+							<Label>{t("mc_api_base_url")}</Label>
 							<Input
 								value={baseUrlDraft}
 								onChange={(event) => setBaseUrlDraft(event.target.value)}
 								placeholder="https://api.example.com/v1"
 							/>
 							<p className="text-xs text-muted-foreground">
-								Leave empty to use the provider default endpoint.
+								{t("mc_default_endpoint")}
 							</p>
 						</div>
 
 						<div className="space-y-2">
-							<Label>API Key</Label>
+							<Label>{t("mc_api_key")}</Label>
 							<div className="relative">
 								<Input
 									value={apiKeyDraft}
 									onChange={(event) => setApiKeyDraft(event.target.value)}
-									placeholder={connection.has_api_key ? "Saved API key" : "Paste an API key"}
+									placeholder={connection.has_api_key ? t("mc_saved_key") : t("mc_paste_key")}
 									type={showApiKey ? "text" : "password"}
 									className="pr-11"
 								/>
@@ -269,7 +271,7 @@ export function ConnectionSettingsDialog({
 									className="absolute top-1/2 right-1 size-8 -translate-y-1/2 text-muted-foreground"
 									onClick={() => setShowApiKey((current) => !current)}
 									disabled={!apiKeyDraft}
-									aria-label={showApiKey ? "Hide API key" : "Show API key"}
+									aria-label={showApiKey ? t("mc_hide_key") : t("mc_show_key")}
 								>
 									{showApiKey ? (
 										<EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -282,19 +284,19 @@ export function ConnectionSettingsDialog({
 
 						{!isLocal ? (
 							<div className="space-y-2">
-								<Label className="text-xs">Model IDs filter (optional)</Label>
+								<Label className="text-xs">{t("mc_model_filter")}</Label>
 								<div className="flex gap-2">
 									<Input
 										value={allowlistText}
 										onChange={(event) => setAllowlistText(event.target.value)}
-										placeholder="Comma-separated, e.g. anthropic/claude-sonnet-4-5, google/gemini-2.5-pro"
+										placeholder={t("mc_filter_ph")}
 									/>
 									<Button size="sm" onClick={saveAllowlist} disabled={updateConnection.isPending}>
-										Save filter
+										{t("mc_save_filter")}
 									</Button>
 								</div>
 								<p className="text-xs text-muted-foreground">
-									Leave empty to discover all models. Recommended for providers with large catalogs.
+									{t("mc_filter_desc")}
 								</p>
 							</div>
 						) : null}
@@ -307,7 +309,7 @@ export function ConnectionSettingsDialog({
 							isAddingManual={addManualModel.isPending}
 							isUpdatingModel={isSavingConnectionSettings}
 							isBulkUpdating={isSavingConnectionSettings || bulkUpdateModels.isPending}
-							refreshLabel={`Refresh ${providerLabel} models`}
+							refreshLabel={t("mc_refresh_provider",{provider:providerLabel})}
 							onRefresh={() => discoverModels.mutate(connection.id)}
 							onAddManual={(modelId) =>
 								addManualModel.mutate({
@@ -327,7 +329,7 @@ export function ConnectionSettingsDialog({
 						disabled={isSavingConnectionSettings || !canUpdate}
 						className="relative min-w-[96px]"
 					>
-						<span className={isSavingConnectionSettings ? "opacity-0" : ""}>Update</span>
+						<span className={isSavingConnectionSettings ? "opacity-0" : ""}>{t("mc_update")}</span>
 						{isSavingConnectionSettings ? <Spinner size="sm" className="absolute" /> : null}
 					</Button>
 				</DialogFooter>

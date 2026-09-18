@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,6 +22,7 @@ import {
  * project id. Credentials ride along in `extra.litellm_params`.
  */
 export function VertexConnectForm({ onDraftChange }: ProviderConnectFormProps) {
+	const t = useTranslations("settings");
 	const [authMethod, setAuthMethod] = useState(VERTEX_AUTH_SERVICE_ACCOUNT);
 	const [location, setLocation] = useState(VERTEX_DEFAULT_LOCATION);
 	const [credentials, setCredentials] = useState("");
@@ -48,31 +50,31 @@ export function VertexConnectForm({ onDraftChange }: ProviderConnectFormProps) {
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex flex-col gap-2">
-				<Label>Authentication Method</Label>
+				<Label>{t("mc_auth_method")}</Label>
 				<Select value={authMethod} onValueChange={setAuthMethod}>
 					<SelectTrigger>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value={VERTEX_AUTH_SERVICE_ACCOUNT}>Service Account JSON</SelectItem>
-						<SelectItem value={VERTEX_AUTH_WORKLOAD_IDENTITY}>Workload Identity (GKE)</SelectItem>
+						<SelectItem value={VERTEX_AUTH_SERVICE_ACCOUNT}>{t("mc_service_account")}</SelectItem>
+						<SelectItem value={VERTEX_AUTH_WORKLOAD_IDENTITY}>{t("mc_workload_identity")}</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
 			<div className="flex flex-col gap-2">
-				<Label>Google Cloud Region Name</Label>
+				<Label>{t("mc_gcp_region")}</Label>
 				<Input
 					value={location}
 					onChange={(event) => setLocation(event.target.value)}
 					placeholder={VERTEX_DEFAULT_LOCATION}
 				/>
 				<p className="text-xs text-muted-foreground">
-					Region where your Google Vertex AI models are hosted.
+					{t("mc_gcp_region_desc")}
 				</p>
 			</div>
 			{authMethod === VERTEX_AUTH_SERVICE_ACCOUNT ? (
 				<div className="flex flex-col gap-2">
-					<Label>Service Account JSON</Label>
+					<Label>{t("mc_service_account")}</Label>
 					<Input
 						id="vertex-service-account-json"
 						type="file"
@@ -85,33 +87,33 @@ export function VertexConnectForm({ onDraftChange }: ProviderConnectFormProps) {
 						className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/40 bg-muted/20 px-4 py-6 text-center transition-colors hover:border-muted-foreground/70 hover:bg-muted/40"
 					>
 						<span className="text-sm font-medium">
-							{credentials ? "Service account JSON selected" : "Upload service account JSON"}
+							{credentials ? t("mc_json_selected") : t("mc_upload_json")}
 						</span>
 						<span className="text-xs text-muted-foreground">
-							Choose a .json file from Google Cloud
+							{t("mc_choose_json")}
 						</span>
 					</Label>
 					<p className="text-xs text-muted-foreground">
 						{credentials
-							? "Credentials file loaded."
-							: "Attach your service account key JSON from Google Cloud."}
+							? t("mc_creds_loaded")
+							: t("mc_attach_creds")}
 					</p>
 				</div>
 			) : (
 				<div className="flex flex-col gap-2">
-					<Label>GCP Project ID</Label>
+					<Label>{t("mc_gcp_project")}</Label>
 					<Input
 						value={project}
 						onChange={(event) => setProject(event.target.value)}
 						placeholder="my-vertex-project"
 					/>
 					<p className="text-xs text-muted-foreground">
-						The GCP project where Vertex AI is enabled.
+						{t("mc_gcp_project_desc")}
 					</p>
 				</div>
 			)}
 			<p className="text-xs text-muted-foreground">
-				Add Vertex AI model IDs from the provider&apos;s settings after connecting.
+				{t("mc_add_after")}
 			</p>
 		</div>
 	);

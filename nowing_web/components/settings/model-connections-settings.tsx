@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { ConnectionRead, ModelRead } from "@/contracts/types/model-connections.types";
+import { useTranslations } from "next-intl";
 import { AUTO_PROVIDER_ICON_KEY, getProviderIcon } from "@/lib/provider-icons";
 import { ModelProviderConnectionsPanel } from "./model-connections/model-provider-connections-panel";
 import { capability, modelLabel } from "./model-connections/model-utils";
@@ -39,18 +40,19 @@ function roleSelectValue(modelId: number | null | undefined, models: Array<{ id:
 	return models.some((model) => model.id === modelId) ? String(modelId) : "0";
 }
 
-function renderAutoModeOption() {
+function renderAutoModeOption(t: (k:string)=>string) {
 	return (
 		<SelectItem value="0">
 			<span className="inline-flex items-center gap-2">
 				{getProviderIcon(AUTO_PROVIDER_ICON_KEY)}
-				<span>Auto mode</span>
+				<span>{t("mc_auto_mode")}</span>
 			</span>
 		</SelectItem>
 	);
 }
 
 export function ModelConnectionsSettings({ workspaceId }: { workspaceId: number }) {
+	const t = useTranslations("settings");
 	const [{ data: globalConnections = [] }] = useAtom(globalModelConnectionsAtom);
 	const [{ data: connections = [] }] = useAtom(modelConnectionsAtom);
 	const [{ data: roles }] = useAtom(modelRolesAtom);
@@ -81,18 +83,16 @@ export function ModelConnectionsSettings({ workspaceId }: { workspaceId: number 
 		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4">
 				<div>
-					<h3 className="text-base font-semibold">Model Roles</h3>
+					<h3 className="text-base font-semibold">{t("mc_model_roles")}</h3>
 					<p className="text-sm text-muted-foreground">
-						Pick which enabled model powers chat, vision, and image generation for this search
-						space.
+						{t("mc_roles_desc")}.
 					</p>
 				</div>
 				<div className="flex w-full max-w-2xl flex-col gap-4">
 					<div className="flex flex-col gap-2">
-						<Label>Chat model</Label>
+						<Label>{t("mc_chat_model")}</Label>
 						<p className="text-xs text-muted-foreground">
-							Primary model for chat responses and agent tasks. You can also change it from the
-							chat.
+{t("mc_chat_desc")}
 						</p>
 						<Select
 							value={roleSelectValue(roles?.chat_model_id, chatModels)}
@@ -102,16 +102,15 @@ export function ModelConnectionsSettings({ workspaceId }: { workspaceId: number 
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{renderAutoModeOption()}
+								{renderAutoModeOption(t)}
 								{chatModels.map(renderModelOption)}
 							</SelectContent>
 						</Select>
 					</div>
 					<div className="flex flex-col gap-2">
-						<Label>Vision model</Label>
+						<Label>{t("mc_vision_model")}</Label>
 						<p className="text-xs text-muted-foreground">
-							Used to understand images in uploads, documents, connectors, and automations. Falls
-							back to chat model when possible.
+{t("mc_vision_desc")}
 						</p>
 						<Select
 							value={roleSelectValue(roles?.vision_model_id, visionModels)}
@@ -121,14 +120,14 @@ export function ModelConnectionsSettings({ workspaceId }: { workspaceId: number 
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{renderAutoModeOption()}
+								{renderAutoModeOption(t)}
 								{visionModels.map(renderModelOption)}
 							</SelectContent>
 						</Select>
 					</div>
 					<div className="flex flex-col gap-2">
-						<Label>Image generation model</Label>
-						<p className="text-xs text-muted-foreground">Used when generating images in chat.</p>
+						<Label>{t("mc_image_model")}</Label>
+						<p className="text-xs text-muted-foreground">{t("mc_image_desc")}</p>
 						<Select
 							value={roleSelectValue(roles?.image_gen_model_id, imageModels)}
 							onValueChange={(value) => updateRoles.mutate({ image_gen_model_id: Number(value) })}
@@ -137,7 +136,7 @@ export function ModelConnectionsSettings({ workspaceId }: { workspaceId: number 
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{renderAutoModeOption()}
+								{renderAutoModeOption(t)}
 								{imageModels.map(renderModelOption)}
 							</SelectContent>
 						</Select>

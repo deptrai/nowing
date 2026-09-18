@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,10 +33,10 @@ interface ModelsSelectionPanelProps {
 
 export function ModelsSelectionPanel({
 	models,
-	description = "Select models to make available for this provider.",
-	emptyMessage = "No models available.",
-	manualInputPlaceholder = "Add a model ID manually",
-	refreshLabel = "Refresh models",
+	description,
+	emptyMessage,
+	manualInputPlaceholder,
+	refreshLabel,
 	isRefreshing = false,
 	isAddingManual = false,
 	isUpdatingModel = false,
@@ -45,6 +46,11 @@ export function ModelsSelectionPanel({
 	onToggleModel,
 	onBulkToggle,
 }: ModelsSelectionPanelProps) {
+	const t = useTranslations("settings");
+	const resolvedDescription = description ?? t("mc_select_desc");
+	const resolvedEmpty = emptyMessage ?? t("mc_no_models");
+	const resolvedManualPh = manualInputPlaceholder ?? t("mc_add_manual");
+	const resolvedRefresh = refreshLabel ?? t("mc_refresh");
 	const [manualModelId, setManualModelId] = useState("");
 	const [modelFilter, setModelFilter] = useState<ModelCapabilityFilter | null>(null);
 
@@ -72,8 +78,8 @@ export function ModelsSelectionPanel({
 		<div className="space-y-3">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<div className="font-semibold">Models</div>
-					<p className="text-sm text-muted-foreground">{description}</p>
+					<div className="font-semibold">{t("mc_models")}</div>
+					<p className="text-sm text-muted-foreground">{resolvedDescription}</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					<Button
@@ -83,7 +89,7 @@ export function ModelsSelectionPanel({
 						onClick={toggleFilteredModels}
 						disabled={!onBulkToggle || isBulkUpdating || filteredModels.length === 0}
 					>
-						{allFilteredModelsEnabled ? "Deselect All" : "Select All"}
+						{allFilteredModelsEnabled ? t("mc_deselect_all") : t("mc_select_all")}
 					</Button>
 					{onRefresh ? (
 						<Button
@@ -92,7 +98,7 @@ export function ModelsSelectionPanel({
 							type="button"
 							onClick={onRefresh}
 							disabled={isRefreshing}
-							aria-label={refreshLabel}
+							aria-label={resolvedRefresh}
 						>
 							<RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
 						</Button>
@@ -111,7 +117,7 @@ export function ModelsSelectionPanel({
 								addModel();
 							}
 						}}
-						placeholder={manualInputPlaceholder}
+						placeholder={resolvedManualPh}
 					/>
 					<Button
 						size="sm"
@@ -120,7 +126,7 @@ export function ModelsSelectionPanel({
 						disabled={isAddingManual || !manualModelId.trim()}
 						className="relative min-w-[88px]"
 					>
-						<span className={isAddingManual ? "opacity-0" : ""}>Add model</span>
+						<span className={isAddingManual ? "opacity-0" : ""}>{t("mc_add_model")}</span>
 						{isAddingManual ? <Spinner size="xs" className="absolute" /> : null}
 					</Button>
 				</div>
@@ -128,7 +134,7 @@ export function ModelsSelectionPanel({
 
 			{models.length > 0 ? (
 				<div className="flex flex-wrap items-center gap-2">
-					<span className="text-xs font-medium text-muted-foreground">Filter models</span>
+					<span className="text-xs font-medium text-muted-foreground">{t("mc_filter_models")}</span>
 					{MODEL_CAPABILITY_FILTERS.map((filter) => {
 						const count = models.filter((model) => capability(model, filter.key)).length;
 						const isActive = modelFilter === filter.key;
@@ -153,16 +159,14 @@ export function ModelsSelectionPanel({
 			<div className="h-80 overflow-y-auto rounded-xl border bg-muted/20 p-2">
 				{models.length === 0 ? (
 					<div className="rounded-lg px-3 py-6 text-center text-sm text-muted-foreground">
-						{emptyMessage}
+						{resolvedEmpty}
 					</div>
 				) : null}
 				{filteredModels.length === 0 && modelFilter ? (
 					<div className="rounded-lg px-3 py-6 text-center text-sm text-muted-foreground">
-						No{" "}
-						{MODEL_CAPABILITY_FILTERS.find(
+						{t("mc_no_filtered",{type:(MODEL_CAPABILITY_FILTERS.find(
 							(filter) => filter.key === modelFilter
-						)?.label.toLowerCase()}{" "}
-						models found on this connection.
+						)?.label || "").toLowerCase()})}
 					</div>
 				) : null}
 				<div className="space-y-2">
@@ -181,12 +185,12 @@ export function ModelsSelectionPanel({
 									<span className="truncate">{modelLabel(model)}</span>
 									{model.source === "MANUAL" ? (
 										<Badge variant="outline" className="text-[10px]">
-											manual
+											{t("mc_manual")}
 										</Badge>
 									) : null}
 								</div>
 								<div className="text-xs text-muted-foreground">
-									{capabilityLabels(model) || "No discovered capabilities"}
+									{capabilityLabels(model) || t("mc_no_caps")}
 								</div>
 							</div>
 						</div>
