@@ -2,6 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { useTranslations } from "next-intl";
 import {
 	adminCreditsApiService,
 	type ManualCreditAdjustPayload,
@@ -36,6 +37,7 @@ function generateIdempotencyKey(): string {
 }
 
 export default function ManualCreditModal({ isOpen, onClose, onSuccess }: ManualCreditModalProps) {
+	const t = useTranslations("telemetry");
 	const [form, setForm] = useState<ManualCreditAdjustPayload>({
 		workspace_id: 0,
 		amount_credits: 0,
@@ -68,16 +70,16 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 
 	const validate = useCallback((): string | null => {
 		if (form.workspace_id <= 0) {
-			return "Workspace ID must be a positive integer.";
+			return t("validation_ws_id");
 		}
 		if (!Number.isInteger(form.amount_credits) || form.amount_credits <= 0) {
-			return "Amount credits must be a positive integer.";
+			return t("validation_amount");
 		}
 		if (form.reason.length < 10) {
-			return "Reason must be at least 10 characters.";
+			return t("validation_reason");
 		}
 		if (!form.ticket_ref.trim()) {
-			return "Ticket reference is required.";
+			return t("validation_ticket");
 		}
 		return null;
 	}, [form]);
@@ -105,7 +107,7 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 				ticket_ref: "",
 			});
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Failed to submit adjustment.";
+			const message = err instanceof Error ? err.message : t("failed_submit_adj");
 			setError(message);
 		} finally {
 			setIsSubmitting(false);
@@ -117,12 +119,12 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 			<div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-slate-900">
-				<h2 className="mb-4 text-xl font-bold">Manual Credit Adjustment</h2>
+				<h2 className="mb-4 text-xl font-bold">{t("manual_credit_title")}</h2>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
 						<label htmlFor="manual-credit-workspace" className="mb-1 block text-sm font-medium">
-							Workspace ID
+							{t("workspace_id")}
 						</label>
 						<input
 							id="manual-credit-workspace"
@@ -142,7 +144,7 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 
 					<div>
 						<label htmlFor="manual-credit-direction" className="mb-1 block text-sm font-medium">
-							Direction
+							{t("direction")}
 						</label>
 						<select
 							id="manual-credit-direction"
@@ -155,14 +157,14 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 								}))
 							}
 						>
-							<option value="CREDIT">CREDIT (top-up)</option>
-							<option value="DEBIT">DEBIT (clawback)</option>
+							<option value="CREDIT">{t("credit_topup")}</option>
+							<option value="DEBIT">{t("debit_clawback")}</option>
 						</select>
 					</div>
 
 					<div>
 						<label htmlFor="manual-credit-amount" className="mb-1 block text-sm font-medium">
-							Amount (Credits)
+							{t("amount_credits")}
 						</label>
 						<input
 							id="manual-credit-amount"
@@ -198,7 +200,7 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 
 					<div>
 						<label htmlFor="manual-credit-ticket" className="mb-1 block text-sm font-medium">
-							Ticket / Bank Ref
+							{t("ticket_bank_ref")}
 						</label>
 						<input
 							id="manual-credit-ticket"
@@ -225,7 +227,7 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 							disabled={isSubmitting}
 							className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
 						>
-							{isSubmitting ? "Submitting..." : "Submit Adjustment"}
+							{isSubmitting ? t("submitting") : t("submit_adjustment")}
 						</button>
 					</div>
 				</form>
