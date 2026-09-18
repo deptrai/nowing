@@ -9,12 +9,14 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
 const USD_TO_VND_RATE = 25400;
 
 export function PartnerEarningsCalculator() {
+	const t = useTranslations("partners_dashboard");
 	const [referredUsers, setReferredUsers] = useState<number>(25);
 	const [avgSpendUsd, setAvgSpendUsd] = useState<number>(100);
 
@@ -42,19 +44,19 @@ export function PartnerEarningsCalculator() {
 						<div>
 							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
 								<IconCalculator className="size-3.5" />
-								<span>Affiliate Earnings Simulator</span>
+								<span>{t("calc_badge")}</span>
 							</div>
 							<h3 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
-								Calculate Your 15% Lifetime Recurring Income
+								{t("calc_title")}
 							</h3>
 							<p className="text-sm md:text-base text-neutral-600 dark:text-neutral-400 mt-1">
-								Earn passive revenue on every single credit top-up your referrals make, forever.
+								{t("calc_subtitle")}
 							</p>
 						</div>
 
 						<div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-4 py-2 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
 							<IconSparkles className="size-4 shrink-0" />
-							<span>Instant VietQR Napas 24/7 Payouts</span>
+							<span>{t("calc_payout_badge")}</span>
 						</div>
 					</div>
 
@@ -66,10 +68,10 @@ export function PartnerEarningsCalculator() {
 								<div className="flex justify-between items-center mb-3">
 									<div>
 										<span className="font-semibold text-neutral-800 dark:text-neutral-200 text-sm md:text-base">
-											Referred Active Clients / Agencies
+											{t("calc_clients_label")}
 										</span>
 										<div className="text-xs text-neutral-500 dark:text-neutral-400">
-											Teams or individuals using Nowing for lead gen & research
+											{t("calc_clients_desc")}
 										</div>
 									</div>
 									<span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xl">
@@ -91,10 +93,10 @@ export function PartnerEarningsCalculator() {
 								<div className="flex justify-between items-center mb-3">
 									<div>
 										<span className="font-semibold text-neutral-800 dark:text-neutral-200 text-sm md:text-base">
-											Average Monthly Spend per Client
+											{t("calc_spend_label")}
 										</span>
 										<div className="text-xs text-neutral-500 dark:text-neutral-400">
-											Credits purchased for phone unlocks, scrapers & deep research
+											{t("calc_spend_desc")}
 										</div>
 									</div>
 									<span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xl">
@@ -116,7 +118,7 @@ export function PartnerEarningsCalculator() {
 								<div className="p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/40 dark:bg-emerald-950/20">
 									<div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-semibold text-sm mb-1">
 										<IconQrcode className="size-4" />
-										<span>Option A: VietQR Napas</span>
+										<span>{t("calc_option_a")}</span>
 									</div>
 									<p className="text-xs text-neutral-600 dark:text-neutral-400">
 										Direct 24/7 bank transfer to Vietcombank, Techcombank, MBBank with zero
@@ -126,7 +128,7 @@ export function PartnerEarningsCalculator() {
 								<div className="p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/40 dark:bg-emerald-950/20">
 									<div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-semibold text-sm mb-1">
 										<IconCoins className="size-4" />
-										<span>Option B: Credit Wallet (+10%)</span>
+										<span>{t("calc_option_b")}</span>
 									</div>
 									<p className="text-xs text-neutral-600 dark:text-neutral-400">
 										Convert earnings to Nowing platform credits with an instant +10% bonus for your
@@ -141,10 +143,10 @@ export function PartnerEarningsCalculator() {
 							<div className="space-y-6">
 								<div className="flex items-center justify-between">
 									<span className="text-xs font-semibold tracking-wider text-emerald-400 uppercase">
-										Your Monthly Commission (15%)
+										{t("calc_monthly")}
 									</span>
 									<span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-medium">
-										<IconTrendingUp className="size-3.5" /> Lifetime Recurring
+										<IconTrendingUp className="size-3.5" /> {t("calc_lifetime")}
 									</span>
 								</div>
 
@@ -166,20 +168,20 @@ export function PartnerEarningsCalculator() {
 
 								<div className="p-4 rounded-2xl bg-neutral-800/70 border border-neutral-700/60 space-y-2 text-xs">
 									<div className="flex justify-between text-neutral-400">
-										<span>Annual Run Rate:</span>
+										<span>{t("calc_annual")}</span>
 										<span className="font-mono text-white font-semibold">
 											${annualCommissionUsd.toLocaleString("en-US", { minimumFractionDigits: 2 })} (
 											{annualCommissionVnd.toLocaleString("vi-VN")} VND)
 										</span>
 									</div>
 									<div className="flex justify-between text-neutral-400">
-										<span>Total Client Spend:</span>
+										<span>{t("calc_total_spend")}</span>
 										<span className="font-mono text-white">
 											${totalClientSpend.toLocaleString()} /mo
 										</span>
 									</div>
 									<div className="flex justify-between font-semibold text-emerald-300 pt-1 border-t border-neutral-700/60">
-										<span>If converted to Credits (+10%):</span>
+										<span>{t("calc_if_credits")}</span>
 										<span className="font-mono text-sm">
 											${creditBonusUsd.toFixed(2)}/mo in credits
 										</span>
@@ -190,7 +192,7 @@ export function PartnerEarningsCalculator() {
 							<div className="mt-6 pt-4 border-t border-neutral-800">
 								<Link href="/partners/dashboard" className="w-full block">
 									<Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold py-5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
-										Join Partner Program Now
+										{t("calc_join")}
 									</Button>
 								</Link>
 							</div>

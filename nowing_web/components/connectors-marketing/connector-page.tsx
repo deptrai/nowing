@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { ConnectorPageContent, SchemaField } from "@/lib/connectors-marketing/types";
+import { useTranslations } from "next-intl";
 import { AgentTranscript } from "./agent-transcript";
 import { ApiMcpTabs } from "./api-mcp-tabs";
 import { ConnectorFaq } from "./connector-faq";
@@ -15,15 +16,16 @@ import { Reveal } from "./reveal";
 const GITHUB_URL = "https://github.com/deptrai/nowing";
 
 function SchemaTable({ caption, fields }: { caption: string; fields: SchemaField[] }) {
+	const t = useTranslations("connectorPage");
 	return (
 		<div className="overflow-x-auto rounded-xl border bg-card">
 			<table className="w-full min-w-xl text-sm">
 				<caption className="sr-only">{caption}</caption>
 				<thead>
 					<tr className="border-b bg-muted/40 text-left">
-						<th className="p-4 font-medium">Field</th>
-						<th className="p-4 font-medium">Type</th>
-						<th className="p-4 font-medium">Description</th>
+						<th className="p-4 font-medium">{t("field")}</th>
+						<th className="p-4 font-medium">{t("type")}</th>
+						<th className="p-4 font-medium">{t("description")}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -41,7 +43,7 @@ function SchemaTable({ caption, fields }: { caption: string; fields: SchemaField
 								) : null}
 								{field.defaultValue !== undefined ? (
 									<div className="mt-1 text-xs text-muted-foreground">
-										default <code className="font-mono">{field.defaultValue}</code>
+										{t("default")} <code className="font-mono">{field.defaultValue}</code>
 									</div>
 								) : null}
 							</td>
@@ -55,6 +57,7 @@ function SchemaTable({ caption, fields }: { caption: string; fields: SchemaField
 }
 
 export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
+	const t = useTranslations("connectorPage");
 	const Icon = content.icon;
 	const label = content.cardTitle ?? `${content.name} API`;
 
@@ -67,13 +70,13 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 						<BreadcrumbNav
 							className="mb-6"
 							items={[
-								{ name: "Connectors", href: "/connectors" },
+								{ name: t("connectors"), href: "/connectors" },
 								{ name: content.name, href: `/${content.slug}` },
 							]}
 						/>
 						<Badge variant="outline" className="mb-5 gap-1.5 py-1">
 							<Icon className="size-3.5" />
-							{content.name} connector
+							{t("connector_badge",{name:content.name})}
 						</Badge>
 						<h1 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-5xl">
 							{content.h1}
@@ -84,12 +87,12 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 						<div className="mt-8 flex flex-wrap items-center gap-3">
 							<Button asChild size="lg">
 								<Link href="/register">
-									Start for free
+									{t("start_free")}
 									<ArrowRight className="size-4" />
 								</Link>
 							</Button>
 							<Button asChild variant="outline" size="lg">
-								<Link href="/docs">Read the docs</Link>
+								<Link href="/docs">{t("read_docs")}</Link>
 							</Button>
 							<Button asChild variant="ghost" size="lg">
 								<Link href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
@@ -107,7 +110,7 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			<MarketingSection>
 				<Reveal>
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						What you can extract from {content.name}
+						{t("extract_title",{name:content.name})}
 					</h2>
 					<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
 						{content.extractIntro}
@@ -158,14 +161,10 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			<MarketingSection>
 				<Reveal>
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						Call it from your code or your agent
+						{t("call_it_title")}
 					</h2>
 					<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-						One typed endpoint, one API key. Or add the Nowing MCP server and let your agent call{" "}
-						<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">
-							{content.api.mcpTool}
-						</code>{" "}
-						as a native tool.
+						{t.rich("call_it_desc",{code:(c)=><code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">{c}</code>,tool:content.api.mcpTool})}
 					</p>
 				</Reveal>
 				<Reveal>
@@ -180,36 +179,36 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			<MarketingSection>
 				<Reveal>
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						{content.name} API request and response schema
+						{t("schema_title",{name:content.name})}
 					</h2>
 					<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-						The exact contract behind{" "}
+						{t("schema_contract")} 
 						<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">
 							POST /workspaces/{"{workspace_id}"}/scrapers/{content.api.platform}/{content.api.verb}
 						</code>
-						. The same fields power the{" "}
+						 {t("schema_same_fields")} 
 						<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">
 							{content.api.mcpTool}
 						</code>{" "}
-						MCP tool.
+						{t("mcp_tool")}.
 					</p>
 				</Reveal>
 				<Reveal>
-					<h3 className="mt-8 text-lg font-semibold">Request parameters</h3>
+					<h3 className="mt-8 text-lg font-semibold">{t("request_params")}</h3>
 					<p className="mt-2 max-w-2xl text-sm text-muted-foreground leading-relaxed">
 						{content.schema.requestNote}
 					</p>
 					<div className="mt-4">
-						<SchemaTable caption="Request parameters" fields={content.schema.request} />
+						<SchemaTable caption={t("request_params")} fields={content.schema.request} />
 					</div>
 				</Reveal>
 				<Reveal>
-					<h3 className="mt-10 text-lg font-semibold">Response fields</h3>
+					<h3 className="mt-10 text-lg font-semibold">{t("response_fields")}</h3>
 					<p className="mt-2 max-w-2xl text-sm text-muted-foreground leading-relaxed">
 						{content.schema.responseNote}
 					</p>
 					<div className="mt-4">
-						<SchemaTable caption="Response fields" fields={content.schema.response} />
+						<SchemaTable caption={t("response_fields")} fields={content.schema.response} />
 					</div>
 				</Reveal>
 			</MarketingSection>
@@ -229,7 +228,7 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 						<table className="w-full min-w-xl text-sm">
 							<thead>
 								<tr className="border-b bg-muted/40 text-left">
-									<th className="p-4 font-medium">Feature</th>
+									<th className="p-4 font-medium">{t("feature")}</th>
 									<th className="p-4 font-medium text-muted-foreground">
 										{content.comparison.columnLabel}
 									</th>
@@ -256,7 +255,7 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			<MarketingSection>
 				<Reveal>
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						{label}: frequently asked questions
+						{t("faq_title",{label})}
 					</h2>
 				</Reveal>
 				<Reveal>
@@ -272,30 +271,30 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 				<Reveal>
 					<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
 						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							Point your agents at {content.name}
+							{t("cta_agents",{name:content.name})}
 						</h2>
 						<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
-							The {content.name} connector is one of many in the Nowing{" "}
+							{t("cta_body_pre",{name:content.name})} 
 							<Link href="/" className="font-medium text-foreground underline underline-offset-4">
-								open web research platform
+								{t("open_platform")}
 							</Link>
-							. Start free, no credit card required.
+							{t("cta_body_post")}
 						</p>
 						<div className="mt-7 flex flex-wrap justify-center gap-3">
 							<Button asChild size="lg">
 								<Link href="/register">
-									Start for free
+									{t("start_free")}
 									<ArrowRight className="size-4" />
 								</Link>
 							</Button>
 							<Button asChild variant="outline" size="lg">
-								<Link href="/pricing">See pricing</Link>
+								<Link href="/pricing">{t("see_pricing")}</Link>
 							</Button>
 						</div>
 
 						<Separator className="my-8" />
 
-						<nav aria-label="Other connectors" className="flex flex-wrap justify-center gap-2">
+						<nav aria-label={t("other_connectors")} className="flex flex-wrap justify-center gap-2">
 							{content.related.map((link) => (
 								<Button key={link.href} asChild variant="ghost" size="sm">
 									<Link href={link.href}>{link.label}</Link>
