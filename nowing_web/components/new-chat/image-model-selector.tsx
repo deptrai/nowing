@@ -204,8 +204,8 @@ export function ImageModelSelector({
 				) : Object.keys(groups).length === 0 ? (
 					<div className="px-3 py-8 text-center text-sm text-muted-foreground">
 						{hasSearchQuery
-							? "No matching image models."
-							: "No enabled image models. Add or enable models in Settings."}
+							? t("no_matching_image_models")
+							: t("no_enabled_image_models")}
 					</div>
 				) : (
 					Object.entries(groups).map(([connection, models]) => (

@@ -101,12 +101,12 @@ export function ChatShareButton({ thread, onVisibilityChange, className }: ChatS
 
 				onVisibilityChange?.(updatedThread.visibility);
 				toast.success(
-					newVisibility === "SEARCH_SPACE" ? "Chat shared with workspace" : "Chat is now private"
+					newVisibility === "SEARCH_SPACE" ? t("toast_shared") : t("toast_private")
 				);
 				setOpen(false);
 			} catch (error) {
 				console.error("Failed to update visibility:", error);
-				toast.error("Failed to update sharing settings");
+				toast.error(t("toast_share_failed"));
 			}
 		},
 		[thread, currentVisibility, onVisibilityChange, updateVisibility]

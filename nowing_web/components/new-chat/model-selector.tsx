@@ -198,8 +198,8 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 				) : Object.keys(groups).length === 0 ? (
 					<div className="px-3 py-8 text-center text-sm text-muted-foreground">
 						{hasSearchQuery
-							? "No matching chat models."
-							: "No enabled chat models. Add or enable models in Settings."}
+							? t("no_matching_chat_models")
+							: t("no_enabled_chat_models")}
 					</div>
 				) : (
 					Object.entries(groups).map(([connection, models]) => (

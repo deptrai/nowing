@@ -2567,7 +2567,16 @@
 		"select_image_model": "Select Image Model",
 		"search_chat_models": "Search chat models",
 		"no_image": "No image",
-		"select_chat_model": "Select Chat Model"
+		"select_chat_model": "Select Chat Model",
+		"no_matching_context": "No matching context",
+		"no_items": "No items available",
+		"no_matching_chat_models": "No matching chat models.",
+		"no_enabled_chat_models": "No enabled chat models. Add or enable models in Settings.",
+		"no_matching_image_models": "No matching image models.",
+		"no_enabled_image_models": "No enabled image models. Add or enable models in Settings.",
+		"toast_shared": "Chat shared with workspace",
+		"toast_private": "Chat is now private",
+		"toast_share_failed": "Failed to update sharing settings"
 	},
 	"analytics": {
 		"trend_sparkline": "Trend sparkline",

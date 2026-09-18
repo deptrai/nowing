@@ -828,7 +828,7 @@ export const DocumentMentionPicker = forwardRef<
 						</>
 					) : (
 						<ComposerSuggestionMessage>
-							{hasSearch ? "No matching context" : "No items available"}
+							{hasSearch ? t("no_matching_context") : t("no_items")}
 						</ComposerSuggestionMessage>
 					)}
 
