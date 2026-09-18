@@ -8,9 +8,11 @@ import {
 	clearPremiumAlertForThreadAtom,
 	premiumAlertByThreadAtom,
 } from "@/atoms/chat/premium-alert.atom";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 export const PremiumQuotaPinnedAlert: FC = () => {
+	const t = useTranslations("chat");
 	const currentThreadState = useAtomValue(currentThreadAtom);
 	const alertsByThread = useAtomValue(premiumAlertByThreadAtom);
 	const clearPremiumAlertForThread = useSetAtom(clearPremiumAlertForThreadAtom);
@@ -33,7 +35,7 @@ export const PremiumQuotaPinnedAlert: FC = () => {
 					variant="ghost"
 					size="icon"
 					className="size-6 text-muted-foreground hover:bg-transparent hover:text-accent-foreground"
-					aria-label="Dismiss premium quota alert"
+					aria-label={t("dismiss_premium_quota_alert")}
 					onClick={() => clearPremiumAlertForThread(currentThreadId)}
 				>
 					<X className="size-4" aria-hidden="true" />

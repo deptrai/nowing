@@ -53,7 +53,7 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 					<span className="font-mono font-bold">
 						{new Intl.NumberFormat().format(creditsCount)}
 					</span>{" "}
-					Credits
+					{tChat("credits")}
 				</div>
 			</div>
 
@@ -61,7 +61,7 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 				{/* Welcome Title */}
 				<div className="text-center">
 					<h1 className="text-2xl sm:text-3xl lg:text-[34px] font-serif tracking-tight text-foreground font-normal select-none">
-						Welcome back, {displayName}.
+						{tChat("welcome_back", { name: displayName })}
 					</h1>
 				</div>
 
@@ -74,38 +74,33 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 				<div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
 					{[
 						{
-							label: "Build a landing page",
+							label: tChat("card_landing_title"),
 							icon: "🌐",
-							prompt:
-								"Build a modern high-converting landing page for a SaaS product with hero section, features, testimonials, and email signup CTA.",
+							prompt: tChat("card_landing_prompt"),
 							mode: "web_builder",
 						},
 						{
-							label: "Pricing page",
+							label: tChat("card_pricing_title"),
 							icon: "💳",
-							prompt:
-								"Create a modern 3-tier pricing page with monthly/yearly toggle, comparison table, and FAQ section.",
+							prompt: tChat("card_pricing_prompt"),
 							mode: "web_builder",
 						},
 						{
-							label: "Lead capture",
+							label: tChat("card_lead_capture_title"),
 							icon: "🎯",
-							prompt:
-								"Create an engaging lead capture page with an email opt-in form, value proposition highlights, and social proof badges.",
+							prompt: tChat("card_lead_capture_prompt"),
 							mode: "web_builder",
 						},
 						{
-							label: "Waitlist page",
+							label: tChat("card_waitlist_title"),
 							icon: "🚀",
-							prompt:
-								"Build an exciting viral waitlist coming-soon page with early access signup, countdown timer, and referral perk highlights.",
+							prompt: tChat("card_waitlist_prompt"),
 							mode: "web_builder",
 						},
 						{
-							label: "Marketing report",
+							label: tChat("card_marketing_report_title"),
 							icon: "📊",
-							prompt:
-								"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts and download CTA.",
+							prompt: tChat("card_marketing_report_prompt"),
 							mode: "web_builder",
 						},
 						...(!canUsePptx
@@ -125,13 +120,13 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 							mode: "presentation_studio",
 						},
 						{
-							label: "Summarize a meeting",
+							label: tChat("card_summarize_meeting_title"),
 							icon: "🎙️",
-							prompt: "Paste the meeting recording URL here",
+							prompt: tChat("card_summarize_meeting_prompt"),
 							mode: "meeting_minutes",
 						},
 						{
-							label: "Give me ideas",
+							label: tChat("card_ideas_title"),
 							icon: "💡",
 							prompt: tChat("card_icp_prompt"),
 						},
@@ -167,7 +162,7 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 				{showBetaCard && (
 					<section
 						className="p-3.5 sm:p-4 rounded-2xl border border-pink-500/20 bg-pink-500/5 dark:bg-pink-500/10 flex items-start sm:items-center justify-between gap-3 relative"
-						aria-label="Set up your Outreach Agent"
+						aria-label={tChat("outreach_beta_title")}
 					>
 						<div className="flex items-center gap-3 min-w-0">
 							<div
@@ -179,15 +174,14 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 							<div className="min-w-0">
 								<div className="flex items-center gap-2 flex-wrap">
 									<h4 className="text-xs sm:text-sm font-bold text-foreground">
-										Set up your Outreach Agent
+										{tChat("outreach_beta_title")}
 									</h4>
 									<span className="px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-700 dark:text-pink-300 text-[10px] font-extrabold uppercase tracking-wider">
 										BETA
 									</span>
 								</div>
 								<p className="text-xs text-muted-foreground mt-0.5 max-w-xl truncate sm:whitespace-normal">
-									15 minutes of setup, then it maximizes your replies — keeping quality leads
-									flowing and your senders at full speed.
+									{tChat("outreach_beta_desc")}
 								</p>
 							</div>
 						</div>
@@ -210,8 +204,8 @@ export const ThreadWelcome: FC<Pick<ThreadProps, "initialPrompt">> = ({ initialP
 									}
 								}}
 								className="p-1 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
-								aria-label="Dismiss"
-								title="Dismiss"
+								aria-label={tChat("dismiss_suggested_actions")}
+								title={tChat("dismiss_suggested_actions")}
 							>
 								<X className="size-3.5" aria-hidden="true" />
 							</button>

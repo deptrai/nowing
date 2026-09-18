@@ -68,6 +68,7 @@ import { useElectronAPI } from "@/hooks/use-platform";
 import { captureDisplayToPngDataUrl } from "@/lib/chat/display-media-capture";
 import { groupConnectorsByType } from "@/lib/connectors/group-connectors-by-type";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { ConnectedScraperIcons } from "./ConnectedScraperIcons";
 import { TOOL_GROUPS } from "./constants";
 
@@ -82,6 +83,18 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 	workspaceId,
 	onChatModelSelected,
 }) => {
+	const tChat = useTranslations("chat");
+	const tCommon = useTranslations("common");
+
+	const getGroupDisplayLabel = useCallback((label: string) => {
+		switch (label) {
+			case "Research": return tChat("tool_group_research");
+			case "Generate": return tChat("tool_group_generate");
+			case "Memory": return tChat("tool_group_memory");
+			case "Other": return tChat("tool_group_other");
+			default: return label;
+		}
+	}, [tChat]);
 	const mentionedDocuments = useAtomValue(mentionedDocumentsAtom);
 	const setImportRequest = useSetAtom(importConnectorRequestAtom);
 	const router = useRouter();
@@ -211,7 +224,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 									variant="ghost"
 									size="icon"
 									className="h-9 w-9 rounded-full p-0 font-semibold text-xs text-muted-foreground transition-colors dark:border-muted-foreground/15 hover:bg-foreground/10 hover:text-foreground"
-									aria-label="Upload files, manage tools and more"
+									aria-label={tChat("composer_menu_tooltip")}
 									data-joyride="connector-icon"
 								>
 									<Plus className="size-5" aria-hidden="true" />
@@ -220,15 +233,15 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 							<DropdownMenuContent side="bottom" align="start" sideOffset={8}>
 								<DropdownMenuItem onSelect={() => openUploadDialog()}>
 									<Upload className="size-4" aria-hidden="true" />
-									Upload Files
+									{tChat("upload_files")}
 								</DropdownMenuItem>
 								<DropdownMenuItem onSelect={() => setMcpDrawerOpen(true)}>
 									<Unplug className="size-4" aria-hidden="true" />
-									MCP Connectors
+									{tChat("mcp_connectors")}
 								</DropdownMenuItem>
 								<DropdownMenuItem onSelect={() => setToolsPopoverOpen(true)}>
 									<Settings2 className="size-4" aria-hidden="true" />
-									Manage Tools
+									{tChat("manage_tools")}
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
@@ -241,14 +254,14 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 								<DrawerHandle />
 								<DrawerHeader className="px-4 pb-3 pt-2">
 									<DrawerTitle className="flex items-center justify-center gap-2 text-base font-semibold">
-										Manage Tools
+										{tChat("manage_tools")}
 									</DrawerTitle>
 								</DrawerHeader>
 								<div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin pb-6">
 									{regularToolGroups.map((group) => (
 										<div key={group.label}>
 											<div className="px-4 pt-3 pb-1 text-xs text-muted-foreground/80 font-medium select-none">
-												{group.label}
+												{getGroupDisplayLabel(group.label)}
 											</div>
 											{group.tools.map((tool) => {
 												const isDisabled = disabledToolsSet.has(tool.name);
@@ -278,7 +291,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 									{connectorToolGroups.length > 0 && (
 										<div>
 											<div className="px-4 pt-3 pb-1 text-xs text-muted-foreground/80 font-medium select-none">
-												Connector Actions
+												{tChat("connector_actions")}
 											</div>
 											{connectorToolGroups.map((group) => {
 												const iconKey = group.connectorIcon ?? "";
@@ -368,7 +381,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 									{otherToolGroup && (
 										<div>
 											<div className="px-4 pt-3 pb-1 text-xs text-muted-foreground/80 font-medium select-none">
-												{otherToolGroup.label}
+												{getGroupDisplayLabel(otherToolGroup.label)}
 											</div>
 											{otherToolGroup.tools.map((tool) => {
 												const isDisabled = disabledToolsSet.has(tool.name);
@@ -431,13 +444,13 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 											variant="ghost"
 											size="icon"
 											className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
-											aria-label="Back"
+											aria-label={tCommon("back")}
 										>
 											<ArrowLeft className="size-5" aria-hidden="true" />
 										</Button>
 									</DrawerClose>
 									<DrawerTitle className="flex items-center justify-center gap-2 text-base font-semibold">
-										MCP Connectors
+										{tChat("mcp_connectors")}
 									</DrawerTitle>
 								</DrawerHeader>
 								<div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin pb-6">
@@ -473,7 +486,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 									>
 										<Plus className="size-5 shrink-0" aria-hidden="true" />
 										<span className="flex-1 truncate text-left text-sm">
-											Browse all integrations
+											{tChat("browse_all_integrations")}
 										</span>
 									</Button>
 								</div>
@@ -491,13 +504,13 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 					>
 						<DropdownMenuTrigger asChild>
 							<TooltipIconButton
-								tooltip="Upload files, manage tools and more"
+								tooltip={tChat("composer_menu_tooltip")}
 								side="bottom"
 								disableTooltip={toolsPopoverOpen}
 								variant="ghost"
 								size="icon"
 								className="h-7 w-7 rounded-full p-0 font-semibold text-xs text-muted-foreground transition-colors dark:border-muted-foreground/15 hover:bg-foreground/10 hover:text-foreground"
-								aria-label="Upload files, manage tools and more"
+								aria-label={tChat("composer_menu_tooltip")}
 								data-joyride="connector-icon"
 							>
 								<Plus className="size-4" aria-hidden="true" />
@@ -512,16 +525,16 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 						>
 							<DropdownMenuItem onSelect={() => openUploadDialog()}>
 								<Upload className="h-4 w-4" aria-hidden="true" />
-								Upload Files
+								{tChat("upload_files")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => void handleScreenCapture()}>
 								<Camera className="h-4 w-4" aria-hidden="true" />
-								Take a screenshot
+								{tChat("take_screenshot")}
 							</DropdownMenuItem>
 							<DropdownMenuSub>
 								<DropdownMenuSubTrigger>
 									<Unplug className="h-4 w-4" aria-hidden="true" />
-									MCP Connectors
+									{tChat("mcp_connectors")}
 								</DropdownMenuSubTrigger>
 								<DropdownMenuPortal>
 									<DropdownMenuSubContent className="w-56 max-h-64 overflow-y-auto">
@@ -550,7 +563,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 											}}
 										>
 											<Plus className="size-4" aria-hidden="true" />
-											Browse all integrations
+											{tChat("browse_all_integrations")}
 										</DropdownMenuItem>
 									</DropdownMenuSubContent>
 								</DropdownMenuPortal>
@@ -564,7 +577,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 							>
 								<DropdownMenuSubTrigger>
 									<Settings2 className="h-4 w-4" aria-hidden="true" />
-									Manage Tools
+									{tChat("manage_tools")}
 								</DropdownMenuSubTrigger>
 								<DropdownMenuPortal>
 									<DropdownMenuSubContent
@@ -576,7 +589,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 										{regularToolGroups.map((group) => (
 											<div key={group.label}>
 												<div className="px-2 pt-1.5 pb-0.5 text-[10px] text-muted-foreground/80 font-normal select-none">
-													{group.label}
+													{getGroupDisplayLabel(group.label)}
 												</div>
 												{group.tools.map((tool) => {
 													const isDisabled = disabledToolsSet.has(tool.name);
@@ -611,7 +624,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 										{connectorToolGroups.length > 0 && (
 											<div>
 												<div className="px-2 pt-1.5 pb-0.5 text-[10px] text-muted-foreground/80 font-normal select-none">
-													Connector Actions
+													{tChat("connector_actions")}
 												</div>
 												{connectorToolGroups.map((group) => {
 													const iconKey = group.connectorIcon ?? "";
@@ -646,7 +659,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 																) : (
 																	<Wrench className="h-4 w-4" aria-hidden="true" />
 																)}
-																<span className="min-w-0 flex-1 truncate">{group.label}</span>
+																<span className="min-w-0 flex-1 truncate">{getGroupDisplayLabel(group.label)}</span>
 																<Switch
 																	checked={!allDisabled}
 																	tabIndex={-1}
@@ -697,7 +710,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 										{otherToolGroup && (
 											<div>
 												<div className="px-2 pt-1.5 pb-0.5 text-[10px] text-muted-foreground/80 font-normal select-none">
-													{otherToolGroup.label}
+													{getGroupDisplayLabel(otherToolGroup.label)}
 												</div>
 												{otherToolGroup.tools.map((tool) => {
 													const isDisabled = disabledToolsSet.has(tool.name);
@@ -763,10 +776,10 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 						<TooltipIconButton
 							tooltip={
 								isBlockedByOtherUser
-									? "Wait for AI to finish responding"
+									? tChat("wait_ai_responding")
 									: isComposerEmpty
-										? "Enter a message or add a screenshot to send"
-										: "Send message"
+										? tChat("enter_message_or_screenshot")
+										: tChat("send_message")
 							}
 							side="bottom"
 							type="submit"
@@ -776,7 +789,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 								"aui-composer-send size-7 shrink-0 rounded-full",
 								isSendDisabled && "cursor-not-allowed opacity-50"
 							)}
-							aria-label="Send message"
+							aria-label={tChat("send_message")}
 							disabled={isSendDisabled}
 						>
 							<ArrowUpIcon className="aui-composer-send-icon size-3.5" aria-hidden="true" />
@@ -791,8 +804,8 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 							variant="default"
 							size="icon"
 							className="aui-composer-cancel size-7 shrink-0 rounded-full"
-							aria-label="Stop generating"
-							title="Stop generating"
+							aria-label={tChat("stop_generating")}
+						title={tChat("stop_generating")}
 						>
 							<SquareIcon
 								className="aui-composer-cancel-icon size-2.5 fill-current"

@@ -667,7 +667,7 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 							className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80 transition-all shadow-2xs select-none cursor-pointer"
 						>
 							<span className="text-amber-500">💡</span>
-							<span>{dynamicSuggestedActions.length} gợi ý bước tiếp theo</span>
+							<span>{tChat("suggested_next_steps_count", { count: dynamicSuggestedActions.length })}</span>
 							<ChevronUp className="size-3 opacity-60" />
 						</button>
 					</div>
@@ -696,7 +696,7 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 									onClick={handleDismissSuggestions}
 									className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 									aria-label={tChat("dismiss_suggested_actions")}
-									title="Thu gọn gợi ý (Lưu cho phiên này)"
+									title={tChat("collapse_suggestions_tooltip")}
 								>
 									<X className="size-3" aria-hidden="true" />
 								</button>
