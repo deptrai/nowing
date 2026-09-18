@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
@@ -52,6 +53,7 @@ export type WebAppBuildArgs = z.infer<typeof WebAppBuildArgsSchema>;
 export type WebAppBuildResult = z.infer<typeof WebAppBuildResultSchema>;
 
 function parseToolResult(raw: unknown): Partial<WebAppBuildResult> {
+	const t = useTranslations("toolUi");
 	if (typeof raw === "object" && raw !== null) {
 		return raw as Partial<WebAppBuildResult>;
 	}
@@ -73,6 +75,7 @@ function parseToolResult(raw: unknown): Partial<WebAppBuildResult> {
 // ============================================================================
 
 function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-xl overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-sm select-none">
 			<div className="flex items-center justify-between gap-3">
@@ -88,9 +91,7 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 					</div>
 				</div>
 				<Badge variant="secondary" className="gap-1 px-2 py-0.5 text-xs">
-					<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
-					Building
-				</Badge>
+					<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />{t("tu_building")}</Badge>
 			</div>
 
 			<div className="mt-4 space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-4">
@@ -151,6 +152,7 @@ export function GenerateWebAppToolUI({
 	result: rawResult,
 	status,
 }: ToolCallMessagePartProps<WebAppBuildArgs, WebAppBuildResult | string>) {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const workspaceId = getWorkspaceIdNumber(params);
 	const setDockOpen = useSetAtom(dockOpenAtom);
@@ -207,7 +209,7 @@ export function GenerateWebAppToolUI({
 				toast.error(deployRes.message || "Failed to publish web app");
 			}
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Publish request failed";
+			const msg = err instanceof Error ? err.message: t("tu_publish_request_failed");
 			toast.error(msg);
 		} finally {
 			setIsPublishing(false);
@@ -298,9 +300,7 @@ export function GenerateWebAppToolUI({
 			{isPublished && effectivePublicUrl && (
 				<div className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3">
 					<div className="min-w-0 flex-1">
-						<p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-							Public URL
-						</p>
+						<p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">{t("tu_public_url")}</p>
 						<a
 							href={effectivePublicUrl}
 							target="_blank"
@@ -317,14 +317,14 @@ export function GenerateWebAppToolUI({
 							size="icon"
 							onClick={handleCopyPublicUrl}
 							className="size-7 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
-							title="Copy URL"
+							title={t("tu_copy_url")}
 						>
 							{copied ? (
 								<CheckIcon className="size-3.5" aria-hidden="true" />
 							) : (
 								<CopyIcon className="size-3.5" aria-hidden="true" />
 							)}
-							<span className="sr-only">Copy public URL</span>
+							<span className="sr-only">{t("tu_copy_public_url")}</span>
 						</Button>
 						<Button
 							type="button"
@@ -332,10 +332,10 @@ export function GenerateWebAppToolUI({
 							size="icon"
 							onClick={handleOpenLive}
 							className="size-7 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
-							title="Open site"
+							title={t("tu_open_site")}
 						>
 							<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-							<span className="sr-only">Open live website</span>
+							<span className="sr-only">{t("tu_open_live_website")}</span>
 						</Button>
 					</div>
 				</div>
@@ -361,9 +361,7 @@ export function GenerateWebAppToolUI({
 						onClick={handleOpenEditor}
 						className="gap-1.5 text-xs font-semibold rounded-xl"
 					>
-						<SparklesIcon className="size-3.5" aria-hidden="true" />
-						Open Editor
-					</Button>
+						<SparklesIcon className="size-3.5" aria-hidden="true" />{t("tu_open_editor")}</Button>
 				)}
 
 				{!isPublished && (
@@ -376,14 +374,10 @@ export function GenerateWebAppToolUI({
 					>
 						{isPublishing ? (
 							<>
-								<Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
-								Publishing...
-							</>
+								<Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />{t("tu_publishing")}</>
 						) : (
 							<>
-								<RocketIcon className="size-3.5" aria-hidden="true" />
-								Publish
-							</>
+								<RocketIcon className="size-3.5" aria-hidden="true" />{t("tu_publish")}</>
 						)}
 					</Button>
 				)}

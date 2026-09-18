@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
@@ -33,6 +34,7 @@ function WorkingState({
 	label: string;
 	action?: ReactNode;
 }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
@@ -62,6 +64,7 @@ function NoticeState({ title, message }: { title: string; message: string }) {
  * so a stray click is guarded by an inline confirm step.
  */
 function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
+	const t = useTranslations("toolUi");
 	const [confirming, setConfirming] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -70,7 +73,7 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 		try {
 			await podcastsApiService.regenerate(podcast.id);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to regenerate the podcast");
+			toast.error(error instanceof Error ? error.message: t("tu_failed_to_regenerate_the"));
 		} finally {
 			setIsSubmitting(false);
 			setConfirming(false);
@@ -86,25 +89,20 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 				className="text-muted-foreground"
 				onClick={() => setConfirming(true)}
 			>
-				<RotateCcw className="size-3.5" aria-hidden="true" /> Regenerate
-			</Button>
+				<RotateCcw className="size-3.5" aria-hidden="true" />{t("tu_regenerate")}</Button>
 		);
 	}
 
 	return (
 		<div className="flex items-center gap-2">
-			<span className="text-xs text-muted-foreground">
-				Reopen the brief and replace this episode?
-			</span>
+			<span className="text-xs text-muted-foreground">{t("tu_reopen_the_brief_and")}</span>
 			<Button
 				type="button"
 				variant="ghost"
 				size="sm"
 				onClick={() => setConfirming(false)}
 				disabled={isSubmitting}
-			>
-				Keep it
-			</Button>
+			>{t("tu_keep_it")}</Button>
 			<Button
 				type="button"
 				variant="destructive"
@@ -126,6 +124,7 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
  * dialog — the card header is too cramped to host a confirmation row).
  */
 function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisode: boolean }) {
+	const t = useTranslations("toolUi");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const run = async (call: (id: number) => Promise<unknown>, failure: string) => {
@@ -176,19 +175,15 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Cancel this podcast?</AlertDialogTitle>
-					<AlertDialogDescription>
-						Generation stops and the podcast is discarded. This cannot be undone.
-					</AlertDialogDescription>
+					<AlertDialogTitle>{t("tu_cancel_this_podcast")}</AlertDialogTitle>
+					<AlertDialogDescription>{t("tu_generation_stops_and_the")}</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel>Keep going</AlertDialogCancel>
+					<AlertDialogCancel>{t("tu_keep_going")}</AlertDialogCancel>
 					<AlertDialogAction
 						className={buttonVariants({ variant: "destructive" })}
 						onClick={() => run(podcastsApiService.cancel, "Failed to cancel the podcast")}
-					>
-						Cancel podcast
-					</AlertDialogAction>
+					>{t("tu_cancel_podcast")}</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
@@ -205,6 +200,7 @@ function LivePodcastCard({
 	podcastId: number;
 	fallbackTitle: string;
 }) {
+	const t = useTranslations("toolUi");
 	const { podcast, isLoading } = usePodcastLive(podcastId);
 
 	// Whether a finished episode exists decides revert-vs-cancel, and Zero
@@ -229,11 +225,11 @@ function LivePodcastCard({
 
 	if (!podcast) {
 		if (isLoading) {
-			return <WorkingState title={fallbackTitle} label="Loading podcast" />;
+			return <WorkingState title={fallbackTitle} label={t("tu_loading_podcast")} />;
 		}
 		return (
 			<NoticeState
-				title="Podcast Unavailable"
+				title={t("tu_podcast_unavailable")}
 				message="This podcast no longer exists or you don't have access to it."
 			/>
 		);
@@ -323,6 +319,7 @@ export const GeneratePodcastToolUI = ({
 	result,
 	status,
 }: ToolCallMessagePartProps<GeneratePodcastArgs, GeneratePodcastResult>) => {
+	const t = useTranslations("toolUi");
 	const pathname = usePathname();
 	const isPublicRoute = !!pathname?.startsWith("/public/");
 	const title = args.podcast_title || "Nowing Podcast";
@@ -364,7 +361,7 @@ export const GeneratePodcastToolUI = ({
 	// recovered through the lifecycle API.
 	return (
 		<NoticeState
-			title="Podcast Unavailable"
+			title={t("tu_podcast_unavailable")}
 			message="This podcast was generated with an older version. Please generate a new one."
 		/>
 	);

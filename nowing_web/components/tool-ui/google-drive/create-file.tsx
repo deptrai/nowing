@@ -221,11 +221,9 @@ function ApprovalCard({
 							{pendingEdits ? "File created with your changes" : "File created"}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File creation was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_creation_was_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_requires_your_approval_to")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -264,12 +262,11 @@ function ApprovalCard({
 							<>
 								{accounts.length > 0 && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">
-											Google Drive Account <span className="text-destructive">*</span>
+										<p className="text-xs font-medium text-muted-foreground">{t("tu_google_drive_account")}<span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedAccountId} onValueChange={handleAccountChange}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select an account" />
+												<SelectValue placeholder={t("tu_select_an_account")} />
 											</SelectTrigger>
 											<SelectContent>
 												{validAccounts.map((account) => (
@@ -291,29 +288,28 @@ function ApprovalCard({
 								)}
 
 								<div className="space-y-2">
-									<p className="text-xs font-medium text-muted-foreground">
-										File Type <span className="text-destructive">*</span>
+									<p className="text-xs font-medium text-muted-foreground">{t("tu_file_type")}<span className="text-destructive">*</span>
 									</p>
 									<Select value={selectedFileType} onValueChange={setSelectedFileType}>
 										<SelectTrigger className="w-full">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="google_doc">Google Doc</SelectItem>
-											<SelectItem value="google_sheet">Google Sheet</SelectItem>
+											<SelectItem value="google_doc">{t("tu_google_doc")}</SelectItem>
+											<SelectItem value="google_sheet">{t("tu_google_sheet")}</SelectItem>
 										</SelectContent>
 									</Select>
 								</div>
 
 								{selectedAccountId && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Parent Folder</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("tu_parent_folder")}</p>
 										<Select value={parentFolderId} onValueChange={setParentFolderId}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Drive Root" />
+												<SelectValue placeholder={t("tu_drive_root")} />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="__root__">Drive Root</SelectItem>
+												<SelectItem value="__root__">{t("tu_drive_root")}</SelectItem>
 												{availableParentFolders.map((folder) => (
 													<SelectItem key={folder.folder_id} value={folder.folder_id}>
 														{folder.name}
@@ -322,9 +318,7 @@ function ApprovalCard({
 											</SelectContent>
 										</Select>
 										{availableParentFolders.length === 0 && (
-											<p className="text-xs text-muted-foreground">
-												No folders found. File will be created at Drive root.
-											</p>
+											<p className="text-xs text-muted-foreground">{t("tu_no_folders_found_file_2")}</p>
 										)}
 									</div>
 								)}
@@ -372,9 +366,7 @@ function ApprovalCard({
 								className="rounded-lg gap-1.5"
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
-							>
-								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+							>{t("tu_approve")}<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (
@@ -387,9 +379,7 @@ function ApprovalCard({
 									setRejected();
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
-							>
-								Reject
-							</Button>
+							>{t("tu_reject")}</Button>
 						)}
 					</div>
 				</>

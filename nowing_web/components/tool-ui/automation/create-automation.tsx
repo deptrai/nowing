@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
@@ -28,6 +29,7 @@ import {
 import { AutomationDraftPreview } from "./automation-draft-preview";
 
 const editArgsSchema = automationCreateRequest.omit({ workspace_id: true });
+	const t = useTranslations("toolUi");
 
 // ----------------------------------------------------------------------------
 // Result discrimination — mirrors the backend return shapes in
@@ -297,9 +299,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 								className="rounded-lg gap-1.5"
 								disabled={!modelsResolved}
 								onClick={handleApprove}
-							>
-								Approve
-								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+							>{t("tu_approve")}<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{canReject && (
@@ -308,9 +308,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 								variant="ghost"
 								className="rounded-lg text-muted-foreground"
 								onClick={handleReject}
-							>
-								Reject
-							</Button>
+							>{t("tu_reject")}</Button>
 						)}
 					</div>
 				</>
@@ -372,9 +370,7 @@ function JsonEditor({ initialValue, onSave, onCancel }: JsonEditorProps) {
 				<Button type="button" variant="ghost" size="sm" onClick={onCancel}>
 					Cancel
 				</Button>
-				<Button type="button" size="sm" onClick={handleSave}>
-					Save edits
-				</Button>
+				<Button type="button" size="sm" onClick={handleSave}>{t("tu_save_edits")}</Button>
 			</div>
 		</div>
 	);
@@ -406,7 +402,7 @@ function SavedCard({ result }: { result: SavedResult }) {
 			<div className="flex items-start gap-3 px-5 pt-5 pb-4">
 				<AlarmClock className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
 				<div className="min-w-0">
-					<p className="text-sm font-semibold text-foreground">Automation saved</p>
+					<p className="text-sm font-semibold text-foreground">{t("tu_automation_saved")}</p>
 					<p className="text-xs text-muted-foreground mt-0.5">{result.name}</p>
 				</div>
 			</div>
@@ -444,10 +440,8 @@ function InvalidCard({ result }: { result: InvalidResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Couldn't draft this automation</p>
-				<p className="text-xs text-muted-foreground mt-0.5">
-					The drafter produced output that didn't validate. I'll refine and retry.
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("tu_couldn_t_draft_this")}</p>
+				<p className="text-xs text-muted-foreground mt-0.5">{t("tu_the_drafter_produced_output")}</p>
 			</div>
 			{result.issues.length > 0 && (
 				<>
@@ -479,7 +473,7 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create automation</p>
+				<p className="text-sm font-semibold text-destructive">{t("tu_failed_to_create_automation")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

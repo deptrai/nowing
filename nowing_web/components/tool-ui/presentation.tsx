@@ -84,6 +84,7 @@ export function GeneratePresentationToolUI({
 	result: rawResult,
 	status,
 }: ToolCallMessagePartProps<PresentationBuildArgs, PresentationBuildResult | string>) {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const tChat = useTranslations("chat");
 	const workspaceId = getWorkspaceIdNumber(params);
@@ -123,9 +124,7 @@ export function GeneratePresentationToolUI({
 						<TextShimmerLoader text={tChat("presentation_generating")} size="sm" />
 					</div>
 					<Badge variant="secondary" className="ml-auto gap-1 px-2 py-0.5 text-xs">
-						<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
-						Generating
-					</Badge>
+						<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />{t("tu_generating")}</Badge>
 				</div>
 				{prompt && (
 					<p className="mt-3 truncate text-xs text-muted-foreground italic">
@@ -170,9 +169,7 @@ export function GeneratePresentationToolUI({
 						<AlertCircleIcon className="size-5" aria-hidden="true" />
 					</div>
 					<div className="min-w-0 flex-1">
-						<h4 className="truncate text-sm font-semibold text-destructive">
-							Slide Deck Generation Failed
-						</h4>
+						<h4 className="truncate text-sm font-semibold text-destructive">{t("tu_slide_deck_generation_failed")}</h4>
 						<p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
 							{result.error || "Unable to generate the requested slide deck."}
 						</p>
@@ -240,9 +237,7 @@ export function GeneratePresentationToolUI({
 						className="gap-1.5 text-xs font-semibold rounded-xl"
 					>
 						<a href={previewUrl} target="_blank" rel="noopener noreferrer">
-							<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-							Preview
-						</a>
+							<ExternalLinkIcon className="size-3.5" aria-hidden="true" />{t("tu_preview")}</a>
 					</Button>
 				)}
 			</div>

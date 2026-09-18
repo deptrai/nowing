@@ -135,13 +135,11 @@ function ApprovalCard({
 					{phase === "processing" ? (
 						<TextShimmerLoader text="Deleting file" size="sm" />
 					) : phase === "complete" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File deleted</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_deleted")}</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File deletion was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_deletion_was_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_requires_your_approval_to")}</p>
 					)}
 				</div>
 			</div>
@@ -156,7 +154,7 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Dropbox Account</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("tu_dropbox_account")}</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -164,7 +162,7 @@ function ApprovalCard({
 								)}
 								{file && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">File to Delete</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("tu_file_to_delete")}</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-0.5">
 											<div className="font-medium">{file.name}</div>
 											{file.file_path && (
@@ -183,9 +181,7 @@ function ApprovalCard({
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 space-y-3 select-none">
-						<p className="text-xs text-muted-foreground">
-							The file will be permanently deleted from Dropbox.
-						</p>
+						<p className="text-xs text-muted-foreground">{t("tu_the_file_will_be")}</p>
 						<div className="flex items-center gap-2.5">
 							<Checkbox
 								id="db-delete-from-kb"
@@ -194,10 +190,8 @@ function ApprovalCard({
 								className="shrink-0"
 							/>
 							<label htmlFor="db-delete-from-kb" className="flex-1 cursor-pointer">
-								<span className="text-sm text-foreground">Also remove from knowledge base</span>
-								<p className="text-xs text-muted-foreground mt-0.5">
-									This will permanently delete the file from your knowledge base
-								</p>
+								<span className="text-sm text-foreground">{t("tu_also_remove_from_knowledge")}</span>
+								<p className="text-xs text-muted-foreground mt-0.5">{t("tu_this_will_permanently_delete")}</p>
 							</label>
 						</div>
 					</div>
@@ -208,8 +202,7 @@ function ApprovalCard({
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
-						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
-							Approve <CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>{t("tu_approve")}<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"
@@ -219,9 +212,7 @@ function ApprovalCard({
 								setRejected();
 								onDecision({ type: "reject", message: "User rejected the action." });
 							}}
-						>
-							Reject
-						</Button>
+						>{t("tu_reject")}</Button>
 					</div>
 				</>
 			)}

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { Check, ChevronDown, Loader2, Plus, Trash2 } from "lucide-react";
@@ -45,6 +46,7 @@ import { VoicePreviewButton } from "./voice-preview-button";
 const ANY_LANGUAGE = "*";
 
 function speaks(voice: VoiceOption, language: string): boolean {
+	const t = useTranslations("toolUi");
 	if (voice.language === ANY_LANGUAGE) return true;
 	return primary(voice.language) === primary(language);
 }
@@ -66,6 +68,7 @@ interface BriefReviewProps {
  * pushed status flips the card to its drafting state.
  */
 export function BriefReview({ podcast, spec }: BriefReviewProps) {
+	const t = useTranslations("toolUi");
 	const [draft, setDraft] = useState<PodcastSpec>(spec);
 	const [durationUnit, setDurationUnit] = useState<DurationUnit>(() =>
 		defaultDurationUnit(spec.duration.max_seconds)
@@ -194,7 +197,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 				toast.warning("The brief changed elsewhere — reloaded the latest version.");
 				setDraft(spec);
 			} else {
-				toast.error(error instanceof Error ? error.message : "Failed to save the brief");
+				toast.error(error instanceof Error ? error.message: t("tu_failed_to_save_the"));
 			}
 			return false;
 		}
@@ -206,7 +209,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 			if (!(await saveIfDirty())) return;
 			await podcastsApiService.approveBrief(podcast.id);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to approve the brief");
+			toast.error(error instanceof Error ? error.message: t("tu_failed_to_approve_the"));
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -216,13 +219,13 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 		<div className="flex flex-col gap-6">
 			<div className="grid grid-cols-2 gap-4">
 				<div className="flex flex-col gap-2">
-					<Label htmlFor="podcast-language">Language</Label>
+					<Label htmlFor="podcast-language">{t("tu_language")}</Label>
 					{offering?.allows_custom ? (
 						<LanguageCombobox value={draft.language} languages={languages} onSelect={setLanguage} />
 					) : (
 						<Select value={draft.language} onValueChange={setLanguage}>
 							<SelectTrigger id="podcast-language">
-								<SelectValue placeholder="Language" />
+								<SelectValue placeholder={t("tu_language")} />
 							</SelectTrigger>
 							<SelectContent>
 								{languages.map((tag) => (
@@ -235,10 +238,10 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 					)}
 				</div>
 				<div className="flex flex-col gap-2">
-					<Label htmlFor="podcast-style">Style</Label>
+					<Label htmlFor="podcast-style">{t("tu_style")}</Label>
 					<Select value={draft.style} onValueChange={(value) => setStyle(value as PodcastStyle)}>
 						<SelectTrigger id="podcast-style">
-							<SelectValue placeholder="Style" />
+							<SelectValue placeholder={t("tu_style")} />
 						</SelectTrigger>
 						<SelectContent>
 							{podcastStyle.options.map((style) => (
@@ -253,7 +256,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 
 			<div className="flex flex-col gap-3">
 				<div className="flex items-center justify-between">
-					<Label>Speakers</Label>
+					<Label>{t("tu_speakers")}</Label>
 					<Button
 						type="button"
 						variant="ghost"
@@ -261,8 +264,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						onClick={addSpeaker}
 						disabled={draft.style === "monologue" || draft.speakers.length >= MAX_SPEAKERS}
 					>
-						<Plus className="size-4" aria-hidden="true" /> Add speaker
-					</Button>
+						<Plus className="size-4" aria-hidden="true" />{t("tu_add_speaker")}</Button>
 				</div>
 				{draft.speakers.map((speaker) => (
 					<div key={speaker.slot} className="flex items-end gap-2 rounded-lg border p-3">
@@ -334,16 +336,16 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 
 			<div className="flex flex-col gap-2">
 				<div className="flex items-center justify-between gap-3">
-					<Label>Target length</Label>
+					<Label>{t("tu_target_length")}</Label>
 					<Select
 						value={durationUnit}
 						onValueChange={(value) => setDurationUnit(value as DurationUnit)}
 					>
-						<SelectTrigger className="w-[7.5rem]" aria-label="Length unit">
+						<SelectTrigger className="w-[7.5rem]" aria-label={t("tu_length_unit")}>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="seconds">Seconds</SelectItem>
+							<SelectItem value="seconds">{t("tu_seconds")}</SelectItem>
 							<SelectItem value="minutes">Minutes</SelectItem>
 							<SelectItem value="hours">Hours</SelectItem>
 						</SelectContent>

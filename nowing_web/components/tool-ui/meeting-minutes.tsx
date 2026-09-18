@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
@@ -89,6 +90,7 @@ export function MeetingMinutesToolUI({
 	result: rawResult,
 	status: toolStatus,
 }: ToolCallMessagePartProps<MeetingMinutesBuildArgs, MeetingMinutesBuildResult | string>) {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const workspaceId = getWorkspaceIdNumber(params) || 0;
 	const result = useMemo(() => parseToolResult(rawResult), [rawResult]);
@@ -158,9 +160,7 @@ export function MeetingMinutesToolUI({
 						<TextShimmerLoader text="Transcribing and extracting minutes…" size="sm" />
 					</div>
 					<Badge variant="secondary" className="ml-auto gap-1 px-2 py-0.5 text-xs">
-						<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
-						Processing
-					</Badge>
+						<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />{t("tu_processing")}</Badge>
 				</div>
 				{args.audio_url && (
 					<p className="mt-3 truncate text-xs text-muted-foreground italic">
@@ -179,9 +179,7 @@ export function MeetingMinutesToolUI({
 						<AlertCircleIcon className="size-5" aria-hidden="true" />
 					</div>
 					<div className="min-w-0 flex-1">
-						<h4 className="truncate text-sm font-semibold text-destructive">
-							Meeting Minutes Failed
-						</h4>
+						<h4 className="truncate text-sm font-semibold text-destructive">{t("tu_meeting_minutes_failed")}</h4>
 						<p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
 							{error || "Unable to generate meeting minutes."}
 						</p>
@@ -210,7 +208,7 @@ export function MeetingMinutesToolUI({
 					</div>
 					<div className="min-w-0">
 						<h4 className="truncate text-sm font-bold text-foreground">{title}</h4>
-						<p className="truncate text-xs text-muted-foreground">Meeting minutes</p>
+						<p className="truncate text-xs text-muted-foreground">{t("tu_meeting_minutes")}</p>
 					</div>
 				</div>
 				<Badge
@@ -227,25 +225,19 @@ export function MeetingMinutesToolUI({
 			</div>
 
 			{degraded && (
-				<p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-					Transcript ready, but speaker labels are unavailable.
-				</p>
+				<p className="mt-3 text-xs text-amber-700 dark:text-amber-300">{t("tu_transcript_ready_but_speaker")}</p>
 			)}
 
 			{summary && (
 				<div className="mt-4 space-y-1">
-					<h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-						Summary
-					</h5>
+					<h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("tu_summary")}</h5>
 					<p className="text-sm text-foreground whitespace-pre-wrap">{summary}</p>
 				</div>
 			)}
 
 			{actionItems.length > 0 && (
 				<div className="mt-4 space-y-2">
-					<h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-						Action Items
-					</h5>
+					<h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("tu_action_items")}</h5>
 					<ul className="space-y-1.5">
 						{actionItems.map((item) => (
 							<li
@@ -273,9 +265,7 @@ export function MeetingMinutesToolUI({
 						className="gap-1.5 text-xs font-semibold rounded-xl"
 					>
 						<a href={displayDownloadUrl} download rel="noopener noreferrer">
-							<DownloadIcon className="size-3.5" aria-hidden="true" />
-							Download
-						</a>
+							<DownloadIcon className="size-3.5" aria-hidden="true" />{t("tu_download")}</a>
 					</Button>
 				)}
 

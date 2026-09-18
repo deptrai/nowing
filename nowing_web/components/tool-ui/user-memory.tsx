@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
@@ -29,6 +30,7 @@ export const UpdateMemoryToolUI = ({
 	result,
 	status,
 }: ToolCallMessagePartProps<UpdateMemoryArgs, UpdateMemoryResult>) => {
+	const t = useTranslations("toolUi");
 	const isRunning = status.type === "running" || status.type === "requires-action";
 	const isComplete = status.type === "complete";
 	const isError = result?.status === "error";
@@ -40,7 +42,7 @@ export const UpdateMemoryToolUI = ({
 					<Loader2Icon className="size-4 animate-spin text-primary" aria-hidden="true" />
 				</div>
 				<div className="flex-1">
-					<span className="text-sm text-muted-foreground">Updating memory...</span>
+					<span className="text-sm text-muted-foreground">{t("tu_updating_memory")}</span>
 				</div>
 			</div>
 		);
@@ -53,7 +55,7 @@ export const UpdateMemoryToolUI = ({
 					<XIcon className="size-4 text-destructive" aria-hidden="true" />
 				</div>
 				<div className="flex-1">
-					<span className="text-sm text-destructive">Failed to update memory</span>
+					<span className="text-sm text-destructive">{t("tu_failed_to_update_memory")}</span>
 					{result?.message && <p className="mt-1 text-xs text-destructive/70">{result.message}</p>}
 				</div>
 			</div>
@@ -69,7 +71,7 @@ export const UpdateMemoryToolUI = ({
 				<div className="flex-1 min-w-0">
 					<div className="flex items-center gap-2">
 						<CheckIcon className="size-3 text-green-500 shrink-0" aria-hidden="true" />
-						<span className="text-sm font-medium text-foreground">Memory updated</span>
+						<span className="text-sm font-medium text-foreground">{t("tu_memory_updated")}</span>
 					</div>
 					{result.warning && (
 						<div className="mt-1.5 flex items-start gap-1.5">

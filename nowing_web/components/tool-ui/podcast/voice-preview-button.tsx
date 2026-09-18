@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { Loader2, Play, Square } from "lucide-react";
@@ -15,6 +16,7 @@ let activeAudio: HTMLAudioElement | null = null;
 let stopActive: (() => void) | null = null;
 
 function getSampleUrl(voiceId: string): Promise<string> {
+	const t = useTranslations("toolUi");
 	let url = sampleUrls.get(voiceId);
 	if (!url) {
 		url = podcastsApiService.previewVoice(voiceId).then((blob) => URL.createObjectURL(blob));
