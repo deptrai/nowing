@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -6,46 +7,45 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ExpandedMediaOverlay, useExpandedMedia } from "@/components/ui/expanded-gif-overlay";
 
-const carouselItems = [
+const getCarouselItems = (t: (k: string) => string) => [
 	{
-		title: "Connect & Sync",
-		description:
-			"Connect data sources like Notion, Drive and Gmail. Automatically sync to keep them updated.",
+		title: t("ui_connect_sync"),
+		description: t("ui_connect_data_sources_like"),
 		src: "/homepage/hero_tutorial/ConnectorFlowGif.mp4",
 	},
 	{
-		title: "Upload Documents",
-		description: "Upload documents directly, from images to massive PDFs.",
+		title: t("ui_upload_documents"),
+		description: t("ui_upload_documents_directly_from"),
 		src: "/homepage/hero_tutorial/DocUploadGif.mp4",
 	},
 	{
-		title: "Video Generation",
-		description: "Create short videos with AI-generated visuals and narration from your sources.",
+		title: t("ui_video_generation"),
+		description: t("ui_create_short_videos_with"),
 		src: "/homepage/hero_tutorial/video_gen_surf.mp4",
 	},
 	{
-		title: "Search & Citation",
-		description: "Ask questions and get cited responses from your knowledge base.",
+		title: t("ui_search_citation"),
+		description: t("ui_ask_questions_and_get"),
 		src: "/homepage/hero_tutorial/BSNCGif.mp4",
 	},
 	{
-		title: "Targeted Document Q&A",
-		description: "Mention specific documents in chat for targeted answers.",
+		title: t("ui_targeted_document_q_a"),
+		description: t("ui_mention_specific_documents_in"),
 		src: "/homepage/hero_tutorial/BQnaGif_compressed.mp4",
 	},
 	{
-		title: "Produce Reports Instantly",
-		description: "Generate reports from your sources in many formats.",
+		title: t("ui_produce_reports_instantly"),
+		description: t("ui_generate_reports_from_your"),
 		src: "/homepage/hero_tutorial/ReportGenGif_compressed.mp4",
 	},
 	{
-		title: "Create Podcasts",
-		description: "Turn anything into a podcast in under 20 seconds.",
+		title: t("ui_create_podcasts"),
+		description: t("ui_turn_anything_into_a"),
 		src: "/homepage/hero_tutorial/PodcastGenGif.mp4",
 	},
 	{
-		title: "Image Generation",
-		description: "Generate high-quality images easily from your conversations.",
+		title: t("ui_image_generation"),
+		description: t("ui_generate_high_quality_images"),
 		src: "/homepage/hero_tutorial/ImageGenGif.mp4",
 	},
 	{
@@ -155,7 +155,7 @@ function HeroCarouselCard({
 }
 
 function HeroCarousel() {
-	const [activeIndex, setActiveIndex] = useState(0);
+	const t = useTranslations("ui");	const [activeIndex, setActiveIndex] = useState(0);
 	const [isGifExpanded, setIsGifExpanded] = useState(false);
 	const directionRef = useRef<"forward" | "backward">("forward");
 
@@ -169,18 +169,18 @@ function HeroCarousel() {
 	const goToPrev = useCallback(() => {
 		setActiveIndex((prev) => {
 			directionRef.current = "backward";
-			return prev <= 0 ? carouselItems.length - 1 : prev - 1;
+			return prev <= 0 ? getCarouselItems(t).length - 1 : prev - 1;
 		});
 	}, []);
 
 	const goToNext = useCallback(() => {
 		setActiveIndex((prev) => {
 			directionRef.current = "forward";
-			return prev >= carouselItems.length - 1 ? 0 : prev + 1;
+			return prev >= getCarouselItems(t).length - 1 ? 0 : prev + 1;
 		});
 	}, []);
 
-	const item = carouselItems[activeIndex];
+	const item = getCarouselItems(t)[activeIndex];
 	const isForward = directionRef.current === "forward";
 
 	return (
@@ -217,7 +217,7 @@ function HeroCarousel() {
 				</Button>
 
 				<div className="flex items-center">
-					{carouselItems.map((carouselItem, i) => (
+					{getCarouselItems(t).map((carouselItem, i) => (
 						<Button
 							key={carouselItem.src}
 							type="button"

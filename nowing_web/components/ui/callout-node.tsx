@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { CalloutPlugin } from "@platejs/callout/react";
@@ -38,7 +39,7 @@ const calloutIcons: Record<CalloutVariant, string> = {
 };
 
 export function CalloutElement({ children, ...props }: PlateElementProps<TCalloutElement>) {
-	const { editor } = useEditorPlugin(CalloutPlugin);
+	const t = useTranslations("ui");	const { editor } = useEditorPlugin(CalloutPlugin);
 	const element = props.element;
 	const variant = variantCycle.includes(element.variant as CalloutVariant)
 		? (element.variant as CalloutVariant)
@@ -67,7 +68,7 @@ export function CalloutElement({ children, ...props }: PlateElementProps<TCallou
 				contentEditable={false}
 				onClick={cycleVariant}
 				type="button"
-				aria-label="Change callout type"
+				aria-label={t("ui_change_callout_type")}
 			>
 				{icon}
 			</Button>

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import {
@@ -27,6 +28,7 @@ import { ToolbarButton, ToolbarGroup } from "./toolbar";
 import { TurnIntoToolbarButton } from "./turn-into-toolbar-button";
 
 function TooltipWithShortcut({ label, keys }: { label: string; keys: string[] }) {
+	const t = useTranslations("ui");
 	return (
 		<span className="flex items-center">
 			{label}
@@ -36,7 +38,7 @@ function TooltipWithShortcut({ label, keys }: { label: string; keys: string[] })
 }
 
 export function FixedToolbarButtons() {
-	const readOnly = useEditorReadOnly();
+	const t = useTranslations("ui");	const readOnly = useEditorReadOnly();
 	const editor = useEditorRef();
 	const { onSave, hasUnsavedChanges, isSaving, canToggleMode } = useEditorSave();
 	const { shortcutKeys } = usePlatformShortcut();
@@ -49,7 +51,7 @@ export function FixedToolbarButtons() {
 					<>
 						<ToolbarGroup>
 							<ToolbarButton
-								tooltip={<TooltipWithShortcut label="Undo" keys={shortcutKeys("Mod", "Z")} />}
+								tooltip={<TooltipWithShortcut label={t("ui_undo")} keys={shortcutKeys("Mod", "Z")} />}
 								onClick={() => {
 									editor.undo();
 									editor.tf.focus();
@@ -60,7 +62,7 @@ export function FixedToolbarButtons() {
 
 							<ToolbarButton
 								tooltip={
-									<TooltipWithShortcut label="Redo" keys={shortcutKeys("Mod", "Shift", "Z")} />
+									<TooltipWithShortcut label={t("ui_redo")} keys={shortcutKeys("Mod", "Shift", "Z")} />
 								}
 								onClick={() => {
 									editor.redo();
@@ -79,21 +81,21 @@ export function FixedToolbarButtons() {
 						<ToolbarGroup>
 							<MarkToolbarButton
 								nodeType={KEYS.bold}
-								tooltip={<TooltipWithShortcut label="Bold" keys={shortcutKeys("Mod", "B")} />}
+								tooltip={<TooltipWithShortcut label={t("ui_bold")} keys={shortcutKeys("Mod", "B")} />}
 							>
 								<BoldIcon />
 							</MarkToolbarButton>
 
 							<MarkToolbarButton
 								nodeType={KEYS.italic}
-								tooltip={<TooltipWithShortcut label="Italic" keys={shortcutKeys("Mod", "I")} />}
+								tooltip={<TooltipWithShortcut label={t("ui_italic")} keys={shortcutKeys("Mod", "I")} />}
 							>
 								<ItalicIcon />
 							</MarkToolbarButton>
 
 							<MarkToolbarButton
 								nodeType={KEYS.underline}
-								tooltip={<TooltipWithShortcut label="Underline" keys={shortcutKeys("Mod", "U")} />}
+								tooltip={<TooltipWithShortcut label={t("ui_underline")} keys={shortcutKeys("Mod", "U")} />}
 							>
 								<UnderlineIcon />
 							</MarkToolbarButton>
@@ -102,7 +104,7 @@ export function FixedToolbarButtons() {
 								nodeType={KEYS.strikethrough}
 								tooltip={
 									<TooltipWithShortcut
-										label="Strikethrough"
+										label={t("ui_strikethrough")}
 										keys={shortcutKeys("Mod", "Shift", "X")}
 									/>
 								}
@@ -112,7 +114,7 @@ export function FixedToolbarButtons() {
 
 							<MarkToolbarButton
 								nodeType={KEYS.code}
-								tooltip={<TooltipWithShortcut label="Code" keys={shortcutKeys("Mod", "E")} />}
+								tooltip={<TooltipWithShortcut label={t("ui_code")} keys={shortcutKeys("Mod", "E")} />}
 							>
 								<Code2Icon />
 							</MarkToolbarButton>
@@ -120,7 +122,7 @@ export function FixedToolbarButtons() {
 							<MarkToolbarButton
 								nodeType={KEYS.highlight}
 								tooltip={
-									<TooltipWithShortcut label="Highlight" keys={shortcutKeys("Mod", "Shift", "H")} />
+									<TooltipWithShortcut label={t("ui_highlight")} keys={shortcutKeys("Mod", "Shift", "H")} />
 								}
 							>
 								<HighlighterIcon />
@@ -144,7 +146,7 @@ export function FixedToolbarButtons() {
 								isSaving ? (
 									"Saving..."
 								) : (
-									<TooltipWithShortcut label="Save" keys={shortcutKeys("Mod", "Shift", "S")} />
+									<TooltipWithShortcut label={t("ui_save")} keys={shortcutKeys("Mod", "Shift", "S")} />
 								)
 							}
 							onClick={onSave}

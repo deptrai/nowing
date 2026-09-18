@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import type { DropdownMenuProps } from "@radix-ui/react-dropdown-menu";
@@ -46,48 +47,48 @@ type Item = {
 	label?: string;
 };
 
-const groups: Group[] = [
+const getGroups = (t: (k: string) => string): Group[] => [
 	{
 		group: "Basic blocks",
 		items: [
 			{
 				icon: <PilcrowIcon />,
-				label: "Paragraph",
+				label: t("ui_paragraph"),
 				value: KEYS.p,
 			},
 			{
 				icon: <Heading1Icon />,
-				label: "Heading 1",
+				label: t("ui_heading_1"),
 				value: "h1",
 			},
 			{
 				icon: <Heading2Icon />,
-				label: "Heading 2",
+				label: t("ui_heading_2"),
 				value: "h2",
 			},
 			{
 				icon: <Heading3Icon />,
-				label: "Heading 3",
+				label: t("ui_heading_3"),
 				value: "h3",
 			},
 			{
 				icon: <TableIcon />,
-				label: "Table",
+				label: t("ui_table"),
 				value: KEYS.table,
 			},
 			{
 				icon: <FileCodeIcon />,
-				label: "Code block",
+				label: t("ui_code_block"),
 				value: KEYS.codeBlock,
 			},
 			{
 				icon: <QuoteIcon />,
-				label: "Quote",
+				label: t("ui_quote"),
 				value: KEYS.blockquote,
 			},
 			{
 				icon: <MinusIcon />,
-				label: "Divider",
+				label: t("ui_divider"),
 				value: KEYS.hr,
 			},
 		].map((item) => ({
@@ -102,22 +103,22 @@ const groups: Group[] = [
 		items: [
 			{
 				icon: <ListIcon />,
-				label: "Bulleted list",
+				label: t("ui_bulleted_list"),
 				value: KEYS.ul,
 			},
 			{
 				icon: <ListOrderedIcon />,
-				label: "Numbered list",
+				label: t("ui_numbered_list"),
 				value: KEYS.ol,
 			},
 			{
 				icon: <SquareIcon />,
-				label: "To-do list",
+				label: t("ui_to_do_list"),
 				value: KEYS.listTodo,
 			},
 			{
 				icon: <ChevronRightIcon />,
-				label: "Toggle list",
+				label: t("ui_toggle_list"),
 				value: KEYS.toggle,
 			},
 		].map((item) => ({
@@ -132,13 +133,13 @@ const groups: Group[] = [
 		items: [
 			{
 				icon: <InfoIcon />,
-				label: "Callout",
+				label: t("ui_callout"),
 				value: KEYS.callout,
 			},
 			{
 				focusEditor: false,
 				icon: <RadicalIcon />,
-				label: "Equation",
+				label: t("ui_equation"),
 				value: KEYS.equation,
 			},
 		].map((item) => ({
@@ -157,12 +158,12 @@ const groups: Group[] = [
 		items: [
 			{
 				icon: <SuperscriptIcon />,
-				label: "Superscript",
+				label: t("ui_superscript"),
 				value: KEYS.sup,
 			},
 			{
 				icon: <SubscriptIcon />,
-				label: "Subscript",
+				label: t("ui_subscript"),
 				value: KEYS.sub,
 			},
 		].map((item) => ({
@@ -177,13 +178,13 @@ const groups: Group[] = [
 ];
 
 export function InsertToolbarButton(props: DropdownMenuProps) {
-	const editor = useEditorRef();
+	const t = useTranslations("ui");	const editor = useEditorRef();
 	const [open, setOpen] = React.useState(false);
 
 	return (
 		<DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
 			<DropdownMenuTrigger asChild>
-				<ToolbarButton pressed={open} tooltip="Insert" isDropdown>
+				<ToolbarButton pressed={open} tooltip={t("ui_insert")} isDropdown>
 					<PlusIcon />
 				</ToolbarButton>
 			</DropdownMenuTrigger>
@@ -192,7 +193,7 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
 				className="z-[100] flex max-h-[60vh] min-w-0 flex-col overflow-y-auto"
 				align="start"
 			>
-				{groups.map(({ group, items }) => (
+				{getGroups(t).map(({ group, items }) => (
 					<React.Fragment key={group}>
 						<ToolbarMenuGroup label={group}>
 							{items.map(({ icon, label, value, onSelect, focusEditor }) => (

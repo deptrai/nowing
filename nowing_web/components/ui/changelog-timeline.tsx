@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
@@ -36,6 +37,7 @@ export const ChangelogTimeline = ({
 	entries = EMPTY_CHANGELOG_ENTRIES,
 	className,
 }: ChangelogTimelineProps) => {
+	const t = useTranslations("ui");
 	return (
 		<section className={cn("py-32", className)}>
 			<div className="container px-6 sm:px-8 md:px-0">
@@ -99,9 +101,7 @@ export const ChangelogTimeline = ({
 						))}
 					</div>
 				) : (
-					<p className="mx-auto mt-16 max-w-3xl rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-						No changelog entries yet.
-					</p>
+					<p className="mx-auto mt-16 max-w-3xl rounded-lg border border-dashed p-8 text-center text-muted-foreground">{t("ui_no_changelog_entries_yet")}</p>
 				)}
 			</div>
 		</section>

@@ -1,8 +1,10 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import type { LucideProps } from "lucide-react";
 
 export function BorderAllIcon(props: LucideProps) {
+	const t = useTranslations("ui");
 	return (
 		<svg
 			fill="none"
@@ -12,7 +14,7 @@ export function BorderAllIcon(props: LucideProps) {
 			xmlns="http://www.w3.org/2000/svg"
 			{...props}
 		>
-			<title>Border All</title>
+			<title>{t("ui_border_all")}</title>
 			<path
 				clipRule="evenodd"
 				d="M0.25 1C0.25 0.585786 0.585786 0.25 1 0.25H14C14.4142 0.25 14.75 0.585786 14.75 1V14C14.75 14.4142 14.4142 14.75 14 14.75H1C0.585786 14.75 0.25 14.4142 0.25 14V1ZM1.75 1.75V13.25H13.25V1.75H1.75Z"
@@ -33,7 +35,7 @@ export function BorderAllIcon(props: LucideProps) {
 }
 
 export function BorderBottomIcon(props: LucideProps) {
-	return (
+	const t = useTranslations("ui");	return (
 		<svg
 			fill="none"
 			height="15"
@@ -42,7 +44,7 @@ export function BorderBottomIcon(props: LucideProps) {
 			xmlns="http://www.w3.org/2000/svg"
 			{...props}
 		>
-			<title>Border Bottom</title>
+			<title>{t("ui_border_bottom")}</title>
 			<path
 				clipRule="evenodd"
 				d="M1 13.25L14 13.25V14.75L1 14.75V13.25Z"
@@ -80,7 +82,7 @@ export function BorderBottomIcon(props: LucideProps) {
 }
 
 export function BorderLeftIcon(props: LucideProps) {
-	return (
+	const t = useTranslations("ui");	return (
 		<svg
 			fill="none"
 			height="15"
@@ -89,7 +91,7 @@ export function BorderLeftIcon(props: LucideProps) {
 			xmlns="http://www.w3.org/2000/svg"
 			{...props}
 		>
-			<title>Border Left</title>
+			<title>{t("ui_border_left")}</title>
 			<path
 				clipRule="evenodd"
 				d="M1.75 1L1.75 14L0.249999 14L0.25 1L1.75 1Z"
@@ -335,7 +337,7 @@ export function BorderLeftIcon(props: LucideProps) {
 }
 
 export function BorderNoneIcon(props: LucideProps) {
-	return (
+	const t = useTranslations("ui");	return (
 		<svg
 			fill="none"
 			height="15"
@@ -344,7 +346,7 @@ export function BorderNoneIcon(props: LucideProps) {
 			xmlns="http://www.w3.org/2000/svg"
 			{...props}
 		>
-			<title>Border None</title>
+			<title>{t("ui_border_none")}</title>
 			<rect fill="currentColor" height="1" rx=".5" width="1" x="7" y="5.025" />
 			<rect fill="currentColor" height="1" rx=".5" width="1" x="13" y="5.025" />
 			<rect fill="currentColor" height="1" rx=".5" width="1" x="7" y="3.025" />
@@ -383,7 +385,7 @@ export function BorderNoneIcon(props: LucideProps) {
 }
 
 export function BorderRightIcon(props: LucideProps) {
-	return (
+	const t = useTranslations("ui");	return (
 		<svg
 			fill="none"
 			height="15"
@@ -392,7 +394,7 @@ export function BorderRightIcon(props: LucideProps) {
 			xmlns="http://www.w3.org/2000/svg"
 			{...props}
 		>
-			<title>Border Right</title>
+			<title>{t("ui_border_right")}</title>
 			<path
 				clipRule="evenodd"
 				d="M13.25 1L13.25 14L14.75 14L14.75 1L13.25 1Z"
@@ -430,7 +432,7 @@ export function BorderRightIcon(props: LucideProps) {
 }
 
 export function BorderTopIcon(props: LucideProps) {
-	return (
+	const t = useTranslations("ui");	return (
 		<svg
 			fill="none"
 			height="15"
@@ -439,7 +441,7 @@ export function BorderTopIcon(props: LucideProps) {
 			xmlns="http://www.w3.org/2000/svg"
 			{...props}
 		>
-			<title>Border Top</title>
+			<title>{t("ui_border_top")}</title>
 			<path
 				clipRule="evenodd"
 				d="M14 1.75L1 1.75L1 0.249999L14 0.25L14 1.75Z"

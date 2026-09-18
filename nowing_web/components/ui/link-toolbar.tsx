@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating";
@@ -34,6 +35,7 @@ const inputVariants = cva(
 );
 
 export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarState }) {
+	const t = useTranslations("ui");
 	const activeCommentId = usePluginOption({ key: KEYS.comment }, "activeId");
 	const activeSuggestionId = usePluginOption({ key: KEYS.suggestion }, "activeId");
 
@@ -93,7 +95,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 
 				<FloatingLinkUrlInput
 					className={inputVariants()}
-					placeholder="Paste link"
+					placeholder={t("ui_paste_link")}
 					data-plate-focus
 				/>
 			</div>
@@ -104,7 +106,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 				</div>
 				<input
 					className={inputVariants()}
-					placeholder="Text to display"
+					placeholder={t("ui_text_to_display")}
 					data-plate-focus
 					{...textInputProps}
 				/>
@@ -116,9 +118,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 		input
 	) : (
 		<div className="box-content flex items-center">
-			<Button size="sm" variant="ghost" type="button" {...editButtonProps}>
-				Edit link
-			</Button>
+			<Button size="sm" variant="ghost" type="button" {...editButtonProps}>{t("ui_edit_link")}</Button>
 
 			<Separator orientation="vertical" />
 
@@ -146,7 +146,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 }
 
 function LinkOpenButton() {
-	const editor = useEditorRef();
+	const t = useTranslations("ui");	const editor = useEditorRef();
 	useEditorSelection();
 
 	const entry = editor.api.node<TLinkElement>({
@@ -169,7 +169,7 @@ function LinkOpenButton() {
 			onFocus={(e) => {
 				e.stopPropagation();
 			}}
-			aria-label="Open link in a new tab"
+			aria-label={t("ui_open_link_in_a")}
 			disabled={!href}
 		>
 			<ExternalLink width={18} />
