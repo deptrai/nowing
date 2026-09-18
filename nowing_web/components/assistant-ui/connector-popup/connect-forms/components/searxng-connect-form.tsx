@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import type { FC } from "react";
@@ -22,26 +23,26 @@ import { EnumConnectorName } from "@/contracts/enums/connector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const searxngFormSchema = z.object({
+const createSearxngFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
 	name: z.string().min(3, {
-		message: "Connector name must be at least 3 characters.",
+		message: t("connector_name_min"),
 	}),
 	host: z
 		.string()
-		.min(1, { message: "Host is required." })
-		.url({ message: "Enter a valid SearxNG host URL (e.g. https://searxng.example.org)." }),
+		.min(1, { message: t("searxng_host_required") })
+		.url({ message: t("searxng_host_invalid") }),
 	api_key: z.string().optional(),
 	engines: z.string().optional(),
 	categories: z.string().optional(),
 	language: z.string().optional(),
 	safesearch: z
 		.string()
-		.regex(/^[0-2]?$/, { message: "SafeSearch must be 0, 1, or 2." })
+		.regex(/^[0-2]?$/, { message: t("searxng_safesearch_invalid") })
 		.optional(),
 	verify_ssl: z.boolean(),
 });
 
-type SearxngFormValues = z.infer<typeof searxngFormSchema>;
+type SearxngFormValues = z.infer<ReturnType<typeof createSearxngFormSchema>>;
 
 const parseCommaSeparated = (value?: string | null) => {
 	if (!value) return undefined;
@@ -53,11 +54,12 @@ const parseCommaSeparated = (value?: string | null) => {
 };
 
 export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const form = useForm<SearxngFormValues>({
-		resolver: zodResolver(searxngFormSchema),
+		resolver: zodResolver(createSearxngFormSchema(t)),
 		defaultValues: {
-			name: "SearxNG Connector",
+			name: t("searxng_name_default"),
 			host: "",
 			api_key: "",
 			engines: "",
@@ -125,19 +127,19 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 		<div className="space-y-6 pb-6">
 			<Alert>
 				<Info />
-				<AlertTitle>SearxNG Instance Required</AlertTitle>
+				<AlertTitle>{t("searxng_instance_required")}</AlertTitle>
 				<AlertDescription>
 					<p>
-						You need access to a running SearxNG instance. Refer to the{" "}
+						{t("searxng_desc")}{" "}
 						<a
 							href="https://docs.searxng.org/admin/installation-docker.html"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="font-medium underline underline-offset-4"
 						>
-							SearxNG installation guide
+							{t("searxng_install_guide")}
 						</a>{" "}
-						for setup instructions. If your instance requires an API key, include it below.
+						{t("searxng_desc_2")}
 					</p>
 				</AlertDescription>
 			</Alert>
@@ -154,17 +156,17 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Connector Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("connector_name")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="My SearxNG Connector"
+											placeholder={t("searxng_name_placeholder")}
 											className="border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										A friendly name to identify this connector.
+										{t("connector_name_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -176,7 +178,7 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 							name="host"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">SearxNG Host</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("searxng_host")}</FormLabel>
 									<FormControl>
 										<Input
 											placeholder="https://searxng.example.org"
@@ -199,18 +201,18 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 							name="api_key"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">API Key (optional)</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("searxng_api_key")}</FormLabel>
 									<FormControl>
 										<Input
 											type="password"
-											placeholder="Enter API key if your instance requires one"
+											placeholder={t("searxng_api_key_placeholder")}
 											className="border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										Leave empty if your SearxNG instance does not enforce API keys.
+										{t("searxng_api_key_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -223,17 +225,17 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 								name="engines"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel className="text-xs sm:text-sm">Engines (optional)</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">{t("searxng_engines")}</FormLabel>
 										<FormControl>
 											<Input
-												placeholder="google,bing,duckduckgo"
+												placeholder={t("searxng_engines_placeholder")}
 												className="border-slate-400/20 focus-visible:border-slate-400/40"
 												disabled={isSubmitting}
 												{...field}
 											/>
 										</FormControl>
 										<FormDescription className="text-[10px] sm:text-xs">
-											Comma-separated list to target specific engines.
+											{t("searxng_engines_desc")}
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
@@ -245,17 +247,17 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 								name="categories"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel className="text-xs sm:text-sm">Categories (optional)</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">{t("searxng_categories")}</FormLabel>
 										<FormControl>
 											<Input
-												placeholder="general,it,science"
+												placeholder={t("searxng_categories_placeholder")}
 												className="border-slate-400/20 focus-visible:border-slate-400/40"
 												disabled={isSubmitting}
 												{...field}
 											/>
 										</FormControl>
 										<FormDescription className="text-[10px] sm:text-xs">
-											Comma-separated list of SearxNG categories.
+											{t("searxng_categories_desc")}
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
@@ -270,18 +272,18 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel className="text-xs sm:text-sm">
-											Preferred Language (optional)
+											{t("searxng_language")}
 										</FormLabel>
 										<FormControl>
 											<Input
-												placeholder="en-US"
+												placeholder={t("searxng_language_placeholder")}
 												className="border-slate-400/20 focus-visible:border-slate-400/40"
 												disabled={isSubmitting}
 												{...field}
 											/>
 										</FormControl>
 										<FormDescription className="text-[10px] sm:text-xs">
-											IETF language tag (e.g. en, en-US). Leave blank to inherit defaults.
+											{t("searxng_language_desc")}
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
@@ -294,11 +296,11 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel className="text-xs sm:text-sm">
-											SafeSearch Level (optional)
+											{t("searxng_safesearch")}
 										</FormLabel>
 										<FormControl>
 											<Input
-												placeholder="0 (off), 1 (moderate), 2 (strict)"
+												placeholder={t("searxng_safesearch_placeholder")}
 												className="border-slate-400/20 focus-visible:border-slate-400/40"
 												disabled={isSubmitting}
 												{...field}
@@ -320,9 +322,9 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 							render={({ field }) => (
 								<FormItem className="flex items-center justify-between rounded-lg border border-slate-400/20 p-3 sm:p-4">
 									<div>
-										<FormLabel className="text-xs sm:text-sm">Verify SSL Certificates</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">{t("searxng_verify_ssl")}</FormLabel>
 										<FormDescription className="text-[10px] sm:text-xs">
-											Disable only when connecting to instances with self-signed certificates.
+											{t("searxng_verify_ssl_desc")}
 										</FormDescription>
 									</div>
 									<FormControl>
@@ -342,7 +344,7 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 			{/* What you get section */}
 			{getConnectorBenefits(EnumConnectorName.SEARXNG_API) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
-					<h4 className="text-xs sm:text-sm font-medium">What you get with SearxNG:</h4>
+					<h4 className="text-xs sm:text-sm font-medium">{t("searxng_what_you_get")}</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.SEARXNG_API)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

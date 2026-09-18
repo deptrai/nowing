@@ -71,7 +71,7 @@ const createElasticsearchConnectorFormSchema = (t: (k: string, o?: Record<string
 		}
 	);
 
-type ElasticsearchConnectorFormValues = z.infer<typeof elasticsearchConnectorFormSchema>;
+type ElasticsearchConnectorFormValues = z.infer<ReturnType<typeof createelasticsearchConnectorFormSchema>>;
 
 export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");

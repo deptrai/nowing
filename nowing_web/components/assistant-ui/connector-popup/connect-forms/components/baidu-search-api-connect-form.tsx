@@ -31,7 +31,7 @@ const createBaiduSearchApiFormSchema = (t: (k: string, o?: Record<string, string
 	}),
 });
 
-type BaiduSearchApiFormValues = z.infer<typeof baiduSearchApiFormSchema>;
+type BaiduSearchApiFormValues = z.infer<ReturnType<typeof createbaiduSearchApiFormSchema>>;
 
 export const BaiduSearchApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");

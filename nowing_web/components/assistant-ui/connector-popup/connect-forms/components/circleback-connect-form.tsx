@@ -28,7 +28,7 @@ const createCirclebackFormSchema = (t: (k: string, o?: Record<string, string | n
 	}),
 });
 
-type CirclebackFormValues = z.infer<typeof circlebackFormSchema>;
+type CirclebackFormValues = z.infer<ReturnType<typeof createcirclebackFormSchema>>;
 
 export const CirclebackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");

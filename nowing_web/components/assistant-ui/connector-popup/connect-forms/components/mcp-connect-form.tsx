@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Server, XCircle } from "lucide-react";
 import { type FC, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,6 +17,7 @@ import {
 import type { ConnectFormProps } from "..";
 
 export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const [configJson, setConfigJson] = useState("");
 	const [jsonError, setJsonError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 	// Default config for stdio transport (local process)
 	const DEFAULT_STDIO_CONFIG = JSON.stringify(
 		{
-			name: "My MCP Server",
+			name: t("mcp_name_default"),
 			command: "npx",
 			args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"],
 			env: {
@@ -41,7 +43,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 	// Default config for HTTP transport (remote server)
 	const DEFAULT_HTTP_CONFIG = JSON.stringify(
 		{
-			name: "My Remote MCP Server",
+			name: t("mcp_name_remote"),
 			url: "https://your-mcp-server.com/mcp",
 			headers: {
 				API_KEY: "your_api_key_here",
@@ -86,7 +88,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 		if (!serverConfig) {
 			setTestResult({
 				status: "error",
-				message: jsonError || "Invalid configuration",
+				message: jsonError || t("mcp_invalid_config"),
 				tools: [],
 			});
 			return;
@@ -139,8 +141,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 			<Alert className="bg-slate-400/5 dark:bg-white/5 border-slate-400/20 p-2 sm:p-3">
 				<Server className="h-4 w-4 shrink-0" aria-hidden="true" />
 				<AlertDescription className="text-[10px] sm:text-xs">
-					Connect to an MCP (Model Context Protocol) server. Each MCP server is added as a separate
-					connector.
+					{t("mcp_alert_desc")}
 				</AlertDescription>
 			</Alert>
 
@@ -148,7 +149,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-4 sm:p-6 space-y-4">
 					<div className="space-y-2">
 						<div className="flex items-center justify-between flex-wrap gap-2">
-							<Label htmlFor="config">MCP Server Configuration (JSON)</Label>
+							<Label htmlFor="config">{t("mcp_config_label")}</Label>
 							{!configJson && (
 								<div className="flex gap-1">
 									<Button
@@ -158,7 +159,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 										className="h-6 px-2 text-xs text-muted-foreground hover:text-accent-foreground"
 										onClick={() => handleConfigChange(DEFAULT_STDIO_CONFIG)}
 									>
-										Local Example
+										{t("mcp_local_example")}
 									</Button>
 									<Button
 										type="button"
@@ -167,7 +168,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 										className="h-6 px-2 text-xs text-muted-foreground hover:text-accent-foreground"
 										onClick={() => handleConfigChange(DEFAULT_HTTP_CONFIG)}
 									>
-										Remote Example
+										{t("mcp_remote_example")}
 									</Button>
 								</div>
 							)}
@@ -196,7 +197,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 							rows={16}
 							className={`font-mono text-xs ${jsonError ? "border-red-500" : ""}`}
 						/>
-						{jsonError && <p className="text-xs text-red-500">JSON Error: {jsonError}</p>}
+						{jsonError && <p className="text-xs text-red-500">{t("mcp_json_error")} {jsonError}</p>}
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
 							Paste a single MCP server configuration. Must include: name, command, args (optional),
 							env (optional), transport (optional).
@@ -215,10 +216,10 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 							{isTesting ? (
 								<>
 									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-									Testing Connection...
+									{t("mcp_testing")}
 								</>
 							) : (
-								"Test Connection"
+								t("mcp_test_connection")
 							)}
 						</Button>
 					</div>
@@ -239,7 +240,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 							)}
 							<div className="col-start-2 flex items-center justify-between">
 								<AlertTitle className="text-sm">
-									{testResult.status === "success" ? "Connection Successful" : "Connection Failed"}
+									{testResult.status === "success" ? t("mcp_connection_success") : t("mcp_connection_failed")}
 								</AlertTitle>
 								{testResult.tools.length > 0 && (
 									<Button
@@ -256,14 +257,14 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 										{showDetails ? (
 											<>
 												<ChevronUp className="h-3 w-3 mr-1" aria-hidden="true" />
-												<span className="hidden sm:inline">Hide Details</span>
-												<span className="sm:hidden">Hide</span>
+												<span className="hidden sm:inline">{t("mcp_hide_details")}</span>
+												<span className="sm:hidden">{t("mcp_hide")}</span>
 											</>
 										) : (
 											<>
 												<ChevronDown className="h-3 w-3 mr-1" aria-hidden="true" />
-												<span className="hidden sm:inline">Show Details</span>
-												<span className="sm:hidden">Show</span>
+												<span className="hidden sm:inline">{t("mcp_show_details")}</span>
+												<span className="sm:hidden">{t("mcp_show")}</span>
 											</>
 										)}
 									</Button>
@@ -273,7 +274,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 								{testResult.message}
 								{showDetails && testResult.tools.length > 0 && (
 									<div className="mt-3 pt-3 border-t border-green-500/20">
-										<p className="font-semibold mb-2">Available tools:</p>
+										<p className="font-semibold mb-2">{t("mcp_available_tools")}</p>
 										<ul className="list-disc list-inside text-xs space-y-0.5">
 											{testResult.tools.map((tool, i) => (
 												<li key={i}>{tool.name}</li>
