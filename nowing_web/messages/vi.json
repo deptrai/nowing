@@ -5340,5 +5340,31 @@
 		"connect_new": "Mới",
 		"connect_dialog_title": "Kết nối với Claude Code, Codex, OpenCode…",
 		"connect_dialog_desc": "Cấp cho coding agent của bạn quyền truy cập scraper Nowing và cơ sở tri thức. Tạo API key trong mục API Keys, chọn agent của bạn, rồi dán cấu hình."
+	},
+	"alerts": {
+		"modal_title": "Tạo cảnh báo từ mẫu theo lĩnh vực",
+		"modal_desc": "Giám sát thông minh một chạm cho cổ phiếu, tin tức, công ty và giá thương mại điện tử.",
+		"loading_templates": "Đang tải mẫu theo lĩnh vực...",
+		"available_templates": "Mẫu khả dụng",
+		"unavailable": "Không khả dụng",
+		"strategy": "Chiến lược",
+		"capability": "Khả năng",
+		"capability_unavailable": "Mẫu này yêu cầu một khả năng hiện không khả dụng.",
+		"alert_name": "Tên cảnh báo",
+		"alert_name_placeholder": "VD: Cảnh báo giảm giá Vinamilk",
+		"select_option": "Chọn một tùy chọn",
+		"monitoring_schedule": "Lịch giám sát",
+		"schedule_daily": "Kiểm tra hàng ngày (nửa đêm UTC)",
+		"schedule_weekly": "Kiểm tra hàng tuần (Thứ Hai)",
+		"schedule_manual": "Chỉ chạy thủ công",
+		"notification_channels": "Kênh thông báo",
+		"channel_in_app": "Trong ứng dụng",
+		"cancel": "Hủy",
+		"creating": "Đang tạo...",
+		"create_alert": "Tạo cảnh báo",
+		"load_templates_failed": "Không thể tải mẫu cảnh báo",
+		"enter_name_error": "Vui lòng nhập tên cho quy tắc cảnh báo",
+		"alert_created": "Đã tạo cảnh báo \"{name}\" thành công!",
+		"create_failed": "Không thể tạo quy tắc cảnh báo"
 	}
 }

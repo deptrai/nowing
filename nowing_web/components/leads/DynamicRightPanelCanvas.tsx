@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
 	activeCampaignPlanAtom,
 	type CanvasMode,
@@ -61,19 +62,22 @@ export interface DynamicRightPanelCanvasProps {
 	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
 }
 
-const VIEW_MODES: Array<{
+const getViewModes = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+): Array<{
 	id: CanvasMode;
 	label: string;
 	icon: React.ComponentType<{ className?: string }>;
-}> = [
-	{ id: "leads", label: "Leads Matrix", icon: TableIcon },
-	{ id: "plan", label: "Pre-Flight Plan", icon: Compass },
-	{ id: "research", label: "Research Studio", icon: Sparkles },
-	{ id: "automations", label: "Automation Flow", icon: Zap },
-	{ id: "scrapers", label: "Scraper Health", icon: Activity },
+}> => [
+	{ id: "leads", label: t("canvas_leads_matrix"), icon: TableIcon },
+	{ id: "plan", label: t("canvas_pre_flight"), icon: Compass },
+	{ id: "research", label: t("canvas_research_studio"), icon: Sparkles },
+	{ id: "automations", label: t("canvas_automation_flow"), icon: Zap },
+	{ id: "scrapers", label: t("canvas_scraper_health"), icon: Activity },
 ];
 
 export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (props) => {
+	const t = useTranslations("leads");
 	const [threadModesMap, setThreadModesMap] = useAtom(threadCanvasModeMapAtom);
 	const [activePlan, setActivePlan] = useAtom(activeCampaignPlanAtom);
 	const [isFullscreen] = useAtom(isMatrixFullscreenAtom);
@@ -147,7 +151,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 							type="button"
 							onClick={() => setIsLeftCollapsed(false)}
 							className="inline-flex items-center gap-1 px-2.5 py-1 mr-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/30 shrink-0 cursor-pointer shadow-2xs"
-							title="Mở Chat Co-pilot"
+							title={t("open_copilot")}
 						>
 							<PanelLeftOpen className="size-3.5" aria-hidden="true" />
 							<span>Mở Chat</span>
@@ -296,7 +300,7 @@ export const DynamicRightPanelCanvas: React.FC<DynamicRightPanelCanvasProps> = (
 
 					{/* Mini Mode Switcher */}
 					<div className="flex items-center bg-muted/80 p-0.5 rounded-md border border-border/60">
-						{VIEW_MODES.map((mode) => {
+						{getViewModes(t).map((mode) => {
 							const Icon = mode.icon;
 							const isActive = activeMode === mode.id;
 							return (

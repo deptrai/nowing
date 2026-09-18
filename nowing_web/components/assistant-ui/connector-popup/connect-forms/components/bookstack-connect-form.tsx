@@ -45,7 +45,7 @@ const createBookstackConnectorFormSchema = (t: (k: string, o?: Record<string, st
 	}),
 });
 
-type BookStackConnectorFormValues = z.infer<ReturnType<typeof createbookstackConnectorFormSchema>>;
+type BookStackConnectorFormValues = z.infer<ReturnType<typeof createBookstackConnectorFormSchema>>;
 
 export const BookStackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");

@@ -31,7 +31,7 @@ const createLinkupApiFormSchema = (t: (k: string, o?: Record<string, string | nu
 	}),
 });
 
-type LinkupApiFormValues = z.infer<ReturnType<typeof createlinkupApiFormSchema>>;
+type LinkupApiFormValues = z.infer<ReturnType<typeof createLinkupApiFormSchema>>;
 
 export const LinkupApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");

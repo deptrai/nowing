@@ -47,7 +47,7 @@ const createGithubConnectorFormSchema = (t: (k: string, o?: Record<string, strin
 	}),
 });
 
-type GithubConnectorFormValues = z.infer<ReturnType<typeof creategithubConnectorFormSchema>>;
+type GithubConnectorFormValues = z.infer<ReturnType<typeof createGithubConnectorFormSchema>>;
 
 export const GithubConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");

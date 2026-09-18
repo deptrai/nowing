@@ -5338,5 +5338,31 @@
 		"connect_new": "New",
 		"connect_dialog_title": "Connect to Claude Code, Codex, OpenCode…",
 		"connect_dialog_desc": "Give your coding agent access to Nowing scrapers and your knowledge base. Create an API key under API Keys, choose your agent, then paste the config."
+	},
+	"alerts": {
+		"modal_title": "Create Alert from Vertical Template",
+		"modal_desc": "1-Click intelligent monitoring for stocks, news, companies, and e-commerce prices.",
+		"loading_templates": "Loading vertical templates...",
+		"available_templates": "Available Templates",
+		"unavailable": "Unavailable",
+		"strategy": "Strategy",
+		"capability": "Capability",
+		"capability_unavailable": "This template requires an unavailable capability.",
+		"alert_name": "Alert Name",
+		"alert_name_placeholder": "e.g. Vinamilk Drop Alert",
+		"select_option": "Select an option",
+		"monitoring_schedule": "Monitoring Schedule",
+		"schedule_daily": "Daily check (midnight UTC)",
+		"schedule_weekly": "Weekly check (Monday)",
+		"schedule_manual": "Manual run only",
+		"notification_channels": "Notification Channels",
+		"channel_in_app": "In-App",
+		"cancel": "Cancel",
+		"creating": "Creating...",
+		"create_alert": "Create Alert",
+		"load_templates_failed": "Could not load alert templates",
+		"enter_name_error": "Please enter a name for the alert rule",
+		"alert_created": "Alert \"{name}\" created successfully!",
+		"create_failed": "Could not create alert rule"
 	}
 }

@@ -17,6 +17,7 @@ import {
 	X,
 } from "lucide-react";
 import type React from "react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HumanLiveTakeoverPopover } from "@/components/dsh/HumanLiveTakeoverPopover";
@@ -170,6 +171,7 @@ const getDeliverableMetadata = (d: DshMissionDeliverable) => {
 // ponytail: naive sparkline from subtask tokens_used, not a real time-series.
 // Upgrade path: feed checkpoint timestamps from the worker when available.
 function TokenSparkline({ subtasks }: { subtasks: DshMissionSubtask[] }) {
+	const t = useTranslations("leads");
 	const { path, viewBox } = useMemo(() => {
 		const values = subtasks.map((s) => s.tokens_used);
 		const width = 120;
@@ -203,7 +205,7 @@ function TokenSparkline({ subtasks }: { subtasks: DshMissionSubtask[] }) {
 			viewBox={viewBox}
 			preserveAspectRatio="none"
 			role="img"
-			aria-label="Token usage sparkline"
+			aria-label={t("token_usage_sparkline")}
 			className="h-8 w-full overflow-visible"
 		>
 			<path
@@ -227,6 +229,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 	error,
 	totalBudgetMicros,
 }) => {
+	const t = useTranslations("leads");
 	const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(() => {
 		const initial = new Set<string>();
 		if (missionControl?.current_subtask_id) {
@@ -337,7 +340,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 			await dshApiService.resumeMission(latestMission.id);
 			toast.success("Đã trả quyền điều khiển cho agent");
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : "Không thể resume";
+			const msg = err instanceof Error ? err.message : t("cannot_resume");
 			setTakeoverError(msg);
 			toast.error(msg);
 		} finally {
@@ -353,7 +356,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 			await dshApiService.pauseMission(latestMission.id);
 			toast.success("Đã gia hạn quyền điều khiển thêm 15 phút");
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : "Không thể gia hạn";
+			const msg = err instanceof Error ? err.message : t("cannot_extend");
 			setTakeoverError(msg);
 			toast.error(msg);
 		} finally {
@@ -370,7 +373,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 			setAbortedMissionId(latestMission.id);
 			toast.success("Đã hủy nhiệm vụ takeover");
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : "Không thể hủy nhiệm vụ";
+			const msg = err instanceof Error ? err.message : t("cannot_cancel_mission");
 			setTakeoverError(msg);
 			toast.error(msg);
 		} finally {
@@ -425,7 +428,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 					<button
 						type="button"
 						disabled
-						title="Hủy nhiệm vụ (chưa hỗ trợ)"
+						title={t("cancel_mission_unsupported")}
 						className="p-1 rounded-md hover:bg-muted text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed"
 					>
 						<X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -589,7 +592,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 									{d.include_pii && (
 										<span
 											className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded shrink-0"
-											title="Dữ liệu chứa PII — tải xuống có trách nhiệm"
+											title={t("pii_download_warning")}
 										>
 											PII
 										</span>
