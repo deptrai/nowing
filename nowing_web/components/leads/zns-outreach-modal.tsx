@@ -390,11 +390,9 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 										<div className="w-5 h-5 rounded-full bg-white text-[#0068FF] font-bold text-[10px] flex items-center justify-center">
 											Z
 										</div>
-										<span className="text-xs font-semibold tracking-tight">
-											Zalo Notification Service
-										</span>
+										<span className="text-xs font-semibold tracking-tight">{t("leads_zalo_notification_service")}</span>
 									</div>
-									<span className="text-[10px] text-blue-100">OA Verified</span>
+									<span className="text-[10px] text-blue-100">{t("leads_oa_verified")}</span>
 								</div>
 
 								{/* Message Content */}

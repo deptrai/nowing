@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { Building2, ExternalLink, MapPin, Share2 } from "lucide-react";
@@ -15,25 +16,25 @@ export interface LeadIntelligenceTableProps {
 	className?: string;
 }
 
-const getFitScoreBadge = (score: number | null | undefined) => {
+const getFitScoreBadge = (score: number | null | undefined, t: (k: string) => string) => {
 	const raw = score ?? 0;
 	const val = Number.isFinite(raw) ? raw : 0;
 	if (val >= 80) {
 		return {
-			label: "High Fit",
+			label: t("leads_high_fit"),
 			score: val,
 			colorClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 		};
 	}
 	if (val >= 50) {
 		return {
-			label: "Med Fit",
+			label: t("leads_med_fit"),
 			score: val,
 			colorClass: "bg-amber-500/15 text-amber-400 border-amber-500/30",
 		};
 	}
 	return {
-		label: "Low Fit",
+		label: t("leads_low_fit"),
 		score: val,
 		colorClass: "bg-rose-500/15 text-rose-400 border-rose-500/30",
 	};
@@ -46,6 +47,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 	onStatusChange: _onStatusChange,
 	className,
 }) => {
+	const t = useTranslations("leads");
 	if (!leads || leads.length === 0) {
 		return null;
 	}
@@ -67,7 +69,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 							Liên hệ (SĐT)
 						</th>
 						<th scope="col" className="px-4 py-3 font-semibold">
-							Fit & Intent
+							{t("leads_fit_intent")}
 						</th>
 						<th scope="col" className="px-4 py-3 font-semibold">
 							Địa điểm & Giá
@@ -82,7 +84,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 				</thead>
 				<tbody className="divide-y divide-zinc-800/60">
 					{leads.map((lead) => {
-						const fit = getFitScoreBadge(lead.fit_score);
+						const fit = getFitScoreBadge(lead.fit_score, t);
 						return (
 							<tr key={lead.id} className="hover:bg-zinc-800/30 transition-colors">
 								{/* Company & Source */}

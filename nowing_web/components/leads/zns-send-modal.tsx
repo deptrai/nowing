@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 "use client";
 
 import { AlertTriangle, Check, Loader2, Send, X } from "lucide-react";
@@ -21,6 +22,7 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 	phone,
 	onClose,
 }) => {
+	const t = useTranslations("leads");
 	const [templateId, setTemplateId] = useState("");
 	const [templateDataRaw, setTemplateDataRaw] = useState("{}");
 	const [mode, setMode] = useState("");
@@ -82,7 +84,7 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 			<button
 				type="button"
-				aria-label="Đóng cửa sổ"
+				aria-label={t("close_window")}
 				className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
 				onClick={onClose}
 			/>
@@ -95,9 +97,7 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 					<div>
 						<h3 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
 							<span>Gửi ZNS</span>
-							<span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
-								Decree 356
-							</span>
+							<span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">{t("leads_decree_356")}</span>
 						</h3>
 						<p className="text-xs text-zinc-400">
 							Tới: <strong className="text-zinc-200">{companyName}</strong> (
@@ -134,9 +134,7 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 				) : (
 					<form onSubmit={handleSubmit} className="space-y-3">
 						<div className="space-y-1">
-							<label htmlFor="zns-template-id" className="text-xs font-semibold text-zinc-300">
-								Template ID
-							</label>
+							<label htmlFor="zns-template-id" className="text-xs font-semibold text-zinc-300">{t("leads_template_id")}</label>
 							<input
 								id="zns-template-id"
 								type="text"
@@ -149,9 +147,7 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 						</div>
 
 						<div className="space-y-1">
-							<label htmlFor="zns-template-data" className="text-xs font-semibold text-zinc-300">
-								Template data (JSON)
-							</label>
+							<label htmlFor="zns-template-data" className="text-xs font-semibold text-zinc-300">{t("leads_template_data_json")}</label>
 							<textarea
 								id="zns-template-data"
 								value={templateDataRaw}
@@ -187,7 +183,7 @@ export const ZnsSendModal: React.FC<ZnsSendModalProps> = ({
 									value={oaId}
 									onChange={(e) => setOaId(e.target.value)}
 									className="w-full p-2.5 text-xs rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-									placeholder="Nếu workspace có nhiều OA"
+									placeholder={t("zns_oa_hint")}
 								/>
 							</div>
 						</div>
