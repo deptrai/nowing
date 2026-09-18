@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { WorkspaceHealthDashboard } from "@/components/analytics/workspace-health-dashboard";
 
-export const metadata: Metadata = {
-	title: "Workspace Health & Analytics | Nowing",
-	description: "Workspace adoption sparklines, knowledge coverage, and quota telemetry",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("analytics");
+	return {
+		title: t("health_meta_title"),
+		description: t("health_meta_description"),
+	};
+}
 
 interface HealthPageProps {
 	params: Promise<{

@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { SavedSearchesListContent } from "./saved-searches-list-content";
 
-export const metadata: Metadata = {
-	title: "Saved Searches & Alerts",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("saved_searches");
+	return {
+		title: t("page_title"),
+	};
+}
 
 export default async function SavedSearchesPage({
 	params,

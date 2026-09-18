@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { AutomationsContent } from "./automations-content";
 
-export const metadata: Metadata = {
-	title: "Automations",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("automations");
+	return {
+		title: t("page_title"),
+	};
+}
 
 export default async function AutomationsPage({
 	params,
