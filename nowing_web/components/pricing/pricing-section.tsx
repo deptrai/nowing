@@ -17,67 +17,68 @@ import { FAQJsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PricingLeadCalculator } from "./PricingLeadCalculator";
+import { useTranslations } from "next-intl";
 
-const demoPlans = [
+const getDemoPlans = (t: (k: string) => string) => [
 	{
-		name: "FREE",
+		name: t("plan_free_name"),
 		price: "0",
 		yearlyPrice: "0",
 		period: "",
-		billingText: "Self-host free. Run it on your own infrastructure",
+		billingText: t("plan_free_billing"),
 		features: [
-			"Full platform: connectors, agents, automations, and the MCP server",
-			"Unlimited scraping and crawling, you control billing",
-			"Bring your own keys for any model provider",
-			"Keep competitive research on your own infrastructure",
-			"Community support on Discord",
+			t("plan_free_f1"),
+			t("plan_free_f2"),
+			t("plan_free_f3"),
+			t("plan_free_f4"),
+			t("plan_free_f5"),
 		],
 		description: "",
-		buttonText: "View on GitHub",
+		buttonText: t("plan_free_btn"),
 		href: "https://github.com/deptrai/nowing",
 		isPopular: false,
 	},
 	{
-		name: "PAY AS YOU GO",
+		name: t("plan_payg_name"),
 		price: "5",
 		yearlyPrice: "5",
-		period: "to start",
-		billingText: "Your first $5 of credit is free. No subscription, ever",
+		period: t("plan_payg_period"),
+		billingText: t("plan_payg_billing"),
 		features: [
-			"$5 of free credit to start, one balance for everything",
-			"Platform connectors: Reddit, YouTube, TikTok, Amazon, Google Maps, Google Search, and the open web",
-			"Call every connector as a REST API with your key or through the MCP server",
-			"Pay per item returned and per page crawled. Failed calls are never billed",
-			"Premium models like GPT-5.5, Claude Sonnet 5, Gemini 3.1 Pro billed at provider cost",
-			"Scheduled and event-triggered agents for briefs, alerts, and monitoring",
-			"Write results back to Notion, Slack, Linear, and Jira",
-			"Add credit any time. $1 buys $1 of credit, with optional automatic refills",
-			"Priority support on Discord",
+			t("plan_payg_f1"),
+			t("plan_payg_f2"),
+			t("plan_payg_f3"),
+			t("plan_payg_f4"),
+			t("plan_payg_f5"),
+			t("plan_payg_f6"),
+			t("plan_payg_f7"),
+			t("plan_payg_f8"),
+			t("plan_payg_f9"),
 		],
 		description: "",
-		buttonText: "Get Started",
+		buttonText: t("plan_payg_btn"),
 		href: "/login",
 		isPopular: true,
 	},
 	{
-		name: "ENTERPRISE",
-		price: "Contact Us",
-		yearlyPrice: "Contact Us",
+		name: t("plan_enterprise_name"),
+		price: t("plan_enterprise_price"),
+		yearlyPrice: t("plan_enterprise_price"),
 		period: "",
 		billingText: "",
 		features: [
-			"Everything in Pay As You Go",
-			"Custom connectors and agent workflows",
-			"On-prem or VPC deployment",
-			"Audit logs and compliance",
-			"SSO, OIDC & SAML",
-			"White-glove setup and deployment",
-			"Monthly managed updates and maintenance",
-			"SLA commitments",
-			"Dedicated support",
+			t("plan_enterprise_f1"),
+			t("plan_enterprise_f2"),
+			t("plan_enterprise_f3"),
+			t("plan_enterprise_f4"),
+			t("plan_enterprise_f5"),
+			t("plan_enterprise_f6"),
+			t("plan_enterprise_f7"),
+			t("plan_enterprise_f8"),
+			t("plan_enterprise_f9"),
 		],
-		description: "Customized setup for large organizations",
-		buttonText: "Contact Sales",
+		description: t("plan_enterprise_desc"),
+		buttonText: t("plan_enterprise_btn"),
 		href: "/contact",
 		isPopular: false,
 	},
@@ -93,109 +94,93 @@ interface FAQSection {
 	items: FAQItem[];
 }
 
-const faqData: FAQSection[] = [
+const getFaqData = (t: (k: string) => string): FAQSection[] => [
 	{
-		title: "Credits & Pay As You Go",
+		title: t("faq_sec_payg"),
 		items: [
 			{
-				question: "What are credits in Nowing?",
-				answer:
-					"Credits are a single prepaid balance shown in dollars that powers everything in Nowing: platform connector calls, web crawls, document processing, and premium AI models. New accounts start with $5 of free credit. There is one number to watch, and it only moves when you actually use the product.",
+				question: t("faq_q_what_credits"),
+				answer: t("faq_a_what_credits"),
 			},
 			{
-				question: "How does Pay As You Go work?",
-				answer:
-					"There is no monthly subscription. Start with $5 of free credit, and when you need more, add any amount. $1 buys exactly $1 of credit, added to your balance immediately. You can enable automatic refills when your balance runs low, and turn them off any time.",
+				question: t("faq_q_how_payg"),
+				answer: t("faq_a_how_payg"),
 			},
 			{
-				question: "What happens if I run out of credit?",
-				answer:
-					"Nowing checks your balance before every billable call, so your wallet can never go negative. When credit runs out, connector calls, crawls, premium model requests, and document processing pause until you top up. Free models and connectors that do not consume credit keep working.",
+				question: t("faq_q_run_out"),
+				answer: t("faq_a_run_out"),
 			},
 			{
-				question: "Do failed scrapes or crawls cost anything?",
-				answer:
-					"No. Platform connectors bill per item actually returned, and web crawls bill per page successfully fetched. A request that errors, times out, or comes back empty is not charged. You pay for data you receive, not for attempts.",
+				question: t("faq_q_failed_cost"),
+				answer: t("faq_a_failed_cost"),
 			},
 		],
 	},
 	{
-		title: "Connector & Scraping Pricing",
+		title: t("faq_sec_connectors"),
 		items: [
 			{
-				question: "How are platform connectors billed?",
-				answer:
-					"Each platform connector meters per item returned: a Reddit post or comment, a Google Search results page, a Google Maps place or review, a YouTube video or comment. Rates are fractions of a cent per item and are debited from your credit balance after the call succeeds, so your $5 of free credit covers hundreds of items.",
+				question: t("faq_q_how_connectors"),
+				answer: t("faq_a_how_connectors"),
 			},
 			{
-				question: "How much does web crawling cost?",
-				answer:
-					"Web crawls are billed per successfully fetched page at a fraction of a cent, so $1 of credit covers hundreds of pages. Pages that fail to load are never charged. Crawled pages can feed your agents directly or be indexed into your knowledge base for later questions.",
+				question: t("faq_q_how_crawls"),
+				answer: t("faq_a_how_crawls"),
 			},
 			{
-				question: "Does the REST API cost the same as the MCP server?",
-				answer:
-					"Yes. Whether your own app calls a connector with your Nowing API key or your agent calls it as a tool through the MCP server, it is the same endpoint, the same per-item rate, and the same credit balance. There is no separate API plan or seat fee.",
+				question: t("faq_q_api_vs_mcp"),
+				answer: t("faq_a_api_vs_mcp"),
 			},
 			{
-				question: "What can I add to the knowledge base?",
-				answer:
-					"You can upload files directly or sync documents from Google Drive, OneDrive, and Dropbox. Crawled pages can also be indexed for later questions. Document files are billed per page processed; connecting the drives themselves costs nothing.",
+				question: t("faq_q_what_kb"),
+				answer: t("faq_a_what_kb"),
 			},
 		],
 	},
 	{
-		title: "Premium AI, Agents & Automations",
+		title: t("faq_sec_ai_agents"),
 		items: [
 			{
-				question: "How is credit used for premium AI?",
-				answer:
-					"The same balance pays for premium AI models like GPT-5.5, Claude Sonnet 5, and Gemini 3.1 Pro, plus over 100 more via OpenRouter, and for premium features such as image generation, podcasts, and video presentations. Each request debits the actual USD provider cost, so cheaper models bill proportionally less.",
+				question: t("faq_q_ai_credit"),
+				answer: t("faq_a_ai_credit"),
 			},
 			{
-				question: "Do agents and automations cost extra?",
-				answer:
-					"No. There is no add-on fee for agents or automations. A scheduled research brief or an event-triggered alert draws from the same credit balance: connector items and crawled pages at their per-unit rates, and model usage at provider cost. A workflow that uses free models and no scraping costs nothing.",
+				question: t("faq_q_agents_extra"),
+				answer: t("faq_a_agents_extra"),
 			},
 			{
-				question: "What can the agents actually do?",
-				answer:
-					"You describe the job in plain English and Nowing sets up the agent, no code needed. Agents can watch any page for changes, track mentions on Reddit and YouTube, monitor Google rankings and Maps reviews, then turn what they find into briefs and alerts, and write results back to Notion, Slack, Linear, and Jira.",
+				question: t("faq_q_agents_do"),
+				answer: t("faq_a_agents_do"),
 			},
 		],
 	},
 	{
-		title: "Documents & Knowledge Base",
+		title: t("faq_sec_docs"),
 		items: [
 			{
-				question: "How much does document processing cost?",
-				answer:
-					"Document processing is billed per page from your credit balance. Basic mode costs $0.001 per page and Premium mode costs $0.01 per page, with Premium using advanced extraction for complex financial, medical, and legal layouts. Pages in Word, PowerPoint, and Excel files are estimated automatically, and every file uses at least 1 page.",
+				question: t("faq_q_doc_cost"),
+				answer: t("faq_a_doc_cost"),
 			},
 			{
-				question: "Which file types use credit?",
-				answer:
-					"Only document files that need processing: PDFs, Word documents, presentations, spreadsheets, ebooks, and images. Plain text, code, Markdown, CSV, HTML, audio, and video files are indexed free. Duplicate documents are detected automatically and never charged twice.",
+				question: t("faq_q_file_types"),
+				answer: t("faq_a_file_types"),
 			},
 			{
-				question: "If I delete a document, do I get my credit back?",
-				answer:
-					"No. Deleting a document removes it from your knowledge base, but the credit it used is not refunded. Credit tracks your total usage over time, not how much is currently stored, so once credit is spent it stays spent even if you later remove the document.",
+				question: t("faq_q_delete_doc"),
+				answer: t("faq_a_delete_doc"),
 			},
 		],
 	},
 	{
-		title: "Self-Hosting",
+		title: t("faq_sec_self_host"),
 		items: [
 			{
-				question: "Is the self-hosted version really free and unlimited?",
-				answer:
-					"Yes. Nowing is open-core, and the default self-hosted configuration ships with all credit billing switched off. Scraping, crawling, document processing, and agent runs are limited only by your own infrastructure and the model provider keys you bring.",
+				question: t("faq_q_self_host_free"),
+				answer: t("faq_a_self_host_free"),
 			},
 			{
-				question: "What is the difference between self-hosted and cloud?",
-				answer:
-					"Both run the same platform: connectors, agents, automations, and the MCP server. Cloud is zero-setup with managed infrastructure and metered pay-as-you-go credit. Self-hosted runs on your machines with your own model keys, keeps competitive research fully in-house, and leaves billing under your control.",
+				question: t("faq_q_self_vs_cloud"),
+				answer: t("faq_a_self_vs_cloud"),
 			},
 		],
 	},
@@ -261,6 +246,8 @@ const GridLineVertical = ({ className, offset }: { className?: string; offset?: 
 };
 
 function PricingFAQ() {
+	const t = useTranslations("pricing");
+	const faqData = getFaqData(t);
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -284,11 +271,10 @@ function PricingFAQ() {
 			<FAQJsonLd questions={faqData.flatMap((section) => section.items)} />
 			<div className="text-center">
 				<h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight">
-					Frequently Asked Questions
+					{t("faq_title")}
 				</h2>
 				<p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base text-muted-foreground font-sans leading-relaxed">
-					Everything you need to know about Nowing credits and billing. Can&apos;t find what you
-					need? Reach out at{" "}
+					{t("faq_desc_pre")}{" "}
 					<a href="mailto:admin@nowing.com" className="text-brand underline">
 						admin@nowing.com
 					</a>
@@ -367,55 +353,56 @@ function PricingFAQ() {
 	);
 }
 
-const unitRates = [
+const getUnitRates = (t: (k: string) => string) => [
 	{
-		service: "Real Estate Phone Number Unlock",
+		service: t("rate_phone_service"),
 		platforms: "Batdongsan, Chotot, MuaBan",
 		rateCredits: "5 credits",
 		rateUsd: "$0.05",
 		rateVnd: "1,270 VND",
-		billingUnit: "Per successfully verified phone",
+		billingUnit: t("rate_phone_unit"),
 		icon: IconPhoneCall,
 	},
 	{
-		service: "Autonomous Deep Research & Briefs",
+		service: t("rate_research_service"),
 		platforms: "ChainLens, Web Citations, Synthesizer",
 		rateCredits: "2 - 5 credits",
 		rateUsd: "$0.02 - $0.05",
 		rateVnd: "508 - 1,270 VND",
-		billingUnit: "Per complete research run",
+		billingUnit: t("rate_research_unit"),
 		icon: IconSearch,
 	},
 	{
-		service: "B2B & Social Data Scrapers",
+		service: t("rate_scraping_service"),
 		platforms: "Google Maps, TopCV, VietnamWorks, FB",
 		rateCredits: "0.1 - 0.5 credits",
 		rateUsd: "$0.001 - $0.005",
 		rateVnd: "25 - 127 VND",
-		billingUnit: "Per item / profile returned",
+		billingUnit: t("rate_scraping_unit"),
 		icon: IconWorld,
 	},
 	{
-		service: "Document Parsing & Table OCR",
+		service: t("rate_doc_service"),
 		platforms: "PDF, Office, Financial Statements",
 		rateCredits: "0.1 - 1 credit",
 		rateUsd: "$0.001 - $0.01",
 		rateVnd: "25 - 254 VND",
-		billingUnit: "Per page extracted (text files free)",
+		billingUnit: t("rate_doc_unit"),
 		icon: IconCoins,
 	},
 ];
 
 function PricingUnitRatesTable() {
+	const t = useTranslations("pricing");
+	const unitRates = getUnitRates(t);
 	return (
 		<div className="w-full max-w-5xl mx-auto px-4 my-12">
 			<div className="text-center mb-8">
 				<h3 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
-					Transparent Pay-As-You-Go Unit Rates
+					{t("unit_rates_title")}
 				</h3>
 				<p className="text-sm md:text-base text-neutral-600 dark:text-neutral-400 mt-2 max-w-2xl mx-auto">
-					No hidden multipliers or bloated seat fees. $1 buys exactly $1 worth of platform credits.
-					Failed queries or empty results are never billed.
+					{t("unit_rates_subtitle")}
 				</p>
 			</div>
 
@@ -424,11 +411,11 @@ function PricingUnitRatesTable() {
 					<table className="w-full text-left text-sm">
 						<thead className="bg-neutral-50 dark:bg-neutral-800/60 text-xs uppercase font-semibold text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-800">
 							<tr>
-								<th className="px-6 py-4">Capability & Platform</th>
-								<th className="px-6 py-4">Credit Cost</th>
-								<th className="px-6 py-4">USD Equivalent</th>
-								<th className="px-6 py-4">VND Equivalent</th>
-								<th className="px-6 py-4">Billing Meter</th>
+								<th className="px-6 py-4">{t("th_capability")}</th>
+								<th className="px-6 py-4">{t("th_credit_cost")}</th>
+								<th className="px-6 py-4">{t("th_usd")}</th>
+								<th className="px-6 py-4">{t("th_vnd")}</th>
+								<th className="px-6 py-4">{t("th_billing_meter")}</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
@@ -478,6 +465,7 @@ function PricingUnitRatesTable() {
 }
 
 function PartnerBanner() {
+	const t = useTranslations("pricing");
 	return (
 		<div className="w-full max-w-5xl mx-auto px-4 my-16">
 			<div className="relative rounded-3xl bg-neutral-900 dark:bg-neutral-950 border border-neutral-800 p-8 md:p-10 shadow-2xl overflow-hidden">
@@ -492,20 +480,18 @@ function PartnerBanner() {
 					<div className="space-y-2 text-center md:text-left">
 						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold uppercase tracking-wider">
 							<IconAffiliate className="size-3.5" />
-							<span>Nowing Affiliate & Partner Program</span>
+							<span>{t("partner_badge")}</span>
 						</div>
 						<h4 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-							Earn 15% Lifetime Recurring Commission
+							{t("partner_title")}
 						</h4>
 						<p className="text-sm text-neutral-400 max-w-xl">
-							Introduce Nowing to your clients, agency network, or sales team. Get paid 15%
-							recurring lifetime commissions with instant VietQR Napas 24/7 payouts or +10% platform
-							credit bonus.
+							{t("partner_desc")}
 						</p>
 					</div>
 					<Link href="/partners">
 						<Button className="bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold px-6 py-6 rounded-2xl flex items-center gap-2 transition-all shrink-0 shadow-lg shadow-emerald-500/20">
-							<span>Become a Partner</span>
+							<span>{t("partner_btn")}</span>
 							<IconArrowRight className="size-4" />
 						</Button>
 					</Link>
@@ -516,12 +502,14 @@ function PartnerBanner() {
 }
 
 function PricingBasic() {
+	const t = useTranslations("pricing");
+	const demoPlans = getDemoPlans(t);
 	return (
 		<>
 			<Pricing
 				plans={demoPlans}
-				title="Nowing Pricing"
-				description="Give your agents the live web. Self-host for free, or start with $5 of credit and pay as you go. No subscriptions."
+				title={t("page_title")}
+				description={t("page_description")}
 			/>
 			<PricingUnitRatesTable />
 			<PricingLeadCalculator />

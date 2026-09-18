@@ -38,7 +38,7 @@ function SchemaTable({ caption, fields }: { caption: string; fields: SchemaField
 								<code className="font-mono text-[13px] text-muted-foreground">{field.type}</code>
 								{field.required ? (
 									<span className="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
-										required
+										{t("required")}
 									</span>
 								) : null}
 								{field.defaultValue !== undefined ? (
