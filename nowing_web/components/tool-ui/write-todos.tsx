@@ -29,7 +29,6 @@ const TodoItemSchema = z.object({
 /**
  * Schema for write_todos tool args/result (matches deepagents output)
  * deepagents provides: { todos: [{ content, status }] }
-	const t = useTranslations("toolUi");
  */
 const WriteTodosSchema = z.object({
 	todos: z.array(TodoItemSchema).nullish(),

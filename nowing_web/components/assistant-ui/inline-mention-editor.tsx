@@ -143,7 +143,6 @@ const MENTION_CHIP_TITLE_CLASSNAME = "max-w-[120px] truncate leading-none";
 const COMPOSER_TEXT_METRICS_CLASSNAME = "text-[11.5px] sm:text-xs leading-5";
 
 const EMPTY_VALUE: ComposerValue = [{ type: "p", children: [{ text: "" }] }];
-	const t = useTranslations("assistant");
 
 /**
  * Lets ``MentionElement`` reach the editor's chip-removal helper so

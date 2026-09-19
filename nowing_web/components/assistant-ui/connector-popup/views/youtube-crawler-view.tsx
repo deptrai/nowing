@@ -17,7 +17,6 @@ import { baseApiService } from "@/lib/apis/base-api.service";
 
 const YOUTUBE_VIDEO_URL_RE =
 	/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?[^\s]*v=[\w-]{11}|youtu\.be\/[\w-]{11})[^\s]*/;
-	const t = useTranslations("assistant");
 
 const YOUTUBE_PLAYLIST_URL_RE =
 	/(?:https?:\/\/)?(?:www\.)?youtube\.com\/[^\s]*[?&]list=[\w-]+[^\s]*/;

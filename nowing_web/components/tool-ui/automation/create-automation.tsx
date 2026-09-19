@@ -29,7 +29,6 @@ import {
 import { AutomationDraftPreview } from "./automation-draft-preview";
 
 const editArgsSchema = automationCreateRequest.omit({ workspace_id: true });
-	const t = useTranslations("toolUi");
 
 // ----------------------------------------------------------------------------
 // Result discrimination — mirrors the backend return shapes in
@@ -95,6 +94,7 @@ interface ApprovalCardProps {
 }
 
 function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 
 	const reviewConfig = interruptData.review_configs[0];
@@ -324,6 +324,7 @@ interface JsonEditorProps {
 }
 
 function JsonEditor({ initialValue, onSave, onCancel }: JsonEditorProps) {
+	const t = useTranslations("toolUi");
 	const [value, setValue] = useState<Record<string, unknown>>(initialValue);
 	const [issues, setIssues] = useState<string[]>([]);
 
@@ -381,6 +382,7 @@ function JsonEditor({ initialValue, onSave, onCancel }: JsonEditorProps) {
 // ----------------------------------------------------------------------------
 
 function SavedCard({ result }: { result: SavedResult }) {
+	const t = useTranslations("toolUi");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const tracked = useRef(false);
 	useEffect(() => {
@@ -425,6 +427,7 @@ function SavedCard({ result }: { result: SavedResult }) {
 }
 
 function InvalidCard({ result }: { result: InvalidResult }) {
+	const t = useTranslations("toolUi");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const tracked = useRef(false);
 	useEffect(() => {
@@ -458,6 +461,7 @@ function InvalidCard({ result }: { result: InvalidResult }) {
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const tracked = useRef(false);
 	useEffect(() => {
