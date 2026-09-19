@@ -195,7 +195,7 @@ export function DesktopContent() {
 							<p className="text-xs text-muted-foreground">
 								{autoLaunchSupported
 									? "Adds Nowing to your system's login items."
-									: "Only available in the packaged desktop app."}
+									: t("desktop_only_packaged")}
 							</p>
 						</div>
 						<Switch

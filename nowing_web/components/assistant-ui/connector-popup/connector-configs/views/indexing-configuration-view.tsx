@@ -155,8 +155,8 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						</div>
 						<p className="text-xs sm:text-base text-muted-foreground mt-1">
 							{isLive
-								? "Your account is ready to use"
-								: "Configure when to start syncing your data"}
+								? t("conn_account_ready")
+								: t("conn_configure_sync")}
 						</p>
 					</div>
 				</div>

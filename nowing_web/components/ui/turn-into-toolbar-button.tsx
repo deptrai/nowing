@@ -122,7 +122,7 @@ export const getTurnIntoItems = (t: (k: string) => string) => [
 ];
 
 export function TurnIntoToolbarButton({
-	tooltip = "Turn into",
+	tooltip,
 	...props
 }: DropdownMenuProps & { tooltip?: React.ReactNode }) {
 	const t = useTranslations("ui");	const editor = useEditorRef();
@@ -143,7 +143,7 @@ export function TurnIntoToolbarButton({
 				<ToolbarButton
 					className="min-w-[80px] sm:min-w-[125px]"
 					pressed={open}
-					tooltip={tooltip}
+					tooltip={tooltip ?? t("ui_turn_into")}
 					isDropdown
 				>
 					{selectedItem.label}

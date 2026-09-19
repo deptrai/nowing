@@ -160,7 +160,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 			});
 			setIsEditing(false);
 		} catch (err) {
-			setIssues([(err as Error).message ?? "Update failed"]);
+			setIssues([(err as Error).message ?? t("auto_update_failed")]);
 		}
 	}
 

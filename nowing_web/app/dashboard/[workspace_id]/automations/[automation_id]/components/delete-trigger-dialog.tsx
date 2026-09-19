@@ -69,10 +69,10 @@ export function DeleteTriggerDialog({
 						{submitting ? (
 							<span className="inline-flex items-center gap-2">
 								<Spinner size="xs" />
-								Removing…
+								{t("auto_removing")}
 							</span>
 						) : (
-							"Remove"
+							t("auto_remove")
 						)}
 					</AlertDialogAction>
 				</AlertDialogFooter>

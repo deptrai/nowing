@@ -49,7 +49,7 @@ type Item = {
 
 const getGroups = (t: (k: string) => string): Group[] => [
 	{
-		group: "Basic blocks",
+		group: t("group_basic"),
 		items: [
 			{
 				icon: <PilcrowIcon />,
@@ -99,7 +99,7 @@ const getGroups = (t: (k: string) => string): Group[] => [
 		})),
 	},
 	{
-		group: "Lists",
+		group: t("group_lists"),
 		items: [
 			{
 				icon: <ListIcon />,
@@ -129,7 +129,7 @@ const getGroups = (t: (k: string) => string): Group[] => [
 		})),
 	},
 	{
-		group: "Advanced",
+		group: t("group_advanced"),
 		items: [
 			{
 				icon: <InfoIcon />,
@@ -154,7 +154,7 @@ const getGroups = (t: (k: string) => string): Group[] => [
 		})),
 	},
 	{
-		group: "Marks",
+		group: t("group_marks"),
 		items: [
 			{
 				icon: <SuperscriptIcon />,

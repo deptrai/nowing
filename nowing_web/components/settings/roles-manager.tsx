@@ -106,19 +106,19 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	chats: {
 		label: "AI Chats",
 		icon: MessageSquare,
-		description: "Create and manage AI conversations",
+		description: t("roles_chats_desc"),
 		order: 2,
 	},
 	comments: {
 		label: "Comments",
 		icon: MessageCircleReply,
-		description: "Add annotations to documents",
+		description: t("roles_comments_desc"),
 		order: 3,
 	},
 	llm_configs: {
 		label: "AI Models",
 		icon: Bot,
-		description: "Configure AI model settings",
+		description: t("roles_ai_models_desc"),
 		order: 4,
 	},
 	image_generations: {
@@ -130,7 +130,7 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	vision_configs: {
 		label: "Vision Models",
 		icon: ScanEye,
-		description: "Configure vision model settings",
+		description: t("roles_vision_models_desc"),
 		order: 4.2,
 	},
 	video_presentations: {
@@ -142,31 +142,31 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	podcasts: {
 		label: t("x_podcasts"),
 		icon: Mic,
-		description: "Generate AI podcasts from content",
+		description: t("roles_podcasts_desc"),
 		order: 5,
 	},
 	automations: {
 		label: t("x_automations"),
 		icon: Workflow,
-		description: "Scheduled and event-driven agent tasks",
+		description: t("roles_automations_desc"),
 		order: 5.5,
 	},
 	connectors: {
 		label: "Connectors",
 		icon: Unplug,
-		description: "Connect external data sources",
+		description: t("roles_connectors_desc"),
 		order: 6,
 	},
 	source: {
 		label: "Sources & Connectors",
 		icon: Unplug,
-		description: "Configure scraper and data connector sources",
+		description: t("roles_scrapers_desc"),
 		order: 6.1,
 	},
 	tools: {
 		label: "Agent Tools",
 		icon: Bot,
-		description: "Toggle MCP tools and agent tool configurations",
+		description: t("roles_mcp_tools_desc"),
 		order: 6.2,
 	},
 	logs: {
@@ -178,31 +178,31 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	memory: {
 		label: "Memory",
 		icon: Shield,
-		description: "Search, recall, and manage research memories",
+		description: t("roles_memory_desc"),
 		order: 7.5,
 	},
 	members: {
 		label: "Team Members",
 		icon: Users,
-		description: "Manage team membership",
+		description: t("roles_team_desc"),
 		order: 8,
 	},
 	roles: {
 		label: "Roles",
 		icon: Shield,
-		description: "Configure role permissions",
+		description: t("roles_permissions_desc"),
 		order: 9,
 	},
 	settings: {
 		label: "Settings",
 		icon: Settings,
-		description: "Manage workspace settings",
+		description: t("roles_workspace_settings_desc"),
 		order: 10,
 	},
 	billing: {
 		label: "Billing",
 		icon: CreditCard,
-		description: "View workspace plans, credit balances, and invoices",
+		description: t("roles_billing_desc"),
 		order: 10.5,
 	},
 	public_sharing: {
@@ -214,7 +214,7 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	general: {
 		label: "General",
 		icon: SlidersHorizontal,
-		description: "General workspace permissions",
+		description: t("roles_general_desc"),
 		order: 12,
 	},
 });
@@ -234,11 +234,11 @@ const ACTION_LABELS: Record<string, string> = {
 	execute: "Execute",
 };
 
-export const ROLE_TEMPLATES = {
+export const getRolePresets = (t: (k: string) => string) => ({
 	viewer: {
 		name: "Custom Viewer",
 		label: "Viewer",
-		description: "Read-only access with ability to add comments",
+		description: t("roles_viewer_desc"),
 		permissions: [
 			"documents:read",
 			"chats:read",
@@ -258,7 +258,7 @@ export const ROLE_TEMPLATES = {
 	editor: {
 		name: "Custom Editor",
 		label: "Editor",
-		description: "Create, read, and edit content. No delete or admin access.",
+		description: t("roles_editor_desc"),
 		permissions: [
 			"documents:read",
 			"chats:read",
@@ -292,7 +292,7 @@ export const ROLE_TEMPLATES = {
 	analyst: {
 		name: "Analyst",
 		label: "Analyst",
-		description: "Deep research, intelligence, documents, and analytics read-only access.",
+		description: t("roles_researcher_desc"),
 		permissions: [
 			"documents:read",
 			"chats:read",
@@ -305,7 +305,7 @@ export const ROLE_TEMPLATES = {
 	billing: {
 		name: "Billing Viewer",
 		label: "Billing",
-		description: "Manage plans, credit balances, payment methods, and invoices.",
+		description: t("roles_billing_admin_desc"),
 		permissions: [
 			"settings:view",
 			"members:view",
@@ -316,11 +316,12 @@ export const ROLE_TEMPLATES = {
 	custom: {
 		name: "Custom Role",
 		label: "Custom",
-		description: "Start from scratch with an empty permission set.",
+		description: t("roles_custom_desc"),
 		permissions: [] as string[],
 	},
-};
+});
 
+export const ROLE_TEMPLATES = getRolePresets((k) => k);
 export const ROLE_PRESETS = ROLE_TEMPLATES;
 
 type PermissionWithDescription = PermissionInfo;

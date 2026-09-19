@@ -433,7 +433,9 @@
 		"rule_created": "Rule created.",
 		"rule_deleted": "Rule deleted.",
 		"permission_required": "Permission is required.",
-		"name_and_prompt_required": "Name and prompt are required"
+		"name_and_prompt_required": "Name and prompt are required",
+		"delete_btn": "Delete",
+		"desktop_only_packaged": "Only available in the packaged desktop app."
 	},
 	"dashboard": {
 		"title": "Dashboard",
@@ -1440,7 +1442,27 @@
 		"roles_perm_audit_desc": "View and manage audit trail",
 		"roles_perm_share_desc": "Share chats publicly via links",
 		"roles_name_required": "Please enter a role name",
-		"roles_name_placeholder": "e.g., Content Manager"
+		"roles_name_placeholder": "e.g., Content Manager",
+		"roles_comments_desc": "Add annotations to documents",
+		"roles_ai_models_desc": "Configure AI model settings",
+		"roles_vision_models_desc": "Configure vision model settings",
+		"roles_podcasts_desc": "Generate AI podcasts from content",
+		"roles_automations_desc": "Scheduled and event-driven agent tasks",
+		"roles_connectors_desc": "Connect external data sources",
+		"roles_scrapers_desc": "Configure scraper and data connector sources",
+		"roles_mcp_tools_desc": "Toggle MCP tools and agent tool configurations",
+		"roles_memory_desc": "Search, recall, and manage research memories",
+		"roles_team_desc": "Manage team membership",
+		"roles_permissions_desc": "Configure role permissions",
+		"roles_workspace_settings_desc": "Manage workspace settings",
+		"roles_billing_desc": "View workspace plans, credit balances, and invoices",
+		"roles_general_desc": "General workspace permissions",
+		"roles_viewer_desc": "Read-only access with ability to add comments",
+		"roles_editor_desc": "Create, read, and edit content. No delete or admin access.",
+		"roles_researcher_desc": "Deep research, intelligence, documents, and analytics read-only access.",
+		"roles_billing_admin_desc": "Manage plans, credit balances, payment methods, and invoices.",
+		"roles_custom_desc": "Start from scratch with an empty permission set.",
+		"roles_chats_desc": "Create and manage AI conversations"
 	},
 	"logs": {
 		"title": "Task Logs",
@@ -1947,7 +1969,8 @@
 		"kb_exported": "Knowledge base exported",
 		"plan_upgraded": "Plan upgraded to {plan} immediately.",
 		"plan_change_scheduled": "Plan change to {plan} scheduled for {date}.",
-		"support_level": "Support level: {level}"
+		"support_level": "Support level: {level}",
+		"plan_details": "Plan details"
 	},
 	"homepage": {
 		"hero_title_part1": "The AI Workspace",
@@ -3169,7 +3192,14 @@
 		"search_models": "Search models",
 		"adfree_title": "Go ad-free with a free account",
 		"upgrade_5m": "Create free account for 5M more tokens",
-		"quick_verify": "Quick verification to continue chatting"
+		"quick_verify": "Quick verification to continue chatting",
+		"error_unexpected": "An unexpected error occurred",
+		"error_thread_stopping": "A previous response is still stopping. Please try again in a moment.",
+		"error_model_auth": "This model's API key is invalid or expired. Switch models, or update the API key.",
+		"error_model_not_found": "This model is unavailable or no longer exists. Please switch models.",
+		"error_context_limit": "This request is too large for the selected model. Reduce the input or switch models.",
+		"error_provider_unavailable": "The selected model provider is temporarily unavailable. Please try again or switch models.",
+		"error_rate_limited": "This model is temporarily rate-limited. Please try again in a few seconds or switch models."
 	},
 	"team": {
 		"members_title": "Members",
@@ -3935,7 +3965,10 @@
 		"pg_messaging_channels": "Messaging Channels",
 		"validation_failed": "Validation failed.",
 		"api_run_completed": "API run completed.",
-		"error": "Error"
+		"error": "Error",
+		"error_insufficient_credits": "Insufficient credits. Please top up to run this API.",
+		"error_invalid_data": "Invalid data. Please check the fields above and try again.",
+		"error_generic": "An error occurred. Please try again."
 	},
 	"saved_searches": {
 		"not_found": "Saved search not found",
@@ -5504,7 +5537,9 @@
 		"file_created": "File created",
 		"automation_saved_edits": "Automation saved with your edits",
 		"automation_created": "Automation created from this draft",
-		"search_language_tag": "Search or type a language tag…"
+		"search_language_tag": "Search or type a language tag…",
+		"plan_show_less": "Show less",
+		"plan_show_more": "Show {count} more {count, plural, one {task} other {tasks}}"
 	},
 	"telemetry": {
 		"failed_load_celery": "Failed to load Celery queues",
@@ -6147,7 +6182,17 @@
 		"connector_confluence_tooltip": "Create, update, and delete pages in Confluence",
 		"connector_discord_tooltip": "List channels, read messages, and send messages in Discord",
 		"connector_teams_tooltip": "List channels, read messages, and send messages in Microsoft Teams",
-		"connector_luma_tooltip": "List, read, and create events in Luma"
+		"connector_luma_tooltip": "List, read, and create events in Luma",
+		"conn_account_ready": "Your account is ready to use",
+		"conn_configure_sync": "Configure when to start syncing your data",
+		"conn_follow_setup": "Follow the plugin setup steps below",
+		"conn_enter_details": "Enter your connection details",
+		"conn_manage_account": "Manage your connected account",
+		"conn_manage_settings": "Manage your connector settings and sync configuration",
+		"conn_select_folder_sync": "Select at least one folder or file above to enable periodic sync",
+		"conn_lose_access": "Your agent will lose access to this service",
+		"conn_remove_data": "This will remove all indexed data",
+		"conn_never_indexed": "Never indexed"
 	},
 	"layout": {
 		"free_workspace_name": "Nowing Free",
@@ -6466,7 +6511,27 @@
 		"day_friday": "Friday",
 		"day_saturday": "Saturday",
 		"day_sunday": "Sunday",
-		"pick_day_weekly_err": "Pick at least one day"
+		"pick_day_weekly_err": "Pick at least one day",
+		"auto_yes": "Yes",
+		"auto_no": "No",
+		"auto_configured": "Configured",
+		"auto_items_count": "{count} items",
+		"auto_no_schedule_hint": "No schedule — won't run automatically",
+		"auto_triggers_count": "{count} triggers",
+		"auto_delete": "Delete",
+		"auto_remove": "Remove",
+		"auto_deleting": "Deleting…",
+		"auto_removing": "Removing…",
+		"auto_approve_all": "Auto-approve agent actions",
+		"auto_ask_before_actions": "Ask before actions",
+		"auto_enter_schedule_expr": "Enter a schedule expression",
+		"auto_submit_failed": "Submit failed",
+		"auto_update_failed": "Update failed",
+		"auto_no_instructions": "No instructions yet",
+		"auto_run_agent_task": "Run an agent task",
+		"auto_docs_and_folders": "Documents and folders",
+		"auto_connectors": "Connectors",
+		"campaigns_track_desc": "Track conversions, responses, and email sending budget in real time"
 	},
 	"broadcasts": {
 		"dismiss": "Dismiss",
@@ -6743,7 +6808,11 @@
 		"f_add_comments_and_tag": "Add comments and tag teammates on any message.",
 		"f_previous_slide": "Previous slide",
 		"f_next_slide": "Next slide",
-		"f_no_results_found": "No results found."
+		"f_no_results_found": "No results found.",
+		"group_basic": "Basic blocks",
+		"group_lists": "Lists",
+		"group_advanced": "Advanced",
+		"group_marks": "Marks"
 	},
 	"chatMessages": {
 		"x_doom_loop_user_requested": "Doom loop: user requested stop.",
@@ -6973,5 +7042,13 @@
 		"low": "Low",
 		"medium": "Medium",
 		"high": "High"
+	},
+	"onboarding": {
+		"tour_manage_tools": "Manage your tools",
+		"tour_manage_tools_desc": "Enable or disable AI tools and configure capabilities.",
+		"tour_upload_docs": "Upload documents",
+		"tour_upload_docs_desc": "Upload files to your workspace.",
+		"tour_check_inbox": "Check your inbox",
+		"tour_check_inbox_desc": "View mentions and notifications in one place."
 	}
 }

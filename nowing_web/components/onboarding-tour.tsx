@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
@@ -16,28 +17,28 @@ import { fetchThreads } from "@/lib/chat/thread-persistence";
 
 interface TourStep {
 	target: string;
-	title: string;
-	content: string;
+	titleKey: string;
+	contentKey: string;
 	placement: "top" | "bottom" | "left" | "right";
 }
 
 const TOUR_STEPS: TourStep[] = [
 	{
 		target: '[data-joyride="connector-icon"]',
-		title: "Manage your tools",
-		content: "Enable or disable AI tools and configure capabilities.",
+		titleKey: "tour_manage_tools",
+		contentKey: "tour_manage_tools_desc",
 		placement: "bottom",
 	},
 	{
 		target: '[data-joyride="upload-button"]',
-		title: "Upload documents",
-		content: "Upload files to your workspace.",
+		titleKey: "tour_upload_docs",
+		contentKey: "tour_upload_docs_desc",
 		placement: "left",
 	},
 	{
 		target: '[data-joyride="inbox-sidebar"]',
-		title: "Check your inbox",
-		content: "View mentions and notifications in one place.",
+		titleKey: "tour_check_inbox",
+		contentKey: "tour_check_inbox_desc",
 		placement: "right",
 	},
 ];
@@ -176,6 +177,7 @@ function TourTooltip({
 	shouldAnimate: boolean;
 	onAnimationEnd: () => void;
 }) {
+	const t = useTranslations("onboarding");
 	const isLastStep = stepIndex === totalSteps - 1;
 	const isFirstStep = stepIndex === 0;
 
@@ -310,9 +312,9 @@ function TourTooltip({
 					onAnimationEnd={onAnimationEnd}
 				>
 					<h3 id="tour-title" className="mb-1.5 text-sm font-semibold">
-						{step.title}
+						{t(step.titleKey)}
 					</h3>
-					<p className="text-sm leading-relaxed text-muted-foreground">{step.content}</p>
+					<p className="text-sm leading-relaxed text-muted-foreground">{t(step.contentKey)}</p>
 				</div>
 
 				{/* Footer */}
@@ -370,6 +372,7 @@ function TourTooltip({
 }
 
 export function OnboardingTour() {
+	const t = useTranslations("onboarding");
 	const isMobile = useIsMobile();
 	const [isActive, setIsActive] = useState(false);
 	const [stepIndex, setStepIndex] = useState(0);

@@ -230,7 +230,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 											<p className="text-[10px] mt-1 whitespace-nowrap truncate text-muted-foreground">
 												{connector.last_indexed_at
 													? t("connector.last_indexed", { date: formatRelativeDate(connector.last_indexed_at) })
-													: "Never indexed"}
+													: t("conn_never_indexed")}
 											</p>
 										) : null}
 									</div>

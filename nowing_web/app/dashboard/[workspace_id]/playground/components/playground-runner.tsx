@@ -12,6 +12,7 @@ import { useRunStream } from "@/hooks/use-run-stream";
 import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { scrapersApiService } from "@/lib/apis/scrapers-api.service";
 import { AppError } from "@/lib/error";
+import { translateToast } from "@/lib/i18n-toast";
 import { findVerb } from "@/lib/playground/catalog";
 import { usePathname } from "next/navigation";
 import { fieldErrorsFromError } from "@/lib/playground/field-errors";
@@ -73,14 +74,14 @@ function getRunErrorMessage(error: unknown): string {
 	const status = error instanceof AppError ? error.status : undefined;
 
 	if (status === 402) {
-		return "Không đủ tín dụng. Hãy nạp thêm credit để chạy API này.";
+		return translateToast("playground.error_insufficient_credits");
 	}
 
 	if (status === 422) {
-		return "Dữ liệu không hợp lệ. Vui lòng kiểm tra các trường phía trên và thử lại.";
+		return translateToast("playground.error_invalid_data");
 	}
 
-	return error instanceof Error && error.message ? error.message : "Đã xảy ra lỗi. Vui lòng thử lại.";
+	return error instanceof Error && error.message ? error.message : translateToast("playground.error_generic");
 }
 
 function EndpointCopyButton({ endpoint }: { endpoint: string }) {

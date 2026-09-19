@@ -13,7 +13,7 @@ interface PlanStepCardProps {
  */
 export function PlanStepCard({ step, index }: PlanStepCardProps) {
 	const t = useTranslations("automations");
-	const title = getStepTitle(step);
+	const title = getStepTitle(step, t);
 	const details = getStepDetails(step, t);
 
 	return (
@@ -46,9 +46,9 @@ function DefRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-function getStepTitle(step: PlanStep): string {
+function getStepTitle(step: PlanStep, t: (key: string) => string): string {
 	if (step.action === "agent_task") {
-		return readStringParam(step.params, "query") ?? "Run an agent task";
+		return readStringParam(step.params, "query") ?? t("auto_run_agent_task");
 	}
 	return sentenceCase(formatAction(step.action));
 }
@@ -60,18 +60,18 @@ function getStepDetails(step: PlanStep, t: (k: string) => string): { label: stri
 		if (typeof step.params.auto_approve_all === "boolean") {
 			details.push({
 				label: t("auto_approval"),
-				value: step.params.auto_approve_all ? "Auto-approve agent actions" : "Ask before actions",
+				value: step.params.auto_approve_all ? t("auto_approve_all") : t("auto_ask_before_actions"),
 			});
 		}
 
-		const mentionSummary = summarizeMentions(step.params);
+		const mentionSummary = summarizeMentions(step.params, t);
 		if (mentionSummary) {
 			details.push({ label: t("auto_scope"), value: mentionSummary });
 		}
 	} else {
 		const readableParams = Object.entries(step.params)
 			.filter(([, value]) => value !== null && value !== undefined && value !== "")
-			.map(([key, value]) => `${sentenceCase(formatKey(key))}: ${formatValue(value)}`);
+			.map(([key, value]) => `${sentenceCase(formatKey(key))}: ${formatValue(value, t)}`);
 		if (readableParams.length > 0) {
 			details.push({ label: t("auto_details"), value: readableParams.join(" · ") });
 		}
@@ -92,10 +92,10 @@ function readStringParam(params: Record<string, unknown>, key: string): string |
 	return typeof value === "string" && value.trim() ? value : null;
 }
 
-function summarizeMentions(params: Record<string, unknown>): string | null {
+function summarizeMentions(params: Record<string, unknown>, t: (key: string) => string): string | null {
 	const parts: string[] = [];
-	addMentionTitles(parts, params.mentioned_documents, "Documents and folders");
-	addMentionTitles(parts, params.mentioned_connectors, "Connectors");
+	addMentionTitles(parts, params.mentioned_documents, t("auto_docs_and_folders"));
+	addMentionTitles(parts, params.mentioned_connectors, t("auto_connectors"));
 	if (parts.length === 0) {
 		addCount(parts, params.mentioned_document_ids, "document");
 		addCount(parts, params.mentioned_folder_ids, "folder");
@@ -141,10 +141,10 @@ function asRecord(value: unknown): Record<string, unknown> {
 		: {};
 }
 
-function formatValue(value: unknown): string {
-	if (typeof value === "boolean") return value ? "Yes" : "No";
+function formatValue(value: unknown, t: (key: string, params?: Record<string, unknown>) => string): string {
+	if (typeof value === "boolean") return value ? t("auto_yes") : t("auto_no");
 	if (typeof value === "string" || typeof value === "number") return String(value);
-	if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`;
-	if (value && typeof value === "object") return "Configured";
+	if (Array.isArray(value)) return t("auto_items_count", { count: value.length });
+	if (value && typeof value === "object") return t("auto_configured");
 	return String(value);
 }

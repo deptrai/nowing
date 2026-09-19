@@ -273,7 +273,7 @@ export function ApiKeyContent() {
 									{t("deleting")}
 								</span>
 							) : (
-								"Delete"
+								t("delete_btn")
 							)}
 						</AlertDialogAction>
 					</AlertDialogFooter>

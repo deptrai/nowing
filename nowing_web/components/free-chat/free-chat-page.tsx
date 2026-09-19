@@ -35,6 +35,7 @@ import {
 	updateToolCall,
 } from "@/lib/chat/streaming-state";
 import { buildBackendUrl } from "@/lib/env-config";
+import { translateToast } from "@/lib/i18n-toast";
 import { trackAnonymousChatMessageSent } from "@/lib/posthog/events";
 import { FreeThread } from "./free-thread";
 import { RemoveAdsBanner } from "./remove-ads-banner";
@@ -58,27 +59,27 @@ function parseCaptchaError(status: number, body: string): string | null {
 }
 
 function normalizeFreeChatErrorMessage(error: unknown): string {
-	if (!(error instanceof Error)) return "An unexpected error occurred";
+	if (!(error instanceof Error)) return translateToast("free.error_unexpected");
 	const code = (error as Error & { errorCode?: string }).errorCode;
 	if (code === "THREAD_BUSY") {
-		return "A previous response is still stopping. Please try again in a moment.";
+		return translateToast("free.error_thread_stopping");
 	}
 	if (code === "MODEL_AUTH_FAILED") {
-		return "This model’s API key is invalid or expired. Switch models, or update the API key.";
+		return translateToast("free.error_model_auth");
 	}
 	if (code === "MODEL_NOT_FOUND") {
-		return "This model is unavailable or no longer exists. Please switch models.";
+		return translateToast("free.error_model_not_found");
 	}
 	if (code === "MODEL_CONTEXT_LIMIT") {
-		return "This request is too large for the selected model. Reduce the input or switch models.";
+		return translateToast("free.error_context_limit");
 	}
 	if (code === "MODEL_PROVIDER_UNAVAILABLE") {
-		return "The selected model provider is temporarily unavailable. Please try again or switch models.";
+		return translateToast("free.error_provider_unavailable");
 	}
 	if (code === "RATE_LIMITED") {
-		return "This model is temporarily rate-limited. Please try again in a few seconds or switch models.";
+		return translateToast("free.error_rate_limited");
 	}
-	return error.message || "An unexpected error occurred";
+	return error.message || translateToast("free.error_unexpected");
 }
 
 function toFreeChatHttpError(status: number, body: string): Error & { errorCode?: string } {

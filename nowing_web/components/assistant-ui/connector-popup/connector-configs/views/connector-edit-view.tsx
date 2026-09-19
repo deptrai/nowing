@@ -228,8 +228,8 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 							</h2>
 							<p className="text-xs sm:text-base text-muted-foreground mt-1">
 								{isLive
-									? "Manage your connected account"
-									: "Manage your connector settings and sync configuration"}
+									? t("conn_manage_account")
+									: t("conn_manage_settings")}
 							</p>
 						</div>
 					</div>
@@ -329,7 +329,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 										disabled={isDisabled}
 										disabledMessage={
 											isDisabled
-												? "Select at least one folder or file above to enable periodic sync"
+												? t("conn_select_folder_sync")
 												: undefined
 										}
 									/>
@@ -361,8 +361,8 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 					<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 sm:flex-initial">
 						<span className="text-xs sm:text-sm text-muted-foreground sm:whitespace-nowrap">
 							{isLive
-								? "Your agent will lose access to this service"
-								: "This will remove all indexed data"}
+								? t("conn_lose_access")
+								: t("conn_remove_data")}
 						</span>
 						<div className="flex items-center gap-2 sm:gap-3">
 							<Button

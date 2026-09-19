@@ -224,7 +224,7 @@ export function AutomationBuilderForm({
 				next.schedule = t("pick_day_weekly");
 			}
 		} else if (form.schedule?.mode === "cron" && !form.schedule.cron.trim()) {
-			next.schedule = "Enter a schedule expression";
+			next.schedule = t("auto_enter_schedule_expr");
 		}
 
 		return Object.keys(next).length > 0 ? next : null;
@@ -278,7 +278,7 @@ export function AutomationBuilderForm({
 				router.push(`/dashboard/${workspaceId}/automations/${created.id}`);
 			}
 		} catch (err) {
-			setRootError((err as Error).message ?? "Submit failed");
+			setRootError((err as Error).message ?? t("auto_submit_failed"));
 		} finally {
 			setSubmitting(false);
 		}
@@ -309,7 +309,7 @@ export function AutomationBuilderForm({
 				router.push(`/dashboard/${workspaceId}/automations/${created.id}`);
 			}
 		} catch (err) {
-			setJsonIssues([(err as Error).message ?? "Submit failed"]);
+			setJsonIssues([(err as Error).message ?? t("auto_submit_failed")]);
 		} finally {
 			setSubmitting(false);
 		}

@@ -88,7 +88,7 @@ export default function CampaignAnalyticsPage() {
 						</h1>
 						<p className="text-xs text-muted-foreground">
 							{sequence?.description ||
-								"Theo dõi chuyển đổi, phản hồi và ngân sách gửi email theo thời gian thực"}
+								t("campaigns_track_desc")}
 						</p>
 					</div>
 				</div>

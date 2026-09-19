@@ -363,7 +363,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 						<CardDescription className="text-xs">
 							{currentPlanDef?.support_level
 								? t("support_level", { level: currentPlanDef.support_level })
-								: "Plan details"}
+								: t("plan_details")}
 							{currentPlanDef?.price_micros !== undefined &&
 								` • ${formatCurrency(currentPlanDef?.price_micros, currentPlanDef?.currency)}/month`}
 						</CardDescription>

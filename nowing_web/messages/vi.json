@@ -433,7 +433,9 @@
 		"rule_created": "Đã tạo quy tắc.",
 		"rule_deleted": "Đã xóa quy tắc.",
 		"permission_required": "Vui lòng nhập quyền hạn.",
-		"name_and_prompt_required": "Vui lòng nhập tên và lời nhắc"
+		"name_and_prompt_required": "Vui lòng nhập tên và lời nhắc",
+		"delete_btn": "Xóa",
+		"desktop_only_packaged": "Chỉ khả dụng trong ứng dụng desktop đóng gói."
 	},
 	"dashboard": {
 		"title": "Bảng điều khiển",
@@ -1440,7 +1442,27 @@
 		"roles_perm_audit_desc": "Xem và quản lý nhật ký kiểm tra",
 		"roles_perm_share_desc": "Chia sẻ cuộc trò chuyện công khai qua liên kết",
 		"roles_name_required": "Vui lòng nhập tên vai trò",
-		"roles_name_placeholder": "VD: Quản lý nội dung"
+		"roles_name_placeholder": "VD: Quản lý nội dung",
+		"roles_comments_desc": "Thêm chú thích vào tài liệu",
+		"roles_ai_models_desc": "Cấu hình cài đặt model AI",
+		"roles_vision_models_desc": "Cấu hình cài đặt model vision",
+		"roles_podcasts_desc": "Tạo podcast AI từ nội dung",
+		"roles_automations_desc": "Tác vụ agent theo lịch trình và sự kiện",
+		"roles_connectors_desc": "Kết nối nguồn dữ liệu bên ngoài",
+		"roles_scrapers_desc": "Cấu hình scraper và nguồn kết nối dữ liệu",
+		"roles_mcp_tools_desc": "Bật/tắt công cụ MCP và cấu hình tool agent",
+		"roles_memory_desc": "Tìm kiếm, gợi nhớ và quản lý research memories",
+		"roles_team_desc": "Quản lý thành viên team",
+		"roles_permissions_desc": "Cấu hình quyền role",
+		"roles_workspace_settings_desc": "Quản lý cài đặt workspace",
+		"roles_billing_desc": "Xem gói workspace, số dư credit và hóa đơn",
+		"roles_general_desc": "Quyền workspace chung",
+		"roles_viewer_desc": "Chỉ đọc với khả năng thêm bình luận",
+		"roles_editor_desc": "Tạo, đọc và chỉnh sửa nội dung. Không có quyền xóa hoặc admin.",
+		"roles_researcher_desc": "Nghiên cứu sâu, intelligence, tài liệu và analytics chỉ đọc.",
+		"roles_billing_admin_desc": "Quản lý gói, số dư credit, phương thức thanh toán và hóa đơn.",
+		"roles_custom_desc": "Bắt đầu từ đầu với bộ quyền trống.",
+		"roles_chats_desc": "Tạo và quản lý cuộc trò chuyện AI"
 	},
 	"logs": {
 		"title": "Nhật ký tác vụ",
@@ -1947,7 +1969,8 @@
 		"kb_exported": "Đã xuất cơ sở kiến thức",
 		"plan_upgraded": "Đã nâng cấp lên gói {plan} ngay lập tức.",
 		"plan_change_scheduled": "Thay đổi gói sang {plan} được lên lịch vào {date}.",
-		"support_level": "Mức hỗ trợ: {level}"
+		"support_level": "Mức hỗ trợ: {level}",
+		"plan_details": "Chi tiết gói"
 	},
 	"homepage": {
 		"hero_title_part1": "Không gian làm việc AI",
@@ -3169,7 +3192,14 @@
 		"search_models": "Tìm model",
 		"adfree_title": "Tắt quảng cáo với tài khoản miễn phí",
 		"upgrade_5m": "Tạo tài khoản miễn phí để có thêm 5M tokens",
-		"quick_verify": "Xác minh nhanh để tiếp tục chat"
+		"quick_verify": "Xác minh nhanh để tiếp tục chat",
+		"error_unexpected": "Đã xảy ra lỗi không mong đợi",
+		"error_thread_stopping": "Phản hồi trước đang dừng. Vui lòng thử lại sau.",
+		"error_model_auth": "API key của model không hợp lệ hoặc hết hạn. Đổi model hoặc cập nhật API key.",
+		"error_model_not_found": "Model này không khả dụng hoặc không còn tồn tại. Vui lòng đổi model.",
+		"error_context_limit": "Yêu cầu quá lớn cho model đã chọn. Giảm input hoặc đổi model.",
+		"error_provider_unavailable": "Provider của model tạm thời không khả dụng. Vui lòng thử lại hoặc đổi model.",
+		"error_rate_limited": "Model tạm thời bị giới hạn tốc độ. Vui lòng thử lại sau vài giây hoặc đổi model."
 	},
 	"team": {
 		"members_title": "Thành viên",
@@ -3935,7 +3965,10 @@
 		"pg_messaging_channels": "Kênh nhắn tin",
 		"validation_failed": "Xác thực thất bại.",
 		"api_run_completed": "Đã hoàn thành chạy API.",
-		"error": "Lỗi"
+		"error": "Lỗi",
+		"error_insufficient_credits": "Không đủ tín dụng. Hãy nạp thêm credit để chạy API này.",
+		"error_invalid_data": "Dữ liệu không hợp lệ. Vui lòng kiểm tra các trường phía trên và thử lại.",
+		"error_generic": "Đã xảy ra lỗi. Vui lòng thử lại."
 	},
 	"saved_searches": {
 		"not_found": "Không tìm thấy tìm kiếm đã lưu",
@@ -5504,7 +5537,9 @@
 		"file_created": "Đã tạo tệp",
 		"automation_saved_edits": "Đã lưu automation với các chỉnh sửa của bạn",
 		"automation_created": "Đã tạo automation từ bản nháp này",
-		"search_language_tag": "Tìm kiếm hoặc nhập language tag…"
+		"search_language_tag": "Tìm kiếm hoặc nhập language tag…",
+		"plan_show_less": "Thu gọn",
+		"plan_show_more": "Hiển thị thêm {count} {count, plural, one {task} other {tasks}}"
 	},
 	"telemetry": {
 		"failed_load_celery": "Không thể tải hàng đợi Celery",
@@ -6147,7 +6182,17 @@
 		"connector_confluence_tooltip": "Tạo, cập nhật và xóa trang trong Confluence",
 		"connector_discord_tooltip": "Xem danh sách kênh, đọc tin nhắn và gửi tin nhắn trong Discord",
 		"connector_teams_tooltip": "Xem danh sách kênh, đọc tin nhắn và gửi tin nhắn trong Microsoft Teams",
-		"connector_luma_tooltip": "Xem danh sách, đọc và tạo sự kiện trong Luma"
+		"connector_luma_tooltip": "Xem danh sách, đọc và tạo sự kiện trong Luma",
+		"conn_account_ready": "Tài khoản của bạn đã sẵn sàng",
+		"conn_configure_sync": "Cấu hình thời điểm bắt đầu đồng bộ dữ liệu",
+		"conn_follow_setup": "Làm theo các bước cài đặt plugin bên dưới",
+		"conn_enter_details": "Nhập thông tin kết nối",
+		"conn_manage_account": "Quản lý tài khoản đã kết nối",
+		"conn_manage_settings": "Quản lý cài đặt kết nối và cấu hình đồng bộ",
+		"conn_select_folder_sync": "Chọn ít nhất một thư mục hoặc tệp ở trên để bật đồng bộ định kỳ",
+		"conn_lose_access": "Agent sẽ mất quyền truy cập dịch vụ này",
+		"conn_remove_data": "Điều này sẽ xóa tất cả dữ liệu đã index",
+		"conn_never_indexed": "Chưa bao giờ index"
 	},
 	"layout": {
 		"free_workspace_name": "Nowing Miễn phí",
@@ -6466,7 +6511,27 @@
 		"day_friday": "Thứ Sáu",
 		"day_saturday": "Thứ Bảy",
 		"day_sunday": "Chủ Nhật",
-		"pick_day_weekly_err": "Chọn ít nhất một ngày"
+		"pick_day_weekly_err": "Chọn ít nhất một ngày",
+		"auto_yes": "Có",
+		"auto_no": "Không",
+		"auto_configured": "Đã cấu hình",
+		"auto_items_count": "{count} mục",
+		"auto_no_schedule_hint": "Chưa có lịch — sẽ không chạy tự động",
+		"auto_triggers_count": "{count} trigger",
+		"auto_delete": "Xóa",
+		"auto_remove": "Gỡ bỏ",
+		"auto_deleting": "Đang xóa…",
+		"auto_removing": "Đang gỡ…",
+		"auto_approve_all": "Tự động duyệt hành động agent",
+		"auto_ask_before_actions": "Hỏi trước khi thực hiện",
+		"auto_enter_schedule_expr": "Nhập biểu thức lịch trình",
+		"auto_submit_failed": "Gửi thất bại",
+		"auto_update_failed": "Cập nhật thất bại",
+		"auto_no_instructions": "Chưa có hướng dẫn",
+		"auto_run_agent_task": "Chạy tác vụ agent",
+		"auto_docs_and_folders": "Tài liệu và thư mục",
+		"auto_connectors": "Kết nối",
+		"campaigns_track_desc": "Theo dõi chuyển đổi, phản hồi và ngân sách gửi email theo thời gian thực"
 	},
 	"broadcasts": {
 		"dismiss": "Bỏ qua",
@@ -6743,7 +6808,11 @@
 		"f_add_comments_and_tag": "Thêm bình luận và nhắc thành viên trong bất kỳ tin nhắn nào.",
 		"f_previous_slide": "Slide trước",
 		"f_next_slide": "Slide sau",
-		"f_no_results_found": "Không tìm thấy kết quả."
+		"f_no_results_found": "Không tìm thấy kết quả.",
+		"group_basic": "Khối cơ bản",
+		"group_lists": "Danh sách",
+		"group_advanced": "Nâng cao",
+		"group_marks": "Đánh dấu"
 	},
 	"chatMessages": {
 		"x_doom_loop_user_requested": "Vòng lặp vô hạn: người dùng yêu cầu dừng.",
@@ -6973,5 +7042,13 @@
 		"low": "Thấp",
 		"medium": "Trung bình",
 		"high": "Cao"
+	},
+	"onboarding": {
+		"tour_manage_tools": "Quản lý công cụ",
+		"tour_manage_tools_desc": "Bật hoặc tắt công cụ AI và cấu hình tính năng.",
+		"tour_upload_docs": "Tải tài liệu lên",
+		"tour_upload_docs_desc": "Tải tệp lên workspace của bạn.",
+		"tour_check_inbox": "Kiểm tra hộp thư",
+		"tour_check_inbox_desc": "Xem mentions và thông báo ở một nơi."
 	}
 }

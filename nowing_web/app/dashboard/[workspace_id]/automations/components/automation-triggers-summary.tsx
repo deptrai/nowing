@@ -25,7 +25,7 @@ export function AutomationTriggersSummary({ triggers }: AutomationTriggersSummar
 	}
 
 	if (triggers.length > 1) {
-		return <span className="text-xs text-muted-foreground">{triggers.length} triggers</span>;
+		return <span className="text-xs text-muted-foreground">{t("auto_triggers_count", { count: triggers.length })}</span>;
 	}
 
 	const [trigger] = triggers;
@@ -33,7 +33,7 @@ export function AutomationTriggersSummary({ triggers }: AutomationTriggersSummar
 	if (trigger.type === "schedule") {
 		const cron = typeof trigger.params.cron === "string" ? trigger.params.cron : undefined;
 		const tz = typeof trigger.params.timezone === "string" ? trigger.params.timezone : "UTC";
-		const human = cron ? describeCron(cron) : "Schedule";
+		const human = cron ? describeCron(cron) : t("auto_schedule");
 
 		return (
 			<span className="inline-flex items-center gap-1.5 text-xs">

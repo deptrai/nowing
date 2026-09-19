@@ -12,9 +12,9 @@ interface BuilderSummaryProps {
  * Live, read-only mirror of what will be created. Mirrors the layout of the
  * chat ``AutomationDraftPreview`` so the two creation paths feel consistent.
  */
-function taskSummary(task: BuilderForm["tasks"][number]): string {
+function taskSummary(task: BuilderForm["tasks"][number], t: (key: string) => string): string {
 	if (task.action === "agent_task") {
-		return task.query?.trim() || "No instructions yet";
+		return task.query?.trim() || t("auto_no_instructions");
 	}
 	const p = task.params;
 	if (task.action === "write_back_slack" && typeof p?.channel === "string")
@@ -57,7 +57,7 @@ export function BuilderSummary({ form }: BuilderSummaryProps) {
 							<span>{form.timezone}</span>
 						</span>
 					) : (
-						<span>No schedule — won't run automatically</span>
+						<span>{t("auto_no_schedule_hint")}</span>
 					)}
 				</SummaryRow>
 
@@ -66,7 +66,7 @@ export function BuilderSummary({ form }: BuilderSummaryProps) {
 						{visibleTasks.map((task, index) => (
 							<li key={task.id} className="flex gap-2">
 								<span className="shrink-0 text-muted-foreground">{index + 1}.</span>
-								<span className="line-clamp-1 min-w-0">{taskSummary(task)}</span>
+								<span className="line-clamp-1 min-w-0">{taskSummary(task, t)}</span>
 							</li>
 						))}
 						{hiddenTaskCount > 0 && (

@@ -113,8 +113,8 @@ export const ConnectorConnectView: FC<ConnectorConnectViewProps> = ({
 						</h2>
 						<p className="text-xs sm:text-base text-muted-foreground mt-1">
 							{connectorType === "OBSIDIAN_CONNECTOR"
-								? "Follow the plugin setup steps below"
-								: "Enter your connection details"}
+								? t("conn_follow_setup")
+								: t("conn_enter_details")}
 						</p>
 					</div>
 				</div>

@@ -77,10 +77,10 @@ export function DeleteAutomationDialog({
 						{submitting ? (
 							<span className="inline-flex items-center gap-2">
 								<Spinner size="xs" />
-								Deleting…
+								{t("auto_deleting")}
 							</span>
 						) : (
-							"Delete"
+							t("auto_delete")
 						)}
 					</AlertDialogAction>
 				</AlertDialogFooter>
