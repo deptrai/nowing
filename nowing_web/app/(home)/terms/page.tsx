@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-	title: "Terms of Service | Nowing",
-	description: "Terms of Service for Nowing application",
-	alternates: {
-		canonical: "https://www.nowing.com/terms",
-	},
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("terms");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		alternates: {
+			canonical: "https://www.nowing.com/terms",
+		},
+	};
+}
 
 // Rendered per-request so the NEXT_LOCALE cookie can switch the language.
 export const dynamic = "force-dynamic";

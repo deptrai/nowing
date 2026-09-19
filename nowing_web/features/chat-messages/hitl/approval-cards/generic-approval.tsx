@@ -141,7 +141,7 @@ function GenericApprovalCardView({
 								: displayName}
 					</p>
 					{phase === "processing" ? (
-						<TextShimmerLoader text="Executing..." size="sm" />
+						<TextShimmerLoader text={t("x_executing")} size="sm" />
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("x_action_completed")}</p>
 					) : phase === "rejected" ? (

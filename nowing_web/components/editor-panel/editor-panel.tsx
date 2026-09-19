@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import {
 	Check,
 	Copy,
@@ -198,6 +199,7 @@ export function EditorPanelContent({
 	chunkId?: number;
 	onClose?: () => void;
 }) {
+	const t = useTranslations("layout");
 	const electronAPI = useElectronAPI();
 	const [editorDoc, setEditorDoc] = useState<EditorContent | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -728,7 +730,7 @@ export function EditorPanelContent({
 											}}
 										>
 											<Pencil className="size-3.5" />
-											<span className="sr-only">Edit document</span>
+											<span className="sr-only">{t("edit_document")}</span>
 										</Button>
 									)}
 								</>
@@ -744,7 +746,7 @@ export function EditorPanelContent({
 								className="size-6 shrink-0 rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
 							>
 								<XIcon className="size-4" />
-								<span className="sr-only">Close editor panel</span>
+								<span className="sr-only">{t("close_editor_panel")}</span>
 							</Button>
 						</div>
 					</div>
@@ -828,7 +830,7 @@ export function EditorPanelContent({
 										}}
 									>
 										<Pencil className="size-3.5" />
-										<span className="sr-only">Edit document</span>
+										<span className="sr-only">{t("edit_document")}</span>
 									</Button>
 								)}
 							</>
@@ -927,8 +929,8 @@ export function EditorPanelContent({
 								<FileText className="size-4" />
 								<AlertDescription>
 									{isOverPlateLimit
-										? `This document is ${formatBytes(activeMarkdownSizeBytes)} and ${activeMarkdownLineCount.toLocaleString()} lines, above the rich editor limit of ${formatBytes(plateMaxBytes)} or ${plateMaxLines.toLocaleString()} lines. You can save, but it will reopen in raw markdown mode.`
-										: `This document is approaching the rich editor limit (${formatBytes(activeMarkdownSizeBytes)} of ${formatBytes(plateMaxBytes)}, ${activeMarkdownLineCount.toLocaleString()} of ${plateMaxLines.toLocaleString()} lines).`}
+										? t("editor.doc_too_large_lines", { size: formatBytes(activeMarkdownSizeBytes), lines: activeMarkdownLineCount.toLocaleString(), maxSize: formatBytes(plateMaxBytes), maxLines: plateMaxLines.toLocaleString() })
+										: t("editor.doc_near_limit_lines", { size: formatBytes(activeMarkdownSizeBytes), limit: formatBytes(plateMaxBytes), lines: activeMarkdownLineCount.toLocaleString(), maxLines: plateMaxLines.toLocaleString() })}
 								</AlertDescription>
 							</Alert>
 						)}
@@ -956,7 +958,7 @@ export function EditorPanelContent({
 									markdown={editorDoc.source_markdown}
 									onMarkdownChange={handleMarkdownChange}
 									readOnly={!isEditing}
-									placeholder="Start writing..."
+									placeholder={t("start_writing")}
 									editorVariant="default"
 									allowModeToggle={false}
 									reserveToolbarSpace

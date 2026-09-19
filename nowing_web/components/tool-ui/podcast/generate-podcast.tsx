@@ -182,7 +182,7 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 					<AlertDialogCancel>{t("tu_keep_going")}</AlertDialogCancel>
 					<AlertDialogAction
 						className={buttonVariants({ variant: "destructive" })}
-						onClick={() => run(podcastsApiService.cancel, "Failed to cancel the podcast")}
+						onClick={() => run(podcastsApiService.cancel, t("podcast_cancel_failed"))}
 					>{t("tu_cancel_podcast")}</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
@@ -230,7 +230,7 @@ function LivePodcastCard({
 		return (
 			<NoticeState
 				title={t("tu_podcast_unavailable")}
-				message="This podcast no longer exists or you don't have access to it."
+				message={t("podcast_no_access")}
 			/>
 		);
 	}
@@ -299,9 +299,9 @@ function LivePodcastCard({
 				</div>
 			);
 		case "failed":
-			return <PodcastErrorState title={title} error={podcast.error || "Generation failed"} />;
+			return <PodcastErrorState title={title} error={podcast.error || t("generation_failed")} />;
 		case "cancelled":
-			return <NoticeState title="Podcast Cancelled" message="This podcast was cancelled." />;
+			return <NoticeState title={t("podcast_cancelled_title")} message={t("podcast_cancelled_message")} />;
 	}
 }
 
@@ -323,12 +323,12 @@ export const GeneratePodcastToolUI = ({
 	const title = args.podcast_title || "Nowing Podcast";
 
 	if (status.type === "running" || status.type === "requires-action") {
-		return <WorkingState title={title} label="Preparing podcast" />;
+		return <WorkingState title={title} label={t("podcast_preparing")} />;
 	}
 
 	if (status.type === "incomplete") {
 		if (status.reason === "cancelled") {
-			return <NoticeState title="Podcast Cancelled" message="Podcast preparation was cancelled." />;
+			return <NoticeState title={t("podcast_cancelled_title")} message={t("podcast_prep_cancelled")} />;
 		}
 		if (status.reason === "error") {
 			return (
@@ -341,7 +341,7 @@ export const GeneratePodcastToolUI = ({
 	}
 
 	if (!result) {
-		return <WorkingState title={title} label="Preparing podcast" />;
+		return <WorkingState title={title} label={t("podcast_preparing")} />;
 	}
 
 	if (result.podcast_id) {
@@ -352,7 +352,7 @@ export const GeneratePodcastToolUI = ({
 	}
 
 	if (result.status === "failed" || result.status === "error") {
-		return <PodcastErrorState title={title} error={result.error || "Generation failed"} />;
+		return <PodcastErrorState title={title} error={result.error || t("generation_failed")} />;
 	}
 
 	// Legacy saved chats: results identified only by a Celery task id can't be
@@ -360,7 +360,7 @@ export const GeneratePodcastToolUI = ({
 	return (
 		<NoticeState
 			title={t("tu_podcast_unavailable")}
-			message="This podcast was generated with an older version. Please generate a new one."
+			message={t("podcast_legacy_version")}
 		/>
 	);
 };

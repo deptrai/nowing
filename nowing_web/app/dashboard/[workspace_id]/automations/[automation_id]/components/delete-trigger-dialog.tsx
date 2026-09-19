@@ -60,7 +60,7 @@ export function DeleteTriggerDialog({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+					<AlertDialogCancel disabled={submitting}>{t("cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						onClick={handleConfirm}
 						disabled={submitting}

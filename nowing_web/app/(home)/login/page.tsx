@@ -54,7 +54,7 @@ function LoginContent() {
 		// Show error messages from OAuth or other flows using auth-errors utility
 		if (error) {
 			// Use the auth-errors utility to get proper error details
-			const errorDetails = getAuthErrorDetails(error);
+			const errorDetails = getAuthErrorDetails(t, error);
 
 			// If we have a custom message from URL params, use it as description
 			const errorDescription = message ? decodeURIComponent(message) : errorDetails.description;
@@ -88,7 +88,7 @@ function LoginContent() {
 
 		// Show general messages
 		if (message && !error && !registered && !logout) {
-			toast.info("Notice", {
+			toast.info(t("notice"), {
 				description: decodeURIComponent(message),
 				duration: 4000,
 			});

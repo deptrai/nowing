@@ -252,7 +252,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="hourly">{t("auto_every_hour")}</SelectItem>
-										<SelectItem value="daily">Daily</SelectItem>
+										<SelectItem value="daily">{t("daily")}</SelectItem>
 										<SelectItem value="weekdays">{t("auto_weekdays")}</SelectItem>
 										<SelectItem value="custom">{t("auto_custom_cron")}</SelectItem>
 									</SelectContent>

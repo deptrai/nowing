@@ -131,7 +131,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent side="bottom">
-					{verbose ? "Rich output shown in chat" : "Show full output in chat"}
+					{verbose ? t("verbose_shown") : t("verbose_hidden")}
 				</TooltipContent>
 			</Tooltip>
 		</div>

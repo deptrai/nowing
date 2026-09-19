@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { CommentComposer } from "../comment-composer/comment-composer";
@@ -19,6 +20,7 @@ export function CommentPanel({
 	maxHeight,
 	variant = "desktop",
 }: CommentPanelProps) {
+	const t = useTranslations("chatMessages");
 	const handleCommentSubmit = (content: string) => {
 		onCreateComment(content);
 	};
@@ -92,7 +94,7 @@ export function CommentPanel({
 				<CommentComposer
 					members={members}
 					membersLoading={membersLoading}
-					placeholder="Comment or @mention"
+					placeholder={t("comment_mention_placeholder")}
 					submitLabel="Comment"
 					isSubmitting={isSubmitting}
 					onSubmit={handleCommentSubmit}

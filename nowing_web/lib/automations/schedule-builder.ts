@@ -29,21 +29,21 @@ export interface ScheduleModel {
 
 /** Sunday-first, matching cron's 0-6 day-of-week numbering. */
 export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: number; short: string; long: string }> = [
-	{ value: 1, short: "Mon", long: "Monday" },
-	{ value: 2, short: "Tue", long: "Tuesday" },
-	{ value: 3, short: "Wed", long: "Wednesday" },
-	{ value: 4, short: "Thu", long: "Thursday" },
-	{ value: 5, short: "Fri", long: "Friday" },
-	{ value: 6, short: "Sat", long: "Saturday" },
-	{ value: 0, short: "Sun", long: "Sunday" },
+	{ value: 1, short: "day_mon", long: "day_monday" },
+	{ value: 2, short: "day_tue", long: "day_tuesday" },
+	{ value: 3, short: "day_wed", long: "day_wednesday" },
+	{ value: 4, short: "day_thu", long: "day_thursday" },
+	{ value: 5, short: "day_fri", long: "day_friday" },
+	{ value: 6, short: "day_sat", long: "day_saturday" },
+	{ value: 0, short: "day_sun", long: "day_sunday" },
 ];
 
 export const FREQUENCY_OPTIONS: ReadonlyArray<{ value: ScheduleFrequency; label: string }> = [
-	{ value: "hourly", label: "Every hour" },
-	{ value: "daily", label: "Every day" },
-	{ value: "weekdays", label: "Every weekday (Mon\u2013Fri)" },
-	{ value: "weekly", label: "Specific days of the week" },
-	{ value: "monthly", label: "Once a month" },
+	{ value: "hourly", label: "freq_hourly" },
+	{ value: "daily", label: "freq_daily" },
+	{ value: "weekdays", label: "freq_weekdays" },
+	{ value: "weekly", label: "freq_weekly" },
+	{ value: "monthly", label: "freq_monthly" },
 ];
 
 export const DEFAULT_SCHEDULE: ScheduleModel = {

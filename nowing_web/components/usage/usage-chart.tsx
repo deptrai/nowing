@@ -10,6 +10,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UsageTimeSeriesPoint } from "@/contracts/types/usage.types";
 
@@ -26,6 +27,7 @@ function formatUsdMicros(micros: number): string {
 }
 
 export function UsageChart({ data, isLoading }: UsageChartProps) {
+	const t = useTranslations("usage");
 	if (isLoading) {
 		return <Skeleton className="h-[240px] w-full" />;
 	}
@@ -33,7 +35,7 @@ export function UsageChart({ data, isLoading }: UsageChartProps) {
 	if (data.length === 0) {
 		return (
 			<div className="flex h-[240px] items-center justify-center rounded-md border border-dashed">
-				<p className="text-sm text-muted-foreground">No data for selected range</p>
+				<p className="text-sm text-muted-foreground">{t("no_data_for_range")}</p>
 			</div>
 		);
 	}

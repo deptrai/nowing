@@ -212,7 +212,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 			const key = `${run.runId ?? "run"}:success`;
 			if (notifiedRunRef.current === key) return;
 			notifiedRunRef.current = key;
-			toast.success("API run completed.");
+			toast.success(t("api_run_completed"));
 			return;
 		}
 

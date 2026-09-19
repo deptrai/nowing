@@ -16,6 +16,7 @@ export function ArtifactCard({
 }) {
 	const t = useTranslations("artifacts");
 	const meta = KIND_META[artifact.kind];
+	const tMeta = useTranslations("artifacts");
 	const Icon = meta.icon;
 
 	const subtitle =
@@ -23,7 +24,7 @@ export function ArtifactCard({
 			? t("generating")
 			: artifact.status === "error"
 				? t("failed")
-				: meta.label;
+				: tMeta(meta.labelKey);
 
 	return (
 		<div className="group relative flex items-start gap-3 rounded-xl border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent/50">

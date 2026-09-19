@@ -47,11 +47,12 @@ export function PodcastErrorState({ title, error }: { title: string; error: stri
 }
 
 function AudioLoadingState({ title }: { title: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
-				<TextShimmerLoader text="Loading audio" size="sm" />
+				<TextShimmerLoader text={t("loading_audio")} size="sm" />
 			</div>
 		</div>
 	);

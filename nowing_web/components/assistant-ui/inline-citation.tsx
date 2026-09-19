@@ -84,8 +84,8 @@ const NumericChunkCitation: FC<{ chunkId: number }> = ({ chunkId }) => {
 				variant="ghost"
 				onClick={handleClick}
 				className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-md bg-popover px-1.5 text-[11px] font-medium text-popover-foreground/80 align-baseline"
-				title={`View source chunk #${chunkId}`}
-				aria-label={`View cited chunk ${chunkId}`}
+				title={t("view_chunk", { id: chunkId })}
+				aria-label={t("view_cited_chunk", { id: chunkId })}
 			>
 				{chunkId}
 			</Button>

@@ -173,11 +173,11 @@ export function PurchaseHistoryContent() {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Date</TableHead>
-							<TableHead>Type</TableHead>
+							<TableHead>{t("date")}</TableHead>
+							<TableHead>{t("type")}</TableHead>
 							<TableHead className="text-right">{t("granted")}</TableHead>
-							<TableHead className="text-right">Amount</TableHead>
-							<TableHead className="text-center">Status</TableHead>
+							<TableHead className="text-right">{t("amount")}</TableHead>
+							<TableHead className="text-center">{t("status")}</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>

@@ -138,7 +138,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 						<SelectContent matchTriggerWidth={false} className="w-auto min-w-64">
 							{FREQUENCY_OPTIONS.map((option) => (
 								<SelectItem key={option.value} value={option.value}>
-									{option.label}
+									{t(option.label)}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -174,7 +174,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 			</div>
 
 			{model.frequency === "weekly" && (
-				<Field label={t("auto_on_days")} error={weeklyNoDays ? "Pick at least one day" : undefined}>
+				<Field label={t("auto_on_days")} error={weeklyNoDays ? t("pick_day_weekly_err") : undefined}>
 					<div className="flex flex-wrap gap-1.5">
 						{WEEKDAY_OPTIONS.map((day) => {
 							const active = model.daysOfWeek.includes(day.value);
@@ -193,7 +193,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 											: "border-border/60 bg-background text-muted-foreground hover:bg-muted"
 									)}
 								>
-									{day.short}
+									{t(day.short)}
 								</button>
 							);
 						})}

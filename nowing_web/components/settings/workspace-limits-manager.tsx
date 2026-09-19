@@ -162,8 +162,8 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			setImmediateUpgrade(false);
 			toast.success(
 				res.status === "active"
-					? `Plan upgraded to ${res.to_plan} immediately.`
-					: `Plan change to ${res.to_plan} scheduled for ${formatDate(res.effective_at)}.`
+					? t("plan_upgraded", { plan: res.to_plan })
+					: t("plan_change_scheduled", { plan: res.to_plan, date: formatDate(res.effective_at) })
 			);
 		},
 		onError: (err: unknown) => {
@@ -191,7 +191,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.workspaces.subscriptionChanges(numericId),
 			});
-			toast.success("Scheduled plan change cancelled.");
+			toast.success(t("plan_change_cancelled"));
 		},
 		onError: (err: unknown) => {
 			toast.error(err instanceof Error ? err.message: t("x_failed_to_cancel_change"));
@@ -208,7 +208,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.workspaces.subscriptionChanges(numericId),
 			});
-			toast.success("Plan reverted successfully.");
+			toast.success(t("plan_reverted_success"));
 		},
 		onError: (err: unknown) => {
 			toast.error(err instanceof Error ? err.message: t("x_failed_to_revert_plan"));
@@ -362,7 +362,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 						<CardTitle className="text-base font-medium">{t("limits_plan_label")}</CardTitle>
 						<CardDescription className="text-xs">
 							{currentPlanDef?.support_level
-								? `Support level: ${currentPlanDef.support_level}`
+								? t("support_level", { level: currentPlanDef.support_level })
 								: "Plan details"}
 							{currentPlanDef?.price_micros !== undefined &&
 								` • ${formatCurrency(currentPlanDef?.price_micros, currentPlanDef?.currency)}/month`}
@@ -431,12 +431,12 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>From</TableHead>
+									<TableHead>{t("from")}</TableHead>
 									<TableHead>To</TableHead>
-									<TableHead>Status</TableHead>
+									<TableHead>{t("status")}</TableHead>
 									<TableHead>{t("x_effective_date")}</TableHead>
 									<TableHead>{t("x_requested")}</TableHead>
-									<TableHead className="text-right">Action</TableHead>
+									<TableHead className="text-right">{t("action")}</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>

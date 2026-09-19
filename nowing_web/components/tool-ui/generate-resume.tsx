@@ -60,7 +60,7 @@ function ResumeGeneratingState() {
 				<div className="flex items-center gap-2">
 					<p className="text-sm font-semibold text-foreground">{t("tu_resume")}</p>
 				</div>
-				<TextShimmerLoader text="Crafting your resume" size="sm" />
+				<TextShimmerLoader text={t("crafting_resume")} size="sm" />
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 pt-3 pb-4">
@@ -388,5 +388,5 @@ export const GenerateResumeToolUI = ({
 		);
 	}
 
-	return <ResumeErrorState title={t("tu_resume")} error="Missing report ID" />;
+	return <ResumeErrorState title={t("tu_resume")} error={t("missing_report_id")} />;
 };

@@ -676,7 +676,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 											<TableHead className="text-right">{t("col_memories")}</TableHead>
 											<TableHead className="text-right">{t("col_citations")}</TableHead>
 											<TableHead className="text-right">{t("col_cost")}</TableHead>
-											<TableHead className="text-center">Status</TableHead>
+											<TableHead className="text-center">{t("status")}</TableHead>
 											<TableHead className="w-10"></TableHead>
 										</TableRow>
 									</TableHeader>

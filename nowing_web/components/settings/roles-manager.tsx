@@ -124,7 +124,7 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	image_generations: {
 		label: "Image Models",
 		icon: Image,
-		description: "Configure image generation model settings",
+		description: t("roles_perm_image_desc"),
 		order: 4.1,
 	},
 	vision_configs: {
@@ -136,7 +136,7 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	video_presentations: {
 		label: "Video Presentations",
 		icon: Video,
-		description: "Generate and manage video presentations",
+		description: t("roles_perm_video_desc"),
 		order: 4.3,
 	},
 	podcasts: {
@@ -172,7 +172,7 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	logs: {
 		label: "Activity Logs",
 		icon: Logs,
-		description: "View and manage audit trail",
+		description: t("roles_perm_audit_desc"),
 		order: 7,
 	},
 	memory: {
@@ -208,7 +208,7 @@ const getCategoryConfig = (t: (k: string) => string): Record<
 	public_sharing: {
 		label: "Public Chat Sharing",
 		icon: Earth,
-		description: "Share chats publicly via links",
+		description: t("roles_perm_share_desc"),
 		order: 11,
 	},
 	general: {
@@ -417,10 +417,11 @@ export function RolesManager({ workspaceId }: { workspaceId: number }) {
 }
 
 function PermissionsBadge({ permissions }: { permissions: string[] }) {
+	const t = useTranslations("settings");
 	if (permissions.includes("*")) {
 		return (
 			<div className="rounded-md border-0 bg-muted px-1.5 py-0.5 text-muted-foreground">
-				<span className="text-[10px] font-medium whitespace-nowrap">Full access</span>
+				<span className="text-[10px] font-medium whitespace-nowrap">{t("roles_full_access")}</span>
 			</div>
 		);
 	}
@@ -603,7 +604,7 @@ function RolesContent({
 												{canUpdate && (
 													<DropdownMenuItem onClick={() => setEditingRoleId(role.id)}>
 														<Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
-														Edit Role
+														{t("edit_role")}
 													</DropdownMenuItem>
 												)}
 												{canDelete && (
@@ -618,14 +619,14 @@ function RolesContent({
 															</AlertDialogTrigger>
 															<AlertDialogContent>
 																<AlertDialogHeader>
-																	<AlertDialogTitle>Delete role?</AlertDialogTitle>
+																	<AlertDialogTitle>{t("roles_delete_title")}</AlertDialogTitle>
 																	<AlertDialogDescription>
 																		This will permanently delete the &quot;{role.name}&quot; role.
 																		Members with this role will lose their permissions.
 																	</AlertDialogDescription>
 																</AlertDialogHeader>
 																<AlertDialogFooter>
-																	<AlertDialogCancel>Cancel</AlertDialogCancel>
+																	<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 																	<AlertDialogAction
 																		onClick={() => onDeleteRole(role.id)}
 																		className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -813,7 +814,7 @@ function PermissionsEditor({
 									className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium"
 								>
 									<AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
-									<span>This exceeds the recommended template</span>
+									<span>{t("exceeds_template")}</span>
 								</div>
 							)}
 							<div className="group/category-header flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-accent hover:text-accent-foreground focus-within:bg-accent focus-within:text-accent-foreground">
@@ -846,7 +847,7 @@ function PermissionsEditor({
 									<Checkbox
 										checked={stats.allSelected}
 										onCheckedChange={() => onToggleCategory(category)}
-										aria-label={`Select all ${config.label} permissions`}
+										aria-label={t("roles.select_all_permissions", { label: config.label })}
 									/>
 									<Button
 										type="button"
@@ -933,6 +934,7 @@ function CreateRoleDialog({
 	onCreateRole: (data: CreateRoleRequest["data"]) => Promise<Role>;
 	cloneRole?: Role | null;
 }) {
+	const t = useTranslations("settings");
 	const [creating, setCreating] = useState(false);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -958,7 +960,7 @@ function CreateRoleDialog({
 
 	const handleCreate = async () => {
 		if (!name.trim()) {
-			toast.error("Please enter a role name");
+			toast.error(t("roles_name_required"));
 			return;
 		}
 
@@ -1015,7 +1017,7 @@ function CreateRoleDialog({
 		<Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : handleClose())}>
 			<DialogContent className="!flex !flex-col w-[92vw] max-w-[92vw] sm:max-w-2xl p-0 gap-0 max-h-[85vh] overflow-hidden">
 				<DialogHeader className="px-5 pt-5 pb-4 shrink-0">
-					<DialogTitle className="text-lg">Create Custom Role</DialogTitle>
+					<DialogTitle className="text-lg">{t("roles_create_custom_title")}</DialogTitle>
 					<DialogDescription className="text-sm text-muted-foreground">
 						Define permissions for a new role in this workspace
 					</DialogDescription>
@@ -1023,7 +1025,7 @@ function CreateRoleDialog({
 				<div className="flex-1 min-h-0 overflow-y-auto">
 					<div className="px-5 py-5 space-y-5">
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Start from a template</Label>
+							<Label className="text-sm font-medium">{t("roles_start_from_template")}</Label>
 							<div className="grid grid-cols-3 gap-2">
 								{Object.entries(ROLE_PRESETS).map(([key, preset]) => (
 									<Button
@@ -1055,17 +1057,17 @@ function CreateRoleDialog({
 								<Input
 									id="role-name"
 									maxLength={100}
-									placeholder="e.g., Content Manager"
+									placeholder={t("roles_name_placeholder")}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="role-description">Description</Label>
+								<Label htmlFor="role-description">{t("roles_description_label")}</Label>
 								<Input
 									id="role-description"
 									maxLength={500}
-									placeholder="Brief description of this role"
+									placeholder={t("roles_description_placeholder")}
 									value={description}
 									onChange={(e) => setDescription(e.target.value)}
 								/>
@@ -1139,6 +1141,7 @@ function EditRoleDialog({
 		}
 	) => Promise<Role>;
 }) {
+	const t = useTranslations("settings");
 	const [saving, setSaving] = useState(false);
 	const [name, setName] = useState(role.name);
 	const [description, setDescription] = useState(role.description || "");
@@ -1156,7 +1159,7 @@ function EditRoleDialog({
 
 	const handleSave = async () => {
 		if (!name.trim()) {
-			toast.error("Please enter a role name");
+			toast.error(t("roles_name_required"));
 			return;
 		}
 
@@ -1202,7 +1205,7 @@ function EditRoleDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="!flex !flex-col w-[92vw] max-w-[92vw] sm:max-w-2xl p-0 gap-0 max-h-[85vh] overflow-hidden">
 				<DialogHeader className="px-5 py-4 shrink-0">
-					<DialogTitle className="text-base">Edit Role</DialogTitle>
+					<DialogTitle className="text-base">{t("edit_role")}</DialogTitle>
 					<DialogDescription className="text-xs">
 						Modify permissions for &quot;{role.name}&quot;
 					</DialogDescription>
@@ -1215,17 +1218,17 @@ function EditRoleDialog({
 								<Input
 									id="edit-role-name"
 									maxLength={100}
-									placeholder="e.g., Content Manager"
+									placeholder={t("roles_name_placeholder")}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="edit-role-description">Description</Label>
+								<Label htmlFor="edit-role-description">{t("roles_description_label")}</Label>
 								<Input
 									id="edit-role-description"
 									maxLength={500}
-									placeholder="Brief description of this role"
+									placeholder={t("roles_description_placeholder")}
 									value={description}
 									onChange={(e) => setDescription(e.target.value)}
 								/>

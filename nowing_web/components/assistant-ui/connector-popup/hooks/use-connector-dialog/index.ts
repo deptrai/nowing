@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type { SearchSourceConnector } from "@/contracts/types/connector.types";
 import { searchSourceConnector } from "@/contracts/types/connector.types";
@@ -21,6 +22,7 @@ import { useConnectorIndexing } from "./use-connector-indexing";
 import { useConnectorOAuth } from "./use-connector-oauth";
 
 export function useConnectorDialog() {
+	const t = useTranslations();
 	const base = useConnectorBase();
 	const indexing = useConnectorIndexing({ base });
 	const edit = useConnectorEdit({ base });
@@ -54,10 +56,10 @@ export function useConnectorDialog() {
 
 			if (result.error === "duplicate_account") {
 				toast.error(`This ${name} account is already connected`, {
-					description: "Please use a different account or manage the existing connection.",
+					description: t("connector.duplicate_account_hint"),
 				});
 			} else {
-				toast.error(`Failed to connect ${name}`, {
+				toast.error(t("toast.connect_failed", { connector: name }), {
 					description: result.error.replace(/_/g, " "),
 				});
 			}

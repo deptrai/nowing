@@ -86,7 +86,7 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 			a.click();
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
-			toast.success("Knowledge base exported");
+			toast.success(t("kb_exported"));
 		} catch (err) {
 			console.error("KB export failed:", err);
 			toast.error(err instanceof Error ? err.message: t("x_export_failed"));

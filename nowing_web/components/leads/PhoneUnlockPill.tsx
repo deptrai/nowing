@@ -264,7 +264,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 		return (
 			<button
 				type="button"
-				aria-label={`Copy phone number ${safePhone}`}
+				aria-label={t("copy_phone", { phone: safePhone })}
 				title={copied ? "Đã copy" : `Click để copy: ${safePhone}`}
 				onClick={handlePillClick}
 				className="inline-flex"

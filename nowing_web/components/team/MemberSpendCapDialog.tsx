@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function MemberSpendCapDialog({
 	open,
 	onOpenChange,
 }: MemberSpendCapDialogProps) {
+	const t = useTranslations("team");
 	const [monthlySpendCap, setMonthlySpendCap] = useState<string>("");
 	const [leadCapacity, setLeadCapacity] = useState<string>("50");
 	const [isAcceptingLeads, setIsAcceptingLeads] = useState(true);
@@ -133,7 +135,7 @@ export function MemberSpendCapDialog({
 					</div>
 
 					<div className="space-y-1.5">
-						<Label htmlFor="lead-capacity">Lead capacity</Label>
+						<Label htmlFor="lead-capacity">{t("lead_capacity")}</Label>
 						<Input
 							id="lead-capacity"
 							type="number"

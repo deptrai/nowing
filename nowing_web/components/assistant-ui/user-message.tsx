@@ -71,6 +71,7 @@ const UserAvatar: FC<AuthorMetadata> = ({ displayName, avatarUrl }) => {
 };
 
 const UserTextPart: FC = () => {
+	const t = useTranslations("assistant");
 	const messageId = useAuiState(({ message }) => message?.id);
 	const part = useMessagePartText();
 	const text = (part as { text?: string }).text ?? "";
@@ -140,7 +141,7 @@ const UserTextPart: FC = () => {
 								: doc.kind === "thread"
 									? `Chat: ${doc.title}`
 									: doc.kind === "connector"
-										? `Connector account: ${doc.title}`
+										? t("connector_account", { title: doc.title })
 										: doc.title
 						}
 						onClick={

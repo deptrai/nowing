@@ -780,7 +780,7 @@ export default function ScraperAccountsPage() {
 													<Button
 														variant="ghost"
 														size="sm"
-														onClick={() => toast.success(`Triggered scrape for ${ch.name}`)}
+														onClick={() => toast.success(t("toast.scrape_triggered", { name: ch.name }))}
 													>
 														{t("scrapers_acc_scrape")}
 													</Button>

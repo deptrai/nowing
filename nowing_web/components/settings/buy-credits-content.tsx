@@ -73,7 +73,7 @@ export function BuyCreditsContent() {
 				toast.error(error.message);
 				return;
 			}
-			toast.error("Failed to start checkout. Please try again.");
+			toast.error(t("checkout_start_failed"));
 		},
 	});
 

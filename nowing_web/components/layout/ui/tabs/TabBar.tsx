@@ -250,8 +250,8 @@ export function TabBar({
 										type="button"
 										variant="ghost"
 										size="icon"
-										aria-label={`Close tab ${tab.title}`}
-										title={`Close tab ${tab.title}`}
+										aria-label={t("tabs.close_tab", { title: tab.title })}
+										title={t("tabs.close_tab", { title: tab.title })}
 										onClick={(e) => handleTabClose(e, tab.id)}
 										onMouseEnter={() => setHoveredTabIndex(index)}
 										onMouseLeave={() => setHoveredTabIndex(null)}

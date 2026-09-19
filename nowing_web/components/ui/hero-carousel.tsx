@@ -225,7 +225,7 @@ function HeroCarousel() {
 							size="icon"
 							onClick={() => !isGifExpanded && goTo(i)}
 							className="h-11 min-w-[28px] bg-transparent p-0 hover:bg-transparent touch-manipulation"
-							aria-label={`Go to slide ${i + 1}`}
+							aria-label={t("carousel.go_to_slide", { n: i + 1 })}
 						>
 							<span
 								className={`block h-2.5 rounded-full transition-all duration-300 ${

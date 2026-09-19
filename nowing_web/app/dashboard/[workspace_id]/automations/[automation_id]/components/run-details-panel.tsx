@@ -80,7 +80,7 @@ export function RunDetailsPanel({
 				</Section>
 			) : null}
 
-			<Section icon={GitCommitHorizontal} label={`Step results · ${liveSteps.length}`}>
+			<Section icon={GitCommitHorizontal} label={t("step_results", { count: liveSteps.length })}>
 				{liveSteps.length === 0 ? (
 					<p className="text-xs text-muted-foreground">
 						{isTerminal ? "No steps recorded." : "Waiting for first step…"}

@@ -91,7 +91,10 @@ function researchBadge(result: ResearchResult): string {
 	}
 }
 
-function researchSubtitle(result: ResearchResult): string | null {
+function researchSubtitle(
+	result: ResearchResult,
+	t: (key: string) => string
+): string | null {
 	if (result.next_action) return result.next_action;
 	switch (result.status) {
 		case "engine_unavailable":
@@ -101,9 +104,9 @@ function researchSubtitle(result: ResearchResult): string | null {
 		case "partial":
 			return "Partial result — some sources could not be verified";
 		case "insufficient_evidence":
-			return "No relevant sources were found";
+			return t("no_sources");
 		case "timeout":
-			return "The research stream timed out";
+			return t("research_timeout");
 		default:
 			return null;
 	}
@@ -226,12 +229,12 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 
 	const subtitle = useMemo(() => {
 		if (isError || isCancelled) return deriveResultMessage(result);
-		if (isDegraded && researchResult) return researchSubtitle(researchResult);
+		if (isDegraded && researchResult) return researchSubtitle(researchResult, t);
 		// While running, surface the latest streamed activity line so progress
 		// is visible even when the card is collapsed.
 		if (isRunning && liveProgress.length > 0) return liveProgress[liveProgress.length - 1];
 		return null;
-	}, [isError, isCancelled, isDegraded, isRunning, liveProgress, result, researchResult]);
+	}, [isError, isCancelled, isDegraded, isRunning, liveProgress, result, researchResult, t]);
 
 	const displayName = getToolDisplayName(toolName);
 

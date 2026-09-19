@@ -21,7 +21,7 @@ export function RunStatusBadge({ status }: { status: string }) {
 		);
 	}
 	if (normalized === "error") {
-		return <Badge variant="destructive">Error</Badge>;
+		return <Badge variant="destructive">{t("error")}</Badge>;
 	}
 	if (normalized === "cancelled") {
 		return (

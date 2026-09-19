@@ -182,7 +182,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 						<p className="text-xs text-muted-foreground max-w-[280px]">
 							{isMCP
 								? "Get started by adding your first Model Context Protocol server"
-								: `Get started by connecting your first ${connectorTitle} account`}
+								: t("connector.get_started", { connector: connectorTitle })}
 						</p>
 					</div>
 				) : (
@@ -229,7 +229,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										) : !isLive ? (
 											<p className="text-[10px] mt-1 whitespace-nowrap truncate text-muted-foreground">
 												{connector.last_indexed_at
-													? `Last indexed: ${formatRelativeDate(connector.last_indexed_at)}`
+													? t("connector.last_indexed", { date: formatRelativeDate(connector.last_indexed_at) })
 													: "Never indexed"}
 											</p>
 										) : null}

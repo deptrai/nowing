@@ -12,6 +12,7 @@ import {
 	Image,
 	Presentation,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -79,6 +80,7 @@ export function DriveFolderTree({
 	rootLabel = "My Drive",
 	providerName = "Drive",
 }: DriveFolderTreeProps) {
+	const t = useTranslations();
 	const [itemStates, setItemStates] = useState<Map<string, ItemTreeNode>>(new Map());
 	const [rootItems, setRootItems] = useState<DriveItem[]>([]);
 	const [isLoadingRoot, setIsLoadingRoot] = useState(true);
@@ -393,8 +395,8 @@ export function DriveFolderTree({
 					{!isLoadingRoot && rootError && (
 						<div className="text-center text-xs sm:text-sm text-amber-600 dark:text-amber-500 py-4 sm:py-8">
 							{rootError.message.includes("authentication expired")
-								? `${providerName} authentication has expired. Please re-authenticate above.`
-								: `Failed to load ${providerName} contents.`}
+								? t("connectors.auth_expired", { provider: providerName })
+								: t("connectors.load_failed", { provider: providerName })}
 						</div>
 					)}
 

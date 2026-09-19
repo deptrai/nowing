@@ -14,6 +14,7 @@ import {
 	Target,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { LocationSelector } from "@/components/leads/LocationSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ export function IcpBuilderStep({
 	builder: UseCampaignBuilderReturn;
 	onCancel?: () => void;
 }) {
+	const t = useTranslations("leads");
 	return (
 		<div className="space-y-6">
 			<Card className="bg-zinc-900/60 border-zinc-800/80">
@@ -272,7 +274,7 @@ export function IcpBuilderStep({
 											builder.addTech();
 										}
 									}}
-									placeholder="React, AWS, SAP, Salesforce..."
+									placeholder={t("icp_tech_placeholder")}
 									className="text-xs bg-zinc-950/70 border-zinc-800"
 								/>
 								<Button type="button" size="sm" variant="secondary" onClick={builder.addTech}>

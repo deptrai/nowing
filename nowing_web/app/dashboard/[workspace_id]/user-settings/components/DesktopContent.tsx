@@ -106,7 +106,7 @@ export function DesktopContent() {
 
 	const handleAutoLaunchToggle = async (checked: boolean) => {
 		if (!autoLaunchSupported || !api.setAutoLaunch) {
-			toast.error("Please update the desktop app to configure launch on startup");
+			toast.error(t("update_desktop_launch_startup"));
 			return;
 		}
 		setAutoLaunchEnabled(checked);
@@ -117,16 +117,16 @@ export function DesktopContent() {
 				setAutoLaunchHidden(next.openAsHidden);
 				setAutoLaunchSupported(next.supported);
 			}
-			toast.success(checked ? "Nowing will launch on startup" : "Launch on startup disabled");
+			toast.success(checked ? t("launch_startup_enabled") : t("launch_startup_disabled"));
 		} catch {
 			setAutoLaunchEnabled(!checked);
-			toast.error("Failed to update launch on startup");
+			toast.error(t("launch_startup_failed"));
 		}
 	};
 
 	const handleAutoLaunchHiddenToggle = async (checked: boolean) => {
 		if (!autoLaunchSupported || !api.setAutoLaunch) {
-			toast.error("Please update the desktop app to configure startup behavior");
+			toast.error(t("update_desktop_startup_behavior"));
 			return;
 		}
 		setAutoLaunchHidden(checked);
@@ -134,14 +134,14 @@ export function DesktopContent() {
 			await api.setAutoLaunch(autoLaunchEnabled, checked);
 		} catch {
 			setAutoLaunchHidden(!checked);
-			toast.error("Failed to update startup behavior");
+			toast.error(t("startup_behavior_failed"));
 		}
 	};
 
 	const handleWorkspaceChange = (value: string) => {
 		setActiveSpaceId(value);
 		api.setActiveWorkspace?.(value);
-		toast.success("Default workspace updated");
+		toast.success(t("default_workspace_updated"));
 	};
 
 	return (

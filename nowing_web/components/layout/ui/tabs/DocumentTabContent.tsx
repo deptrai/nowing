@@ -264,8 +264,8 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 							<FileText className="size-4" />
 							<AlertDescription>
 								{isOverPlateLimit
-									? `This document is ${formatBytes(activeMarkdownSizeBytes)}, above the rich editor limit of ${formatBytes(plateMaxBytes)}. You can save, but it will reopen in raw markdown mode.`
-									: `This document is approaching the rich editor limit (${formatBytes(activeMarkdownSizeBytes)} of ${formatBytes(plateMaxBytes)}).`}
+									? t("editor.doc_too_large", { size: formatBytes(activeMarkdownSizeBytes), limit: formatBytes(plateMaxBytes) })
+									: t("editor.doc_near_limit", { size: formatBytes(activeMarkdownSizeBytes), limit: formatBytes(plateMaxBytes) })}
 							</AlertDescription>
 						</Alert>
 					)}

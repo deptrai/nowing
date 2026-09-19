@@ -449,7 +449,7 @@ export default function LogsManagePage() {
 		const selectedRows = table.getSelectedRowModel().rows;
 
 		if (selectedRows.length === 0) {
-			toast.error("No rows selected");
+			toast.error(t("no_rows_selected"));
 			return;
 		}
 
@@ -460,16 +460,16 @@ export default function LogsManagePage() {
 			const allSuccessful = results.every((result) => result === true);
 
 			if (allSuccessful) {
-				toast.success(`Successfully deleted ${selectedRows.length} log(s)`);
+				toast.success(t("toast.logs_deleted", { count: selectedRows.length }));
 			} else {
-				toast.error("Some logs could not be deleted");
+				toast.error(t("some_logs_delete_failed"));
 			}
 
 			await refreshLogs();
 			table.resetRowSelection();
 		} catch (error: any) {
 			console.error("Error deleting logs:", error);
-			toast.error("Error deleting logs");
+			toast.error(t("delete_logs_error"));
 		}
 	};
 
@@ -481,7 +481,7 @@ export default function LogsManagePage() {
 		setIsRefreshing(true);
 		try {
 			await Promise.all([refreshLogs(), refreshSummary()]);
-			toast.success("Logs refreshed");
+			toast.success(t("logs_refreshed"));
 		} finally {
 			setIsRefreshing(false);
 		}

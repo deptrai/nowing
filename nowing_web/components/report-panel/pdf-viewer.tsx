@@ -1,6 +1,7 @@
 "use client";
 
 import { ZoomInIcon, ZoomOutIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import * as pdfjsLib from "pdfjs-dist";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
@@ -33,6 +34,7 @@ const SCROLL_DEBOUNCE_MS = 30;
 const BUFFER_PAGES = 1;
 
 export function PdfViewer({ pdfUrl, isPublic = false, toolbarActions }: PdfViewerProps) {
+	const t = useTranslations("layout");
 	const [numPages, setNumPages] = useState(0);
 	const [scale, setScale] = useState(1);
 	const [loading, setLoading] = useState(true);
@@ -278,7 +280,7 @@ export function PdfViewer({ pdfUrl, isPublic = false, toolbarActions }: PdfViewe
 	if (loadError) {
 		return (
 			<div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
-				<p className="font-medium text-foreground">Failed to load PDF</p>
+				<p className="font-medium text-foreground">{t("failed_to_load_pdf")}</p>
 				<p className="text-sm text-muted-foreground">{loadError}</p>
 			</div>
 		);

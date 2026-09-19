@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { type DockTabId, dockActiveTabAtom, dockTabUpdatesAtom } from "@/atoms/layout/dock.atom";
 import type { ThreadParsedContext } from "@/components/leads/thread-intent-detector";
 import type { Lead } from "@/contracts/types/leads.types";
@@ -32,10 +33,11 @@ export function useDockTabs({ messages, leads, threadContext }: UseDockTabsInput
 	const updates = useAtomValue(dockTabUpdatesAtom);
 
 	const hasLeads = leads.length > 0 || threadContext?.detectedIntent === "leads";
+	const t = useTranslations("dock");
 
 	const parsedTabs = useMemo(
-		() => parseDockContent(messages as ThreadMessageLike[], { hasLeads }),
-		[messages, hasLeads]
+		() => parseDockContent(messages as ThreadMessageLike[], { hasLeads, t }),
+		[messages, hasLeads, t]
 	);
 
 	const tabs = useMemo<DockTab[]>(

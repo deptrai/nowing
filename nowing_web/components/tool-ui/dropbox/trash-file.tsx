@@ -133,7 +133,7 @@ function ApprovalCard({
 								: "Delete Dropbox File"}
 					</p>
 					{phase === "processing" ? (
-						<TextShimmerLoader text="Deleting file" size="sm" />
+						<TextShimmerLoader text={t("common_deleting_file")} size="sm" />
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_deleted")}</p>
 					) : phase === "rejected" ? (

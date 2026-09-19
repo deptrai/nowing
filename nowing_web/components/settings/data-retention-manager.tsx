@@ -109,23 +109,19 @@ export function DataRetentionManager({
 		async (e?: React.FormEvent) => {
 			e?.preventDefault();
 			if (!isOwner) {
-				toast.error("Only workspace owners can change data retention settings");
+				toast.error(t("retention_only_owners"));
 				return;
 			}
 
 			const days = retentionDays.trim() === "" ? null : Number(retentionDays);
 			if (autoArchive && (!Number.isInteger(days) || (days as number) <= 0)) {
-				toast.error(
-					"Document retention days must be a positive integer when auto-archive is enabled"
-				);
+				toast.error(t("retention_doc_days_invalid"));
 				return;
 			}
 
 			const memDays = memoryRetentionDays.trim() === "" ? null : Number(memoryRetentionDays);
 			if (memoryAutoArchive && (!Number.isInteger(memDays) || (memDays as number) <= 0)) {
-				toast.error(
-					"Memory retention days must be a positive integer when auto-archive is enabled"
-				);
+				toast.error(t("retention_mem_days_invalid"));
 				return;
 			}
 

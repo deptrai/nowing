@@ -82,11 +82,12 @@ function parseStatusResponse(data: unknown): VideoPresentationStatusResponse | n
 }
 
 function GeneratingState({ title }: { title: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
-				<TextShimmerLoader text="Generating video presentation" size="sm" />
+				<TextShimmerLoader text={t("generating_video_presentation")} size="sm" />
 			</div>
 		</div>
 	);
@@ -109,11 +110,12 @@ function ErrorState({ title, error }: { title: string; error: string }) {
 }
 
 function CompilationLoadingState({ title }: { title: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
-				<TextShimmerLoader text="Compiling scenes" size="sm" />
+				<TextShimmerLoader text={t("compiling_scenes")} size="sm" />
 			</div>
 		</div>
 	);
@@ -494,6 +496,7 @@ export function StatusPoller({
 	title: string;
 	shareToken?: string | null;
 }) {
+	const t = useTranslations("toolUi");
 	const [status, setStatus] = useState<VideoPresentationStatusResponse | null>(null);
 	const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -535,7 +538,7 @@ export function StatusPoller({
 	}
 
 	if (status.status === "failed") {
-		return <ErrorState title={title} error="Generation failed" />;
+		return <ErrorState title={title} error={t("generation_failed")} />;
 	}
 
 	if (status.status === "ready") {
@@ -548,7 +551,7 @@ export function StatusPoller({
 		);
 	}
 
-	return <ErrorState title={title} error="Unexpected state" />;
+	return <ErrorState title={title} error={t("unexpected_state")} />;
 }
 
 export const GenerateVideoPresentationToolUI = ({
@@ -594,7 +597,7 @@ export const GenerateVideoPresentationToolUI = ({
 	}
 
 	if (result.status === "failed") {
-		return <ErrorState title={title} error={result.error || "Generation failed"} />;
+		return <ErrorState title={title} error={result.error || t("generation_failed")} />;
 	}
 
 	if (result.status === "generating") {
@@ -628,5 +631,5 @@ export const GenerateVideoPresentationToolUI = ({
 		);
 	}
 
-	return <ErrorState title={title} error="Missing presentation ID" />;
+	return <ErrorState title={title} error={t("missing_presentation_id")} />;
 };

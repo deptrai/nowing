@@ -584,7 +584,7 @@ function AuthenticatedDocumentsSidebarBase({
 			} catch (err) {
 				console.error("[DocumentsSidebar] Failed to clear watched metadata:", err);
 			}
-			toast.success(`Stopped watching: ${matched.name}`);
+			toast.success(t("toast.stopped_watching", { name: matched.name }));
 			refreshWatchedIds();
 		},
 		[electronAPI, refreshWatchedIds]
@@ -601,7 +601,7 @@ function AuthenticatedDocumentsSidebarBase({
 
 	const handleDeleteFolder = useCallback(
 		async (folder: FolderDisplay) => {
-			if (!confirm(`Delete folder "${folder.name}" and all its contents?`)) return;
+			if (!confirm(t("confirm.delete_folder", { name: folder.name }))) return;
 			try {
 				if (electronAPI) {
 					const watchedFolders = (await electronAPI.getWatchedFolders()) as WatchedFolderEntry[];
@@ -811,7 +811,7 @@ function AuthenticatedDocumentsSidebarBase({
 				URL.revokeObjectURL(url);
 			} catch (err) {
 				console.error(`Export ${format} failed:`, err);
-				toast.error(err instanceof Error ? err.message : `Export failed`);
+				toast.error(err instanceof Error ? err.message : t("toast.export_failed"));
 			}
 		},
 		[workspaceId]
@@ -959,7 +959,7 @@ function AuthenticatedDocumentsSidebarBase({
 	const handleResetMemoryDocument = useCallback(
 		async (doc: DocumentNodeDoc) => {
 			if (!isMemoryDocument(doc)) return;
-			if (!window.confirm(`Reset ${doc.title.toLowerCase()}? This clears the memory document.`)) {
+			if (!window.confirm(t("confirm.reset_document", { title: doc.title.toLowerCase() }))) {
 				return;
 			}
 			const endpoint =
@@ -975,7 +975,7 @@ function AuthenticatedDocumentsSidebarBase({
 				toast.success(`${doc.title} reset`);
 				openMemoryDocument(doc);
 			} catch (error) {
-				toast.error((error as Error)?.message || `Failed to reset ${doc.title.toLowerCase()}`);
+				toast.error((error as Error)?.message || t("toast.reset_failed", { title: doc.title.toLowerCase() }));
 			}
 		},
 		[openMemoryDocument, workspaceId]
@@ -1033,7 +1033,7 @@ function AuthenticatedDocumentsSidebarBase({
 				toast.success(`Deleted ${successIds.length} document${successIds.length !== 1 ? "s" : ""}`);
 			}
 			if (failed > 0) {
-				toast.error(`Failed to delete ${failed} document${failed !== 1 ? "s" : ""}`);
+				toast.error(t("toast.delete_docs_failed", { count: failed }));
 			}
 		} catch {
 			toast.error("Failed to delete documents");
@@ -1163,7 +1163,7 @@ function AuthenticatedDocumentsSidebarBase({
 					onOpenChange={setFolderPickerOpen}
 					folders={treeFolders}
 					title={folderPickerTarget?.type === "folder" ? "Move folder to" : "Move document to"}
-					description="Select a destination folder, or choose Root to move to the top level."
+					description={t("move_folder_description")}
 					disabledFolderIds={folderPickerTarget?.disabledIds}
 					onSelect={handleFolderPickerSelect}
 				/>
@@ -1194,7 +1194,7 @@ function AuthenticatedDocumentsSidebarBase({
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
-							<AlertDialogCancel disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+							<AlertDialogCancel disabled={isBulkDeleting}>{t("cancel")}</AlertDialogCancel>
 							<AlertDialogAction
 								onClick={(e) => {
 									e.preventDefault();
@@ -1221,7 +1221,7 @@ function AuthenticatedDocumentsSidebarBase({
 				>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>Some documents are still processing</AlertDialogTitle>
+							<AlertDialogTitle>{t("some_docs_processing")}</AlertDialogTitle>
 							<AlertDialogDescription>
 								{exportWarningContext?.pendingCount} document
 								{exportWarningContext?.pendingCount !== 1 ? "s are" : " is"} currently being
@@ -1229,7 +1229,7 @@ function AuthenticatedDocumentsSidebarBase({
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
-							<AlertDialogCancel>Cancel</AlertDialogCancel>
+							<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 							<AlertDialogAction onClick={handleExportWarningConfirm}>
 								Export anyway
 							</AlertDialogAction>

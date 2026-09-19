@@ -1,4 +1,5 @@
 import { atomWithMutation } from "jotai-tanstack-query";
+import { translateToast } from "@/lib/i18n-toast";
 import { toast } from "sonner";
 import type {
 	ConnectionCreateRequest,
@@ -41,7 +42,7 @@ async function warnIfWorkspaceChatDisabled(workspaceId: number) {
 			queryFn: () => modelConnectionsApiService.getLlmSetupStatus(workspaceId),
 		});
 		if (status?.status === "needs_setup") {
-			toast.warning("Chat is now disabled. Connect a chat model to start chatting again.");
+			toast.warning(translateToast("toast.chat_disabled_warning"));
 		}
 	} catch {
 		// Non-fatal: the inline composer notice still reflects the state.
@@ -70,7 +71,7 @@ export const createModelConnectionMutationAtom = atomWithMutation((get) => {
 			const resolvedWorkspaceId = Number(
 				request.workspace_id ?? connection.workspace_id ?? workspaceId
 			);
-			toast.success("Connection created");
+			toast.success(translateToast("toast.connection_created"));
 			if (resolvedWorkspaceId > 0) {
 				upsertModelConnection(resolvedWorkspaceId, connection);
 				invalidateModelConnections(resolvedWorkspaceId);
@@ -87,7 +88,7 @@ export const updateModelConnectionMutationAtom = atomWithMutation((get) => {
 		mutationFn: ({ id, data }: { id: number; data: ConnectionUpdateRequest }) =>
 			modelConnectionsApiService.updateConnection(id, data),
 		onSuccess: () => {
-			toast.success("Connection updated");
+			toast.success(translateToast("toast.connection_updated"));
 			invalidateModelConnections(workspaceId);
 		},
 		onError: (error: Error) => toast.error(error.message || "Failed to update connection"),
@@ -100,7 +101,7 @@ export const deleteModelConnectionMutationAtom = atomWithMutation((get) => {
 		mutationKey: ["model-connections", "delete"],
 		mutationFn: (id: number) => modelConnectionsApiService.deleteConnection(id),
 		onSuccess: async () => {
-			toast.success("Connection deleted");
+			toast.success(translateToast("toast.connection_deleted"));
 			invalidateModelConnections(workspaceId);
 			await warnIfWorkspaceChatDisabled(workspaceId);
 		},
@@ -115,7 +116,7 @@ export const verifyModelConnectionMutationAtom = atomWithMutation((get) => {
 		mutationFn: (id: number) => modelConnectionsApiService.verifyConnection(id),
 		onSuccess: (result: VerifyConnectionResponse) => {
 			if (result.ok) {
-				toast.success("Connection verified");
+				toast.success(translateToast("toast.connection_verified"));
 			} else {
 				// Non-fatal: many providers lack a /models endpoint yet still serve
 				// chat. Guide the user to add model IDs manually instead of alarming.
@@ -177,7 +178,7 @@ export const addManualModelMutationAtom = atomWithMutation((get) => {
 		mutationFn: ({ connectionId, data }: { connectionId: number; data: ModelCreateRequest }) =>
 			modelConnectionsApiService.addManualModel(connectionId, data),
 		onSuccess: () => {
-			toast.success("Model added");
+			toast.success(translateToast("toast.model_added"));
 			invalidateModelConnections(workspaceId);
 		},
 		onError: (error: Error) => toast.error(error.message || "Failed to add model"),
@@ -215,7 +216,7 @@ export const testModelMutationAtom = atomWithMutation((get) => {
 		mutationKey: ["models", "test"],
 		mutationFn: (id: number) => modelConnectionsApiService.testModel(id),
 		onSuccess: (result: VerifyConnectionResponse) => {
-			if (result.ok) toast.success("Model test succeeded");
+			if (result.ok) toast.success(translateToast("toast.model_test_succeeded"));
 			else toast.error(result.message || "Model test failed");
 			invalidateModelConnections(workspaceId);
 		},

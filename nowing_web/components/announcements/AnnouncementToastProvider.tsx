@@ -1,6 +1,7 @@
 "use client";
 
 import { Megaphone } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type { Announcement } from "@/contracts/types/announcement.types";
@@ -22,16 +23,16 @@ const categoryToVariant: Record<string, "info" | "warning" | "success"> = {
 };
 
 /** Show a single announcement as a toast */
-function showAnnouncementToast(announcement: Announcement) {
+function showAnnouncementToast(announcement: Announcement, t: (key: string) => string) {
 	const variant = categoryToVariant[announcement.category] ?? "info";
 
 	const options = {
-		description: truncateText(announcement.description, 120),
+		description: truncateText(t(announcement.description), 120),
 		duration: 12000,
 		icon: <Megaphone className="h-4 w-4" aria-hidden="true" />,
 		action: announcement.link
 			? {
-					label: announcement.link.label,
+					label: t(announcement.link.label),
 					onClick: () => {
 						if (announcement.link?.url.startsWith("http")) {
 							window.open(announcement.link.url, "_blank", "noopener,noreferrer");
@@ -59,6 +60,7 @@ function showAnnouncementToast(announcement: Announcement) {
  * with a short stagger delay.
  */
 export function AnnouncementToastProvider() {
+	const t = useTranslations("announcements");
 	const hasChecked = useRef(false);
 
 	useEffect(() => {
@@ -78,7 +80,7 @@ export function AnnouncementToastProvider() {
 
 			for (let i = 0; i < importantUntoasted.length; i++) {
 				const announcement = importantUntoasted[i];
-				staggerTimers.push(setTimeout(() => showAnnouncementToast(announcement), i * 800));
+				staggerTimers.push(setTimeout(() => showAnnouncementToast(announcement, t), i * 800));
 			}
 		}, 1500);
 
@@ -86,7 +88,7 @@ export function AnnouncementToastProvider() {
 			clearTimeout(outerTimer);
 			for (const id of staggerTimers) clearTimeout(id);
 		};
-	}, []);
+	}, [t]);
 
 	return null;
 }

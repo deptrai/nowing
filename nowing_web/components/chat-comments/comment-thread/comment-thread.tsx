@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronRight, MessageCircleReply } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CommentComposer } from "../comment-composer/comment-composer";
 import { CommentItem } from "../comment-item/comment-item";
@@ -16,6 +17,7 @@ export function CommentThread({
 	onDeleteComment,
 	isSubmitting = false,
 }: CommentThreadProps) {
+	const t = useTranslations("chatMessages");
 	const [isRepliesExpanded, setIsRepliesExpanded] = useState(true);
 	const [isReplyComposerOpen, setIsReplyComposerOpen] = useState(false);
 	const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
@@ -132,7 +134,7 @@ export function CommentThread({
 								<CommentComposer
 									members={members}
 									membersLoading={membersLoading}
-									placeholder="Reply or @mention"
+									placeholder={t("reply_mention_placeholder")}
 									submitLabel="Reply"
 									isSubmitting={isSubmitting}
 									onSubmit={handleReplySubmit}

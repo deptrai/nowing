@@ -79,7 +79,7 @@ export function PromptsContent() {
 
 	const handleSave = useCallback(async () => {
 		if (!formData.name.trim() || !formData.prompt.trim()) {
-			toast.error("Name and prompt are required");
+			toast.error(t("name_and_prompt_required"));
 			return;
 		}
 
@@ -189,7 +189,7 @@ export function PromptsContent() {
 
 					<div className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="prompt-name">Name</Label>
+							<Label htmlFor="prompt-name">{t("name")}</Label>
 							<Input
 								id="prompt-name"
 								value={formData.name}
@@ -218,7 +218,7 @@ export function PromptsContent() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="prompt-mode">Mode</Label>
+							<Label htmlFor="prompt-mode">{t("mode")}</Label>
 							<Select
 								value={formData.mode}
 								onValueChange={(value) =>
@@ -401,8 +401,8 @@ export function PromptsContent() {
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+						<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+						<AlertDialogAction onClick={handleConfirmDelete}>{t("delete")}</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

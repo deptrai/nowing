@@ -328,6 +328,7 @@ export interface DockContentProps {
 }
 
 export function DockContent({ activeTab, payload, workspaceId, className }: DockContentProps) {
+	const t = useTranslations("dock");
 	if (!payload) {
 		return <Placeholder icon={ImageIcon} title={`No content for ${activeTab}`} />;
 	}
@@ -367,7 +368,7 @@ export function DockContent({ activeTab, payload, workspaceId, className }: Dock
 			content = <Placeholder icon={Music} title={`${activeTab} tab`} />;
 			break;
 		default:
-			content = <Placeholder icon={ImageIcon} title={`Unsupported tab: ${activeTab}`} />;
+			content = <Placeholder icon={ImageIcon} title={t("unsupported_tab", { tab: activeTab })} />;
 	}
 
 	return <div className={cn("h-full w-full overflow-hidden", className)}>{content}</div>;

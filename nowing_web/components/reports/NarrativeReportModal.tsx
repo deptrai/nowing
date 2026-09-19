@@ -1,6 +1,7 @@
 "use client";
 
 import { Calendar, FileText, LineChart, Newspaper, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export default function NarrativeReportModal({
 	onOpenChange,
 	onGenerated,
 }: NarrativeReportModalProps) {
+	const t = useTranslations("reports");
 	const [templates, setTemplates] = useState<NarrativeTemplate[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [selectedTemplate, setSelectedTemplate] = useState<NarrativeTemplate | null>(null);
@@ -61,7 +63,7 @@ export default function NarrativeReportModal({
 				})
 				.catch((err) => {
 					console.error("Failed to fetch narrative templates:", err);
-					toast.error("Could not load narrative templates");
+					toast.error(t("templates_load_failed"));
 				})
 				.finally(() => setLoading(false));
 		}
@@ -89,7 +91,7 @@ export default function NarrativeReportModal({
 			const errorMsg =
 				err && typeof err === "object" && "message" in err
 					? String((err as { message: unknown }).message)
-					: "Could not generate narrative report";
+					: t("report_generate_failed");
 			toast.error(errorMsg);
 		} finally {
 			setSubmitting(false);
@@ -190,7 +192,7 @@ export default function NarrativeReportModal({
 											id="report-title"
 											value={customTitle}
 											onChange={(e) => setCustomTitle(e.target.value)}
-											placeholder="Custom title or leave default"
+											placeholder={t("custom_title_placeholder")}
 											className="h-8 text-xs"
 										/>
 									</div>

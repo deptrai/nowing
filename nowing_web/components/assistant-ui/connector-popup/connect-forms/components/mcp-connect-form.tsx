@@ -271,7 +271,7 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 								)}
 							</div>
 							<AlertDescription className="text-[10px] sm:text-xs mt-1">
-								{testResult.message}
+								{testResult.status === "success" ? t("connector.connect_success", { count: testResult.tools.length }) : testResult.message}
 								{showDetails && testResult.tools.length > 0 && (
 									<div className="mt-3 pt-3 border-t border-green-500/20">
 										<p className="font-semibold mb-2">{t("mcp_available_tools")}</p>

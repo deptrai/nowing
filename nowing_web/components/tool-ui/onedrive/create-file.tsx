@@ -180,12 +180,12 @@ function ApprovalCard({
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? "Creating file with your changes" : "Creating file"}
+							text={pendingEdits ? t("creating_file_edits") : t("creating_file")}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{pendingEdits ? "File created with your changes" : "File created"}
+							{pendingEdits ? t("file_created_edits") : t("file_created")}
 						</p>
 					) : phase === "rejected" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_creation_was_cancelled")}</p>

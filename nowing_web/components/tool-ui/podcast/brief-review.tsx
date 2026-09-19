@@ -46,7 +46,6 @@ import { VoicePreviewButton } from "./voice-preview-button";
 const ANY_LANGUAGE = "*";
 
 function speaks(voice: VoiceOption, language: string): boolean {
-	const t = useTranslations("toolUi");
 	if (voice.language === ANY_LANGUAGE) return true;
 	return primary(voice.language) === primary(language);
 }
@@ -194,7 +193,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 			return true;
 		} catch (error) {
 			if (error instanceof AppError && error.status === 409) {
-				toast.warning("The brief changed elsewhere — reloaded the latest version.");
+				toast.warning(t("brief_changed_reloaded"));
 				setDraft(spec);
 			} else {
 				toast.error(error instanceof Error ? error.message: t("tu_failed_to_save_the"));
@@ -280,7 +279,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 							/>
 						</div>
 						<div className="flex w-28 flex-col gap-1.5">
-							<Label className="text-xs">Role</Label>
+							<Label className="text-xs">{t("role")}</Label>
 							<Select
 								value={speaker.role}
 								onValueChange={(value) =>
@@ -300,7 +299,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 							</Select>
 						</div>
 						<div className="flex w-52 flex-col gap-1.5">
-							<Label className="text-xs">Voice</Label>
+							<Label className="text-xs">{t("voice")}</Label>
 							<div className="flex items-center gap-1">
 								<Select
 									value={speaker.voice_id}
@@ -347,13 +346,13 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						<SelectContent>
 							<SelectItem value="seconds">{t("tu_seconds")}</SelectItem>
 							<SelectItem value="minutes">{t("f_minutes")}</SelectItem>
-							<SelectItem value="hours">Hours</SelectItem>
+							<SelectItem value="hours">{t("hours")}</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
 				<div className="grid grid-cols-2 gap-4">
 					<div className="flex flex-col gap-2">
-						<Label htmlFor="podcast-min-length">Min</Label>
+						<Label htmlFor="podcast-min-length">{t("min")}</Label>
 						<Input
 							id="podcast-min-length"
 							type="number"
@@ -373,7 +372,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						/>
 					</div>
 					<div className="flex flex-col gap-2">
-						<Label htmlFor="podcast-max-length">Max</Label>
+						<Label htmlFor="podcast-max-length">{t("max")}</Label>
 						<Input
 							id="podcast-max-length"
 							type="number"
@@ -442,6 +441,7 @@ function LanguageCombobox({
 	languages: string[];
 	onSelect: (language: string) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 
@@ -472,12 +472,12 @@ function LanguageCombobox({
 			<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
 				<Command>
 					<CommandInput
-						placeholder="Search or type a language tag…"
+						placeholder={t("search_language_tag")}
 						value={query}
 						onValueChange={setQuery}
 					/>
 					<CommandList>
-						<CommandEmpty>No matching language.</CommandEmpty>
+						<CommandEmpty>{t("no_matching_language")}</CommandEmpty>
 						<CommandGroup>
 							{languages.map((tag) => (
 								<CommandItem

@@ -119,7 +119,7 @@ export function ToolCardRevertButton({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={isReverting}>Cancel</AlertDialogCancel>
+					<AlertDialogCancel disabled={isReverting}>{t("cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						onClick={(e) => {
 							e.preventDefault();

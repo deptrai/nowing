@@ -64,7 +64,7 @@ interface AutomationBuilderFormProps {
 
 type Mode = "form" | "json";
 
-function mapFormErrors(error: z.ZodError): Record<string, string> {
+function mapFormErrors(error: z.ZodError, t: (key: string) => string): Record<string, string> {
 	const out: Record<string, string> = {};
 	for (const issue of error.issues) {
 		const path = issue.path;
@@ -74,7 +74,7 @@ function mapFormErrors(error: z.ZodError): Record<string, string> {
 			key = `tasks.${path[1]}.${field}`;
 		} else if (path[0] === "schedule") key = "schedule";
 		else key = String(path[0] ?? "_root");
-		if (!out[key]) out[key] = issue.message;
+		if (!out[key]) out[key] = issue.message.includes(".") ? t(issue.message) : issue.message;
 	}
 	return out;
 }
@@ -105,7 +105,7 @@ export function AutomationBuilderForm({
 			return {
 				mode: "json" as Mode,
 				form: createEmptyForm(),
-				notice: `This automation ${result.reason}, which the form can't show. Edit it as JSON below`,
+				notice: t("builder_json_notice", { reason: result.reason }),
 			};
 		}
 		return { mode: "form" as Mode, form: createEmptyForm(), notice: undefined };
@@ -192,7 +192,7 @@ export function AutomationBuilderForm({
 		// form's own validation enforces completeness on submit.
 		const definition = jsonValue.definition;
 		if (!definition || typeof definition !== "object") {
-			return { ok: false, issues: [], notice: "Add a definition before switching to the form" };
+			return { ok: false, issues: [], notice: t("add_definition_notice") };
 		}
 
 		const name =
@@ -215,13 +215,13 @@ export function AutomationBuilderForm({
 
 	function validateForm(): Record<string, string> | null {
 		const result = builderFormSchema.safeParse(form);
-		const next = result.success ? {} : mapFormErrors(result.error);
+		const next = result.success ? {} : mapFormErrors(result.error, t);
 
 		// The schedule model fields aren't deeply validated by the schema.
 		if (form.schedule?.mode === "preset") {
 			const m = form.schedule.model;
 			if (m.frequency === "weekly" && m.daysOfWeek.length === 0) {
-				next.schedule = "Pick at least one day for the weekly schedule";
+				next.schedule = t("pick_day_weekly");
 			}
 		} else if (form.schedule?.mode === "cron" && !form.schedule.cron.trim()) {
 			next.schedule = "Enter a schedule expression";
@@ -324,7 +324,7 @@ export function AutomationBuilderForm({
 	const effectiveDisabledReason =
 		submitDisabledReason ??
 		(modelsUnresolved
-			? "Set up a premium or your own (BYOK) agent, image, and vision model in role settings before creating an automation."
+			? t("setup_models_first")
 			: undefined);
 	// Only gate creation; editing an existing automation isn't blocked here.
 	const submitBlocked = mode === "create" && !!effectiveDisabledReason;
@@ -377,7 +377,7 @@ export function AutomationBuilderForm({
 						<Card className="rounded-md border-accent bg-accent/20">
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Basics</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("basics")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<BasicsSection
@@ -424,7 +424,7 @@ export function AutomationBuilderForm({
 							<Separator className="mx-auto data-[orientation=horizontal]:w-[calc(100%-6rem)]" />
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Models</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("models")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<AutomationModelFields

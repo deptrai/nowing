@@ -139,7 +139,7 @@ export function AgentPermissionsContent() {
 		mutationFn: (payload: AgentPermissionRuleCreate) =>
 			agentPermissionsApiService.create(workspaceId as number, payload),
 		onSuccess: () => {
-			toast.success("Rule created.");
+			toast.success(t("rule_created"));
 			queryClient.invalidateQueries({
 				queryKey: permissionRulesQueryKey(workspaceId as number),
 			});
@@ -169,7 +169,7 @@ export function AgentPermissionsContent() {
 		mutationFn: (ruleId: number) =>
 			agentPermissionsApiService.remove(workspaceId as number, ruleId),
 		onSuccess: () => {
-			toast.success("Rule deleted.");
+			toast.success(t("rule_deleted"));
 			queryClient.invalidateQueries({
 				queryKey: permissionRulesQueryKey(workspaceId as number),
 			});
@@ -187,7 +187,7 @@ export function AgentPermissionsContent() {
 
 	const handleCreate = useCallback(async () => {
 		if (!formData.permission.trim()) {
-			toast.error("Permission is required.");
+			toast.error(t("permission_required"));
 			return;
 		}
 		try {
@@ -303,7 +303,7 @@ export function AgentPermissionsContent() {
 						</div>
 
 						<div className="space-y-2">
-							<Label>Action</Label>
+							<Label>{t("action")}</Label>
 							<Select
 								value={formData.action}
 								onValueChange={(value) =>
@@ -436,9 +436,9 @@ export function AgentPermissionsContent() {
 												</SelectValue>
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="allow">Allow</SelectItem>
+												<SelectItem value="allow">{t("allow")}</SelectItem>
 												<SelectItem value="ask">Ask</SelectItem>
-												<SelectItem value="deny">Deny</SelectItem>
+												<SelectItem value="deny">{t("deny")}</SelectItem>
 											</SelectContent>
 										</Select>
 
@@ -472,7 +472,7 @@ export function AgentPermissionsContent() {
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={deleteMutation.isPending}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={(e) => {
 								e.preventDefault();

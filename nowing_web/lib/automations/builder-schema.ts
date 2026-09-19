@@ -50,7 +50,7 @@ export const builderTaskSchema = z
 		timeoutSeconds: z.number().int().positive().max(86_400).nullable(),
 	})
 	.refine((data) => data.action !== "agent_task" || !!data.query?.trim(), {
-		message: "Describe what the agent should do",
+		message: "automations.describe_agent_task",
 		path: ["query"],
 	});
 export type BuilderTask = z.infer<typeof builderTaskSchema>;
@@ -62,7 +62,7 @@ export const builderScheduleSchema = z.discriminatedUnion("mode", [
 	}),
 	z.object({
 		mode: z.literal("cron"),
-		cron: z.string().trim().min(1, "Enter a schedule expression"),
+		cron: z.string().trim().min(1, "automations.enter_schedule_expr"),
 	}),
 ]);
 export type BuilderSchedule = z.infer<typeof builderScheduleSchema>;
@@ -89,9 +89,9 @@ export const builderModelsSchema = z.object({
 export type BuilderModels = z.infer<typeof builderModelsSchema>;
 
 export const builderFormSchema = z.object({
-	name: z.string().trim().min(1, "Give your automation a name").max(200),
+	name: z.string().trim().min(1, "automations.give_automation_name").max(200),
 	description: z.string().trim().max(2000).nullable(),
-	tasks: z.array(builderTaskSchema).min(1, "Add at least one task"),
+	tasks: z.array(builderTaskSchema).min(1, "automations.add_at_least_one_task"),
 	unattended: z.boolean(),
 	schedule: builderScheduleSchema.nullable(),
 	timezone: z.string().min(1),

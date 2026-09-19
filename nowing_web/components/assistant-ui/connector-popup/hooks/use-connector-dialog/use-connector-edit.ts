@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
 	deleteConnectorMutationAtom,
@@ -34,6 +35,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 	handleDisconnectConnector: (refreshConnectors: () => void) => Promise<void>;
 	handleBackFromEdit: () => void;
 } {
+	const t = useTranslations();
 	const {
 		workspaceId,
 		setIsOpen,
@@ -73,7 +75,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 
 			const connectorValidation = searchSourceConnector.safeParse(connector);
 			if (!connectorValidation.success) {
-				toast.error("Invalid connector data");
+				toast.error(t("connector.invalid_data"));
 				return;
 			}
 
@@ -158,13 +160,13 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 			) {
 				const dateRangeValidation = dateRangeSchema.safeParse({ startDate, endDate });
 				if (!dateRangeValidation.success) {
-					toast.error(dateRangeValidation.error.issues[0]?.message || "Invalid date range");
+					toast.error(t("connector.invalid_date_range"));
 					return;
 				}
 			}
 
 			if (periodicEnabled && !editingConnector.is_indexable) {
-				toast.error("Periodic indexing is not available for this connector type");
+				toast.error(t("connector.periodic_not_available"));
 				return;
 			}
 
@@ -186,7 +188,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 					(selectedFiles && selectedFiles.length > 0);
 
 				if (!hasItemsSelected) {
-					toast.error("Select at least one folder or file to enable periodic sync");
+					toast.error(t("connector.select_items_for_sync"));
 					return;
 				}
 			}
@@ -194,7 +196,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 			if (periodicEnabled && editingConnector.is_indexable) {
 				const frequencyValidation = frequencyMinutesSchema.safeParse(frequencyMinutes);
 				if (!frequencyValidation.success) {
-					toast.error("Invalid frequency value");
+					toast.error(t("connector.invalid_frequency"));
 					return;
 				}
 			}
@@ -303,7 +305,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 				const toastTitle = `${editingConnector.name} updated successfully`;
 				toast.success(toastTitle, {
 					description: periodicEnabled
-						? `Periodic sync ${frequency ? `enabled every ${frequencyLabel}` : "enabled"}. ${indexingDescription}`
+						? `${t("connector.sync_enabled_every", { freq: frequencyLabel })} ${indexingDescription}`
 						: indexingDescription,
 				});
 
@@ -323,7 +325,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 				});
 			} catch (error) {
 				console.error("Error saving connector:", error);
-				toast.error("Failed to save connector changes");
+				toast.error(t("connector.save_failed"));
 			} finally {
 				setIsSaving(false);
 			}
@@ -383,7 +385,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 				});
 			} catch (error) {
 				console.error("Error disconnecting connector:", error);
-				toast.error("Failed to disconnect connector");
+				toast.error(t("connector.disconnect_failed"));
 			} finally {
 				setIsDisconnecting(false);
 			}

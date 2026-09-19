@@ -697,7 +697,7 @@ export function DocumentUploadTab({
 
 					<div className={toggleRowClass}>
 						<div className="space-y-0.5">
-							<p className="font-medium text-sm">Enable Vision LLM</p>
+							<p className="font-medium text-sm">{t("enable_vision_llm")}</p>
 							<p className="text-xs text-muted-foreground">
 								Describes images using AI vision (costly, slower)
 							</p>

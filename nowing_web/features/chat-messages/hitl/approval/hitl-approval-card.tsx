@@ -250,7 +250,7 @@ const PagerBar: FC<{
 			onClick={onNext}
 			disabled={!canAdvance || currentStep >= total - 1}
 			aria-label={t("x_next_approval")}
-			title={!canAdvance ? "Decide on this action first" : undefined}
+			title={!canAdvance ? t("decide_first") : undefined}
 		>
 			<ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
 		</Button>

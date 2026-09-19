@@ -87,7 +87,7 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 						<h4 className="truncate text-sm font-semibold text-foreground">
 							{appName || "Generating Web App"}
 						</h4>
-						<TextShimmerLoader text="Designing & scaffolding Next.js page..." size="sm" />
+						<TextShimmerLoader text={t("designing_scaffolding")} size="sm" />
 					</div>
 				</div>
 				<Badge variant="secondary" className="gap-1 px-2 py-0.5 text-xs">
@@ -206,7 +206,7 @@ export function GenerateWebAppToolUI({
 					description: `Live at ${deployRes.public_url}`,
 				});
 			} else {
-				toast.error(deployRes.message || "Failed to publish web app");
+				toast.error(deployRes.message || t("publish_failed"));
 			}
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message: t("tu_publish_request_failed");

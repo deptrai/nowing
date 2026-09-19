@@ -50,7 +50,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 
 	const handlePublish = async () => {
 		if (!appId) {
-			toast.error("Missing app ID for publishing");
+			toast.error(t("missing_app_id"));
 			return;
 		}
 		setIsPublishing(true);
@@ -60,11 +60,11 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 			});
 			if (deployRes.status === "published" && deployRes.public_url) {
 				setPublishedUrl(deployRes.public_url);
-				toast.success("Web app published successfully!", {
-					description: `Live at ${deployRes.public_url}`,
+				toast.success(t("publish_success"), {
+					description: t("web_builder_live_at", { url: deployRes.public_url }),
 				});
 			} else {
-				toast.error(deployRes.message || "Failed to publish web app");
+				toast.error(deployRes.message || t("publish_failed"));
 			}
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message: t("x_publish_request_failed");
@@ -79,10 +79,10 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 		try {
 			await navigator.clipboard.writeText(effectivePublicUrl);
 			setCopied(true);
-			toast.success("Public URL copied");
+			toast.success(t("public_url_copied"));
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
-			toast.error("Failed to copy");
+			toast.error(t("copy_failed"));
 		}
 	};
 
@@ -181,7 +181,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							variant="outline"
 							size="sm"
 							className="gap-1 text-xs h-7 rounded-lg"
-							onClick={() => toast.info("Code editor tab coming in next iteration.")}
+							onClick={() => toast.info(t("code_editor_coming_soon"))}
 						>
 							<SparklesIcon className="size-3.5" aria-hidden="true" />{t("x_edit_prompt")}</Button>
 					</div>
@@ -275,7 +275,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 						/>
 					</div>
 				) : (
-					<div className="text-sm text-muted-foreground">No preview available.</div>
+					<div className="text-sm text-muted-foreground">{t("x_no_preview_available")}</div>
 				)}
 			</div>
 		</div>

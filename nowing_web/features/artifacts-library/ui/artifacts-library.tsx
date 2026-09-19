@@ -236,7 +236,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 							<section key={kind}>
 								<div className="flex items-center justify-between mb-2.5">
 									<h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-										<span>{KIND_META[kind].group}</span>
+										<span>{t(KIND_META[kind].groupKey)}</span>
 										<span className="text-[10.5px] font-mono text-muted-foreground/60 font-normal">
 											({items.length})
 										</span>

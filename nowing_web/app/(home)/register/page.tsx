@@ -98,11 +98,10 @@ export default function RegisterPage() {
 			if (err instanceof AppError) {
 				switch (err.status) {
 					case 403: {
-						const friendlyMessage =
-							"Registrations are currently closed. If you need access, contact your administrator.";
+						const friendlyMessage = t("registrations_closed_desc");
 						trackRegistrationFailure("Registration disabled");
 						setError({ title: t("home_registration_is_disabled"), message: friendlyMessage });
-						toast.error("Registration is disabled", {
+						toast.error(t("home_registration_is_disabled"), {
 							description: friendlyMessage,
 							duration: 6000,
 						});
@@ -136,7 +135,7 @@ export default function RegisterPage() {
 			trackRegistrationFailure(errorCode);
 
 			// Get detailed error information from auth-errors utility
-			const errorDetails = getAuthErrorDetails(errorCode);
+			const errorDetails = getAuthErrorDetails(t, errorCode);
 
 			// Set persistent error display
 			setError({ title: errorDetails.title, message: errorDetails.description });

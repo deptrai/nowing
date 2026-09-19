@@ -285,7 +285,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 										<option value="all">{t("dnc_all_types")}</option>
 										<option value="phone">{t("dnc_type_phone")}</option>
 										<option value="domain">{t("dnc_type_domain")}</option>
-										<option value="email">Email</option>
+										<option value="email">{t("dnc_email_opt")}</option>
 										<option value="tax_id">{t("dnc_type_tax_id")}</option>
 									</select>
 									<button

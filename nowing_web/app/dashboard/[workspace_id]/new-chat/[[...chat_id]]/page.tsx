@@ -602,7 +602,7 @@ export default function NewChatPage() {
 			const { userQuery, userImages } = extractUserTurnForNewChatApi(message, []);
 			const queryForApi = userQuery.trim();
 			if (!queryForApi && userImages.length === 0) {
-				toast.error("Cannot edit with empty message");
+				toast.error(t("cannot_edit_empty_message"));
 				return;
 			}
 
@@ -745,7 +745,7 @@ export default function NewChatPage() {
 
 			if (incoming.length !== N) {
 				toast.error(
-					`Cannot resume: ${incoming.length} decision(s) submitted for ${N} pending actions.`
+					t("errors.cannot_resume_decisions", { count: incoming.length, total: N })
 				);
 				return;
 			}
@@ -757,7 +757,7 @@ export default function NewChatPage() {
 				const decision = incoming[i];
 				if (tcId === undefined || decision === undefined) {
 					toast.error(
-						`Cannot resume: ${incoming.length} decision(s) submitted for ${N} pending actions.`
+						t("errors.cannot_resume_decisions", { count: incoming.length, total: N })
 					);
 					return;
 				}

@@ -72,7 +72,7 @@ export function LocalLoginForm() {
 			trackLoginFailure("local", errorCode);
 
 			// Get detailed error information from auth-errors utility
-			const errorDetails = getAuthErrorDetails(errorCode);
+			const errorDetails = getAuthErrorDetails(t, errorCode);
 
 			// Set persistent error display
 			setError({

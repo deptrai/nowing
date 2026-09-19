@@ -130,7 +130,7 @@ export default async function ExternalMcpConnectorsPage() {
 						"@type": "Offer",
 						price: "0",
 						priceCurrency: "USD",
-						description: "Free tier included",
+						description: t("free_tier"),
 					},
 					provider: {
 						"@type": "Organization",

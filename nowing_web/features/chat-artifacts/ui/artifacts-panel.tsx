@@ -22,8 +22,8 @@ const getGroupOrder = (t: (k: string) => string): { kind: ArtifactKind; label: s
 	{ kind: "report", label: t("x_reports") },
 	{ kind: "resume", label: t("x_resumes") },
 	{ kind: "podcast", label: t("x_podcasts") },
-	{ kind: "video", label: "Video Presentations" },
-	{ kind: "image", label: "Images" },
+	{ kind: "video", label: t("x_video_presentations") },
+	{ kind: "image", label: t("x_images") },
 ];
 
 function groupByKind(artifacts: ChatArtifact[]): { label: string; items: ChatArtifact[] }[] {
@@ -35,10 +35,11 @@ function groupByKind(artifacts: ChatArtifact[]): { label: string; items: ChatArt
 }
 
 function EmptyState() {
+	const t = useTranslations("layout");
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center select-none">
 			<Boxes className="size-6 text-muted-foreground/60" aria-hidden="true" />
-			<p className="text-sm font-medium text-foreground">No artifacts yet</p>
+			<p className="text-sm font-medium text-foreground">{t("no_artifacts_yet")}</p>
 			<p className="text-xs text-muted-foreground">
 				Web apps, slide decks, meeting minutes, reports, podcasts, video presentations, and images
 				you generate will appear here.
@@ -87,7 +88,7 @@ export function ArtifactsPanelContent({ onClose }: { onClose?: () => void }) {
 						className="size-6 shrink-0 rounded-full text-muted-foreground hover:text-accent-foreground"
 					>
 						<XIcon className="size-3.5" aria-hidden="true" />
-						<span className="sr-only">Close artifacts panel</span>
+						<span className="sr-only">{t("close_artifacts_panel")}</span>
 					</Button>
 				)}
 			</div>

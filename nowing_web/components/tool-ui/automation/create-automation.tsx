@@ -232,8 +232,8 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 						) : phase === "complete" ? (
 							<p className="text-xs text-muted-foreground mt-0.5">
 								{pendingEdits
-									? "Automation saved with your edits"
-									: "Automation created from this draft"}
+									? t("automation_saved_edits")
+									: t("automation_created")}
 							</p>
 						) : phase === "rejected" ? (
 							<p className="text-xs text-muted-foreground mt-0.5">

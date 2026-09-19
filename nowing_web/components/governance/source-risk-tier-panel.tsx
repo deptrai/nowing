@@ -53,14 +53,14 @@ const allMemorySourceTypes: string[] = [
 	"outcome_event",
 ];
 
-function riskBadge(risk: RiskTier) {
+function riskBadge(risk: RiskTier, tCommon: (key: string) => string) {
 	switch (risk) {
 		case "low":
-			return <Badge variant="secondary">Low</Badge>;
+			return <Badge variant="secondary">{tCommon("low")}</Badge>;
 		case "medium":
-			return <Badge variant="default">Medium</Badge>;
+			return <Badge variant="default">{tCommon("medium")}</Badge>;
 		case "high":
-			return <Badge variant="destructive">High</Badge>;
+			return <Badge variant="destructive">{tCommon("high")}</Badge>;
 	}
 }
 
@@ -156,7 +156,7 @@ export function SourceRiskTierPanel({
 						return (
 							<TableRow key={sourceType}>
 								<TableCell className="font-medium">{sourceType}</TableCell>
-								<TableCell>{tier ? riskBadge(tier.risk_tier as RiskTier) : "—"}</TableCell>
+								<TableCell>{tier ? riskBadge(tier.risk_tier as RiskTier, tCommon) : "—"}</TableCell>
 								<TableCell>
 									{tier?.recommended_retention_days
 										? `${tier.recommended_retention_days} days`
@@ -279,9 +279,9 @@ function EditTierForm({
 						"flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					)}
 				>
-					<option value="low">Low</option>
-					<option value="medium">Medium</option>
-					<option value="high">High</option>
+					<option value="low">{tCommon("low")}</option>
+					<option value="medium">{tCommon("medium")}</option>
+					<option value="high">{tCommon("high")}</option>
 				</select>
 			</div>
 

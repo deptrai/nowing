@@ -63,7 +63,7 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 				<div className="relative aspect-video w-full overflow-hidden border-b bg-muted">
 					<Image
 						src={announcement.image.src}
-						alt={announcement.image.alt}
+						alt={t(announcement.image.alt)}
 						fill
 						sizes="(max-width: 768px) 95vw, 600px"
 						className="object-cover"
@@ -81,7 +81,7 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 						<div className="min-w-0 flex-1">
 							<div className="flex items-center gap-2 flex-wrap">
 								<h2 className="text-base font-semibold leading-tight tracking-tight">
-									{announcement.title}
+									{t(announcement.title)}
 								</h2>
 								<Badge variant={config.badgeVariant} className="text-[10px] px-1.5 py-0">
 									{categoryLabels[announcement.category] ?? config.label}
@@ -102,7 +102,7 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 			</CardHeader>
 
 			<CardContent className="pb-3">
-				<p className="text-sm text-muted-foreground leading-relaxed">{announcement.description}</p>
+				<p className="text-sm text-muted-foreground leading-relaxed">{t(announcement.description)}</p>
 			</CardContent>
 
 			{announcement.link && (
@@ -112,7 +112,7 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 							href={announcement.link.url}
 							target={announcement.link.url.startsWith("http") ? "_blank" : undefined}
 						>
-							{announcement.link.label}
+							{t(announcement.link.label)}
 							<ExternalLink className="h-3 w-3" aria-hidden="true" />
 						</Link>
 					</Button>

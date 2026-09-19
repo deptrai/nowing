@@ -66,7 +66,7 @@ export function EarnCreditsContent() {
 			}
 		},
 		onError: () => {
-			toast.error("Failed to complete task. Please try again.");
+			toast.error(t("task_complete_failed"));
 		},
 	});
 

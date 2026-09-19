@@ -182,7 +182,7 @@ function ApprovalCard({
 								: "Delete Google Drive File"}
 					</p>
 					{phase === "processing" ? (
-						<TextShimmerLoader text="Trashing file" size="sm" />
+						<TextShimmerLoader text={t("common_trashing_file")} size="sm" />
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_trashed")}</p>
 					) : phase === "rejected" ? (
@@ -272,7 +272,7 @@ function ApprovalCard({
 							className="rounded-lg text-muted-foreground"
 							onClick={() => {
 								setRejected();
-								onDecision({ type: "reject", message: "User rejected the action." });
+								onDecision({ type: "reject", message: t("user_rejected") });
 							}}
 						>{t("tu_reject")}</Button>
 					</div>

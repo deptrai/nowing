@@ -170,7 +170,7 @@ export function ApiKeyContent() {
 					</DialogHeader>
 					<div className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="pat-label">Name</Label>
+							<Label htmlFor="pat-label">{t("name")}</Label>
 							<Input
 								id="pat-label"
 								value={label}
@@ -258,7 +258,7 @@ export function ApiKeyContent() {
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={isMutating}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							disabled={isMutating}
 							className="bg-destructive text-white hover:bg-destructive/90"

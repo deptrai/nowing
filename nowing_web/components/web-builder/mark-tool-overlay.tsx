@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { MarkToolRect } from "@/contracts/types/web-builder.types";
 
 interface MarkToolOverlayProps {
@@ -31,6 +32,7 @@ export function MarkToolOverlay({
 	onAttributeNameChange,
 	onApply,
 }: MarkToolOverlayProps) {
+	const t = useTranslations("webBuilder");
 	return (
 		<div className="p-3 bg-indigo-50/20 dark:bg-indigo-950/30 border-b border-indigo-500/30 flex flex-col gap-2">
 			<div className="flex items-center gap-3">
@@ -49,20 +51,20 @@ export function MarkToolOverlay({
 						)
 					}
 					className="text-xs px-2 py-1.5 rounded border border-border bg-background focus:ring-1 focus:ring-indigo-500"
-					title="Patch type"
+					title={t("patch_type")}
 				>
-					<option value="text">Text</option>
-					<option value="className">Class</option>
-					<option value="style">Style</option>
-					<option value="attribute">Attribute</option>
-					<option value="replace">Replace</option>
+					<option value="text">{t("patch_text")}</option>
+					<option value="className">{t("patch_class")}</option>
+					<option value="style">{t("patch_style")}</option>
+					<option value="attribute">{t("patch_attribute")}</option>
+					<option value="replace">{t("patch_replace")}</option>
 				</select>
 			</div>
 			<div className="flex items-center gap-3">
 				{patchType === "attribute" && (
 					<input
 						type="text"
-						placeholder="Attribute name (e.g. data-label)"
+						placeholder={t("attribute_name_placeholder")}
 						value={attributeName}
 						onChange={(e) => onAttributeNameChange(e.target.value)}
 						className="text-xs px-2.5 py-1.5 rounded border border-border bg-background w-40 focus:ring-1 focus:ring-indigo-500"

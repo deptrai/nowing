@@ -89,8 +89,8 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "Terminal",
 			language: "bash",
 			steps: [
-				"Run this command in a terminal (any directory).",
-				"Start Claude Code and run /mcp — nowing should be listed as connected.",
+				"mcp.step_run_terminal",
+				"mcp.step_claude_code_mcp",
 			],
 			build: ({ remoteUrl, apiKey }) =>
 				[
@@ -102,8 +102,8 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "Terminal",
 			language: "bash",
 			steps: [
-				"Run this command in a terminal (any directory).",
-				"Start Claude Code and run /mcp — nowing should be listed as connected.",
+				"mcp.step_run_terminal",
+				"mcp.step_claude_code_mcp",
 			],
 			build: ({ baseUrl, apiKey, serverDir }) =>
 				[
@@ -121,7 +121,7 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.codex/config.toml",
 			language: "toml",
 			steps: [
-				"Add this to ~/.codex/config.toml. The rmcp flag must sit above every [mcp_servers.*] table.",
+				"mcp.step_codex_toml",
 				"Restart Codex; `codex mcp list` should show nowing.",
 			],
 			build: ({ remoteUrl, apiKey }) =>
@@ -139,7 +139,7 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.codex/config.toml",
 			language: "toml",
 			steps: [
-				"Add this to ~/.codex/config.toml (or run `codex mcp add nowing -- uv run --directory <dir> python -m mcp_server`).",
+				"mcp.step_codex_add",
 				"Restart Codex; `codex mcp list` should show nowing.",
 			],
 			build: ({ baseUrl, apiKey, serverDir }) =>
@@ -161,8 +161,8 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "opencode.json",
 			language: "json",
 			steps: [
-				"Add this to opencode.json in your project root (or ~/.config/opencode/opencode.json for all projects).",
-				"`oauth: false` tells OpenCode to use the Bearer key instead of starting an OAuth flow.",
+				"mcp.step_opencode_json",
+				"mcp.step_opencode_oauth",
 			],
 			build: ({ remoteUrl, apiKey }) =>
 				json({
@@ -182,8 +182,8 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "opencode.json",
 			language: "json",
 			steps: [
-				"Add this to opencode.json in your project root (or ~/.config/opencode/opencode.json for all projects).",
-				"Note OpenCode's format: the key is `mcp`, the command is one array, and env vars go under `environment`.",
+				"mcp.step_opencode_json",
+				"mcp.step_opencode_format",
 			],
 			build: ({ baseUrl, apiKey, serverDir }) =>
 				json({
@@ -206,8 +206,8 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.cursor/mcp.json",
 			language: "json",
 			steps: [
-				"Add this to ~/.cursor/mcp.json (global, keeps the key out of your repo) or a project's .cursor/mcp.json.",
-				"Refresh the server in Cursor Settings → MCP; its 18 tools should appear.",
+				"mcp.step_cursor_json",
+				"mcp.step_cursor_refresh",
 			],
 			build: remoteMcpServers("url"),
 		},
@@ -215,8 +215,8 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.cursor/mcp.json",
 			language: "json",
 			steps: [
-				"Add this to ~/.cursor/mcp.json (global, keeps the key out of your repo) or a project's .cursor/mcp.json.",
-				"Refresh the server in Cursor Settings → MCP; its 18 tools should appear.",
+				"mcp.step_cursor_json",
+				"mcp.step_cursor_refresh",
 			],
 			build: stdioMcpServers,
 		},
@@ -258,7 +258,7 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: ".vscode/mcp.json",
 			language: "json",
 			steps: [
-				"Add this to .vscode/mcp.json in your workspace (or run the MCP: Add Server command).",
+				"mcp.step_vscode_json",
 				"VS Code requires an explicit `type` field — `http` for the hosted server.",
 			],
 			build: ({ remoteUrl, apiKey }) =>
@@ -276,7 +276,7 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: ".vscode/mcp.json",
 			language: "json",
 			steps: [
-				"Add this to .vscode/mcp.json in your workspace (or run the MCP: Add Server command).",
+				"mcp.step_vscode_json",
 				"Open Copilot Chat in agent mode and click the tools icon to confirm nowing is loaded.",
 			],
 			build: ({ baseUrl, apiKey, serverDir }) =>
@@ -299,7 +299,7 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.codeium/windsurf/mcp_config.json",
 			language: "json",
 			steps: [
-				"Add this to ~/.codeium/windsurf/mcp_config.json (or Windsurf Settings → Cascade → MCP Servers).",
+				"mcp.step_windsurf_json",
 				"Windsurf uses `serverUrl` (not `url`) for remote servers; press refresh in the MCP panel.",
 			],
 			build: remoteMcpServers("serverUrl"),
@@ -308,8 +308,8 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.codeium/windsurf/mcp_config.json",
 			language: "json",
 			steps: [
-				"Add this to ~/.codeium/windsurf/mcp_config.json (or Windsurf Settings → Cascade → MCP Servers).",
-				"Press the refresh button in the MCP panel to pick up the server.",
+				"mcp.step_windsurf_json",
+				"mcp.step_windsurf_refresh",
 			],
 			build: stdioMcpServers,
 		},
@@ -321,7 +321,7 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.gemini/settings.json",
 			language: "json",
 			steps: [
-				"Add this to ~/.gemini/settings.json (or .gemini/settings.json in a project).",
+				"mcp.step_gemini_json",
 				"Gemini CLI uses `httpUrl` for streamable-HTTP servers; run /mcp to confirm nowing.",
 			],
 			build: remoteMcpServers("httpUrl"),
@@ -330,7 +330,7 @@ export const MCP_CLIENTS: McpClient[] = [
 			configFile: "~/.gemini/settings.json",
 			language: "json",
 			steps: [
-				"Add this to ~/.gemini/settings.json (or .gemini/settings.json in a project).",
+				"mcp.step_gemini_json",
 				"Run /mcp inside Gemini CLI to confirm the nowing server and its tools.",
 			],
 			build: stdioMcpServers,

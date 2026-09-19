@@ -12,6 +12,7 @@ import {
 	ShieldCheck,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo, useState } from "react";
 import type { SequenceCreate, SequenceStep } from "../../contracts/types/sequence.types";
@@ -49,6 +50,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 	ad41Reactivated = false,
 	outboundChannels = ["email"],
 }) => {
+	const t = useTranslations();
 	const [name, setName] = useState(initialSequence?.name || "Chiến dịch tiếp cận tự động");
 	const [description, setDescription] = useState(initialSequence?.description || "");
 
@@ -295,7 +297,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 								!ad41Reactivated
 									? "Deferred — AD-41 / DEF-102"
 									: !isChannelAllowed("zalo")
-										? "Not enabled for this workspace"
+										? t("automations.not_enabled_workspace")
 										: undefined
 							}
 						/>
@@ -303,7 +305,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 							channel="telegram"
 							allowed={isChannelAllowed("telegram")}
 							disabledReason={
-								!isChannelAllowed("telegram") ? "Not enabled for this workspace" : undefined
+								!isChannelAllowed("telegram") ? t("automations.not_enabled_workspace") : undefined
 							}
 						/>
 					</div>
@@ -629,7 +631,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 						!ad41Reactivated
 							? "Deferred — AD-41 / DEF-102"
 							: !isChannelAllowed("zalo")
-								? "Not enabled for this workspace"
+								? t("automations.not_enabled_workspace")
 								: undefined
 					}
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 text-blue-600 text-xs font-semibold rounded-lg border border-blue-500/20 hover:bg-blue-500/20 transition-colors shadow-sm disabled:opacity-50"
@@ -643,7 +645,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					onClick={() => handleAddStep("send_telegram")}
 					data-testid="add-step-send_telegram"
 					disabled={!isChannelAllowed("telegram")}
-					title={!isChannelAllowed("telegram") ? "Not enabled for this workspace" : undefined}
+					title={!isChannelAllowed("telegram") ? t("automations.not_enabled_workspace") : undefined}
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-sky-500/10 text-sky-600 text-xs font-semibold rounded-lg border border-sky-500/20 hover:bg-sky-500/20 transition-colors shadow-sm disabled:opacity-50"
 				>
 					<Plus className="w-3.5 h-3.5" aria-hidden="true" />

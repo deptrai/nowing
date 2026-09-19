@@ -175,7 +175,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 							secondary: "cited in 7 of 10 top results",
 						},
 						{
-							primary: "Analyst take split on guidance",
+							primary: t("analyst_take"),
 							secondary: "transcripts: 5 bullish · 3 cautious",
 						},
 						{
@@ -281,7 +281,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 						},
 						{
 							title: t("hero_web_crawler"),
-							items: ["Visiting 10 gym sites", "Extracting pricing and membership pages"],
+							items: [t("gym_item_1"), t("gym_item_2")],
 						},
 						{
 							title: t("hero_google_search"),
@@ -397,7 +397,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 						},
 						{
 							title: t("hero_plan_tasks"),
-							items: ["Diff against last capture", "Flag rank and ad movements"],
+							items: [t("diff_item_1"), t("diff_item_2")],
 						},
 						{
 							title: t("hero_create_automation"),
@@ -434,7 +434,7 @@ const getCategories = (t: (key: string) => string): HeroCategory[] => [
 						},
 						{
 							title: t("hero_plan_tasks"),
-							items: ["Rank by recency and engagement", "Extract switching triggers"],
+							items: [t("rank_item_1"), t("rank_item_2")],
 						},
 					],
 					rows: [
@@ -706,7 +706,7 @@ function DownloadButton() {
 	const { os, primary, alternatives, isMobileOS } = usePrimaryDownload();
 
 	const fallbackUrl = GITHUB_RELEASES_URL;
-	const mobileDisabledLabel = "Desktop app unavailable on mobile";
+	const mobileDisabledLabel = t("mobile_disabled");
 
 	if (isMobileOS) {
 		return (
