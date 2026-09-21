@@ -10,10 +10,13 @@ gates on, so tests can ``monkeypatch.setenv`` without re-importing.
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 
 from app.config._helpers import _env_choice, _env_float
+
+logger = logging.getLogger(__name__)
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -21,6 +24,27 @@ def _env_flag(name: str, default: bool) -> bool:
     if raw is None:
         return default
     return raw.strip().lower() == "true"
+
+
+def _env_fallback_backend() -> str:
+    """Read DECISION_FALLBACK_BACKEND, failing CLOSED on a bad value.
+
+    Unlike ``_env_choice`` (which warns and returns the default), an
+    unrecognized value here resolves to ``"none"`` — a typo must DISABLE
+    the paid fallback leg, never silently enable it.
+    """
+    raw = os.getenv("DECISION_FALLBACK_BACKEND")
+    if raw is None:
+        return "llm_json"
+    value = raw.strip().lower()
+    if value in ("llm_json", "none"):
+        return value
+    logger.warning(
+        "Invalid DECISION_FALLBACK_BACKEND=%r; expected llm_json/none; "
+        "disabling the fallback chain",
+        raw,
+    )
+    return "none"
 
 
 # Master switch — default off: decision calls are opt-in until consumer
@@ -32,10 +56,9 @@ DECISION_BACKEND = _env_choice("DECISION_BACKEND", "jev", ("jev", "llm_json", "m
 
 # Fallback chain (story 39.1b): a primary-leg DecisionError with code in
 # {timeout, backend_error, backend_unavailable, missing_api_key} retries
-# once through this backend. "none" disables the chain.
-DECISION_FALLBACK_BACKEND = _env_choice(
-    "DECISION_FALLBACK_BACKEND", "llm_json", ("llm_json", "none")
-)
+# once through this backend. "none" disables the chain. Fail-closed on
+# typos — see _env_fallback_backend.
+DECISION_FALLBACK_BACKEND = _env_fallback_backend()
 
 # Pinned models, per backend — never "jev-latest" (AD-J3). The LLM pin
 # defaults to the eval baseline model.

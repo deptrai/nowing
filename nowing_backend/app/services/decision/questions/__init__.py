@@ -22,21 +22,25 @@ def get_question_registry() -> QuestionRegistry:
             "subagent_routing",
             subagent_routing.QUESTIONS,
             version=subagent_routing.VERSION,
+            required_state_keys=subagent_routing.REQUIRED_STATE_KEYS,
         )
         registry.register(
             "entity_match",
             entity_match.QUESTIONS,
             version=entity_match.VERSION,
+            required_state_keys=entity_match.REQUIRED_STATE_KEYS,
         )
         registry.register(
             "content_filter",
             content_filter.QUESTIONS,
             version=content_filter.VERSION,
+            required_state_keys=content_filter.REQUIRED_STATE_KEYS,
         )
         registry.register(
             "intent_classify",
             intent_classify.QUESTIONS,
             version=intent_classify.VERSION,
+            required_state_keys=intent_classify.REQUIRED_STATE_KEYS,
         )
         _question_registry = registry
     return _question_registry

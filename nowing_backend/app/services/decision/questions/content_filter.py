@@ -13,6 +13,10 @@ from app.services.decision.types import NoulQuestion
 
 VERSION = "1.0.0"
 
+# State keys a caller must supply — passed to decide() so a missing key
+# fails fast before any paid backend call.
+REQUIRED_STATE_KEYS: tuple[str, ...] = ("query", "passage")
+
 QUESTIONS: dict[str, NoulQuestion] = {
     "is_relevant": NoulQuestion(
         instructions=(

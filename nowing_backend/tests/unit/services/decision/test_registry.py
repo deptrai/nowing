@@ -78,6 +78,32 @@ def test_registry_unknown_name_raises_keyerror_with_available():
 
 
 @pytest.mark.unit
+def test_registry_question_sets_expose_required_state_keys():
+    """Each set declares the state keys its questions need — callers pass
+    them to decide() for a fail-fast pre-call check (spec-39-1)."""
+    registry = get_question_registry()
+    assert registry.get_set("subagent_routing").required_state_keys == ("user_message",)
+    assert registry.get_set("entity_match").required_state_keys == (
+        "entity_a",
+        "entity_b",
+    )
+    assert registry.get_set("content_filter").required_state_keys == (
+        "query",
+        "passage",
+    )
+    assert registry.get_set("intent_classify").required_state_keys == ("user_message",)
+
+
+@pytest.mark.unit
+def test_register_default_required_state_keys_empty():
+    from app.services.decision.questions.registry import QuestionRegistry
+
+    registry = QuestionRegistry()
+    registry.register("bare", {})
+    assert registry.get_set("bare").required_state_keys == ()
+
+
+@pytest.mark.unit
 def test_subagent_options_match_eval_roster():
     """Sanity: the ported roster keeps all 16 eval options incl. none_needed."""
     assert SUBAGENT_OPTIONS["none_needed"].startswith("Simple chat")

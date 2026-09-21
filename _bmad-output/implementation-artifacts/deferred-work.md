@@ -1815,23 +1815,30 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
   summary: LLMJsonBackend (litellm structured output) + jev→llm_json fallback chain for DecisionService
   evidence: Spec 2949 tokens exceeded 1600 limit; user chose [S] split — LLM fallback carved into follow-up story (39.1b) including its AC (DECISION_BACKEND=llm_json works + auto-fallback on Jev 5xx/529/timeout)
+  resolved: 2026-09-22 — shipped as story 39.1b (commit `afd6d432b`); `LLMJsonBackend` + service-level fallback + `DECISION_FALLBACK_BACKEND`/`DECISION_LLM_MODEL` config.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
   summary: `QuestionSet.required_state_keys` metadata + service-level pre-call state validation, so decide() with missing state keys fails before a paid backend call instead of letting the backend produce low-confidence guesses
   evidence: Code review of story 39.1 (23 findings); no caller consumes a question set that declares required state yet, so the check would be dead code until stories 39.2–39.5 wire consumers
+  resolved: 2026-09-22 — `QuestionSet.required_state_keys` + `register()` param; 4 built-in sets declare keys (`user_message` / `entity_a,entity_b` / `query,passage`); `decide(required_state_keys=...)` raises `invalid_request` before backend resolution.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
   summary: Noul "confidently false" gating semantics — ConfidenceGate.passes() only rewards high values today; the first consumer that needs a high-confidence FALSE must document or derive the inversion (1 - value)
   evidence: Code review of story 39.1 (23 findings); deferred until the first Noul consumer lands (39.2+) because the inversion direction is use-case-specific
+  resolved: 2026-09-22 — `ConfidenceGate.passes_negative()` implements the documented inversion (`1 - value >= threshold`, noul-only); `passes()` semantics unchanged.
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
   summary: Telemetry chỉ ghi leg thắng — latency tổng và paid spend của fallback-leg-thất-bại invisible.
   evidence: `service.py` decide() chỉ persist `backend_result` của leg trả lời; leg fail không có BackendResult nên token spend không record được. Cần thiết kế telemetry cho failed legs (spec 39.7 dashboard nên quyết).
+  resolved: 2026-09-22 — `decide()` track `legs` per backend leg; winning fallback row carries `call_details.legs`; both-legs-fail persists an attempt row `failed:true` + `error_code` + legs (tokens 0, no fabricated spend).
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
   summary: Validate probability-distribution prompt contract của LLMJsonBackend qua eval harness trước khi rely vào fallback production.
   evidence: prompt yêu cầu full distribution (sum≈1, argmax=chosen, score=weighted mean) chặt hơn eval baseline; chưa có real-network test (không có API key). Non-conforming answer → InvalidDecisionAnswer propagate. Scope story 39.8 eval CI.
+  resolved: 2026-09-22 — `scripts/jev_eval/runner.py --backend decision_llm_json` runs cases through `LLMJsonBackend` + production `validate_answer`; live validation still requires provider API key (run with `--live`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
   summary: `_env_choice` warn-and-default fail-open — typo DECISION_FALLBACK_BACKEND (vd "nonee") resolves về "llm_json" = bật paid fallback.
   evidence: `app/config/_helpers.py` _env_choice trả default khi giá trị không hợp lệ, chỉ warning log; shared helper dùng bởi nhiều config domains nên không đổi semantics trong story này.
+  resolved: 2026-09-22 — `DECISION_FALLBACK_BACKEND` reads via `_env_fallback_backend()` (fail-closed): invalid value → `none` + warning; `_env_choice` untouched for other domains.
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
   summary: Import-guard test chỉ scan `app/services/decision/` — `jev_router.py` vẫn import `typesafe_sdk` trực tiếp (legacy path, rewire ở story 39.2).
   evidence: `tests/unit/services/decision/test_import_guard.py` scan scope decision/; `app/agents/chat/multi_agent_chat/main_agent/middleware/jev_router.py:99,120` import typesafe_sdk ngoài scope — invariant "chỉ jev.py import SDK" chưa enforce repo-wide.
+  resolved: 2026-09-22 — guard extended to all `app/**/*.py` with explicit allowlist `{decision/backends/jev.py, jev_router.py}`; any NEW typesafe_sdk importer fails the test.

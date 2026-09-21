@@ -18,6 +18,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import time
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 import app.config.decision as decision_config
@@ -63,6 +65,7 @@ class DecisionService:
         model: str | None = None,
         timeout: float | None = None,
         question_set: str | None = None,
+        required_state_keys: Iterable[str] | None = None,
         session: AsyncSession | None = None,
         workspace_id: int | None = None,
         user_id: UUID | None = None,
@@ -79,6 +82,12 @@ class DecisionService:
         ``question_set`` is an optional registry label recorded in
         telemetry for drift tracking — e.g. ``"subagent_routing@1.0.0"``
         built from ``registry.get_set(name)``.
+
+        ``required_state_keys`` is an optional list of state keys the
+        caller's questions need (registry sets expose them as
+        ``QuestionSet.required_state_keys``). When provided, any missing
+        key raises ``invalid_request`` BEFORE the backend is resolved —
+        a malformed call never reaches a paid leg.
 
         ``session``/``workspace_id``/``user_id`` are optional; when all
         are provided the call's token usage is persisted to
@@ -117,6 +126,13 @@ class DecisionService:
                 "questions must be a non-empty dict",
                 code="invalid_request",
             )
+        if required_state_keys is not None:
+            missing = sorted(set(required_state_keys) - state.keys())
+            if missing:
+                raise DecisionError(
+                    f"decision state is missing required keys: {missing}",
+                    code="invalid_request",
+                )
         try:
             backend = self._get_backend()
         except DecisionError as exc:
@@ -157,11 +173,31 @@ class DecisionService:
             # back to the ceiling rather than hand wait_for a NaN delay.
             timeout = decision_config.DECISION_TIMEOUT_SECONDS
 
+        # Per-leg telemetry: every attempted leg is recorded so a failed
+        # primary leg stays visible when a fallback leg wins (or fails).
+        legs: list[dict[str, Any]] = []
+        leg_start = time.perf_counter()
         try:
             backend_result = await self._call_backend(
                 backend, state, questions, model=model, timeout=timeout
             )
+            legs.append(
+                {
+                    "backend": backend.name,
+                    "model": backend_result.model,
+                    "latency_ms": backend_result.latency_ms,
+                    "outcome": "ok",
+                }
+            )
         except DecisionError as exc:
+            legs.append(
+                {
+                    "backend": backend.name,
+                    "model": model,
+                    "latency_ms": (time.perf_counter() - leg_start) * 1000,
+                    "outcome": exc.code,
+                }
+            )
             if exc.code not in _FALLBACK_TRIGGER_CODES:
                 raise
             fallback = _try_build_fallback(backend.name)
@@ -178,23 +214,61 @@ class DecisionService:
                 fallback.name,
             )
             backend = fallback
+            model = _pinned_model(backend.name)
+            leg_start = time.perf_counter()
             try:
                 backend_result = await self._call_backend(
                     backend,
                     state,
                     questions,
-                    model=_pinned_model(backend.name),
+                    model=model,
                     timeout=timeout,
                 )
+                legs.append(
+                    {
+                        "backend": backend.name,
+                        "model": backend_result.model,
+                        "latency_ms": backend_result.latency_ms,
+                        "outcome": "ok",
+                    }
+                )
             except DecisionError as fallback_exc:
-                # Surface the failed leg — its consumed spend is
-                # otherwise invisible since telemetry only records the
-                # winning leg.
+                legs.append(
+                    {
+                        "backend": backend.name,
+                        "model": model,
+                        "latency_ms": (time.perf_counter() - leg_start) * 1000,
+                        "outcome": fallback_exc.code,
+                    }
+                )
+                # Surface the failed leg — its attempt is otherwise
+                # invisible since telemetry only records the winning
+                # leg. The synthetic BackendResult carries no token
+                # counts (None → 0): the attempt becomes visible
+                # without fabricating spend.
                 logger.warning(
                     "Fallback decision backend %r also failed (code=%s): %s",
                     backend.name,
                     fallback_exc.code,
                     fallback_exc,
+                )
+                await self._record_usage(
+                    BackendResult(
+                        answers={}, model=model, latency_ms=legs[-1]["latency_ms"]
+                    ),
+                    backend_name=backend.name,
+                    task=task or "generic",
+                    question_set=question_set,
+                    questions=questions,
+                    session=session,
+                    workspace_id=workspace_id,
+                    user_id=user_id,
+                    client_id=client_id,
+                    extra_call_details={
+                        "failed": True,
+                        "error_code": fallback_exc.code,
+                        "legs": legs,
+                    },
                 )
                 raise
 
@@ -232,6 +306,9 @@ class DecisionService:
                 workspace_id=workspace_id,
                 user_id=user_id,
                 client_id=client_id,
+                # Only a multi-leg call (a fallback actually ran) exposes
+                # the per-leg trace — a single-leg success stays terse.
+                extra_call_details={"legs": legs} if len(legs) > 1 else None,
             )
 
         return DecisionResult(
@@ -300,8 +377,13 @@ class DecisionService:
         workspace_id: int | None,
         user_id: UUID | None,
         client_id: str | None,
+        extra_call_details: dict[str, Any] | None = None,
     ) -> None:
-        """Persist the call to ``TokenUsage``. Fail-open (AD-J7)."""
+        """Persist the call to ``TokenUsage``. Fail-open (AD-J7).
+
+        ``extra_call_details`` is merged over the standard call_details
+        keys — callers use it for per-leg traces and failure markers.
+        """
         if session is None or workspace_id is None or user_id is None:
             logger.debug(
                 "Decision usage not persisted — missing session/workspace_id/user_id"
@@ -332,6 +414,7 @@ class DecisionService:
                     "question_set": question_set,
                     # requested ids, not just answered ones
                     "questions": sorted(questions),
+                    **(extra_call_details or {}),
                 },
                 client_id=client_id,
             )

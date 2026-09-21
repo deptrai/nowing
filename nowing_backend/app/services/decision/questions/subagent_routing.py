@@ -11,6 +11,10 @@ from app.services.decision.types import ChoiceQuestion
 
 VERSION = "1.0.0"
 
+# State keys a caller must supply — passed to decide() so a missing key
+# fails fast before any paid backend call.
+REQUIRED_STATE_KEYS: tuple[str, ...] = ("user_message",)
+
 SUBAGENT_OPTIONS: dict[str, str] = {
     "chainlens": "Deep multi-source research, web intelligence, cited answers",
     "batdongsan": "Real estate listings on batdongsan.com.vn",

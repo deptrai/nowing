@@ -68,3 +68,41 @@ def test_gate_env_override_clamped_to_unit_interval(monkeypatch):
     assert ConfidenceGate.for_task("entity").threshold == 1.0
     monkeypatch.setenv("DECISION_ENTITY_THRESHOLD", "-2")
     assert ConfidenceGate.for_task("entity").threshold == 0.0
+
+
+# ---------------------------------------------------------------------------
+# passes_negative — noul "confidently false" (spec-39-1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_gate_passes_negative_noul_inversion():
+    """A noul value IS P(yes) — confidently false means P(yes) is LOW."""
+    gate = ConfidenceGate(threshold=0.9)
+    assert gate.passes_negative(Answer(kind="noul", value=0.05, confidence=0.05))
+    assert gate.passes_negative(Answer(kind="noul", value=0.1, confidence=0.1))
+    assert not gate.passes_negative(Answer(kind="noul", value=0.95, confidence=0.95))
+    assert not gate.passes_negative(Answer(kind="noul", value=0.5, confidence=0.5))
+
+
+@pytest.mark.unit
+def test_gate_passes_negative_non_noul_kinds():
+    """Only noul answers have a meaningful negative direction."""
+    gate = ConfidenceGate(threshold=0.5)
+    assert not gate.passes_negative(Answer(kind="choice", value="a", confidence=0.99))
+    assert not gate.passes_negative(Answer(kind="score", value=0.0, confidence=1.0))
+
+
+@pytest.mark.unit
+def test_gate_passes_negative_missing_or_bad_value():
+    gate = ConfidenceGate(threshold=0.5)
+    assert not gate.passes_negative(None)
+    assert not gate.passes_negative(
+        Answer(kind="noul", value=float("nan"), confidence=0.5)
+    )
+    assert not gate.passes_negative(
+        Answer(kind="noul", value=float("inf"), confidence=0.5)
+    )
+    assert not gate.passes_negative(
+        Answer(kind="noul", value="not-a-number", confidence=0.5)
+    )

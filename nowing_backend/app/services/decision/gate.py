@@ -4,6 +4,13 @@ Callers decide what a passing answer triggers; the gate only answers
 "is this answer confident enough to act on?" Below threshold the caller
 keeps its existing behavior.
 
+Direction is use-case-specific: ``passes`` answers "confidently YES?"
+(confidence >= threshold); ``passes_negative`` answers "confidently
+NO?" and exists only for ``noul`` answers — a noul value IS P(yes), so
+"confidently false" means P(yes) is LOW (``1 - value >= threshold``).
+Non-noul kinds have no meaningful negative direction and always return
+False from ``passes_negative``.
+
 Per-task defaults are env-tunable via ``DECISION_{TASK}_THRESHOLD``::
 
     gate = ConfidenceGate.for_task("routing")   # DECISION_ROUTING_THRESHOLD, default 0.6
@@ -77,6 +84,20 @@ class ConfidenceGate:
         ):
             return False
         return float(confidence) >= self.threshold
+
+    def passes_negative(self, answer: Answer | None) -> bool:
+        """True when a ``noul`` answer is confidently FALSE.
+
+        A noul value IS P(yes) — "confidently no" therefore means
+        P(yes) is low: ``1 - value >= threshold``. Non-noul kinds,
+        missing answers, and non-finite values return False.
+        """
+        if answer is None or answer.kind != "noul":
+            return False
+        value = answer.value
+        if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+            return False
+        return 1 - float(value) >= self.threshold
 
 
 __all__ = ["DEFAULT_THRESHOLDS", "ConfidenceGate"]

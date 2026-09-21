@@ -7,6 +7,7 @@ changes require re-running the eval gate).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from app.services.decision.types import Question
@@ -14,11 +15,18 @@ from app.services.decision.types import Question
 
 @dataclass(frozen=True)
 class QuestionSet:
-    """A named, versioned bundle of questions for one decision task."""
+    """A named, versioned bundle of questions for one decision task.
+
+    ``required_state_keys`` lists the state keys a caller must supply for
+    the set's questions to be answerable — pass it to
+    ``DecisionService.decide(..., required_state_keys=...)`` so a missing
+    key fails fast (``invalid_request``) before any paid backend call.
+    """
 
     name: str
     version: str
     questions: dict[str, Question]
+    required_state_keys: tuple[str, ...] = ()
 
 
 class QuestionRegistry:
@@ -33,10 +41,16 @@ class QuestionRegistry:
         questions: dict[str, Question],
         *,
         version: str = "1.0.0",
+        required_state_keys: Iterable[str] = (),
     ) -> None:
         if name in self._sets:
             raise ValueError(f"Question set {name!r} is already registered")
-        self._sets[name] = QuestionSet(name=name, version=version, questions=questions)
+        self._sets[name] = QuestionSet(
+            name=name,
+            version=version,
+            questions=questions,
+            required_state_keys=tuple(required_state_keys),
+        )
 
     def get(self, name: str) -> dict[str, Question]:
         """Return a copy of the questions dict for ``name`` — pass

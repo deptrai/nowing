@@ -12,6 +12,10 @@ from app.services.decision.types import ScoreQuestion
 
 VERSION = "1.0.0"
 
+# State keys a caller must supply — passed to decide() so a missing key
+# fails fast before any paid backend call.
+REQUIRED_STATE_KEYS: tuple[str, ...] = ("entity_a", "entity_b")
+
 QUESTIONS: dict[str, ScoreQuestion] = {
     "is_same": ScoreQuestion(
         instructions=(

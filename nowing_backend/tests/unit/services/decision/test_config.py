@@ -36,13 +36,22 @@ def test_fallback_chain_env_defaults(monkeypatch):
 
 @pytest.mark.unit
 def test_fallback_backend_env_choice_validation(monkeypatch):
-    """A typo'd DECISION_FALLBACK_BACKEND warns and falls back to the
-    default rather than silently disabling the chain."""
+    """DECISION_FALLBACK_BACKEND fails CLOSED on a bad value — a typo
+    must disable the paid fallback leg, not silently enable it."""
     saved = os.environ.get("DECISION_FALLBACK_BACKEND")
-    monkeypatch.setenv("DECISION_FALLBACK_BACKEND", "gemini")
     try:
+        # valid values pass through
+        for value in ("llm_json", "none"):
+            monkeypatch.setenv("DECISION_FALLBACK_BACKEND", value)
+            importlib.reload(decision_config)
+            assert value == decision_config.DECISION_FALLBACK_BACKEND
+        # a typo disables the chain entirely
+        monkeypatch.setenv("DECISION_FALLBACK_BACKEND", "nonee")
         importlib.reload(decision_config)
-        assert decision_config.DECISION_FALLBACK_BACKEND == "llm_json"
+        assert decision_config.DECISION_FALLBACK_BACKEND == "none"
+        monkeypatch.setenv("DECISION_FALLBACK_BACKEND", "gemini")
+        importlib.reload(decision_config)
+        assert decision_config.DECISION_FALLBACK_BACKEND == "none"
     finally:
         if saved is None:
             os.environ.pop("DECISION_FALLBACK_BACKEND", None)

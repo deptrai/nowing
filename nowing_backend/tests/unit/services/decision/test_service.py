@@ -681,3 +681,133 @@ async def test_decide_fallback_builder_failure_reraises_primary(_enabled, monkey
     with pytest.raises(DecisionError) as exc_info:
         await service.decide({}, {"q": NOUL_Q})
     assert exc_info.value.code == "timeout"
+
+
+# ---------------------------------------------------------------------------
+# required_state_keys — pre-call state validation (spec-39-1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+async def test_decide_missing_required_state_keys_rejected(_enabled):
+    """Missing keys raise invalid_request BEFORE the backend is called —
+    a malformed call never reaches a paid leg."""
+    backend = _StubBackend(_result())
+    service = DecisionService(backend)
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide(
+            {"user_message": "xin chào"},
+            {"q": NOUL_Q},
+            required_state_keys=("user_message", "query", "passage"),
+        )
+    assert exc_info.value.code == "invalid_request"
+    assert "passage" in str(exc_info.value)
+    assert "query" in str(exc_info.value)
+    assert "user_message" not in str(exc_info.value)
+    assert backend.calls == []
+
+
+@pytest.mark.unit
+async def test_decide_missing_state_keys_skips_backend_resolution(
+    _enabled, monkeypatch
+):
+    """The check precedes backend construction — even a bad
+    DECISION_BACKEND can't mask the invalid_request."""
+    monkeypatch.setattr(decision_config, "DECISION_BACKEND", "bogus")
+    service = DecisionService()
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide({}, {"q": NOUL_Q}, required_state_keys=("missing",))
+    assert exc_info.value.code == "invalid_request"
+
+
+@pytest.mark.unit
+async def test_decide_required_state_keys_present(_enabled):
+    backend = _StubBackend(_result())
+    service = DecisionService(backend)
+    result = await service.decide(
+        {"user_message": "xin chào", "extra": 1},
+        {"q": NOUL_Q},
+        required_state_keys=("user_message",),
+    )
+    assert result.answers["q"].value == 0.8
+    assert len(backend.calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# Per-leg telemetry — failed legs stay visible (spec-39-1b)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+async def test_decide_fallback_win_records_legs(_enabled, monkeypatch):
+    """A winning fallback leg exposes the failed primary leg."""
+    recorded = _patch_record(monkeypatch)
+    primary = _StubBackend(exc=DecisionError("down", code="timeout"), name="jev")
+    _patch_fallback(monkeypatch, _StubBackend(_llm_result(), name="llm_json"))
+    service = DecisionService(primary)
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    legs = recorded["call_details"]["legs"]
+    assert len(legs) == 2
+    assert legs[0]["backend"] == "jev"
+    assert legs[0]["outcome"] == "timeout"
+    assert legs[1]["backend"] == "llm_json"
+    assert legs[1]["outcome"] == "ok"
+    assert legs[1]["model"] == decision_config.DECISION_LLM_MODEL
+
+
+@pytest.mark.unit
+async def test_decide_both_legs_fail_records_failed_attempt(_enabled, monkeypatch):
+    """When the fallback leg also fails, the attempt is still persisted —
+    visible in telemetry without fabricated token spend."""
+    recorded = _patch_record(monkeypatch)
+    primary = _StubBackend(
+        exc=DecisionError("primary down", code="timeout"), name="jev"
+    )
+    fallback = _StubBackend(
+        exc=DecisionError("llm down", code="backend_error"), name="llm_json"
+    )
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService(primary)
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide(
+            {},
+            {"q": NOUL_Q},
+            session=object(),
+            workspace_id=1,
+            user_id=UUID(int=1),
+        )
+    assert exc_info.value.code == "backend_error"
+    details = recorded["call_details"]
+    assert details["failed"] is True
+    assert details["error_code"] == "backend_error"
+    assert details["backend"] == "llm_json"
+    assert details["model"] == decision_config.DECISION_LLM_MODEL
+    assert [leg["outcome"] for leg in details["legs"]] == [
+        "timeout",
+        "backend_error",
+    ]
+    # no fabricated spend — the failed leg reported no tokens
+    assert recorded["prompt_tokens"] == 0
+    assert recorded["completion_tokens"] == 0
+    assert recorded["total_tokens"] == 0
+
+
+@pytest.mark.unit
+async def test_decide_single_leg_success_has_no_legs_key(_enabled, monkeypatch):
+    """A single-leg success stays terse — no per-leg trace."""
+    recorded = _patch_record(monkeypatch)
+    service = DecisionService(_StubBackend(_result()))
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    assert "legs" not in recorded["call_details"]

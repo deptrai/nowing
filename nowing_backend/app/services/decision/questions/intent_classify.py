@@ -11,6 +11,10 @@ from app.services.decision.types import ChoiceQuestion
 
 VERSION = "1.0.0"
 
+# State keys a caller must supply — passed to decide() so a missing key
+# fails fast before any paid backend call.
+REQUIRED_STATE_KEYS: tuple[str, ...] = ("user_message",)
+
 INTENT_OPTIONS: dict[str, str] = {
     "search": "Tìm kiếm thông tin, tra cứu",
     "action": "Thực hiện hành động (tạo, đặt, gửi)",
