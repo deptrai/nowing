@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: '09-21-2026 00:50'
+# last_updated: '09-22-2026 00:05'
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-21-2026 00:50'
+last_updated: '09-22-2026 00:05'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -231,7 +231,7 @@ development_status:
   20-3-nowingprivateprovider-for: done
   20-5-chainlens-contents-url-extraction: done
   20-6-chainlens-code_search-code-search: done
-  20-7-chainlens-openai-gateway-model-connections: ready-for-dev
+  20-7-chainlens-openai-gateway-model-connections: done
   20-8-chainlens-webhook-monitors-automations: ready-for-dev
   20-9-async-research-jobs-resumption: ready-for-dev
   20-10-chainlens-pulse_feed-curated-intelligence-feed: ready-for-dev
