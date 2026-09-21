@@ -14,6 +14,9 @@ binds:
   - llm-json-adapter
   - question-registry
   - confidence-gate
+  - answer-validation
+  - consume-once-decision
+  - semantic-freshness-guard
 sources:
   - '_bmad-output/planning-artifacts/research/technical-typesafe-ai-jev-integration-2026-09-21/research.md'
   - 'nowing_backend/scripts/jev_eval/ (Vietnamese eval results: 96.3% accuracy, 308ms median)'
@@ -79,6 +82,8 @@ class DecisionResult:
     input_tokens: int | None
     backend: str                   # "jev" | "llm_json" | "mock"
 ```
+
+- **Validation (ported pattern):** mọi `Answer` phải qua strict structural validation trước khi vào `DecisionResult` — pattern lấy từ `jev-ultrafast` `validate_choice()` (research `technical-jev-ultrafast-...-2026-09-21`). Choice/Score: `choice`/`score` ∈ offered ids, `probabilities` keys khớp ids, values finite ∈[0,1], sum≈1±0.02, chosen=argmax. Noul: float ∈[0,1]. Fail → `InvalidDecisionAnswer` → caller fallback, không bao giờ thành action. Chặt hơn threshold-only check của `jev_router.py` hiện tại — đây là lớp phòng thủ đầu tiên chống malformed/miscalibrated output.
 
 ### AD-J2 — Backend selection qua config, không hardcode
 
@@ -148,6 +153,18 @@ Caller: `service.decide(state, questions=registry.get("subagent_routing"))`
 - **Prevents:** English-only questions on Vietnamese content (calibration drops)
 - **Rule:** Instructions viết English (Jev's primary language) nhưng `state` chứa Vietnamese text tự nhiên. Eval cho thấy Vietnamese in state works fine — Jev reads Vietnamese content accurately even when instructions are English. **Không dịch state sang English** — giữ nguyên tiếng Việt.
 
+### AD-J9 — Consume-once decision semantics cho actuation paths (ported pattern)
+
+- **Binds:** bất kỳ caller nào để `DecisionResult` trigger side-effect (không phải advisory hint)
+- **Prevents:** retry/timeout double-fire một action đã quyết — pattern từ `jev-ultrafast` `agent.py` (decision null trước mọi mutation, "a retry cannot double-click")
+- **Rule:** advisory hints (routing, filter) miễn — chúng idempotent. Nhưng nếu Jev sau này gate một side-effect (sequencer condition firing, anti-bot escalation, entity auto-merge commit), decision phải được **consume một lần**: đánh dấu/xóa trước khi execute để retry không fire lần 2. Không áp dụng cho Epic 39 advisory paths — là invariant bắt buộc khi mở rộng sang actuation.
+
+### AD-J10 — Semantic freshness guard cho re-observation (ported pattern)
+
+- **Binds:** logic quyết định "observation/state còn valid không" (scraper re-visit, anti-bot re-check, connector sync diff)
+- **Prevents:** raw-HTML-diff false-positive invalidation (animated banners, tickers, timestamps phá cảm biến "đổi chưa")
+- **Rule:** so sánh **semantic state** — URL + extracted-content hash + field values — thay vì so DOM/HTML thô. Pattern từ `jev-ultrafast` `snapshot.js`/`browser.py`: `pageKey` + per-node `guard` (role/name/value/checked + scoped innerText ≤6000 chars) cho phép unrelated visible updates mà không invalidate. Áp dụng cho `anti_bot_escalation.py` + scraper re-fetch quyết định "cần crawl lại không".
+
 ## Integration Points
 
 ### Primary: Subagent routing (R2 — highest impact)
@@ -180,6 +197,8 @@ task("batdongsan", ...) → subagent runs
 - **Decision:** Score (0=different, 1=uncertain, 2=same) per entity pair
 - **Action:** score≥1.5 → auto-merge; 0.5-1.5 → curator queue; <0.5 → keep separate
 - **Volume:** high — Jev's cost advantage decisive (~$0.0004/pair vs ~$0.01/pair LLM)
+- **Two-stage shape (ported pattern):** speculative fan-out từ `jev-ultrafast` `choose()` — stage 1 heuristic (`SpatialWindowedDeduplicator` Jaccard/spatial, `bds_aggregator` union-find) narrow N entities → K candidates; stage 2 = **một** `decide()` call per anchor với `match_decision` Choice chứa chỉ K candidate ids + `no_match`. Jev chỉ confirm survivors, không re-score cặp đã loại — ~1 call/anchor bất kể K (cap K≤250), thay vì 1 call/cặp. Đây là cùng shape "operation + per-head target, chỉ head trúng được validate" của jev-ultrafast, map lên two-stage dedup.
+- **Question set:** `entity_match` (single-pair Score) cho path A/B, `entity_match_fanout` (anchor→candidates Choice) cho dedup pipeline — cả hai trong `QuestionRegistry` (AD-J5).
 
 ### Tertiary: Content guardrails (R4)
 
@@ -246,8 +265,9 @@ flowchart LR
 | Mock backend | `app/services/decision/backends/mock.py` | tests |
 | Question definitions | `app/services/decision/questions/` | AD-J5 |
 | Confidence thresholds | `app/services/decision/gate.py` | AD-J4 |
+| Answer validation (strict) | `app/services/decision/validation.py` | AD-J1 (ported) |
 | Subagent routing hook | `checkpointed_subagent_middleware/` | AD-J4 |
-| Entity match scoring | `app/services/entity_resolution/` | AD-J4 |
+| Entity match scoring | `app/services/entity_resolution/` | AD-J4, AD-J1 fan-out |
 | Cost tracking | `TokenUsage` + existing telemetry | AD-J7 |
 
 ## Consistency Conventions
@@ -257,9 +277,10 @@ flowchart LR
 | Question naming | `{domain}_{question}` — e.g. `routing_subagent`, `filter_is_relevant` |
 | Question criteria | English instructions, Vietnamese-capable state |
 | Threshold naming | `DECISION_{TASK}_THRESHOLD` env var, float 0-1 |
-| Error handling | `DecisionError` exception → caller falls back to default behavior |
+| Error handling | `InvalidDecisionAnswer` (malformed/miscalibrated) + `DecisionError` (backend/transport) → caller falls back to default behavior |
 | Telemetry | `decision_latency_ms`, `decision_confidence`, `decision_backend` in TokenUsage |
 | Feature flag | `DECISION_ENABLED` global gate + `DECISION_{TASK}_ENABLED` per task |
+| Entity fan-out | anchor + `match_decision` Choice over heuristic-surviving candidate ids + `no_match` (ported jev-ultrafast shape) |
 
 ## Deferred
 

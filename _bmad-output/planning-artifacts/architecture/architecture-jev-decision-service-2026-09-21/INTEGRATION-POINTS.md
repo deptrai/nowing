@@ -23,6 +23,21 @@ Scan method: source code read of `nowing_backend/app/` — all paths verified to
 
 ---
 
+## Patterns ported from `browser-use/jev-ultrafast`
+
+Research `technical-jev-ultrafast-browser-agent-integration-2026-09-21` identified 4 mechanisms worth porting into Nowing's decision layer. These are now baked into the Epic 39 spec (not yet implemented):
+
+| Pattern | Ported into | Where it lands |
+|---------|-------------|----------------|
+| **Strict answer validation** (`validate_choice`: argmax + distribution-sum + ids-match + finite∈[0,1]) | Story 39.1 + AD-J1 | `app/services/decision/validation.py` — every `DecisionResult` answer validated before reaching a caller; malformed → `InvalidDecisionAnswer` → fallback |
+| **Speculative fan-out + per-head narrowing** (operation + target heads in ONE request, only matching head consumed) | Story 39.3 + AD-J1/J5 | `entity_match_fanout` question set — one call, `match_decision` Choice over heuristic-surviving candidate ids + `no_match` |
+| **Consume-once decision semantics** (decision nulled before mutation → retry can't double-fire) | AD-J9 | Invariant for any future actuation path (sequencer, anti-bot) — not needed for Epic 39 advisory hints |
+| **Semantic freshness guard** (compare URL+content-hash+field-values, not raw DOM diff) | AD-J10 | `anti_bot_escalation.py` + scraper re-visit decisions |
+
+**Verdict on the repo itself:** pattern reference, NOT a dependency — it's a Chrome-profile-bound MVP demo pushing Browser Use Cloud (3 commits, ~50 unmerged PRs, zero independent reproductions). Port patterns; don't vendor.
+
+---
+
 ## Verified Integration Points
 
 ### TIER 1 — Ready now (eval-proven, clear integration point)
@@ -60,13 +75,14 @@ Scan method: source code read of `nowing_backend/app/` — all paths verified to
 
 #### 4. Entity resolution — scraper dedup
 
-- **What:** Score (0=different, 1=uncertain, 2=same) for entity pair matching
+- **What:** Score (0=different, 1=uncertain, 2=same) for entity pair matching, **plus** a fan-out variant for batch dedup
 - **Where:**
   - `app/services/dedup/spatial_windowed_dedup.py` — currently Jaccard token similarity only; Jev adds semantic matching (handles diacritics, abbreviations, "Sunrise City" vs "Sunset City" trap cases)
   - `app/services/bds_aggregator/dedupe.py` — BĐS listing merge across batdongsan/chotot/muaban; currently uses field-level coalesce, not entity-level matching
   - `app/services/corporate_verification_service.py` — fuzzy match Levenshtein ≥0.85 threshold; Jev replaces with calibrated Score
 - **Eval:** 90% accuracy — the 2 misses are borderline uncertain scores (correct behavior for ambiguous pairs)
 - **Note:** Currently all rule-based; Jev adds semantic understanding. Not a replacement — use Jev to **verify** candidates that pass heuristic filter (two-stage: cheap heuristic narrows candidates, Jev confirms)
+- **Two-stage shape (ported from `jev-ultrafast`, research `technical-jev-ultrafast-...-2026-09-21`):** stage 1 = heuristic narrows N entities → K candidates (Jaccard/spatial bucket in `spatial_windowed_dedup`, or phone/address/image union-find in `bds_aggregator.dedupe`); stage 2 = **one** `decide()` call per anchor with a `match_decision` Choice over only the K surviving candidate ids + `no_match`. Jev confirms which candidate the anchor matches — never re-scores pairs the heuristic rejected. ~1 call/anchor regardless of K (K≤250 cap), vs 1 call/pair.
 - **Story:** 39.3
 
 #### 5. Lead scoring — composite fit + intent

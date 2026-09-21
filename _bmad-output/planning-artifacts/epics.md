@@ -5336,6 +5336,7 @@ So that any caller can make typed decisions (Choice/Score/Noul) without importin
 - **And** `LLMJsonBackend` (litellm structured output) works as fallback when `DECISION_BACKEND=llm_json` or Jev errors (5xx/529/timeout) per AD-J2.
 - **And** feature flag `DECISION_ENABLED` + per-task flags (`DECISION_ROUTING_ENABLED` etc.) gate all decision calls per consistency conventions.
 - **And** all calls log `input_tokens`, `output_tokens`, `latency_ms`, `model`, `backend` to `TokenUsage` per AD-J7.
+- **And** every answer passes **strict structural validation** before reaching a caller — ported from `jev-ultrafast` `validate_choice()` per research `technical-jev-ultrafast-...-2026-09-21`: for Choice/Score, `choice`/`score` ∈ offered ids, `probabilities` keys exactly match ids, all values finite ∈[0,1], distribution sums to 1 ±0.02, chosen key is the argmax; for Noul, value is a finite float ∈[0,1]. A malformed/miscalibrated answer raises `InvalidDecisionAnswer` → caller falls back, **never** becomes an action. This is stricter than the current `jev_router.py` threshold-only check and is the first defense against acting on bad model output.
 
 ### Story 39.2: Subagent Routing via Jev Choice (R2 — highest impact)
 
@@ -5362,6 +5363,9 @@ So that dedup/merge decisions are fast (~300ms/pair), cheap (~$0.0004/pair), and
 - **And** Score ≥1.5 → auto-merge; 0.5–1.5 → curator review queue; <0.5 → keep separate (per AD-J4 threshold 0.7 on the confidence, not the score).
 - **And** question criteria handles Vietnamese naming conventions: diacritics, abbreviations ("TP.HCM" vs "Thành phố Hồ Chí Minh"), Vietnamese vs English names.
 - **And** eval baseline: Jev achieved 90% accuracy on 20 Vietnamese entity pairs; the 2 misses were borderline uncertain scores (defensible, not errors).
+- **And** the dedup path is **two-stage** (ported from `jev-ultrafast` "operation + per-head target" speculative fan-out, `model.py choose()`): stage 1 = cheap heuristic (`SpatialWindowedDeduplicator` Jaccard/spatial bucket, or `bds_aggregator` phone/address/image union-find) narrows N entities → K candidate pairs; stage 2 = **one** `DecisionService.decide()` call per anchor carrying a `match_decision` Choice whose criteria contain **only the heuristic-surviving candidate ids** plus a `no_match` option — Jev confirms which (if any) candidate the anchor matches, never re-scoring pairs the heuristic already rejected. Unused head never executes.
+- **And** batch behavior: the fan-out keeps cost at ~1 Jev call per anchor regardless of candidate count K (K≤250 cap mirrors jev-ultrafast's action-space bound); entity throughput stays scraper-viable (~$0.0004/decision).
+- **And** the Jev-confirm stage is **optional/advisory**: heuristic-only dedup still runs when `DECISION_ENTITY_ENABLED=false` (existing behavior preserved); Jev only refines borderline groups the heuristic flagged uncertain.
 
 ### Story 39.4: Content Guardrails via Jev Noul Battery (R4)
 
