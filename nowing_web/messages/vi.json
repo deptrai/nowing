@@ -7500,5 +7500,9 @@
 		"tour_check_inbox": "Kiểm tra hộp thư",
 		"tour_check_inbox_desc": "Xem mentions và thông báo ở một nơi.",
 		"close_tour": "Đóng hướng dẫn"
+	},
+	"chainlens": {
+		"model_group": "ChainLens (Web-Grounded)",
+		"model_tooltip": "Mô hình có tìm kiếm web trực tiếp — phản hồi chậm hơn (~3–6s) nhưng luôn cập nhật. Phù hợp khi cần tin tức, giá cả, sự kiện mới nhất."
 	}
 }

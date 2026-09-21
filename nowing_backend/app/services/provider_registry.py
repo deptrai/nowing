@@ -79,6 +79,15 @@ REGISTRY: dict[str, ProviderSpec] = {
         "bearer",
         "OpenRouter",
     ),
+    "chainlens": ProviderSpec(
+        Transport.OPENAI_COMPATIBLE,
+        "openai",
+        "openai_models",
+        "https://research-api.chainlens.net/v1",
+        False,
+        "bearer",
+        "ChainLens",
+    ),
     "requesty": ProviderSpec(
         Transport.OPENAI_COMPATIBLE,
         "openai",

@@ -7500,5 +7500,9 @@
 		"tour_check_inbox": "Check your inbox",
 		"tour_check_inbox_desc": "View mentions and notifications in one place.",
 		"close_tour": "Close tour"
+	},
+	"chainlens": {
+		"model_group": "ChainLens (Web-Grounded)",
+		"model_tooltip": "Web-grounded model — slower first token (~3–6s) but always up to date. Best for news, prices, live events."
 	}
 }

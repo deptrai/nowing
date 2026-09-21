@@ -7,6 +7,7 @@ export const PROVIDER_ORDER = [
 	"bedrock",
 	"azure",
 	"openrouter",
+	"chainlens",
 	"requesty",
 	"ollama_chat",
 	"lm_studio",
@@ -49,6 +50,12 @@ export const PROVIDER_DISPLAY: Record<
 		subtitle: "OpenRouter",
 		iconKey: "openrouter",
 		defaultBaseUrl: "https://openrouter.ai/api/v1",
+	},
+	chainlens: {
+		name: "ChainLens",
+		subtitle: "Web-Grounded",
+		iconKey: "chainlens",
+		defaultBaseUrl: "https://research-api.chainlens.net/v1",
 	},
 	requesty: {
 		name: "Requesty",

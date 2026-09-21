@@ -242,3 +242,30 @@ def test_is_known_text_only_returns_false_on_missing_key(monkeypatch):
         )
         is False
     )
+
+# ---------------------------------------------------------------------------
+# provider_registry — ChainLens preset (Story 20.7)
+# ---------------------------------------------------------------------------
+
+
+def test_chainlens_provider_registered():
+    """ChainLens preset exposes OpenAI-compatible transport + default base URL."""
+    from app.services.provider_registry import spec_for
+
+    spec = spec_for("chainlens")
+    assert spec.transport.value == "OPENAI_COMPATIBLE"
+    assert spec.litellm_prefix == "openai"
+    assert spec.discovery == "openai_models"
+    assert spec.default_base_url == "https://research-api.chainlens.net/v1"
+    assert spec.base_url_required is False
+    assert spec.auth_style == "bearer"
+    assert spec.display_name == "ChainLens"
+
+
+def test_chainlens_listed_in_registry():
+    """ChainLens key is enumerable via REGISTRY for /model-providers endpoint."""
+    from app.services.provider_registry import REGISTRY
+
+    assert "chainlens" in REGISTRY
+    assert REGISTRY["chainlens"].display_name == "ChainLens"
+
