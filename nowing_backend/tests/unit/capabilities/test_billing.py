@@ -580,11 +580,17 @@ async def test_chainlens_charge_records_degradation_in_call_details(
     monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
     session, _user = _make_session(_OWNER, balance_micros=100_000)
 
+    # Zero-usable-content policy (2026-09-20): a degraded partial with no
+    # answer/sources is free, so give this output real content to exercise the
+    # degradation-details recording path.
     output = SimpleNamespace(
         billable_units=1,
         status="partial",
         degraded=True,
         degradation_reason="fallback_kb_hits",
+        answer="some answer",
+        sources=[{"url": "https://example.com"}],
+        cost_micros=5000,
     )
 
     await charge_capability(output, BillingUnit.CHAINLENS_QUERY, _ctx(session))
@@ -593,6 +599,27 @@ async def test_chainlens_charge_records_degradation_in_call_details(
     details = record_usage.await_args.kwargs["call_details"]
     assert details["degradation_reason"] == "fallback_kb_hits"
     assert details["final_status"] == "partial"
+
+
+async def test_partial_no_usable_content_is_free(monkeypatch, record_usage):
+    """Policy (2026-09-20): zero usable content is free even when upstream
+    responded (status=partial with every item failed / auth-walled)."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        billable_units=1,
+        status="partial",
+        degraded=False,
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 0
+    record_usage.assert_not_awaited()
+    assert user.credit_micros_balance == 100_000
 
 
 async def test_engine_unavailable_no_content_does_not_record_token_usage(
@@ -656,11 +683,16 @@ async def test_chainlens_charge_does_not_leak_secrets_in_call_details(
     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
     session, _user = _make_session(_OWNER, balance_micros=100_000)
 
+    # Zero-usable-content policy: give the partial output real content so the
+    # charge path (and its call_details recording) actually runs.
     output = SimpleNamespace(
         billable_units=1,
         status="partial",
         degraded=True,
         degradation_reason="rate_limited",
+        answer="some answer",
+        sources=[{"url": "https://example.com"}],
+        cost_micros=5000,
     )
 
     await charge_capability(output, BillingUnit.CHAINLENS_QUERY, _ctx(session))

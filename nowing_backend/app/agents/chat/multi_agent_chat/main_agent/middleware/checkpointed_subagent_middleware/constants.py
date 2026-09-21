@@ -37,6 +37,20 @@ DEFAULT_SUBAGENT_INVOKE_TIMEOUT_SECONDS: float = _read_timeout_env(
 )
 
 
+# Per-subagent wall-clock overrides for specialists whose upstream engines
+# legitimately run longer than the generic budget. ChainLens fans out to a
+# remote SSE research/search engine, then may chain contents-extraction on the
+# returned URLs — a single ``task(chainlens, ...)`` can need well over 300s.
+# Keyed by ``subagent_type``; missing keys fall back to the default above.
+# Each value is independently env-overridable.
+SUBAGENT_INVOKE_TIMEOUT_OVERRIDES: dict[str, float] = {
+    "chainlens": _read_timeout_env(
+        "NOWING_CHAINLENS_SUBAGENT_TIMEOUT_SECONDS",
+        default=900.0,
+    ),
+}
+
+
 def _read_int_env(name: str, default: int) -> int:
     raw = os.environ.get(name)
     if not raw:

@@ -237,6 +237,13 @@ def _build_cached_anti_bot_command(
 # are async-only until cost/latency targets are ratified.
 _SYNC_CHAT_ALLOWED_MODES: frozenset[str] = frozenset({"speed", "balanced"})
 
+# chainlens.code_search modes allowed to run synchronously inside a chat
+# turn. ``balanced``/``auto`` can stall a turn for the full upstream 120s
+# timeout, so they go through the async-run door instead.
+_CODE_SEARCH_SYNC_ALLOWED_MODES: frozenset[str] = frozenset(
+    {"instant", "fast"}
+)
+
 
 def _is_sync_chat_mode_allowed(mode: str | None) -> bool:
     """Return True only when the given research mode may block a chat turn.
@@ -390,9 +397,13 @@ def _capability_tool(
         # State B (opt-in): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is True AND the
         # requested mode is in the allow-list (speed/balanced). quality,
         # deep-research, deep-reasoning, and auto remain async-only in chat.
-        if name == "chainlens.research" and not (
+        if (name == "chainlens.research" and not (
             config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
             and _is_sync_chat_mode_allowed(research_mode)
+        )) or (
+            name == "chainlens.code_search"
+            and getattr(payload, "mode", None)
+            not in _CODE_SEARCH_SYNC_ALLOWED_MODES
         ):
             async with async_session_maker() as session:
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
@@ -415,7 +426,7 @@ def _capability_tool(
                     )
                     if run_id is None:
                         raise ExternalServiceError(
-                            "Could not start deep research run.",
+                            f"Could not start {name} run.",
                             code="CAPABILITY_START_ERROR",
                         )
                 except ForbiddenError:
@@ -427,7 +438,10 @@ def _capability_tool(
             return {
                 "run_id": f"run_{run_id}",
                 "status": "running",
-                "message": "Deep research started. The result will stream via the run events endpoint.",
+                "message": (
+                    f"{name} started. The result will stream via the run "
+                    "events endpoint."
+                ),
             }
 
         # A buffer-only reporter: coarse progress lands in ``runs.progress`` and,

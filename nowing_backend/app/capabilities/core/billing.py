@@ -466,11 +466,17 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         return 0
 
     # Do not charge for a complete engine failure with no usable content.
+    # Policy (2026-09-20): zero usable content is free regardless of how the
+    # failure surfaces — engine_unavailable (typed degradation) or partial
+    # (upstream responded but every item failed / was auth-walled).
     status = getattr(output, "status", None)
     has_content = bool(
-        getattr(output, "answer", None) or getattr(output, "sources", None)
+        getattr(output, "answer", None)
+        or getattr(output, "sources", None)
+        or getattr(output, "items", None)
+        or getattr(output, "snippets", None)
     )
-    if status == "engine_unavailable" and not has_content:
+    if not has_content and status in ("engine_unavailable", "partial"):
         return 0
 
     cost_micros: int | None = getattr(output, "cost_micros", None)

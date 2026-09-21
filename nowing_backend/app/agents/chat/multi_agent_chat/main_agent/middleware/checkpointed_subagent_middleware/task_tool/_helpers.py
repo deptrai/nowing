@@ -16,7 +16,10 @@ from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphInterrupt
 from langgraph.types import Command, Interrupt
 
-from ..constants import DEFAULT_SUBAGENT_INVOKE_TIMEOUT_SECONDS
+from ..constants import (
+    DEFAULT_SUBAGENT_INVOKE_TIMEOUT_SECONDS,
+    SUBAGENT_INVOKE_TIMEOUT_OVERRIDES,
+)
 from ..propagation import wrap_with_tool_call_id
 
 logger = logging.getLogger(__name__)
@@ -51,7 +54,9 @@ async def _ainvoke_with_timeout[T](
     On expiry the task is cancelled and :class:`SubagentInvokeTimeoutError` is
     raised for the caller to turn into a synthetic ToolMessage.
     """
-    timeout = DEFAULT_SUBAGENT_INVOKE_TIMEOUT_SECONDS
+    timeout = SUBAGENT_INVOKE_TIMEOUT_OVERRIDES.get(
+        subagent_type, DEFAULT_SUBAGENT_INVOKE_TIMEOUT_SECONDS
+    )
     if timeout <= 0:
         return await coro
     try:
@@ -65,10 +70,12 @@ def _synthesize_timeout_command(
     exc: SubagentInvokeTimeoutError, *, tool_call_id: str
 ) -> Command:
     """Turn a :class:`SubagentInvokeTimeoutError` into a ToolMessage the parent can read."""
+    budget = SUBAGENT_INVOKE_TIMEOUT_OVERRIDES.get(
+        exc.subagent_type, DEFAULT_SUBAGENT_INVOKE_TIMEOUT_SECONDS
+    )
     content = (
         f"Subagent {exc.subagent_type!r} timed out after "
-        f"{exc.elapsed_seconds:.1f}s (budget="
-        f"{DEFAULT_SUBAGENT_INVOKE_TIMEOUT_SECONDS:.0f}s). "
+        f"{exc.elapsed_seconds:.1f}s (budget={budget:.0f}s). "
         "The work was cancelled. Treat as status=error; re-route with a "
         "narrower scope or different specialist."
     )
