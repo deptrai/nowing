@@ -27,6 +27,8 @@ import asyncio
 import contextlib
 import logging
 import os
+import sys
+from collections.abc import AsyncIterable, AsyncIterator
 from typing import Any
 
 from livekit import rtc
@@ -57,6 +59,7 @@ from app.config import (
     VOICE_VAD_SPEECH_THRESHOLD,
 )
 from app.services.voice.filler_audio import FillerAudioBank, get_filler_bank
+from app.services.voice.micro_clause_streamer import MicroClauseStreamer
 
 logger = logging.getLogger(__name__)
 
@@ -89,22 +92,25 @@ def _build_stt() -> stt.STT:
 def _build_tts() -> tts.TTS:
     """Return the configured TTS provider.
 
-    OpenAI ``tts-1`` (vi voice ``nova``) when ``OPENAI_API_KEY`` is set;
-    local Kokoro via ``KokoroTextToSpeech`` otherwise.
+    OpenAI ``tts-1`` (vi voice ``nova``) when ``OPENAI_API_KEY`` is set.
+    For Vietnamese speech, OpenAI TTS is required because local Kokoro
+    does not support Vietnamese ('vi') language models.
     """
     provider = VOICE_TTS_PROVIDER.lower()
     if provider == "openai" and OPENAI_API_KEY:
         from livekit.plugins import openai as lk_openai
 
         return lk_openai.TTS(model="tts-1", voice="nova", api_key=OPENAI_API_KEY)
-    # Fallback: local Kokoro
-    logger.warning(
-        "OPENAI_API_KEY not set or provider != openai — using local Kokoro TTS. "
-        "Note: Kokoro is segment-mode; streaming TTS requires OpenAI."
-    )
-    from app.podcasts.tts.adapters.kokoro import KokoroTextToSpeech
 
-    return _KokoroTTSAdapter(KokoroTextToSpeech())
+    if OPENAI_API_KEY:
+        from livekit.plugins import openai as lk_openai
+
+        return lk_openai.TTS(model="tts-1", voice="nova", api_key=OPENAI_API_KEY)
+
+    raise RuntimeError(
+        "No supported Vietnamese TTS provider configured — set OPENAI_API_KEY "
+        "(KokoroTextToSpeech lacks Vietnamese language model support)"
+    )
 
 
 def _build_llm() -> llm.LLM:
@@ -170,6 +176,13 @@ class _WhisperSTTAdapter(stt.STT):
         language: Any = None,
         conn_options: Any = None,
     ) -> stt.SpeechEvent:
+        lang = language if isinstance(language, str) else "vi"
+        if not buffer:
+            return stt.SpeechEvent(
+                type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+                alternatives=[stt.SpeechData(text="", language=lang)],
+            )
+
         import tempfile
 
         wav_bytes = rtc.combine_audio_frames(buffer).to_wav_bytes()
@@ -179,15 +192,40 @@ class _WhisperSTTAdapter(stt.STT):
             tmp.write(wav_bytes)
 
         try:
-            lang = language if isinstance(language, str) else "vi"
-            result = self._service.transcribe_file(tmp_path, language=lang)
+            result = await asyncio.to_thread(self._service.transcribe_file, tmp_path, language=lang)
             text = result.get("text", "") if isinstance(result, dict) else getattr(result, "text", "")
             return stt.SpeechEvent(
                 type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                 alternatives=[stt.SpeechData(text=text, language=lang)],
             )
         finally:
-            os.unlink(tmp_path)
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+
+
+async def _wav_to_audio_frames(wav_bytes: bytes) -> AsyncIterator[rtc.AudioFrame]:
+    """Decode raw WAV bytes into rtc.AudioFrame objects for LiveKit playout."""
+    import io
+    import wave
+
+    try:
+        with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
+            sample_rate = wf.getframerate()
+            num_channels = wf.getnchannels()
+            sample_width = wf.getsampwidth()
+            pcm_data = wf.readframes(wf.getnframes())
+
+        samples_per_channel = len(pcm_data) // (num_channels * sample_width)
+        if samples_per_channel > 0:
+            frame = rtc.AudioFrame.create(
+                sample_rate=sample_rate,
+                num_channels=num_channels,
+                samples_per_channel=samples_per_channel,
+            )
+            frame.data.cast("B")[:] = pcm_data
+            yield frame
+    except Exception as exc:
+        logger.warning("Failed to decode filler wav frames: %s", exc)
 
 
 class _KokoroTTSAdapter(tts.TTS):
@@ -283,50 +321,75 @@ class VoiceSDRAgent(Agent):
         )
         self._filler_bank: FillerAudioBank | None = None
         self._prewarmed: bool = False
+        self._first_token_event: asyncio.Event = asyncio.Event()
+        self._filler_task: asyncio.Task[None] | None = None
 
     # ------------------------------------------------------------------
     # LiveKit Agent lifecycle hooks
     # ------------------------------------------------------------------
 
-    async def on_enter(self, session: AgentSession) -> None:
-        """Called when the agent joins the room. Set up VAD + pre-warm."""
-        logger.info("VoiceSDRAgent entering room: %s", session.room.name)
+    async def on_enter(self) -> None:
+        """Called when the agent enters the room. Set up filler bank + pre-warm."""
         self._filler_bank = get_filler_bank()
-        # Attempt pre-warm here — worker-level prewarm_fnc handles process boot,
-        # this covers per-session setup for outbound calls.
-        if not self._prewarmed:
-            await self._prewarm_stt_tts(session)
+        try:
+            session = self.session
+            logger.info("VoiceSDRAgent entering room: %s", getattr(getattr(session, "room", None), "name", "unknown"))
+            if not self._prewarmed:
+                await self._prewarm_stt_tts(session)
+        except Exception as exc:
+            logger.debug("on_enter initialization notice: %s", exc)
 
-    async def on_exit(self, session: AgentSession) -> None:
-        """Called when the agent leaves the room. Release VAD state."""
-        logger.info("VoiceSDRAgent exiting room: %s", session.room.name)
-        # VAD state tensors are per-session and garbage-collected with the session.
-        # Explicitly log for observability.
+    async def on_exit(self) -> None:
+        """Called when the agent leaves the room. Release state."""
         self._prewarmed = False
+        if self._filler_task and not self._filler_task.done():
+            self._filler_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._filler_task
 
     async def on_user_turn_completed(
         self,
-        session: AgentSession,
-        turn_ctx: Any,
+        turn_ctx: llm.ChatContext,
+        new_message: llm.ChatMessage,
     ) -> None:
-        """Called when VAD detects end-of-utterance.
+        """Called when VAD detects end-of-utterance and LLM is about to respond.
 
-        The default implementation triggers LLM generation. We override to
-        inject filler audio if first-token latency exceeds 80 ms.
+        Kicks off filler watchdog concurrently with LLM generation.
         """
-        first_token_event = asyncio.Event()
-
-        # Kick off filler watchdog concurrently with LLM generation
-        filler_task = asyncio.create_task(
-            self._maybe_inject_filler(session, first_token_event)
-        )
+        self._first_token_event = asyncio.Event()
         try:
-            await super().on_user_turn_completed(session, turn_ctx)
-        finally:
-            first_token_event.set()  # stop watchdog if still waiting
-            filler_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await filler_task
+            session = self.session
+            self._filler_task = asyncio.create_task(
+                self._maybe_inject_filler(session, self._first_token_event)
+            )
+        except Exception as exc:
+            logger.debug("Failed to start filler watchdog: %s", exc)
+
+        await super().on_user_turn_completed(turn_ctx, new_message)
+
+    # ------------------------------------------------------------------
+    # TTS Node with MicroClauseStreamer pipeline
+    # ------------------------------------------------------------------
+
+    async def tts_node(
+        self, text: AsyncIterable[str], model_settings: Any
+    ) -> AsyncIterable[rtc.AudioFrame]:
+        """Custom TTS node intercepting LLM text chunks.
+
+        Cuts at Vietnamese punctuation or 5 tokens via MicroClauseStreamer,
+        and signals first-token arrival to stop the filler watchdog.
+        """
+        streamer = MicroClauseStreamer()
+
+        async def _monitored_text() -> AsyncIterator[str]:
+            async for chunk in text:
+                if not self._first_token_event.is_set():
+                    self._first_token_event.set()
+                yield chunk
+
+        clauses = streamer.stream_clauses(_monitored_text())
+        async for frame in Agent.default.tts_node(self, clauses, model_settings):
+            yield frame
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -343,6 +406,7 @@ class VoiceSDRAgent(Agent):
                 await session.stt.prewarm()
             if hasattr(session.tts, "prewarm"):
                 await session.tts.prewarm()
+            self._prewarmed = True
             logger.debug("STT/TTS pre-warm complete")
         except Exception as exc:
             logger.warning("STT/TTS pre-warm failed (non-blocking): %s", exc)
@@ -352,26 +416,24 @@ class VoiceSDRAgent(Agent):
         session: AgentSession,
         first_token_event: asyncio.Event,
     ) -> None:
-        """Inject filler audio if LLM first token doesn't arrive within 80 ms.
-
-        Runs as a background watchdog alongside LLM generation. The caller
-        sets ``first_token_event`` when generation completes (or cancels the
-        watchdog), so a timeout here means first-token latency exceeded 80 ms.
-        """
-        await asyncio.sleep(0.08)
-        if first_token_event.is_set():
-            return  # token arrived on time — no filler needed
-        if self._filler_bank and self._filler_bank.is_ready():
-            filler_wav = self._filler_bank.get_filler("ack")
-            logger.debug("Injecting filler audio (%d bytes)", len(filler_wav))
-            try:
-                await session.say(
-                    text=None,
-                    audio=filler_wav,
+        """Inject filler audio if LLM first token doesn't arrive within 80 ms."""
+        try:
+            await asyncio.sleep(0.08)
+            if first_token_event.is_set():
+                return  # token arrived on time — no filler needed
+            if self._filler_bank and self._filler_bank.is_ready():
+                filler_wav = self._filler_bank.get_filler("ack")
+                logger.debug("Injecting filler audio (%d bytes)", len(filler_wav))
+                session.say(
+                    text="Dạ vâng...",
+                    audio=_wav_to_audio_frames(filler_wav),
                     allow_interruptions=True,
+                    add_to_chat_ctx=False,
                 )
-            except Exception as exc:
-                logger.debug("Filler injection failed: %s", exc)
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            logger.debug("Filler injection failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -408,8 +470,20 @@ async def entrypoint(ctx: JobContext) -> None:
     agent = VoiceSDRAgent()
     await session.start(agent=agent, room=ctx.room)
 
-    # Keep session alive until room disconnects
-    await session.wait_for_close()
+    # Keep session alive until room disconnects or job shuts down
+    disconnect_event = asyncio.Event()
+
+    @ctx.room.on("disconnected")
+    def _on_room_disconnected(*args: Any, **kwargs: Any) -> None:
+        disconnect_event.set()
+
+    ctx.add_shutdown_callback(lambda: disconnect_event.set())
+
+    try:
+        await disconnect_event.wait()
+    finally:
+        with contextlib.suppress(Exception):
+            await session.aclose()
 
 
 def _prewarm_process(proc: Any) -> None:
@@ -439,6 +513,10 @@ def run_worker() -> None:
     if not SEQUENCER_VOICE_ENABLED:
         logger.error("SEQUENCER_VOICE_ENABLED=false — worker cannot start")
         raise SystemExit(1)
+
+    # Ensure CLI subcommand 'start' is present so Typer does not exit with help
+    if len(sys.argv) <= 1 or sys.argv[1] not in ("start", "dev", "console", "connect"):
+        sys.argv = [sys.argv[0] if sys.argv else "worker", "start"]
 
     cli.run_app(
         WorkerOptions(

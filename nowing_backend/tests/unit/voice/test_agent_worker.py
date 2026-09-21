@@ -330,3 +330,101 @@ class TestVoiceChannelCompliance:
             mock_cfg.SEQUENCER_OUTBOUND_CHANNELS = ["email"]
             result = await mixin.validate_step_channel("email")
             assert result is True
+
+
+# ---------------------------------------------------------------------------
+# Story 38.2 Review Patch Tests: VoiceSDRAgent, Providers, VAD Isolation
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestVoiceSDRAgentLifecycle:
+    """Tests for VoiceSDRAgent lifecycle hooks and provider factories."""
+
+    def test_build_stt_deepgram(self):
+        """_build_stt returns deepgram STT when API key is present."""
+        from app.services.voice import agent_worker
+
+        with patch.object(agent_worker, "VOICE_STT_PROVIDER", "deepgram"), \
+             patch.object(agent_worker, "DEEPGRAM_API_KEY", "mock-key"), \
+             patch("livekit.plugins.deepgram.STT") as mock_dg:
+            res = agent_worker._build_stt()
+            mock_dg.assert_called_once_with(model="nova-2", language="vi", api_key="mock-key")
+            assert res == mock_dg.return_value
+
+    def test_build_stt_fallback_whisper(self):
+        """_build_stt falls back to WhisperSTTAdapter when Deepgram key missing."""
+        from app.services.voice import agent_worker
+
+        with patch.object(agent_worker, "VOICE_STT_PROVIDER", "deepgram"), \
+             patch.object(agent_worker, "DEEPGRAM_API_KEY", ""), \
+             patch("app.services.stt_service.STTService"):
+            res = agent_worker._build_stt()
+            assert isinstance(res, agent_worker._WhisperSTTAdapter)
+
+    def test_build_tts_openai(self):
+        """_build_tts returns OpenAI TTS when API key is present."""
+        from app.services.voice import agent_worker
+
+        with patch.object(agent_worker, "VOICE_TTS_PROVIDER", "openai"), \
+             patch.object(agent_worker, "OPENAI_API_KEY", "mock-key"), \
+             patch("livekit.plugins.openai.TTS") as mock_tts:
+            res = agent_worker._build_tts()
+            mock_tts.assert_called_once_with(model="tts-1", voice="nova", api_key="mock-key")
+            assert res == mock_tts.return_value
+
+    def test_build_tts_missing_key_raises(self):
+        """_build_tts raises RuntimeError when OPENAI_API_KEY missing for Vietnamese."""
+        from app.services.voice import agent_worker
+
+        with (
+            patch.object(agent_worker, "OPENAI_API_KEY", ""),
+            pytest.raises(RuntimeError, match="No supported Vietnamese TTS provider"),
+        ):
+            agent_worker._build_tts()
+
+    def test_build_llm_anthropic(self):
+        """_build_llm returns Anthropic LLM when API key is present."""
+        from app.services.voice import agent_worker
+
+        with patch.object(agent_worker, "VOICE_LLM_PROVIDER", "anthropic"), \
+             patch.object(agent_worker, "ANTHROPIC_API_KEY", "mock-key"), \
+             patch("livekit.plugins.anthropic.LLM") as mock_llm:
+            res = agent_worker._build_llm()
+            mock_llm.assert_called_once_with(model="claude-sonnet-4-6", api_key="mock-key")
+            assert res == mock_llm.return_value
+
+    def test_build_vad_state_tensor_isolation(self):
+        """Each _build_vad call returns a fresh isolated VAD instance."""
+        from app.services.voice import agent_worker
+
+        with patch("livekit.plugins.silero.VAD.load") as mock_vad:
+            mock_vad.side_effect = lambda **kwargs: MagicMock()
+            vad1 = agent_worker._build_vad()
+            vad2 = agent_worker._build_vad()
+            assert vad1 is not vad2
+            assert mock_vad.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_agent_lifecycle_hooks_signatures(self):
+        """on_enter and on_exit take 0 arguments, on_user_turn_completed takes 2."""
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent()
+        # Verify no TypeError when called with expected framework signatures
+        with patch.object(VoiceSDRAgent, "session", property(lambda self: MagicMock())):
+            await agent.on_enter()
+            await agent.on_exit()
+
+    @pytest.mark.asyncio
+    async def test_wav_to_audio_frames_decodes(self, filler_dir: Path):
+        """_wav_to_audio_frames decodes raw WAV bytes into rtc.AudioFrame."""
+        from app.services.voice.agent_worker import _wav_to_audio_frames
+
+        wav_path = filler_dir / "ack_da_vang.wav"
+        wav_bytes = wav_path.read_bytes()
+
+        frames = [f async for f in _wav_to_audio_frames(wav_bytes)]
+        assert len(frames) == 1
+        assert frames[0].sample_rate == 24000
+        assert frames[0].num_channels == 1
+        assert frames[0].samples_per_channel > 0

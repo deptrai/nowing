@@ -24,6 +24,18 @@ def _positive_int_env(key: str, default: int) -> int:
     return value if value > 0 else default
 
 
+def _safe_float_env(key: str, default: float) -> float:
+    """Parse a float env var, clamped to [0.0, 1.0], falling back to *default* on invalid input."""
+    val = os.getenv(key)
+    if val is None or not val.strip():
+        return default
+    try:
+        v = float(val.strip())
+        return max(0.0, min(1.0, v))
+    except (ValueError, TypeError):
+        return default
+
+
 # SIP Signaling & Gateway Parameters
 SIP_OUTBOUND_GATEWAY_HOST = os.getenv("SIP_OUTBOUND_GATEWAY_HOST", "127.0.0.1")
 SIP_OUTBOUND_GATEWAY_PORT = _safe_int_env("SIP_OUTBOUND_GATEWAY_PORT", 5060)
@@ -51,7 +63,7 @@ VOICE_MAX_CALLS_PER_WORKER = _positive_int_env("VOICE_MAX_CALLS_PER_WORKER", 12)
 
 # Silero VAD tuning (Invariant: 180-220ms end-of-utterance detection)
 VOICE_VAD_MIN_SILENCE_MS = _positive_int_env("VOICE_VAD_MIN_SILENCE_MS", 180)
-VOICE_VAD_SPEECH_THRESHOLD = float(os.getenv("VOICE_VAD_SPEECH_THRESHOLD", "0.5"))
+VOICE_VAD_SPEECH_THRESHOLD = _safe_float_env("VOICE_VAD_SPEECH_THRESHOLD", 0.5)
 
 # Filler audio directory (pre-loaded to RAM at worker startup)
 VOICE_FILLER_DIR = os.path.normpath(

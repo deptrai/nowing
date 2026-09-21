@@ -192,7 +192,7 @@ class VoiceWorkerPool:
             target=_worker_main,
             args=(worker_id,),
             name=f"voice-worker-{worker_id}",
-            daemon=True,
+            daemon=False,
         )
         proc.start()
         return WorkerHandle(worker_id=worker_id, process=proc)
