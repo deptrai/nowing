@@ -1811,3 +1811,15 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - [ ] ContentItem thêm publishedDate/author fields (enhancement).
 - [ ] Test gaps: 401 rotate path, payload passthrough (subpages/livecrawl/maxAgeHours), highlights-as-string.
 - [ ] system_prompt.md/description.md expose chainlens_contents — **theo kế hoạch**: apply batch sau khi đủ capabilities (20.6, 20.10, 20.11). Bản rewrite sẵn tại `_bmad-output/planning-artifacts/agent-prompts-chainlens-2026-09-20/`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
+  summary: LLMJsonBackend (litellm structured output) + jev→llm_json fallback chain for DecisionService
+  evidence: Spec 2949 tokens exceeded 1600 limit; user chose [S] split — LLM fallback carved into follow-up story (39.1b) including its AC (DECISION_BACKEND=llm_json works + auto-fallback on Jev 5xx/529/timeout)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
+  summary: `QuestionSet.required_state_keys` metadata + service-level pre-call state validation, so decide() with missing state keys fails before a paid backend call instead of letting the backend produce low-confidence guesses
+  evidence: Code review of story 39.1 (23 findings); no caller consumes a question set that declares required state yet, so the check would be dead code until stories 39.2–39.5 wire consumers
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
+  summary: Noul "confidently false" gating semantics — ConfidenceGate.passes() only rewards high values today; the first consumer that needs a high-confidence FALSE must document or derive the inversion (1 - value)
+  evidence: Code review of story 39.1 (23 findings); deferred until the first Noul consumer lands (39.2+) because the inversion direction is use-case-specific
