@@ -1854,4 +1854,9 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   summary: Sync stale docs — `docs/system-architecture-2026-09-21.md` + `architecture-jev-decision-service/INTEGRATION-POINTS.md` still describe direct typesafe_sdk integration; `.env.example` lacks `NOWING_ENABLE_JEV_ROUTER` flag.
   evidence: story 39.2 rewired jev_router.py through DecisionService (no direct SDK, no TYPESAFE_API_KEY gate); docs predate the rewire.
 
-  resolved: 2026-09-22 — `docs/system-architecture-2026-09-21.md` + `INTEGRATION-POINTS.md` updated to DecisionService routing (no direct SDK, no TYPESAFE_API_KEY gate); `.env.example` gained `NOWING_ENABLE_JEV_ROUTER`.
+  resolved: 2026-09-22 — `docs/system-architecture-2026-09-21.md` + `INTEGRATION-POINTS.md` updated to DecisionService routing (no direct SDK, no TYPESAFE_API_KEY gate); `.env.example` gained `NOWING_ENABLE_JEV_ROUTER`.- source_spec: `_bmad-output/implementation-artifacts/spec-39-3-entity-resolution-confidence-scoring.md`
+  summary: Jev rescore verdict không persist vào Redis corp cache — company Jev-verified ở fresh-search call 1 vẫn trả `requires_manual_confirmation=True` ở cached call 2 (verified/manual flip-flop).
+  evidence: spec-39-3 boundary "cached paths không động vào" cố tình loại cached/tax_id/breaker khỏi rescore; persist `_jev_verdict` vào cached payload + áp mapping ở ~3 cached-return sites vượt boundary đã approve — cần human quyết định consistency vs paid-call scope.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-3-entity-resolution-confidence-scoring.md`
+  summary: `refine_entity_groups` chạy tối đa 50 sequential `decide()` không có overall deadline — worst case (mỗi call timeout 5s + fallback leg) aggregate() stall vài phút.
+  evidence: spec-39-3 cap MAX_DECISION_CALLS_PER_RUN=50 bound số calls nhưng không bound wall-clock; thêm param `max_seconds` (default None → no behavior change) + `stats.aborted` khi vượt deadline nếu production cần.

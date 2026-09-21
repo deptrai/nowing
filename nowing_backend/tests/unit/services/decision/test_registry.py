@@ -19,6 +19,7 @@ def test_registry_loads_all_question_sets():
     assert set(registry.names()) == {
         "subagent_routing",
         "entity_match",
+        "entity_match_fanout",
         "content_filter",
         "intent_classify",
     }
@@ -36,6 +37,10 @@ def test_registry_get_returns_typed_question_dicts():
     entity = registry.get("entity_match")
     assert isinstance(entity["is_same"], ScoreQuestion)
     assert len(entity["is_same"].criteria) == 3
+
+    fanout = registry.get("entity_match_fanout")
+    assert isinstance(fanout["match_decision"], ChoiceQuestion)
+    assert list(fanout["match_decision"].criteria) == ["no_match"]
 
     content = registry.get("content_filter")
     assert set(content) == {
@@ -86,6 +91,10 @@ def test_registry_question_sets_expose_required_state_keys():
     assert registry.get_set("entity_match").required_state_keys == (
         "entity_a",
         "entity_b",
+    )
+    assert registry.get_set("entity_match_fanout").required_state_keys == (
+        "anchor",
+        "candidates",
     )
     assert registry.get_set("content_filter").required_state_keys == (
         "query",

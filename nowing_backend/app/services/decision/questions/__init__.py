@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.services.decision.questions import (
     content_filter,
     entity_match,
+    entity_match_fanout,
     intent_classify,
     subagent_routing,
 )
@@ -29,6 +30,12 @@ def get_question_registry() -> QuestionRegistry:
             entity_match.QUESTIONS,
             version=entity_match.VERSION,
             required_state_keys=entity_match.REQUIRED_STATE_KEYS,
+        )
+        registry.register(
+            "entity_match_fanout",
+            entity_match_fanout.QUESTIONS,
+            version=entity_match_fanout.VERSION,
+            required_state_keys=entity_match_fanout.REQUIRED_STATE_KEYS,
         )
         registry.register(
             "content_filter",
