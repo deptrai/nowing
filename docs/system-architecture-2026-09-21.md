@@ -22,7 +22,7 @@ flowchart LR
             MainAgent["Main Agent<br/>LangGraph + 26 mw"]
             JevRouter["Jev Pre-Router ⭐<br/>~300ms"]
             SubAgents["21 Subagents"]
-            VoiceW["Voice Workers<br/>LiveKit + Silero"]
+            VoiceInfra["Voice Infra (self-host)<br/>Kamailio SBC · LiveKit SIP GW<br/>SFU + Voice Workers + Silero"]
         end
         subgraph Decision["Decision Layer (Epic 39)"]
             DS["DecisionService"]
@@ -59,10 +59,11 @@ flowchart LR
         XProxy["proxy/<br/>SOCKS5 pool"]
     end
 
-    subgraph Ext["External"]
+    subgraph Ext["External Services"]
         JevAPI["Jev API<br/>typesafe.ai"]
         LLM["LLM Providers"]
-        Telco["Telco / SIP"]
+        TelcoTrunk["📞 Telco SIP Trunk<br/>Viettel / VNPT / FPT / CMC<br/>+ DID 024/028"]
+        STTTS["🎙️ STT / TTS<br/>Deepgram · OpenAI · Vbee"]
         OAuthP["OAuth"]
         Pay["Stripe + VietQR"]
     end
@@ -93,7 +94,8 @@ flowchart LR
     XStream -->|"XREADGROUP"| API
     XCore --> XProxy
 
-    VoiceW --> Telco
+    VoiceInfra -->|"SIP trunk G.711a"| TelcoTrunk
+    VoiceInfra -->|"STT + TTS"| STTTS
     API --> OAuthP
     API --> Pay
 ```
@@ -407,3 +409,12 @@ flowchart LR
 | XActions | `src/scrapers/` | 10 categories |
 | XActions | `src/core/` | base-crawler, dispatcher, governor |
 | XActions | `src/streaming/` | Redis Stream output |
+
+---
+
+## Ghi chú hạ tầng thoại (Self-Host vs External)
+
+- **Self-host trong Nowing:** Kamailio SBC + LiveKit SIP Gateway + SFU (:7880) + Voice Agent Workers (Python asyncio pool, 8 processes) + Silero VAD v5 (ONNX CPU local). Toàn bộ audio pipeline nội bộ chạy sub-5ms qua WebRTC.
+- **External bắt buộc:**
+  1. **Telco SIP Trunk + DID:** Đầu số cố định (024/028-7xxx) và luồng SIP G.711a từ nhà mạng VN (Viettel/VNPT/FPT/CMC) qua aggregator — PSTN là tài sản nhà mạng, tuân thủ Nghị định 91/2020 Voice Brandname.
+  2. **STT/TTS cloud:** Deepgram nova-2 (vi) + OpenAI tts-1 (fallback local: Faster-Whisper + Kokoro khi offline).
