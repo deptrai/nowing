@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { AutomationSummary } from "@/contracts/types/automation.types";
 import { formatRelativeDate } from "@/lib/format-date";

@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useIsSelfHosted } from "@/components/providers/runtime-config";
 import { EnumConnectorName } from "@/contracts/enums/connector";
@@ -83,6 +83,12 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 		title.toLowerCase().includes(searchQuery.toLowerCase()) ||
 		description.toLowerCase().includes(searchQuery.toLowerCase());
 
+	// Resolve the localized connector description. Each catalog entry carries a
+	// `descKey` i18n key (namespace "assistant"); the English `description`
+	// string stays as the source/fallback and for search matching.
+	const localizedDesc = (c: { description: string; descKey?: string }) =>
+		c.descKey ? t(c.descKey as Parameters<typeof t>[0]) : c.description;
+
 	const passesDeploymentFilter = (c: DeploymentFilterableConnector) =>
 		(!c.selfHostedOnly || selfHosted) && (!c.desktopOnly || isDesktop);
 
@@ -93,22 +99,22 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 
 	// Filter connectors based on search, deployment mode, and import exclusion
 	const filteredOAuth = OAUTH_CONNECTORS.filter(
-		(c) => matchesSearch(c.title, c.description) && passesDeploymentFilter(c) && notImport(c)
+		(c) => matchesSearch(c.title, localizedDesc(c)) && passesDeploymentFilter(c) && notImport(c)
 	);
 
 	const filteredCrawlers = CRAWLERS.filter(
-		(c) => matchesSearch(c.title, c.description) && passesDeploymentFilter(c) && notImport(c)
+		(c) => matchesSearch(c.title, localizedDesc(c)) && passesDeploymentFilter(c) && notImport(c)
 	);
 
 	const filteredOther = OTHER_CONNECTORS.filter(
-		(c) => matchesSearch(c.title, c.description) && passesDeploymentFilter(c) && notImport(c)
+		(c) => matchesSearch(c.title, localizedDesc(c)) && passesDeploymentFilter(c) && notImport(c)
 	);
 
 	// Filter Composio connectors
 	const filteredComposio = COMPOSIO_CONNECTORS.filter(
 		(c) =>
 			(c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				c.description.toLowerCase().includes(searchQuery.toLowerCase())) &&
+				localizedDesc(c).toLowerCase().includes(searchQuery.toLowerCase())) &&
 			notImport(c)
 	);
 
@@ -165,7 +171,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 				key={connector.id}
 				id={connector.id}
 				title={connector.title}
-				description={connector.description}
+				description={localizedDesc(connector)}
 				connectorType={connector.connectorType}
 				isConnected={isConnected}
 				isConnecting={isConnecting}
@@ -214,7 +220,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 				key={connector.id}
 				id={connector.id}
 				title={connector.title}
-				description={connector.description}
+				description={localizedDesc(connector)}
 				connectorType={connector.connectorType}
 				isConnected={isConnected}
 				isConnecting={isConnecting}
@@ -264,7 +270,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 				key={crawler.id}
 				id={crawler.id}
 				title={crawler.title}
-				description={crawler.description}
+				description={localizedDesc(crawler)}
 				connectorType={crawler.connectorType || undefined}
 				isConnected={isConnected}
 				isConnecting={isConnecting}

@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -16,7 +17,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -240,7 +240,9 @@ function ApprovalCard({
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? t("linear_creating_issue_with_changes") : t("linear_creating_issue")}
+							text={
+								pendingEdits ? t("linear_creating_issue_with_changes") : t("linear_creating_issue")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
@@ -250,9 +252,7 @@ function ApprovalCard({
 					) : phase === "rejected" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("linear_creation_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							{t("common_requires_approval")}
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -376,7 +376,9 @@ function ApprovalCard({
 
 												<div className="grid grid-cols-2 gap-3">
 													<div className="space-y-1.5">
-														<p className="text-xs font-medium text-muted-foreground">{t("common_assignee")}</p>
+														<p className="text-xs font-medium text-muted-foreground">
+															{t("common_assignee")}
+														</p>
 														<Select
 															value={selectedAssigneeId}
 															onValueChange={setSelectedAssigneeId}
@@ -397,7 +399,9 @@ function ApprovalCard({
 														</Select>
 													</div>
 													<div className="space-y-1.5">
-														<p className="text-xs font-medium text-muted-foreground">{t("common_priority")}</p>
+														<p className="text-xs font-medium text-muted-foreground">
+															{t("common_priority")}
+														</p>
 														<Select value={selectedPriority} onValueChange={setSelectedPriority}>
 															<SelectTrigger className="w-full">
 																<SelectValue placeholder={t("linear_no_priority")} />

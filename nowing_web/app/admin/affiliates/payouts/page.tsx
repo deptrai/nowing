@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,6 +12,7 @@ import {
 	ShieldCheck,
 	XCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { AffiliatePayoutDetailModal } from "@/components/admin/AffiliatePayoutDetailModal";
 import { Badge } from "@/components/ui/badge";

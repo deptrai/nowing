@@ -2,10 +2,10 @@
 
 import { IconCalculator, IconCheck, IconSparkles, IconTrendingUp } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { useTranslations } from "next-intl";
 
 export function PricingLeadCalculator() {
 	const t = useTranslations("pricing");
@@ -144,7 +144,8 @@ export function PricingLeadCalculator() {
 										{t("calc_est_bill")}
 									</span>
 									<span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-medium">
-										<IconTrendingUp className="size-3.5" /> {t("calc_savings_pct", { percent: savingsPercent })}
+										<IconTrendingUp className="size-3.5" />{" "}
+										{t("calc_savings_pct", { percent: savingsPercent })}
 									</span>
 								</div>
 
@@ -153,10 +154,14 @@ export function PricingLeadCalculator() {
 										<span className="text-4xl md:text-5xl font-black font-mono tracking-tight text-emerald-400">
 											${totalNowingCost.toFixed(2)}
 										</span>
-										<span className="text-neutral-400 text-sm font-medium">{t("calc_per_month")}</span>
+										<span className="text-neutral-400 text-sm font-medium">
+											{t("calc_per_month")}
+										</span>
 									</div>
 									<div className="text-xs text-neutral-400 mt-1">
-										{t("calc_approx_vnd", { amount: (totalNowingCost * 25400).toLocaleString("vi-VN") })}
+										{t("calc_approx_vnd", {
+											amount: (totalNowingCost * 25400).toLocaleString("vi-VN"),
+										})}
 									</div>
 								</div>
 

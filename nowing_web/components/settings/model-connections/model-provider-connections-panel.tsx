@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -15,7 +16,6 @@ import type { ConnectionRead, ModelSelection } from "@/contracts/types/model-con
 import { ConnectionCard } from "./connection-card";
 import { capability, type SelectableModel } from "./model-utils";
 import { ProviderConnectDialog } from "./provider-connect-dialog";
-import { useTranslations } from "next-intl";
 import {
 	type ConnectionDraft,
 	PROVIDER_ORDER,
@@ -280,7 +280,9 @@ export function ModelProviderConnectionsPanel({
 										</span>
 									</span>
 								</span>
-								<span className="shrink-0 text-sm font-medium text-muted-foreground">{t("mc_connect")}</span>
+								<span className="shrink-0 text-sm font-medium text-muted-foreground">
+									{t("mc_connect")}
+								</span>
 							</Button>
 						);
 					})}

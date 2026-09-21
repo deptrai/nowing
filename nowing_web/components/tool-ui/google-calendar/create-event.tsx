@@ -10,6 +10,7 @@ import {
 	Pencil,
 	UsersIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -28,7 +29,6 @@ import {
 	useHitlDecision,
 	useHitlPhase,
 } from "@/features/chat-messages/hitl";
-import { useTranslations } from "next-intl";
 
 interface GoogleCalendarAccount {
 	id: number;
@@ -409,7 +409,9 @@ function ApprovalCard({
 
 								{timezone && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("gcal_timezone")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("gcal_timezone")}
+										</p>
 										<div className="flex items-center gap-2 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											<GlobeIcon
 												className="size-3.5 text-muted-foreground shrink-0"
@@ -543,9 +545,7 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gcal_auth_expired")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -560,9 +560,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gcal_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

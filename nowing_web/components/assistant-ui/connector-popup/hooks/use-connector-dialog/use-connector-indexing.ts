@@ -2,8 +2,8 @@
 
 import { format } from "date-fns";
 import { useAtomValue } from "jotai";
-import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	indexConnectorMutationAtom,
@@ -73,7 +73,9 @@ export function useConnectorIndexing({
 			endDate.setDate(endDate.getDate() + (defaults?.daysForward ?? 0));
 
 			const toastId = "auto-index";
-			toast.loading(t("toast.connector_setting_up", { connector: connectorTitle }), { id: toastId });
+			toast.loading(t("toast.connector_setting_up", { connector: connectorTitle }), {
+				id: toastId,
+			});
 
 			try {
 				await updateConnector({

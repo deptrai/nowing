@@ -137,7 +137,9 @@ export default function ScraperRulesPage() {
 	};
 
 	const schema = active?.rule_schema ?? DEFAULT_RULE;
-	const status = schema.circuit_breaker.tripped ? t("scrapers_status_tripped") : t("scrapers_status_healthy");
+	const status = schema.circuit_breaker.tripped
+		? t("scrapers_status_tripped")
+		: t("scrapers_status_healthy");
 
 	return (
 		<div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -145,7 +147,9 @@ export default function ScraperRulesPage() {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>{t("scrapers_active_rule")}: {platform}</CardTitle>
+					<CardTitle>
+						{t("scrapers_active_rule")}: {platform}
+					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="text-sm text-muted-foreground">
@@ -208,7 +212,8 @@ export default function ScraperRulesPage() {
 					<ul className="space-y-1">
 						{rules.map((r) => (
 							<li key={`${r.platform}-${r.version}`} className="text-sm">
-								{r.platform} — version {r.version} — {r.is_active ? t("scrapers_active") : t("scrapers_inactive")}
+								{r.platform} — version {r.version} —{" "}
+								{r.is_active ? t("scrapers_active") : t("scrapers_inactive")}
 							</li>
 						))}
 					</ul>

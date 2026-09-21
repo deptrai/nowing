@@ -1,9 +1,9 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { UseCaseArt, type UseCaseArtVariant } from "@/components/homepage/use-case-art";
 import { MarketingSection } from "@/components/marketing/section";
-import { useTranslations } from "next-intl";
 
 /** Buyer language from the high-CPC keyword clusters; each anchors to the connector that fulfills it. */
 function getUseCases(t: (k: string) => string): {
@@ -14,11 +14,41 @@ function getUseCases(t: (k: string) => string): {
 	art: UseCaseArtVariant;
 }[] {
 	return [
-		{ title: t("uc1_title"), description: t("uc1_desc"), href: "/google-search", anchor: "SERP API", art: "serp" },
-		{ title: t("uc2_title"), description: t("uc2_desc"), href: "/reddit", anchor: "Reddit API", art: "brand" },
-		{ title: t("uc3_title"), description: t("uc3_desc"), href: "/instagram", anchor: "Instagram API", art: "chat" },
-		{ title: t("uc4_title"), description: t("uc4_desc"), href: "/google-maps", anchor: "Google Maps API", art: "leads" },
-		{ title: t("uc5_title"), description: t("uc5_desc"), href: "/web-crawl", anchor: "Web Crawl API", art: "price" },
+		{
+			title: t("uc1_title"),
+			description: t("uc1_desc"),
+			href: "/google-search",
+			anchor: "SERP API",
+			art: "serp",
+		},
+		{
+			title: t("uc2_title"),
+			description: t("uc2_desc"),
+			href: "/reddit",
+			anchor: "Reddit API",
+			art: "brand",
+		},
+		{
+			title: t("uc3_title"),
+			description: t("uc3_desc"),
+			href: "/instagram",
+			anchor: "Instagram API",
+			art: "chat",
+		},
+		{
+			title: t("uc4_title"),
+			description: t("uc4_desc"),
+			href: "/google-maps",
+			anchor: "Google Maps API",
+			art: "leads",
+		},
+		{
+			title: t("uc5_title"),
+			description: t("uc5_desc"),
+			href: "/web-crawl",
+			anchor: "Web Crawl API",
+			art: "price",
+		},
 	];
 }
 

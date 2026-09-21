@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import type { SearchSourceConnector } from "@/contracts/types/connector.types";
 import { searchSourceConnector } from "@/contracts/types/connector.types";

@@ -1,9 +1,9 @@
 "use client";
 
 import { Crop, Eye, EyeOff, Rocket, RotateCcw, Zap } from "lucide-react";
-import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DEFAULT_SHORTCUTS, keyEventToAccelerator } from "@/components/desktop/shortcut-recorder";
@@ -172,7 +172,9 @@ function HotkeyRow({
 					}
 				>
 					{recording ? (
-						<span className="px-2 text-[9px] text-primary whitespace-nowrap">{t("press_hotkeys")}</span>
+						<span className="px-2 text-[9px] text-primary whitespace-nowrap">
+							{t("press_hotkeys")}
+						</span>
 					) : (
 						<ShortcutKbd keys={displayKeys} className="ml-0 px-1.5 text-foreground/85" />
 					)}
@@ -303,9 +305,7 @@ export default function DesktopLoginPage() {
 						priority
 					/>
 					<h1 className="text-lg font-semibold tracking-tight">{t("title")}</h1>
-					<p className="mt-1 text-sm text-muted-foreground">
-						{t("subtitle")}
-					</p>
+					<p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
 				</div>
 
 				{/* Scrollable content */}

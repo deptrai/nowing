@@ -5,7 +5,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { ApiKeyContent } from "../../components/ApiKeyContent";
 
-
 export default async function PlaygroundSettingsApiKeysPage({
 	params,
 }: {
@@ -18,17 +17,15 @@ export default async function PlaygroundSettingsApiKeysPage({
 	return (
 		<div className="mx-auto w-full max-w-5xl space-y-6">
 			<div className="space-y-1">
-				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">{t('api_keys_title')}</h2>
-				<p className="text-xs sm:text-sm text-muted-foreground font-sans">
-					{t('api_keys_desc')}
-				</p>
+				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">
+					{t("api_keys_title")}
+				</h2>
+				<p className="text-xs sm:text-sm text-muted-foreground font-sans">{t("api_keys_desc")}</p>
 			</div>
 
 			<Alert>
 				<Info />
-				<AlertDescription>
-					{t('api_keys_alert')}
-				</AlertDescription>
+				<AlertDescription>{t("api_keys_alert")}</AlertDescription>
 			</Alert>
 
 			<section>

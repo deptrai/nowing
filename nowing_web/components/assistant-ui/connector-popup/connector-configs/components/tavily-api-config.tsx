@@ -1,12 +1,12 @@
 "use client";
 
 import { KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 export interface TavilyApiConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;
@@ -50,9 +50,7 @@ export const TavilyApiConfig: FC<TavilyApiConfigProps> = ({
 						placeholder={t("my_tavily_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("friendly_name")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
@@ -74,9 +72,7 @@ export const TavilyApiConfig: FC<TavilyApiConfigProps> = ({
 						placeholder={t("enter_tavily_key")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("update_tavily_key")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("update_tavily_key")}</p>
 				</div>
 			</div>
 		</div>

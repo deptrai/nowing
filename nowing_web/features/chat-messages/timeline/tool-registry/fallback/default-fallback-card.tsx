@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import {
 	AlertTriangle,
@@ -9,6 +8,7 @@ import {
 	Globe,
 	XCircleIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { NestedScroll } from "@/components/assistant-ui/nested-scroll";
 import { Badge } from "@/components/ui/badge";
@@ -76,33 +76,34 @@ function isChainlensResearchTool(toolName: string): boolean {
 	return toolName === "chainlens_research" || toolName === "chainlens.research";
 }
 
-function researchBadge(result: ResearchResult): string {
+function researchBadge(result: ResearchResult, tc: (key: string) => string): string {
 	switch (result.status) {
 		case "engine_unavailable":
-			return "Engine unavailable";
+			return tc("engine_unavailable");
 		case "partial":
-			return "Partial result";
+			return tc("partial_result");
 		case "insufficient_evidence":
-			return "No sources";
+			return tc("no_sources_badge");
 		case "timeout":
-			return "Timed out";
+			return tc("timed_out");
 		default:
-			return result.degraded ? "Degraded" : "Completed";
+			return result.degraded ? tc("degraded") : tc("completed");
 	}
 }
 
 function researchSubtitle(
 	result: ResearchResult,
-	t: (key: string) => string
+	t: (key: string) => string,
+	tc: (key: string) => string
 ): string | null {
 	if (result.next_action) return result.next_action;
 	switch (result.status) {
 		case "engine_unavailable":
 			return result.degradation_reason === "fallback_kb_hits"
-				? "Engine unavailable — showing workspace knowledge base fallback"
-				: "The deep research engine is unavailable";
+				? tc("engine_unavailable_kb_fallback")
+				: tc("research_engine_unavailable");
 		case "partial":
-			return "Partial result — some sources could not be verified";
+			return tc("partial_result_unverified");
 		case "insufficient_evidence":
 			return t("no_sources");
 		case "timeout":
@@ -114,11 +115,12 @@ function researchSubtitle(
 
 function ResearchResultView({ result }: { result: ResearchResult }) {
 	const t = useTranslations("layout");
+	const tc = useTranslations("chatMessages");
 	return (
 		<div className="flex flex-col gap-3">
 			{result.answer && (
 				<div className="flex flex-col gap-1 min-w-0">
-					<p className="text-xs font-medium text-muted-foreground">Answer</p>
+					<p className="text-xs font-medium text-muted-foreground">{tc("answer")}</p>
 					<NestedScroll className="max-h-48 overflow-auto rounded-md bg-muted/40">
 						<p className="px-3 py-2 text-sm text-foreground/80 whitespace-pre-wrap">
 							{result.answer}
@@ -130,13 +132,13 @@ function ResearchResultView({ result }: { result: ResearchResult }) {
 				<div className="flex flex-col gap-1.5 min-w-0">
 					<p className="text-xs font-medium text-muted-foreground">
 						{result.sources.some((s) => s.source_type === "kb" || s.url?.startsWith("nowing://"))
-							? "Workspace knowledge base sources"
-							: "Sources"}
+							? tc("workspace_kb_sources")
+							: tc("sources")}
 					</p>
 					<div className="flex flex-col gap-2">
 						{result.sources.map((source, idx) => {
 							const isKb = source.source_type === "kb" || source.url?.startsWith("nowing://");
-							const title = source.title || `Source ${idx + 1}`;
+							const title = source.title || tc("source_numbered", { n: idx + 1 });
 							return (
 								<div
 									key={source.url || `${title}-${idx}`}
@@ -170,7 +172,9 @@ function ResearchResultView({ result }: { result: ResearchResult }) {
 											<p className="text-xs text-muted-foreground line-clamp-2">{source.content}</p>
 										)}
 										{isKb && (
-											<span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("x_workspace_kb")}</span>
+											<span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+												{t("x_workspace_kb")}
+											</span>
 										)}
 									</div>
 								</div>
@@ -206,6 +210,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 	degraded,
 }) => {
 	const t = useTranslations("layout");
+	const tc = useTranslations("chatMessages");
 	const isCancelled = status === "cancelled";
 	const isError = status === "error";
 	const isRunning = status === "running";
@@ -229,12 +234,12 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 
 	const subtitle = useMemo(() => {
 		if (isError || isCancelled) return deriveResultMessage(result);
-		if (isDegraded && researchResult) return researchSubtitle(researchResult, t);
+		if (isDegraded && researchResult) return researchSubtitle(researchResult, t, tc);
 		// While running, surface the latest streamed activity line so progress
 		// is visible even when the card is collapsed.
 		if (isRunning && liveProgress.length > 0) return liveProgress[liveProgress.length - 1];
 		return null;
-	}, [isError, isCancelled, isDegraded, isRunning, liveProgress, result, researchResult, t]);
+	}, [isError, isCancelled, isDegraded, isRunning, liveProgress, result, researchResult, t, tc]);
 
 	const displayName = getToolDisplayName(toolName);
 
@@ -316,7 +321,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 											variant="secondary"
 											className="bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400 px-1.5 py-0 text-[10px]"
 										>
-											{researchBadge(researchResult)}
+											{researchBadge(researchResult, tc)}
 										</Badge>
 									)}
 								</div>
@@ -349,7 +354,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 								type="button"
 								variant="ghost"
 								size="icon"
-								aria-label={isExpanded ? "Collapse details" : "Expand details"}
+								aria-label={isExpanded ? tc("collapse_details") : tc("expand_details")}
 								className="size-6 shrink-0"
 							>
 								<ChevronDownIcon
@@ -368,7 +373,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 					<div className="flex flex-col gap-3 px-5 py-3">
 						{(argsText || isRunning) && (
 							<div className="flex flex-col gap-1 min-w-0">
-								<p className="text-xs font-medium text-muted-foreground">Inputs</p>
+								<p className="text-xs font-medium text-muted-foreground">{tc("inputs")}</p>
 								<NestedScroll className="max-h-48 overflow-auto rounded-md bg-muted/40">
 									{argsText ? (
 										<pre className="px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap break-all font-mono">
@@ -376,7 +381,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 										</pre>
 									) : (
 										<p className="px-3 py-2 text-xs italic text-muted-foreground">
-											Waiting for input…
+											{tc("waiting_for_input")}
 										</p>
 									)}
 								</NestedScroll>
@@ -405,7 +410,7 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 							<>
 								<Separator />
 								<div className="flex flex-col gap-1 min-w-0">
-									<p className="text-xs font-medium text-muted-foreground">Result</p>
+									<p className="text-xs font-medium text-muted-foreground">{tc("result")}</p>
 									{isResearchCard && researchResult ? (
 										<NestedScroll className="max-h-96 overflow-auto rounded-md bg-muted/40 px-3 py-2">
 											<ResearchResultView result={researchResult} />

@@ -1,0 +1,77 @@
+## Dimension 4-5 digest: integration + risk
+
+### Claims
+
+**API shape**
+- Jev is served via a single REST/HTTP JSON evaluation endpoint, `POST https://api.typesafe.ai/v1/systemone`; requests carry `{state, model, questions}` where state is string/object/array and questions is a named map — answers return under the same caller-chosen keys — docs.typesafe.ai (API reference, no date), accessed 2026-09-21, confidence: high, class: api
+- There are exactly three question primitives: `Noul` (yes/no probability), `Choice` (picks one of up to 255 options, returns full probability distribution), `Score` (rates against 2–10 ordered rubric levels, returns probability-weighted value that can land between levels); Choice and Score answers include a 0–1 confidence derived from the distribution — docs.typesafe.ai (API reference), accessed 2026-09-21, confidence: high, class: api
+- No streaming or gRPC surface was found; sampling is explicitly parallel ("generates all outputs in a single query"), end-to-end latency 70–500ms, and output tokens are free — typesafe.ai blog "Introducing System One Models & Jev", 2026-09-15, accessed 2026-09-21, confidence: high (latency is vendor-reported), class: api
+- Auth is API-key via Authorization header (`TYPESAFE_API_KEY` env var in both SDKs); documented errors are 401/422/429 plus a custom 529 "Overloaded" status, with exponential-backoff retry built into the official SDKs — docs.typesafe.ai (API reference), accessed 2026-09-21, confidence: high, class: api
+- Documented limits: 250,000 tokens/sec, 1,200 requests/min, 64k-token context (32k for state + longest question); model alias `jev-latest` (current version `jev-1.13.0`), and docs advise pinning versioned model IDs when confidence thresholds depend on model behavior — awesome-jev-by-typesafe (independent snapshot citing docs.typesafe.ai/models), reviewed 2026-09-19, accessed 2026-09-21, confidence: medium (secondhand but source-cited), class: api
+
+**SDK**
+- Official Python SDK (`typesafe-sdk-python`, 161 GitHub stars) and official TypeScript SDK (`typesafe-sdk-js`, 191 stars, npm `@typesafe-ai/sdk`) both wrap a `TypeSafeClient.system_one(state, questions)` call; PyPI shows `typesafe-sdk` 0.7.0 released 2026-09-18, npm shows 0.6.0 created 2026-09-12 — github.com/typesafe-ai, PyPI, npm registry, accessed 2026-09-21, confidence: high, class: sdk
+- TypeSafe itself publishes `system-one-adapter-python`, described as "a drop-in `typesafe_sdk` replacement backed by LLM APIs" (OpenAI Responses API with strict JSON Schema, native Anthropic, or any OpenAI-compatible endpoint), including an `llm_answer_mode="probabilities"` mode — github.com/typesafe-ai/system-one-adapter-python README, accessed 2026-09-21, confidence: high, class: sdk + alternative
+- Jev is also distributed through third-party gateways: Vercel AI Gateway (`typesafe-ai/jev`) and Cloudflare Workers AI (`typesafe/jev`), plus an official agent-skill for coding agents — awesome-jev-by-typesafe (citing vercel.com and developers.cloudflare.com), accessed 2026-09-21, confidence: medium, class: sdk
+
+**Company / team**
+- Founder/CEO Diogo Almeida is an ex-OpenAI researcher who helped build ChatGPT and co-invented RLHF; co-founders Erik Gafni and Sasha Sheng; the company emerged from stealth September 15, 2026 with a $40M seed led by DCVC at a reported ~$200M valuation — TechCrunch, 2026-09-18, and Forkast, 2026-09-18, accessed 2026-09-21, confidence: high (TechCrunch) / medium (Forkast figures), class: company
+- The company spent ~2 years in stealth and launched in "early access"; demand was high enough that it "briefly lost the ability to serve users from its API" at launch — TechCrunch, 2026-09-18, accessed 2026-09-21, confidence: high, class: company + risk
+- No named production customers and no revenue disclosed as of launch week — Forkast, 2026-09-18, accessed 2026-09-21, confidence: medium, class: risk
+
+**Claims / calibration quality**
+- TypeSafe's flagship benchmark ("workflow evals") scores agreement with the average of GPT-6 Astra and Claude Fable 5.1 rather than against ground truth, and the workflows were authored by its own model-capabilities team; the company itself flags possible bias — typesafe.ai blog, 2026-09-15, accessed 2026-09-21, confidence: high, class: comparison
+- The company concedes it "can't prove" its pricing isn't subsidized, and that the 193.6x/444.6x headline numbers are "on the higher end of real world gains" — typesafe.ai blog, 2026-09-15, accessed 2026-09-21, confidence: high, class: risk
+- Independent corroboration: Every tested Jev at ~25x faster and ~580x cheaper than Claude Fable 5.1 on one extraction task (0.35s vs 8.83s); TypeSafe reports ~67.8% on its internal four-workflow benchmark, claiming parity with GPT-5.6 Terra; a Vercel engineer reported 5–18x faster than an OpenAI model with greater accuracy on a safety classifier; a Bryo AI CTO found Gemini slightly more accurate but 10–20x more expensive — Forkast, 2026-09-18 (aggregating Every and developer anecdotes), accessed 2026-09-21, confidence: medium (vendor-supplied figures relayed by press), class: comparison
+- Armin Ronacher (CTO, Earendil/Pi) notes the design "delegates the hallucination problem to the user" via confidence thresholds and suggests model routing as a fit; he expects competitors to follow now that utility is apparent — TechCrunch, 2026-09-18, accessed 2026-09-21, confidence: high, class: ecosystem
+
+**Ecosystem**
+- The launch hit 1,929 points / 508 comments on Hacker News, and by 2026-09-17–18 at least three independent "awesome-jev" list repos appeared; the most curated one explicitly warns that same-day bulk submissions "can satisfy every inclusion rule and still be unproven" — Hacker News (item 49717558), github.com/yibie/awesome-jev, accessed 2026-09-21, confidence: high, class: ecosystem
+- Open-weight replications appeared within days: HF models tagged RLCD (e.g., `LFM2.5-350M-RLCD` 228 downloads, `rlcd-modernbert-151m` 848 downloads) and `Open-Jev-2B`/`Open-Jev-9B` — Apache-2.0 LoRA adapters with a scalar decision head on Qwen3.5 that score candidate sets without autoregressive generation — huggingface.co (ZefanCai/Open-Jev-2B model card), accessed 2026-09-21, confidence: medium (unverified community work), class: alternative
+- The category is spawning adjacent products: "Show HN: CUA-S1 – A System One Model for Computer Use" (trycua/cua, 89 points) appeared the same week — Hacker News via Algolia, accessed 2026-09-21, confidence: high, class: ecosystem
+
+### Alternatives matrix
+
+| Alternative | Latency | Cost/decision | Calibration | Ops burden | Vendor risk | Notes |
+|---|---|---|---|---|---|---|
+| **Jev (TypeSafe)** | 70–500ms (vendor-claimed; Every corroborated 0.35s on one task) | ~$0.0004/decision; $0.042/MTok in, output free | Natively calibrated probabilities + confidence, threshold-gated in code | Low — hosted API, 2 SDKs, gateway availability | High: 6-day-old product, single model, early access, unproven pricing | Official escape hatch exists (see adapter row) |
+| **LLM JSON mode / structured output** (OpenAI strict JSON Schema via Responses API, Anthropic structured outputs, via `system-one-adapter-python`) | 3–329s for frontier models (TypeSafe blog); adapter shows per-retry latency telemetry | TechCrunch anecdote: Gemini 10–20x costlier for slightly better accuracy; TypeSafe claims ~444.6x costlier | Poor natively — "models tend to be overconfident and inconsistent"; adapter's `llm_answer_mode="probabilities"` asks LLM to emit probabilities, which TypeSafe's own evals find weaker | Low–medium — no new infra, but prompt/schema engineering per task | Low — multi-provider, OpenAI-compatible endpoints portable | The adapter's existence makes this the default fallback: same Noul/Choice/Score interface |
+| **Constrained decoding libs** (Outlines, Instructor, PydanticAI, Guidance, XGrammar) | Mid — inference-bound on your model | Your GPU cost; cheap at small models | No calibration guarantee; enforces schema, not probability honesty | Medium-high — you host and version models | Low (mostly OSS) | No 2026 primary source retrieved this run for these specific libs — listed from brief, unverified here |
+| **Self-hosted RLCD replications** (`Open-Jev-2B`/`9B` on Qwen3.5, `LFM2.5-*-RLCD`, `rlcd-modernbert-151m`) | Unknown — GPU-bound; local | Marginal GPU cost; free weights | Adapters claim the same typed-decision + probability interface; calibration unverified | High — need exact base-model revisions, custom loader, decision head | Low (Apache-2.0) but immature — 0–848 downloads | Emerged within ~4 days of launch; treat as leads, not production tools |
+| **Small classic classifiers** (DistilBERT/ModernBERT/SetFit fine-tunes) | Fastest (ms-class, local) | Cheapest at scale | Probabilities are real but must be recalibrated per task (temperature scaling etc.) | Highest — labeling, training, deployment, drift management all yours | None | No 2026 primary source retrieved this run; standard trade-off, unverified here |
+| **Gateway-routed Jev** (Vercel AI Gateway, Cloudflare Workers AI) | Gateway adds hop | Gateway pricing may differ from direct API | Same model | Lowest ops | Medium — gateway abstracts provider, but Jev is the only model of its class behind either | Check platform-specific rate/data terms separately |
+
+### Risk register
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Vendor fold (young startup, no disclosed revenue/customers) | Medium (well-funded: $40M DCVC seed, ~$200M valuation, but 2-person-cofounder-stage lab economics) | High — API dies, thresholds lose calibration meaning | Route through `system-one-adapter-python` interface (drop-in LLM-backed replacement, published by TypeSafe itself); keep the Noul/Choice/Score primitive contract as your internal abstraction; gateways (Vercel/Cloudflare) add another port |
+| Price change / subsidy ends — company admits it "can't prove" pricing is sustainable | Medium-high (explicitly flagged by the company) | Medium — economics shift but stays cheap vs LLMs (10–20x gap measured independently) | Keep per-decision cost telemetry; the adapter enables A/B comparison against OpenAI/Anthropic at any time; name is Jevons-paradox-branded — company expects prices to fall |
+| API deprecation / alias drift (`jev-latest` moves) | High (aliases documented as moveable) | Medium — silent calibration shifts | Pin versioned model IDs (`jev-1.13.0`); log the returned model version per response (TypeSafe's own docs advise this) |
+| Accuracy regression or miscalibration on your workload | Medium — benchmark methodology is self-referential (agreement with GPT-6 Astra/Fable 5.1, workflows authored in-house); Every tested only one task type | High if thresholds gate autonomous action | Build an independent ground-truth eval before trusting confidence scores; English-primary only, text-only modality — test non-English and edge workloads on representative data |
+| Capacity/availability (529 Overloaded class exists; launch-day outage already occurred) | Medium in early access | Medium — 70–500ms latency promises degrade | SDKs retry with backoff; keep confidence-gated fallback paths in code; gateway routes add redundancy |
+| Single-product concentration (Jev is the only public model; no OpenRouter listing found this run) | Medium | Medium — no second source for the *exact* capability (parallel typed decisions with calibration) | The LLM-adapter path is the only like-for-like substitute; accept quality gap if forced to switch |
+| Ecosystem hype / fake adoption signals | High (three same-day awesome-jev repos; one warns bulk submissions are "unproven"; HN commenters initially thought the launch was satire) | Low–medium — wasted eval time, corrupted due diligence | Follow the yibie list's own checklist: verify code exists and runs before citing an adoption example |
+| Founder bus factor / key-person risk | Low-medium — Almeida is the singular public research identity | Medium | Team is small and lab-centric ("half of our company" on synthetic data); monitor hiring page and conference presence |
+
+### Leads worth chasing
+- `system-one-adapter-python` internals — it doubles as TypeSafe's own definition of "how to get the same answer out of an LLM," i.e., the vendor-blessed abstraction layer for the lock-in question (github.com/typesafe-ai/system-one-adapter-python)
+- TypeSafe's workflow-evals site (linked from the launch post) — full queries, disagreements, and all four workflows published; the closest thing to reproducible evidence
+- The Every independent review (cited by Forkast) — apparently the only third-party benchmark so far
+- `Zefan-Cai/Open-Jev` GitHub repo + `Open-Jev-2B/9B` adapters — whether open RLCD-style replication converges to real calibration
+- `trycua/cua` (CUA-S1, 89 HN points) — evidence the "System One Model" category is being imitated as a *category*, not just a product
+- Forkast names DCVC as seed lead — Crunchbase/SEC Form D would confirm round details (not checked this run)
+- Console at console.typesafe.ai for actual early-access terms, rate-limit SLAs, and enterprise/ZDR retention terms
+
+### Not found
+- No gRPC, WebSocket, or streaming API surface — evidence of absence only from the docs page and SDKs; a private/enterprise streaming API may exist
+- No funding primary source (Crunchbase, Form D) — $40M/DCVC is press-reported only
+- No named production customer case studies
+- No 2026 sources retrieved this run for Outlines/Instructor/PydanticAI/Guidance/XGrammar specifically, nor for DistilBERT/SetFit comparisons — those matrix rows rest on the brief's premise, not on retrieved evidence
+- No arxiv paper on RLCD — arxiv search returned nothing; RLCD currently exists only as the company's term (and in community replicas named after it)
+- No OpenRouter listing for Jev (checked API — zero matches), despite the company's own blog citing OpenRouter pricing for LLM comparisons
+- The Register article URL 404'd twice — article may have moved; Register coverage unverified
+- No direct competitor vendor to TypeSafe found (Predibase/Cresta/Sierra/Decagon were not confirmed as playing in this exact typed-decision-with-calibration space this run)
+
+### Summary
+Integration is clean and small: one REST endpoint (`POST /v1/systemone`), three typed primitives (Noul/Choice/Score) with probabilities and confidence in every answer, official Python and TS SDKs released this month, plus distribution through Vercel and Cloudflare gateways. The decisive lock-in mitigant is unusual: TypeSafe publishes a drop-in adapter that reimplements its own client interface on top of OpenAI/Anthropic structured outputs, so the migration path back to LLM-based decisions is first-party and the Noul/Choice/Score contract is the abstraction layer to keep in your code. Risk profile is that of a 6-day-old product: $40M DCVC seed with credible RLHF-inventor founders, but self-referential benchmarks, a company-admitted possibly-subsidized price, no disclosed customers, launch-day capacity failure, and a hype-heavy ecosystem. Verdict for adoption: safe to prototype behind the adapter interface now; gate production autonomy on your own ground-truth calibration eval and pinned model versions, and revisit when a second vendor (or a mature Open-Jev replication) gives the category a second source.

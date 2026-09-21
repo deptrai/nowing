@@ -3,10 +3,10 @@ import { IconCalendar, IconMailFilled } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useId } from "react";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
 
 export function ContactFormGridWithDetails() {
 	const t = useTranslations("contact");

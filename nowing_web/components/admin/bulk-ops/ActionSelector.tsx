@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,7 +11,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ACTION_METADATA, type BulkAction } from "@/contracts/types/admin-bulk-ops.types";
-import { useTranslations } from "next-intl";
 
 interface ActionSelectorProps {
 	value: BulkAction | "";

@@ -1,11 +1,11 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getAllConnectors } from "@/lib/connectors-marketing";
-import { useTranslations } from "next-intl";
 
 /** Registry-driven connector grid with a live count badge (brief: never list connectors in copy). */
 export function ConnectorGrid() {
@@ -16,7 +16,9 @@ export function ConnectorGrid() {
 		<MarketingSection>
 			<Reveal>
 				<div className="flex flex-wrap items-center gap-3">
-					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("home_connectors_for_every_platform")}</h2>
+					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+						{t("home_connectors_for_every_platform")}
+					</h2>
 					<Badge variant="outline" className="py-1">
 						{connectors.length} {t("connectors_count")}
 					</Badge>
@@ -57,7 +59,9 @@ export function ConnectorGrid() {
 				</div>
 				<div className="mt-6">
 					<Button asChild variant="outline">
-						<Link href="/connectors">{t("home_view_all_connectors")}<ArrowRight className="size-4" aria-hidden="true" />
+						<Link href="/connectors">
+							{t("home_view_all_connectors")}
+							<ArrowRight className="size-4" aria-hidden="true" />
 						</Link>
 					</Button>
 				</div>

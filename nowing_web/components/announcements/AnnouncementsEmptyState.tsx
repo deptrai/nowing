@@ -11,9 +11,7 @@ export function AnnouncementsEmptyState() {
 				<BellOff className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 			</div>
 			<h3 className="text-sm font-semibold">{t("empty_title")}</h3>
-			<p className="mt-1 max-w-xs text-xs text-muted-foreground">
-				{t("empty_desc")}
-			</p>
+			<p className="mt-1 max-w-xs text-xs text-muted-foreground">{t("empty_desc")}</p>
 		</div>
 	);
 }

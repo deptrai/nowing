@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import {
 	AlertCircle,
 	Clock,
@@ -11,6 +10,7 @@ import {
 	RotateCcw,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import React, { useCallback, useRef, useState } from "react";
 import { useDrag } from "react-dnd";
 import { getDocumentTypeIcon } from "@/components/documents/DocumentTypeIcon";

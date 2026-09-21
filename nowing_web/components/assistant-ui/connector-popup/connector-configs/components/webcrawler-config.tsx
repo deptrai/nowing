@@ -1,6 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfigChange }) => {
 	const t = useTranslations("assistant");
@@ -64,7 +64,9 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 
 			{/* API Key Field */}
 			<div className="space-y-2">
-				<Label htmlFor="api-key" className="text-xs sm:text-sm">{t("asst_firecrawl_api_key_optional")}</Label>
+				<Label htmlFor="api-key" className="text-xs sm:text-sm">
+					{t("asst_firecrawl_api_key_optional")}
+				</Label>
 				<div className="relative">
 					<Input
 						id="api-key"
@@ -110,17 +112,13 @@ export const WebcrawlerConfig: FC<ConnectorConfigProps> = ({ connector, onConfig
 					onChange={(e) => handleUrlsChange(e.target.value)}
 					className="min-h-[100px] font-mono text-xs sm:text-sm bg-slate-400/5 dark:bg-white/5 border-slate-400/20 resize-none"
 				/>
-				<p className="text-[10px] sm:text-xs text-muted-foreground">
-					{t("initial_urls_desc")}
-				</p>
+				<p className="text-[10px] sm:text-xs text-muted-foreground">{t("initial_urls_desc")}</p>
 			</div>
 
 			{/* Info Alert */}
 			<Alert>
 				<Info />
-				<AlertDescription>
-					{t("config_saved_on_index")}
-				</AlertDescription>
+				<AlertDescription>{t("config_saved_on_index")}</AlertDescription>
 			</Alert>
 		</div>
 	);

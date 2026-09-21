@@ -3,13 +3,13 @@
 import { Bell, ExternalLink, Info, type LucideIcon, Rocket, Wrench, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import type { AnnouncementCategory } from "@/contracts/types/announcement.types";
 import type { AnnouncementWithState } from "@/hooks/use-announcements";
 import { formatRelativeDate } from "@/lib/format-date";
-import { useTranslations } from "next-intl";
 
 const categoryConfig: Record<
 	AnnouncementCategory,
@@ -102,7 +102,9 @@ export function AnnouncementCard({ announcement }: { announcement: AnnouncementW
 			</CardHeader>
 
 			<CardContent className="pb-3">
-				<p className="text-sm text-muted-foreground leading-relaxed">{t(announcement.description)}</p>
+				<p className="text-sm text-muted-foreground leading-relaxed">
+					{t(announcement.description)}
+				</p>
 			</CardContent>
 
 			{announcement.link && (

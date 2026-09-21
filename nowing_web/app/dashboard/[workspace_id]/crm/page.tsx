@@ -20,9 +20,7 @@ export default function WorkspaceCrmPage({
 			<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
-					<p className="text-xs text-muted-foreground">
-						{t("subtitle")}
-					</p>
+					<p className="text-xs text-muted-foreground">{t("subtitle")}</p>
 				</div>
 
 				<div className="flex items-center gap-1 bg-muted p-1 rounded-lg self-start sm:self-auto">

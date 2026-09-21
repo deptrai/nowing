@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useId, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -40,38 +40,43 @@ import { DateRangeSelector } from "../../components/date-range-selector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const createElasticsearchConnectorFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z
-	.object({
-		name: z.string().min(3, {
-			message: t("connector_name_min"),
-		}),
-		endpoint_url: z.string().url({ message: t("elasticsearch_endpoint_invalid") }),
-		auth_method: z.enum(["basic", "api_key"]),
-		username: z.string().optional(),
-		password: z.string().optional(),
-		ELASTICSEARCH_API_KEY: z.string().optional(),
-		indices: z.string().optional(),
-		query: z.string(),
-		search_fields: z.string().optional(),
-		max_documents: z.number().min(1).max(10000).optional(),
-	})
-	.refine(
-		(data) => {
-			if (data.auth_method === "basic") {
-				return Boolean(data.username?.trim() && data.password?.trim());
+const createElasticsearchConnectorFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z
+		.object({
+			name: z.string().min(3, {
+				message: t("connector_name_min"),
+			}),
+			endpoint_url: z.string().url({ message: t("elasticsearch_endpoint_invalid") }),
+			auth_method: z.enum(["basic", "api_key"]),
+			username: z.string().optional(),
+			password: z.string().optional(),
+			ELASTICSEARCH_API_KEY: z.string().optional(),
+			indices: z.string().optional(),
+			query: z.string(),
+			search_fields: z.string().optional(),
+			max_documents: z.number().min(1).max(10000).optional(),
+		})
+		.refine(
+			(data) => {
+				if (data.auth_method === "basic") {
+					return Boolean(data.username?.trim() && data.password?.trim());
+				}
+				if (data.auth_method === "api_key") {
+					return Boolean(data.ELASTICSEARCH_API_KEY?.trim());
+				}
+				return true;
+			},
+			{
+				message: t("elasticsearch_auth_required"),
+				path: ["auth_method"],
 			}
-			if (data.auth_method === "api_key") {
-				return Boolean(data.ELASTICSEARCH_API_KEY?.trim());
-			}
-			return true;
-		},
-		{
-			message: t("elasticsearch_auth_required"),
-			path: ["auth_method"],
-		}
-	);
+		);
 
-type ElasticsearchConnectorFormValues = z.infer<ReturnType<typeof createElasticsearchConnectorFormSchema>>;
+type ElasticsearchConnectorFormValues = z.infer<
+	ReturnType<typeof createElasticsearchConnectorFormSchema>
+>;
 
 export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");
@@ -177,9 +182,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 			<Alert>
 				<Info />
 				<AlertTitle>{t("api_key_required")}</AlertTitle>
-				<AlertDescription>
-					{t("elasticsearch_desc")}
-				</AlertDescription>
+				<AlertDescription>{t("elasticsearch_desc")}</AlertDescription>
 			</Alert>
 
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
@@ -220,7 +223,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 								name="endpoint_url"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel className="text-xs sm:text-sm">{t("elasticsearch_endpoint")}</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">
+											{t("elasticsearch_endpoint")}
+										</FormLabel>
 										<FormControl>
 											<Input
 												type="url"
@@ -409,7 +414,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										Comma-separated indices to search (e.g., "logs-*, documents-*").
+										{t("elasticsearch_indices_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -432,10 +437,10 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 
 						<Alert>
 							<Info />
-							<AlertTitle>{t("index_selection")} Tips</AlertTitle>
+							<AlertTitle>{t("index_selection_tips")}</AlertTitle>
 							<AlertDescription>
 								<ul className="list-disc pl-4 space-y-1">
-									<li>Use wildcards like "logs-*" to match multiple indices</li>
+									<li>{t("index_tip_wildcards")}</li>
 									<li>{t("index_tip_1")}</li>
 									<li>{t("index_tip_2")}</li>
 									<li>{t("index_tip_3")}</li>
@@ -484,7 +489,8 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 										render={({ field }) => (
 											<FormItem>
 												<FormLabel className="text-xs sm:text-sm">
-													{t("search_fields")} <span className="text-muted-foreground">(Optional)</span>
+													{t("search_fields")}{" "}
+													<span className="text-muted-foreground">(Optional)</span>
 												</FormLabel>
 												<FormControl>
 													<Input
@@ -506,7 +512,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 									{/* Show parsed search fields as badges */}
 									{form.watch("search_fields")?.trim() && (
 										<div className="rounded-lg border border-border bg-muted/50 p-3">
-											<h4 className="text-[10px] sm:text-xs font-medium mb-2">{t("search_fields")}:</h4>
+											<h4 className="text-[10px] sm:text-xs font-medium mb-2">
+												{t("search_fields")}:
+											</h4>
 											<div className="flex flex-wrap gap-2">
 												{stringToArray(form.watch("search_fields") ?? "").map((field) => (
 													<Badge key={field} variant="outline" className="text-[10px]">
@@ -570,7 +578,9 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 							<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 								<div className="flex items-center justify-between">
 									<div className="space-y-1">
-										<h3 className="font-medium text-sm sm:text-base">{t("enable_periodic_sync")}</h3>
+										<h3 className="font-medium text-sm sm:text-base">
+											{t("enable_periodic_sync")}
+										</h3>
 										<p className="text-xs sm:text-sm text-muted-foreground">
 											{t("periodic_sync_desc")}
 										</p>
@@ -635,9 +645,7 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 			{/* What you get section */}
 			{getConnectorBenefits(EnumConnectorName.ELASTICSEARCH_CONNECTOR) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
-					<h4 className="text-xs sm:text-sm font-medium">
-						{t("elasticsearch_what_you_get")}
-					</h4>
+					<h4 className="text-xs sm:text-sm font-medium">{t("elasticsearch_what_you_get")}</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.ELASTICSEARCH_CONNECTOR)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

@@ -16,9 +16,7 @@ export const VisionLLMConfig: FC<VisionLLMConfigProps> = ({ enabled, onEnabledCh
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
 					<h3 className="font-medium text-sm sm:text-base">{t("enable_vision_llm")}</h3>
-					<p className="text-xs sm:text-sm text-muted-foreground">
-						{t("vision_llm_desc")}
-					</p>
+					<p className="text-xs sm:text-sm text-muted-foreground">{t("vision_llm_desc")}</p>
 				</div>
 				<Switch checked={enabled} onCheckedChange={onEnabledChange} />
 			</div>

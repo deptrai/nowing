@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Server, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import type { ConnectFormProps } from "..";
 
 export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");
+	const tConnector = useTranslations("connector");
 	const isSubmittingRef = useRef(false);
 	const [configJson, setConfigJson] = useState("");
 	const [jsonError, setJsonError] = useState<string | null>(null);
@@ -197,7 +198,11 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 							rows={16}
 							className={`font-mono text-xs ${jsonError ? "border-red-500" : ""}`}
 						/>
-						{jsonError && <p className="text-xs text-red-500">{t("mcp_json_error")} {jsonError}</p>}
+						{jsonError && (
+							<p className="text-xs text-red-500">
+								{t("mcp_json_error")} {jsonError}
+							</p>
+						)}
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
 							Paste a single MCP server configuration. Must include: name, command, args (optional),
 							env (optional), transport (optional).
@@ -240,7 +245,9 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 							)}
 							<div className="col-start-2 flex items-center justify-between">
 								<AlertTitle className="text-sm">
-									{testResult.status === "success" ? t("mcp_connection_success") : t("mcp_connection_failed")}
+									{testResult.status === "success"
+										? t("mcp_connection_success")
+										: t("mcp_connection_failed")}
 								</AlertTitle>
 								{testResult.tools.length > 0 && (
 									<Button
@@ -271,7 +278,9 @@ export const MCPConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting })
 								)}
 							</div>
 							<AlertDescription className="text-[10px] sm:text-xs mt-1">
-								{testResult.status === "success" ? t("connector.connect_success", { count: testResult.tools.length }) : testResult.message}
+								{testResult.status === "success"
+									? tConnector("connect_success", { count: testResult.tools.length })
+									: testResult.message}
 								{showDetails && testResult.tools.length > 0 && (
 									<div className="mt-3 pt-3 border-t border-green-500/20">
 										<p className="font-semibold mb-2">{t("mcp_available_tools")}</p>

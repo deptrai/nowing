@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Badge } from "@/components/ui/badge";
@@ -158,7 +158,7 @@ export default function AgentRegistryAdminPage() {
 	}
 
 	async function handleDelete(agent: AdminAgentConfigRead) {
-		if (!confirm(t("agents_confirm_deactivate", {name: agent.display_name}))) return;
+		if (!confirm(t("agents_confirm_deactivate", { name: agent.display_name }))) return;
 		try {
 			await adminAgentRegistryApiService.deleteAgent(agent.id);
 			toast.success(t("agents_deactivated"));
@@ -241,7 +241,9 @@ export default function AgentRegistryAdminPage() {
 										) : (
 											<Badge variant="secondary">{t("agents_inactive")}</Badge>
 										)}
-										{agent.citations_enabled && <Badge variant="outline">{t("agents_citations")}</Badge>}
+										{agent.citations_enabled && (
+											<Badge variant="outline">{t("agents_citations")}</Badge>
+										)}
 									</div>
 								</div>
 							</CardHeader>
@@ -256,7 +258,8 @@ export default function AgentRegistryAdminPage() {
 								)}
 								{agent.enabled_tools.length > 0 && (
 									<div className="text-sm text-muted-foreground">
-										<span className="font-medium">{t("agents_tools")}:</span> {agent.enabled_tools.join(", ")}
+										<span className="font-medium">{t("agents_tools")}:</span>{" "}
+										{agent.enabled_tools.join(", ")}
 									</div>
 								)}
 								<div className="flex justify-end gap-2 pt-2">
@@ -278,9 +281,7 @@ export default function AgentRegistryAdminPage() {
 					<DialogHeader>
 						<DialogTitle>{editAgent ? t("agents_edit_title") : t("agents_add_title")}</DialogTitle>
 						<DialogDescription>
-							{editAgent
-								? t("agents_edit_desc")
-								: t("agents_create_desc")}
+							{editAgent ? t("agents_edit_desc") : t("agents_create_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -437,7 +438,11 @@ export default function AgentRegistryAdminPage() {
 							Cancel
 						</Button>
 						<Button onClick={() => void handleSave()} disabled={isSubmitting}>
-							{isSubmitting ? t("agents_saving") : editAgent ? t("agents_save_changes") : t("agents_create")}
+							{isSubmitting
+								? t("agents_saving")
+								: editAgent
+									? t("agents_save_changes")
+									: t("agents_create")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

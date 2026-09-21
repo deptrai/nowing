@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-17-2026 23:28'
+last_updated: '09-20-2026 19:04'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -224,11 +224,18 @@ development_status:
   18-8-rate-limiting-tenant-isolation: done
   epic-18-retrospective: done
 
-  epic-20: done
+  epic-20: in-progress
   20-4-service-to-service-auth-cost-ledger-sync: done
   20-1-nowing-scraper-to_chunks: done
   20-2-gap-fill-caller-cost-allocation: done
   20-3-nowingprivateprovider-for: done
+  20-5-chainlens-contents-url-extraction: review
+  20-6-chainlens-code_search-code-search: done
+  20-7-chainlens-openai-gateway-model-connections: ready-for-dev
+  20-8-chainlens-webhook-monitors-automations: ready-for-dev
+  20-9-async-research-jobs-resumption: ready-for-dev
+  20-10-chainlens-pulse_feed-curated-intelligence-feed: ready-for-dev
+  20-11-chainlens-pulse_research-angle-deep-research: ready-for-dev
   epic-20-retrospective: done
 
   epic-21: done
@@ -296,7 +303,7 @@ development_status:
   25-7-third-party-health-operations-dashboard: done
   epic-25-retrospective: done
 
-  epic-26: done
+  epic-26: in-progress
   26-25-customer-location-profile-selector-with-progressive-disclosu: done
   26-26-location-aware-adapter-routing-coverage-quality: done
   26-27-pre-flight-lead-plan-summary-plansummarycard: done
@@ -313,6 +320,7 @@ development_status:
   26-11-two-tier-phone-unlock-ux-refinement: done
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
+  26-9c-native-wide_research-matrix-upgrade: ready-for-dev
   epic-26-retrospective: done
 
   epic-27: done
@@ -391,24 +399,28 @@ development_status:
   epic-36-retrospective: done
 
   epic-37: in-progress
-  37-1-proactive-intent-signal-radar-background-ingestion-tele: ready-for-dev
-  37-2-vietnam-cultural-honorific-and-relationship-tone-engine: ready-for-dev
-  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark: ready-for-dev
+  37-1-proactive-intent-signal-radar-background-ingestion-telegram: 
+    ready-for-dev
+  37-2-vietnam-cultural-honorific-relationship-tone-engine: ready-for-dev
+  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark-cale: 
+    ready-for-dev
   37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper: ready-for-dev
-  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: ready-for-dev
-  37-6-realtime-prospect-engagement-tracker-and-telegram-alert-bot: ready-for-dev
-  37-7-hybrid-pricing-packaging-ui-and-auto-refund-guarantee-sla: ready-for-dev
+  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: 
+    ready-for-dev
+  37-6-realtime-prospect-engagement-tracker-telegram-alert-bot-ping: 
+    ready-for-dev
+  37-7-hybrid-pricing-packaging-ui-auto-refund-guarantee-sla: ready-for-dev
   epic-37-retrospective: optional
 
   epic-38: in-progress
   38-1-livekit-sip-gateway-kamailio-media-infrastructure: done
-  38-2-voice-agent-worker-runtime-silero-vad-streaming: done
-  38-3-anti-false-interruption-multi-tier-barge-in-engine: backlog
-  38-4-telephony-compliance-gate-national-dnc-curfew: backlog
-  38-5-telecom-signal-classifier-amd-dead-air-watchdog: backlog
-  38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip: backlog
-  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar: backlog
-  38-8-voice-billing-nowing-wallet-realtime-metering-qa: backlog
+  38-2-voice-agent-worker-runtime-với-silero-vad-micro-clause-strea: done
+  38-3-anti-false-interruption-multi-tier-barge-in-engine-ducking-k: backlog
+  38-4-telephony-compliance-gate-national-dnc-5656-curfew-scheduler: backlog
+  38-5-telecom-signal-classifier-amd-dead-air-watchdog-engine: backlog
+  38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip-architectur: backlog
+  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: backlog
+  38-8-voice-billing-realtime-metering-qa-scorecard: backlog
   epic-38-retrospective: optional
 validation_reports:
   - story: "3.18"

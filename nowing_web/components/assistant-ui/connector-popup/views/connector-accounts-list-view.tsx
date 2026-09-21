@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useAtomValue } from "jotai";
 import { ArrowLeft, Plus, RefreshCw, Server } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useState } from "react";
 import { toast } from "sonner";
 import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms";
@@ -46,6 +46,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 	addButtonText,
 }) => {
 	const t = useTranslations("assistant");
+	const tConnector = useTranslations("connector");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const [reauthingId, setReauthingId] = useState<number | null>(null);
 	const [confirmDisconnectId, setConfirmDisconnectId] = useState<number | null>(null);
@@ -121,7 +122,9 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 					onClick={onBack}
 					className="mb-6 h-auto w-fit gap-2 px-0 py-0 text-xs font-normal text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
-					<ArrowLeft className="size-4" aria-hidden="true" />{t("asst_back_to_connectors")}</Button>
+					<ArrowLeft className="size-4" aria-hidden="true" />
+					{t("asst_back_to_connectors")}
+				</Button>
 
 				{/* Connector header */}
 				<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
@@ -182,7 +185,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 						<p className="text-xs text-muted-foreground max-w-[280px]">
 							{isMCP
 								? "Get started by adding your first Model Context Protocol server"
-								: t("connector.get_started", { connector: connectorTitle })}
+								: tConnector("get_started", { connector: connectorTitle })}
 						</p>
 					</div>
 				) : (
@@ -225,11 +228,15 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										</p>
 										{isIndexing ? (
 											<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
-												<Spinner size="xs" />{t("asst_syncing")}</p>
+												<Spinner size="xs" />
+												{t("asst_syncing")}
+											</p>
 										) : !isLive ? (
 											<p className="text-[10px] mt-1 whitespace-nowrap truncate text-muted-foreground">
 												{connector.last_indexed_at
-													? t("connector.last_indexed", { date: formatRelativeDate(connector.last_indexed_at) })
+													? tConnector("last_indexed", {
+															date: formatRelativeDate(connector.last_indexed_at),
+														})
 													: t("conn_never_indexed")}
 											</p>
 										) : null}
@@ -243,7 +250,9 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										>
 											<RefreshCw
 												className={cn("size-3.5", reauthingId === connector.id && "animate-spin")}
-											/>{t("asst_re_authenticate")}</Button>
+											/>
+											{t("asst_re_authenticate")}
+										</Button>
 									) : needsReconnect ? (
 										<Button
 											size="sm"
@@ -254,7 +263,9 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										>
 											<RefreshCw
 												className={cn("size-3.5", reauthingId === connector.id && "animate-spin")}
-											/>{t("asst_reconnect_via_mcp")}</Button>
+											/>
+											{t("asst_reconnect_via_mcp")}
+										</Button>
 									) : isLive && onDisconnect ? (
 										confirmDisconnectId === connector.id ? (
 											<div className="flex items-center gap-1.5 shrink-0">
@@ -295,7 +306,9 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 												size="sm"
 												className="h-8 text-[11px] px-3 font-medium shrink-0"
 												onClick={() => setConfirmDisconnectId(connector.id)}
-											>{t("asst_disconnect")}</Button>
+											>
+												{t("asst_disconnect")}
+											</Button>
 										)
 									) : (
 										<Button

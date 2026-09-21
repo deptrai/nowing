@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
@@ -147,7 +147,9 @@ function GenericApprovalCardView({
 					) : phase === "rejected" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("x_action_was_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("x_requires_your_approval_to")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("x_requires_your_approval_to")}
+						</p>
 					)}
 					{mcpServer && (
 						<p className="text-[10px] text-muted-foreground/70 mt-1">
@@ -208,7 +210,9 @@ function GenericApprovalCardView({
 							</Button>
 						)}
 						{canApproveAlways && (
-							<Button size="sm" className="rounded-lg" onClick={handleApproveAlways}>{t("x_always_allow")}</Button>
+							<Button size="sm" className="rounded-lg" onClick={handleApproveAlways}>
+								{t("x_always_allow")}
+							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (
 							<Button

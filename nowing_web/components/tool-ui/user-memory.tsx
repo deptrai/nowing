@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { AlertTriangleIcon, BrainIcon, CheckIcon, Loader2Icon, XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 
 // ============================================================================

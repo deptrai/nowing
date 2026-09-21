@@ -125,7 +125,7 @@ export function DocumentsFilters({
 								>
 									{filteredTypes.length === 0 ? (
 										<div className="py-6 text-center text-sm text-muted-foreground">
-											No types found
+											{t("no_types_found")}
 										</div>
 									) : (
 										filteredTypes.map((value: DocumentTypeEnum, i) => (
@@ -151,8 +151,7 @@ export function DocumentsFilters({
 														{getDocumentTypeLabel(value)}
 													</span>
 													<span className="text-[11px] text-muted-foreground leading-tight">
-														{typeCounts.get(value)} document
-														{(typeCounts.get(value) ?? 0) !== 1 ? "s" : ""}
+														{t("documents_count", { count: typeCounts.get(value) ?? 0 })}
 													</span>
 												</div>
 												<Checkbox

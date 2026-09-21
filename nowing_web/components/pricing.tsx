@@ -5,13 +5,13 @@ import confetti from "canvas-confetti";
 import { Check, Star } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
 
 interface PricingPlan {
 	name: string;
@@ -32,11 +32,7 @@ interface PricingProps {
 	description?: string;
 }
 
-export function Pricing({
-	plans,
-	title,
-	description,
-}: PricingProps) {
+export function Pricing({ plans, title, description }: PricingProps) {
 	const t = useTranslations("pricing");
 	const resolvedTitle = title ?? t("default_title");
 	const resolvedDescription = description ?? t("default_description");

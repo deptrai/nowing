@@ -3,9 +3,9 @@
 import { useAtom } from "jotai";
 import { X } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { pendingUserImageDataUrlsAtom } from "@/atoms/chat/pending-user-images.atom";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 export const PendingScreenImageStrip: FC = () => {

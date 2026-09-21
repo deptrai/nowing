@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -15,7 +16,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -239,7 +239,9 @@ function ApprovalCard({
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={hasPanelEdits ? t("jira_updating_issue_with_changes") : t("jira_updating_issue")}
+							text={
+								hasPanelEdits ? t("jira_updating_issue_with_changes") : t("jira_updating_issue")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
@@ -249,9 +251,7 @@ function ApprovalCard({
 					) : phase === "rejected" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("jira_update_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							{t("common_requires_approval")}
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -295,7 +295,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("jira_account_label")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("jira_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -304,7 +306,9 @@ function ApprovalCard({
 
 								{issue && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("jira_current_issue")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("jira_current_issue")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 											<div className="font-medium">
 												{issue.issue_identifier}: {issue.issue_title}
@@ -317,7 +321,11 @@ function ApprovalCard({
 												)}
 												{issue.issue_type && <span>{issue.issue_type}</span>}
 												{issue.assignee && <span>{issue.assignee}</span>}
-												{issue.priority && <span>{t("jira_priority_label")} {issue.priority}</span>}
+												{issue.priority && (
+													<span>
+														{t("jira_priority_label")} {issue.priority}
+													</span>
+												)}
 											</div>
 											{issue.project && (
 												<div className="text-xs text-muted-foreground">
@@ -330,7 +338,9 @@ function ApprovalCard({
 
 								{priorities.length > 0 && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("common_priority")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("common_priority")}
+										</p>
 										<Select
 											value={editedArgs.priority}
 											onValueChange={(v) => setEditedArgs({ ...editedArgs, priority: v })}
@@ -402,7 +412,9 @@ function ApprovalCard({
 						)}
 					</>
 				) : (
-					<p className="text-sm text-muted-foreground italic pb-3">{t("common_no_changes_proposed")}</p>
+					<p className="text-sm text-muted-foreground italic pb-3">
+						{t("common_no_changes_proposed")}
+					</p>
 				)}
 			</div>
 
@@ -463,9 +475,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("jira_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("jira_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -495,7 +505,9 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{t("common_issue_not_found")}</p>
+				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+					{t("common_issue_not_found")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

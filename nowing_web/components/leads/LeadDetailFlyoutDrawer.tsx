@@ -22,8 +22,8 @@ import {
 	UserCheck,
 	X,
 } from "lucide-react";
-import type React from "react";
 import { useTranslations } from "next-intl";
+import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { LeadActivityLog } from "@/contracts/types/lead-pipeline.types";

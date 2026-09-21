@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import {
 	Download,
@@ -10,6 +9,7 @@ import {
 	Presentation,
 	Wrench,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { MarkdownCodeBlock } from "@/components/assistant-ui/markdown-code-block";
 import { MermaidDiagram } from "@/components/assistant-ui/mermaid-diagram";
@@ -204,7 +204,7 @@ function SlidesDockContent({
 }) {
 	const t = useTranslations("layout");
 	const result = parseSlidesResult(payload.result);
-	const title = typeof result?.title === "string" ? result.title: t("x_slide_deck_2");
+	const title = typeof result?.title === "string" ? result.title : t("x_slide_deck_2");
 	const format = typeof result?.format === "string" ? result.format : "pptx";
 	const fileExt = presentationFileExtension(format);
 	const slideCount = typeof result?.slide_count === "number" ? result.slide_count : 0;
@@ -242,7 +242,9 @@ function SlidesDockContent({
 				{previewUrl && (
 					<Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
 						<a href={previewUrl} target="_blank" rel="noopener noreferrer">
-							<ExternalLink className="size-3.5" aria-hidden="true" />{t("x_preview")}</a>
+							<ExternalLink className="size-3.5" aria-hidden="true" />
+							{t("x_preview")}
+						</a>
 					</Button>
 				)}
 			</div>

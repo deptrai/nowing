@@ -72,15 +72,18 @@ export function VersionHistoryDialog({
 	);
 }
 
-function formatRelativeTime(t: (k: string, o?: Record<string, string | number | Date>) => string, dateStr: string): string {
+function formatRelativeTime(
+	t: (k: string, o?: Record<string, string | number | Date>) => string,
+	dateStr: string
+): string {
 	const now = Date.now();
 	const then = new Date(dateStr).getTime();
 	const diffMs = now - then;
 	const diffMin = Math.floor(diffMs / 60_000);
 	if (diffMin < 1) return t("just_now");
-	if (diffMin < 60) return t("minutes_ago",{count:diffMin});
+	if (diffMin < 60) return t("minutes_ago", { count: diffMin });
 	const diffHr = Math.floor(diffMin / 60);
-	if (diffHr < 24) return t("hours_ago",{count:diffHr});
+	if (diffHr < 24) return t("hours_ago", { count: diffHr });
 	return new Date(dateStr).toLocaleDateString(undefined, {
 		weekday: "short",
 		month: "short",
@@ -137,7 +140,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 		setRestoring(true);
 		try {
 			await documentsApiService.restoreDocumentVersion(documentId, versionNumber);
-			toast.success(t("hist_restored",{n:versionNumber}));
+			toast.success(t("hist_restored", { n: versionNumber }));
 			await loadVersions();
 		} catch {
 			toast.error(t("hist_restore_failed"));
@@ -197,7 +200,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 									<p className="text-sm font-medium truncate">
 										{v.created_at
 											? formatRelativeTime(t, v.created_at)
-											: t("version_n",{n:v.version_number})}
+											: t("version_n", { n: v.version_number })}
 									</p>
 									{v.title && <p className="text-xs text-muted-foreground truncate">{v.title}</p>}
 								</div>
@@ -214,7 +217,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 					<>
 						<div className="flex items-center justify-between pl-6 pr-14 pt-5 pb-2">
 							<h2 className="text-sm font-semibold truncate">
-								{selectedVersionData.title || t("version_n",{n:selectedVersion})}
+								{selectedVersionData.title || t("version_n", { n: selectedVersion })}
 							</h2>
 							<div className="flex items-center gap-1.5 shrink-0">
 								<Button

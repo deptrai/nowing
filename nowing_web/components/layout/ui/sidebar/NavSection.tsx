@@ -22,8 +22,7 @@ function getStatusInfo(status: NavItem["statusIndicator"], t: (k: string) => str
 		case "background_sync":
 			return {
 				pillLabel: t("background_sync"),
-				tooltip:
-					t("sync_checking_updates"),
+				tooltip: t("sync_checking_updates"),
 			};
 		case "success":
 			return {
@@ -39,7 +38,13 @@ function getStatusInfo(status: NavItem["statusIndicator"], t: (k: string) => str
 	}
 }
 
-function StatusPill({ status, t }: { status: NavItem["statusIndicator"]; t: (k: string) => string }) {
+function StatusPill({
+	status,
+	t,
+}: {
+	status: NavItem["statusIndicator"];
+	t: (k: string) => string;
+}) {
 	const { pillLabel } = getStatusInfo(status, t);
 
 	if (!pillLabel) {

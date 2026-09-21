@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";

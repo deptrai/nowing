@@ -63,7 +63,10 @@ export function AutomationDraftPreview({ draft, raw }: AutomationDraftPreviewPro
 				</Section>
 			)}
 
-			<Section icon={CalendarClock} label={t("automation_triggers_count", { count: draft.triggers.length })}>
+			<Section
+				icon={CalendarClock}
+				label={t("automation_triggers_count", { count: draft.triggers.length })}
+			>
 				{draft.triggers.length === 0 ? (
 					<p className="text-xs text-muted-foreground">{t("automation_no_triggers")}</p>
 				) : (
@@ -94,7 +97,11 @@ export function AutomationDraftPreview({ draft, raw }: AutomationDraftPreviewPro
 								<span className="font-medium text-foreground">{step.step_id}</span>
 								<span className="text-muted-foreground"> → </span>
 								<code className="font-mono text-muted-foreground">{step.action}</code>
-								{step.when && <span className="ml-2 text-muted-foreground">{t("automation_when", { when: step.when })}</span>}
+								{step.when && (
+									<span className="ml-2 text-muted-foreground">
+										{t("automation_when", { when: step.when })}
+									</span>
+								)}
 							</div>
 						</li>
 					))}
@@ -154,7 +161,8 @@ function TriggerLine({ trigger }: { trigger: DraftTrigger }) {
 				{cron && <code className="font-mono text-muted-foreground">{cron}</code>}
 				{staticKeys.length > 0 && (
 					<p className="text-muted-foreground">
-						{t("automation_static_inputs")} <span className="text-foreground">{staticKeys.join(", ")}</span>
+						{t("automation_static_inputs")}{" "}
+						<span className="text-foreground">{staticKeys.join(", ")}</span>
 					</p>
 				)}
 			</div>

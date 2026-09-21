@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 import {
 	AlertCircle,
 	ChevronDown,
@@ -8,6 +7,7 @@ import {
 	Package,
 	Settings2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { JsonView } from "@/components/json-view";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

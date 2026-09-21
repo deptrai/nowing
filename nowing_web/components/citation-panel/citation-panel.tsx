@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 import { useSetAtom } from "jotai";
 import { XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { openEditorPanelAtom } from "@/atoms/editor/editor-panel.atom";
@@ -175,7 +175,9 @@ export const CitationPanelContent: FC<CitationPanelContentProps> = ({
 												Chunk #{chunk.id}
 											</span>
 											{isCited && (
-												<span className="text-[11px] font-semibold text-primary">{t("cited_chunk")}</span>
+												<span className="text-[11px] font-semibold text-primary">
+													{t("cited_chunk")}
+												</span>
 											)}
 										</div>
 										<div className="text-sm">

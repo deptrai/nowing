@@ -8,8 +8,8 @@ import {
 	IconTrendingUp,
 } from "@tabler/icons-react";
 import Link from "next/link";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 

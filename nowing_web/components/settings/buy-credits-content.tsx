@@ -1,11 +1,11 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { Building2, Check, Copy, CreditCard, Minus, Plus, QrCode } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";

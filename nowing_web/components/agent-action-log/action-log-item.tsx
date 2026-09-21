@@ -197,7 +197,9 @@ export function ActionLogItem({ action, threadId, onRevertSuccess }: ActionLogIt
 									variant="ghost"
 									onClick={handleCopyArguments}
 									className="size-6 rounded-lg p-0 text-muted-foreground hover:bg-popover hover:text-popover-foreground"
-									aria-label={copiedSection === "arguments" ? t("args_copied_aria") : t("copy_args_aria")}
+									aria-label={
+										copiedSection === "arguments" ? t("args_copied_aria") : t("copy_args_aria")
+									}
 								>
 									{copiedSection === "arguments" ? (
 										<Check className="size-3" aria-hidden="true" />
@@ -246,13 +248,16 @@ export function ActionLogItem({ action, threadId, onRevertSuccess }: ActionLogIt
 									<AlertDialogHeader>
 										<AlertDialogTitle>{t("revert_confirm_title")}</AlertDialogTitle>
 										<AlertDialogDescription>
-											This will undo <span className="font-medium">{displayName}</span> and append a
-											new audit entry. The agent's chat history is preserved — only the tool's
-											effects on your knowledge base or connectors will be reversed where possible.
+											{t.rich("revert_confirm_desc", {
+												name: displayName,
+												b: (chunks) => <span className="font-medium">{chunks}</span>,
+											})}
 										</AlertDialogDescription>
 									</AlertDialogHeader>
 									<AlertDialogFooter>
-										<AlertDialogCancel disabled={isReverting}>{tCommon("cancel")}</AlertDialogCancel>
+										<AlertDialogCancel disabled={isReverting}>
+											{tCommon("cancel")}
+										</AlertDialogCancel>
 										<AlertDialogAction
 											onClick={(e) => {
 												e.preventDefault();

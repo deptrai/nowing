@@ -1,8 +1,8 @@
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiKeyField } from "./connect-fields";
-import { useTranslations } from "next-intl";
 import {
 	isValidAzureTargetUri,
 	type ProviderConnectFormProps,
@@ -41,15 +41,9 @@ export function AzureConnectForm({ onDraftChange }: ProviderConnectFormProps) {
 					onChange={(event) => setTargetUri(event.target.value)}
 					placeholder="https://your-resource.cognitiveservices.azure.com/openai/deployments/deployment-name/chat/completions?api-version=2025-01-01-preview"
 				/>
-				<p className="text-xs text-muted-foreground">
-					{t("mc_target_uri_desc")}
-				</p>
+				<p className="text-xs text-muted-foreground">{t("mc_target_uri_desc")}</p>
 			</div>
-			<ApiKeyField
-				value={apiKey}
-				onChange={setApiKey}
-				placeholder={t("mc_azure_key_ph")}
-			/>
+			<ApiKeyField value={apiKey} onChange={setApiKey} placeholder={t("mc_azure_key_ph")} />
 		</div>
 	);
 }

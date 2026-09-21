@@ -6,6 +6,7 @@ import {
 	Plug as PlugIcon,
 	X as XIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { NodeEntry, TElement } from "platejs";
 import type { PlateElementProps } from "platejs/react";
 import {
@@ -25,7 +26,6 @@ import {
 	useMemo,
 	useRef,
 } from "react";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { getConnectorIcon } from "@/contracts/enums/connectorIcons";
 import type { Document } from "@/contracts/types/document.types";

@@ -22,20 +22,20 @@ interface GatedTabProps {
 const GatedTab: FC<GatedTabProps> = ({ title, description }) => {
 	const t = useTranslations("free");
 	return (
-	<Empty>
-		<EmptyHeader>
-			<EmptyMedia variant="icon">
-				<Lock />
-			</EmptyMedia>
-			<EmptyTitle>{title}</EmptyTitle>
-			<EmptyDescription>{description}</EmptyDescription>
-		</EmptyHeader>
-		<EmptyContent>
-			<Button size="sm" asChild>
-				<Link href="/register">{t("create_account")}</Link>
-			</Button>
-		</EmptyContent>
-	</Empty>
+		<Empty>
+			<EmptyHeader>
+				<EmptyMedia variant="icon">
+					<Lock />
+				</EmptyMedia>
+				<EmptyTitle>{title}</EmptyTitle>
+				<EmptyDescription>{description}</EmptyDescription>
+			</EmptyHeader>
+			<EmptyContent>
+				<Button size="sm" asChild>
+					<Link href="/register">{t("create_account")}</Link>
+				</Button>
+			</EmptyContent>
+		</Empty>
 	);
 };
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useTranslations } from "next-intl";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { connectorDialogOpenAtom } from "@/atoms/connector-dialog/connector-dialog.atoms";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
@@ -61,9 +61,7 @@ function LiveConnectorManageView({
 	if (groupConnectors.length === 0) {
 		return (
 			<div className="mt-8 flex flex-col items-center gap-4">
-				<p className="text-sm text-muted-foreground">
-					{t("oauth_required")}
-				</p>
+				<p className="text-sm text-muted-foreground">{t("oauth_required")}</p>
 				<Button onClick={onAddAccount}>Connect {title}</Button>
 			</div>
 		);
@@ -275,9 +273,7 @@ export function ConnectorDetailPane({
 			<div className="mt-8 flex flex-col items-center gap-4">
 				{accountCount === 0 ? (
 					<>
-						<p className="text-sm text-muted-foreground">
-							{t("configure_hint")}
-						</p>
+						<p className="text-sm text-muted-foreground">{t("configure_hint")}</p>
 						<Button
 							onClick={() => {
 								const def =

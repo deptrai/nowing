@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Pricing } from "@/components/pricing";
@@ -17,7 +18,6 @@ import { FAQJsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PricingLeadCalculator } from "./PricingLeadCalculator";
-import { useTranslations } from "next-intl";
 
 const getDemoPlans = (t: (k: string) => string) => [
 	{
@@ -485,9 +485,7 @@ function PartnerBanner() {
 						<h4 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
 							{t("partner_title")}
 						</h4>
-						<p className="text-sm text-neutral-400 max-w-xl">
-							{t("partner_desc")}
-						</p>
+						<p className="text-sm text-neutral-400 max-w-xl">{t("partner_desc")}</p>
 					</div>
 					<Link href="/partners">
 						<Button className="bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold px-6 py-6 rounded-2xl flex items-center gap-2 transition-all shrink-0 shadow-lg shadow-emerald-500/20">
@@ -506,11 +504,7 @@ function PricingBasic() {
 	const demoPlans = getDemoPlans(t);
 	return (
 		<>
-			<Pricing
-				plans={demoPlans}
-				title={t("page_title")}
-				description={t("page_description")}
-			/>
+			<Pricing plans={demoPlans} title={t("page_title")} description={t("page_description")} />
 			<PricingUnitRatesTable />
 			<PricingLeadCalculator />
 			<PartnerBanner />

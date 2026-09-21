@@ -13,12 +13,8 @@ export default async function LeadPipelinePage(props: {
 		<div className="flex-1 flex flex-col p-6 space-y-4 max-w-full overflow-hidden">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-xl font-bold text-foreground">
-						{t("pipeline_title")}
-					</h1>
-					<p className="text-xs text-muted-foreground">
-						{t("pipeline_desc")}
-					</p>
+					<h1 className="text-xl font-bold text-foreground">{t("pipeline_title")}</h1>
+					<p className="text-xs text-muted-foreground">{t("pipeline_desc")}</p>
 				</div>
 			</div>
 

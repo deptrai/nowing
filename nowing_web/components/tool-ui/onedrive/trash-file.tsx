@@ -2,11 +2,11 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { CornerDownLeftIcon, InfoIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import { isInterruptResult, useHitlDecision, useHitlPhase } from "@/features/chat-messages/hitl";
 
@@ -122,21 +122,21 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-								? t("onedrive_delete_rejected")
-								: phase === "processing" || phase === "complete"
-									? t("onedrive_delete_approved")
-									: t("onedrive_delete_title")}
+							? t("onedrive_delete_rejected")
+							: phase === "processing" || phase === "complete"
+								? t("onedrive_delete_approved")
+								: t("onedrive_delete_title")}
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader text={t("common_trashing_file")} size="sm" />
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("common_file_trashed")}</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("common_file_deletion_cancelled")}</p>
-					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{t("common_requires_approval")}
+							{t("common_file_deletion_cancelled")}
 						</p>
+					) : (
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 			</div>
@@ -151,7 +151,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("onedrive_account_label")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("onedrive_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -159,7 +161,9 @@ function ApprovalCard({
 								)}
 								{file && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("common_file_to_delete")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("common_file_to_delete")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-0.5">
 											<div className="font-medium">{file.name}</div>
 											{file.web_url && (
@@ -185,9 +189,7 @@ function ApprovalCard({
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 space-y-3 select-none">
-						<p className="text-xs text-muted-foreground">
-							{t("onedrive_recycle_bin_note")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("onedrive_recycle_bin_note")}</p>
 						<div className="flex items-center gap-2.5">
 							<Checkbox
 								id="od-delete-from-kb"
@@ -211,7 +213,8 @@ function ApprovalCard({
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
 						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
-							{t("common_approve")} <CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+							{t("common_approve")}{" "}
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"

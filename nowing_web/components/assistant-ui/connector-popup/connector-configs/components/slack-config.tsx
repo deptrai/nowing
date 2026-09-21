@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Hash, Info, Lock, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { connectorsApiService, type SlackChannel } from "@/lib/apis/connectors-api.service";
 import { cn } from "@/lib/utils";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 export interface SlackConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;

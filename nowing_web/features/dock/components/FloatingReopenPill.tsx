@@ -2,9 +2,9 @@
 
 import { useSetAtom } from "jotai";
 import { PanelRightOpen } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { dockOpenAtom } from "@/atoms/layout/dock.atom";
 import { Button } from "@/components/ui/button";
-import { useTranslations } from "next-intl";
 
 export function FloatingReopenPill({ tabs }: { tabs: { hasUpdate: boolean }[] }) {
 	const t = useTranslations("dock");

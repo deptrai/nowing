@@ -1,13 +1,13 @@
 "use client";
 
 import { AuiIf, ThreadPrimitive } from "@assistant-ui/react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { AssistantMessage } from "@/components/assistant-ui/assistant-message";
 import { ChatViewport } from "@/components/assistant-ui/chat-viewport";
 import { EditComposer } from "@/components/assistant-ui/edit-composer";
 import { UserMessage } from "@/components/assistant-ui/user-message";
 import { FreeComposer } from "./free-composer";
-import { useTranslations } from "next-intl";
 
 const FreeThreadWelcome: FC = () => {
 	const t = useTranslations("freeChat");

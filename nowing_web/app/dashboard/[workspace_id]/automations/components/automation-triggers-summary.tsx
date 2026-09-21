@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { CalendarClock, Pause } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Trigger } from "@/contracts/types/automation.types";
 import { describeCron } from "@/lib/automations/describe-cron";
 
@@ -25,7 +25,11 @@ export function AutomationTriggersSummary({ triggers }: AutomationTriggersSummar
 	}
 
 	if (triggers.length > 1) {
-		return <span className="text-xs text-muted-foreground">{t("auto_triggers_count", { count: triggers.length })}</span>;
+		return (
+			<span className="text-xs text-muted-foreground">
+				{t("auto_triggers_count", { count: triggers.length })}
+			</span>
+		);
 	}
 
 	const [trigger] = triggers;

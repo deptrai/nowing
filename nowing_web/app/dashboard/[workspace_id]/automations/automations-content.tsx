@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { AlertCircle, ShieldAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAutomations } from "@/hooks/use-automations";
 import { AutomationsEmptyState } from "./components/automations-empty-state";
@@ -47,7 +47,9 @@ export function AutomationsContent({ workspaceId }: AutomationsContentProps) {
 			<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-12 text-center">
 				<ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden />
 				<h2 className="mt-3 text-base font-semibold text-foreground">{t("auto_access_denied")}</h2>
-				<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">{t("auto_you_don_t_have")}</p>
+				<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+					{t("auto_you_don_t_have")}
+				</p>
 			</div>
 		);
 	}

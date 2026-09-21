@@ -15,6 +15,7 @@ import {
 	TrendingUp,
 	Users,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { playbooksListAtom } from "@/atoms/playbooks/playbooks-query.atoms";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,6 @@ import type { PlaybookSummary } from "@/contracts/types/playbook.types";
 import type { Workspace } from "@/contracts/types/workspace.types";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
-import { useTranslations } from "next-intl";
 import { PlaybookInstantiateDialog } from "./playbook-instantiate-dialog";
 
 interface PlaybooksContentProps {
@@ -66,7 +66,10 @@ function formatCompactNumber(value: number): string {
 	return String(value);
 }
 
-function formatRunCount(count: number | null | undefined, t: (key: any, options?: any) => string): string {
+function formatRunCount(
+	count: number | null | undefined,
+	t: (key: any, options?: any) => string
+): string {
 	const safeCount = count ?? 0;
 	if (safeCount === 0) {
 		return t("run_count_zero");
@@ -133,9 +136,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 	if (error) {
 		return (
 			<div className="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center">
-				<h2 className="text-base font-semibold text-destructive">
-					{t("error_load_title")}
-				</h2>
+				<h2 className="text-base font-semibold text-destructive">{t("error_load_title")}</h2>
 				<p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
 			</div>
 		);
@@ -157,9 +158,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 							{t("badge_official_verified")}
 						</Badge>
 					</div>
-					<p className="mt-1 text-sm text-muted-foreground">
-						{t("marketplace_desc")}
-					</p>
+					<p className="mt-1 text-sm text-muted-foreground">{t("marketplace_desc")}</p>
 				</div>
 				<Badge variant="secondary" className="self-start md:self-auto font-mono text-xs px-3 py-1">
 					{t("templates_count", { count: playbooks.length })}
@@ -210,19 +209,13 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 			{playbooks.length === 0 ? (
 				<div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-12 text-center">
 					<BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" aria-hidden />
-					<h3 className="mt-4 text-base font-semibold text-foreground">
-						{t("empty_title")}
-					</h3>
-					<p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
-						{t("empty_desc")}
-					</p>
+					<h3 className="mt-4 text-base font-semibold text-foreground">{t("empty_title")}</h3>
+					<p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">{t("empty_desc")}</p>
 				</div>
 			) : filteredPlaybooks.length === 0 ? (
 				<div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-12 text-center">
 					<BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" aria-hidden />
-					<h3 className="mt-4 text-base font-semibold text-foreground">
-						{t("no_results_title")}
-					</h3>
+					<h3 className="mt-4 text-base font-semibold text-foreground">{t("no_results_title")}</h3>
 					<p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
 						{t("no_results_desc")}
 					</p>

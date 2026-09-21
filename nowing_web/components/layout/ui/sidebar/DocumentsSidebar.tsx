@@ -148,7 +148,9 @@ export function EmbeddedDocumentsMenu({
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-44">
 					<DropdownMenuItem onSelect={onCreateFolder}>
-						<FolderPlus className="h-4 w-4" aria-hidden="true" />{t("x_new_folder")}</DropdownMenuItem>
+						<FolderPlus className="h-4 w-4" aria-hidden="true" />
+						{t("x_new_folder")}
+					</DropdownMenuItem>
 					{isMobile ? (
 						<DropdownMenuItem onSelect={() => setFilterDrawerOpen(true)}>
 							<ListFilter className="h-4 w-4" aria-hidden="true" />
@@ -157,7 +159,9 @@ export function EmbeddedDocumentsMenu({
 					) : (
 						<DropdownMenuSub>
 							<DropdownMenuSubTrigger>
-								<ListFilter className="h-4 w-4" aria-hidden="true" />{t("x_filter_by_type")}</DropdownMenuSubTrigger>
+								<ListFilter className="h-4 w-4" aria-hidden="true" />
+								{t("x_filter_by_type")}
+							</DropdownMenuSubTrigger>
 							<DropdownMenuSubContent className="w-52 max-h-72 overflow-y-auto">
 								{documentTypes.length > 0 ? (
 									documentTypes.map((type) => (
@@ -193,7 +197,9 @@ export function EmbeddedDocumentsMenu({
 					overlayClassName="z-80"
 				>
 					<DrawerHandle className="mt-3 h-1.5 w-10" />
-					<DrawerTitle className="px-4 pb-2 pt-3 text-center text-base font-semibold">{t("x_filter_by_type")}</DrawerTitle>
+					<DrawerTitle className="px-4 pb-2 pt-3 text-center text-base font-semibold">
+						{t("x_filter_by_type")}
+					</DrawerTitle>
 					<div className="px-4 pb-6 pt-1">
 						{documentTypes.length > 0 ? (
 							documentTypes.map((type, index) => {
@@ -267,13 +273,15 @@ export function EmbeddedImportMenu({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-56">
 				<DropdownMenuItem onSelect={() => (gate ? gate("upload files") : openDialog())}>
-					<Upload className="h-4 w-4" aria-hidden="true" />{t("x_upload_files")}</DropdownMenuItem>
+					<Upload className="h-4 w-4" aria-hidden="true" />
+					{t("x_upload_files")}
+				</DropdownMenuItem>
 				{isDesktop && (
 					<DropdownMenuItem
 						onSelect={() => (gate ? gate("watch local folders") : setFolderWatchOpen(true))}
 					>
 						<FolderSync className="h-4 w-4" aria-hidden="true" />
-						Watch Local Folder
+						{t("watch_local_folder")}
 					</DropdownMenuItem>
 				)}
 			</DropdownMenuContent>
@@ -518,7 +526,7 @@ function AuthenticatedDocumentsSidebarBase({
 					parent_id: createFolderParentId,
 					workspace_id: workspaceId,
 				});
-				toast.success("Folder created");
+				toast.success(t("toast.folder_created"));
 				if (createFolderParentId !== null) {
 					setExpandedFolderMap((prev) => {
 						const current = new Set(prev[workspaceId] ?? []);
@@ -527,7 +535,7 @@ function AuthenticatedDocumentsSidebarBase({
 					});
 				}
 			} catch (e: unknown) {
-				toast.error((e as Error)?.message || "Failed to create folder");
+				toast.error((e as Error)?.message || t("toast.create_folder_failed"));
 			}
 		},
 		[createFolderParentId, workspaceId, setExpandedFolderMap]
@@ -542,12 +550,12 @@ function AuthenticatedDocumentsSidebarBase({
 				(wf: WatchedFolderEntry) => wf.rootFolderId === folder.id
 			);
 			if (!matched) {
-				toast.error("This folder is not being watched");
+				toast.error(t("toast.folder_not_watched"));
 				return;
 			}
 
 			try {
-				toast.info(`Re-scanning folder: ${matched.name}`);
+				toast.info(t("toast.rescanning_folder", { name: matched.name }));
 				await uploadFolderScan({
 					folderPath: matched.path,
 					folderName: matched.name,
@@ -557,9 +565,9 @@ function AuthenticatedDocumentsSidebarBase({
 						matched.fileExtensions ?? Array.from(getSupportedExtensionsSet(undefined, etlService)),
 					rootFolderId: folder.id,
 				});
-				toast.success(`Re-scan complete: ${matched.name}`);
+				toast.success(t("toast.rescan_complete", { name: matched.name }));
 			} catch (err) {
-				toast.error((err as Error)?.message || "Failed to re-scan folder");
+				toast.error((err as Error)?.message || t("toast.rescan_failed"));
 			}
 		},
 		[workspaceId, electronAPI, etlService]
@@ -574,7 +582,7 @@ function AuthenticatedDocumentsSidebarBase({
 				(wf: WatchedFolderEntry) => wf.rootFolderId === folder.id
 			);
 			if (!matched) {
-				toast.error("This folder is not being watched");
+				toast.error(t("toast.folder_not_watched"));
 				return;
 			}
 
@@ -593,9 +601,9 @@ function AuthenticatedDocumentsSidebarBase({
 	const handleRenameFolder = useCallback(async (folder: FolderDisplay, newName: string) => {
 		try {
 			await foldersApiService.updateFolder(folder.id, { name: newName });
-			toast.success("Folder renamed");
+			toast.success(t("toast.folder_renamed"));
 		} catch (e: unknown) {
-			toast.error((e as Error)?.message || "Failed to rename folder");
+			toast.error((e as Error)?.message || t("toast.rename_folder_failed"));
 		}
 	}, []);
 
@@ -613,9 +621,9 @@ function AuthenticatedDocumentsSidebarBase({
 					}
 				}
 				await foldersApiService.deleteFolder(folder.id);
-				toast.success("Folder deleted");
+				toast.success(t("toast.folder_deleted"));
 			} catch (e: unknown) {
-				toast.error((e as Error)?.message || "Failed to delete folder");
+				toast.error((e as Error)?.message || t("toast.delete_folder_failed"));
 			}
 		},
 		[electronAPI]
@@ -689,10 +697,10 @@ function AuthenticatedDocumentsSidebarBase({
 				}),
 				`${safeName}.zip`
 			);
-			toast.success(`Folder "${ctx.folder.name}" exported`);
+			toast.success(t("toast.folder_exported", { name: ctx.folder.name }));
 		} catch (err) {
 			console.error("Folder export failed:", err);
-			toast.error(err instanceof Error ? err.message: t("x_export_failed"));
+			toast.error(err instanceof Error ? err.message : t("x_export_failed"));
 		} finally {
 			isExportingKBRef.current = false;
 		}
@@ -743,10 +751,10 @@ function AuthenticatedDocumentsSidebarBase({
 					}),
 					`${safeName}.zip`
 				);
-				toast.success(`Folder "${folder.name}" exported`);
+				toast.success(t("toast.folder_exported", { name: folder.name }));
 			} catch (err) {
 				console.error("Folder export failed:", err);
-				toast.error(err instanceof Error ? err.message: t("x_export_failed"));
+				toast.error(err instanceof Error ? err.message : t("x_export_failed"));
 			} finally {
 				isExportingKBRef.current = false;
 			}
@@ -775,7 +783,7 @@ function AuthenticatedDocumentsSidebarBase({
 					return;
 				} catch (err) {
 					console.error("Memory export failed:", err);
-					toast.error(err instanceof Error ? err.message: t("x_export_failed"));
+					toast.error(err instanceof Error ? err.message : t("x_export_failed"));
 					return;
 				}
 			}
@@ -825,15 +833,15 @@ function AuthenticatedDocumentsSidebarBase({
 					await foldersApiService.moveFolder(folderPickerTarget.id, {
 						new_parent_id: targetFolderId,
 					});
-					toast.success("Folder moved");
+					toast.success(t("toast.folder_moved"));
 				} else {
 					await foldersApiService.moveDocument(folderPickerTarget.id, {
 						folder_id: targetFolderId,
 					});
-					toast.success("Document moved");
+					toast.success(t("toast.document_moved"));
 				}
 			} catch (e: unknown) {
-				toast.error((e as Error)?.message || "Failed to move item");
+				toast.error((e as Error)?.message || t("toast.move_failed"));
 			}
 			setFolderPickerTarget(null);
 		},
@@ -847,15 +855,15 @@ function AuthenticatedDocumentsSidebarBase({
 					await foldersApiService.moveFolder(itemId, {
 						new_parent_id: targetFolderId,
 					});
-					toast.success("Folder moved");
+					toast.success(t("toast.folder_moved"));
 				} else {
 					await foldersApiService.moveDocument(itemId, {
 						folder_id: targetFolderId,
 					});
-					toast.success("Document moved");
+					toast.success(t("toast.document_moved"));
 				}
 			} catch (e: unknown) {
-				toast.error((e as Error)?.message || "Failed to move item");
+				toast.error((e as Error)?.message || t("toast.move_failed"));
 			}
 		},
 		[]
@@ -869,7 +877,7 @@ function AuthenticatedDocumentsSidebarBase({
 					after_position: afterPos,
 				});
 			} catch (e: unknown) {
-				toast.error((e as Error)?.message || "Failed to reorder folder");
+				toast.error((e as Error)?.message || t("toast.reorder_folder_failed"));
 			}
 		},
 		[]
@@ -972,10 +980,12 @@ function AuthenticatedDocumentsSidebarBase({
 					const errorData = await response.json().catch(() => ({ detail: "Reset failed" }));
 					throw new Error(errorData.detail || "Reset failed");
 				}
-				toast.success(`${doc.title} reset`);
+				toast.success(t("toast.document_reset", { title: doc.title }));
 				openMemoryDocument(doc);
 			} catch (error) {
-				toast.error((error as Error)?.message || t("toast.reset_failed", { title: doc.title.toLowerCase() }));
+				toast.error(
+					(error as Error)?.message || t("toast.reset_failed", { title: doc.title.toLowerCase() })
+				);
 			}
 		},
 		[openMemoryDocument, workspaceId]
@@ -1030,13 +1040,13 @@ function AuthenticatedDocumentsSidebarBase({
 					const idSet = new Set(successIds);
 					return prev.filter((d) => !idSet.has(d.id));
 				});
-				toast.success(`Deleted ${successIds.length} document${successIds.length !== 1 ? "s" : ""}`);
+				toast.success(t("toast.delete_docs_success", { count: successIds.length }));
 			}
 			if (failed > 0) {
 				toast.error(t("toast.delete_docs_failed", { count: failed }));
 			}
 		} catch {
-			toast.error("Failed to delete documents");
+			toast.error(t("toast.delete_docs_failed_generic"));
 		}
 		setIsBulkDeleting(false);
 		setBulkDeleteConfirmOpen(false);
@@ -1055,7 +1065,7 @@ function AuthenticatedDocumentsSidebarBase({
 		async (id: number): Promise<boolean> => {
 			try {
 				await deleteDocumentMutation({ id });
-				toast.success(t("delete_success") || "Document deleted");
+				toast.success(t("delete_success"));
 				setSidebarDocs((prev) => prev.filter((d) => d.kind !== "doc" || d.id !== id));
 				return true;
 			} catch (e) {
@@ -1086,8 +1096,7 @@ function AuthenticatedDocumentsSidebarBase({
 						className="pointer-events-auto h-auto gap-1.5 px-3 py-1 text-xs shadow-lg"
 					>
 						<Trash2 size={12} />
-						Delete {deletableSelectedIds.length}{" "}
-						{deletableSelectedIds.length === 1 ? "item" : "items"}
+						{t("delete_n_items", { count: deletableSelectedIds.length })}
 					</Button>
 				</div>
 			)}
@@ -1129,7 +1138,7 @@ function AuthenticatedDocumentsSidebarBase({
 		return (
 			<>
 				<SidebarSection
-					title={t("title") || "Documents"}
+					title={t("title")}
 					defaultOpen={true}
 					contentClassName="px-0"
 					persistentAction={
@@ -1162,7 +1171,9 @@ function AuthenticatedDocumentsSidebarBase({
 					open={folderPickerOpen}
 					onOpenChange={setFolderPickerOpen}
 					folders={treeFolders}
-					title={folderPickerTarget?.type === "folder" ? "Move folder to" : "Move document to"}
+					title={
+						folderPickerTarget?.type === "folder" ? t("move_folder_to") : t("move_document_to")
+					}
 					description={t("move_folder_description")}
 					disabledFolderIds={folderPickerTarget?.disabledIds}
 					onSelect={handleFolderPickerSelect}
@@ -1182,15 +1193,10 @@ function AuthenticatedDocumentsSidebarBase({
 					<AlertDialogContent>
 						<AlertDialogHeader>
 							<AlertDialogTitle>
-								Delete {deletableSelectedIds.length} document
-								{deletableSelectedIds.length !== 1 ? "s" : ""}?
+								{t("confirm_delete_n_docs", { count: deletableSelectedIds.length })}
 							</AlertDialogTitle>
 							<AlertDialogDescription>
-								This action cannot be undone.{" "}
-								{deletableSelectedIds.length === 1
-									? "This document"
-									: `These ${deletableSelectedIds.length} documents`}{" "}
-								will be permanently deleted from your workspace.
+								{t("confirm_delete_n_docs_desc", { count: deletableSelectedIds.length })}
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
@@ -1203,7 +1209,7 @@ function AuthenticatedDocumentsSidebarBase({
 								disabled={isBulkDeleting}
 								className="relative bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							>
-								<span className={isBulkDeleting ? "opacity-0" : ""}>Delete</span>
+								<span className={isBulkDeleting ? "opacity-0" : ""}>{t("delete")}</span>
 								{isBulkDeleting && <Spinner size="sm" className="absolute" />}
 							</AlertDialogAction>
 						</AlertDialogFooter>
@@ -1223,15 +1229,15 @@ function AuthenticatedDocumentsSidebarBase({
 						<AlertDialogHeader>
 							<AlertDialogTitle>{t("some_docs_processing")}</AlertDialogTitle>
 							<AlertDialogDescription>
-								{exportWarningContext?.pendingCount} document
-								{exportWarningContext?.pendingCount !== 1 ? "s are" : " is"} currently being
-								processed and will be excluded from the export. Do you want to continue?
+								{t("export_processing_docs_desc", {
+									count: exportWarningContext?.pendingCount ?? 0,
+								})}
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
 							<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 							<AlertDialogAction onClick={handleExportWarningConfirm}>
-								Export anyway
+								{t("export_anyway")}
 							</AlertDialogAction>
 						</AlertDialogFooter>
 					</AlertDialogContent>
@@ -1306,7 +1312,7 @@ function AnonymousDocumentsSidebar({ embedded = false }: DocumentsSidebarProps) 
 	if (embedded) {
 		return (
 			<SidebarSection
-				title={t("title") || "Documents"}
+				title={t("title")}
 				defaultOpen={true}
 				contentClassName="px-0"
 				persistentAction={

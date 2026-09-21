@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -65,7 +65,9 @@ export function CreateFolderDialog({
 								{isSubfolder ? t("new_subfolder") : t("new_folder")}
 							</DialogTitle>
 							<DialogDescription className="text-xs sm:text-sm mt-0.5">
-								{isSubfolder ? t("create_inside_folder", { parentFolderName }) : t("create_at_root")}
+								{isSubfolder
+									? t("create_inside_folder", { parentFolderName })
+									: t("create_at_root")}
 							</DialogDescription>
 						</div>
 					</div>
@@ -94,8 +96,12 @@ export function CreateFolderDialog({
 							variant="secondary"
 							onClick={() => onOpenChange(false)}
 							className="h-8 sm:h-9 text-xs sm:text-sm"
-						>{t("cancel")}</Button>
-						<Button type="submit" disabled={!name.trim()} className="h-8 sm:h-9 text-xs sm:text-sm">{t("create")}</Button>
+						>
+							{t("cancel")}
+						</Button>
+						<Button type="submit" disabled={!name.trim()} className="h-8 sm:h-9 text-xs sm:text-sm">
+							{t("create")}
+						</Button>
 					</DialogFooter>
 				</form>
 			</DialogContent>

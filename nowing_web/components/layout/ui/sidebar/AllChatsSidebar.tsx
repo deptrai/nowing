@@ -358,7 +358,9 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 											onTouchMove={longPressHandlers.onTouchMove}
 											className={itemClassName}
 										>
-											<span className="min-w-0 flex-1 truncate">{thread.title || "New Chat"}</span>
+											<span className="min-w-0 flex-1 truncate">
+												{thread.title || t("new_chat")}
+											</span>
 										</Link>
 									) : (
 										<Tooltip delayDuration={600}>
@@ -372,7 +374,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 													className={itemClassName}
 												>
 													<span className="min-w-0 flex-1 truncate">
-														{thread.title || "New Chat"}
+														{thread.title || t("new_chat")}
 													</span>
 												</Link>
 											</TooltipTrigger>
@@ -444,7 +446,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 													{!thread.archived && (
 														<DropdownMenuItem
 															onClick={() =>
-																handleStartRename(thread.id, thread.title || "New Chat")
+																handleStartRename(thread.id, thread.title || t("new_chat"))
 															}
 														>
 															<Pencil className="mr-2 h-4 w-4" />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
-import { useTranslations } from "next-intl";
 import {
 	AlertTriangle,
 	Check,
@@ -22,10 +21,10 @@ import {
 	ShieldCheck,
 	Sparkles,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { copyToClipboard } from "@/lib/utils";
 import {
 	activeDrawerLeadAtom,
 	canvasHighlightTriggerAtom,
@@ -36,7 +35,7 @@ import {
 } from "@/atoms/leads/leads-canvas.atoms";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Lead } from "@/contracts/types/leads.types";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { PhoneUnlockPill } from "./PhoneUnlockPill";
 import { ShimmerSkeletonRow } from "./ShimmerSkeletonRow";
 import { SendExportDropdown } from "./send-export-dropdown";
@@ -217,13 +216,13 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 		if (leads.length === 0) return;
 		const headers = [
 			"ID",
-			"Tên Doanh Nghiệp",
-			"Website",
-			"Ngành",
-			"Số Điện Thoại",
-			"Fit Score",
-			"Nguồn",
-			"Địa Chỉ",
+			t("csv_company_name"),
+			t("csv_website"),
+			t("csv_industry"),
+			t("csv_phone"),
+			t("csv_fit_score"),
+			t("csv_source"),
+			t("csv_address"),
 		];
 		const rows = leads.map((l) => [
 			`"${l.id}"`,
@@ -355,7 +354,9 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 								className={cn("size-2 rounded-full", currentStatusOption.dotColor)}
 								aria-hidden="true"
 							/>
-							<span className="truncate max-w-[100px]">{t(`status_${currentStatusOption.id}`)}</span>
+							<span className="truncate max-w-[100px]">
+								{t(`status_${currentStatusOption.id}`)}
+							</span>
 							<ChevronDown
 								className={cn(
 									"size-3.5 text-muted-foreground transition-transform duration-150",
@@ -503,7 +504,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 						{t("not_sending")}
 					</span>
 					<span className="text-muted-foreground font-medium text-[11px] hidden sm:inline">
-						8 cols
+						{t("columns_count", { count: 8 })}
 					</span>
 				</div>
 			</div>
@@ -542,7 +543,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 									/>
 								</th>
 								<th className="w-8 px-1.5 font-mono text-center shrink-0">#</th>
-								<th className="w-24 px-2.5 shrink-0">FIT SCORE &gt;</th>
+								<th className="w-24 px-2.5 shrink-0">{t("fit_score_col")} &gt;</th>
 								<th className="px-3 min-w-[150px] max-w-[280px]">TÊN DOANH NGHIỆP</th>
 								<th className="px-3 min-w-[100px] max-w-[180px]">WEBSITE / NGUỒN</th>
 								<th className="px-3 min-w-[90px] max-w-[140px]">NGÀNH</th>
@@ -743,7 +744,9 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 												{rowLead.email ? (
 													<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
 														<Mail className="size-3 text-blue-500 shrink-0" aria-hidden="true" />
-														<span className="truncate max-w-[130px] font-mono">{rowLead.email}</span>
+														<span className="truncate max-w-[130px] font-mono">
+															{rowLead.email}
+														</span>
 														<button
 															type="button"
 															onClick={(e) => {
@@ -771,7 +774,10 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 															onClick={(e) => e.stopPropagation()}
 															className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline transition-colors truncate max-w-full"
 														>
-															<ExternalLink className="size-3 text-purple-500 shrink-0" aria-hidden="true" />
+															<ExternalLink
+																className="size-3 text-purple-500 shrink-0"
+																aria-hidden="true"
+															/>
 															<span className="truncate">{rowLead.source || "Mạng xã hội"}</span>
 														</a>
 													) : (

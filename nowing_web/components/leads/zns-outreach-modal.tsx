@@ -12,9 +12,9 @@ import {
 	Smartphone,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
 import { type ZnsTemplate, znsApiService } from "@/lib/apis/zns-api.service";
 import { cn } from "@/lib/utils";
 
@@ -121,7 +121,13 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 			}
 			return updated;
 		});
-	}, [selectedTemplate, resolvedCustomerName, resolvedPropertyName, resolvedPriceEstimate, consultantPhone]);
+	}, [
+		selectedTemplate,
+		resolvedCustomerName,
+		resolvedPropertyName,
+		resolvedPriceEstimate,
+		consultantPhone,
+	]);
 
 	const handleInputChange = (key: string, value: string) => {
 		setFormValues((prev) => ({ ...prev, [key]: value }));
@@ -138,9 +144,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 			return;
 		}
 		if (!isSendingWindowOpen) {
-			setError(
-				t("zns_err_window")
-			);
+			setError(t("zns_err_window"));
 			return;
 		}
 
@@ -199,9 +203,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 									{t("zns_badge")}
 								</span>
 							</h3>
-							<p className="text-xs text-zinc-400">
-								{t("zns_subtitle")}
-							</p>
+							<p className="text-xs text-zinc-400">{t("zns_subtitle")}</p>
 						</div>
 					</div>
 					<button
@@ -305,7 +307,7 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 										name={key}
 										value={formValues[key] || ""}
 										onChange={(e) => handleInputChange(key, e.target.value)}
-										placeholder={t('zns_param_placeholder', { key })}
+										placeholder={t("zns_param_placeholder", { key })}
 										className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-blue-500"
 									/>
 								</div>
@@ -390,7 +392,9 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 										<div className="w-5 h-5 rounded-full bg-white text-[#0068FF] font-bold text-[10px] flex items-center justify-center">
 											Z
 										</div>
-										<span className="text-xs font-semibold tracking-tight">{t("leads_zalo_notification_service")}</span>
+										<span className="text-xs font-semibold tracking-tight">
+											{t("leads_zalo_notification_service")}
+										</span>
 									</div>
 									<span className="text-[10px] text-blue-100">{t("leads_oa_verified")}</span>
 								</div>
@@ -402,8 +406,11 @@ export const ZnsOutreachModal: React.FC<ZnsOutreachModalProps> = ({
 									</div>
 
 									<p className="text-zinc-600 text-[11px] leading-relaxed">
-										{t.rich("zns_greeting", {name: formValues.customer_name || resolvedCustomerName, b: (c) => <strong>{c}</strong>})}
-																			</p>
+										{t.rich("zns_greeting", {
+											name: formValues.customer_name || resolvedCustomerName,
+											b: (c) => <strong>{c}</strong>,
+										})}
+									</p>
 
 									<div className="bg-zinc-50 border border-zinc-100 rounded-lg p-2.5 space-y-1.5 text-[11px]">
 										{templateSchemaKeys

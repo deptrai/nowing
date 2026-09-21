@@ -38,10 +38,7 @@ export default async function TermsOfService() {
 								const upper = t.has(`${key}_upper`);
 								if (!t.has(key)) return null;
 								return (
-									<p
-										key={key}
-										className={upper ? "mt-4 uppercase font-bold" : "mt-4 first:mt-0"}
-									>
+									<p key={key} className={upper ? "mt-4 uppercase font-bold" : "mt-4 first:mt-0"}>
 										{t(key)}
 									</p>
 								);

@@ -1,7 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -40,12 +40,7 @@ interface ApiKeyFieldProps {
 }
 
 /** Shared masked API Key input. */
-export function ApiKeyField({
-	value,
-	onChange,
-	label,
-	placeholder,
-}: ApiKeyFieldProps) {
+export function ApiKeyField({ value, onChange, label, placeholder }: ApiKeyFieldProps) {
 	const t = useTranslations("settings");
 	const [showApiKey, setShowApiKey] = useState(false);
 	const resolvedLabel = label ?? t("mc_api_key");

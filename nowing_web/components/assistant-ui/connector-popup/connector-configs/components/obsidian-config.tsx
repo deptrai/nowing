@@ -1,11 +1,11 @@
 "use client";
 
 import { AlertTriangle, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { connectorsApiService, type ObsidianStats } from "@/lib/apis/connectors-api.service";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 const OBSIDIAN_SETUP_DOCS_URL = "/docs/connectors/external/obsidian";
 
@@ -66,7 +66,9 @@ const LegacyBanner: FC = () => {
 					<a
 						href={OBSIDIAN_SETUP_DOCS_URL}
 						className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
-					>{t("asst_obsidian_setup_guide")}</a>{" "}
+					>
+						{t("asst_obsidian_setup_guide")}
+					</a>{" "}
 					to reconnect this vault through the plugin.
 				</p>
 				<p className="text-[11px] leading-relaxed text-amber-600 dark:text-amber-400 sm:text-xs">

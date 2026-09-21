@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Server, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,7 +17,6 @@ import {
 	testMCPConnection,
 } from "../../utils/mcp-config-validator";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 interface MCPConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;
@@ -24,6 +24,7 @@ interface MCPConfigProps extends ConnectorConfigProps {
 
 export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNameChange }) => {
 	const t = useTranslations("assistant");
+	const tConnector = useTranslations("connector");
 	const [name, setName] = useState<string>("");
 	const [configJson, setConfigJson] = useState("");
 	const [jsonError, setJsonError] = useState<string | null>(null);
@@ -152,7 +153,9 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 			{/* Server Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="name" className="text-xs sm:text-sm">{t("asst_server_name")}</Label>
+					<Label htmlFor="name" className="text-xs sm:text-sm">
+						{t("asst_server_name")}
+					</Label>
 					<Input
 						id="name"
 						value={name}
@@ -161,16 +164,16 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 						required
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("friendly_name")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
 			{/* Server Configuration */}
 			<div className="space-y-4">
 				<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
-					<Server className="h-4 w-4" aria-hidden="true" />{t("asst_server_configuration")}</h3>
+					<Server className="h-4 w-4" aria-hidden="true" />
+					{t("asst_server_configuration")}
+				</h3>
 
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4">
 					<div className="space-y-2">
@@ -198,7 +201,11 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 							rows={16}
 							className={`font-mono text-xs ${jsonError ? "border-red-500" : ""}`}
 						/>
-						{jsonError && <p className="text-xs text-red-500">{t("json_error")} {jsonError}</p>}
+						{jsonError && (
+							<p className="text-xs text-red-500">
+								{t("json_error")} {jsonError}
+							</p>
+						)}
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
 							<strong>{t("local_stdio")}</strong> command, args, env, transport: "stdio"
 							<br />
@@ -217,7 +224,9 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 						>
 							{isTesting ? (
 								<>
-									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />{t("asst_testing_connection")}</>
+									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+									{t("asst_testing_connection")}
+								</>
 							) : (
 								t("test_connection")
 							)}
@@ -240,7 +249,9 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 							)}
 							<div className="col-start-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
 								<AlertTitle className="text-sm">
-									{testResult.status === "success" ? t("connection_successful") : t("connection_failed")}
+									{testResult.status === "success"
+										? t("connection_successful")
+										: t("connection_failed")}
 								</AlertTitle>
 								{testResult.tools.length > 0 && (
 									<Button
@@ -271,7 +282,9 @@ export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNam
 								)}
 							</div>
 							<AlertDescription className="text-xs mt-1">
-								{testResult.status === "success" ? t("connector.connect_success", { count: testResult.tools.length }) : testResult.message}
+								{testResult.status === "success"
+									? tConnector("connect_success", { count: testResult.tools.length })
+									: testResult.message}
 								{showDetails && testResult.tools.length > 0 && (
 									<div className="mt-3 pt-3 border-t border-green-500/20">
 										<p className="font-semibold mb-2">{t("available_tools")}</p>

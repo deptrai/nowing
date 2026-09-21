@@ -21,9 +21,5 @@ export default async function DashboardLayout({
 }) {
 	const { workspace_id } = await params;
 
-	return (
-		<DashboardClientLayout workspaceId={workspace_id}>
-			{children}
-		</DashboardClientLayout>
-	);
+	return <DashboardClientLayout workspaceId={workspace_id}>{children}</DashboardClientLayout>;
 }

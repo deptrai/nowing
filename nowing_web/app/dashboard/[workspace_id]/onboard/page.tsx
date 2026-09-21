@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import {
 	llmSetupStatusAtomFamily,
@@ -37,9 +37,7 @@ export default function OnboardPage() {
 				<Logo className="mx-auto h-12 w-12" aria-hidden="true" />
 				<div className="space-y-2">
 					<h1 className="text-2xl font-semibold tracking-tight">{t("choose_model_title")}</h1>
-					<p className="text-sm text-muted-foreground">
-						{t("choose_model_desc")}
-					</p>
+					<p className="text-sm text-muted-foreground">{t("choose_model_desc")}</p>
 				</div>
 				<ModelProviderConnectionsPanel
 					workspaceId={workspaceId}

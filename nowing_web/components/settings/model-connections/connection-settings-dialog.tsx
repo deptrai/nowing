@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import { Eye, EyeOff, Settings } from "lucide-react";
-import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
 import {
 	addManualModelMutationAtom,
 	bulkUpdateModelsMutationAtom,
@@ -220,7 +220,7 @@ export function ConnectionSettingsDialog({
 					variant="ghost"
 					size="icon"
 					className="text-muted-foreground hover:text-accent-foreground"
-					aria-label={t("mc_configure_provider",{provider:providerLabel})}
+					aria-label={t("mc_configure_provider", { provider: providerLabel })}
 				>
 					<Settings className="h-4 w-4" aria-hidden="true" />
 				</Button>
@@ -233,9 +233,7 @@ export function ConnectionSettingsDialog({
 							<DialogTitle>
 								{t("mc_configure")} <span className="italic">{providerLabel}</span>
 							</DialogTitle>
-							<DialogDescription>
-								{t("mc_manage_creds")}
-							</DialogDescription>
+							<DialogDescription>{t("mc_manage_creds")}</DialogDescription>
 						</div>
 					</div>
 				</DialogHeader>
@@ -249,9 +247,7 @@ export function ConnectionSettingsDialog({
 								onChange={(event) => setBaseUrlDraft(event.target.value)}
 								placeholder="https://api.example.com/v1"
 							/>
-							<p className="text-xs text-muted-foreground">
-								{t("mc_default_endpoint")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("mc_default_endpoint")}</p>
 						</div>
 
 						<div className="space-y-2">
@@ -295,9 +291,7 @@ export function ConnectionSettingsDialog({
 										{t("mc_save_filter")}
 									</Button>
 								</div>
-								<p className="text-xs text-muted-foreground">
-									{t("mc_filter_desc")}
-								</p>
+								<p className="text-xs text-muted-foreground">{t("mc_filter_desc")}</p>
 							</div>
 						) : null}
 
@@ -309,7 +303,7 @@ export function ConnectionSettingsDialog({
 							isAddingManual={addManualModel.isPending}
 							isUpdatingModel={isSavingConnectionSettings}
 							isBulkUpdating={isSavingConnectionSettings || bulkUpdateModels.isPending}
-							refreshLabel={t("mc_refresh_provider",{provider:providerLabel})}
+							refreshLabel={t("mc_refresh_provider", { provider: providerLabel })}
 							onRefresh={() => discoverModels.mutate(connection.id)}
 							onAddManual={(modelId) =>
 								addManualModel.mutate({

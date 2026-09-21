@@ -4,9 +4,9 @@ import type { ImageMessagePartComponent } from "@assistant-ui/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ImageIcon, ImageOffIcon } from "lucide-react";
 import NextImage from "next/image";
+import { useTranslations } from "next-intl";
 import { memo, type PropsWithChildren, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

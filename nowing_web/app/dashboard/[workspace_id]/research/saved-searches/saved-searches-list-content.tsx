@@ -13,8 +13,8 @@ import {
 	ShoppingBag,
 	Tag,
 } from "lucide-react";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import CreateFromTemplateModal from "@/components/alerts/CreateFromTemplateModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,9 +61,7 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-					<p className="text-sm text-muted-foreground">
-						{t("subtitle")}
-					</p>
+					<p className="text-sm text-muted-foreground">{t("subtitle")}</p>
 				</div>
 				<div className="flex items-center gap-2.5">
 					<Button
@@ -130,7 +128,8 @@ export function SavedSearchesListContent({ workspaceId }: SavedSearchesListConte
 
 								<div className="text-xs text-muted-foreground space-y-1">
 									<p className="truncate">
-										{t("capability_label")} <code className="text-foreground">{rule.capability_id}</code>
+										{t("capability_label")}{" "}
+										<code className="text-foreground">{rule.capability_id}</code>
 									</p>
 									<p>
 										{t("strategy_label")}{" "}

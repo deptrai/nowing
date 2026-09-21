@@ -223,7 +223,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					<div>
 						<div className="flex items-center gap-2">
 							<h2 className="text-xl font-semibold text-foreground">
-								Visual Multi-Channel Cadence Sequence Builder
+								{t("automations.cadence_builder_title")}
 							</h2>
 							<span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
 								<ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" /> Story 24.7 Multi-Channel
@@ -436,7 +436,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 											htmlFor={`zalo-template-data-${step.step_order}`}
 											className="block text-xs font-medium text-muted-foreground mb-1"
 										>
-											Template Data (JSON mapping cho ZNS)
+											{t("automations.template_data_label")}
 										</label>
 										<textarea
 											id={`zalo-template-data-${step.step_order}`}
@@ -492,7 +492,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 											htmlFor={`telegram-parse-mode-${step.step_order}`}
 											className="block text-xs font-medium text-muted-foreground mb-1"
 										>
-											Parse Mode
+											{t("automations.parse_mode")}
 										</label>
 										<select
 											id={`telegram-parse-mode-${step.step_order}`}
@@ -552,7 +552,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 														}`}
 													>
 														{isChecked ? "✓ " : "+ "}
-														{ch.toUpperCase()} Fallback
+														{ch.toUpperCase()} {t("automations.fallback")}
 													</button>
 												);
 											})}
@@ -582,7 +582,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 										}
 										className="w-24 px-3 py-1.5 border rounded-lg bg-background text-foreground text-sm focus:ring-2 focus:ring-primary focus:outline-none"
 									/>
-									<span className="text-sm text-foreground">Giờ (Hours)</span>
+									<span className="text-sm text-foreground">{t("automations.hours_label")}</span>
 									<span className="text-xs text-muted-foreground">
 										(Tự động điều chỉnh theo khung giờ hợp pháp 08:00 – 21:30 VN Time)
 									</span>
@@ -596,7 +596,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 									</p>
 									<div className="p-3 bg-accent/40 rounded-lg text-xs space-y-1">
 										<div className="font-semibold text-foreground">
-											Condition: if replied then exit, else continue to next step.
+											{t("automations.condition_desc")}
 										</div>
 										<div className="text-muted-foreground">
 											Nếu khách hàng trả lời hoặc yêu cầu dừng, chuỗi sẽ tự động dừng và cập nhật

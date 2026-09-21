@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import {
 	createContext,
 	type FC,
@@ -12,7 +13,6 @@ import {
 } from "react";
 import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms";
 import { DocumentUploadTab } from "@/components/sources/DocumentUploadTab";
-import { useTranslations } from "next-intl";
 import {
 	Dialog,
 	DialogContent,

@@ -12,8 +12,8 @@ import {
 } from "@tabler/icons-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { SignInButton } from "@/components/auth/sign-in-button";
 import { NavbarGitHubStars } from "@/components/homepage/github-stars-badge";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";

@@ -140,7 +140,11 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 			const res = await dncApiService.importDncCsv(workspaceId, selectedFile);
 			setImportResult(res);
 			setSuccessMsg(
-				t("dnc_success_imported", { imported: res.imported_count, skipped: res.skipped_count, failed: res.failed_count })
+				t("dnc_success_imported", {
+					imported: res.imported_count,
+					skipped: res.skipped_count,
+					failed: res.failed_count,
+				})
 			);
 			setSelectedFile(null);
 			setActiveTab("list");
@@ -170,9 +174,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									NĐ 91/2020 & NĐ 13/2023
 								</span>
 							</h2>
-							<p className="text-xs text-zinc-400">
-								{t("dnc_compliance_sub")}
-							</p>
+							<p className="text-xs text-zinc-400">{t("dnc_compliance_sub")}</p>
 						</div>
 					</div>
 					<button
@@ -345,9 +347,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 													</td>
 													<td className="px-4 py-3 text-xs text-zinc-500">
 														{r.source === "right_to_be_forgotten" ? (
-															<span className="text-amber-400/90 font-medium">
-																{t("dnc_rtbf")}
-															</span>
+															<span className="text-amber-400/90 font-medium">{t("dnc_rtbf")}</span>
 														) : (
 															r.source
 														)}
@@ -382,14 +382,18 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 											onClick={() => setPage((p) => Math.max(1, p - 1))}
 											disabled={page <= 1 || loading}
 											className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
-										>{t("dnc_prev")}</button>
+										>
+											{t("dnc_prev")}
+										</button>
 										<span>{t("dnc_page_num", { page })}</span>
 										<button
 											type="button"
 											onClick={() => setPage((p) => p + 1)}
 											disabled={records.length < 20 || loading}
 											className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
-										>{t("dnc_next")}</button>
+										>
+											{t("dnc_next")}
+										</button>
 									</div>
 								</div>
 							)}
@@ -525,7 +529,10 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 										{t("dnc_import_complete_header", { count: importResult.imported_count })}
 									</p>
 									<p className="text-zinc-400">
-										{t("dnc_skipped_failed", { skipped: importResult.skipped_count, failed: importResult.failed_count })}
+										{t("dnc_skipped_failed", {
+											skipped: importResult.skipped_count,
+											failed: importResult.failed_count,
+										})}
 									</p>
 									{importResult.errors.length > 0 && (
 										<div className="mt-2 text-red-400 font-mono">

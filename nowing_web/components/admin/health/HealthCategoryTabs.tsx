@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { HealthOverviewResponse } from "@/lib/apis/admin-health-api.service";
-import { useTranslations } from "next-intl";
 
 interface HealthCategoryTabsProps {
 	categories: string[];

@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
-export const metadata: Metadata = {
-	title: "Privacy Policy | Nowing",
-	description:
-		"Privacy Policy for Nowing. Learn how we collect, use, and protect your data, and how third-party services such as Google AdSense use cookies on our site.",
-	alternates: {
-		canonical: "https://www.nowing.com/privacy",
-	},
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("privacy");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		alternates: {
+			canonical: "https://www.nowing.com/privacy",
+		},
+	};
+}
 
 // Rendered per-request so the NEXT_LOCALE cookie can switch the language.
 export const dynamic = "force-dynamic";
@@ -22,7 +24,21 @@ const LAST_UPDATED = "May 21, 2026";
 const LIST_SECTIONS = new Set([2, 3, 4, 5, 8, 9, 10]);
 const LIST_COUNT: Record<number, number> = { 2: 11, 3: 8, 4: 4, 5: 5, 8: 6, 9: 7, 10: 5 };
 // Paragraph counts per section (excluding intro line rendered separately when a list exists).
-const PARA_COUNT: Record<number, number> = { 1: 2, 4: 2, 5: 2, 6: 2, 7: 1, 8: 2, 9: 2, 10: 2, 11: 1, 12: 1, 13: 1, 2: 0, 3: 0 };
+const PARA_COUNT: Record<number, number> = {
+	1: 2,
+	4: 2,
+	5: 2,
+	6: 2,
+	7: 1,
+	8: 2,
+	9: 2,
+	10: 2,
+	11: 1,
+	12: 1,
+	13: 1,
+	2: 0,
+	3: 0,
+};
 
 export default async function PrivacyPolicy() {
 	const t = await getTranslations("privacy");

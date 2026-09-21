@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyRound, Server } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 export interface ElasticsearchConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;
@@ -189,9 +189,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 						placeholder={t("my_elasticsearch_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("friendly_name")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
@@ -213,9 +211,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 						placeholder="https://your-cluster.es.region.aws.com:443"
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("update_es_url")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("update_es_url")}</p>
 				</div>
 			</div>
 
@@ -305,9 +301,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 						placeholder={t("es_indices_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("search_fields_desc")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("search_fields_desc")}</p>
 				</div>
 
 				{indices.trim() && (
@@ -333,7 +327,8 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 				<div className="space-y-4">
 					<div className="space-y-2">
 						<Label className="text-xs sm:text-sm">
-							{t("default_search_query")} <span className="text-muted-foreground">({t("optional_label")})</span>
+							{t("default_search_query")}{" "}
+							<span className="text-muted-foreground">({t("optional_label")})</span>
 						</Label>
 						<Input
 							value={query}
@@ -348,7 +343,8 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 
 					<div className="space-y-2">
 						<Label className="text-xs sm:text-sm">
-							{t("search_fields")} <span className="text-muted-foreground">({t("optional_label")})</span>
+							{t("search_fields")}{" "}
+							<span className="text-muted-foreground">({t("optional_label")})</span>
 						</Label>
 						<Input
 							value={searchFields}
@@ -376,7 +372,8 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 
 					<div className="space-y-2">
 						<Label className="text-xs sm:text-sm">
-							{t("maximum_documents")} <span className="text-muted-foreground">({t("optional_label")})</span>
+							{t("maximum_documents")}{" "}
+							<span className="text-muted-foreground">({t("optional_label")})</span>
 						</Label>
 						<Input
 							type="number"

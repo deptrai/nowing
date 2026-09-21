@@ -11,9 +11,9 @@ import {
 	Table as TableIcon,
 	Zap,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
 import {
 	activeCampaignPlanAtom,
 	type CanvasMode,

@@ -1,9 +1,9 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { Dot, Download, Loader2, Presentation, X } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -223,7 +223,7 @@ function VideoPresentationPlayer({
 			setCompiledSlides(withBlobs);
 		} catch (err) {
 			console.error("Error loading video presentation:", err);
-			setError(err instanceof Error ? err.message: t("tu_failed_to_load_presentation"));
+			setError(err instanceof Error ? err.message : t("tu_failed_to_load_presentation"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -462,7 +462,9 @@ function VideoPresentationPlayer({
 							onClick={handleDownload}
 							className="gap-1.5 h-7 px-2.5 text-xs text-muted-foreground"
 						>
-							<Download className="size-3.5" aria-hidden="true" />{t("tu_download_mp4")}</Button>
+							<Download className="size-3.5" aria-hidden="true" />
+							{t("tu_download_mp4")}
+						</Button>
 						<Button
 							variant="ghost"
 							size="sm"
@@ -477,7 +479,9 @@ function VideoPresentationPlayer({
 								</>
 							) : (
 								<>
-									<Presentation className="size-3.5" aria-hidden="true" />{t("tu_download_pptx")}</>
+									<Presentation className="size-3.5" aria-hidden="true" />
+									{t("tu_download_pptx")}
+								</>
 							)}
 						</Button>
 					</>
@@ -576,8 +580,12 @@ export const GenerateVideoPresentationToolUI = ({
 			return (
 				<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 					<div className="px-5 pt-5 pb-4">
-						<p className="text-sm font-semibold text-muted-foreground">{t("tu_presentation_cancelled")}</p>
-						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_presentation_generation_was_cancelled")}</p>
+						<p className="text-sm font-semibold text-muted-foreground">
+							{t("tu_presentation_cancelled")}
+						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_presentation_generation_was_cancelled")}
+						</p>
 					</div>
 				</div>
 			);
@@ -604,7 +612,9 @@ export const GenerateVideoPresentationToolUI = ({
 		return (
 			<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 				<div className="px-5 pt-5 pb-4">
-					<p className="text-sm font-semibold text-foreground">{t("tu_presentation_already_in_progress")}</p>
+					<p className="text-sm font-semibold text-foreground">
+						{t("tu_presentation_already_in_progress")}
+					</p>
 					<p className="text-xs text-muted-foreground mt-0.5">{t("tu_please_wait_for_the")}</p>
 				</div>
 			</div>

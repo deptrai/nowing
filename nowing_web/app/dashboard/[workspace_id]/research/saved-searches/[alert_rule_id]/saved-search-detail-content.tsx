@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { SearchX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import type { AlertRule, AlertSnapshot } from "@/contracts/types/alert-rules.types";
 import { alertRulesApiService } from "@/lib/apis/alert-rules-api.service";
 
@@ -140,15 +140,15 @@ export function SavedSearchDetailContent({
 			) : (
 				<div className="rounded-lg border border-border/60 bg-muted/20 px-6 py-10 text-center">
 					<p className="text-sm font-medium">{t("no_runs")}</p>
-					<p className="mt-1 text-xs text-muted-foreground">
-						{t("no_runs_description")}
-					</p>
+					<p className="mt-1 text-xs text-muted-foreground">{t("no_runs_description")}</p>
 				</div>
 			)}
 
 			{snapshots.length > 1 ? (
 				<div className="rounded-lg border border-border/60">
-					<h2 className="border-b border-border/60 px-4 py-3 text-sm font-medium">{t("run_history")}</h2>
+					<h2 className="border-b border-border/60 px-4 py-3 text-sm font-medium">
+						{t("run_history")}
+					</h2>
 					<ul className="divide-y divide-border/60">
 						{snapshots.map((snapshot) => (
 							<li key={snapshot.id}>

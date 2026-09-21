@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { removeTriggerMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import {

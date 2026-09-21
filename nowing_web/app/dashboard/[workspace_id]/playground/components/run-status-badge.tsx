@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 
 /** Scraper runs: ``running`` (async, in-flight), ``success``, ``error``, ``cancelled``. */
@@ -9,7 +9,9 @@ export function RunStatusBadge({ status }: { status: string }) {
 	if (normalized === "running") {
 		return (
 			<Badge variant="secondary" className="gap-1 bg-blue-500/15 text-blue-600 dark:text-blue-400">
-				<Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />{t("pg_running")}</Badge>
+				<Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+				{t("pg_running")}
+			</Badge>
 		);
 	}
 	if (normalized === "success") {
@@ -17,7 +19,9 @@ export function RunStatusBadge({ status }: { status: string }) {
 			<Badge
 				variant="secondary"
 				className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-			>{t("pg_success")}</Badge>
+			>
+				{t("pg_success")}
+			</Badge>
 		);
 	}
 	if (normalized === "error") {
@@ -25,7 +29,9 @@ export function RunStatusBadge({ status }: { status: string }) {
 	}
 	if (normalized === "cancelled") {
 		return (
-			<Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400">{t("pg_cancelled")}</Badge>
+			<Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400">
+				{t("pg_cancelled")}
+			</Badge>
 		);
 	}
 	return <Badge variant="outline">{status}</Badge>;

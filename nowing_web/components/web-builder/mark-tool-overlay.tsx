@@ -38,7 +38,7 @@ export function MarkToolOverlay({
 			<div className="flex items-center gap-3">
 				<input
 					type="text"
-					placeholder="DOM Selector (e.g. #hero-title or h1) — Click element in preview to select"
+					placeholder={t("dom_selector_placeholder")}
 					value={selectedSelector}
 					onChange={(e) => onSelectorChange(e.target.value)}
 					className="text-xs px-2.5 py-1.5 rounded border border-border bg-background flex-1 focus:ring-1 focus:ring-indigo-500"

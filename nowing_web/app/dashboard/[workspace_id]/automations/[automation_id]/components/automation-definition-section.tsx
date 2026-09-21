@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { Dot } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -78,7 +78,9 @@ export function AutomationDefinitionSection({ definition }: AutomationDefinition
 						</CollapsibleTrigger>
 						<CollapsibleContent>
 							<div className="mt-3 rounded-md border border-border/60 bg-background/30 p-3">
-								<div className="mb-2 text-sm font-medium text-muted-foreground">{t("auto_execution_defaults")}</div>
+								<div className="mb-2 text-sm font-medium text-muted-foreground">
+									{t("auto_execution_defaults")}
+								</div>
 								<ExecutionSummary execution={definition.execution} />
 							</div>
 						</CollapsibleContent>

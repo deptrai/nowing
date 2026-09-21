@@ -9,8 +9,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -744,9 +744,7 @@ export default function NewChatPage() {
 			const N = tcIds.length;
 
 			if (incoming.length !== N) {
-				toast.error(
-					t("errors.cannot_resume_decisions", { count: incoming.length, total: N })
-				);
+				toast.error(t("errors.cannot_resume_decisions", { count: incoming.length, total: N }));
 				return;
 			}
 
@@ -756,9 +754,7 @@ export default function NewChatPage() {
 				const tcId = tcIds[i];
 				const decision = incoming[i];
 				if (tcId === undefined || decision === undefined) {
-					toast.error(
-						t("errors.cannot_resume_decisions", { count: incoming.length, total: N })
-					);
+					toast.error(t("errors.cannot_resume_decisions", { count: incoming.length, total: N }));
 					return;
 				}
 				byTcId.set(tcId, decision);
@@ -871,7 +867,9 @@ export default function NewChatPage() {
 	if (disabledChatMode) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center p-8 text-center space-y-4">
-				<h2 className="text-xl font-bold text-foreground">{t("mode_disabled", { name: disabledChatMode.label })}</h2>
+				<h2 className="text-xl font-bold text-foreground">
+					{t("mode_disabled", { name: disabledChatMode.label })}
+				</h2>
 				<p className="text-sm text-muted-foreground max-w-md">
 					{t("mode_disabled_desc", { label: disabledChatMode.label, name: disabledChatMode.name })}
 				</p>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Check, Copy, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -55,9 +55,7 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 			<Alert>
 				<Info />
 				<AlertTitle>{t("obsidian_plugin_sync")}</AlertTitle>
-				<AlertDescription>
-					{t("obsidian_alert_desc")}
-				</AlertDescription>
+				<AlertDescription>{t("obsidian_alert_desc")}</AlertDescription>
 			</Alert>
 
 			<section className="rounded-xl border border-border bg-slate-400/5 p-3 sm:p-6 dark:bg-white/5">
@@ -103,7 +101,8 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 						</header>
 						<p className="mb-3 text-[11px] text-muted-foreground sm:text-xs">
 							{t("obsidian_pat_desc")}{" "}
-							<span className="font-medium">{t("obsidian_api_token")}</span> {t("obsidian_pat_once")}
+							<span className="font-medium">{t("obsidian_api_token")}</span>{" "}
+							{t("obsidian_pat_once")}
 						</p>
 
 						{createdToken ? (
@@ -154,8 +153,10 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<h3 className="text-sm font-medium sm:text-base">{t("obsidian_point_server")}</h3>
 						</header>
 						<p className="text-[11px] text-muted-foreground sm:text-xs">
-							{t("obsidian_cloud_default")} <span className="font-medium">nowing.com</span>. {t("obsidian_selfhost_desc")}{" "}
-							<span className="font-medium">{t("obsidian_server_url")}</span> {t("obsidian_workspace_choose")}
+							{t("obsidian_cloud_default")} <span className="font-medium">nowing.com</span>.{" "}
+							{t("obsidian_selfhost_desc")}{" "}
+							<span className="font-medium">{t("obsidian_server_url")}</span>{" "}
+							{t("obsidian_workspace_choose")}
 						</p>
 					</article>
 
@@ -170,7 +171,9 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<h3 className="text-sm font-medium sm:text-base">{t("obsidian_pick_workspace")}</h3>
 						</header>
 						<p className="text-[11px] text-muted-foreground sm:text-xs">
-							{t("obsidian_workspace_desc")} <span className="font-medium">{t("obsidian_search_space")}</span> {t("obsidian_workspace_choose")}
+							{t("obsidian_workspace_desc")}{" "}
+							<span className="font-medium">{t("obsidian_search_space")}</span>{" "}
+							{t("obsidian_workspace_choose")}
 						</p>
 					</article>
 				</div>
@@ -178,9 +181,7 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 
 			{getConnectorBenefits(EnumConnectorName.OBSIDIAN_CONNECTOR) && (
 				<div className="space-y-2 rounded-xl border border-border bg-slate-400/5 px-3 py-4 sm:px-6 dark:bg-white/5">
-					<h4 className="text-xs font-medium sm:text-sm">
-						{t("obsidian_what_you_get")}
-					</h4>
+					<h4 className="text-xs font-medium sm:text-sm">{t("obsidian_what_you_get")}</h4>
 					<ul className="list-disc space-y-1 pl-5 text-[10px] text-muted-foreground sm:text-xs">
 						{getConnectorBenefits(EnumConnectorName.OBSIDIAN_CONNECTOR)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

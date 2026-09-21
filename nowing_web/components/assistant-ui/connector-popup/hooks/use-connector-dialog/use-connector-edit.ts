@@ -2,8 +2,8 @@
 
 import { format } from "date-fns";
 import { useAtomValue } from "jotai";
-import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import {
 	deleteConnectorMutationAtom,

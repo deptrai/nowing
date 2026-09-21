@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { CornerDownLeftIcon, OctagonAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -104,12 +104,22 @@ function DoomLoopCardView({
 				{phase === "processing" ? (
 					<TextShimmerLoader text="Resuming…" size="sm" />
 				) : phase === "rejected" ? (
-					<p className="text-xs">{t("x_i_stopped_retrying")}<span className="font-medium">{displayName}</span>{t("x_as_you_asked")}</p>
+					<p className="text-xs">
+						{t("x_i_stopped_retrying")}
+						<span className="font-medium">{displayName}</span>
+						{t("x_as_you_asked")}
+					</p>
 				) : phase === "complete" ? (
-					<p className="text-xs">{t("x_continuing_to_call")}<span className="font-medium">{displayName}</span>{t("x_as_you_asked")}</p>
+					<p className="text-xs">
+						{t("x_continuing_to_call")}
+						<span className="font-medium">{displayName}</span>
+						{t("x_as_you_asked")}
+					</p>
 				) : (
-					<p className="text-xs">{t("x_i_called")}<span className="font-medium">{displayName}</span> {threshold} times in a row
-						with similar arguments. Should I keep going or stop and rethink?
+					<p className="text-xs">
+						{t("x_i_called")}
+						<span className="font-medium">{displayName}</span> {threshold} times in a row with
+						similar arguments. Should I keep going or stop and rethink?
 					</p>
 				)}
 
@@ -117,7 +127,9 @@ function DoomLoopCardView({
 					<>
 						<Separator />
 						<div className="flex flex-col gap-1">
-							<p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("f_last_arguments")}</p>
+							<p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+								{t("f_last_arguments")}
+							</p>
 							<pre className="max-h-32 overflow-auto rounded-md bg-muted/50 p-2 text-[11px] text-foreground/80">
 								{argPreview}
 							</pre>
@@ -142,9 +154,13 @@ function DoomLoopCardView({
 
 				{phase === "pending" && (
 					<div className="flex items-center gap-2">
-						<Button size="sm" variant="outline" className="rounded-lg gap-1.5" onClick={handleStop}>{t("f_stop_and_rethink")}<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+						<Button size="sm" variant="outline" className="rounded-lg gap-1.5" onClick={handleStop}>
+							{t("f_stop_and_rethink")}
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
-						<Button size="sm" variant="ghost" onClick={handleContinue}>{t("f_continue_anyway")}</Button>
+						<Button size="sm" variant="ghost" onClick={handleContinue}>
+							{t("f_continue_anyway")}
+						</Button>
 					</div>
 				)}
 			</AlertDescription>

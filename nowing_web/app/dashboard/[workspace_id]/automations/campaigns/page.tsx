@@ -1,9 +1,9 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { BarChart3, Clock, Pause, Play, Plus, RefreshCw, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type { Sequence } from "@/contracts/types/sequence.types";
 import { sequenceApiService } from "@/lib/apis/sequence-api.service";

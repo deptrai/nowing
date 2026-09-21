@@ -65,58 +65,58 @@ export async function generateMetadata(): Promise<Metadata> {
 	const description = t("layout_meta_description");
 	const ogDescription = t("layout_meta_og_description");
 	return {
-	metadataBase: new URL("https://www.nowing.com"),
-	alternates: {
-		canonical: "https://www.nowing.com",
-	},
-	title,
-	description,
-	keywords: [
-		"open core research memory",
-		"long-term research memory",
-		"AI agent memory",
-		"open web research platform",
-		"web research for AI agents",
-		"live web data for agents",
-		"web scraping API",
-		"reddit scraper api",
-		"youtube scraper api",
-		"deep research agent",
-		"mcp server",
-		"agent harness",
-		"Nowing",
-	],
-	openGraph: {
+		metadataBase: new URL("https://www.nowing.com"),
+		alternates: {
+			canonical: "https://www.nowing.com",
+		},
 		title,
-		description: ogDescription,
-		url: "https://www.nowing.com",
-		siteName: "Nowing",
-		type: "website",
-		images: [
-			{
-				url: "/og-image.png",
-				width: 1200,
-				height: 630,
-				alt: "Nowing, open-core long-term research memory for AI agents",
-			},
+		description,
+		keywords: [
+			"open core research memory",
+			"long-term research memory",
+			"AI agent memory",
+			"open web research platform",
+			"web research for AI agents",
+			"live web data for agents",
+			"web scraping API",
+			"reddit scraper api",
+			"youtube scraper api",
+			"deep research agent",
+			"mcp server",
+			"agent harness",
+			"Nowing",
 		],
-		locale: "en_US",
-	},
-	twitter: {
-		card: "summary_large_image",
-		title,
-		description: ogDescription,
-		creator: "@NowingAI",
-		site: "@NowingAI",
-		images: [
-			{
-				url: "/og-image-twitter.png",
-				width: 1200,
-				height: 630,
-				alt: "Nowing, open-core long-term research memory for AI agents",
-			},
-		],
-	},
+		openGraph: {
+			title,
+			description: ogDescription,
+			url: "https://www.nowing.com",
+			siteName: "Nowing",
+			type: "website",
+			images: [
+				{
+					url: "/og-image.png",
+					width: 1200,
+					height: 630,
+					alt: "Nowing, open-core long-term research memory for AI agents",
+				},
+			],
+			locale: "en_US",
+		},
+		twitter: {
+			card: "summary_large_image",
+			title,
+			description: ogDescription,
+			creator: "@NowingAI",
+			site: "@NowingAI",
+			images: [
+				{
+					url: "/og-image-twitter.png",
+					width: 1200,
+					height: 630,
+					alt: "Nowing, open-core long-term research memory for AI agents",
+				},
+			],
+		},
 	};
 }
 

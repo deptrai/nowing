@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { FormField } from "@/lib/playground/json-schema";
-import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 export interface FieldOption {
@@ -69,7 +69,7 @@ function FieldControl({
 				disabled={disabled}
 			>
 				<SelectTrigger id={id} className={cn("w-full", invalid && "border-destructive")}>
-					<SelectValue placeholder={t('select')} />
+					<SelectValue placeholder={t("select")} />
 				</SelectTrigger>
 				<SelectContent>
 					{field.enumValues.map((option) => (
@@ -90,7 +90,7 @@ function FieldControl({
 				disabled={disabled}
 			>
 				<SelectTrigger id={id} className={cn("w-full", invalid && "border-destructive")}>
-					<SelectValue placeholder={t('select')} />
+					<SelectValue placeholder={t("select")} />
 				</SelectTrigger>
 				<SelectContent>
 					{options.map((option) => (
@@ -109,7 +109,7 @@ function FieldControl({
 				id={id}
 				value={String(value ?? "")}
 				onChange={(e) => onChange(e.target.value)}
-				placeholder={t('one_value_per_line')}
+				placeholder={t("one_value_per_line")}
 				disabled={disabled}
 				rows={4}
 				className={cn("font-mono text-xs", invalid && "border-destructive")}

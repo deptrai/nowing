@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { Automation } from "@/contracts/types/automation.types";
@@ -24,10 +24,14 @@ export function AutomationEditHeader({
 		<div className="space-y-3">
 			<Button asChild variant="ghost" size="sm" className="-ml-2 h-auto px-2 py-1">
 				<Link href={detailHref} className="text-xs text-muted-foreground">
-					<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{t("auto_back_to_automation")}</Link>
+					<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+					{t("auto_back_to_automation")}
+				</Link>
 			</Button>
 			<div className="flex flex-wrap items-center justify-between gap-3">
-				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground wrap-break-word">{t("auto_edit_automation")}</h1>
+				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground wrap-break-word">
+					{t("auto_edit_automation")}
+				</h1>
 				{modeSwitcher ? <div className="ml-auto">{modeSwitcher}</div> : null}
 			</div>
 		</div>

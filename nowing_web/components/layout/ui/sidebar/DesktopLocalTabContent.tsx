@@ -2,8 +2,8 @@
 
 import { useAtom } from "jotai";
 import { Folder, FolderPlus, Search, X } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { localExpandedFolderKeysAtom } from "@/atoms/documents/folder.atoms";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,7 +82,8 @@ export function DesktopLocalTabContent({
 									<Folder className="size-3 shrink-0" />
 									<span className="truncate">
 										{localRootPaths.length === 1
-											? t("one_folder_selected") : t("folders_selected", { count: localRootPaths.length })}
+											? t("one_folder_selected")
+											: t("folders_selected", { count: localRootPaths.length })}
 									</span>
 								</Button>
 							</DropdownMenuTrigger>
@@ -159,7 +160,9 @@ export function DesktopLocalTabContent({
 								</span>
 							</TooltipTrigger>
 							<TooltipContent side="top" className="text-xs">
-								{canAddMoreLocalRoots ? t("add_folder") : t("max_folders_limit", { max: maxLocalFilesystemRoots })}
+								{canAddMoreLocalRoots
+									? t("add_folder")
+									: t("max_folders_limit", { max: maxLocalFilesystemRoots })}
 							</TooltipContent>
 						</Tooltip>
 					) : null}

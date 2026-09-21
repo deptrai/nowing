@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { Search, Unplug } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -154,7 +154,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 				<div className="flex flex-col items-center justify-center py-20 text-center">
 					<Search className="size-8 text-muted-foreground mb-3" aria-hidden="true" />
 					<p className="text-sm text-muted-foreground">{t("asst_no_connectors_found")}</p>
-					<p className="text-xs text-muted-foreground/60 mt-1">{t("asst_try_a_different_search")}</p>
+					<p className="text-xs text-muted-foreground/60 mt-1">
+						{t("asst_try_a_different_search")}
+					</p>
 				</div>
 			) : hasSources ? (
 				<div className="space-y-6">
@@ -162,7 +164,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 					{hasActiveConnectors && (
 						<div className="space-y-4">
 							<div className="flex items-center gap-2">
-								<h3 className="text-sm font-semibold text-muted-foreground">{t("asst_active_connectors")}</h3>
+								<h3 className="text-sm font-semibold text-muted-foreground">
+									{t("asst_active_connectors")}
+								</h3>
 							</div>
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								{/* OAuth Connectors - Grouped by Type */}
@@ -210,7 +214,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 												<p className="text-[14px] font-semibold leading-tight truncate">{title}</p>
 												{isAnyIndexing ? (
 													<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
-														<Spinner size="xs" />{t("asst_syncing")}</p>
+														<Spinner size="xs" />
+														{t("asst_syncing")}
+													</p>
 												) : (
 													<p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5">
 														{!isLive && (
@@ -274,7 +280,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 												</div>
 												{isIndexing ? (
 													<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
-														<Spinner size="xs" />{t("asst_syncing")}</p>
+														<Spinner size="xs" />
+														{t("asst_syncing")}
+													</p>
 												) : !isLive && !isMCPConnector ? (
 													<p className="text-[10px] text-muted-foreground mt-1">
 														{formatDocumentCount(documentCount)}
@@ -300,7 +308,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 					{standaloneDocuments.length > 0 && (
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-semibold text-muted-foreground">{t("asst_documents")}</h3>
+								<h3 className="text-sm font-semibold text-muted-foreground">
+									{t("asst_documents")}
+								</h3>
 							</div>
 							<div className="flex flex-wrap items-center gap-2">
 								{standaloneDocuments.map((doc) => (
@@ -327,7 +337,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 						<Unplug className="size-8 text-muted-foreground" aria-hidden="true" />
 					</div>
 					<h4 className="text-lg font-semibold">{t("asst_no_active_sources")}</h4>
-					<p className="text-sm text-muted-foreground mt-1 max-w-[280px]">{t("asst_connect_your_first_service")}</p>
+					<p className="text-sm text-muted-foreground mt-1 max-w-[280px]">
+						{t("asst_connect_your_first_service")}
+					</p>
 				</div>
 			)}
 		</TabsContent>

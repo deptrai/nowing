@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown, ChevronRight, ChevronUp, Code2, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useId, useMemo, useState } from "react";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
@@ -126,7 +126,10 @@ export function TaskItem({
 	);
 
 	return (
-		<div data-testid={`task-item-${index}`} className="rounded-md border border-border/60 bg-transparent p-3 space-y-3">
+		<div
+			data-testid={`task-item-${index}`}
+			className="rounded-md border border-border/60 bg-transparent p-3 space-y-3"
+		>
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -253,7 +256,9 @@ export function TaskItem({
 			<Accordion type="single" collapsible>
 				<AccordionItem value="advanced" className="border-b-0">
 					<AccordionPrimitive.Header className="flex">
-						<AccordionPrimitive.Trigger className="group flex flex-1 items-center justify-between rounded-md py-1.5 text-left text-xs font-medium text-muted-foreground outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50">{t("auto_advanced")}<ChevronRight
+						<AccordionPrimitive.Trigger className="group flex flex-1 items-center justify-between rounded-md py-1.5 text-left text-xs font-medium text-muted-foreground outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50">
+							{t("auto_advanced")}
+							<ChevronRight
 								className="pointer-events-none size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90"
 								aria-hidden="true"
 							/>

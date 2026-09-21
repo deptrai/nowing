@@ -17,8 +17,8 @@ import {
 	Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type React from "react";
 import { useTranslations } from "next-intl";
+import type React from "react";
 import { useEffect, useState } from "react";
 import type {
 	BuyerPersona,
@@ -103,10 +103,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 			setResult(data);
 			setSelectedPersonaIdx(0);
 		} catch (err: unknown) {
-			const errMsg =
-				err instanceof Error
-					? err.message
-					: t("reverse_icp_url_error");
+			const errMsg = err instanceof Error ? err.message : t("reverse_icp_url_error");
 			setError(errMsg);
 		} finally {
 			setLoading(false);

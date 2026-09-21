@@ -15,9 +15,7 @@ export function AppearanceContent() {
 			<section>
 				<div className="pb-2 md:pb-3">
 					<h2 className="text-base md:text-lg font-semibold">Chat</h2>
-					<p className="text-xs md:text-sm text-muted-foreground">
-						{t("appearance_lede")}
-					</p>
+					<p className="text-xs md:text-sm text-muted-foreground">{t("appearance_lede")}</p>
 				</div>
 				<div className="flex flex-col gap-3">
 					<div className="flex items-center justify-between rounded-lg bg-accent p-4">
@@ -28,9 +26,7 @@ export function AppearanceContent() {
 							>
 								{t("show_timestamps")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								{t("show_timestamps_desc")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("show_timestamps_desc")}</p>
 						</div>
 						<Switch
 							id="show-timestamps-toggle"

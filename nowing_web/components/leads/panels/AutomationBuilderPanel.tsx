@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Bot, Clock, Filter, Play, Save, Send, Sliders, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -41,17 +41,11 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 		setTestLogs([t("log_test_start")]);
 
 		setTimeout(() => {
-			setTestLogs((prev) => [
-				...prev,
-				t("log_scraper", { platform: targetPlatform }),
-			]);
+			setTestLogs((prev) => [...prev, t("log_scraper", { platform: targetPlatform })]);
 		}, 600);
 
 		setTimeout(() => {
-			setTestLogs((prev) => [
-				...prev,
-				t("log_filter", { score: minFitScore }),
-			]);
+			setTestLogs((prev) => [...prev, t("log_filter", { score: minFitScore })]);
 		}, 1200);
 
 		setTimeout(() => {
@@ -74,8 +68,13 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 			const cron = `${minute || "0"} ${hour || "8"} * * *`;
 
 			const autoName =
-				workflowName || t("auto_name", { platform: targetPlatform.toUpperCase(), time: scheduleTime });
-			const autoDesc = t("auto_desc", { platform: targetPlatform, time: scheduleTime, channel: notifyChannel });
+				workflowName ||
+				t("auto_name", { platform: targetPlatform.toUpperCase(), time: scheduleTime });
+			const autoDesc = t("auto_desc", {
+				platform: targetPlatform,
+				time: scheduleTime,
+				channel: notifyChannel,
+			});
 
 			const created = await automationsApiService.createAutomation({
 				workspace_id: Number(workspaceId || 1),
@@ -117,10 +116,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 				duration: 3000,
 			});
 		} catch (err: unknown) {
-			toast.error(
-				err instanceof Error ? err.message : t("save_failed"),
-				{ id: "save-automation" }
-			);
+			toast.error(err instanceof Error ? err.message : t("save_failed"), { id: "save-automation" });
 		} finally {
 			setIsSaving(false);
 		}
@@ -211,7 +207,7 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 								<span>{t("node_filter")}</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
-								Fit Score &gt;= <strong>{minFitScore}</strong> + {t("node_filter_dnc")}
+								{t("fit_score")} &gt;= <strong>{minFitScore}</strong> + {t("node_filter_dnc")}
 							</p>
 							<div className="mt-2 text-[10px] text-purple-600 dark:text-purple-400 font-mono">
 								{t("node_filter_compliance")}
@@ -225,7 +221,8 @@ export const AutomationBuilderPanel: React.FC<AutomationBuilderPanelProps> = ({
 								<span>{t("node_notify")}</span>
 							</div>
 							<p className="text-[11px] text-muted-foreground">
-								{t("node_notify_channel")} <strong>{notifyChannel === "telegram" ? "Telegram Bot" : "Zalo OA"}</strong>
+								{t("node_notify_channel")}{" "}
+								<strong>{notifyChannel === "telegram" ? "Telegram Bot" : "Zalo OA"}</strong>
 							</p>
 							<div className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 font-mono">
 								{t("node_notify_format")}

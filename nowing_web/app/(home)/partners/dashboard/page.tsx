@@ -12,8 +12,8 @@ import {
 	IconRefresh,
 	IconWallet,
 } from "@tabler/icons-react";
-import { useTranslations } from "next-intl";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -486,7 +486,9 @@ export default function PartnerDashboardPage() {
 						</div>
 
 						{commissions.length === 0 ? (
-							<div className="p-12 text-center text-neutral-500 text-sm">{t("home_no_commissions_earned_yet")}</div>
+							<div className="p-12 text-center text-neutral-500 text-sm">
+								{t("home_no_commissions_earned_yet")}
+							</div>
 						) : (
 							<div className="overflow-x-auto">
 								<table className="w-full text-left text-sm">
@@ -544,7 +546,9 @@ export default function PartnerDashboardPage() {
 						</div>
 
 						{referrals.length === 0 ? (
-							<div className="p-12 text-center text-neutral-500 text-sm">{t("home_no_referred_users_registered")}</div>
+							<div className="p-12 text-center text-neutral-500 text-sm">
+								{t("home_no_referred_users_registered")}
+							</div>
 						) : (
 							<div className="overflow-x-auto">
 								<table className="w-full text-left text-sm">
@@ -599,7 +603,10 @@ export default function PartnerDashboardPage() {
 					<DialogHeader>
 						<DialogTitle className="text-xl font-bold">{t("payout_dialog_title")}</DialogTitle>
 						<DialogDescription>
-							{t("payout_dialog_desc", { usd: profile.balance_usd.toFixed(2), vnd: profile.balance_vnd.toLocaleString("vi-VN") })}
+							{t("payout_dialog_desc", {
+								usd: profile.balance_usd.toFixed(2),
+								vnd: profile.balance_vnd.toLocaleString("vi-VN"),
+							})}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -632,7 +639,9 @@ export default function PartnerDashboardPage() {
 								>
 									<IconCoins className="size-4 mb-1 text-emerald-600" aria-hidden="true" />
 									<div className="font-bold">{t("method_credits")}</div>
-									<div className="text-[10px] text-emerald-600 font-bold">{t("method_credits_desc")}</div>
+									<div className="text-[10px] text-emerald-600 font-bold">
+										{t("method_credits_desc")}
+									</div>
 								</button>
 							</div>
 						</div>
@@ -652,7 +661,9 @@ export default function PartnerDashboardPage() {
 								≈ {(parseFloat(payoutAmountUsd || "0") * 25400).toLocaleString("vi-VN")} VND
 								{payoutMethod === "credit_wallet" && (
 									<span className="text-emerald-600 font-semibold ml-1">
-										{t("credit_bonus_hint", { usd: (parseFloat(payoutAmountUsd || "0") * 1.1).toFixed(2) })}
+										{t("credit_bonus_hint", {
+											usd: (parseFloat(payoutAmountUsd || "0") * 1.1).toFixed(2),
+										})}
 									</span>
 								)}
 							</p>

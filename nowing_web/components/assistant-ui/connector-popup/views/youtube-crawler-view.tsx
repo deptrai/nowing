@@ -223,7 +223,9 @@ export const YouTubeCrawlerView: FC<YouTubeCrawlerViewProps> = ({ workspaceId, o
 					onClick={onBack}
 					className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
-					<ArrowLeft data-icon="inline-start" />{t("asst_back_to_connectors")}</Button>
+					<ArrowLeft data-icon="inline-start" />
+					{t("asst_back_to_connectors")}
+				</Button>
 
 				<div className="flex items-center gap-4 mb-6">
 					<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-slate-400/30">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -135,9 +135,7 @@ export default function DesktopPermissionsPage() {
 					<Logo className="w-12 h-12 mx-auto" aria-hidden="true" />
 					<div className="space-y-1">
 						<h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-						<p className="text-sm text-muted-foreground">
-							{t("subtitle")}
-						</p>
+						<p className="text-sm text-muted-foreground">{t("subtitle")}</p>
 					</div>
 				</div>
 
@@ -179,9 +177,7 @@ export default function DesktopPermissionsPage() {
 											{t("open_settings")}
 										</Button>
 										{status === "denied" && (
-											<p className="text-xs text-amber-700 dark:text-amber-400">
-												{t("toggle_on")}
-											</p>
+											<p className="text-xs text-amber-700 dark:text-amber-400">{t("toggle_on")}</p>
 										)}
 										<p className="text-xs text-muted-foreground">
 											{t("not_in_list_1")} <strong>+</strong> {t("not_in_list_2")}
@@ -200,9 +196,7 @@ export default function DesktopPermissionsPage() {
 							<Button onClick={handleContinue} className="text-sm h-9 min-w-[180px]">
 								{t("restart_cta")}
 							</Button>
-							<p className="text-xs text-muted-foreground">
-								{t("restart_needed")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("restart_needed")}</p>
 						</>
 					) : (
 						<>

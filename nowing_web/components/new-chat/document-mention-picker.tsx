@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
-import { useTranslations } from "next-intl";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import {
@@ -12,6 +11,7 @@ import {
 	MessageSquare,
 	Unplug,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
 	Fragment,
 	forwardRef,
@@ -505,9 +505,7 @@ export const DocumentMentionPicker = forwardRef<
 			{
 				id: "connectors",
 				label: t("connectors"),
-				subtitle: activeConnectors.length
-					? t("choose_account")
-					: t("no_accounts"),
+				subtitle: activeConnectors.length ? t("choose_account") : t("no_accounts"),
 				icon: <Unplug className="size-4" />,
 				type: "branch",
 				disabled: activeConnectors.length === 0,
@@ -786,7 +784,9 @@ export const DocumentMentionPicker = forwardRef<
 					{visibleNodes.length > 0 ? (
 						<>
 							{hasSearch ? (
-								<ComposerSuggestionGroupHeading>{t("suggested_context")}</ComposerSuggestionGroupHeading>
+								<ComposerSuggestionGroupHeading>
+									{t("suggested_context")}
+								</ComposerSuggestionGroupHeading>
 							) : null}
 							{!hasSearch && view.kind === "root" && recentRootNodes.length > 0 ? (
 								<ComposerSuggestionGroupHeading>{t("recents")}</ComposerSuggestionGroupHeading>

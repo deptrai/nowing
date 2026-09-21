@@ -3,13 +3,13 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { Unplug, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { type FC, useEffect, useState } from "react";
 import { connectorDialogOpenAtom } from "@/atoms/connector-dialog/connector-dialog.atoms";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
 import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { getConnectorIcon } from "@/contracts/enums/connectorIcons";
-import { useTranslations } from "next-intl";
 import { BANNER_CONNECTORS, BANNER_DISMISSED_KEY } from "./constants";
 
 export const ConnectToolsBanner: FC<{

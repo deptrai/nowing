@@ -1,8 +1,8 @@
 "use client";
 
 import { useSetAtom } from "jotai";
-import { useTranslations } from "next-intl";
 import { Database } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { openRunCitationPanelAtom } from "@/atoms/citation/citation-panel.atom";
 import { Button } from "@/components/ui/button";

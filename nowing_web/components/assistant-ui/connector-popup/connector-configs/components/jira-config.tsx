@@ -1,13 +1,13 @@
 "use client";
 
 import { Info, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 export interface JiraConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;
@@ -96,9 +96,7 @@ export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onN
 						placeholder={t("my_jira_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("friendly_name")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
@@ -149,9 +147,7 @@ export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onN
 							placeholder={t("your_api_token")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
-						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							{t("update_jira_token")}
-						</p>
+						<p className="text-[10px] sm:text-xs text-muted-foreground">{t("update_jira_token")}</p>
 					</div>
 				</div>
 			</div>

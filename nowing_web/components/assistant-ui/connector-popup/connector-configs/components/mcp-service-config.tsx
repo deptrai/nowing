@@ -1,10 +1,10 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import type { ConnectorConfigProps } from "../index";
 import { MCPTrustedTools } from "./mcp-trusted-tools";
-import { useTranslations } from "next-intl";
 
 export const MCPServiceConfig: FC<ConnectorConfigProps> = ({ connector }) => {
 	const t = useTranslations("assistant");

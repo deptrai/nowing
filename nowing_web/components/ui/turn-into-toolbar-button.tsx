@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { DropdownMenuProps } from "@radix-ui/react-dropdown-menu";
 import { DropdownMenuItemIndicator } from "@radix-ui/react-dropdown-menu";
@@ -20,6 +19,7 @@ import {
 	QuoteIcon,
 	SquareIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { TElement } from "platejs";
 import { KEYS } from "platejs";
 import { useEditorRef, useSelectionFragmentProp } from "platejs/react";
@@ -125,7 +125,8 @@ export function TurnIntoToolbarButton({
 	tooltip,
 	...props
 }: DropdownMenuProps & { tooltip?: React.ReactNode }) {
-	const t = useTranslations("ui");	const editor = useEditorRef();
+	const t = useTranslations("ui");
+	const editor = useEditorRef();
 	const [open, setOpen] = React.useState(false);
 
 	const value = useSelectionFragmentProp({
@@ -133,7 +134,9 @@ export function TurnIntoToolbarButton({
 		getProp: (node) => getBlockType(node as TElement),
 	});
 	const selectedItem = React.useMemo(
-		() => getTurnIntoItems(t).find((item) => item.value === (value ?? KEYS.p)) ?? getTurnIntoItems(t)[0],
+		() =>
+			getTurnIntoItems(t).find((item) => item.value === (value ?? KEYS.p)) ??
+			getTurnIntoItems(t)[0],
 		[value]
 	);
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { Check, ChevronRight, Copy } from "lucide-react";
-import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BACKEND_URL } from "@/lib/env-config";
@@ -100,9 +100,7 @@ export function ApiReference({
 		<section className="space-y-4">
 			<div>
 				<h2 className="text-base font-semibold">{t("api_reference")}</h2>
-				<p className="mt-1 text-sm text-muted-foreground">
-					{t("api_reference_description")}
-				</p>
+				<p className="mt-1 text-sm text-muted-foreground">{t("api_reference_description")}</p>
 			</div>
 
 			<Tabs defaultValue="curl">

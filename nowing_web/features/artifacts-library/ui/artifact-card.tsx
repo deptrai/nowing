@@ -1,9 +1,9 @@
 import { MessageSquareText } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { formatRelativeDate } from "@/lib/format-date";
 import type { LibraryArtifact } from "../model/artifact";
 import { KIND_META } from "./kind-meta";
-import { useTranslations } from "next-intl";
 
 export function ArtifactCard({
 	artifact,
@@ -34,7 +34,9 @@ export function ArtifactCard({
 				onClick={() => onOpen(artifact)}
 				className="absolute inset-0 rounded-xl"
 			>
-				<span className="sr-only">{t("open")} {artifact.title}</span>
+				<span className="sr-only">
+					{t("open")} {artifact.title}
+				</span>
 			</button>
 
 			<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">

@@ -1,11 +1,11 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { ArrowLeft, BookOpen, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { updateAutomationMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import { createPlaybookMutationAtom } from "@/atoms/playbooks/playbooks-mutation.atoms";
@@ -137,7 +137,9 @@ export function AutomationDetailHeader({
 						href={`/dashboard/${workspaceId}/automations`}
 						className="text-xs text-muted-foreground"
 					>
-						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />{t("auto_back_to_automations")}</Link>
+						<ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+						{t("auto_back_to_automations")}
+					</Link>
 				</Button>
 
 				<div className="flex items-start justify-between gap-4 flex-wrap">
@@ -165,7 +167,9 @@ export function AutomationDetailHeader({
 								onClick={openSaveDialog}
 								className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 							>
-								<BookOpen className="mr-1 h-4 w-4" aria-hidden="true" />{t("auto_save_as_playbook")}</Button>
+								<BookOpen className="mr-1 h-4 w-4" aria-hidden="true" />
+								{t("auto_save_as_playbook")}
+							</Button>
 						)}
 						{canUpdate && (
 							<Button

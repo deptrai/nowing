@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { History } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAutomationRuns } from "@/hooks/use-automation-runs";
 import { RunRow } from "./run-row";
@@ -33,9 +33,11 @@ export function AutomationRunsSection({
 			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
 				<div className="space-y-1">
 					<CardTitle
-							data-testid="automation-recent-runs-heading"
-							className="text-base font-semibold inline-flex items-center gap-2"
-						>{t("auto_recent_runs")}</CardTitle>
+						data-testid="automation-recent-runs-heading"
+						className="text-base font-semibold inline-flex items-center gap-2"
+					>
+						{t("auto_recent_runs")}
+					</CardTitle>
 					<p className="text-xs text-muted-foreground">{t("auto_most_recent_first_click")}</p>
 				</div>
 				{!isLoading && !error && data && (

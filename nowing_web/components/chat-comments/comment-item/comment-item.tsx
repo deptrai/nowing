@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useTranslations } from "next-intl";
 import { MessageCircleReply } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { clearTargetCommentIdAtom, targetCommentIdAtom } from "@/atoms/chat/current-thread.atom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

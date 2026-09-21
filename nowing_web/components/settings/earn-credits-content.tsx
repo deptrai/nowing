@@ -1,10 +1,10 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
@@ -80,8 +80,12 @@ export function EarnCreditsContent() {
 	return (
 		<div className="w-full space-y-5">
 			<div className="text-center">
-				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">{t("x_earn_credits")}</h2>
-				<p className="mt-1 text-xs sm:text-sm text-muted-foreground font-sans">{t("x_earn_bonus_credits_by")}</p>
+				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">
+					{t("x_earn_credits")}
+				</h2>
+				<p className="mt-1 text-xs sm:text-sm text-muted-foreground font-sans">
+					{t("x_earn_bonus_credits_by")}
+				</p>
 			</div>
 
 			<div className="space-y-2">

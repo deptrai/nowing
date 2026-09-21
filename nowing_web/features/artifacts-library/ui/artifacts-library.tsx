@@ -9,6 +9,7 @@ import {
 	Search,
 	TriangleAlert,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { openReportPanelAtom } from "@/atoms/chat/report-panel.atom";
 import { MobileReportPanel } from "@/components/report-panel/report-panel";
@@ -20,7 +21,6 @@ import type { LibraryArtifact, LibraryArtifactKind } from "../model/artifact";
 import { ArtifactCard } from "./artifact-card";
 import { KIND_META, KIND_ORDER } from "./kind-meta";
 import { MediaViewerDialog } from "./media-viewer-dialog";
-import { useTranslations } from "next-intl";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6"];
 
@@ -43,9 +43,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 			</span>
 			<div>
 				<p className="text-sm font-semibold text-foreground">{t("couldnt_load")}</p>
-				<p className="mt-1 text-xs text-muted-foreground">
-					{t("load_error_desc")}
-				</p>
+				<p className="mt-1 text-xs text-muted-foreground">{t("load_error_desc")}</p>
 			</div>
 			<Button variant="outline" size="sm" onClick={onRetry} className="h-8 text-xs">
 				<RefreshCw className="size-3.5 mr-1.5" aria-hidden="true" />
@@ -212,9 +210,7 @@ export function ArtifactsLibrary({ workspaceId }: { workspaceId: number }) {
 				<EmptyState />
 			) : filteredArtifacts.length === 0 ? (
 				<div className="rounded-xl border border-dashed border-border/70 p-8 text-center">
-					<p className="text-xs text-muted-foreground">
-						{t("no_match_filter")}
-					</p>
+					<p className="text-xs text-muted-foreground">{t("no_match_filter")}</p>
 					<Button
 						variant="ghost"
 						size="sm"

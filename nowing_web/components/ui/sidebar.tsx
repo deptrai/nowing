@@ -1,9 +1,9 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,7 +155,8 @@ function Sidebar({
 	variant?: "sidebar" | "floating" | "inset";
 	collapsible?: "offcanvas" | "icon" | "none";
 }) {
-	const t = useTranslations("ui");	const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+	const t = useTranslations("ui");
+	const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
 	if (collapsible === "none") {
 		return (
@@ -243,7 +244,8 @@ function Sidebar({
 }
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
-	const t = useTranslations("ui");	const { toggleSidebar } = useSidebar();
+	const t = useTranslations("ui");
+	const { toggleSidebar } = useSidebar();
 
 	return (
 		<Button
@@ -265,7 +267,8 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<typeof Button>) {
-	const t = useTranslations("ui");	const { toggleSidebar } = useSidebar();
+	const t = useTranslations("ui");
+	const { toggleSidebar } = useSidebar();
 
 	return (
 		<Button

@@ -108,7 +108,7 @@ export function MemberSpendCapDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[420px]">
 				<DialogHeader>
-					<DialogTitle>Spend Cap &amp; Lead Capacity</DialogTitle>
+					<DialogTitle>{t("spend_cap_dialog_title")}</DialogTitle>
 					<DialogDescription>
 						Cấu hình hạn mức chi tiêu hàng tháng và sức chứa lead cho{" "}
 						<span className="font-medium text-foreground">
@@ -120,7 +120,7 @@ export function MemberSpendCapDialog({
 
 				<div className="space-y-4 py-2">
 					<div className="space-y-1.5">
-						<Label htmlFor="spend-cap">Monthly spend cap (USD)</Label>
+						<Label htmlFor="spend-cap">{t("monthly_spend_cap_usd")}</Label>
 						<Input
 							id="spend-cap"
 							type="number"

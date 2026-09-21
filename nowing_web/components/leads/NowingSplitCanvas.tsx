@@ -2,8 +2,8 @@
 
 import { useAtom, useAtomValue } from "jotai";
 import { GripVertical, MessageSquare, Table } from "lucide-react";
-import type React from "react";
 import { useTranslations } from "next-intl";
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { dockExpandedAtom, dockOpenAtom } from "@/atoms/layout/dock.atom";
@@ -15,9 +15,9 @@ import {
 	selectedLeadContextAtom,
 	selectedLeadIdsAtom,
 } from "@/atoms/leads/leads-canvas.atoms";
+import { useSidebarContextSafe } from "@/components/layout/hooks";
 import type { FilterPresets, Lead } from "@/contracts/types/leads.types";
 import { ContextualDock } from "@/features/dock";
-import { useSidebarContextSafe } from "@/components/layout/hooks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDshMissionControl } from "@/lib/hooks/use-dsh-mission-control";
 import { useLeads } from "@/lib/hooks/use-leads";

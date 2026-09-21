@@ -11,6 +11,7 @@ import {
 	Presentation,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { DriveFolderTree, type SelectedFolder } from "@/components/connectors/drive-folder-tree";
@@ -26,7 +27,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { connectorsApiService } from "@/lib/apis/connectors-api.service";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 interface IndexingOptions {
 	max_files_per_folder: number;
@@ -159,20 +159,20 @@ export const OneDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCh
 				{totalSelected > 0 && (
 					<div className="p-2 sm:p-3 bg-muted rounded-lg text-xs sm:text-sm space-y-1 sm:space-y-2">
 						<p className="font-medium">
-								{t("selected_items", {
-									count: totalSelected,
-									details: (() => {
-										const parts: string[] = [];
-										if (selectedFolders.length > 0) {
-											parts.push(t("folder_count", { count: selectedFolders.length }));
-										}
-										if (selectedFiles.length > 0) {
-											parts.push(t("file_count", { count: selectedFiles.length }));
-										}
-										return parts.length > 0 ? `(${parts.join(", ")})` : "";
-									})(),
-								})}
-							</p>
+							{t("selected_items", {
+								count: totalSelected,
+								details: (() => {
+									const parts: string[] = [];
+									if (selectedFolders.length > 0) {
+										parts.push(t("folder_count", { count: selectedFolders.length }));
+									}
+									if (selectedFiles.length > 0) {
+										parts.push(t("file_count", { count: selectedFiles.length }));
+									}
+									return parts.length > 0 ? `(${parts.join(", ")})` : "";
+								})(),
+							})}
+						</p>
 						<div className="max-h-20 sm:max-h-24 overflow-y-auto space-y-1">
 							{selectedFolders.map((folder) => (
 								<div
@@ -222,9 +222,7 @@ export const OneDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCh
 				)}
 
 				{isAuthExpired && (
-					<p className="text-xs text-amber-600 dark:text-amber-500">
-						{t("onedrive_auth_expired")}
-					</p>
+					<p className="text-xs text-amber-600 dark:text-amber-500">{t("onedrive_auth_expired")}</p>
 				)}
 
 				{isEditMode ? (
@@ -285,9 +283,7 @@ export const OneDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCh
 							<Label htmlFor="od-max-files" className="text-sm font-medium">
 								{t("max_files_per_folder")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								{t("max_files_desc")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("max_files_desc")}</p>
 						</div>
 						<Select
 							value={indexingOptions.max_files_per_folder.toString()}
@@ -302,11 +298,21 @@ export const OneDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCh
 								<SelectValue placeholder={t("select_limit")} />
 							</SelectTrigger>
 							<SelectContent className="z-[100]">
-								<SelectItem value="50" className="text-xs sm:text-sm">{t("files_count", { count: 50 })}</SelectItem>
-								<SelectItem value="100" className="text-xs sm:text-sm">{t("files_count", { count: 100 })}</SelectItem>
-								<SelectItem value="250" className="text-xs sm:text-sm">{t("files_count", { count: 250 })}</SelectItem>
-								<SelectItem value="500" className="text-xs sm:text-sm">{t("files_count", { count: 500 })}</SelectItem>
-								<SelectItem value="1000" className="text-xs sm:text-sm">{t("files_count", { count: 1000 })}</SelectItem>
+								<SelectItem value="50" className="text-xs sm:text-sm">
+									{t("files_count", { count: 50 })}
+								</SelectItem>
+								<SelectItem value="100" className="text-xs sm:text-sm">
+									{t("files_count", { count: 100 })}
+								</SelectItem>
+								<SelectItem value="250" className="text-xs sm:text-sm">
+									{t("files_count", { count: 250 })}
+								</SelectItem>
+								<SelectItem value="500" className="text-xs sm:text-sm">
+									{t("files_count", { count: 500 })}
+								</SelectItem>
+								<SelectItem value="1000" className="text-xs sm:text-sm">
+									{t("files_count", { count: 1000 })}
+								</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -318,9 +324,7 @@ export const OneDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCh
 						<Label htmlFor="od-incremental-sync" className="text-sm font-medium">
 							{t("incremental_sync")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							{t("incremental_sync_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("incremental_sync_desc")}</p>
 					</div>
 					<Switch
 						id="od-incremental-sync"
@@ -335,9 +339,7 @@ export const OneDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCh
 						<Label htmlFor="od-include-subfolders" className="text-sm font-medium">
 							{t("include_subfolders")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							{t("include_subfolders_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("include_subfolders_desc")}</p>
 					</div>
 					<Switch
 						id="od-include-subfolders"

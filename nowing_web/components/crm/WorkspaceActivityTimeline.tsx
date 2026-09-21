@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import {
 	Activity,
 	ArrowDownLeft,
@@ -11,6 +10,7 @@ import {
 	RefreshCw,
 	XCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
 

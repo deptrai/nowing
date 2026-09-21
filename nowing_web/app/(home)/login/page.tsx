@@ -9,7 +9,9 @@ import { Logo } from "@/components/Logo";
 import { useRuntimeConfig } from "@/components/providers/runtime-config";
 import { Button } from "@/components/ui/button";
 import { getAuthErrorDetails, shouldRetry } from "@/lib/auth-errors";
-import { setRedirectPath } from "@/lib/auth-utils";
+import { authenticatedFetch } from "@/lib/auth-fetch";
+import { getPostLoginRedirectPath, setRedirectPath } from "@/lib/auth-utils";
+import { buildBackendUrl } from "@/lib/env-config";
 import { AmbientBackground } from "./AmbientBackground";
 import { GoogleLoginButton } from "./GoogleLoginButton";
 import { LocalLoginForm } from "./LocalLoginForm";
@@ -21,6 +23,35 @@ function LoginContent() {
 	const { authType } = useRuntimeConfig();
 	const [urlError, setUrlError] = useState<{ title: string; message: string } | null>(null);
 	const searchParams = useSearchParams();
+
+	useEffect(() => {
+		// If the user is already signed in, don't show the form — send them to
+		// the dashboard (or the page they originally wanted). Skip the check when
+		// the URL carries an OAuth error or a just-logged-out flag so those toasts
+		// still render.
+		const error = searchParams.get("error");
+		const logout = searchParams.get("logout");
+		if (error || logout === "true") return;
+
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await authenticatedFetch(buildBackendUrl("/auth/session"), {
+					skipAuthRedirect: true,
+				});
+				if (!res.ok) return;
+				const data = (await res.json()) as { authenticated?: boolean };
+				if (!cancelled && data.authenticated) {
+					router.replace(getPostLoginRedirectPath());
+				}
+			} catch {
+				// Session probe failed — stay on the login form.
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [router, searchParams]);
 
 	useEffect(() => {
 		// Check for various URL parameters that might indicate success or error states

@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -23,24 +23,27 @@ import { EnumConnectorName } from "@/contracts/enums/connector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const createSearxngFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
-	name: z.string().min(3, {
-		message: t("connector_name_min"),
-	}),
-	host: z
-		.string()
-		.min(1, { message: t("searxng_host_required") })
-		.url({ message: t("searxng_host_invalid") }),
-	api_key: z.string().optional(),
-	engines: z.string().optional(),
-	categories: z.string().optional(),
-	language: z.string().optional(),
-	safesearch: z
-		.string()
-		.regex(/^[0-2]?$/, { message: t("searxng_safesearch_invalid") })
-		.optional(),
-	verify_ssl: z.boolean(),
-});
+const createSearxngFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z.object({
+		name: z.string().min(3, {
+			message: t("connector_name_min"),
+		}),
+		host: z
+			.string()
+			.min(1, { message: t("searxng_host_required") })
+			.url({ message: t("searxng_host_invalid") }),
+		api_key: z.string().optional(),
+		engines: z.string().optional(),
+		categories: z.string().optional(),
+		language: z.string().optional(),
+		safesearch: z
+			.string()
+			.regex(/^[0-2]?$/, { message: t("searxng_safesearch_invalid") })
+			.optional(),
+		verify_ssl: z.boolean(),
+	});
 
 type SearxngFormValues = z.infer<ReturnType<typeof createSearxngFormSchema>>;
 
@@ -271,9 +274,7 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 								name="language"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel className="text-xs sm:text-sm">
-											{t("searxng_language")}
-										</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">{t("searxng_language")}</FormLabel>
 										<FormControl>
 											<Input
 												placeholder={t("searxng_language_placeholder")}
@@ -295,9 +296,7 @@ export const SearxngConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmittin
 								name="safesearch"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel className="text-xs sm:text-sm">
-											{t("searxng_safesearch")}
-										</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">{t("searxng_safesearch")}</FormLabel>
 										<FormControl>
 											<Input
 												placeholder={t("searxng_safesearch_placeholder")}

@@ -1,13 +1,13 @@
 import { IconBrandGithub } from "@tabler/icons-react";
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { MarketingSection } from "@/components/marketing/section";
 import { BreadcrumbNav } from "@/components/seo/breadcrumb-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { ConnectorPageContent, SchemaField } from "@/lib/connectors-marketing/types";
-import { useTranslations } from "next-intl";
 import { AgentTranscript } from "./agent-transcript";
 import { ApiMcpTabs } from "./api-mcp-tabs";
 import { ConnectorFaq } from "./connector-faq";
@@ -76,7 +76,7 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 						/>
 						<Badge variant="outline" className="mb-5 gap-1.5 py-1">
 							<Icon className="size-3.5" />
-							{t("connector_badge",{name:content.name})}
+							{t("connector_badge", { name: content.name })}
 						</Badge>
 						<h1 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-5xl">
 							{content.h1}
@@ -110,7 +110,7 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			<MarketingSection>
 				<Reveal>
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						{t("extract_title",{name:content.name})}
+						{t("extract_title", { name: content.name })}
 					</h2>
 					<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
 						{content.extractIntro}
@@ -160,11 +160,14 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			{/* API / MCP */}
 			<MarketingSection>
 				<Reveal>
-					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						{t("call_it_title")}
-					</h2>
+					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("call_it_title")}</h2>
 					<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-						{t.rich("call_it_desc",{code:(c)=><code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">{c}</code>,tool:content.api.mcpTool})}
+						{t.rich("call_it_desc", {
+							code: (c) => (
+								<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">{c}</code>
+							),
+							tool: content.api.mcpTool,
+						})}
 					</p>
 				</Reveal>
 				<Reveal>
@@ -179,14 +182,14 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			<MarketingSection>
 				<Reveal>
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						{t("schema_title",{name:content.name})}
+						{t("schema_title", { name: content.name })}
 					</h2>
 					<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-						{t("schema_contract")} 
+						{t("schema_contract")}
 						<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">
 							POST /workspaces/{"{workspace_id}"}/scrapers/{content.api.platform}/{content.api.verb}
 						</code>
-						 {t("schema_same_fields")} 
+						{t("schema_same_fields")}
 						<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">
 							{content.api.mcpTool}
 						</code>{" "}
@@ -255,7 +258,7 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 			<MarketingSection>
 				<Reveal>
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						{t("faq_title",{label})}
+						{t("faq_title", { label })}
 					</h2>
 				</Reveal>
 				<Reveal>
@@ -271,10 +274,10 @@ export function ConnectorPage({ content }: { content: ConnectorPageContent }) {
 				<Reveal>
 					<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
 						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("cta_agents",{name:content.name})}
+							{t("cta_agents", { name: content.name })}
 						</h2>
 						<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
-							{t("cta_body_pre",{name:content.name})} 
+							{t("cta_body_pre", { name: content.name })}
 							<Link href="/" className="font-medium text-foreground underline underline-offset-4">
 								{t("open_platform")}
 							</Link>

@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, FileIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -14,7 +15,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -203,9 +203,13 @@ function ApprovalCard({
 							{pendingEdits ? t("file_created_edits") : t("file_created")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_creation_was_cancelled")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_file_creation_was_cancelled")}
+						</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_requires_your_approval_to")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_requires_your_approval_to")}
+						</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -243,7 +247,9 @@ function ApprovalCard({
 							<>
 								{accounts.length > 0 && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("tu_dropbox_account")}<span className="text-destructive">*</span>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_dropbox_account")}
+											<span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedAccountId} onValueChange={handleAccountChange}>
 											<SelectTrigger className="w-full">
@@ -286,7 +292,9 @@ function ApprovalCard({
 
 								{selectedAccountId && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("tu_parent_folder")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_parent_folder")}
+										</p>
 										<Select value={parentFolderPath} onValueChange={setParentFolderPath}>
 											<SelectTrigger className="w-full">
 												<SelectValue placeholder={t("tu_dropbox_root")} />
@@ -301,7 +309,9 @@ function ApprovalCard({
 											</SelectContent>
 										</Select>
 										{availableParentFolders.length === 0 && (
-											<p className="text-xs text-muted-foreground">{t("tu_no_folders_found_file")}</p>
+											<p className="text-xs text-muted-foreground">
+												{t("tu_no_folders_found_file")}
+											</p>
 										)}
 									</div>
 								)}
@@ -347,7 +357,9 @@ function ApprovalCard({
 								className="rounded-lg gap-1.5"
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
-							>{t("tu_approve")}<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+							>
+								{t("tu_approve")}
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (
@@ -360,7 +372,9 @@ function ApprovalCard({
 									setRejected();
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
-							>{t("tu_reject")}</Button>
+							>
+								{t("tu_reject")}
+							</Button>
 						)}
 					</div>
 				</>

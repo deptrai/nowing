@@ -18,7 +18,9 @@ export function UnattendedToggle({ checked, onChange }: UnattendedToggleProps) {
 		<div className="flex items-start justify-between gap-3 rounded-md bg-transparent">
 			<div className="space-y-0.5 min-w-0">
 				<div className="flex items-center gap-1.5">
-					<span className="text-sm font-medium text-foreground">{t("auto_run_without_asking_for")}</span>
+					<span className="text-sm font-medium text-foreground">
+						{t("auto_run_without_asking_for")}
+					</span>
 				</div>
 				<p className="text-xs text-muted-foreground">{t("auto_tasks_run_automatically_without")}</p>
 			</div>

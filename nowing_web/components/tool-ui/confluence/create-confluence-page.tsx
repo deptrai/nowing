@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -14,7 +15,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -192,7 +192,11 @@ function ApprovalCard({
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? t("confluence_creating_page_with_changes") : t("confluence_creating_page")}
+							text={
+								pendingEdits
+									? t("confluence_creating_page_with_changes")
+									: t("confluence_creating_page")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
@@ -200,11 +204,11 @@ function ApprovalCard({
 							{pendingEdits ? t("common_page_created_with_changes") : t("common_page_created")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("confluence_creation_cancelled")}</p>
-					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{t("common_requires_approval")}
+							{t("confluence_creation_cancelled")}
 						</p>
+					) : (
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -368,7 +372,9 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">{t("confluence_all_accounts_expired")}</p>
+				<p className="text-sm font-semibold text-destructive">
+					{t("confluence_all_accounts_expired")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -432,7 +438,9 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 					</a>
 				) : (
 					<div>
-						<span className="font-medium text-muted-foreground">{t("confluence_page_id_label")} </span>
+						<span className="font-medium text-muted-foreground">
+							{t("confluence_page_id_label")}{" "}
+						</span>
 						<span>{result.page_id}</span>
 					</div>
 				)}

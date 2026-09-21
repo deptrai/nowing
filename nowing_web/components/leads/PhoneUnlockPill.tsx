@@ -3,8 +3,8 @@
 import { useAtom, useAtomValue } from "jotai";
 import { Check, Phone } from "lucide-react";
 import { motion } from "motion/react";
-import type React from "react";
 import { useTranslations } from "next-intl";
+import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fastUnlockSessionAtom, makeFastUnlockKey } from "@/atoms/leads/leads-canvas.atoms";

@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Check, Copy, Info, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -76,17 +76,13 @@ export function ApiKeyContent() {
 		<div className="space-y-6 min-w-0">
 			<Alert>
 				<Info />
-				<AlertDescription>
-					{t("apikey_lede")}
-				</AlertDescription>
+				<AlertDescription>{t("apikey_lede")}</AlertDescription>
 			</Alert>
 
 			<div className="flex items-center justify-between gap-3">
 				<div>
 					<h3 className="text-sm font-semibold tracking-tight">{t("apikey_title")}</h3>
-					<p className="text-xs text-muted-foreground">
-						{t("apikey_expired_note")}
-					</p>
+					<p className="text-xs text-muted-foreground">{t("apikey_expired_note")}</p>
 				</div>
 				<Button size="sm" onClick={() => setCreateOpen(true)}>
 					{t("apikey_create")}
@@ -164,9 +160,7 @@ export function ApiKeyContent() {
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>{t("apikey_create")}</DialogTitle>
-						<DialogDescription>
-							{t("apikey_name_hint")}
-						</DialogDescription>
+						<DialogDescription>{t("apikey_name_hint")}</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
 						<div className="space-y-2">
@@ -218,9 +212,7 @@ export function ApiKeyContent() {
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>{t("apikey_copy_now")}</DialogTitle>
-						<DialogDescription>
-							{t("apikey_once")}
-						</DialogDescription>
+						<DialogDescription>{t("apikey_once")}</DialogDescription>
 					</DialogHeader>
 					<div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 p-2">
 						<code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-xs">

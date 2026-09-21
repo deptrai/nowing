@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useTranslations } from "next-intl";
 import { Loader2, TriangleAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
 import { statusInboxItemsAtom } from "@/atoms/inbox/status-inbox.atom";
@@ -87,7 +87,7 @@ export function ConnectorRail({
 		return (
 			<div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
 				<Spinner size="sm" className="mb-2 text-muted-foreground" />
-				<p className="text-xs text-muted-foreground">Loading connectors…</p>
+				<p className="text-xs text-muted-foreground">{t("loading_connectors")}</p>
 			</div>
 		);
 	}

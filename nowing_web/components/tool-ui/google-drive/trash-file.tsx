@@ -2,11 +2,11 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { CornerDownLeftIcon, InfoIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import { isInterruptResult, useHitlDecision, useHitlPhase } from "@/features/chat-messages/hitl";
 
@@ -186,9 +186,13 @@ function ApprovalCard({
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_trashed")}</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_deletion_was_cancelled")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_file_deletion_was_cancelled")}
+						</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_requires_your_approval_to")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_requires_your_approval_to")}
+						</p>
 					)}
 				</div>
 			</div>
@@ -204,7 +208,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("tu_google_drive_account")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_google_drive_account")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -213,7 +219,9 @@ function ApprovalCard({
 
 								{file && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("tu_file_to_trash")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_file_to_trash")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-0.5">
 											<div className="font-medium">{file.name}</div>
 											<div className="text-xs text-muted-foreground">{fileLabel}</div>
@@ -223,7 +231,9 @@ function ApprovalCard({
 													target="_blank"
 													rel="noopener noreferrer"
 													className="text-xs text-primary hover:underline"
-												>{t("tu_open_in_drive")}</a>
+												>
+													{t("tu_open_in_drive")}
+												</a>
 											)}
 										</div>
 									</div>
@@ -251,8 +261,12 @@ function ApprovalCard({
 								className="shrink-0"
 							/>
 							<label htmlFor="delete-from-kb" className="flex-1 cursor-pointer">
-								<span className="text-sm text-foreground">{t("tu_also_remove_from_knowledge")}</span>
-								<p className="text-xs text-muted-foreground mt-0.5">{t("tu_this_will_permanently_delete_2")}</p>
+								<span className="text-sm text-foreground">
+									{t("tu_also_remove_from_knowledge")}
+								</span>
+								<p className="text-xs text-muted-foreground mt-0.5">
+									{t("tu_this_will_permanently_delete_2")}
+								</p>
 							</label>
 						</div>
 					</div>
@@ -264,7 +278,9 @@ function ApprovalCard({
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
-						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>{t("tu_approve")}<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
+							{t("tu_approve")}
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"
@@ -274,7 +290,9 @@ function ApprovalCard({
 								setRejected();
 								onDecision({ type: "reject", message: t("user_rejected") });
 							}}
-						>{t("tu_reject")}</Button>
+						>
+							{t("tu_reject")}
+						</Button>
 					</div>
 				</>
 			)}
@@ -287,9 +305,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gdrive_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gdrive_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -304,9 +320,7 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gdrive_auth_expired")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gdrive_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -321,7 +335,9 @@ function WarningCard({ result }: { result: WarningResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="flex items-start gap-3 border-b px-5 py-4">
-				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">{t("common_partial_success")}</p>
+				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">
+					{t("common_partial_success")}
+				</p>
 			</div>
 			<div className="px-5 py-4 space-y-2">
 				{result.message && <p className="text-sm text-muted-foreground">{result.message}</p>}

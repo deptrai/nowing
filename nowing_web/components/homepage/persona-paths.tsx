@@ -1,9 +1,9 @@
 import { ArrowRight, Code2, Megaphone } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { UseCaseArt, type UseCaseArtVariant } from "@/components/homepage/use-case-art";
 import { MarketingSection } from "@/components/marketing/section";
-import { useTranslations } from "next-intl";
 
 /**
  * Answers "is this for me?" right below the hero: one card per audience.

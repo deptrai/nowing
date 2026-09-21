@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { AlertCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { updateTriggerMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -264,7 +264,9 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 									<label
 										className="text-xs font-medium text-muted-foreground"
 										htmlFor="trigger-minute"
-									>{t("auto_at_minute")}</label>
+									>
+										{t("auto_at_minute")}
+									</label>
 									<Input
 										id="trigger-minute"
 										type="number"
@@ -306,7 +308,9 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 									<label
 										className="text-xs font-medium text-muted-foreground"
 										htmlFor="trigger-cron"
-									>{t("auto_schedule_expression")}</label>
+									>
+										{t("auto_schedule_expression")}
+									</label>
 									<Input
 										id="trigger-cron"
 										value={draft.cron}
@@ -320,7 +324,9 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 							)}
 
 							<div className="space-y-1.5 sm:col-span-2">
-								<div className="text-xs font-medium text-muted-foreground">{t("auto_timezone")}</div>
+								<div className="text-xs font-medium text-muted-foreground">
+									{t("auto_timezone")}
+								</div>
 								<TimezoneCombobox
 									value={draft.timezone}
 									onChange={(timezone) => setDraft((prev) => ({ ...prev, timezone }))}

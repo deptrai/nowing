@@ -48,7 +48,9 @@ export default async function ChangelogPage() {
 		const date = new Date(changelog.data.date);
 
 		return {
-			version: changelog.data.version ? t("changelog_version", { version: changelog.data.version }) : t("changelog_release"),
+			version: changelog.data.version
+				? t("changelog_version", { version: changelog.data.version })
+				: t("changelog_release"),
 			date: formatDate(date),
 			content: <MDX components={getMDXComponents()} />,
 		};

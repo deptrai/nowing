@@ -1,7 +1,7 @@
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { FlowLine } from "@/components/homepage/flow-line";
 import { MarketingSection } from "@/components/marketing/section";
-import { useTranslations } from "next-intl";
 
 /** Numbered because the content is genuinely sequential: connect, gather, act. */
 function getSteps(t: (k: string) => string) {

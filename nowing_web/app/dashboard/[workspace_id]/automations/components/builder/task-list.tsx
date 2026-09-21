@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { type BuilderTask, emptyTask } from "@/lib/automations/builder-schema";
 import { TaskItem } from "./task-item";
@@ -54,7 +54,9 @@ export function TaskList({ tasks, errors, workspaceId, onChange }: TaskListProps
 			{errors.tasks && <p className="text-xs text-destructive">{errors.tasks}</p>}
 
 			<Button type="button" size="sm" onClick={() => onChange([...tasks, emptyTask()])}>
-				<Plus className="h-4 w-4" aria-hidden="true" />{t("auto_add_task")}</Button>
+				<Plus className="h-4 w-4" aria-hidden="true" />
+				{t("auto_add_task")}
+			</Button>
 		</div>
 	);
 }

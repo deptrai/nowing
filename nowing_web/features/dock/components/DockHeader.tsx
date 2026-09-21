@@ -2,6 +2,7 @@
 
 import { useAtom, useSetAtom } from "jotai";
 import { Expand, MessageSquare, PanelRightOpen, Shrink, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
 	type DockTabId,
 	dockActiveTabAtom,
@@ -14,7 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import type { DockTab as DockTabType } from "../hooks/useDockTabs";
 import { DockTab } from "./DockTab";
-import { useTranslations } from "next-intl";
 
 interface DockHeaderProps {
 	tabs: DockTabType[];
@@ -81,9 +81,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 							) : (
 								<Expand className="size-3.5" aria-hidden="true" />
 							)}
-							<span className="sr-only">
-								{isExpanded ? "Thu nhỏ panel" : "Mở rộng panel"}
-							</span>
+							<span className="sr-only">{isExpanded ? "Thu nhỏ panel" : "Mở rộng panel"}</span>
 						</Button>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">

@@ -2,8 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
-import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { updateWorkspaceMcpToolMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
 import { Button } from "@/components/ui/button";
@@ -104,16 +104,15 @@ export function WorkspaceMcpToolsControl({
 		<section aria-label={t("mcp_tools")} className={cn("space-y-6", className)}>
 			<div className="space-y-1">
 				<Label>{t("mcp_tools")}</Label>
-				<p className="text-xs text-muted-foreground">
-					{t("mcp_tools_desc")}
-				</p>
+				<p className="text-xs text-muted-foreground">{t("mcp_tools_desc")}</p>
 			</div>
 
 			{Object.entries(groupedTools).map(([group, groupTools]) => (
 				<div key={group} className="space-y-3">
 					<h4 className="text-sm font-semibold">
-						{t(groupLabelKeys[group] ?? "mcp_group_fallback", { group: group.replace(/_/g, " ") }) ??
-							group.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+						{t(groupLabelKeys[group] ?? "mcp_group_fallback", {
+							group: group.replace(/_/g, " "),
+						}) ?? group.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
 					</h4>
 					<div className="space-y-3">
 						{groupTools.map((tool) => {

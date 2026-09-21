@@ -188,7 +188,7 @@ export default function AdminBroadcastsPage() {
 			await loadBroadcasts();
 		} catch (err: unknown) {
 			const errorMsg = err instanceof Error ? err.message : t("broadcasts_unknown_error");
-			alert(t("broadcasts_delete_failed", {errorMsg}));
+			alert(t("broadcasts_delete_failed", { errorMsg }));
 		}
 	};
 
@@ -201,9 +201,7 @@ export default function AdminBroadcastsPage() {
 						<Megaphone className="h-6 w-6 text-primary" />
 						<h1 className="text-2xl font-bold tracking-tight">{t("broadcasts_title")}</h1>
 					</div>
-					<p className="text-sm text-muted-foreground">
-						{t("broadcasts_subtitle")}
-					</p>
+					<p className="text-sm text-muted-foreground">{t("broadcasts_subtitle")}</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<button
@@ -280,8 +278,14 @@ export default function AdminBroadcastsPage() {
 											)}
 										</td>
 										<td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-											<div>{t("broadcasts_start")}: {new Date(b.starts_at).toLocaleString()}</div>
-											{b.expires_at && <div>{t("broadcasts_exp")}: {new Date(b.expires_at).toLocaleString()}</div>}
+											<div>
+												{t("broadcasts_start")}: {new Date(b.starts_at).toLocaleString()}
+											</div>
+											{b.expires_at && (
+												<div>
+													{t("broadcasts_exp")}: {new Date(b.expires_at).toLocaleString()}
+												</div>
+											)}
 										</td>
 										<td className="px-4 py-3 whitespace-nowrap">{getStatusBadge(b.status, t)}</td>
 										<td className="px-4 py-3 text-right whitespace-nowrap">

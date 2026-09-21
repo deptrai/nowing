@@ -14,8 +14,8 @@ import {
 	Sparkles,
 	Wand2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -369,7 +369,9 @@ export function PlanSummaryCard({
 													data-testid={`badge-degraded-${alloc.source_name}`}
 													variant="outline"
 													className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] py-0"
-												>{t("status_degraded")}</Badge>
+												>
+													{t("status_degraded")}
+												</Badge>
 											)}
 										</div>
 										<div className="flex items-center gap-2">

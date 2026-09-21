@@ -406,7 +406,9 @@ function SidebarUsageFooter({
 				<Link
 					href="/register"
 					className="flex items-center justify-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
-				>{t("x_create_free_account")}</Link>
+				>
+					{t("x_create_free_account")}
+				</Link>
 			</div>
 		);
 	}

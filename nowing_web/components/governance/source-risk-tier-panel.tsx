@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Dialog,
 	DialogContent,
@@ -14,6 +14,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Table,
 	TableBody,
@@ -22,12 +24,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import type { RiskTier, SourceRiskTier, SourceRiskTierUpdate } from "@/contracts/types/governance.types";
+import type {
+	RiskTier,
+	SourceRiskTier,
+	SourceRiskTierUpdate,
+} from "@/contracts/types/governance.types";
 import { MemorySourceType } from "@/contracts/types/governance.types";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface SourceRiskTierPanelProps {
 	workspaceId: number;
@@ -162,9 +166,7 @@ export function SourceRiskTierPanel({
 										? `${tier.recommended_retention_days} days`
 										: "—"}
 								</TableCell>
-								<TableCell className="max-w-sm truncate">
-									{tier?.notes || "—"}
-								</TableCell>
+								<TableCell className="max-w-sm truncate">{tier?.notes || "—"}</TableCell>
 								<TableCell>
 									<Button
 										variant="ghost"
@@ -226,11 +228,7 @@ export function SourceRiskTierPanel({
 						<Button variant="outline" onClick={() => confirmHighRisk(false)}>
 							{tCommon("cancel")}
 						</Button>
-						<Button
-							variant="destructive"
-							disabled={saving}
-							onClick={() => confirmHighRisk(true)}
-						>
+						<Button variant="destructive" disabled={saving} onClick={() => confirmHighRisk(true)}>
 							{saving ? tCommon("save") : t("source_tiers.confirm_high_risk")}
 						</Button>
 					</DialogFooter>

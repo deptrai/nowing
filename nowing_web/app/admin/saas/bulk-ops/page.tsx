@@ -1,6 +1,7 @@
 "use client";
 
 import { ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ActionSelector } from "@/components/admin/bulk-ops/ActionSelector";
@@ -20,7 +21,6 @@ import {
 	type JobStatusResponse,
 } from "@/contracts/types/admin-bulk-ops.types";
 import { adminBulkOpsApiService } from "@/lib/apis/admin-bulk-ops-api.service";
-import { useTranslations } from "next-intl";
 
 export default function AdminBulkOpsPage() {
 	const t = useTranslations("bulkOps");
@@ -185,7 +185,9 @@ export default function AdminBulkOpsPage() {
 				} else if (job.status === "partial") {
 					toast.warning(t("job_partial_toast", { id: jobId }));
 				} else if (job.status === "failed") {
-					toast.error(t("job_failed_toast", { id: jobId, error: job.error_message || "Unknown error" }));
+					toast.error(
+						t("job_failed_toast", { id: jobId, error: job.error_message || "Unknown error" })
+					);
 				}
 
 				// Fetch errors if any
@@ -246,9 +248,7 @@ export default function AdminBulkOpsPage() {
 							Superadmin
 						</Badge>
 					</div>
-					<p className="text-sm text-muted-foreground mt-1">
-						{t("description")}
-					</p>
+					<p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
 				</div>
 			</div>
 
@@ -260,9 +260,7 @@ export default function AdminBulkOpsPage() {
 							<SlidersHorizontal className="h-4 w-4 text-primary" />
 							<CardTitle className="text-base font-semibold">{t("step1_title")}</CardTitle>
 						</div>
-						<CardDescription className="text-xs">
-							{t("step1_desc")}
-						</CardDescription>
+						<CardDescription className="text-xs">{t("step1_desc")}</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-6">
 						<ActionSelector

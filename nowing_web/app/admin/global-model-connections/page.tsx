@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
 	adminGlobalModelConnectionsAtom,
@@ -647,9 +647,7 @@ export default function GlobalModelConnectionsAdminPage() {
 				<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>{t("models_add_title")}</DialogTitle>
-						<DialogDescription>
-							{t("models_add_desc")}
-						</DialogDescription>
+						<DialogDescription>{t("models_add_desc")}</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-6 py-4">
@@ -956,7 +954,7 @@ export default function GlobalModelConnectionsAdminPage() {
 					<DialogHeader>
 						<DialogTitle>{t("models_test_model")}</DialogTitle>
 						<DialogDescription>
-							{t("models_test_desc", {provider: testDialog.connection?.provider ?? ""})}
+							{t("models_test_desc", { provider: testDialog.connection?.provider ?? "" })}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
@@ -1008,7 +1006,7 @@ export default function GlobalModelConnectionsAdminPage() {
 					<DialogHeader>
 						<DialogTitle>{t("models_discovered")}</DialogTitle>
 						<DialogDescription>
-							{t("models_discovered_desc", {provider: discoverDialog.connection?.provider ?? ""})}
+							{t("models_discovered_desc", { provider: discoverDialog.connection?.provider ?? "" })}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-3 py-4">
@@ -1234,7 +1232,7 @@ export default function GlobalModelConnectionsAdminPage() {
 					<DialogHeader>
 						<DialogTitle>{t("models_delete_title")}</DialogTitle>
 						<DialogDescription>
-							{t("models_delete_desc", {provider: deleteDialog.connection?.provider ?? ""})}
+							{t("models_delete_desc", { provider: deleteDialog.connection?.provider ?? "" })}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>

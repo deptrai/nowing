@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { ExternalLinkIcon, ImageIcon, SparklesIcon } from "lucide-react";
 import NextImage from "next/image";
+import { useTranslations } from "next-intl";
 import { Component, type ReactNode, useState } from "react";
 import { z } from "zod";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";

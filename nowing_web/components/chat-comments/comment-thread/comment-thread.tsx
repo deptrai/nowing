@@ -1,8 +1,8 @@
 "use client";
 
 import { ChevronDown, ChevronRight, MessageCircleReply } from "lucide-react";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CommentComposer } from "../comment-composer/comment-composer";
 import { CommentItem } from "../comment-item/comment-item";

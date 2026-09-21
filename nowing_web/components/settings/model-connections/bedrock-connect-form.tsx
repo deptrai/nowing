@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +9,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useTranslations } from "next-intl";
 import { ApiKeyField } from "./connect-fields";
 import {
 	AWS_REGION_OPTIONS,
@@ -109,13 +109,9 @@ export function BedrockConnectForm({ onDraftChange }: ProviderConnectFormProps) 
 				/>
 			) : null}
 			{authMethod === BEDROCK_AUTH_IAM ? (
-				<p className="text-xs text-muted-foreground">
-					{t('bedrock_iam_hint')}
-				</p>
+				<p className="text-xs text-muted-foreground">{t("bedrock_iam_hint")}</p>
 			) : null}
-			<p className="text-xs text-muted-foreground">
-				{t('bedrock_add_models_hint')}
-			</p>
+			<p className="text-xs text-muted-foreground">{t("bedrock_add_models_hint")}</p>
 		</div>
 	);
 }

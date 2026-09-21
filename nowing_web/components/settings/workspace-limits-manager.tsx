@@ -178,7 +178,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 					return;
 				}
 			}
-			toast.error(err instanceof Error ? err.message: t("x_failed_to_change_subscription"));
+			toast.error(err instanceof Error ? err.message : t("x_failed_to_change_subscription"));
 		},
 	});
 
@@ -194,7 +194,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			toast.success(t("plan_change_cancelled"));
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message: t("x_failed_to_cancel_change"));
+			toast.error(err instanceof Error ? err.message : t("x_failed_to_cancel_change"));
 		},
 	});
 
@@ -211,7 +211,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			toast.success(t("plan_reverted_success"));
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message: t("x_failed_to_revert_plan"));
+			toast.error(err instanceof Error ? err.message : t("x_failed_to_revert_plan"));
 		},
 	});
 
@@ -540,7 +540,9 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 												{plan.plan_tier}
 											</CardTitle>
 											{isCurrent && (
-												<Badge variant="outline" className="text-[10px] px-1.5 py-0">{t("f_current")}</Badge>
+												<Badge variant="outline" className="text-[10px] px-1.5 py-0">
+													{t("f_current")}
+												</Badge>
 											)}
 										</div>
 										<div className="text-lg font-bold text-foreground mt-1">
@@ -655,7 +657,9 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 					</div>
 
 					<DialogFooter>
-						<Button variant="default" onClick={() => setConflictData(null)}>{t("f_understood")}</Button>
+						<Button variant="default" onClick={() => setConflictData(null)}>
+							{t("f_understood")}
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

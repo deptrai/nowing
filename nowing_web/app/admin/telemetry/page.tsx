@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, Layers, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import AlertBanner from "@/components/admin/health/AlertBanner";
@@ -14,7 +15,6 @@ import LlmCostPanel from "@/components/admin/telemetry/LlmCostPanel";
 import ProxyHealthPanel from "@/components/admin/telemetry/ProxyHealthPanel";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTranslations } from "next-intl";
 import {
 	adminHealthApiService,
 	type HealthAlertItem,
@@ -165,9 +165,7 @@ export default function AdminTelemetryPage() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight">{t("ops_telemetry_title")}</h1>
-					<p className="text-sm text-slate-500">
-						{t("ops_telemetry_desc")}
-					</p>
+					<p className="text-sm text-slate-500">{t("ops_telemetry_desc")}</p>
 				</div>
 				<div className="flex items-center gap-3">
 					<div className="text-xs text-slate-500 flex items-center gap-1">

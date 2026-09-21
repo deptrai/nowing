@@ -136,6 +136,22 @@ implementing agent with full context.
   - `[medium]` `[patch]` `on_prewarm` is not a real hook in livekit-agents 1.8.2 (verified via `inspect`); removed dead method, replaced with `prewarm_fnc=_prewarm_process` on `WorkerOptions` — the actual process-level pre-warm hook
   - `[medium]` `[patch]` `_maybe_inject_filler` passed `MicroClauseStreamer` instance that was never connected to the LLM stream — `first_token_event` never fired so the watchdog was dead code; replaced with `asyncio.Event` + `asyncio.sleep(0.08)` pattern that correctly detects first-token latency timeout
 
+### Review Findings (Adversarial Multi-Layer Review 2026-09-18)
+
+1. **`decision-needed`**:
+- [ ] [Review][Decision] Vietnamese TTS Fallback without OpenAI API Key — `KokoroTextToSpeech` does not support Vietnamese (`vi`). Decide between failing explicitly at startup when `OPENAI_API_KEY` is missing vs providing an alternative Vietnamese TTS engine.
+
+2. **`patch`**:
+- [ ] [Review][Patch] Wire `MicroClauseStreamer` into `agent_worker.py` LLM-to-TTS pipeline [app/services/voice/agent_worker.py:399-410]
+- [ ] [Review][Patch] Fix `VoiceSDRAgent` lifecycle hook signatures (`on_enter`, `on_exit`, `on_user_turn_completed`) to match LiveKit Agents 1.8.2 contract [app/services/voice/agent_worker.py:291-311]
+- [ ] [Review][Patch] Fix `entrypoint` crash on non-existent `session.wait_for_close()` [app/services/voice/agent_worker.py:412]
+- [ ] [Review][Patch] Fix worker CLI boot failure in `run_worker` by passing explicit `'start'` arguments or directly invoking server [app/services/voice/agent_worker.py:443-455]
+- [ ] [Review][Patch] Fix filler audio watchdog race and `session.say()` parameter types [app/services/voice/agent_worker.py:317-330, 368-372]
+- [ ] [Review][Patch] Add genuine unit tests for `VoiceSDRAgent`, factory builders, and VAD tensor isolation without excessive stubbing [tests/unit/voice/test_agent_worker.py]
+
+3. **`defer`**:
+- [x] [Review][Defer] Implement `"voice"` channel dispatcher in Sequencer [app/services/sequencer/dispatch.py:508] — deferred: out-of-scope for Story 38.2 worker runtime; belongs to Story 38.7 outbound trigger campaign integration.
+
 ## Auto Run Result
 
 **Summary:** Implemented Story 38.2 — Voice Agent Worker Runtime with Silero VAD and micro-clause streaming. A `VoiceSDRAgent` joins LiveKit `call_<uuid>` rooms on dispatch, runs Deepgram STT → Anthropic LLM → OpenAI TTS with Silero VAD for turn-taking, `MicroClauseStreamer` cuts TTS output at Vietnamese punctuation or every 5 tokens, `FillerAudioBank` injects local WAV fillers within 80ms on first-token timeout, and `VoiceWorkerPool` spawns 8 `multiprocessing.Process` workers (12 calls each, GIL-isolated). `SEQUENCER_VOICE_ENABLED=false` causes immediate worker exit (fail-closed) and `validate_step_channel` raises `DeferredChannelError` for the `voice` channel.

@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import {
 	ArrowLeft,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type {
 	Sequence,
@@ -87,8 +87,7 @@ export default function CampaignAnalyticsPage() {
 							{sequence?.name || "Chi tiết & Báo cáo Chiến dịch"}
 						</h1>
 						<p className="text-xs text-muted-foreground">
-							{sequence?.description ||
-								t("campaigns_track_desc")}
+							{sequence?.description || t("campaigns_track_desc")}
 						</p>
 					</div>
 				</div>

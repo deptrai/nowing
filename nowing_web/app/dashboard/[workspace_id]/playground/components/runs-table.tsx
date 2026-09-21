@@ -2,8 +2,8 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, History, Info } from "lucide-react";
-import { Fragment, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Fragment, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,9 +72,7 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 		<div className="space-y-4">
 			<Alert>
 				<Info />
-				<AlertDescription>
-					{t("runs_description")}
-				</AlertDescription>
+				<AlertDescription>{t("runs_description")}</AlertDescription>
 			</Alert>
 
 			<div className="flex flex-wrap items-center gap-2">
@@ -111,15 +109,14 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 				</div>
 			) : query.isError ? (
 				<p className="text-sm text-destructive">
-					{t("load_runs_error")}{query.error.message ? `: ${query.error.message}` : "."}
+					{t("load_runs_error")}
+					{query.error.message ? `: ${query.error.message}` : "."}
 				</p>
 			) : runs.length === 0 ? (
 				<div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-4 py-12 text-center">
 					<History className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
 					<p className="mt-2 text-sm font-medium">{t("no_runs")}</p>
-					<p className="mt-1 text-xs text-muted-foreground">
-						{t("no_runs_description")}
-					</p>
+					<p className="mt-1 text-xs text-muted-foreground">{t("no_runs_description")}</p>
 				</div>
 			) : (
 				<div className="overflow-hidden rounded-md border border-border/60">

@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { memo, useId } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -135,12 +135,16 @@ const ModelSelectField = memo(function ModelSelectField({
 						{mode === "playbook" ? (
 							<>
 								Configure models in{" "}
-								<Link href={rolesHref} className="font-medium underline underline-offset-2">{t("auto_role_settings")}</Link>
+								<Link href={rolesHref} className="font-medium underline underline-offset-2">
+									{t("auto_role_settings")}
+								</Link>
 							</>
 						) : (
 							<>
 								Use a premium model or your own (BYOK) model in{" "}
-								<Link href={rolesHref} className="font-medium underline underline-offset-2">{t("auto_role_settings")}</Link>
+								<Link href={rolesHref} className="font-medium underline underline-offset-2">
+									{t("auto_role_settings")}
+								</Link>
 							</>
 						)}
 					</AlertDescription>

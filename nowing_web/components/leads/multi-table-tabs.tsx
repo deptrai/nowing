@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import {
 	Briefcase,
@@ -13,6 +12,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import type { WorkspaceTable } from "@/contracts/types/workspace-table.types";

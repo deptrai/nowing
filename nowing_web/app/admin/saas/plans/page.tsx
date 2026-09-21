@@ -229,9 +229,7 @@ export default function AdminSaasPlansPage() {
 						<Layers className="h-6 w-6 text-primary" />
 						{t("plans_title")}
 					</h1>
-					<p className="text-sm text-muted-foreground mt-1">
-						{t("plans_subtitle")}
-					</p>
+					<p className="text-sm text-muted-foreground mt-1">{t("plans_subtitle")}</p>
 				</div>
 				<Button
 					onClick={() => {
@@ -247,9 +245,7 @@ export default function AdminSaasPlansPage() {
 			<Card>
 				<CardHeader className="pb-3">
 					<CardTitle className="text-base font-semibold">{t("plans_active_tiers")}</CardTitle>
-					<CardDescription className="text-xs">
-						{t("plans_active_desc")}
-					</CardDescription>
+					<CardDescription className="text-xs">{t("plans_active_desc")}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{isLoading ? (
@@ -259,9 +255,7 @@ export default function AdminSaasPlansPage() {
 							<Skeleton className="h-10 w-full" />
 						</div>
 					) : !plans || plans.length === 0 ? (
-						<p className="text-sm text-muted-foreground py-6 text-center">
-							{t("plans_empty")}
-						</p>
+						<p className="text-sm text-muted-foreground py-6 text-center">{t("plans_empty")}</p>
 					) : (
 						<div className="rounded-md border overflow-x-auto">
 							<Table>
@@ -303,14 +297,22 @@ export default function AdminSaasPlansPage() {
 											<TableCell className="capitalize text-xs">
 												{plan.support_level || t("plans_community")}
 											</TableCell>
-											<TableCell className="text-xs">{plan.max_documents ?? t("plans_unlimited")}</TableCell>
-											<TableCell className="text-xs">{plan.max_members ?? t("plans_unlimited")}</TableCell>
-											<TableCell className="text-xs">{plan.max_runs ?? t("plans_unlimited")}</TableCell>
+											<TableCell className="text-xs">
+												{plan.max_documents ?? t("plans_unlimited")}
+											</TableCell>
+											<TableCell className="text-xs">
+												{plan.max_members ?? t("plans_unlimited")}
+											</TableCell>
+											<TableCell className="text-xs">
+												{plan.max_runs ?? t("plans_unlimited")}
+											</TableCell>
 											<TableCell className="text-xs">
 												{formatBytes(plan.max_storage_bytes, t)}
 											</TableCell>
 											<TableCell className="text-xs">
-												{plan.max_monthly_credits ? `${plan.max_monthly_credits}/mo` : t("plans_standard")}
+												{plan.max_monthly_credits
+													? `${plan.max_monthly_credits}/mo`
+													: t("plans_standard")}
 											</TableCell>
 											<TableCell className="text-right space-x-1">
 												<Button
@@ -346,9 +348,7 @@ export default function AdminSaasPlansPage() {
 				<DialogContent className="max-w-xl">
 					<DialogHeader>
 						<DialogTitle>{t("plans_create_title")}</DialogTitle>
-						<DialogDescription>
-							{t("plans_create_desc")}
-						</DialogDescription>
+						<DialogDescription>{t("plans_create_desc")}</DialogDescription>
 					</DialogHeader>
 
 					<form onSubmit={handleCreateSubmit} className="space-y-4 py-2">
@@ -505,18 +505,15 @@ export default function AdminSaasPlansPage() {
 				<DialogContent className="max-w-xl">
 					<DialogHeader>
 						<DialogTitle>
-							{t("plans_edit_title")}: <span className="uppercase text-primary">{editingPlan?.plan_tier}</span>
+							{t("plans_edit_title")}:{" "}
+							<span className="uppercase text-primary">{editingPlan?.plan_tier}</span>
 						</DialogTitle>
-						<DialogDescription>
-							{t("plans_edit_desc")}
-						</DialogDescription>
+						<DialogDescription>{t("plans_edit_desc")}</DialogDescription>
 					</DialogHeader>
 
 					<div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-md text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
 						<AlertCircle className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
-						<span>
-							{t("plans_grandfather_notice")}
-						</span>
+						<span>{t("plans_grandfather_notice")}</span>
 					</div>
 
 					<form onSubmit={handleUpdateSubmit} className="space-y-4 py-2">
@@ -655,7 +652,7 @@ export default function AdminSaasPlansPage() {
 					<DialogHeader>
 						<DialogTitle>{t("plans_delete_title")}</DialogTitle>
 						<DialogDescription className="text-xs">
-							{t("plans_delete_confirm", {tier: deletingPlanTier ?? ""})}
+							{t("plans_delete_confirm", { tier: deletingPlanTier ?? "" })}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="gap-2 sm:gap-0">

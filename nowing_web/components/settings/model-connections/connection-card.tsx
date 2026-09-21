@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { deleteModelConnectionMutationAtom } from "@/atoms/model-connections/model-connections-mutation.atoms";
 import {
 	AlertDialog,
@@ -19,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import type { ConnectionRead } from "@/contracts/types/model-connections.types";
 import { ConnectionSettingsDialog } from "./connection-settings-dialog";
 import { providerDisplay, providerIcon } from "./provider-metadata";
-import { useTranslations } from "next-intl";
 
 export function ConnectionCard({ connection }: { connection: ConnectionRead }) {
 	const t = useTranslations("settings");
@@ -58,7 +58,7 @@ export function ConnectionCard({ connection }: { connection: ConnectionRead }) {
 								size="icon"
 								className="text-muted-foreground hover:text-accent-foreground"
 								disabled={deleteConnection.isPending}
-								aria-label={t("mc_delete_provider",{provider:providerLabel})}
+								aria-label={t("mc_delete_provider", { provider: providerLabel })}
 							>
 								<Trash2 className="h-4 w-4" aria-hidden="true" />
 							</Button>
@@ -67,11 +67,16 @@ export function ConnectionCard({ connection }: { connection: ConnectionRead }) {
 							<AlertDialogHeader>
 								<AlertDialogTitle>{t("mc_delete_title")}</AlertDialogTitle>
 								<AlertDialogDescription>
-{t.rich("mc_delete_desc",{provider:providerLabel,b:(c)=><span className="font-medium text-foreground">{c}</span>})}
+									{t.rich("mc_delete_desc", {
+										provider: providerLabel,
+										b: (c) => <span className="font-medium text-foreground">{c}</span>,
+									})}
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
-								<AlertDialogCancel disabled={deleteConnection.isPending}>{t("mc_cancel")}</AlertDialogCancel>
+								<AlertDialogCancel disabled={deleteConnection.isPending}>
+									{t("mc_cancel")}
+								</AlertDialogCancel>
 								<AlertDialogAction
 									onClick={deleteCurrentConnection}
 									disabled={deleteConnection.isPending}

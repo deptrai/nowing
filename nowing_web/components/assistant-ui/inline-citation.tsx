@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useSetAtom } from "jotai";
 import { FileText } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useId, useState } from "react";
 import { openCitationPanelAtom } from "@/atoms/citation/citation-panel.atom";

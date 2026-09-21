@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback } from "react";
 import { toast } from "sonner";
 import { OAUTH_RESULT_COOKIE, type parseOAuthCallbackResult } from "@/contracts/types/oauth.types";
 import { authenticatedFetch } from "@/lib/auth-fetch";

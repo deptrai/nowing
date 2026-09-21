@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { ArrowLeft, Check, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -134,7 +134,9 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						onClick={onSkip}
 						className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 					>
-						<ArrowLeft data-icon="inline-start" />{t("asst_back_to_connectors")}</Button>
+						<ArrowLeft data-icon="inline-start" />
+						{t("asst_back_to_connectors")}
+					</Button>
 				)}
 
 				{/* Success header */}
@@ -154,9 +156,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 							)}
 						</div>
 						<p className="text-xs sm:text-base text-muted-foreground mt-1">
-							{isLive
-								? t("conn_account_ready")
-								: t("conn_configure_sync")}
+							{isLive ? t("conn_account_ready") : t("conn_configure_sync")}
 						</p>
 					</div>
 				</div>
@@ -249,7 +249,9 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						disabled={isStartingIndexing}
 						className="text-xs sm:text-sm relative"
 					>
-						<span className={isStartingIndexing ? "opacity-0" : ""}>{t("asst_start_indexing")}</span>
+						<span className={isStartingIndexing ? "opacity-0" : ""}>
+							{t("asst_start_indexing")}
+						</span>
 						{isStartingIndexing && <Spinner size="sm" className="absolute" />}
 					</Button>
 				)}

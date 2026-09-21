@@ -2,13 +2,13 @@
 
 import { Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useSession } from "@/hooks/use-session";
 import { publicChatApiService } from "@/lib/apis/public-chat-api.service";
-import { useTranslations } from "next-intl";
 
 interface PublicChatFooterProps {
 	shareToken: string;

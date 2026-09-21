@@ -1,11 +1,11 @@
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ApiBaseUrlField, ApiKeyField } from "./connect-fields";
 import type { ProviderConnectFormProps } from "./provider-metadata";
-import { useTranslations } from "next-intl";
 
 const OPTIONAL_API_KEY_PROVIDERS = new Set(["ollama_chat", "lm_studio", "openai_compatible"]);
 
-function baseUrlHint(t: (k:string)=>string, provider: string) {
+function baseUrlHint(t: (k: string) => string, provider: string) {
 	if (provider === "ollama_chat" || provider === "lm_studio") {
 		return t("mc_hint_local");
 	}

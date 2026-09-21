@@ -1,11 +1,10 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
-
 import { LandZoningModal } from "@/components/realestate/land-zoning/land-zoning-modal";
 import { Button } from "@/components/ui/button";
-import { useTranslations } from "next-intl";
 
 export default function LandZoningPage() {
 	const t = useTranslations("realestate");

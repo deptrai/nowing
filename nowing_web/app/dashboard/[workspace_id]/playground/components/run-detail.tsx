@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { useScraperRun } from "@/hooks/use-scraper-runs";
 import { OutputViewer } from "./output-viewer";
@@ -53,7 +53,8 @@ export function RunDetail({ workspaceId, runId }: { workspaceId: number; runId: 
 	if (error) {
 		return (
 			<p className="p-4 text-sm text-destructive">
-				{t("load_run_error")}{error.message ? `: ${error.message}` : "."}
+				{t("load_run_error")}
+				{error.message ? `: ${error.message}` : "."}
 			</p>
 		);
 	}

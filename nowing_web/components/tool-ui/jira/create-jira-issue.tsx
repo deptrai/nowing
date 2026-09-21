@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -14,7 +15,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -238,9 +238,7 @@ function ApprovalCard({
 					) : phase === "rejected" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("jira_creation_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							{t("common_requires_approval")}
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -335,7 +333,9 @@ function ApprovalCard({
 
 										<div className="grid grid-cols-2 gap-3">
 											<div className="space-y-1.5">
-												<p className="text-xs font-medium text-muted-foreground">{t("jira_issue_type")}</p>
+												<p className="text-xs font-medium text-muted-foreground">
+													{t("jira_issue_type")}
+												</p>
 												<Select value={selectedIssueType} onValueChange={setSelectedIssueType}>
 													<SelectTrigger className="w-full">
 														<SelectValue placeholder={t("jira_task")} />
@@ -354,7 +354,9 @@ function ApprovalCard({
 												</Select>
 											</div>
 											<div className="space-y-1.5">
-												<p className="text-xs font-medium text-muted-foreground">{t("common_priority")}</p>
+												<p className="text-xs font-medium text-muted-foreground">
+													{t("common_priority")}
+												</p>
 												<Select value={selectedPriority} onValueChange={setSelectedPriority}>
 													<SelectTrigger className="w-full">
 														<SelectValue placeholder={t("common_default")} />
@@ -462,9 +464,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("jira_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("jira_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

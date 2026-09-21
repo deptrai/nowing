@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { type DockTabId, dockActiveTabAtom, dockTabUpdatesAtom } from "@/atoms/layout/dock.atom";
 import type { ThreadParsedContext } from "@/components/leads/thread-intent-detector";
 import type { Lead } from "@/contracts/types/leads.types";

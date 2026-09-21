@@ -10,6 +10,7 @@ import {
 	Pencil,
 	UsersIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -21,7 +22,6 @@ import {
 	useHitlDecision,
 	useHitlPhase,
 } from "@/features/chat-messages/hitl";
-import { useTranslations } from "next-intl";
 
 interface GoogleCalendarAccount {
 	id: number;
@@ -390,7 +390,12 @@ function ApprovalCard({
 									value: proposedStart,
 								},
 								{ key: "end_datetime", label: "End", type: "datetime-local", value: proposedEnd },
-								{ key: "location", label: t("gcal_location"), type: "text", value: proposedLocation },
+								{
+									key: "location",
+									label: t("gcal_location"),
+									type: "text",
+									value: proposedLocation,
+								},
 								{
 									key: "attendees",
 									label: t("gcal_attendees"),
@@ -434,7 +439,9 @@ function ApprovalCard({
 					<>
 						{phase === "pending" && account && (
 							<div className="space-y-2">
-								<p className="text-xs font-medium text-muted-foreground">{t("gcal_account_label")}</p>
+								<p className="text-xs font-medium text-muted-foreground">
+									{t("gcal_account_label")}
+								</p>
 								<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 									{account.name}
 								</div>
@@ -443,7 +450,9 @@ function ApprovalCard({
 
 						{event && (
 							<div className="space-y-2">
-								<p className="text-xs font-medium text-muted-foreground">{t("gcal_current_event")}</p>
+								<p className="text-xs font-medium text-muted-foreground">
+									{t("gcal_current_event")}
+								</p>
 								<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 									<div className="font-medium">{event.summary}</div>
 									{(event.start || event.end) && (
@@ -475,7 +484,9 @@ function ApprovalCard({
 						{/* Proposed Changes - visible in all phases */}
 						{(changes.length > 0 || hasDescriptionChange) && (
 							<div className="space-y-2">
-								<p className="text-xs font-medium text-muted-foreground">{t("gcal_proposed_changes")}</p>
+								<p className="text-xs font-medium text-muted-foreground">
+									{t("gcal_proposed_changes")}
+								</p>
 								<div className="space-y-2">
 									{changes.map((change) => (
 										<div key={change.label} className="text-xs space-y-0.5">
@@ -520,7 +531,9 @@ function ApprovalCard({
 						)}
 
 						{event && changes.length === 0 && !hasDescriptionChange && (
-							<p className="text-sm text-muted-foreground italic">{t("common_no_changes_proposed")}</p>
+							<p className="text-sm text-muted-foreground italic">
+								{t("common_no_changes_proposed")}
+							</p>
 						)}
 					</>
 				)}
@@ -583,9 +596,7 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gcal_auth_expired")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -600,9 +611,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gcal_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useQueries } from "@tanstack/react-query";
 import { Coins, FileText, ReceiptText } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
@@ -36,7 +36,9 @@ type UnifiedPurchase = {
 	currency: string | null;
 };
 
-const statusStyles = (t: (k: string) => string): Record<PurchaseStatus, { label: string; className: string }> => ({
+const statusStyles = (
+	t: (k: string) => string
+): Record<PurchaseStatus, { label: string; className: string }> => ({
 	completed: {
 		label: t("status_completed"),
 		className: "bg-emerald-600 text-white border-transparent hover:bg-emerald-600",
@@ -51,7 +53,9 @@ const statusStyles = (t: (k: string) => string): Record<PurchaseStatus, { label:
 	},
 });
 
-const kindMeta = (t: (k: string) => string): Record<
+const kindMeta = (
+	t: (k: string) => string
+): Record<
 	PurchaseKind,
 	{ label: string; icon: React.ComponentType<{ className?: string }>; iconClass: string }
 > => ({
@@ -160,9 +164,7 @@ export function PurchaseHistoryContent() {
 			<div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
 				<ReceiptText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
 				<p className="text-sm font-medium">{t("no_purchases")}</p>
-				<p className="text-xs text-muted-foreground">
-					{t("no_purchases_desc")}
-				</p>
+				<p className="text-xs text-muted-foreground">{t("no_purchases_desc")}</p>
 			</div>
 		);
 	}

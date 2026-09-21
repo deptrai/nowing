@@ -1,8 +1,8 @@
 "use client";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
-import { useTranslations } from "next-intl";
 import { CalendarIcon, CornerDownLeftIcon, MailIcon, UserIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
@@ -190,7 +190,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("gmail_account_label")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("gmail_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -199,7 +201,9 @@ function ApprovalCard({
 
 								{email && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("gmail_email_to_trash")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("gmail_email_to_trash")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 											<div className="flex items-center gap-1.5">
 												<MailIcon
@@ -210,11 +214,15 @@ function ApprovalCard({
 											</div>
 											<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 												<UserIcon className="size-3 shrink-0" aria-hidden="true" />
-												<span>{t("gmail_from")}: {email.sender}</span>
+												<span>
+													{t("gmail_from")}: {email.sender}
+												</span>
 											</div>
 											<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 												<CalendarIcon className="size-3 shrink-0" aria-hidden="true" />
-												<span>{t("gmail_date")}: {formatDate(email.date)}</span>
+												<span>
+													{t("gmail_date")}: {formatDate(email.date)}
+												</span>
 											</div>
 										</div>
 									</div>
@@ -310,9 +318,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gmail_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -354,9 +360,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 text-xs">
-						<span className="text-green-600 dark:text-green-500">
-							{t("gmail_removed_from_kb")}
-						</span>
+						<span className="text-green-600 dark:text-green-500">{t("gmail_removed_from_kb")}</span>
 					</div>
 				</>
 			)}

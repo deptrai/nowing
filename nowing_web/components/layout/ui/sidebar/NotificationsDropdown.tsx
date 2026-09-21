@@ -3,8 +3,8 @@
 import { useAtom } from "jotai";
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setTargetCommentIdAtom } from "@/atoms/chat/current-thread.atom";
 import { Button } from "@/components/ui/button";
 import {
@@ -361,7 +361,9 @@ export function NotificationsDropdown({
 		<>
 			<div className="flex shrink-0 items-center justify-between gap-3 border-b px-3.5 py-2.5">
 				<div className="min-w-0">
-					<h2 className="text-xs font-semibold tracking-tight text-foreground">{t("notifications")}</h2>
+					<h2 className="text-xs font-semibold tracking-tight text-foreground">
+						{t("notifications")}
+					</h2>
 				</div>
 				<Button
 					type="button"
@@ -506,7 +508,9 @@ export function NotificationsDropdown({
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
 				</TooltipTrigger>
-				<TooltipContent side="right" sideOffset={8}>{t("notifications")}</TooltipContent>
+				<TooltipContent side="right" sideOffset={8}>
+					{t("notifications")}
+				</TooltipContent>
 			</Tooltip>
 			<PopoverContent
 				side="right"

@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import {
 	ChevronRightIcon,
@@ -18,6 +17,7 @@ import {
 	SquareIcon,
 	TableIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { KEYS } from "platejs";
 import type { PlateElementProps } from "platejs/react";
 import { PlateElement, useEditorRef } from "platejs/react";
@@ -41,7 +41,9 @@ interface SlashCommandItem {
 	onSelect: (editor: any) => void;
 }
 
-const getSlashCommandGroups = (t: (k: string) => string): { heading: string; items: SlashCommandItem[] }[] => [
+const getSlashCommandGroups = (
+	t: (k: string) => string
+): { heading: string; items: SlashCommandItem[] }[] => [
 	{
 		heading: "Basic Blocks",
 		items: [
@@ -170,7 +172,8 @@ const getSlashCommandGroups = (t: (k: string) => string): { heading: string; ite
 ];
 
 export function SlashInputElement({ children, ...props }: PlateElementProps) {
-	const t = useTranslations("ui");	const editor = useEditorRef();
+	const t = useTranslations("ui");
+	const editor = useEditorRef();
 
 	return (
 		<PlateElement {...props} as="span">

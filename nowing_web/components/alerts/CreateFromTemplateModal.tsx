@@ -13,6 +13,7 @@ import {
 	ShoppingBag,
 	Tag,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +37,6 @@ import {
 } from "@/components/ui/select";
 import type { AlertRule, AlertTemplateRead } from "@/contracts/types/alert-rules.types";
 import { alertRulesApiService } from "@/lib/apis/alert-rules-api.service";
-import { useTranslations } from "next-intl";
 
 interface CreateFromTemplateModalProps {
 	workspaceId: number;
@@ -162,9 +162,7 @@ export default function CreateFromTemplateModal({
 						<Tag className="h-5 w-5 text-primary" />
 						{t("modal_title")}
 					</DialogTitle>
-					<DialogDescription>
-						{t("modal_desc")}
-					</DialogDescription>
+					<DialogDescription>{t("modal_desc")}</DialogDescription>
 				</DialogHeader>
 
 				{loading ? (
@@ -247,8 +245,7 @@ export default function CreateFromTemplateModal({
 									<div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-md text-xs text-rose-600 dark:text-rose-400 flex items-start gap-2">
 										<AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
 										<span>
-											{selectedTemplate.unavailable_reason ||
-												t("capability_unavailable")}
+											{selectedTemplate.unavailable_reason || t("capability_unavailable")}
 										</span>
 									</div>
 								)}

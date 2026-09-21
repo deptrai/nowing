@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,7 +57,9 @@ export function VertexConnectForm({ onDraftChange }: ProviderConnectFormProps) {
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value={VERTEX_AUTH_SERVICE_ACCOUNT}>{t("mc_service_account")}</SelectItem>
-						<SelectItem value={VERTEX_AUTH_WORKLOAD_IDENTITY}>{t("mc_workload_identity")}</SelectItem>
+						<SelectItem value={VERTEX_AUTH_WORKLOAD_IDENTITY}>
+							{t("mc_workload_identity")}
+						</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
@@ -68,9 +70,7 @@ export function VertexConnectForm({ onDraftChange }: ProviderConnectFormProps) {
 					onChange={(event) => setLocation(event.target.value)}
 					placeholder={VERTEX_DEFAULT_LOCATION}
 				/>
-				<p className="text-xs text-muted-foreground">
-					{t("mc_gcp_region_desc")}
-				</p>
+				<p className="text-xs text-muted-foreground">{t("mc_gcp_region_desc")}</p>
 			</div>
 			{authMethod === VERTEX_AUTH_SERVICE_ACCOUNT ? (
 				<div className="flex flex-col gap-2">
@@ -89,14 +89,10 @@ export function VertexConnectForm({ onDraftChange }: ProviderConnectFormProps) {
 						<span className="text-sm font-medium">
 							{credentials ? t("mc_json_selected") : t("mc_upload_json")}
 						</span>
-						<span className="text-xs text-muted-foreground">
-							{t("mc_choose_json")}
-						</span>
+						<span className="text-xs text-muted-foreground">{t("mc_choose_json")}</span>
 					</Label>
 					<p className="text-xs text-muted-foreground">
-						{credentials
-							? t("mc_creds_loaded")
-							: t("mc_attach_creds")}
+						{credentials ? t("mc_creds_loaded") : t("mc_attach_creds")}
 					</p>
 				</div>
 			) : (
@@ -107,14 +103,10 @@ export function VertexConnectForm({ onDraftChange }: ProviderConnectFormProps) {
 						onChange={(event) => setProject(event.target.value)}
 						placeholder="my-vertex-project"
 					/>
-					<p className="text-xs text-muted-foreground">
-						{t("mc_gcp_project_desc")}
-					</p>
+					<p className="text-xs text-muted-foreground">{t("mc_gcp_project_desc")}</p>
 				</div>
 			)}
-			<p className="text-xs text-muted-foreground">
-				{t("mc_add_after")}
-			</p>
+			<p className="text-xs text-muted-foreground">{t("mc_add_after")}</p>
 		</div>
 	);
 }

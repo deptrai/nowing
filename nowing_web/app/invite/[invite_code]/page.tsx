@@ -13,10 +13,10 @@ import {
 	XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { acceptInviteMutationAtom } from "@/atoms/invites/invites-mutation.atoms";
@@ -222,14 +222,10 @@ export default function InviteAcceptPage() {
 									<XCircle className="h-10 w-10 text-destructive" aria-hidden="true" />
 								</motion.div>
 								<CardTitle className="text-2xl">{t("invalid_title")}</CardTitle>
-								<CardDescription>
-									{inviteInfo?.message || t("invalid_desc")}
-								</CardDescription>
+								<CardDescription>{inviteInfo?.message || t("invalid_desc")}</CardDescription>
 							</CardHeader>
 							<CardContent className="text-center">
-								<p className="text-sm text-muted-foreground">
-									{t("invalid_body")}
-								</p>
+								<p className="text-sm text-muted-foreground">{t("invalid_body")}</p>
 							</CardContent>
 							<CardFooter>
 								<Button
@@ -254,7 +250,9 @@ export default function InviteAcceptPage() {
 								</motion.div>
 								<CardTitle className="text-2xl">{t("invited_title")}</CardTitle>
 								<CardDescription>
-									{t("invited_signin_desc", { name: inviteInfo?.workspace_name || t("this_workspace") })}
+									{t("invited_signin_desc", {
+										name: inviteInfo?.workspace_name || t("this_workspace"),
+									})}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
@@ -301,7 +299,9 @@ export default function InviteAcceptPage() {
 								</motion.div>
 								<CardTitle className="text-2xl">{t("invited_title")}</CardTitle>
 								<CardDescription>
-									{t("invited_accept_desc", { name: inviteInfo?.workspace_name || t("this_workspace") })}
+									{t("invited_accept_desc", {
+										name: inviteInfo?.workspace_name || t("this_workspace"),
+									})}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">

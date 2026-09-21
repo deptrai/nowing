@@ -229,7 +229,9 @@ function MagazineCard({ blog }: { blog: BlogEntry }) {
 						className="h-full w-full object-cover transition duration-300 group-hover/card:scale-105"
 					/>
 				) : (
-					<div className="flex h-full items-center justify-center text-neutral-400">{t("no_image")}</div>
+					<div className="flex h-full items-center justify-center text-neutral-400">
+						{t("no_image")}
+					</div>
 				)}
 			</div>
 			<div className="flex flex-1 flex-col p-5">

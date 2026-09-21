@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { AlertCircle, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { membersAtom, myAccessAtom } from "@/atoms/members/members-query.atoms";
@@ -12,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PublicChatSnapshotDetail } from "@/contracts/types/chat-threads.types";
 import { PublicChatSnapshotsList } from "./public-chat-snapshots-list";
-import { useTranslations } from "next-intl";
 
 interface PublicChatSnapshotsManagerProps {
 	workspaceId: number;
@@ -126,9 +126,7 @@ export function PublicChatSnapshotsManager({
 		return (
 			<Alert>
 				<Info />
-				<AlertDescription>
-					{t("no_permission")}
-				</AlertDescription>
+				<AlertDescription>{t("no_permission")}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -139,9 +137,7 @@ export function PublicChatSnapshotsManager({
 		<div className="space-y-4 md:space-y-5">
 			<Alert>
 				<Info />
-				<AlertDescription>
-					{t("explainer")}
-				</AlertDescription>
+				<AlertDescription>{t("explainer")}</AlertDescription>
 			</Alert>
 
 			<PublicChatSnapshotsList

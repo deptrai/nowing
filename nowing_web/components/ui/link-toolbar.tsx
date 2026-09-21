@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating";
 import { getLinkAttributes } from "@platejs/link";
@@ -13,6 +12,7 @@ import {
 } from "@platejs/link/react";
 import { cva } from "class-variance-authority";
 import { ExternalLink, Link, Text, Unlink } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { TLinkElement } from "platejs";
 import { KEYS } from "platejs";
 import {
@@ -118,7 +118,9 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 		input
 	) : (
 		<div className="box-content flex items-center">
-			<Button size="sm" variant="ghost" type="button" {...editButtonProps}>{t("ui_edit_link")}</Button>
+			<Button size="sm" variant="ghost" type="button" {...editButtonProps}>
+				{t("ui_edit_link")}
+			</Button>
 
 			<Separator orientation="vertical" />
 
@@ -146,7 +148,8 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 }
 
 function LinkOpenButton() {
-	const t = useTranslations("ui");	const editor = useEditorRef();
+	const t = useTranslations("ui");
+	const editor = useEditorRef();
 	useEditorSelection();
 
 	const entry = editor.api.node<TLinkElement>({

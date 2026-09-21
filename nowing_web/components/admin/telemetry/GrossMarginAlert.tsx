@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
 	CartesianGrid,
@@ -143,11 +143,16 @@ export default function GrossMarginAlert({ tick }: GrossMarginAlertProps) {
 							{alert.text}
 							{data.worst_workspace_id !== null && data.worst_workspace_margin !== null && (
 								<span className="font-mono text-xs">
-									{t("worst_workspace_margin", { id: data.worst_workspace_id, value: formatPercent(data.worst_workspace_margin) })}
+									{t("worst_workspace_margin", {
+										id: data.worst_workspace_id,
+										value: formatPercent(data.worst_workspace_margin),
+									})}
 								</span>
 							)}
 							{data.worst_model !== null && data.worst_model !== undefined && (
-								<span className="font-mono text-xs">{t("worst_model", { model: data.worst_model })}</span>
+								<span className="font-mono text-xs">
+									{t("worst_model", { model: data.worst_model })}
+								</span>
 							)}
 						</div>
 					)}
@@ -160,7 +165,12 @@ export default function GrossMarginAlert({ tick }: GrossMarginAlertProps) {
 								<YAxis tickFormatter={(v) => formatPercent(v as number)} tick={{ fontSize: 10 }} />
 								<Tooltip />
 								<Legend />
-								<Line type="monotone" dataKey="gross_margin" name={t("gross_margin_legend")} stroke="#8884d8" />
+								<Line
+									type="monotone"
+									dataKey="gross_margin"
+									name={t("gross_margin_legend")}
+									stroke="#8884d8"
+								/>
 							</LineChart>
 						</ResponsiveContainer>
 					</div>

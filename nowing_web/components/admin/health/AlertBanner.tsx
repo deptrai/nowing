@@ -1,11 +1,11 @@
 "use client";
 
 import { AlertCircle, AlertTriangle, EyeOff, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { HealthAlertItem } from "@/lib/apis/admin-health-api.service";
-import { useTranslations } from "next-intl";
 
 interface AlertBannerProps {
 	alerts: HealthAlertItem[];

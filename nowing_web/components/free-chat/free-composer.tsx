@@ -2,6 +2,7 @@
 
 import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { ArrowUpIcon, Paperclip, SquareIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
@@ -12,7 +13,6 @@ import { useLoginGate } from "@/contexts/login-gate";
 import { anonymousChatApiService } from "@/lib/apis/anonymous-chat-api.service";
 import { cn } from "@/lib/utils";
 import { FreeModelSelector } from "./free-model-selector";
-import { useTranslations } from "next-intl";
 
 const ANON_ALLOWED_EXTENSIONS = new Set([
 	".md",
@@ -212,7 +212,11 @@ export const FreeComposer: FC = () => {
 					<FreeModelSelector className="h-8 max-w-[44vw] px-2 sm:max-w-[220px] sm:px-3" />
 					{!isRunning ? (
 						<ComposerPrimitive.Send asChild>
-							<TooltipIconButton tooltip={t("send")} variant="default" className="size-8 rounded-full">
+							<TooltipIconButton
+								tooltip={t("send")}
+								variant="default"
+								className="size-8 rounded-full"
+							>
 								<ArrowUpIcon />
 							</TooltipIconButton>
 						</ComposerPrimitive.Send>

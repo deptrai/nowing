@@ -12,6 +12,7 @@
  * exist (the caller checks first via ``downstreamReversibleCount``).
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import {
 	AlertDialog,
@@ -22,7 +23,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 export type EditMessageDialogChoice = "revert" | "continue" | "cancel";

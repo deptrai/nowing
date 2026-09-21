@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Cloud, Download, FileSpreadsheet, Share2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -126,9 +126,7 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 								<Share2 className="w-4 h-4 text-indigo-400" aria-hidden="true" />
 							)}
 							<div>
-								<div className="font-medium">
-									{copied ? t("link_copied") : t("share_link")}
-								</div>
+								<div className="font-medium">{copied ? t("link_copied") : t("share_link")}</div>
 								<div className="text-[10px] text-zinc-400">{t("share_link_desc")}</div>
 							</div>
 						</button>

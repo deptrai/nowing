@@ -110,9 +110,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="font-semibold text-slate-900 dark:text-white">
 												Nguyễn Văn Hùng (Real Estate Broker)
 											</div>
-											<div className="text-xs text-slate-500">
-												{t("row1_desc")}
-											</div>
+											<div className="text-xs text-slate-500">{t("row1_desc")}</div>
 										</td>
 										<td className="py-3.5 px-4">
 											<span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-xs font-medium border border-blue-200/50">
@@ -184,9 +182,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="font-semibold text-slate-900 dark:text-white">
 												Lê Hoàng Nam (Founder & CTO - Software Enterprise)
 											</div>
-											<div className="text-xs text-slate-500">
-												{t("row3_desc")}
-											</div>
+											<div className="text-xs text-slate-500">{t("row3_desc")}</div>
 										</td>
 										<td className="py-3.5 px-4">
 											<span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-medium border border-emerald-200/50">
@@ -241,9 +237,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
 									{t("tier1_title")}
 								</h4>
-								<p className="text-xs text-slate-500 leading-relaxed">
-									{t("tier1_desc")}
-								</p>
+								<p className="text-xs text-slate-500 leading-relaxed">{t("tier1_desc")}</p>
 							</div>
 
 							<div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
@@ -253,9 +247,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
 									{t("tier2_title")}
 								</h4>
-								<p className="text-xs text-slate-500 leading-relaxed">
-									{t("tier2_desc")}
-								</p>
+								<p className="text-xs text-slate-500 leading-relaxed">{t("tier2_desc")}</p>
 							</div>
 
 							<div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
@@ -265,9 +257,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
 									{t("tier3_title")}
 								</h4>
-								<p className="text-xs text-slate-500 leading-relaxed">
-									{t("tier3_desc")}
-								</p>
+								<p className="text-xs text-slate-500 leading-relaxed">{t("tier3_desc")}</p>
 							</div>
 						</div>
 					</div>
@@ -300,12 +290,8 @@ export const ProductShowcaseTabs: React.FC = () => {
 							</div>
 
 							<div className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs border border-slate-800">
-								<div className="text-emerald-400 font-bold mb-2">
-									{t("viral_demo_hook_title")}
-								</div>
-								<div className="text-slate-300 leading-relaxed">
-									{t("viral_demo_hook_content")}
-								</div>
+								<div className="text-emerald-400 font-bold mb-2">{t("viral_demo_hook_title")}</div>
+								<div className="text-slate-300 leading-relaxed">{t("viral_demo_hook_content")}</div>
 							</div>
 						</div>
 					</div>

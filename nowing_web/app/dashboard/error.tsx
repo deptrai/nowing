@@ -1,8 +1,8 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { buildIssueUrl } from "@/lib/error-toast";
@@ -28,9 +28,7 @@ export default function DashboardError({
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
 			<h2 className="text-xl font-semibold">{t("title")}</h2>
-			<p className="text-muted-foreground max-w-md">
-				{t("desc")}
-			</p>
+			<p className="text-muted-foreground max-w-md">{t("desc")}</p>
 
 			{(error.digest || error.code || error.requestId) && (
 				<div className="rounded-md border bg-muted/50 px-4 py-2 text-xs text-muted-foreground font-mono max-w-md">

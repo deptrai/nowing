@@ -1,7 +1,7 @@
 "use client";
 
-import { Component, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { Component, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export * from "./plan";

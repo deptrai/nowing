@@ -2,8 +2,8 @@
 
 import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { FC } from "react";
 import { useTranslations } from "next-intl";
+import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 
 export const ChatUnavailableNotice: FC<{ workspaceId: number; canConfigure: boolean }> = ({

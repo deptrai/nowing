@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ExpandedMediaOverlay, useExpandedMedia } from "@/components/ui/expanded-gif-overlay";
@@ -155,7 +155,9 @@ function HeroCarouselCard({
 }
 
 function HeroCarousel() {
-	const t = useTranslations("ui");	const [activeIndex, setActiveIndex] = useState(0);
+	const t = useTranslations("ui");
+	const tCarousel = useTranslations("carousel");
+	const [activeIndex, setActiveIndex] = useState(0);
 	const [isGifExpanded, setIsGifExpanded] = useState(false);
 	const directionRef = useRef<"forward" | "backward">("forward");
 
@@ -225,7 +227,7 @@ function HeroCarousel() {
 							size="icon"
 							onClick={() => !isGifExpanded && goTo(i)}
 							className="h-11 min-w-[28px] bg-transparent p-0 hover:bg-transparent touch-manipulation"
-							aria-label={t("carousel.go_to_slide", { n: i + 1 })}
+							aria-label={tCarousel("go_to_slide", { n: i + 1 })}
 						>
 							<span
 								className={`block h-2.5 rounded-full transition-all duration-300 ${

@@ -21,9 +21,7 @@ function EmptyState() {
 		<div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 pb-12 text-center">
 			<div className="flex max-w-[260px] flex-col gap-1.5">
 				<p className="text-sm font-semibold tracking-tight">{t("empty_title")}</p>
-				<p className="text-xs leading-relaxed text-muted-foreground">
-					{t("empty_desc")}
-				</p>
+				<p className="text-xs leading-relaxed text-muted-foreground">{t("empty_desc")}</p>
 			</div>
 		</div>
 	);
@@ -102,9 +100,7 @@ export function ActionLogDialog() {
 							</Badge>
 						) : null}
 					</div>
-					<DialogDescription className="sr-only">
-						{t("desc")}
-					</DialogDescription>
+					<DialogDescription className="sr-only">{t("desc")}</DialogDescription>
 					<Separator className="mt-4" />
 				</div>
 

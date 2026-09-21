@@ -61,8 +61,8 @@ import {
 	DrawerTitle,
 } from "@/components/ui/drawer";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { QuestionChoiceApproval } from "@/features/chat-messages/hitl";
 import { withArtifactAnchor } from "@/features/chat-artifacts";
+import { QuestionChoiceApproval } from "@/features/chat-messages/hitl";
 import { useComments } from "@/hooks/use-comments";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useElectronAPI } from "@/hooks/use-platform";
@@ -679,9 +679,7 @@ export const AssistantMessage: FC = () => {
 						aria-hidden="true"
 					/>
 					{hasComments ? (
-						<span>
-							{t("comments_count", { count: commentCount })}
-						</span>
+						<span>{t("comments_count", { count: commentCount })}</span>
 					) : (
 						<span>{t("add_comment")}</span>
 					)}

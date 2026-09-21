@@ -1,8 +1,8 @@
 "use client";
 
 import { ChevronDown, Clipboard, X } from "lucide-react";
-import { type FC, useState } from "react";
 import { useTranslations } from "next-intl";
+import { type FC, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

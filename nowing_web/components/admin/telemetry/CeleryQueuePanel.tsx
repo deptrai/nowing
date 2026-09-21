@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
 	adminTelemetryApiService,
@@ -97,7 +97,9 @@ export default function CeleryQueuePanel({ tick }: CeleryQueuePanelProps) {
 					>
 						{overall}
 					</span>
-					<span className="text-sm text-slate-500">{t("workers_count", { count: activeWorkers })}</span>
+					<span className="text-sm text-slate-500">
+						{t("workers_count", { count: activeWorkers })}
+					</span>
 					<button
 						type="button"
 						onClick={load}

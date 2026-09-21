@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
@@ -729,7 +729,7 @@ export function OnboardingTour() {
 					variant="ghost"
 					className="fixed inset-0 h-full w-full rounded-none border-0 bg-transparent p-0 hover:bg-transparent cursor-default"
 					onClick={handleOverlayClick}
-					aria-label="Close tour"
+					aria-label={t("close_tour")}
 				/>
 				{/* Only render Spotlight and TourTooltip when we have target data */}
 				{targetEl && position && currentStep && targetRect && (

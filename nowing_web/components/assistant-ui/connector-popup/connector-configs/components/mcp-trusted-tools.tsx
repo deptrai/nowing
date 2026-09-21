@@ -1,13 +1,13 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { SearchSourceConnector } from "@/contracts/types/connector.types";
 import { connectorsApiService } from "@/lib/apis/connectors-api.service";
-import { useTranslations } from "next-intl";
 
 interface MCPTrustedToolsProps {
 	connector: SearchSourceConnector;
@@ -37,7 +37,9 @@ export const MCPTrustedTools: FC<MCPTrustedToolsProps> = ({ connector }) => {
 
 	return (
 		<div className="space-y-4">
-			<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">{t("trusted_tools")}</h3>
+			<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
+				{t("trusted_tools")}
+			</h3>
 
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4">
 				<p className="text-[10px] sm:text-xs text-muted-foreground">
@@ -46,9 +48,7 @@ export const MCPTrustedTools: FC<MCPTrustedToolsProps> = ({ connector }) => {
 				</p>
 
 				{trustedTools.length === 0 ? (
-					<p className="text-xs text-muted-foreground/70 italic">
-						{t("no_trusted_tools")}
-					</p>
+					<p className="text-xs text-muted-foreground/70 italic">{t("no_trusted_tools")}</p>
 				) : (
 					<ul className="space-y-1">
 						{trustedTools.map((toolName) => {

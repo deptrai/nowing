@@ -19,7 +19,8 @@ const sizeClasses = {
 };
 
 export function Spinner({ size = "md", hideTrack = false, className }: SpinnerProps) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<output
 			aria-label={t("ui_loading")}
 			className={cn(

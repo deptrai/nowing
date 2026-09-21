@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";

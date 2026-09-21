@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { Boxes, XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHandle, DrawerTitle } from "@/components/ui/drawer";
@@ -28,10 +28,12 @@ const getGroupOrder = (t: (k: string) => string): { kind: ArtifactKind; label: s
 
 function groupByKind(artifacts: ChatArtifact[]): { label: string; items: ChatArtifact[] }[] {
 	const t = useTranslations("layout");
-	return getGroupOrder(t).map(({ kind, label }) => ({
-		label,
-		items: artifacts.filter((a) => a.kind === kind),
-	})).filter((group) => group.items.length > 0);
+	return getGroupOrder(t)
+		.map(({ kind, label }) => ({
+			label,
+			items: artifacts.filter((a) => a.kind === kind),
+		}))
+		.filter((group) => group.items.length > 0);
 }
 
 function EmptyState() {
@@ -79,7 +81,9 @@ export function ArtifactsPanelContent({ onClose }: { onClose?: () => void }) {
 	return (
 		<>
 			<div className="flex h-10 shrink-0 items-center justify-between border-b px-3">
-				<h2 className="select-none font-serif text-base font-normal text-foreground">{t("x_artifacts")}</h2>
+				<h2 className="select-none font-serif text-base font-normal text-foreground">
+					{t("x_artifacts")}
+				</h2>
 				{onClose && (
 					<Button
 						variant="ghost"

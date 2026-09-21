@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { Dot } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type BuilderForm, scheduleToCron } from "@/lib/automations/builder-schema";
 import { describeCron } from "@/lib/automations/describe-cron";
 

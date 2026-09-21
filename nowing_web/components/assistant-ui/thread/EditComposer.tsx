@@ -1,8 +1,8 @@
 "use client";
 
 import { ComposerPrimitive, MessagePrimitive } from "@assistant-ui/react";
-import type { FC } from "react";
 import { useTranslations } from "next-intl";
+import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 
 export const EditComposer: FC = () => {

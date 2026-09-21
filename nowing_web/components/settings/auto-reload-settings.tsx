@@ -4,8 +4,8 @@ import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Info } from "lucide-react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -168,9 +168,7 @@ export function AutoReloadSettings() {
 					<Alert variant="destructive">
 						<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 						<AlertTitle>{t("topup_failed_title")}</AlertTitle>
-						<AlertDescription>
-							{t("topup_failed_desc")}
-						</AlertDescription>
+						<AlertDescription>{t("topup_failed_desc")}</AlertDescription>
 					</Alert>
 				)}
 
@@ -181,9 +179,7 @@ export function AutoReloadSettings() {
 							<p className="text-sm leading-relaxed text-muted-foreground">
 								{t.rich("topup_intro", {
 									balance: formatUsd(balanceMicros),
-									b: (chunks) => (
-										<span className="font-medium text-foreground">{chunks}</span>
-									),
+									b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
 								})}
 							</p>
 						</div>
@@ -201,9 +197,7 @@ export function AutoReloadSettings() {
 				<Alert variant="destructive">
 					<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 					<AlertTitle>{t("topup_failed_title")}</AlertTitle>
-					<AlertDescription>
-						{t("topup_failed_desc")}
-					</AlertDescription>
+					<AlertDescription>{t("topup_failed_desc")}</AlertDescription>
 				</Alert>
 			)}
 
@@ -214,9 +208,7 @@ export function AutoReloadSettings() {
 						<p className="text-sm text-muted-foreground">
 							{t.rich("topup_current_balance", {
 								balance: formatUsd(balanceMicros),
-								b: (chunks) => (
-									<span className="font-medium text-foreground">{chunks}</span>
-								),
+								b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
 							})}
 						</p>
 					</div>
@@ -238,7 +230,9 @@ export function AutoReloadSettings() {
 
 				<div className="flex items-center justify-between gap-4">
 					<div className="space-y-0.5">
-						<Label htmlFor="top-ups-toggle" className="text-sm font-medium">{t("x_enable_top_ups")}</Label>
+						<Label htmlFor="top-ups-toggle" className="text-sm font-medium">
+							{t("x_enable_top_ups")}
+						</Label>
 						<p className="text-xs text-muted-foreground">{t("enable_topups_desc")}</p>
 					</div>
 					<Switch id="top-ups-toggle" checked={enabled} onCheckedChange={setEnabled} />
@@ -288,7 +282,9 @@ export function AutoReloadSettings() {
 								placeholder="10"
 							/>
 						</div>
-						<p className="text-[11px] text-muted-foreground">{t("topup_minimum", { min: minAmountDollars })}</p>
+						<p className="text-[11px] text-muted-foreground">
+							{t("topup_minimum", { min: minAmountDollars })}
+						</p>
 					</div>
 				</div>
 

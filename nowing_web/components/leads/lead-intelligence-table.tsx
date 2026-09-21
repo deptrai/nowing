@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { Building2, ExternalLink, MapPin, Share2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn, isAllowedUrl } from "@/lib/utils";

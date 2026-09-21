@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Building2, Clock, ExternalLink, MapPin, Share2, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
 import type { Lead } from "@/contracts/types/leads.types";

@@ -15,8 +15,6 @@ interface FreeLayoutDataProviderProps {
 	children: ReactNode;
 }
 
-
-
 export function FreeLayoutDataProvider({ children }: FreeLayoutDataProviderProps) {
 	const t = useTranslations("layout");
 	const router = useRouter();

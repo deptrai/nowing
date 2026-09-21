@@ -2,9 +2,9 @@
 
 import { useAtom } from "jotai";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useTranslations } from "next-intl";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,9 +85,7 @@ export default function AntiBotEscalationsAdminPage() {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6">
 				<h1 className="text-2xl font-semibold">{t("antibot_access_denied")}</h1>
-				<p className="text-muted-foreground">
-					{t("antibot_access_denied_desc")}
-				</p>
+				<p className="text-muted-foreground">{t("antibot_access_denied_desc")}</p>
 			</div>
 		);
 	}
@@ -122,8 +120,8 @@ export default function AntiBotEscalationsAdminPage() {
 											{escalation.domain} — {escalation.capability}
 										</CardTitle>
 										<p className="text-sm text-muted-foreground">
-											{t("antibot_block_type")}: {escalation.block_type} · {t("antibot_status")}: {escalation.status} ·
-											{t("antibot_detections")}: {escalation.detection_count}
+											{t("antibot_block_type")}: {escalation.block_type} · {t("antibot_status")}:{" "}
+											{escalation.status} ·{t("antibot_detections")}: {escalation.detection_count}
 										</p>
 									</div>
 									<div className="flex items-center gap-2">
@@ -150,7 +148,7 @@ export default function AntiBotEscalationsAdminPage() {
 									<Image
 										unoptimized
 										src={`${BACKEND_URL}${escalation.screenshot_url}`}
-										alt={t("antibot_screenshot_alt", {domain: escalation.domain})}
+										alt={t("antibot_screenshot_alt", { domain: escalation.domain })}
 										width={800}
 										height={400}
 										className="mt-2 max-h-64 rounded border object-contain"

@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/hooks/use-session";
 import { adminUsersApiService } from "@/lib/apis/admin-users-api.service";
-import { useTranslations } from "next-intl";
 
 interface UserItem {
 	id: string;

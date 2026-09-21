@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { announcementsDialogAtom } from "@/atoms/layout/dialogs.atom";
 import { AnnouncementCard } from "@/components/announcements/AnnouncementCard";
@@ -8,7 +9,6 @@ import { AnnouncementsEmptyState } from "@/components/announcements/Announcement
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { useAnnouncements } from "@/hooks/use-announcements";
-import { useTranslations } from "next-intl";
 
 export function AnnouncementsDialog() {
 	const t = useTranslations("announcements");

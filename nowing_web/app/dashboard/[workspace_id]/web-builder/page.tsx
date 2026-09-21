@@ -23,8 +23,8 @@ import {
 	Square,
 	Tablet,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MarkToolOverlay } from "@/components/web-builder/mark-tool-overlay";
@@ -335,7 +335,9 @@ export default function WebBuilderPage() {
 			});
 		},
 		onSuccess: (res) => {
-			toast.success(t("domain_configured", { domain: res.custom_domain ?? "", cname: res.cname_target ?? "" }));
+			toast.success(
+				t("domain_configured", { domain: res.custom_domain ?? "", cname: res.cname_target ?? "" })
+			);
 			setIsDomainModalOpen(false);
 			queryClient.invalidateQueries({ queryKey: ["web-builder-apps", workspaceId] });
 		},
@@ -404,9 +406,7 @@ export default function WebBuilderPage() {
 					<Sparkles className="w-6 h-6" aria-hidden="true" />
 				</div>
 				<h2 className="text-xl font-bold text-foreground">{t("disabled_title")}</h2>
-				<p className="text-sm text-muted-foreground">
-					{t("disabled_desc")}
-				</p>
+				<p className="text-sm text-muted-foreground">{t("disabled_desc")}</p>
 			</div>
 		);
 	}
@@ -420,9 +420,7 @@ export default function WebBuilderPage() {
 						<Sparkles className="w-6 h-6 text-indigo-500" aria-hidden="true" />
 						{t("page_title")}
 					</h1>
-					<p className="text-sm text-muted-foreground">
-						{t("page_sub")}
-					</p>
+					<p className="text-sm text-muted-foreground">{t("page_sub")}</p>
 				</div>
 
 				{selectedApp && (
@@ -539,9 +537,7 @@ export default function WebBuilderPage() {
 						</h2>
 						<div className="flex-1 overflow-y-auto space-y-2 pr-1">
 							{apps.length === 0 && !isStreaming && (
-								<div className="text-xs text-muted-foreground text-center py-8">
-									{t("no_apps")}
-								</div>
+								<div className="text-xs text-muted-foreground text-center py-8">{t("no_apps")}</div>
 							)}
 
 							{apps.map((app) => (
@@ -820,8 +816,7 @@ export default function WebBuilderPage() {
 										</div>
 									</div>
 									<p className="text-xs text-rose-300 font-mono line-clamp-2">
-										{selectedApp.description ||
-											t("build_failed_desc")}
+										{selectedApp.description || t("build_failed_desc")}
 									</p>
 									{isLogsOpen && (
 										<div
@@ -850,9 +845,7 @@ export default function WebBuilderPage() {
 												<h3 className="text-sm font-semibold text-slate-100">
 													{t("building_app")}
 												</h3>
-												<p className="text-xs text-slate-400">
-													{t("building_desc")}
-												</p>
+												<p className="text-xs text-slate-400">{t("building_desc")}</p>
 											</div>
 										</div>
 									) : (
@@ -914,9 +907,7 @@ export default function WebBuilderPage() {
 								className="w-10 h-10 text-muted-foreground/40 stroke-1"
 								aria-hidden="true"
 							/>
-							<p className="text-sm">
-								{t("empty_state")}
-							</p>
+							<p className="text-sm">{t("empty_state")}</p>
 						</div>
 					)}
 				</div>
@@ -935,9 +926,7 @@ export default function WebBuilderPage() {
 						{domainVerifyToken && (
 							<div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
 								<div className="flex items-center justify-between">
-									<p className="text-[11px] font-medium text-foreground">
-										{t("verify_ownership")}
-									</p>
+									<p className="text-[11px] font-medium text-foreground">{t("verify_ownership")}</p>
 									<button
 										type="button"
 										onClick={() => {

@@ -1,9 +1,9 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useTranslations } from "next-intl";
 import { Globe, Mic, Plus, Presentation, WandSparkles } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
 	forwardRef,
 	useCallback,
@@ -58,78 +58,78 @@ interface BuiltinPromptItem {
 
 function builtinTemplates(t: (k: string) => string): BuiltinPromptItem[] {
 	return [
-	{
-		id: "web-landing-page",
-		name: "/web landing page",
-		description: t("tpl_landing"),
-		prompt:
-			"Build a modern high-converting landing page for a SaaS product with hero section, feature cards, testimonial carousel, pricing comparison, and email CTA.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-pricing",
-		name: "/web pricing",
-		description: t("tpl_pricing"),
-		prompt:
-			"Create a modern 3-tier pricing page with monthly/yearly billing toggle, feature comparison table, and FAQ accordion section.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-lead-capture",
-		name: "/web lead capture",
-		description: t("tpl_lead_capture"),
-		prompt:
-			"Create an engaging lead capture page with an email opt-in form, value proposition highlights, benefit bullet points, and social proof badges.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-waitlist",
-		name: "/web waitlist",
-		description: t("tpl_waitlist"),
-		prompt:
-			"Build an exciting viral waitlist coming-soon page with early access email signup, countdown timer, and referral perk highlights.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-report",
-		name: "/web report",
-		description: t("tpl_report"),
-		prompt:
-			"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts, interactive charts summary, and download CTA.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "slides-pptx",
-		name: "/slides pptx",
-		description: t("tpl_slides_pptx"),
-		prompt:
-			"Create a 10-slide pitch deck as a PowerPoint PPTX file. Call generate_presentation with output_format=pptx. Cover problem, solution, market size, business model, traction, team, financials, and ask.",
-		mode: "explore",
-		chatMode: "presentation_studio",
-	},
-	{
-		id: "slides-marp",
-		name: "/slides marp",
-		description: t("tpl_slides_marp"),
-		prompt:
-			"Create Marp Markdown slides. Call generate_presentation with output_format=marp. Include YAML front-matter (theme, paginate), a title slide, content slides, and speaker notes.",
-		mode: "explore",
-		chatMode: "presentation_studio",
-	},
-	{
-		id: "meeting-minutes",
-		name: "/meeting",
-		description: t("tpl_meeting"),
-		prompt: "Paste the meeting recording URL here",
-		mode: "explore",
-		chatMode: "meeting_minutes",
-	},
-];
+		{
+			id: "web-landing-page",
+			name: "/web landing page",
+			description: t("tpl_landing"),
+			prompt:
+				"Build a modern high-converting landing page for a SaaS product with hero section, feature cards, testimonial carousel, pricing comparison, and email CTA.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-pricing",
+			name: "/web pricing",
+			description: t("tpl_pricing"),
+			prompt:
+				"Create a modern 3-tier pricing page with monthly/yearly billing toggle, feature comparison table, and FAQ accordion section.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-lead-capture",
+			name: "/web lead capture",
+			description: t("tpl_lead_capture"),
+			prompt:
+				"Create an engaging lead capture page with an email opt-in form, value proposition highlights, benefit bullet points, and social proof badges.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-waitlist",
+			name: "/web waitlist",
+			description: t("tpl_waitlist"),
+			prompt:
+				"Build an exciting viral waitlist coming-soon page with early access email signup, countdown timer, and referral perk highlights.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-report",
+			name: "/web report",
+			description: t("tpl_report"),
+			prompt:
+				"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts, interactive charts summary, and download CTA.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "slides-pptx",
+			name: "/slides pptx",
+			description: t("tpl_slides_pptx"),
+			prompt:
+				"Create a 10-slide pitch deck as a PowerPoint PPTX file. Call generate_presentation with output_format=pptx. Cover problem, solution, market size, business model, traction, team, financials, and ask.",
+			mode: "explore",
+			chatMode: "presentation_studio",
+		},
+		{
+			id: "slides-marp",
+			name: "/slides marp",
+			description: t("tpl_slides_marp"),
+			prompt:
+				"Create Marp Markdown slides. Call generate_presentation with output_format=marp. Include YAML front-matter (theme, paginate), a title slide, content slides, and speaker notes.",
+			mode: "explore",
+			chatMode: "presentation_studio",
+		},
+		{
+			id: "meeting-minutes",
+			name: "/meeting",
+			description: t("tpl_meeting"),
+			prompt: "Paste the meeting recording URL here",
+			mode: "explore",
+			chatMode: "meeting_minutes",
+		},
+	];
 }
 
 export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(function PromptPicker(

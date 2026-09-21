@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
@@ -15,14 +14,15 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type {
+	MemorySourceType,
 	RightToDeleteRequest,
 	RightToDeleteResponse,
 } from "@/contracts/types/governance.types";
-import { MemorySourceType } from "@/contracts/types/governance.types";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface RightToDeletePanelProps {
 	workspaceId: number;

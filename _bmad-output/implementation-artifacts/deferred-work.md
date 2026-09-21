@@ -1794,3 +1794,20 @@ Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_ac
 ## Resolved: code review of spec-31-3 & spec-31-4 (2026-09-16)
 
 All items previously deferred from these reviews were resolved in a follow-up pass — none remain open.
+
+## Deferred from: code review of spec-38-2-voice-agent-worker-runtime-silero-vad-streaming.md (2026-09-18)
+- Implement `"voice"` channel dispatcher in Sequencer [app/services/sequencer/dispatch.py:508] — deferred: out-of-scope for Story 38.2 worker runtime; belongs to Story 38.7 outbound trigger campaign integration.
+
+## 2026-09-20 — ChainLens contents review deferrals (Story 20.5)
+
+**Resolved this session (không còn deferred):**
+- ✅ Billing edge all-failed-partial — **ĐÃ CHỐT: miễn phí khi 0 nội dung dùng được**. Patch `_charge_chainlens` (`nowing_backend/app/capabilities/core/billing.py`): `not has_content and status in ("engine_unavailable", "partial")` → return 0. Test `test_partial_no_usable_content_is_free` thêm vào `tests/unit/capabilities/test_billing.py` (87 passed).
+
+**Deferred (pattern-wide, không thuộc Story 20.5):**
+- [ ] Enum validation cho `sources` input (web/discussions/academic/crawl4ai) — sửa 1 lần ở tầng capability framework cho TẤT CẢ capabilities, không riêng contents. entity_search cũng bị.
+- [ ] `workspace_id` từ input vs CapabilityContext có thể diverge — cùng nhóm pattern-wide.
+- [ ] `has_failure` whitelist statuses — chỉ cần khi upstream ChainLens thêm status mới (hiện chỉ ok/error).
+- [ ] 429 rate-limit message riêng + backoff (enhancement).
+- [ ] ContentItem thêm publishedDate/author fields (enhancement).
+- [ ] Test gaps: 401 rotate path, payload passthrough (subpages/livecrawl/maxAgeHours), highlights-as-string.
+- [ ] system_prompt.md/description.md expose chainlens_contents — **theo kế hoạch**: apply batch sau khi đủ capabilities (20.6, 20.10, 20.11). Bản rewrite sẵn tại `_bmad-output/planning-artifacts/agent-prompts-chainlens-2026-09-20/`.

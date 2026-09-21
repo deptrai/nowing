@@ -10,11 +10,11 @@ import {
 	Workflow,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { memo, useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CHAT_EXAMPLE_CATEGORIES } from "@/lib/chat/example-prompts";
-import { useTranslations } from "next-intl";
 
 interface ChatExamplePromptsProps {
 	/** Called with the chosen prompt text; the caller prefills the composer. */

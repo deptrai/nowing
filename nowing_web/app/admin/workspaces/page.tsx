@@ -83,7 +83,9 @@ export default function AdminWorkspacesPage() {
 								<td className="p-2 border-b">{ws.name}</td>
 								<td className="p-2 border-b">{ws.vertical ?? "—"}</td>
 								<td className="p-2 border-b">{ws.member_count}</td>
-								<td className="p-2 border-b">{ws.api_access_enabled ? t("workspaces_yes") : t("workspaces_no")}</td>
+								<td className="p-2 border-b">
+									{ws.api_access_enabled ? t("workspaces_yes") : t("workspaces_no")}
+								</td>
 							</tr>
 						))}
 					</tbody>

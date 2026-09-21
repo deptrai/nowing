@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname, useSelectedLayoutSegments } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo } from "react";
-import { useTranslations } from "next-intl";
 import {
 	getPlaygroundNavGroups,
 	getPlaygroundNavItems,
@@ -42,7 +42,7 @@ export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayou
 
 	return (
 		<RoutedSectionShell
-			title={t('api_playground')}
+			title={t("api_playground")}
 			items={topLevelItems}
 			groups={providerGroups}
 			activeValue={activeValue}

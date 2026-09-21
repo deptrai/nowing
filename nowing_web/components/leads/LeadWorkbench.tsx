@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import {
 	ArrowUpDown,
 	Bot,
@@ -20,6 +19,7 @@ import {
 	UserX,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -323,9 +323,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 									{t("high_density")}
 								</Badge>
 							</h2>
-							<p className="text-[11px] text-zinc-400">
-								{t("workbench_desc")}
-							</p>
+							<p className="text-[11px] text-zinc-400">{t("workbench_desc")}</p>
 						</div>
 					</div>
 

@@ -12,9 +12,9 @@ import {
 	UserCheck,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type { CompanyGraph } from "@/contracts/types/leads.types";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
@@ -110,9 +110,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 										{t("graph_badge")}
 									</span>
 								</div>
-								<p className="text-xs text-zinc-400">
-									{t("graph_subtitle")}
-								</p>
+								<p className="text-xs text-zinc-400">{t("graph_subtitle")}</p>
 							</div>
 						</div>
 
@@ -259,7 +257,10 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 									</div>
 
 									<p className="text-xs text-zinc-300">
-	{t.rich("graph_hiring_body", {count: data.active_jobs_count, b: (c) => <span className="font-bold text-emerald-400">{c}</span>})}
+										{t.rich("graph_hiring_body", {
+											count: data.active_jobs_count,
+											b: (c) => <span className="font-bold text-emerald-400">{c}</span>,
+										})}
 									</p>
 
 									<div className="space-y-2">
@@ -309,7 +310,9 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 															{t("graph_tender_budget")}:{" "}
 															<strong className="text-emerald-400 font-mono">
 																{tender.budget_vnd
-																	? t("graph_tender_billion", { v: (tender.budget_vnd / 1_000_000_000).toFixed(1) })
+																	? t("graph_tender_billion", {
+																			v: (tender.budget_vnd / 1_000_000_000).toFixed(1),
+																		})
 																	: t("graph_tender_negotiable")}
 															</strong>
 														</span>
@@ -339,9 +342,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 					<div className="sticky bottom-0 z-10 bg-zinc-950/90 backdrop-blur-md px-6 py-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3">
 						<button
 							type="button"
-							onClick={() =>
-								toast.success(t("graph_toast_email"))
-							}
+							onClick={() => toast.success(t("graph_toast_email"))}
 							className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/50"
 						>
 							<Mail className="w-4 h-4" aria-hidden="true" />

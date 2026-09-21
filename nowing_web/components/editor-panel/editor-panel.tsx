@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useTranslations } from "next-intl";
 import {
 	Check,
 	Copy,
@@ -14,6 +13,7 @@ import {
 	XIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { closeEditorPanelAtom, editorPanelAtom } from "@/atoms/editor/editor-panel.atom";
@@ -249,7 +249,7 @@ export function EditorPanelContent({
 	const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const initialLoadDone = useRef(false);
 	const changeCountRef = useRef(0);
-	const [displayTitle, setDisplayTitle] = useState(title || "Untitled");
+	const [displayTitle, setDisplayTitle] = useState(title || t("untitled"));
 	const isLocalFileMode = kind === "local_file";
 	const isMemoryMode = kind === "memory";
 	const editorRenderMode: EditorRenderMode = isLocalFileMode ? "source_code" : "rich_markdown";
@@ -378,7 +378,7 @@ export function EditorPanelContent({
 				}
 
 				markdownRef.current = data.source_markdown;
-				setDisplayTitle(data.title || title || "Untitled");
+				setDisplayTitle(data.title || title || t("untitled"));
 				setEditorDoc(data);
 				initialLoadDone.current = true;
 			} catch (err) {
@@ -481,7 +481,7 @@ export function EditorPanelContent({
 					setEditorDoc((prev) => (prev ? { ...prev, source_markdown: savedContent } : prev));
 					setEditedMarkdown(null);
 					if (!options?.silent) {
-						toast.success("Memory saved");
+						toast.success(t("memory_saved"));
 					}
 					return true;
 				}
@@ -511,16 +511,16 @@ export function EditorPanelContent({
 					const savedSizeBytes = getUtf8ByteSize(markdownRef.current);
 					const savedLineCount = countLines(markdownRef.current);
 					if (savedSizeBytes > plateMaxBytes || savedLineCount > plateMaxLines) {
-						toast.success("Document saved. It will reopen in raw markdown mode.");
+						toast.success(t("document_saved_raw"));
 					} else {
-						toast.success("Document saved! Reindexing in background...");
+						toast.success(t("document_saved_reindexing"));
 					}
 				}
 				return true;
 			} catch (err) {
 				console.error("Error saving document:", err);
 				if (!options?.silent) {
-					toast.error(err instanceof Error ? err.message : "Failed to save document");
+					toast.error(err instanceof Error ? err.message : t("failed_to_save_document"));
 				}
 				return false;
 			} finally {
@@ -614,9 +614,9 @@ export function EditorPanelContent({
 			a.click();
 			a.remove();
 			URL.revokeObjectURL(url);
-			toast.success("Download started");
+			toast.success(t("download_started"));
 		} catch {
-			toast.error("Failed to download document");
+			toast.error(t("failed_to_download_document"));
 		} finally {
 			setDownloading(false);
 		}
@@ -627,9 +627,7 @@ export function EditorPanelContent({
 			<FileText className="size-4" />
 			<AlertDescription className="flex items-center justify-between gap-4">
 				<span>
-					This document is too large for the editor (
-					{formatBytes(editorDoc.content_size_bytes ?? 0)}, {docLineCount.toLocaleString()} lines,{" "}
-					{editorDoc.chunk_count ?? 0} chunks). Showing raw markdown below.
+					{t("doc_too_large_editor", { size: formatBytes(editorDoc.content_size_bytes ?? 0), lines: docLineCount.toLocaleString(), chunks: editorDoc.chunk_count ?? 0 })}
 				</span>
 				<Button
 					variant="outline"
@@ -640,7 +638,7 @@ export function EditorPanelContent({
 				>
 					<span className={`flex items-center gap-1.5 ${downloading ? "opacity-0" : ""}`}>
 						<Download className="size-3.5" />
-						Download .md
+						{t("download_md")}
 					</span>
 					{downloading && <Spinner size="sm" className="absolute" />}
 				</Button>
@@ -677,7 +675,7 @@ export function EditorPanelContent({
 										onClick={handleCancelEditing}
 										disabled={saving}
 									>
-										Cancel
+										{t("cancel")}
 									</Button>
 									<Button
 										variant="secondary"
@@ -689,7 +687,7 @@ export function EditorPanelContent({
 										}}
 										disabled={saveDisabled}
 									>
-										<span className={saving ? "opacity-0" : ""}>Save</span>
+										<span className={saving ? "opacity-0" : ""}>{t("save")}</span>
 										{saving && <Spinner size="xs" className="absolute" />}
 									</Button>
 								</>
@@ -715,7 +713,7 @@ export function EditorPanelContent({
 									>
 										{hasCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
 										<span className="sr-only">
-											{hasCopied ? "Copied file contents" : "Copy file contents"}
+											{hasCopied ? t("copied_file_contents") : t("copy_file_contents")}
 										</span>
 									</Button>
 									{isEditableType && (
@@ -777,7 +775,7 @@ export function EditorPanelContent({
 									onClick={handleCancelEditing}
 									disabled={saving}
 								>
-									Cancel
+									{t("cancel")}
 								</Button>
 								<Button
 									variant="secondary"
@@ -789,7 +787,7 @@ export function EditorPanelContent({
 									}}
 									disabled={saveDisabled}
 								>
-									<span className={saving ? "opacity-0" : ""}>Save</span>
+									<span className={saving ? "opacity-0" : ""}>{t("save")}</span>
 									{saving && <Spinner size="xs" className="absolute" />}
 								</Button>
 							</>
@@ -815,7 +813,7 @@ export function EditorPanelContent({
 								>
 									{hasCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
 									<span className="sr-only">
-										{hasCopied ? "Copied file contents" : "Copy file contents"}
+										{hasCopied ? t("copied_file_contents") : t("copy_file_contents")}
 									</span>
 								</Button>
 								{isEditableType && (
@@ -856,11 +854,11 @@ export function EditorPanelContent({
 						<div className="space-y-1 max-w-xs">
 							<p className="font-medium text-foreground">
 								{error?.toLowerCase().includes("still being processed")
-									? "Document is processing"
-									: "Document unavailable"}
+									? t("document_processing")
+									: t("document_unavailable")}
 							</p>
 							<p className="text-sm text-muted-foreground">
-								{error || "An unknown error occurred"}
+								{error || t("unknown_error")}
 							</p>
 						</div>
 					</div>
@@ -929,8 +927,18 @@ export function EditorPanelContent({
 								<FileText className="size-4" />
 								<AlertDescription>
 									{isOverPlateLimit
-										? t("editor.doc_too_large_lines", { size: formatBytes(activeMarkdownSizeBytes), lines: activeMarkdownLineCount.toLocaleString(), maxSize: formatBytes(plateMaxBytes), maxLines: plateMaxLines.toLocaleString() })
-										: t("editor.doc_near_limit_lines", { size: formatBytes(activeMarkdownSizeBytes), limit: formatBytes(plateMaxBytes), lines: activeMarkdownLineCount.toLocaleString(), maxLines: plateMaxLines.toLocaleString() })}
+										? t("editor.doc_too_large_lines", {
+												size: formatBytes(activeMarkdownSizeBytes),
+												lines: activeMarkdownLineCount.toLocaleString(),
+												maxSize: formatBytes(plateMaxBytes),
+												maxLines: plateMaxLines.toLocaleString(),
+											})
+										: t("editor.doc_near_limit_lines", {
+												size: formatBytes(activeMarkdownSizeBytes),
+												limit: formatBytes(plateMaxBytes),
+												lines: activeMarkdownLineCount.toLocaleString(),
+												maxLines: plateMaxLines.toLocaleString(),
+											})}
 								</AlertDescription>
 							</Alert>
 						)}

@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useAtomValue } from "jotai";
 import { ArrowLeft, Info, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms";
@@ -214,7 +214,9 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 					onClick={onBack}
 					className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
-					<ArrowLeft data-icon="inline-start" />{t("asst_back_to_connectors")}</Button>
+					<ArrowLeft data-icon="inline-start" />
+					{t("asst_back_to_connectors")}
+				</Button>
 
 				{/* Connector header */}
 				<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
@@ -227,9 +229,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 								{getConnectorDisplayName(connector.name)}
 							</h2>
 							<p className="text-xs sm:text-base text-muted-foreground mt-1">
-								{isLive
-									? t("conn_manage_account")
-									: t("conn_manage_settings")}
+								{isLive ? t("conn_manage_account") : t("conn_manage_settings")}
 							</p>
 						</div>
 					</div>
@@ -244,10 +244,14 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						>
 							{isQuickIndexing || isIndexing ? (
 								<>
-									<RefreshCw className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />{t("asst_syncing")}</>
+									<RefreshCw className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+									{t("asst_syncing")}
+								</>
 							) : (
 								<>
-									<RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />{t("asst_quick_index")}</>
+									<RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+									{t("asst_quick_index")}
+								</>
 							)}
 						</Button>
 					)}
@@ -327,11 +331,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 										onEnabledChange={onPeriodicEnabledChange}
 										onFrequencyChange={onFrequencyChange}
 										disabled={isDisabled}
-										disabledMessage={
-											isDisabled
-												? t("conn_select_folder_sync")
-												: undefined
-										}
+										disabledMessage={isDisabled ? t("conn_select_folder_sync") : undefined}
 									/>
 								);
 							})()}
@@ -360,9 +360,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 				{showDisconnectConfirm ? (
 					<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 sm:flex-initial">
 						<span className="text-xs sm:text-sm text-muted-foreground sm:whitespace-nowrap">
-							{isLive
-								? t("conn_lose_access")
-								: t("conn_remove_data")}
+							{isLive ? t("conn_lose_access") : t("conn_remove_data")}
 						</span>
 						<div className="flex items-center gap-2 sm:gap-3">
 							<Button
@@ -372,7 +370,9 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 								disabled={isDisconnecting}
 								className="relative text-xs sm:text-sm flex-1 sm:flex-initial h-10 sm:h-auto py-2 sm:py-2"
 							>
-								<span className={isDisconnecting ? "opacity-0" : ""}>{t("asst_confirm_disconnect")}</span>
+								<span className={isDisconnecting ? "opacity-0" : ""}>
+									{t("asst_confirm_disconnect")}
+								</span>
 								{isDisconnecting && <Spinner size="sm" className="absolute" />}
 							</Button>
 							<Button
@@ -392,7 +392,9 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						onClick={handleDisconnectClick}
 						disabled={isSaving || isDisconnecting}
 						className="text-xs sm:text-sm flex-1 sm:flex-initial h-12 sm:h-auto py-3 sm:py-2"
-					>{t("asst_disconnect")}</Button>
+					>
+						{t("asst_disconnect")}
+					</Button>
 				)}
 				{isAuthExpired && reauthEndpoint ? (
 					<Button
@@ -400,7 +402,9 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						disabled={reauthing || isDisconnecting}
 						className="text-xs sm:text-sm flex-1 sm:flex-initial h-12 sm:h-auto py-3 sm:py-2 bg-amber-600 hover:bg-amber-700 text-white"
 					>
-						<RefreshCw className={cn("size-3.5", reauthing && "animate-spin")} />{t("asst_re_authenticate")}</Button>
+						<RefreshCw className={cn("size-3.5", reauthing && "animate-spin")} />
+						{t("asst_re_authenticate")}
+					</Button>
 				) : !isLive ? (
 					<Button
 						onClick={onSave}

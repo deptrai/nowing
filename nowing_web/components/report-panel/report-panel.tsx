@@ -1,9 +1,9 @@
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useTranslations } from "next-intl";
 import { Check, ChevronDownIcon, Copy, Download, Pencil, XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";

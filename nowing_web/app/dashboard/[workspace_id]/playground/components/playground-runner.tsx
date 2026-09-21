@@ -1,8 +1,9 @@
 "use client";
 
 import { Check, Coins, Copy, Hash, Info, Timer } from "lucide-react";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +15,6 @@ import { scrapersApiService } from "@/lib/apis/scrapers-api.service";
 import { AppError } from "@/lib/error";
 import { translateToast } from "@/lib/i18n-toast";
 import { findVerb } from "@/lib/playground/catalog";
-import { usePathname } from "next/navigation";
 import { fieldErrorsFromError } from "@/lib/playground/field-errors";
 import { formatCost, formatDuration, formatPricing } from "@/lib/playground/format";
 import { buildPayload, initialFormValues, parseSchemaFields } from "@/lib/playground/json-schema";
@@ -81,7 +81,9 @@ function getRunErrorMessage(error: unknown): string {
 		return translateToast("playground.error_invalid_data");
 	}
 
-	return error instanceof Error && error.message ? error.message : translateToast("playground.error_generic");
+	return error instanceof Error && error.message
+		? error.message
+		: translateToast("playground.error_generic");
 }
 
 function EndpointCopyButton({ endpoint }: { endpoint: string }) {
@@ -270,8 +272,10 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 										<Link
 											href={capability.docs_url}
 											className="font-medium text-foreground underline-offset-4 hover:underline"
-										>{t("pg_read_docs")}</Link>{" "}
-										{t('for_more_info')}
+										>
+											{t("pg_read_docs")}
+										</Link>{" "}
+										{t("for_more_info")}
 									</>
 								) : null}
 							</p>
@@ -283,7 +287,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 					<div className="space-y-2">
 						<EndpointCopyButton endpoint={endpoint} />
 						<div className="text-xs text-muted-foreground">
-							<span>{t('pricing')} </span>
+							<span>{t("pricing")} </span>
 							<span className="font-medium tabular-nums text-foreground">
 								{formatPricing(capability.pricing)}
 							</span>
@@ -302,7 +306,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 
 					<div className="flex items-center gap-2">
 						<Button type="button" onClick={handleRun} disabled={isRunning} className="relative">
-							<span className={isRunning ? "opacity-0" : ""}>{t('run')}</span>
+							<span className={isRunning ? "opacity-0" : ""}>{t("run")}</span>
 							{isRunning && <Spinner size="sm" className="absolute" />}
 						</Button>
 						{isRunning && (
@@ -314,31 +318,37 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 				</div>
 
 				<div className="space-y-3" data-testid="playground-output">
-					<h2 className="text-sm font-medium text-muted-foreground">{t('output')}</h2>
+					<h2 className="text-sm font-medium text-muted-foreground">{t("output")}</h2>
 					{isRunning ? (
 						<RunProgressPanel latest={run.latest} events={run.events} elapsedMs={run.elapsedMs} />
 					) : run.status === "cancelled" ? (
-						<div className="flex h-64 items-center justify-center rounded-md border border-border/60 px-4 text-center text-sm text-muted-foreground">{t("pg_run_cancelled")}</div>
+						<div className="flex h-64 items-center justify-center rounded-md border border-border/60 px-4 text-center text-sm text-muted-foreground">
+							{t("pg_run_cancelled")}
+						</div>
 					) : run.status === "success" && output ? (
 						<>
 							<div className="flex flex-wrap gap-2">
 								<RunStat
 									icon={Hash}
-									label={t('items')}
+									label={t("items")}
 									value={String(run.detail?.item_count ?? output.items.length)}
 								/>
 								<RunStat
 									icon={Timer}
-									label={t('time')}
+									label={t("time")}
 									value={formatDuration(run.detail?.duration_ms ?? run.elapsedMs)}
 								/>
-								<RunStat icon={Coins} label={t('cost')} value={formatCost(run.detail?.cost_micros)} />
+								<RunStat
+									icon={Coins}
+									label={t("cost")}
+									value={formatCost(run.detail?.cost_micros)}
+								/>
 							</div>
 							<OutputViewer data={output} filenameBase={`${platform}-${verb}`} />
 						</>
 					) : (
 						<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 px-4 text-center text-sm text-muted-foreground">
-							{t('run_to_see_output')}
+							{t("run_to_see_output")}
 						</div>
 					)}
 				</div>

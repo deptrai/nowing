@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { LucideProps } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function BorderAllIcon(props: LucideProps) {
 	const t = useTranslations("ui");
@@ -35,7 +35,8 @@ export function BorderAllIcon(props: LucideProps) {
 }
 
 export function BorderBottomIcon(props: LucideProps) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<svg
 			fill="none"
 			height="15"
@@ -82,7 +83,8 @@ export function BorderBottomIcon(props: LucideProps) {
 }
 
 export function BorderLeftIcon(props: LucideProps) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<svg
 			fill="none"
 			height="15"
@@ -337,7 +339,8 @@ export function BorderLeftIcon(props: LucideProps) {
 }
 
 export function BorderNoneIcon(props: LucideProps) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<svg
 			fill="none"
 			height="15"
@@ -385,7 +388,8 @@ export function BorderNoneIcon(props: LucideProps) {
 }
 
 export function BorderRightIcon(props: LucideProps) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<svg
 			fill="none"
 			height="15"
@@ -432,7 +436,8 @@ export function BorderRightIcon(props: LucideProps) {
 }
 
 export function BorderTopIcon(props: LucideProps) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<svg
 			fill="none"
 			height="15"

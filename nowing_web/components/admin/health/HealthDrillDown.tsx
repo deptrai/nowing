@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, AlertCircle, CheckCircle2, Clock, Play, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,6 @@ import {
 	type HealthProbeResultResponse,
 	type HealthStatusItem,
 } from "@/lib/apis/admin-health-api.service";
-import { useTranslations } from "next-intl";
 
 interface HealthDrillDownProps {
 	item: HealthStatusItem | null;
@@ -135,7 +135,9 @@ export default function HealthDrillDown({
 						<div>
 							<span className="text-muted-foreground block mb-1">{t("last_probe")}</span>
 							<span className="font-semibold text-sm">
-								{item.last_probe_at ? new Date(item.last_probe_at).toLocaleTimeString() : t("never")}
+								{item.last_probe_at
+									? new Date(item.last_probe_at).toLocaleTimeString()
+									: t("never")}
 							</span>
 						</div>
 					</div>
@@ -230,7 +232,8 @@ export default function HealthDrillDown({
 					<div className="space-y-2">
 						<div className="flex items-center justify-between">
 							<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-								<Activity className="h-3.5 w-3.5" /> {t("probe_history_24h", { count: history.length })}
+								<Activity className="h-3.5 w-3.5" />{" "}
+								{t("probe_history_24h", { count: history.length })}
 							</h4>
 						</div>
 

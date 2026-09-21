@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { AlertCircle, Code2, LayoutList } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type { z } from "zod";
@@ -322,10 +322,7 @@ export function AutomationBuilderForm({
 	const modelsUnresolved =
 		mode === "create" && !eligibleModels.isLoading && !hasResolvedModels(resolvedModels);
 	const effectiveDisabledReason =
-		submitDisabledReason ??
-		(modelsUnresolved
-			? t("setup_models_first")
-			: undefined);
+		submitDisabledReason ?? (modelsUnresolved ? t("setup_models_first") : undefined);
 	// Only gate creation; editing an existing automation isn't blocked here.
 	const submitBlocked = mode === "create" && !!effectiveDisabledReason;
 	const modeSwitcher = (

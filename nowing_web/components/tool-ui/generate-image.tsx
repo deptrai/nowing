@@ -2,6 +2,7 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { AlertCircleIcon, ImageIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 import {
 	Image,
@@ -9,7 +10,6 @@ import {
 	ImageLoading,
 	parseSerializableImage,
 } from "@/components/tool-ui/image";
-import { useTranslations } from "next-intl";
 
 const GenerateImageArgsSchema = z.object({
 	prompt: z.string(),
@@ -58,7 +58,9 @@ function ImageCancelledState({ prompt }: { prompt: string }) {
 		<div className="my-4 rounded-xl border border-muted p-4 text-muted-foreground max-w-md">
 			<p className="flex items-center gap-2">
 				<ImageIcon className="size-4" aria-hidden="true" />
-				<span className="line-through truncate">{t("image_gen_label")}: {prompt}</span>
+				<span className="line-through truncate">
+					{t("image_gen_label")}: {prompt}
+				</span>
 			</p>
 		</div>
 	);

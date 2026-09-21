@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { AlertCircle, Coins, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { instantiatePlaybookMutationAtom } from "@/atoms/playbooks/playbooks-mutation.atoms";
 import { SchemaForm } from "@/components/schema-form/schema-form";
@@ -22,7 +23,6 @@ import type { PlaybookInstantiateRequest, PlaybookSummary } from "@/contracts/ty
 import { useAutomationEligibleModels } from "@/hooks/use-automation-eligible-models";
 import { playbooksApiService } from "@/lib/apis/playbooks-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
-import { useTranslations } from "next-intl";
 import {
 	AutomationModelFields,
 	type AutomationModelSelection,
@@ -170,8 +170,7 @@ export function PlaybookInstantiateDialog({
 			onOpenChange(false);
 			router.push(`/dashboard/${workspaceId}/automations/${automation.id}`);
 		} catch (err) {
-			const message =
-				err instanceof Error ? err.message : String(err ?? t("error_instantiate"));
+			const message = err instanceof Error ? err.message : String(err ?? t("error_instantiate"));
 			setInstantiateError(message);
 		}
 	}
@@ -182,11 +181,12 @@ export function PlaybookInstantiateDialog({
 				<DialogHeader className="space-y-1.5 pb-2 border-b border-border/40">
 					<div className="flex items-center gap-2">
 						<Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
-						<DialogTitle className="text-lg font-bold">{t("dialog_title", { name: playbook.name })}</DialogTitle>
+						<DialogTitle className="text-lg font-bold">
+							{t("dialog_title", { name: playbook.name })}
+						</DialogTitle>
 					</div>
 					<DialogDescription className="text-xs text-muted-foreground">
-						{playbook.description ??
-							t("dialog_desc")}
+						{playbook.description ?? t("dialog_desc")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -201,7 +201,8 @@ export function PlaybookInstantiateDialog({
 						<span className="font-semibold text-foreground">~{estimatedCreditsCost} Credits</span>{" "}
 						{t("cost_limit_desc_per_run")}{" "}
 						<span className="font-semibold text-foreground">
-							{maxLimit} {limitLabel}{t("cost_limit_desc_per_run_suffix")}
+							{maxLimit} {limitLabel}
+							{t("cost_limit_desc_per_run_suffix")}
 						</span>{" "}
 						(INV-24.6).
 					</AlertDescription>

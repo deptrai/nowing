@@ -70,9 +70,7 @@ export function DesktopContent() {
 	if (!api) {
 		return (
 			<div className="flex flex-col items-center justify-center py-12 text-center">
-				<p className="text-sm text-muted-foreground">
-					{t("desktop_only")}
-				</p>
+				<p className="text-sm text-muted-foreground">{t("desktop_only")}</p>
 			</div>
 		);
 	}
@@ -213,9 +211,7 @@ export function DesktopContent() {
 							>
 								{t("start_minimized")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								{t("start_minimized_desc")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("start_minimized_desc")}</p>
 						</div>
 						<Switch
 							id="auto-launch-hidden-toggle"

@@ -9,6 +9,7 @@ import {
 	Presentation,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { type PickerResult, useGooglePicker } from "@/hooks/use-google-picker";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 interface SelectedItem {
 	id: string;
@@ -262,9 +262,7 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 							<Label htmlFor="max-files" className="text-sm font-medium">
 								{t("max_files_per_folder")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								{t("max_files_desc")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("max_files_desc")}</p>
 						</div>
 						<Select
 							value={indexingOptions.max_files_per_folder.toString()}
@@ -305,9 +303,7 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 						<Label htmlFor="incremental-sync" className="text-sm font-medium">
 							{t("incremental_sync")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							{t("incremental_sync_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("incremental_sync_desc")}</p>
 					</div>
 					<Switch
 						id="incremental-sync"
@@ -322,9 +318,7 @@ export const GoogleDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfi
 						<Label htmlFor="include-subfolders" className="text-sm font-medium">
 							{t("include_subfolders")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							{t("include_subfolders_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("include_subfolders_desc")}</p>
 					</div>
 					<Switch
 						id="include-subfolders"

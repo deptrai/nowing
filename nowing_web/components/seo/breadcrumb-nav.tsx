@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { BreadcrumbJsonLd } from "./json-ld";
 import { useTranslations } from "next-intl";
+import { BreadcrumbJsonLd } from "./json-ld";
 
 interface BreadcrumbItem {
 	name: string;

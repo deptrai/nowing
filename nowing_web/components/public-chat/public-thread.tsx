@@ -11,12 +11,12 @@ import {
 import { CheckIcon, CopyIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { type FC, type ReactNode, useState } from "react";
 import { CitationMetadataProvider } from "@/components/assistant-ui/citation-metadata-context";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ReasoningMessagePart } from "@/components/assistant-ui/reasoning-message-part";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { useTranslations } from "next-intl";
 import { GenerateImageToolUI } from "@/components/tool-ui/generate-image";
 import { GenerateReportToolUI } from "@/components/tool-ui/generate-report";
 import { GenerateResumeToolUI } from "@/components/tool-ui/generate-resume";

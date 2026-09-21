@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { CalloutPlugin } from "@platejs/callout/react";
 import { cva } from "class-variance-authority";
+import { useTranslations } from "next-intl";
 import type { TCalloutElement } from "platejs";
 import { PlateElement, type PlateElementProps, useEditorPlugin } from "platejs/react";
 import * as React from "react";
@@ -39,7 +39,8 @@ const calloutIcons: Record<CalloutVariant, string> = {
 };
 
 export function CalloutElement({ children, ...props }: PlateElementProps<TCalloutElement>) {
-	const t = useTranslations("ui");	const { editor } = useEditorPlugin(CalloutPlugin);
+	const t = useTranslations("ui");
+	const { editor } = useEditorPlugin(CalloutPlugin);
 	const element = props.element;
 	const variant = variantCycle.includes(element.variant as CalloutVariant)
 		? (element.variant as CalloutVariant)

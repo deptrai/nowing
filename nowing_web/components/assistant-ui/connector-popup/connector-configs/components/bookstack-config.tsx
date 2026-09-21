@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -78,9 +78,7 @@ export const BookStackConfig: FC<BookStackConfigProps> = ({
 						placeholder={t("bookstack_name_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("connector_name_desc")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("connector_name_desc")}</p>
 				</div>
 			</div>
 

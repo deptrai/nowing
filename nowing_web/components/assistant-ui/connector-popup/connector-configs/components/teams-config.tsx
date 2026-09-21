@@ -1,10 +1,10 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 export interface TeamsConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;

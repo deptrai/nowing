@@ -1,6 +1,6 @@
-import { useTranslations } from "next-intl";
 import { useSetAtom } from "jotai";
 import { AudioLines, Contact, FileText, Globe, ImageIcon, Presentation, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ComponentType } from "react";
 import { openReportPanelAtom } from "@/atoms/chat/report-panel.atom";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,9 @@ import { scrollToArtifact } from "../lib/scroll-to-artifact";
 import type { ArtifactKind, ChatArtifact } from "../model/artifact";
 import { closeArtifactsPanelAtom } from "../state/artifacts-panel.atom";
 
-const getKindMeta = (t: (k: string) => string): Record<
-	ArtifactKind,
-	{ icon: ComponentType<{ className?: string }>; label: string }
-> => ({
+const getKindMeta = (
+	t: (k: string) => string
+): Record<ArtifactKind, { icon: ComponentType<{ className?: string }>; label: string }> => ({
 	web_app: { icon: Globe, label: t("x_web_app") },
 	report: { icon: FileText, label: t("x_report") },
 	resume: { icon: Contact, label: t("x_resume") },

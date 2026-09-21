@@ -2,8 +2,8 @@
 
 import { ArrowUp, ChevronRightIcon, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -72,7 +72,9 @@ function DemoTimeline({
 	}, [settled]);
 
 	const visible = steps.slice(0, startedCount);
-	const headerText = settled ? t("demo_reviewed") : (steps[runningIndex]?.title ?? t("demo_processing"));
+	const headerText = settled
+		? t("demo_reviewed")
+		: (steps[runningIndex]?.title ?? t("demo_processing"));
 
 	return (
 		<div className="w-full">

@@ -2,11 +2,11 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { CornerDownLeftIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import { isInterruptResult, useHitlDecision, useHitlPhase } from "@/features/chat-messages/hitl";
 
@@ -164,9 +164,7 @@ function ApprovalCard({
 					) : phase === "rejected" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("notion_delete_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							{t("common_requires_approval")}
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 			</div>
@@ -182,7 +180,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("notion_account_label")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("notion_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.workspace_icon} {account.workspace_name}
 										</div>
@@ -191,7 +191,9 @@ function ApprovalCard({
 
 								{currentTitle && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("notion_page_to_delete")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("notion_page_to_delete")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{currentTitle}
 										</div>
@@ -288,7 +290,9 @@ function InfoCard({ result }: { result: InfoResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{t("notion_page_not_found")}</p>
+				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+					{t("notion_page_not_found")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -303,13 +307,17 @@ function WarningCard({ result }: { result: WarningResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="flex items-start gap-3 border-b px-5 py-4">
-				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">{t("common_partial_success")}</p>
+				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">
+					{t("common_partial_success")}
+				</p>
 			</div>
 			<div className="px-5 py-4 space-y-2 text-xs">
 				<p className="text-sm text-muted-foreground">{result.warning}</p>
 				{result.title && (
 					<div className="pt-2">
-						<span className="font-medium text-muted-foreground">{t("notion_deleted_page_label")} </span>
+						<span className="font-medium text-muted-foreground">
+							{t("notion_deleted_page_label")}{" "}
+						</span>
 						<span>{result.title}</span>
 					</div>
 				)}
@@ -333,7 +341,9 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 					<div className="px-5 py-4 space-y-2 text-xs">
 						{result.title && (
 							<div>
-								<span className="font-medium text-muted-foreground">{t("notion_deleted_page_label")} </span>
+								<span className="font-medium text-muted-foreground">
+									{t("notion_deleted_page_label")}{" "}
+								</span>
 								<span>{result.title}</span>
 							</div>
 						)}

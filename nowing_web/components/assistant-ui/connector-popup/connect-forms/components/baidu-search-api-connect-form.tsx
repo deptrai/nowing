@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -22,14 +22,17 @@ import { EnumConnectorName } from "@/contracts/enums/connector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const createBaiduSearchApiFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
-	name: z.string().min(3, {
-		message: t("connector_name_min"),
-	}),
-	api_key: z.string().min(10, {
-		message: t("api_key_required_valid"),
-	}),
-});
+const createBaiduSearchApiFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z.object({
+		name: z.string().min(3, {
+			message: t("connector_name_min"),
+		}),
+		api_key: z.string().min(10, {
+			message: t("api_key_required_valid"),
+		}),
+	});
 
 type BaiduSearchApiFormValues = z.infer<ReturnType<typeof createBaiduSearchApiFormSchema>>;
 

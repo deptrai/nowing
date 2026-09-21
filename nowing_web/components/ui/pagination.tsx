@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type * as React from "react";
 import { type Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,8 @@ function PaginationLink({ className, isActive, size = "icon", ...props }: Pagina
 }
 
 function PaginationPrevious({ className, ...props }: React.ComponentProps<typeof PaginationLink>) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<PaginationLink
 			aria-label={t("ui_go_to_previous_page")}
 			size="default"
@@ -68,7 +69,8 @@ function PaginationPrevious({ className, ...props }: React.ComponentProps<typeof
 }
 
 function PaginationNext({ className, ...props }: React.ComponentProps<typeof PaginationLink>) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<PaginationLink
 			aria-label={t("ui_go_to_next_page")}
 			size="default"
@@ -82,7 +84,8 @@ function PaginationNext({ className, ...props }: React.ComponentProps<typeof Pag
 }
 
 function PaginationEllipsis({ className, ...props }: React.ComponentProps<"span">) {
-	const t = useTranslations("ui");	return (
+	const t = useTranslations("ui");
+	return (
 		<span
 			aria-hidden
 			data-slot="pagination-ellipsis"

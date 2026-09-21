@@ -39,9 +39,7 @@ export function CoverageGapDrawer({
 						</div>
 						<div>
 							<SheetTitle>{t("coverage_gaps")}</SheetTitle>
-							<SheetDescription>
-								{t("coverage_gaps_desc")}
-							</SheetDescription>
+							<SheetDescription>{t("coverage_gaps_desc")}</SheetDescription>
 						</div>
 					</div>
 				</SheetHeader>
@@ -86,9 +84,17 @@ export function CoverageGapDrawer({
 										</p>
 
 										<div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
-											<span>{t("enabled_since", { date: new Date(gap.enabled_since).toLocaleDateString() })}</span>
+											<span>
+												{t("enabled_since", {
+													date: new Date(gap.enabled_since).toLocaleDateString(),
+												})}
+											</span>
 											{gap.last_synced_at ? (
-												<span>{t("last_sync", { date: new Date(gap.last_synced_at).toLocaleDateString() })}</span>
+												<span>
+													{t("last_sync", {
+														date: new Date(gap.last_synced_at).toLocaleDateString(),
+													})}
+												</span>
 											) : (
 												<span className="italic">{t("never_synced")}</span>
 											)}

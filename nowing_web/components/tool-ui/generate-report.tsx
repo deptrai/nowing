@@ -4,6 +4,7 @@ import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Dot } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { openReportPanelAtom, reportPanelAtom } from "@/atoms/chat/report-panel.atom";
@@ -12,7 +13,6 @@ import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { baseApiService } from "@/lib/apis/base-api.service";
-import { useTranslations } from "next-intl";
 
 /**
  * Zod schemas for runtime validation
@@ -320,7 +320,10 @@ export const GenerateReportToolUI = ({
 
 	if (result.status === "failed") {
 		return (
-			<ReportErrorState title={result.title || topic} error={result.error || t("report_gen_failed")} />
+			<ReportErrorState
+				title={result.title || topic}
+				error={result.error || t("report_gen_failed")}
+			/>
 		);
 	}
 

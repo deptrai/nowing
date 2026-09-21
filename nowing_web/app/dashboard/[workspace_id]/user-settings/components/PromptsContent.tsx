@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { AlertTriangle, Globe, Lock, MoreHorizontal, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -153,8 +153,8 @@ export function PromptsContent() {
 		<div className="space-y-6 min-w-0">
 			<div className="flex items-center justify-between">
 				<p className="text-sm text-muted-foreground">
-					{t("prompts_triggered")} <ShortcutKbd keys={["/"]} className="ml-0" /> in
-					the chat composer.
+					{t("prompts_triggered")} <ShortcutKbd keys={["/"]} className="ml-0" /> in the chat
+					composer.
 				</p>
 				<Button
 					size="sm"
@@ -182,9 +182,7 @@ export function PromptsContent() {
 				<DialogContent className="max-w-lg bg-popover text-popover-foreground">
 					<DialogHeader>
 						<DialogTitle>{editingId !== null ? "Edit prompt" : "New prompt"}</DialogTitle>
-						<DialogDescription>
-							{t("prompts_lede")}
-						</DialogDescription>
+						<DialogDescription>{t("prompts_lede")}</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-4">
@@ -229,12 +227,8 @@ export function PromptsContent() {
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="transform">
-										Transform — rewrites or modifies your text
-									</SelectItem>
-									<SelectItem value="explore">
-										Explore — answers a question about your text
-									</SelectItem>
+									<SelectItem value="transform">{t("prompt_mode_transform")}</SelectItem>
+									<SelectItem value="explore">{t("prompt_mode_explore")}</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -303,9 +297,7 @@ export function PromptsContent() {
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
 					<Sparkles className="mx-auto size-8 text-muted-foreground/40" aria-hidden="true" />
 					<p className="mt-2 text-sm text-muted-foreground">{t("prompts_none")}</p>
-					<p className="text-xs text-muted-foreground/60">
-						{t("prompts_none_desc")}
-					</p>
+					<p className="text-xs text-muted-foreground/60">{t("prompts_none_desc")}</p>
 				</div>
 			)}
 
@@ -396,9 +388,7 @@ export function PromptsContent() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t("delete_prompt")}</AlertDialogTitle>
-						<AlertDialogDescription>
-							{t("delete_prompt_desc")}
-						</AlertDialogDescription>
+						<AlertDialogDescription>{t("delete_prompt_desc")}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>

@@ -10,14 +10,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function MemoryBrowserPage({
-  params,
+	params,
 }: {
-  params: Promise<{ workspace_id: string }>;
+	params: Promise<{ workspace_id: string }>;
 }) {
-  const { workspace_id } = await params;
-  return (
-    <div className="w-full space-y-6">
-      <MemoryBrowserPageContent workspaceId={Number(workspace_id)} />
-    </div>
-  );
+	const { workspace_id } = await params;
+	return (
+		<div className="w-full space-y-6">
+			<MemoryBrowserPageContent workspaceId={Number(workspace_id)} />
+		</div>
+	);
 }

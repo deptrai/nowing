@@ -1,6 +1,7 @@
 "use client";
 
 import { Copy, Dot, ExternalLink, MessageSquare, MoreHorizontal, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,7 +19,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { PublicChatSnapshotDetail } from "@/contracts/types/chat-threads.types";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
 
 function getInitials(name: string): string {
 	const parts = name.trim().split(/\s+/);

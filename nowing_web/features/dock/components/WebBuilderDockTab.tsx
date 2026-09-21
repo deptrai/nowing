@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import {
 	CheckIcon,
@@ -13,6 +12,7 @@ import {
 	SparklesIcon,
 	Tablet,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +67,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 				toast.error(deployRes.message || t("publish_failed"));
 			}
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message: t("x_publish_request_failed");
+			const msg = err instanceof Error ? err.message : t("x_publish_request_failed");
 			toast.error(msg);
 		} finally {
 			setIsPublishing(false);
@@ -93,7 +93,9 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 
 	if (!appId) {
 		return (
-			<div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">{t("x_no_web_app_selected")}</div>
+			<div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+				{t("x_no_web_app_selected")}
+			</div>
 		);
 	}
 
@@ -117,16 +119,14 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 								: "border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300"
 						)}
 					>
-						{isPublished ? "Published" : "Generated"}
+						{isPublished ? t("published") : t("generated")}
 					</Badge>
 				</div>
 
 				{files.length > 0 && (
 					<div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
 						<FileCode2Icon className="size-3.5" aria-hidden="true" />
-						<span>
-							{files.length} file{files.length === 1 ? "" : "s"}
-						</span>
+						<span>{t("files_count", { count: files.length })}</span>
 					</div>
 				)}
 
@@ -145,7 +145,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 								) : (
 									<RocketIcon className="size-3.5" aria-hidden="true" />
 								)}
-								{isPublishing ? "Publishing..." : "Publish"}
+								{isPublishing ? t("publishing") : t("publish")}
 							</Button>
 						)}
 
@@ -156,7 +156,9 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 								onClick={handleOpenLive}
 								className="gap-1 text-xs h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white"
 							>
-								<ExternalLinkIcon className="size-3.5" aria-hidden="true" />{t("x_live_site")}</Button>
+								<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
+								{t("x_live_site")}
+							</Button>
 						)}
 
 						{isPublished && effectivePublicUrl && (
@@ -172,7 +174,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 								) : (
 									<CopyIcon className="size-3.5" aria-hidden="true" />
 								)}
-								Copy URL
+								{t("copy_url")}
 							</Button>
 						)}
 
@@ -183,7 +185,9 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							className="gap-1 text-xs h-7 rounded-lg"
 							onClick={() => toast.info(t("code_editor_coming_soon"))}
 						>
-							<SparklesIcon className="size-3.5" aria-hidden="true" />{t("x_edit_prompt")}</Button>
+							<SparklesIcon className="size-3.5" aria-hidden="true" />
+							{t("x_edit_prompt")}
+						</Button>
 					</div>
 
 					{/* Device Viewport Selector */}
@@ -191,7 +195,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 						<button
 							type="button"
 							onClick={() => setViewport("desktop")}
-							title="Toàn màn hình Desktop (100%)"
+							title={t("viewport_desktop_title")}
 							className={cn(
 								"flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-all",
 								viewport === "desktop"
@@ -200,12 +204,12 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							)}
 						>
 							<Laptop className="size-3.5" />
-							<span className="hidden sm:inline">Desktop</span>
+							<span className="hidden sm:inline">{t("desktop")}</span>
 						</button>
 						<button
 							type="button"
 							onClick={() => setViewport("tablet")}
-							title="Tablet Viewport (768px)"
+							title={t("viewport_tablet_title")}
 							className={cn(
 								"flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-all",
 								viewport === "tablet"
@@ -214,12 +218,12 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							)}
 						>
 							<Tablet className="size-3.5" />
-							<span className="hidden sm:inline">Tablet</span>
+							<span className="hidden sm:inline">{t("tablet")}</span>
 						</button>
 						<button
 							type="button"
 							onClick={() => setViewport("mobile")}
-							title="Mobile Viewport (375px)"
+							title={t("viewport_mobile_title")}
 							className={cn(
 								"flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-all",
 								viewport === "mobile"
@@ -228,7 +232,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 							)}
 						>
 							<Smartphone className="size-3.5" />
-							<span className="hidden sm:inline">Mobile</span>
+							<span className="hidden sm:inline">{t("mobile")}</span>
 						</button>
 					</div>
 				</div>
@@ -236,7 +240,7 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 				{isPublished && effectivePublicUrl && (
 					<div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5">
 						<p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-							Public URL
+							{t("public_url")}
 						</p>
 						<a
 							href={effectivePublicUrl}
@@ -263,8 +267,12 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 					>
 						{viewport !== "desktop" && (
 							<div className="h-6 bg-neutral-900 border-b border-border/40 px-3 flex items-center justify-between text-[10px] text-muted-foreground select-none">
-								<span className="font-mono">{viewport === "tablet" ? "768 × 1024" : "375 × 812"}</span>
-								<span className="uppercase tracking-widest">{viewport} preview</span>
+								<span className="font-mono">
+									{viewport === "tablet" ? "768 × 1024" : "375 × 812"}
+								</span>
+								<span className="uppercase tracking-widest">
+									{t("viewport_preview", { viewport })}
+								</span>
 							</div>
 						)}
 						<iframe
@@ -281,4 +289,3 @@ export function WebBuilderDockTab({ workspaceId, result }: WebBuilderDockTabProp
 		</div>
 	);
 }
-

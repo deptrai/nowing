@@ -19,13 +19,17 @@ interface AdvancedSectionProps {
 	onTagsChange: (tags: string[]) => void;
 }
 
-const getBackoffOptions = (t: (k: string) => string): ReadonlyArray<{ value: BuilderExecution["retryBackoff"]; label: string }> => [
+const getBackoffOptions = (
+	t: (k: string) => string
+): ReadonlyArray<{ value: BuilderExecution["retryBackoff"]; label: string }> => [
 	{ value: "exponential", label: t("auto_exponential") },
 	{ value: "linear", label: t("auto_linear") },
 	{ value: "none", label: t("auto_none") },
 ];
 
-const getConcurrencyOptions = (t: (k: string) => string): ReadonlyArray<{
+const getConcurrencyOptions = (
+	t: (k: string) => string
+): ReadonlyArray<{
 	value: BuilderExecution["concurrency"];
 	label: string;
 }> => [

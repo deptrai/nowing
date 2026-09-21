@@ -2,6 +2,7 @@
 
 import { useAtom, useAtomValue } from "jotai";
 import { Dot } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { updateModelRolesMutationAtom } from "@/atoms/model-connections/model-connections-mutation.atoms";
 import {
 	globalModelConnectionsAtom,
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { ConnectionRead, ModelRead } from "@/contracts/types/model-connections.types";
-import { useTranslations } from "next-intl";
 import { AUTO_PROVIDER_ICON_KEY, getProviderIcon } from "@/lib/provider-icons";
 import { ModelProviderConnectionsPanel } from "./model-connections/model-provider-connections-panel";
 import { capability, modelLabel } from "./model-connections/model-utils";
@@ -40,7 +40,7 @@ function roleSelectValue(modelId: number | null | undefined, models: Array<{ id:
 	return models.some((model) => model.id === modelId) ? String(modelId) : "0";
 }
 
-function renderAutoModeOption(t: (k:string)=>string) {
+function renderAutoModeOption(t: (k: string) => string) {
 	return (
 		<SelectItem value="0">
 			<span className="inline-flex items-center gap-2">
@@ -84,16 +84,12 @@ export function ModelConnectionsSettings({ workspaceId }: { workspaceId: number 
 			<div className="flex flex-col gap-4">
 				<div>
 					<h3 className="text-base font-semibold">{t("mc_model_roles")}</h3>
-					<p className="text-sm text-muted-foreground">
-						{t("mc_roles_desc")}.
-					</p>
+					<p className="text-sm text-muted-foreground">{t("mc_roles_desc")}.</p>
 				</div>
 				<div className="flex w-full max-w-2xl flex-col gap-4">
 					<div className="flex flex-col gap-2">
 						<Label>{t("mc_chat_model")}</Label>
-						<p className="text-xs text-muted-foreground">
-{t("mc_chat_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("mc_chat_desc")}</p>
 						<Select
 							value={roleSelectValue(roles?.chat_model_id, chatModels)}
 							onValueChange={(value) => updateRoles.mutate({ chat_model_id: Number(value) })}
@@ -109,9 +105,7 @@ export function ModelConnectionsSettings({ workspaceId }: { workspaceId: number 
 					</div>
 					<div className="flex flex-col gap-2">
 						<Label>{t("mc_vision_model")}</Label>
-						<p className="text-xs text-muted-foreground">
-{t("mc_vision_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("mc_vision_desc")}</p>
 						<Select
 							value={roleSelectValue(roles?.vision_model_id, visionModels)}
 							onValueChange={(value) => updateRoles.mutate({ vision_model_id: Number(value) })}

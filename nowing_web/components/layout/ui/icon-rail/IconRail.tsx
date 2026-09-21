@@ -1,8 +1,8 @@
 "use client";
 
 import { Plus, SquarePen } from "lucide-react";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -115,7 +115,9 @@ export function IconRail({
 								<span className="sr-only">{t("add_workspace")}</span>
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent side="right" sideOffset={8}>{t("add_workspace")}</TooltipContent>
+						<TooltipContent side="right" sideOffset={8}>
+							{t("add_workspace")}
+						</TooltipContent>
 					</Tooltip>
 
 					{actionItems.length > 0 && (

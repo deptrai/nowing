@@ -36,9 +36,7 @@ export const PeriodicSyncConfig: FC<PeriodicSyncConfigProps> = ({
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
 					<h3 className="font-medium text-sm sm:text-base">{t("enable_periodic_sync")}</h3>
-					<p className="text-xs sm:text-sm text-muted-foreground">
-						{t("periodic_sync_desc")}
-					</p>
+					<p className="text-xs sm:text-sm text-muted-foreground">{t("periodic_sync_desc")}</p>
 				</div>
 				<Switch checked={enabled} onCheckedChange={onEnabledChange} disabled={disabled} />
 			</div>

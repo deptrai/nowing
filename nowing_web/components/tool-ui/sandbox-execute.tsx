@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import {
@@ -12,6 +11,7 @@ import {
 	TerminalIcon,
 	XCircleIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
@@ -237,7 +237,7 @@ function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: 
 		try {
 			await downloadSandboxFile(threadId, file.path, file.name);
 		} catch (e) {
-			setError(e instanceof Error ? e.message: t("tu_download_failed"));
+			setError(e instanceof Error ? e.message : t("tu_download_failed"));
 		} finally {
 			setDownloading(false);
 		}
@@ -344,7 +344,9 @@ function ExecuteCompleted({
 					>
 						{isLongCommand && (
 							<div>
-								<p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">{t("tu_command")}</p>
+								<p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+									{t("tu_command")}
+								</p>
 								<pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all rounded-md bg-zinc-900/80 dark:bg-zinc-800/40 px-3 py-2 text-xs font-mono text-emerald-400 leading-relaxed">
 									{command}
 								</pre>

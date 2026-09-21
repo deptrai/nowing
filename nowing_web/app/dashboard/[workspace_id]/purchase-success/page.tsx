@@ -1,9 +1,9 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,8 +76,7 @@ export default function PurchaseSuccessPage() {
 				}
 			} catch (err) {
 				if (cancelledRef.current) return;
-				const message =
-					err instanceof Error ? err.message : t("finalize_error");
+				const message = err instanceof Error ? err.message : t("finalize_error");
 				setState({ kind: "error", message });
 			}
 		};

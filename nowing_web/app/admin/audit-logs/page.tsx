@@ -134,9 +134,7 @@ export default function AdminAuditLogsPage() {
 						<ShieldAlert className="h-6 w-6 text-primary" />
 						<h1 className="text-2xl font-bold tracking-tight">{t("audit_title")}</h1>
 					</div>
-					<p className="text-sm text-muted-foreground">
-						{t("audit_subtitle")}
-					</p>
+					<p className="text-sm text-muted-foreground">{t("audit_subtitle")}</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<button
@@ -388,7 +386,7 @@ export default function AdminAuditLogsPage() {
 				{/* Pagination Bar */}
 				<div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
 					<div className="text-xs text-muted-foreground">
-						{t("audit_showing", {count: items.length, total})}
+						{t("audit_showing", { count: items.length, total })}
 					</div>
 					<div className="flex gap-2">
 						<button

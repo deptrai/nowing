@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { Image, ImageLoading } from "@/components/tool-ui/image";
 import { imageGenerationsApiService } from "@/lib/apis/image-generations-api.service";
-import { useTranslations } from "next-intl";
 
 function extractImageSrc(responseData: Record<string, unknown> | null | undefined): string | null {
 	const data = (responseData as { data?: unknown } | null | undefined)?.data;

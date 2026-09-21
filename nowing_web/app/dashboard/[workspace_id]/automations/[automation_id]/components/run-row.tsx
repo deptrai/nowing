@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight, Hand } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { LiveRunSummary } from "@/hooks/use-automation-runs";
 import { formatDuration } from "@/lib/automations/run-duration";

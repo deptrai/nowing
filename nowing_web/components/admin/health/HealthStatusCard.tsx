@@ -1,10 +1,10 @@
 "use client";
 
 import { Activity, AlertTriangle, CheckCircle2, Clock, MinusCircle, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { HealthStatusItem } from "@/lib/apis/admin-health-api.service";
-import { useTranslations } from "next-intl";
 
 interface HealthStatusCardProps {
 	item: HealthStatusItem;

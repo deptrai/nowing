@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { CalendarClock, CalendarOff, Dot, Plus, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -58,7 +58,9 @@ export function ScheduleSection({
 					className="mt-3"
 					onClick={() => onScheduleChange({ mode: "preset", model: { ...DEFAULT_SCHEDULE } })}
 				>
-					<Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("auto_add_a_schedule")}</Button>
+					<Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+					{t("auto_add_a_schedule")}
+				</Button>
 			</div>
 		);
 	}
@@ -174,7 +176,10 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 			</div>
 
 			{model.frequency === "weekly" && (
-				<Field label={t("auto_on_days")} error={weeklyNoDays ? t("pick_day_weekly_err") : undefined}>
+				<Field
+					label={t("auto_on_days")}
+					error={weeklyNoDays ? t("pick_day_weekly_err") : undefined}
+				>
 					<div className="flex flex-wrap gap-1.5">
 						{WEEKDAY_OPTIONS.map((day) => {
 							const active = model.daysOfWeek.includes(day.value);
@@ -218,7 +223,9 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 				type="button"
 				onClick={onSwitchToCron}
 				className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-			>{t("auto_advanced_enter_a_schedule")}</button>
+			>
+				{t("auto_advanced_enter_a_schedule")}
+			</button>
 		</div>
 	);
 }
@@ -254,7 +261,9 @@ function CronEditor({ cron, error, onChange, onSwitchToPreset }: CronEditorProps
 				type="button"
 				onClick={onSwitchToPreset}
 				className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-			>{t("auto_use_the_simple_picker")}</button>
+			>
+				{t("auto_use_the_simple_picker")}
+			</button>
 		</div>
 	);
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Info, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -18,7 +18,7 @@ export const ClickUpConfig: FC<ClickUpConfigProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
-	const t = useTranslations("assistant");// Check if this is an OAuth connector (has access_token or _token_encrypted flag)
+	const t = useTranslations("assistant"); // Check if this is an OAuth connector (has access_token or _token_encrypted flag)
 	const isOAuth = !!(connector.config?.access_token || connector.config?._token_encrypted);
 
 	const [apiToken, setApiToken] = useState<string>(
@@ -77,9 +77,7 @@ export const ClickUpConfig: FC<ClickUpConfigProps> = ({
 						placeholder={t("clickup_name_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("connector_name_desc")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("connector_name_desc")}</p>
 				</div>
 			</div>
 

@@ -1,6 +1,6 @@
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
-import { useTranslations } from "next-intl";
 
 function getColumns(t: (k: string) => string) {
 	return [
@@ -13,12 +13,54 @@ function getColumns(t: (k: string) => string) {
 
 function getRows(t: (k: string) => string) {
 	return [
-		{ feature: t("r1_feature"), browser: t("r1_browser"), scraping: t("r1_scraping"), search: t("r1_search"), marketplace: t("r1_marketplace"), nowing: t("r1_nowing") },
-		{ feature: t("r2_feature"), browser: t("r2_browser"), scraping: t("r2_scraping"), search: t("r2_search"), marketplace: t("r2_marketplace"), nowing: t("r2_nowing") },
-		{ feature: t("r3_feature"), browser: t("r3_browser"), scraping: t("r3_scraping"), search: t("r3_search"), marketplace: t("r3_marketplace"), nowing: t("r3_nowing") },
-		{ feature: t("r4_feature"), browser: t("r4_browser"), scraping: t("r4_scraping"), search: t("r4_search"), marketplace: t("r4_marketplace"), nowing: t("r4_nowing") },
-		{ feature: t("r5_feature"), browser: t("r5_browser"), scraping: t("r5_scraping"), search: t("r5_search"), marketplace: t("r5_marketplace"), nowing: t("r5_nowing") },
-		{ feature: t("r6_feature"), browser: t("r6_browser"), scraping: t("r6_scraping"), search: t("r6_search"), marketplace: t("r6_marketplace"), nowing: t("r6_nowing") },
+		{
+			feature: t("r1_feature"),
+			browser: t("r1_browser"),
+			scraping: t("r1_scraping"),
+			search: t("r1_search"),
+			marketplace: t("r1_marketplace"),
+			nowing: t("r1_nowing"),
+		},
+		{
+			feature: t("r2_feature"),
+			browser: t("r2_browser"),
+			scraping: t("r2_scraping"),
+			search: t("r2_search"),
+			marketplace: t("r2_marketplace"),
+			nowing: t("r2_nowing"),
+		},
+		{
+			feature: t("r3_feature"),
+			browser: t("r3_browser"),
+			scraping: t("r3_scraping"),
+			search: t("r3_search"),
+			marketplace: t("r3_marketplace"),
+			nowing: t("r3_nowing"),
+		},
+		{
+			feature: t("r4_feature"),
+			browser: t("r4_browser"),
+			scraping: t("r4_scraping"),
+			search: t("r4_search"),
+			marketplace: t("r4_marketplace"),
+			nowing: t("r4_nowing"),
+		},
+		{
+			feature: t("r5_feature"),
+			browser: t("r5_browser"),
+			scraping: t("r5_scraping"),
+			search: t("r5_search"),
+			marketplace: t("r5_marketplace"),
+			nowing: t("r5_nowing"),
+		},
+		{
+			feature: t("r6_feature"),
+			browser: t("r6_browser"),
+			scraping: t("r6_scraping"),
+			search: t("r6_search"),
+			marketplace: t("r6_marketplace"),
+			nowing: t("r6_nowing"),
+		},
 	];
 }
 
@@ -29,7 +71,9 @@ export function CompareTable() {
 	return (
 		<MarketingSection>
 			<Reveal>
-				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">{t("home_how_nowing_compares")}</h2>
+				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
+					{t("home_how_nowing_compares")}
+				</h2>
 				<p className="mt-2.5 max-w-2xl text-sm sm:text-[15px] text-muted-foreground font-sans leading-relaxed">
 					{t("compare_lede")}
 				</p>

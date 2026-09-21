@@ -183,9 +183,7 @@ export function WorkspaceForm({
 									<AlertDialogContent>
 										<AlertDialogHeader>
 											<AlertDialogTitle>{t("workspace_are_you_sure")}</AlertDialogTitle>
-											<AlertDialogDescription>
-												{t("workspace_delete_desc")}
-											</AlertDialogDescription>
+											<AlertDialogDescription>{t("workspace_delete_desc")}</AlertDialogDescription>
 										</AlertDialogHeader>
 										<AlertDialogFooter>
 											<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
@@ -195,9 +193,7 @@ export function WorkspaceForm({
 								</AlertDialog>
 							)}
 						</div>
-						<p className="text-muted-foreground">
-							{t("workspace_info_desc")}
-						</p>
+						<p className="text-muted-foreground">{t("workspace_info_desc")}</p>
 					</div>
 				</Tilt>
 			</motion.div>
@@ -227,14 +223,15 @@ export function WorkspaceForm({
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>
-									{t("workspace_desc_label")} <span className="text-muted-foreground font-normal">{t("workspace_desc_optional")}</span>
+									{t("workspace_desc_label")}{" "}
+									<span className="text-muted-foreground font-normal">
+										{t("workspace_desc_optional")}
+									</span>
 								</FormLabel>
 								<FormControl>
 									<Input placeholder={t("workspace_desc_placeholder")} {...field} />
 								</FormControl>
-								<FormDescription>
-									{t("workspace_desc_desc")}
-								</FormDescription>
+								<FormDescription>{t("workspace_desc_desc")}</FormDescription>
 								<FormMessage />
 							</FormItem>
 						)}

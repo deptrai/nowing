@@ -2,10 +2,10 @@
 
 import { FileText, Plus, Search, Sparkles, TrendingUp } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useTranslations } from "next-intl";
 import { OutlierPostCard } from "@/components/social-copilot/OutlierPostCard";
 import { ViralDraftReviewPanel } from "@/components/social-copilot/ViralDraftReviewPanel";
 import { VoiceProfileManager } from "@/components/social-copilot/VoiceProfileManager";
@@ -371,9 +371,7 @@ export default function SocialCopilotPage() {
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
 					<div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg space-y-4">
 						<h3 className="text-lg font-semibold text-foreground">{t("modal_paste_title")}</h3>
-						<p className="text-xs text-muted-foreground">
-							{t("modal_paste_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("modal_paste_desc")}</p>
 						<form onSubmit={handleManualIngest} className="space-y-4">
 							<textarea
 								rows={6}

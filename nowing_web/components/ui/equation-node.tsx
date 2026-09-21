@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useEquationElement, useEquationInput } from "@platejs/math/react";
 import { RadicalIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { TEquationElement } from "platejs";
 import { PlateElement, type PlateElementProps, useSelected } from "platejs/react";
 import * as React from "react";

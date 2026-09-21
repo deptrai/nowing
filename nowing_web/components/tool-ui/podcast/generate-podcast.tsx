@@ -1,9 +1,9 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { Loader2, RotateCcw, Undo2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -73,7 +73,7 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 		try {
 			await podcastsApiService.regenerate(podcast.id);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message: t("tu_failed_to_regenerate_the"));
+			toast.error(error instanceof Error ? error.message : t("tu_failed_to_regenerate_the"));
 		} finally {
 			setIsSubmitting(false);
 			setConfirming(false);
@@ -89,7 +89,9 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 				className="text-muted-foreground"
 				onClick={() => setConfirming(true)}
 			>
-				<RotateCcw className="size-3.5" aria-hidden="true" />{t("tu_regenerate")}</Button>
+				<RotateCcw className="size-3.5" aria-hidden="true" />
+				{t("tu_regenerate")}
+			</Button>
 		);
 	}
 
@@ -102,7 +104,9 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 				size="sm"
 				onClick={() => setConfirming(false)}
 				disabled={isSubmitting}
-			>{t("tu_keep_it")}</Button>
+			>
+				{t("tu_keep_it")}
+			</Button>
 			<Button
 				type="button"
 				variant="destructive"
@@ -183,7 +187,9 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 					<AlertDialogAction
 						className={buttonVariants({ variant: "destructive" })}
 						onClick={() => run(podcastsApiService.cancel, t("podcast_cancel_failed"))}
-					>{t("tu_cancel_podcast")}</AlertDialogAction>
+					>
+						{t("tu_cancel_podcast")}
+					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
@@ -227,12 +233,7 @@ function LivePodcastCard({
 		if (isLoading) {
 			return <WorkingState title={fallbackTitle} label={t("tu_loading_podcast")} />;
 		}
-		return (
-			<NoticeState
-				title={t("tu_podcast_unavailable")}
-				message={t("podcast_no_access")}
-			/>
-		);
+		return <NoticeState title={t("tu_podcast_unavailable")} message={t("podcast_no_access")} />;
 	}
 
 	const title = podcast.title || fallbackTitle;
@@ -277,7 +278,9 @@ function LivePodcastCard({
 				<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 					<div className="px-5 pt-5 pb-4">
 						<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
-						<p className="text-xs text-muted-foreground mt-0.5">{t("f_this_podcast_was_drafted")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("f_this_podcast_was_drafted")}
+						</p>
 					</div>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="flex justify-end px-5 py-3">
@@ -301,7 +304,12 @@ function LivePodcastCard({
 		case "failed":
 			return <PodcastErrorState title={title} error={podcast.error || t("generation_failed")} />;
 		case "cancelled":
-			return <NoticeState title={t("podcast_cancelled_title")} message={t("podcast_cancelled_message")} />;
+			return (
+				<NoticeState
+					title={t("podcast_cancelled_title")}
+					message={t("podcast_cancelled_message")}
+				/>
+			);
 	}
 }
 
@@ -328,7 +336,9 @@ export const GeneratePodcastToolUI = ({
 
 	if (status.type === "incomplete") {
 		if (status.reason === "cancelled") {
-			return <NoticeState title={t("podcast_cancelled_title")} message={t("podcast_prep_cancelled")} />;
+			return (
+				<NoticeState title={t("podcast_cancelled_title")} message={t("podcast_prep_cancelled")} />
+			);
 		}
 		if (status.reason === "error") {
 			return (
@@ -357,10 +367,5 @@ export const GeneratePodcastToolUI = ({
 
 	// Legacy saved chats: results identified only by a Celery task id can't be
 	// recovered through the lifecycle API.
-	return (
-		<NoticeState
-			title={t("tu_podcast_unavailable")}
-			message={t("podcast_legacy_version")}
-		/>
-	);
+	return <NoticeState title={t("tu_podcast_unavailable")} message={t("podcast_legacy_version")} />;
 };

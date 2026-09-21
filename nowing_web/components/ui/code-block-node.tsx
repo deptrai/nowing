@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { formatCodeBlock, isLangSupported } from "@platejs/code-block";
 import { BracesIcon, Check, CheckIcon, CopyIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { NodeApi, type TCodeBlockElement, type TCodeSyntaxLeaf } from "platejs";
 import {
 	PlateElement,
@@ -72,7 +72,8 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 }
 
 function CodeBlockCombobox() {
-	const t = useTranslations("ui");	const [open, setOpen] = React.useState(false);
+	const t = useTranslations("ui");
+	const [open, setOpen] = React.useState(false);
 	const readOnly = useReadOnly();
 	const editor = useEditorRef();
 	const element = useElement<TCodeBlockElement>();

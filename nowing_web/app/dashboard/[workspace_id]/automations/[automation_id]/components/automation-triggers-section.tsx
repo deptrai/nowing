@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { CalendarClock } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Trigger } from "@/contracts/types/automation.types";
 import { TriggerCard } from "./trigger-card";
@@ -34,8 +34,12 @@ export function AutomationTriggersSection({
 				{triggers.length === 0 ? (
 					<div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-4 py-8 text-center">
 						<CalendarClock className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
-						<p className="mt-2 text-sm font-medium text-foreground">{t("auto_no_triggers_attached")}</p>
-						<p className="mt-1 text-xs text-muted-foreground">{t("auto_this_automation_can_still")}</p>
+						<p className="mt-2 text-sm font-medium text-foreground">
+							{t("auto_no_triggers_attached")}
+						</p>
+						<p className="mt-1 text-xs text-muted-foreground">
+							{t("auto_this_automation_can_still")}
+						</p>
 					</div>
 				) : (
 					<div className="space-y-3">

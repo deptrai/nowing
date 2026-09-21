@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { currentUserAtom, USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
@@ -10,7 +11,6 @@ import { useGlobalLoadingEffect } from "@/hooks/use-global-loading";
 import { useSession } from "@/hooks/use-session";
 import { redirectToLogin } from "@/lib/auth-utils";
 import { queryClient } from "@/lib/query-client/client";
-import { useTranslations } from "next-intl";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
 	const t = useTranslations("admin");
@@ -42,9 +42,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
 				<h1 className="text-2xl font-semibold">{t("access_denied")}</h1>
-				<p className="text-muted-foreground">
-					{t("access_denied_desc")}
-				</p>
+				<p className="text-muted-foreground">{t("access_denied_desc")}</p>
 				<Link href="/dashboard" className="text-sm text-primary underline">
 					{t("return_to_dashboard")}
 				</Link>

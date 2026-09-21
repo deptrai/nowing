@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import {
 	Dialog,
@@ -22,7 +23,6 @@ import {
 	providerIcon,
 } from "./provider-metadata";
 import { VertexConnectForm } from "./vertex-connect-form";
-import { useTranslations } from "next-intl";
 
 interface ProviderConnectDialogProps {
 	open: boolean;
@@ -115,7 +115,7 @@ export function ProviderConnectDialog({
 						{providerIcon(provider, "size-5")}
 						<div>
 							<DialogTitle ref={titleRef} tabIndex={-1}>
-								{t("mc_connect_provider",{name:meta.name})}
+								{t("mc_connect_provider", { name: meta.name })}
 							</DialogTitle>
 							<DialogDescription>{meta.subtitle}</DialogDescription>
 						</div>
@@ -138,7 +138,7 @@ export function ProviderConnectDialog({
 						models={previewModels}
 						description={modelDescription}
 						isRefreshing={isPreviewingModels}
-						refreshLabel={t("mc_refresh_provider",{provider:meta.name})}
+						refreshLabel={t("mc_refresh_provider", { provider: meta.name })}
 						onRefresh={canRefreshModels ? () => onPreviewModels?.(currentDraft) : undefined}
 						onAddManual={onAddPreviewModel}
 						onToggleModel={onTogglePreviewModel}

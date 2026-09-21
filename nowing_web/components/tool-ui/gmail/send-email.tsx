@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, MailIcon, Pencil, UserIcon, UsersIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -14,7 +15,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useTranslations } from "next-intl";
 import type { ExtraField, HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import {
 	isInterruptResult,
@@ -191,7 +191,9 @@ function ApprovalCard({
 						</p>
 						{phase === "processing" ? (
 							<TextShimmerLoader
-								text={pendingEdits ? t("gmail_sending_email_with_changes") : t("gmail_sending_email")}
+								text={
+									pendingEdits ? t("gmail_sending_email_with_changes") : t("gmail_sending_email")
+								}
 								size="sm"
 							/>
 						) : phase === "complete" ? (
@@ -306,19 +308,25 @@ function ApprovalCard({
 				{(pendingEdits?.to ?? args.to) && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UserIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>{t("gmail_to")}: {pendingEdits?.to ?? args.to}</span>
+						<span>
+							{t("gmail_to")}: {pendingEdits?.to ?? args.to}
+						</span>
 					</div>
 				)}
 				{(pendingEdits?.cc ?? args.cc) && (pendingEdits?.cc ?? args.cc)?.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>{t("gmail_cc")}: {pendingEdits?.cc ?? args.cc}</span>
+						<span>
+							{t("gmail_cc")}: {pendingEdits?.cc ?? args.cc}
+						</span>
 					</div>
 				)}
 				{(pendingEdits?.bcc ?? args.bcc) && (pendingEdits?.bcc ?? args.bcc)?.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>{t("gmail_bcc")}: {pendingEdits?.bcc ?? args.bcc}</span>
+						<span>
+							{t("gmail_bcc")}: {pendingEdits?.bcc ?? args.bcc}
+						</span>
 					</div>
 				)}
 			</div>
@@ -420,9 +428,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gmail_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

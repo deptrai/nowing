@@ -2,8 +2,8 @@
 
 import { CheckIcon, CopyIcon } from "lucide-react";
 import mermaid from "mermaid";
-import { memo, type ReactNode, useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
+import { memo, type ReactNode, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn, copyToClipboard } from "@/lib/utils";
 

@@ -1,9 +1,9 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHandle, DrawerTitle } from "@/components/ui/drawer";

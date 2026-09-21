@@ -20,9 +20,7 @@ export default async function NotFound() {
 			<p className="mt-4 text-xl text-neutral-600 dark:text-neutral-400">
 				{t("not_found_heading")}
 			</p>
-			<p className="mt-2 text-base text-neutral-500 dark:text-neutral-500">
-				{t("not_found_desc")}
-			</p>
+			<p className="mt-2 text-base text-neutral-500 dark:text-neutral-500">{t("not_found_desc")}</p>
 			<div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
 				<Link
 					href="/"

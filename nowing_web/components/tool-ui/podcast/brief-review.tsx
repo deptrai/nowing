@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { Check, ChevronDown, Loader2, Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -196,7 +196,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 				toast.warning(t("brief_changed_reloaded"));
 				setDraft(spec);
 			} else {
-				toast.error(error instanceof Error ? error.message: t("tu_failed_to_save_the"));
+				toast.error(error instanceof Error ? error.message : t("tu_failed_to_save_the"));
 			}
 			return false;
 		}
@@ -208,7 +208,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 			if (!(await saveIfDirty())) return;
 			await podcastsApiService.approveBrief(podcast.id);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message: t("tu_failed_to_approve_the"));
+			toast.error(error instanceof Error ? error.message : t("tu_failed_to_approve_the"));
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -263,7 +263,9 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						onClick={addSpeaker}
 						disabled={draft.style === "monologue" || draft.speakers.length >= MAX_SPEAKERS}
 					>
-						<Plus className="size-4" aria-hidden="true" />{t("tu_add_speaker")}</Button>
+						<Plus className="size-4" aria-hidden="true" />
+						{t("tu_add_speaker")}
+					</Button>
 				</div>
 				{draft.speakers.map((speaker) => (
 					<div key={speaker.slot} className="flex items-end gap-2 rounded-lg border p-3">
@@ -414,7 +416,9 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						variant="ghost"
 						onClick={() => setDraft(spec)}
 						disabled={isSubmitting}
-					>{t("f_discard")}</Button>
+					>
+						{t("f_discard")}
+					</Button>
 				) : null}
 				<Button
 					type="button"

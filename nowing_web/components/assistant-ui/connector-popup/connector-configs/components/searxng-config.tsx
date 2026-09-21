@@ -1,13 +1,13 @@
 "use client";
 
 import { Globe, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 export interface SearxngConfigProps extends ConnectorConfigProps {
 	onNameChange?: (name: string) => void;
@@ -173,9 +173,7 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 						placeholder={t("my_searxng_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("friendly_name")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
@@ -228,9 +226,7 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 								placeholder={t("engines_placeholder")}
 								className="border-slate-400/20 focus-visible:border-slate-400/40"
 							/>
-							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								{t("engines_desc")}
-							</p>
+							<p className="text-[10px] sm:text-xs text-muted-foreground">{t("engines_desc")}</p>
 						</div>
 
 						<div className="space-y-2">
@@ -241,9 +237,7 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 								placeholder={t("categories_placeholder")}
 								className="border-slate-400/20 focus-visible:border-slate-400/40"
 							/>
-							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								{t("categories_desc")}
-							</p>
+							<p className="text-[10px] sm:text-xs text-muted-foreground">{t("categories_desc")}</p>
 						</div>
 					</div>
 
@@ -279,9 +273,7 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 					<div className="flex items-center justify-between rounded-lg border border-slate-400/20 p-3 sm:p-4">
 						<div>
 							<Label className="text-xs sm:text-sm">{t("verify_ssl")}</Label>
-							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								{t("verify_ssl_desc")}
-							</p>
+							<p className="text-[10px] sm:text-xs text-muted-foreground">{t("verify_ssl_desc")}</p>
 						</div>
 						<Switch checked={verifySsl} onCheckedChange={handleVerifySslChange} />
 					</div>

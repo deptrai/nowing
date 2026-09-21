@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, MailIcon, Pencil, UserIcon, UsersIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -14,7 +15,6 @@ import {
 	useHitlDecision,
 	useHitlPhase,
 } from "@/features/chat-messages/hitl";
-import { useTranslations } from "next-intl";
 
 interface GmailAccount {
 	id: number;
@@ -224,7 +224,9 @@ function ApprovalCard({
 						</p>
 						{phase === "processing" ? (
 							<TextShimmerLoader
-								text={pendingEdits ? t("gmail_updating_draft_with_changes") : t("gmail_updating_draft")}
+								text={
+									pendingEdits ? t("gmail_updating_draft_with_changes") : t("gmail_updating_draft")
+								}
 								size="sm"
 							/>
 						) : phase === "complete" ? (
@@ -304,7 +306,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("gmail_account_label")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("gmail_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -313,7 +317,9 @@ function ApprovalCard({
 
 								{email && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("gmail_draft_to_update")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("gmail_draft_to_update")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1">
 											<div className="flex items-center gap-1.5">
 												<MailIcon
@@ -337,19 +343,25 @@ function ApprovalCard({
 				{currentTo && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UserIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>{t("gmail_to")}: {currentTo}</span>
+						<span>
+							{t("gmail_to")}: {currentTo}
+						</span>
 					</div>
 				)}
 				{currentCc && currentCc.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>{t("gmail_cc")}: {currentCc}</span>
+						<span>
+							{t("gmail_cc")}: {currentCc}
+						</span>
 					</div>
 				)}
 				{currentBcc && currentBcc.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>{t("gmail_bcc")}: {currentBcc}</span>
+						<span>
+							{t("gmail_bcc")}: {currentBcc}
+						</span>
 					</div>
 				)}
 			</div>
@@ -452,9 +464,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					{t("gmail_insufficient_perms")}
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

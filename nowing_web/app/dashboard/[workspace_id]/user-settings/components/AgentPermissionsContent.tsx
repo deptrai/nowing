@@ -59,9 +59,18 @@ function actionDescriptions(t: T): Record<AgentPermissionAction, string> {
 
 function actionBadge(t: T): Record<AgentPermissionAction, { label: string; className: string }> {
 	return {
-		allow: { label: t("effect_allow"), className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
-		deny: { label: t("effect_deny"), className: "bg-destructive/10 text-destructive border-destructive/30" },
-		ask: { label: t("effect_ask"), className: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+		allow: {
+			label: t("effect_allow"),
+			className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
+		},
+		deny: {
+			label: t("effect_deny"),
+			className: "bg-destructive/10 text-destructive border-destructive/30",
+		},
+		ask: {
+			label: t("effect_ask"),
+			className: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+		},
 	};
 }
 
@@ -240,10 +249,7 @@ export function AgentPermissionsContent() {
 		<div className="min-w-0 space-y-6 overflow-visible">
 			<div className="flex items-start justify-between gap-3">
 				<div className="space-y-1">
-					<p className="text-sm text-muted-foreground">
-						Tell the agent which tools to allow, deny, or ask before running. Rules use wildcard
-						patterns and are evaluated at the most specific scope first.
-					</p>
+					<p className="text-sm text-muted-foreground">{t("agent_permissions_intro")}</p>
 				</div>
 				<Button
 					size="sm"
@@ -380,9 +386,7 @@ export function AgentPermissionsContent() {
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
 					<ShieldCheck className="mx-auto size-8 text-muted-foreground/40" aria-hidden="true" />
 					<p className="mt-2 text-sm text-muted-foreground">{t("no_rules")}</p>
-					<p className="text-xs text-muted-foreground/60">
-						{t("no_rules_desc")}
-					</p>
+					<p className="text-xs text-muted-foreground/60">{t("no_rules_desc")}</p>
 				</div>
 			)}
 
@@ -467,9 +471,7 @@ export function AgentPermissionsContent() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t("delete_rule_title")}</AlertDialogTitle>
-						<AlertDialogDescription>
-							{t("delete_rule_desc")}
-						</AlertDialogDescription>
+						<AlertDialogDescription>{t("delete_rule_desc")}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel disabled={deleteMutation.isPending}>{t("cancel")}</AlertDialogCancel>

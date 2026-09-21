@@ -3,8 +3,8 @@
 import { ArrowRight, History, Info, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { PLAYGROUND_PLATFORMS } from "@/lib/playground/catalog";

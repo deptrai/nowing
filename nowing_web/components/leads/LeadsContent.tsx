@@ -11,8 +11,8 @@ import {
 	Table2,
 	Users,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -232,9 +232,7 @@ export const LeadsContent: React.FC = () => {
 									{t("story_tag")}
 								</span>
 							</h1>
-							<p className="text-xs text-zinc-400">
-								{t("panel_desc")}
-							</p>
+							<p className="text-xs text-zinc-400">{t("panel_desc")}</p>
 						</div>
 					</div>
 				</div>

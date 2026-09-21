@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -83,7 +83,8 @@ export function ToolCardRevertButton({
 				err instanceof AppError
 					? err.message
 					: err instanceof Error
-						? err.message: t("x_failed_to_revert_action");
+						? err.message
+						: t("x_failed_to_revert_action");
 			toast.error(message);
 		} finally {
 			setIsReverting(false);

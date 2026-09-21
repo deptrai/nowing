@@ -11,6 +11,7 @@ import {
 	Presentation,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { DriveFolderTree, type SelectedFolder } from "@/components/connectors/drive-folder-tree";
@@ -26,7 +27,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { connectorsApiService } from "@/lib/apis/connectors-api.service";
 import type { ConnectorConfigProps } from "../index";
-import { useTranslations } from "next-intl";
 
 interface IndexingOptions {
 	max_files_per_folder: number;
@@ -220,9 +220,7 @@ export const DropboxConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCha
 				)}
 
 				{isAuthExpired && (
-					<p className="text-xs text-amber-600 dark:text-amber-500">
-						{t("dropbox_auth_expired")}
-					</p>
+					<p className="text-xs text-amber-600 dark:text-amber-500">{t("dropbox_auth_expired")}</p>
 				)}
 
 				{isEditMode ? (
@@ -281,9 +279,7 @@ export const DropboxConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCha
 							<Label htmlFor="db-max-files" className="text-sm font-medium">
 								{t("max_files_per_folder")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								{t("max_files_desc")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("max_files_desc")}</p>
 						</div>
 						<Select
 							value={indexingOptions.max_files_per_folder.toString()}
@@ -323,9 +319,7 @@ export const DropboxConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCha
 						<Label htmlFor="db-incremental-sync" className="text-sm font-medium">
 							{t("incremental_sync")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							{t("incremental_sync_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("incremental_sync_desc")}</p>
 					</div>
 					<Switch
 						id="db-incremental-sync"
@@ -339,9 +333,7 @@ export const DropboxConfig: FC<ConnectorConfigProps> = ({ connector, onConfigCha
 						<Label htmlFor="db-include-subfolders" className="text-sm font-medium">
 							{t("include_subfolders")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							{t("include_subfolders_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("include_subfolders_desc")}</p>
 					</div>
 					<Switch
 						id="db-include-subfolders"

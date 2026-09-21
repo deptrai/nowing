@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRuntimeConfig } from "@/components/providers/runtime-config";
@@ -15,7 +16,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { type FolderSyncProgress, uploadFolderScan } from "@/lib/folder-sync-upload";
 import { getSupportedExtensionsSet } from "@/lib/supported-extensions";
-import { useTranslations } from "next-intl";
 
 export interface SelectedFolder {
 	path: string;

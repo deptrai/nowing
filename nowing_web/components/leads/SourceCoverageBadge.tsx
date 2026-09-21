@@ -1,7 +1,7 @@
 "use client";
 
-import type React from "react";
 import { useTranslations } from "next-intl";
+import type React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -37,12 +37,30 @@ export const COVERAGE_BADGE_VARIANTS: Record<CoverageQualityTier, CoverageVarian
 	},
 };
 
-export function getCoverageBadgeVariants(t: (k: string) => string): Record<CoverageQualityTier, CoverageVariantConfig> {
+export function getCoverageBadgeVariants(
+	t: (k: string) => string
+): Record<CoverageQualityTier, CoverageVariantConfig> {
 	return {
-		high: { ...COVERAGE_BADGE_VARIANTS.high, label: t("coverage_high"), description: t("coverage_high_desc") },
-		medium: { ...COVERAGE_BADGE_VARIANTS.medium, label: t("coverage_medium"), description: t("coverage_medium_desc") },
-		low: { ...COVERAGE_BADGE_VARIANTS.low, label: t("coverage_low"), description: t("coverage_low_desc") },
-		none: { ...COVERAGE_BADGE_VARIANTS.none, label: t("coverage_none"), description: t("coverage_none_desc") },
+		high: {
+			...COVERAGE_BADGE_VARIANTS.high,
+			label: t("coverage_high"),
+			description: t("coverage_high_desc"),
+		},
+		medium: {
+			...COVERAGE_BADGE_VARIANTS.medium,
+			label: t("coverage_medium"),
+			description: t("coverage_medium_desc"),
+		},
+		low: {
+			...COVERAGE_BADGE_VARIANTS.low,
+			label: t("coverage_low"),
+			description: t("coverage_low_desc"),
+		},
+		none: {
+			...COVERAGE_BADGE_VARIANTS.none,
+			label: t("coverage_none"),
+			description: t("coverage_none_desc"),
+		},
 	};
 }
 

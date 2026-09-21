@@ -2,8 +2,8 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { Plus, X } from "lucide-react";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { activeTabIdAtom, closeTabAtom, switchTabAtom } from "@/atoms/tabs/tabs.atom";
 import { Button } from "@/components/ui/button";
 import type { ResolvedTab } from "@/lib/hooks/use-resolved-tabs";
@@ -43,6 +43,7 @@ export function TabBar({
 	className,
 }: TabBarProps) {
 	const t = useTranslations("layout");
+	const tTabs = useTranslations("tabs");
 	const activeTabId = useAtomValue(activeTabIdAtom);
 	const switchTab = useSetAtom(switchTabAtom);
 	const closeTab = useSetAtom(closeTabAtom);
@@ -216,50 +217,59 @@ export function TabBar({
 								/>
 							) : null}
 							<div data-tab-id={tab.id} className="group relative h-full w-[180px] shrink-0">
-								<Button
-									type="button"
-									variant="ghost"
-									role="tab"
-									aria-selected={isActive}
-									title={tab.title}
-									onClick={() => handleTabClick(tab)}
-									onMouseEnter={() => {
-										setHoveredTabIndex(index);
-										handleTabPrefetch(tab);
-									}}
-									onFocus={() => handleTabPrefetch(tab)}
-									onMouseLeave={() => setHoveredTabIndex(null)}
-									className={cn(
-										"h-full w-full justify-start overflow-hidden px-3 text-left text-[13px] font-medium transition-colors duration-150",
-										isActive
-											? "bg-accent text-accent-foreground"
-											: "bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground group-hover:bg-accent group-hover:text-accent-foreground group-focus-within:bg-accent group-focus-within:text-accent-foreground"
-									)}
-								>
-									<span className="block min-w-0 flex-1 truncate text-left">{tab.title}</span>
-								</Button>
-								{/* Hover-only gradient + close overlay (sidebar pattern) — keeps pill width fixed and avoids ellipsis shift. */}
-								<div
-									className={cn(
-										"pointer-events-none absolute right-0 top-0 bottom-0 flex items-center rounded-r-md pl-8 pr-2 opacity-0 transition-opacity duration-150",
-										"group-hover:opacity-100 group-focus-within:opacity-100",
-										"bg-gradient-to-l from-accent from-60% to-transparent"
-									)}
-								>
-									<Button
-										type="button"
-										variant="ghost"
-										size="icon"
-										aria-label={t("tabs.close_tab", { title: tab.title })}
-										title={t("tabs.close_tab", { title: tab.title })}
-										onClick={(e) => handleTabClose(e, tab.id)}
-										onMouseEnter={() => setHoveredTabIndex(index)}
-										onMouseLeave={() => setHoveredTabIndex(null)}
-										className="pointer-events-auto size-4 rounded-full p-0.5 hover:bg-accent hover:text-accent-foreground"
-									>
-										<X data-icon="inline-start" aria-hidden="true" />
-									</Button>
-								</div>
+								{(() => {
+									const displayTitle = tab.title === "New Chat" ? t("new_chat") : tab.title;
+									return (
+										<>
+											<Button
+												type="button"
+												variant="ghost"
+												role="tab"
+												aria-selected={isActive}
+												title={displayTitle}
+												onClick={() => handleTabClick(tab)}
+												onMouseEnter={() => {
+													setHoveredTabIndex(index);
+													handleTabPrefetch(tab);
+												}}
+												onFocus={() => handleTabPrefetch(tab)}
+												onMouseLeave={() => setHoveredTabIndex(null)}
+												className={cn(
+													"h-full w-full justify-start overflow-hidden px-3 text-left text-[13px] font-medium transition-colors duration-150",
+													isActive
+														? "bg-accent text-accent-foreground"
+														: "bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground group-hover:bg-accent group-hover:text-accent-foreground group-focus-within:bg-accent group-focus-within:text-accent-foreground"
+												)}
+											>
+												<span className="block min-w-0 flex-1 truncate text-left">
+													{displayTitle}
+												</span>
+											</Button>
+											{/* Hover-only gradient + close overlay (sidebar pattern) — keeps pill width fixed and avoids ellipsis shift. */}
+											<div
+												className={cn(
+													"pointer-events-none absolute right-0 top-0 bottom-0 flex items-center rounded-r-md pl-8 pr-2 opacity-0 transition-opacity duration-150",
+													"group-hover:opacity-100 group-focus-within:opacity-100",
+													"bg-gradient-to-l from-accent from-60% to-transparent"
+												)}
+											>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													aria-label={tTabs("close_tab", { title: displayTitle })}
+													title={tTabs("close_tab", { title: displayTitle })}
+													onClick={(e) => handleTabClose(e, tab.id)}
+													onMouseEnter={() => setHoveredTabIndex(index)}
+													onMouseLeave={() => setHoveredTabIndex(null)}
+													className="pointer-events-auto size-4 rounded-full p-0.5 hover:bg-accent hover:text-accent-foreground"
+												>
+													<X data-icon="inline-start" aria-hidden="true" />
+												</Button>
+											</div>
+										</>
+									);
+								})()}
 							</div>
 						</Fragment>
 					);

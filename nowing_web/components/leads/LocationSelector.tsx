@@ -1,8 +1,8 @@
 "use client";
 
 import { Check, ChevronsUpDown, MapPin, Sparkles, X } from "lucide-react";
-import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,28 +34,32 @@ export interface LocationSelectorProps {
 	className?: string;
 }
 
-function getLocationTypeOptions(t: (k: string) => string): Array<{ value: LocationType; label: string; description: string }> { return [
-	{
-		value: "both",
-		label: t("location_both"),
-		description: t("location_both_desc"),
-	},
-	{
-		value: "customer_residence",
-		label: t("location_residence"),
-		description: t("location_residence_desc"),
-	},
-	{
-		value: "customer_work",
-		label: t("location_work"),
-		description: t("location_work_desc"),
-	},
-	{
-		value: "transaction",
-		label: t("location_transaction"),
-		description: t("location_project"),
-	},
-]; }
+function getLocationTypeOptions(
+	t: (k: string) => string
+): Array<{ value: LocationType; label: string; description: string }> {
+	return [
+		{
+			value: "both",
+			label: t("location_both"),
+			description: t("location_both_desc"),
+		},
+		{
+			value: "customer_residence",
+			label: t("location_residence"),
+			description: t("location_residence_desc"),
+		},
+		{
+			value: "customer_work",
+			label: t("location_work"),
+			description: t("location_work_desc"),
+		},
+		{
+			value: "transaction",
+			label: t("location_transaction"),
+			description: t("location_project"),
+		},
+	];
+}
 
 export function LocationSelector({
 	value,

@@ -1,6 +1,6 @@
 "use client";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 interface AutomationsHeaderProps {
@@ -33,7 +33,9 @@ export function AutomationsHeader({
 	return (
 		<div className="flex items-center justify-between gap-4 flex-wrap">
 			<div className="flex items-baseline gap-3">
-				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">{t("page_title")}</h1>
+				<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">
+					{t("page_title")}
+				</h1>
 				{!loading && (
 					<span className="text-xs text-muted-foreground font-mono">
 						{total} {total === 1 ? "automation" : "automations"}
@@ -48,7 +50,9 @@ export function AutomationsHeader({
 						variant="ghost"
 						className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 					>
-						<Link href={`/dashboard/${workspaceId}/automations/new`}>{t("auto_create_manually")}</Link>
+						<Link href={`/dashboard/${workspaceId}/automations/new`}>
+							{t("auto_create_manually")}
+						</Link>
 					</Button>
 					<Button asChild size="sm">
 						<Link href={`/dashboard/${workspaceId}/new-chat`}>{t("auto_create_via_chat")}</Link>

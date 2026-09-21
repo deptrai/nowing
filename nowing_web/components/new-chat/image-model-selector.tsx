@@ -1,9 +1,9 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
-import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { UIEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { updateModelRolesMutationAtom } from "@/atoms/model-connections/model-connections-mutation.atoms";
@@ -203,9 +203,7 @@ export function ImageModelSelector({
 					</div>
 				) : Object.keys(groups).length === 0 ? (
 					<div className="px-3 py-8 text-center text-sm text-muted-foreground">
-						{hasSearchQuery
-							? t("no_matching_image_models")
-							: t("no_enabled_image_models")}
+						{hasSearchQuery ? t("no_matching_image_models") : t("no_enabled_image_models")}
 					</div>
 				) : (
 					Object.entries(groups).map(([connection, models]) => (

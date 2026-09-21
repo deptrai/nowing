@@ -2,11 +2,11 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { CornerDownLeftIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import { isInterruptResult, useHitlDecision, useHitlPhase } from "@/features/chat-messages/hitl";
 
@@ -185,11 +185,11 @@ function ApprovalCard({
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("confluence_page_deleted")}</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("confluence_delete_cancelled")}</p>
-					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{t("common_requires_approval")}
+							{t("confluence_delete_cancelled")}
 						</p>
+					) : (
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 			</div>
@@ -205,7 +205,9 @@ function ApprovalCard({
 							<>
 								{context.account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("confluence_account_label")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("confluence_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{context.account.name}
 										</div>
@@ -214,7 +216,9 @@ function ApprovalCard({
 
 								{page && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("confluence_page_to_delete")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("confluence_page_to_delete")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1">
 											<div className="font-medium">{page.page_title}</div>
 											{page.space_id && (
@@ -331,7 +335,9 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{t("confluence_page_not_found")}</p>
+				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+					{t("confluence_page_not_found")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -346,7 +352,9 @@ function WarningCard({ result }: { result: WarningResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="flex items-start gap-3 border-b px-5 py-4">
-				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">{t("common_partial_success")}</p>
+				<p className="text-sm font-medium text-amber-600 dark:text-amber-500">
+					{t("common_partial_success")}
+				</p>
 			</div>
 			<div className="px-5 py-4">
 				<p className="text-sm text-muted-foreground">{result.warning}</p>

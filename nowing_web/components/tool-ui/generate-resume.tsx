@@ -1,10 +1,10 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Dot } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import * as pdfjsLib from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -82,7 +82,9 @@ function ResumeErrorState({ title, error }: { title: string; error: string }) {
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
-					<p className="text-sm font-semibold text-destructive">{t("tu_resume_generation_failed")}</p>
+					<p className="text-sm font-semibold text-destructive">
+						{t("tu_resume_generation_failed")}
+					</p>
 				</div>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -106,7 +108,9 @@ function ResumeCancelledState() {
 				<div className="flex items-center gap-2">
 					<p className="text-sm font-semibold text-muted-foreground">{t("tu_resume_cancelled")}</p>
 				</div>
-				<p className="text-xs text-muted-foreground mt-0.5">{t("tu_resume_generation_was_cancelled")}</p>
+				<p className="text-xs text-muted-foreground mt-0.5">
+					{t("tu_resume_generation_was_cancelled")}
+				</p>
 			</div>
 		</div>
 	);

@@ -2,8 +2,8 @@
 
 import { Download, FileQuestionMark, FileText, Pencil, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { SourceCodeEditor } from "@/components/editor/source-code-editor";
@@ -264,8 +264,14 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 							<FileText className="size-4" />
 							<AlertDescription>
 								{isOverPlateLimit
-									? t("editor.doc_too_large", { size: formatBytes(activeMarkdownSizeBytes), limit: formatBytes(plateMaxBytes) })
-									: t("editor.doc_near_limit", { size: formatBytes(activeMarkdownSizeBytes), limit: formatBytes(plateMaxBytes) })}
+									? t("editor.doc_too_large", {
+											size: formatBytes(activeMarkdownSizeBytes),
+											limit: formatBytes(plateMaxBytes),
+										})
+									: t("editor.doc_near_limit", {
+											size: formatBytes(activeMarkdownSizeBytes),
+											limit: formatBytes(plateMaxBytes),
+										})}
 							</AlertDescription>
 						</Alert>
 					)}

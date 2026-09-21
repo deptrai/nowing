@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useTranslations } from "next-intl";
 import { Workflow } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { openActionLogDialogAtom } from "@/atoms/agent/action-log-dialog.atom";
 import { agentFlagsAtom } from "@/atoms/agent/agent-flags-query.atom";

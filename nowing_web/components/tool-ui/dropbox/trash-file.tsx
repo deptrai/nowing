@@ -2,11 +2,11 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { CornerDownLeftIcon, InfoIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useTranslations } from "next-intl";
 import type { HitlDecision, InterruptResult } from "@/features/chat-messages/hitl";
 import { isInterruptResult, useHitlDecision, useHitlPhase } from "@/features/chat-messages/hitl";
 
@@ -137,9 +137,13 @@ function ApprovalCard({
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_deleted")}</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_file_deletion_was_cancelled")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_file_deletion_was_cancelled")}
+						</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">{t("tu_requires_your_approval_to")}</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_requires_your_approval_to")}
+						</p>
 					)}
 				</div>
 			</div>
@@ -154,7 +158,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("tu_dropbox_account")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_dropbox_account")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -162,7 +168,9 @@ function ApprovalCard({
 								)}
 								{file && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">{t("tu_file_to_delete")}</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_file_to_delete")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-0.5">
 											<div className="font-medium">{file.name}</div>
 											{file.file_path && (
@@ -190,8 +198,12 @@ function ApprovalCard({
 								className="shrink-0"
 							/>
 							<label htmlFor="db-delete-from-kb" className="flex-1 cursor-pointer">
-								<span className="text-sm text-foreground">{t("tu_also_remove_from_knowledge")}</span>
-								<p className="text-xs text-muted-foreground mt-0.5">{t("tu_this_will_permanently_delete")}</p>
+								<span className="text-sm text-foreground">
+									{t("tu_also_remove_from_knowledge")}
+								</span>
+								<p className="text-xs text-muted-foreground mt-0.5">
+									{t("tu_this_will_permanently_delete")}
+								</p>
 							</label>
 						</div>
 					</div>
@@ -202,7 +214,9 @@ function ApprovalCard({
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
-						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>{t("tu_approve")}<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
+							{t("tu_approve")}
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"
@@ -212,7 +226,9 @@ function ApprovalCard({
 								setRejected();
 								onDecision({ type: "reject", message: "User rejected the action." });
 							}}
-						>{t("tu_reject")}</Button>
+						>
+							{t("tu_reject")}
+						</Button>
 					</div>
 				</>
 			)}

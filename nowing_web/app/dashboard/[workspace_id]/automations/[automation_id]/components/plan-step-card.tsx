@@ -53,7 +53,10 @@ function getStepTitle(step: PlanStep, t: (key: string) => string): string {
 	return sentenceCase(formatAction(step.action));
 }
 
-function getStepDetails(step: PlanStep, t: (k: string) => string): { label: string; value: string }[] {
+function getStepDetails(
+	step: PlanStep,
+	t: (k: string) => string
+): { label: string; value: string }[] {
 	const details: { label: string; value: string }[] = [];
 
 	if (step.action === "agent_task") {
@@ -92,7 +95,10 @@ function readStringParam(params: Record<string, unknown>, key: string): string |
 	return typeof value === "string" && value.trim() ? value : null;
 }
 
-function summarizeMentions(params: Record<string, unknown>, t: (key: string) => string): string | null {
+function summarizeMentions(
+	params: Record<string, unknown>,
+	t: (key: string) => string
+): string | null {
 	const parts: string[] = [];
 	addMentionTitles(parts, params.mentioned_documents, t("auto_docs_and_folders"));
 	addMentionTitles(parts, params.mentioned_connectors, t("auto_connectors"));
@@ -141,7 +147,10 @@ function asRecord(value: unknown): Record<string, unknown> {
 		: {};
 }
 
-function formatValue(value: unknown, t: (key: string, params?: Record<string, unknown>) => string): string {
+function formatValue(
+	value: unknown,
+	t: (key: string, params?: Record<string, unknown>) => string
+): string {
 	if (typeof value === "boolean") return value ? t("auto_yes") : t("auto_no");
 	if (typeof value === "string" || typeof value === "number") return String(value);
 	if (Array.isArray(value)) return t("auto_items_count", { count: value.length });

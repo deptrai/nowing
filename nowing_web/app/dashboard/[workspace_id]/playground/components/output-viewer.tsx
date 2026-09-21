@@ -113,7 +113,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 			<div className="flex items-center justify-between">
 				<Tabs value={view} onValueChange={(value) => setView(value as "table" | "json")}>
 					<TabsList className="h-auto">
-						{items && <TabsTrigger value="table">{t('table')}</TabsTrigger>}
+						{items && <TabsTrigger value="table">{t("table")}</TabsTrigger>}
 						<TabsTrigger value="json">JSON</TabsTrigger>
 					</TabsList>
 				</Tabs>
@@ -121,7 +121,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 					{items && items.length > 0 && (
 						<Button type="button" variant="ghost" size="sm" onClick={exportCsv} className="gap-1.5">
 							<Download className="h-3.5 w-3.5" aria-hidden="true" />
-							{t('export_csv')}
+							{t("export_csv")}
 						</Button>
 					)}
 					<Button
@@ -129,7 +129,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 						variant="ghost"
 						size="sm"
 						onClick={copy}
-						aria-label={copied ? t('copied_json') : t('copy_json')}
+						aria-label={copied ? t("copied_json") : t("copy_json")}
 						className="h-8 w-8 p-0"
 					>
 						{copied ? (
@@ -143,7 +143,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 
 			{items && items.length === 0 && (
 				<p className="rounded-md border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
-					{t('no_items')}
+					{t("no_items")}
 				</p>
 			)}
 
@@ -152,7 +152,7 @@ export function OutputViewer({ data, filenameBase }: { data: unknown; filenameBa
 					<ResultTable items={items} />
 					{truncated && (
 						<p className="text-xs text-muted-foreground">
-							{t('showing_first', { max: MAX_TABLE_ROWS, total: items.length })}
+							{t("showing_first", { max: MAX_TABLE_ROWS, total: items.length })}
 						</p>
 					)}
 				</>

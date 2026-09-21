@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Badge } from "@/components/ui/badge";
@@ -440,10 +440,7 @@ export default function ScraperAccountsPage() {
 				await load();
 			}
 		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t("scrapers_acc_capture_failed");
+			const message = error instanceof Error ? error.message : t("scrapers_acc_capture_failed");
 			toast.error(message);
 		} finally {
 			setCapturing(null);
@@ -583,7 +580,9 @@ export default function ScraperAccountsPage() {
 											</div>
 											<div className="flex items-center gap-2">
 												<span className="text-sm text-muted-foreground">
-													{account.is_enabled ? t("scrapers_acc_enabled") : t("scrapers_acc_disabled")}
+													{account.is_enabled
+														? t("scrapers_acc_enabled")
+														: t("scrapers_acc_disabled")}
 												</span>
 												<Switch
 													checked={account.is_enabled}
@@ -596,17 +595,19 @@ export default function ScraperAccountsPage() {
 														disabled={capturing === account.platform}
 														onClick={() => handleCapture(account.platform)}
 													>
-														{capturing === account.platform ? t("scrapers_acc_capturing") : t("scrapers_acc_capture")}
+														{capturing === account.platform
+															? t("scrapers_acc_capturing")
+															: t("scrapers_acc_capture")}
 													</Button>
 												)}
-												<Button variant="outline" size="sm" onClick={() => openEdit(account)}											>
+												<Button variant="outline" size="sm" onClick={() => openEdit(account)}>
 													{t("scrapers_acc_edit")}
 												</Button>
 												<Button
 													variant="outline"
 													size="sm"
 													onClick={() => setDeleteDialog(account)}
-																							>
+												>
 													{t("scrapers_acc_delete")}
 												</Button>
 											</div>
@@ -614,7 +615,8 @@ export default function ScraperAccountsPage() {
 									</CardHeader>
 									<CardContent className="space-y-2 text-sm">
 										<p className="text-muted-foreground">
-											{t("scrapers_acc_created_at")}: {new Date(account.created_at).toLocaleString()}
+											{t("scrapers_acc_created_at")}:{" "}
+											{new Date(account.created_at).toLocaleString()}
 										</p>
 									</CardContent>
 								</Card>
@@ -633,7 +635,7 @@ export default function ScraperAccountsPage() {
 									support.
 								</CardDescription>
 							</div>
-							<Button onClick={() => setTelegramModalOpen(true)} size="sm"							>
+							<Button onClick={() => setTelegramModalOpen(true)} size="sm">
 								{t("scrapers_acc_connect_tg")}
 							</Button>
 						</CardHeader>
@@ -690,7 +692,7 @@ export default function ScraperAccountsPage() {
 													)}
 													{acc.status === "cooldown" && (
 														<Badge data-testid="cooldown-timer-badge" variant="destructive">
-															🔴 {t("scrapers_acc_status_cooldown", {sec: acc.cooldown_seconds})}
+															🔴 {t("scrapers_acc_status_cooldown", { sec: acc.cooldown_seconds })}
 														</Badge>
 													)}
 												</td>
@@ -742,7 +744,9 @@ export default function ScraperAccountsPage() {
 											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_ch_messages")}</th>
 											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_ch_stream")}</th>
 											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_status")}</th>
-											<th className="py-3 px-2 font-medium text-right">{t("scrapers_acc_col_actions")}</th>
+											<th className="py-3 px-2 font-medium text-right">
+												{t("scrapers_acc_col_actions")}
+											</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -780,7 +784,9 @@ export default function ScraperAccountsPage() {
 													<Button
 														variant="ghost"
 														size="sm"
-														onClick={() => toast.success(t("toast.scrape_triggered", { name: ch.name }))}
+														onClick={() =>
+															toast.success(t("toast.scrape_triggered", { name: ch.name }))
+														}
 													>
 														{t("scrapers_acc_scrape")}
 													</Button>
@@ -801,9 +807,7 @@ export default function ScraperAccountsPage() {
 					<DialogHeader>
 						<DialogTitle>{t("scrapers_acc_connect_tg_title")}</DialogTitle>
 						<DialogDescription>
-							{telegramStep === 1
-								? t("scrapers_acc_step_1_desc")
-								: t("scrapers_acc_step_2_desc")}
+							{telegramStep === 1 ? t("scrapers_acc_step_1_desc") : t("scrapers_acc_step_2_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -901,9 +905,7 @@ export default function ScraperAccountsPage() {
 				<DialogContent className="max-w-xl">
 					<DialogHeader>
 						<DialogTitle>{t("scrapers_acc_add_title")}</DialogTitle>
-						<DialogDescription>
-							{t("scrapers_acc_add_desc")}
-						</DialogDescription>
+						<DialogDescription>{t("scrapers_acc_add_desc")}</DialogDescription>
 					</DialogHeader>
 					<AccountFormFields form={draft} setForm={(next) => setDraft(next(draft))} />
 					<DialogFooter>
@@ -948,9 +950,7 @@ export default function ScraperAccountsPage() {
 				<DialogContent className="max-w-md">
 					<DialogHeader>
 						<DialogTitle>{t("scrapers_acc_delete_title")}</DialogTitle>
-						<DialogDescription>
-							{t("scrapers_acc_delete_confirm")}
-						</DialogDescription>
+						<DialogDescription>{t("scrapers_acc_delete_confirm")}</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setDeleteDialog(null)}>
@@ -1033,7 +1033,7 @@ function AccountFormFields({
 							variant="outline"
 							size="sm"
 							onClick={() => update("cookies", filterBatdongsanCookies(form.cookies))}
-													>
+						>
 							{t("scrapers_acc_autofilter_bds")}
 						</Button>
 					)}
@@ -1049,9 +1049,7 @@ function AccountFormFields({
 					className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				/>
 				{form.platform === "batdongsan" && (
-					<p className="text-xs text-muted-foreground">
-						{t("scrapers_acc_tip_cookie")}
-					</p>
+					<p className="text-xs text-muted-foreground">{t("scrapers_acc_tip_cookie")}</p>
 				)}
 			</div>
 

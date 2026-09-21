@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,6 @@ import {
 	type FilterClause,
 	type FilterOperator,
 } from "@/contracts/types/admin-bulk-ops.types";
-import { useTranslations } from "next-intl";
 
 interface FilterBuilderProps {
 	action: BulkAction;
@@ -159,8 +159,7 @@ export function FilterBuilder({
 				>
 					<Info className="h-4 w-4 text-amber-600" />
 					<AlertDescription className="text-xs">
-						{t("safety_constraint_prefix")}{" "}
-						<strong>inactive_days &gt; 0</strong>{" "}
+						{t("safety_constraint_prefix")} <strong>inactive_days &gt; 0</strong>{" "}
 						{t("safety_constraint_suffix")}
 					</AlertDescription>
 				</Alert>

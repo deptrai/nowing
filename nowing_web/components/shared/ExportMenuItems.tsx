@@ -1,13 +1,13 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ContextMenuItem } from "@/components/ui/context-menu";
 import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useTranslations } from "next-intl";
 
 export const EXPORT_FILE_EXTENSIONS: Record<string, string> = {
 	pdf: "pdf",
@@ -54,7 +54,9 @@ export function ExportDropdownItems({
 		<>
 			{showAllFormats && (
 				<>
-					<DropdownMenuLabel className="text-xs text-muted-foreground">{t("documents")}</DropdownMenuLabel>
+					<DropdownMenuLabel className="text-xs text-muted-foreground">
+						{t("documents")}
+					</DropdownMenuLabel>
 					<DropdownMenuItem onClick={handle("pdf")} disabled={exporting !== null}>
 						{exporting === "pdf" && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
 						PDF (.pdf)
@@ -69,7 +71,7 @@ export function ExportDropdownItems({
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuLabel className="text-xs text-muted-foreground">
-						Web &amp; E-Book
+						{t("export_group_web_ebook")}
 					</DropdownMenuLabel>
 					<DropdownMenuItem onClick={handle("html")} disabled={exporting !== null}>
 						{exporting === "html" && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
@@ -81,7 +83,7 @@ export function ExportDropdownItems({
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuLabel className="text-xs text-muted-foreground">
-						Source &amp; Plain
+						{t("export_group_source_plain")}
 					</DropdownMenuLabel>
 					<DropdownMenuItem onClick={handle("latex")} disabled={exporting !== null}>
 						{exporting === "latex" && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}

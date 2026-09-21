@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Check, Copy, Info, Webhook } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -101,9 +101,7 @@ export const CirclebackConfig: FC<CirclebackConfigProps> = ({ connector, onNameC
 						placeholder={t("circleback_name_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("connector_name_desc")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("connector_name_desc")}</p>
 				</div>
 			</div>
 
@@ -117,9 +115,7 @@ export const CirclebackConfig: FC<CirclebackConfigProps> = ({ connector, onNameC
 				</div>
 
 				{isLoading ? (
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						{t("circleback_loading")}
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("circleback_loading")}</p>
 				) : webhookUrl ? (
 					<div className="space-y-2">
 						<Label className="text-xs sm:text-sm">{t("circleback_webhook_url")}</Label>

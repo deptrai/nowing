@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyRound, ShieldAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useTranslations } from "next-intl";
 
 interface MfaConfirmDialogProps {
 	isOpen: boolean;
@@ -52,9 +52,7 @@ export function MfaConfirmDialog({
 							<ShieldAlert className="h-5 w-5" />
 							<DialogTitle>{t("reauth_title")}</DialogTitle>
 						</div>
-						<DialogDescription className="text-xs pt-1">
-							{t("mfa_description")}
-						</DialogDescription>
+						<DialogDescription className="text-xs pt-1">{t("mfa_description")}</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-4 py-4">

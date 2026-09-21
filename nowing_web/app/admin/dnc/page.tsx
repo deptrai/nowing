@@ -90,7 +90,7 @@ export default function AdminDncPage() {
 			await loadDncRecords();
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : t("dnc_unknown_error");
-			alert(t("dnc_import_failed", {msg}));
+			alert(t("dnc_import_failed", { msg }));
 		} finally {
 			setIsImporting(false);
 		}
@@ -105,7 +105,7 @@ export default function AdminDncPage() {
 			await loadDncRecords();
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : t("dnc_unknown_error");
-			alert(t("dnc_delete_failed", {msg}));
+			alert(t("dnc_delete_failed", { msg }));
 		}
 	};
 
@@ -118,9 +118,7 @@ export default function AdminDncPage() {
 						<Ban className="h-6 w-6 text-rose-500" />
 						<h1 className="text-2xl font-bold tracking-tight">{t("dnc_title")}</h1>
 					</div>
-					<p className="text-sm text-muted-foreground">
-						{t("dnc_subtitle")}
-					</p>
+					<p className="text-sm text-muted-foreground">{t("dnc_subtitle")}</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<button
@@ -277,7 +275,7 @@ export default function AdminDncPage() {
 				{/* Pagination */}
 				<div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
 					<div className="text-xs text-muted-foreground">
-						{t("dnc_showing", {count: items.length, total})}
+						{t("dnc_showing", { count: items.length, total })}
 					</div>
 					<div className="flex gap-2">
 						<button
@@ -412,7 +410,8 @@ export default function AdminDncPage() {
 
 						<p className="text-xs text-muted-foreground">
 							{t("dnc_csv_desc")}{" "}
-							<code className="rounded bg-muted px-1">record_type,value,reason</code>. {t("dnc_csv_valid_types")} <code className="rounded bg-muted px-1">phone</code>,{" "}
+							<code className="rounded bg-muted px-1">record_type,value,reason</code>.{" "}
+							{t("dnc_csv_valid_types")} <code className="rounded bg-muted px-1">phone</code>,{" "}
 							<code className="rounded bg-muted px-1">domain</code>,{" "}
 							<code className="rounded bg-muted px-1">email</code>,{" "}
 							<code className="rounded bg-muted px-1">tax_id</code>.

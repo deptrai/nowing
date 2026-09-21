@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import {
 	ChevronDown,
 	ChevronRight,
@@ -12,6 +11,7 @@ import {
 	Presentation,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
 import { DriveFolderTree, type SelectedFolder } from "@/components/connectors/drive-folder-tree";
@@ -291,9 +291,7 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4">
 				<div className="space-y-1 sm:space-y-2">
 					<h3 className="font-medium text-sm sm:text-base">{t("indexing_options")}</h3>
-					<p className="text-xs sm:text-sm text-muted-foreground">
-						{t("indexing_options_desc")}
-					</p>
+					<p className="text-xs sm:text-sm text-muted-foreground">{t("indexing_options_desc")}</p>
 				</div>
 
 				{/* {t("max_files_per_folder")} */}
@@ -303,9 +301,7 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 							<Label htmlFor="max-files" className="text-sm font-medium">
 								{t("max_files_per_folder")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								{t("max_files_per_folder_desc")}
-							</p>
+							<p className="text-xs text-muted-foreground">{t("max_files_per_folder_desc")}</p>
 						</div>
 						<Select
 							value={indexingOptions.max_files_per_folder.toString()}
@@ -346,9 +342,7 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 						<Label htmlFor="include-subfolders" className="text-sm font-medium">
 							{t("include_subfolders")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							{t("include_subfolders_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("include_subfolders_desc")}</p>
 					</div>
 					<Switch
 						id="include-subfolders"

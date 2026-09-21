@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useDraggable, useDropLine } from "@platejs/dnd";
 import { BlockSelectionPlugin, useBlockSelected } from "@platejs/selection/react";
@@ -24,6 +23,7 @@ import {
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
 	KEYS,
 	PathApi,

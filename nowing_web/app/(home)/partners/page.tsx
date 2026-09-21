@@ -10,8 +10,8 @@ import {
 	IconSparkles,
 } from "@tabler/icons-react";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { PartnerEarningsCalculator } from "@/components/partners/PartnerEarningsCalculator";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
@@ -125,9 +125,7 @@ export default async function PartnersPage() {
 
 				<h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight text-neutral-900 dark:text-white max-w-4xl mx-auto leading-tight">
 					{t.rich("hero_title", {
-						i: (c) => (
-							<span className="text-emerald-600 dark:text-emerald-400 italic">{c}</span>
-						),
+						i: (c) => <span className="text-emerald-600 dark:text-emerald-400 italic">{c}</span>,
 					})}
 				</h1>
 
@@ -224,9 +222,7 @@ export default async function PartnersPage() {
 							1
 						</div>
 						<h3 className="font-bold text-lg mb-2">{t("step1_title")}</h3>
-						<p className="text-sm text-neutral-600 dark:text-neutral-400">
-							{t("step1_desc")}
-						</p>
+						<p className="text-sm text-neutral-600 dark:text-neutral-400">{t("step1_desc")}</p>
 					</div>
 
 					<div className="p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center relative">
@@ -234,9 +230,7 @@ export default async function PartnersPage() {
 							2
 						</div>
 						<h3 className="font-bold text-lg mb-2">{t("step2_title")}</h3>
-						<p className="text-sm text-neutral-600 dark:text-neutral-400">
-							{t("step2_desc")}
-						</p>
+						<p className="text-sm text-neutral-600 dark:text-neutral-400">{t("step2_desc")}</p>
 					</div>
 
 					<div className="p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center relative">
@@ -244,9 +238,7 @@ export default async function PartnersPage() {
 							3
 						</div>
 						<h3 className="font-bold text-lg mb-2">{t("step3_title")}</h3>
-						<p className="text-sm text-neutral-600 dark:text-neutral-400">
-							{t("step3_desc")}
-						</p>
+						<p className="text-sm text-neutral-600 dark:text-neutral-400">{t("step3_desc")}</p>
 					</div>
 				</div>
 			</div>

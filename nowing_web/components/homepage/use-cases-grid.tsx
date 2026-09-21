@@ -2,18 +2,42 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
-import { ExpandedGifOverlay, useExpandedGif } from "@/components/ui/expanded-gif-overlay";
 import { useTranslations } from "next-intl";
+import { ExpandedGifOverlay, useExpandedGif } from "@/components/ui/expanded-gif-overlay";
 
 function getUseCases(t: (k: string) => string) {
 	return [
 		{ title: t("g1_title"), description: t("g1_desc"), src: "/homepage/hero_tutorial/BSNCGif.gif" },
-		{ title: t("g2_title"), description: t("g2_desc"), src: "/homepage/hero_tutorial/BQnaGif_compressed.gif" },
-		{ title: t("g3_title"), description: t("g3_desc"), src: "/homepage/hero_tutorial/ReportGenGif_compressed.gif" },
-		{ title: t("g4_title"), description: t("g4_desc"), src: "/homepage/hero_tutorial/PodcastGenGif.gif" },
-		{ title: t("g5_title"), description: t("g5_desc"), src: "/homepage/hero_tutorial/ImageGenGif.gif" },
-		{ title: t("g6_title"), description: t("g6_desc"), src: "/homepage/hero_realtime/RealTimeChatGif.gif" },
-		{ title: t("g7_title"), description: t("g7_desc"), src: "/homepage/hero_realtime/RealTimeCommentsFlow.gif" },
+		{
+			title: t("g2_title"),
+			description: t("g2_desc"),
+			src: "/homepage/hero_tutorial/BQnaGif_compressed.gif",
+		},
+		{
+			title: t("g3_title"),
+			description: t("g3_desc"),
+			src: "/homepage/hero_tutorial/ReportGenGif_compressed.gif",
+		},
+		{
+			title: t("g4_title"),
+			description: t("g4_desc"),
+			src: "/homepage/hero_tutorial/PodcastGenGif.gif",
+		},
+		{
+			title: t("g5_title"),
+			description: t("g5_desc"),
+			src: "/homepage/hero_tutorial/ImageGenGif.gif",
+		},
+		{
+			title: t("g6_title"),
+			description: t("g6_desc"),
+			src: "/homepage/hero_realtime/RealTimeChatGif.gif",
+		},
+		{
+			title: t("g7_title"),
+			description: t("g7_desc"),
+			src: "/homepage/hero_realtime/RealTimeCommentsFlow.gif",
+		},
 	];
 }
 
@@ -90,7 +114,9 @@ export function UseCasesGrid() {
 	return (
 		<section className="relative mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
 			<div className="mb-6 text-center">
-				<h2 className="font-serif text-3xl font-normal tracking-tight text-neutral-900 sm:text-4xl dark:text-white">{t("home_what_you_can_do")}</h2>
+				<h2 className="font-serif text-3xl font-normal tracking-tight text-neutral-900 sm:text-4xl dark:text-white">
+					{t("home_what_you_can_do")}
+				</h2>
 			</div>
 
 			{/* Row 1: 2 larger cards */}
@@ -114,7 +140,9 @@ export function UseCasesGrid() {
 				))}
 			</div>
 
-			<p className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">{t("home_and_more_coming_soon")}</p>
+			<p className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
+				{t("home_and_more_coming_soon")}
+			</p>
 		</section>
 	);
 }

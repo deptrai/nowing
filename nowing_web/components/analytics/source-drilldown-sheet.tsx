@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 import { Clock, Database, ShieldAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -58,9 +58,7 @@ export function SourceDrilldownSheet({
 							<SheetTitle className="capitalize">
 								{sourceType?.replace(/_/g, " ") || t("source_fallback")} {t("drilldown")}
 							</SheetTitle>
-							<SheetDescription>
-								{t("drilldown_desc")}
-							</SheetDescription>
+							<SheetDescription>{t("drilldown_desc")}</SheetDescription>
 						</div>
 					</div>
 				</SheetHeader>

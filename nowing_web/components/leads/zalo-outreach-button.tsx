@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { Check, Loader2, MessageCircle, Send, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import { leadsApiService } from "@/lib/apis/leads-api.service";

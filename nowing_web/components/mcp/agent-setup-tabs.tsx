@@ -41,7 +41,9 @@ function CopyButton({ text }: { text: string }) {
 	);
 }
 
-const TRANSPORTS = (t: (k: string) => string): { id: McpTransport; label: string; hint: string }[] => [
+const TRANSPORTS = (
+	t: (k: string) => string
+): { id: McpTransport; label: string; hint: string }[] => [
 	{ id: "remote", label: t("setup_hosted"), hint: t("setup_hosted_hint") },
 	{ id: "stdio", label: t("setup_self_host"), hint: t("setup_self_host_hint") },
 ];
@@ -103,7 +105,7 @@ export function AgentSetupTabs({ options }: { options?: Partial<McpSnippetOption
 						<TabsContent key={client.id} value={client.id} className="min-w-0 space-y-3">
 							<ol className="list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
 								{snippet.steps.map((step) => (
-									<li key={step}>{step.startsWith("mcp.") ? t(step) : step}</li>
+									<li key={step}>{step.startsWith("mcp.") ? t(step.slice(4)) : step}</li>
 								))}
 							</ol>
 							<div>

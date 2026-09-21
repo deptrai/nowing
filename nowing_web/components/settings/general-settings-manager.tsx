@@ -89,7 +89,7 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 			toast.success(t("kb_exported"));
 		} catch (err) {
 			console.error("KB export failed:", err);
-			toast.error(err instanceof Error ? err.message: t("x_export_failed"));
+			toast.error(err instanceof Error ? err.message : t("x_export_failed"));
 		} finally {
 			setIsExporting(false);
 		}
@@ -127,7 +127,7 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 			await fetchWorkspace();
 		} catch (error: unknown) {
 			console.error("Error saving workspace details:", error);
-			toast.error(error instanceof Error ? error.message: t("x_failed_to_save_workspace"));
+			toast.error(error instanceof Error ? error.message : t("x_failed_to_save_workspace"));
 		} finally {
 			setSaving(false);
 		}

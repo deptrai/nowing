@@ -135,9 +135,7 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 				) : isConnected ? (
 					<p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5">
 						{isMCP && connectorCount !== undefined ? (
-							<span>
-								{t("server_count", { count: connectorCount })}
-							</span>
+							<span>{t("server_count", { count: connectorCount })}</span>
 						) : (
 							<>
 								{!isLive && <span>{formatDocumentCount(documentCount, t)}</span>}
@@ -145,9 +143,7 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 									<span className="text-muted-foreground/50">•</span>
 								)}
 								{accountCount !== undefined && accountCount > 0 && (
-									<span>
-										{t("account_count", { count: accountCount })}
-									</span>
+									<span>{t("account_count", { count: accountCount })}</span>
 								)}
 							</>
 						)}

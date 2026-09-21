@@ -17,9 +17,7 @@ export function CommunityStrip() {
 		<MarketingSection>
 			<Reveal>
 				<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
-					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						{t("community_title")}
-					</h2>
+					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("community_title")}</h2>
 					<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
 						{t("community_desc")}
 					</p>

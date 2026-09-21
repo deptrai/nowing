@@ -1,6 +1,6 @@
 import { RefreshCw } from "lucide-react";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -164,9 +164,11 @@ export function ModelsSelectionPanel({
 				) : null}
 				{filteredModels.length === 0 && modelFilter ? (
 					<div className="rounded-lg px-3 py-6 text-center text-sm text-muted-foreground">
-						{t("mc_no_filtered",{type:(MODEL_CAPABILITY_FILTERS.find(
-							(filter) => filter.key === modelFilter
-						)?.label || "").toLowerCase()})}
+						{t("mc_no_filtered", {
+							type: (
+								MODEL_CAPABILITY_FILTERS.find((filter) => filter.key === modelFilter)?.label || ""
+							).toLowerCase(),
+						})}
 					</div>
 				) : null}
 				<div className="space-y-2">

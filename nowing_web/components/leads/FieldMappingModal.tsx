@@ -100,7 +100,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 						<>
 							<div>
 								<label htmlFor="lark-app-token" className="block text-zinc-300 font-medium mb-1">
-									App Token (Bitable Base Token) *
+									{t("app_token_label")} *
 								</label>
 								<input
 									id="lark-app-token"
@@ -144,7 +144,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 						<>
 							<div>
 								<label htmlFor="gsheet-id" className="block text-zinc-300 font-medium mb-1">
-									Spreadsheet ID *
+									{t("spreadsheet_id_label")} *
 								</label>
 								<input
 									id="gsheet-id"
@@ -157,7 +157,9 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 							</div>
 
 							<div>
-								<label htmlFor="gsheet-range" className="block text-zinc-300 font-medium mb-1">{t("sheet_range_label")}</label>
+								<label htmlFor="gsheet-range" className="block text-zinc-300 font-medium mb-1">
+									{t("sheet_range_label")}
+								</label>
 								<input
 									id="gsheet-range"
 									type="text"

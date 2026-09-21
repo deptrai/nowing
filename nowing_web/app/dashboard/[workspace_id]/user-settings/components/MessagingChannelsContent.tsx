@@ -227,9 +227,7 @@ export function MessagingChannelsContent() {
 				toast.error(t("tg_notif_failed"));
 				return;
 			}
-			toast.success(
-				enabled ? t("tg_notif_on") : t("tg_notif_off")
-			);
+			toast.success(enabled ? t("tg_notif_on") : t("tg_notif_off"));
 		} catch {
 			setTelegramNotificationsEnabled(!enabled);
 			toast.error(t("tg_notif_failed"));
@@ -512,9 +510,7 @@ export function MessagingChannelsContent() {
 					<AlertTriangle aria-hidden />
 					<AlertTitle>{t("channels_coming_soon")}</AlertTitle>
 					<AlertDescription>
-						<p>
-							{t("channels_coming_soon_desc")}
-						</p>
+						<p>{t("channels_coming_soon_desc")}</p>
 					</AlertDescription>
 				</Alert>
 			) : null}
@@ -583,9 +579,7 @@ export function MessagingChannelsContent() {
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle className="flex items-center gap-2 text-sm">Slack</CardTitle>
 						</div>
-						<p className="text-xs text-muted-foreground">
-							{t("slack_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("slack_desc")}</p>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
 						<div className="flex flex-wrap gap-2">
@@ -615,9 +609,7 @@ export function MessagingChannelsContent() {
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle className="flex items-center gap-2 text-sm">Discord</CardTitle>
 						</div>
-						<p className="text-xs text-muted-foreground">
-							{t("discord_desc")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("discord_desc")}</p>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
 						<div className="flex flex-wrap gap-2">
@@ -648,9 +640,7 @@ export function MessagingChannelsContent() {
 							<CardTitle className="flex items-center gap-2 text-sm">WhatsApp</CardTitle>
 						</div>
 						<p className="text-xs text-muted-foreground">
-							{whatsappMode === "baileys"
-								? t("whatsapp_baileys_desc")
-								: t("whatsapp_desc")}
+							{whatsappMode === "baileys" ? t("whatsapp_baileys_desc") : t("whatsapp_desc")}
 						</p>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
@@ -691,9 +681,7 @@ export function MessagingChannelsContent() {
 								{baileysQr ? (
 									<div className="rounded-lg border border-accent bg-accent/20 p-3">
 										<p className="text-sm font-medium">{t("whatsapp_qr")}</p>
-										<p className="mt-1 text-xs text-muted-foreground">
-											{t("whatsapp_qr_desc")}
-										</p>
+										<p className="mt-1 text-xs text-muted-foreground">{t("whatsapp_qr_desc")}</p>
 										<div className="mt-3 inline-block rounded-md bg-white p-3">
 											<QRCodeSVG value={baileysQr} size={192} />
 										</div>
@@ -729,9 +717,7 @@ export function MessagingChannelsContent() {
 							disabled={isSavingAutoReply}
 						/>
 					</div>
-					<p className="text-xs text-muted-foreground">
-						{t("autoreply_desc")}
-					</p>
+					<p className="text-xs text-muted-foreground">{t("autoreply_desc")}</p>
 				</CardHeader>
 				<CardContent className="space-y-3 p-4 pt-2">
 					<div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
@@ -741,7 +727,9 @@ export function MessagingChannelsContent() {
 						<span className="rounded bg-background/80 px-2 py-0.5 border">
 							{t("badge_fallback")}
 						</span>
-						<span className="rounded bg-background/80 px-2 py-0.5 border">{t("badge_debounce")}</span>
+						<span className="rounded bg-background/80 px-2 py-0.5 border">
+							{t("badge_debounce")}
+						</span>
 						<span className="rounded bg-background/80 px-2 py-0.5 border">
 							{t("badge_takeover")}
 						</span>

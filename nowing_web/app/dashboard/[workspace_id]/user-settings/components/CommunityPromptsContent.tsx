@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { AlertTriangle, Copy, Library } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { copyPromptMutationAtom } from "@/atoms/prompts/prompts-mutation.atoms";
 import { publicPromptsAtom } from "@/atoms/prompts/prompts-query.atoms";
@@ -41,9 +41,7 @@ export function CommunityPromptsContent() {
 
 	return (
 		<div className="space-y-6 min-w-0">
-			<p className="text-sm text-muted-foreground">
-				{t("community_lede")}
-			</p>
+			<p className="text-sm text-muted-foreground">{t("community_lede")}</p>
 
 			{isLoading && (
 				<div className="-m-1 space-y-2 p-1">
@@ -71,9 +69,7 @@ export function CommunityPromptsContent() {
 				<div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
 					<Library className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
 					<p className="mt-2 text-sm text-muted-foreground">{t("community_none")}</p>
-					<p className="text-xs text-muted-foreground/60">
-						{t("community_share_hint")}
-					</p>
+					<p className="text-xs text-muted-foreground/60">{t("community_share_hint")}</p>
 				</div>
 			)}
 

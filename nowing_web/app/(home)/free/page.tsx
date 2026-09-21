@@ -1,7 +1,7 @@
 import { SquareArrowOutUpRight } from "lucide-react";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { AdUnit } from "@/components/ads/ad-unit";
 import { ADSENSE_SLOTS } from "@/components/ads/adsense-config";
 import { FAQJsonLd, JsonLd } from "@/components/seo/json-ld";
@@ -19,75 +19,75 @@ import {
 import type { AnonModel } from "@/contracts/types/anonymous-chat.types";
 import { SERVER_BACKEND_URL } from "@/lib/env-config";
 
-export const metadata: Metadata = {
-	title: "Free AI Chat, No Login Required | Nowing",
-	description:
-		"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more for free. No sign-up required. Open-core long-term research memory for AI agents, with free AI chat and document Q&A.",
-	keywords: [
-		"chatgpt free",
-		"chat gpt free",
-		"free chatgpt",
-		"free chat gpt",
-		"chatgpt online",
-		"chat gpt online",
-		"online chatgpt",
-		"chatgpt free online",
-		"chatgpt online free",
-		"chat gpt free online",
-		"chatgpt no login",
-		"chatgpt without login",
-		"chat gpt login free",
-		"chat gpt login",
-		"free chatgpt without login",
-		"free chatgpt no login",
-		"ai chat no login",
-		"ai chat without login",
-		"claude ai without login",
-		"claude no login",
-		"chatgpt for free",
-		"gpt chat free",
-		"claude ai free",
-		"claude free",
-		"free claude ai",
-		"free claude",
-		"ai like chatgpt",
-		"sites like chatgpt",
-		"free ai chatbot like chatgpt",
-		"free ai chatbots like chatgpt",
-		"apps like chatgpt for free",
-		"best free alternative to chatgpt",
-		"free ai apps",
-		"ai with no restrictions",
-		"open core research memory",
-		"long-term research memory",
-	],
-	alternates: {
-		canonical: "https://www.nowing.com/free",
-	},
-	openGraph: {
-		title: "Free AI Chat, No Login Required | Nowing",
-		description:
-			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and 100+ AI models. Open-core long-term research memory for AI agents.",
-		url: "https://www.nowing.com/free",
-		siteName: "Nowing",
-		type: "website",
-		images: [
-			{
-				url: "/og-image.png",
-				width: 1200,
-				height: 630,
-				alt: "Nowing - ChatGPT Free Online, Claude AI Free, No Login Required",
-			},
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("free");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		keywords: [
+			"chatgpt free",
+			"chat gpt free",
+			"free chatgpt",
+			"free chat gpt",
+			"chatgpt online",
+			"chat gpt online",
+			"online chatgpt",
+			"chatgpt free online",
+			"chatgpt online free",
+			"chat gpt free online",
+			"chatgpt no login",
+			"chatgpt without login",
+			"chat gpt login free",
+			"chat gpt login",
+			"free chatgpt without login",
+			"free chatgpt no login",
+			"ai chat no login",
+			"ai chat without login",
+			"claude ai without login",
+			"claude no login",
+			"chatgpt for free",
+			"gpt chat free",
+			"claude ai free",
+			"claude free",
+			"free claude ai",
+			"free claude",
+			"ai like chatgpt",
+			"sites like chatgpt",
+			"free ai chatbot like chatgpt",
+			"free ai chatbots like chatgpt",
+			"apps like chatgpt for free",
+			"best free alternative to chatgpt",
+			"free ai apps",
+			"ai with no restrictions",
+			"open core research memory",
+			"long-term research memory",
 		],
-	},
-	twitter: {
-		card: "summary_large_image",
-		title: "Free AI Chat, No Login Required | Nowing",
-		description:
-			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more. No sign-up needed.",
-		images: ["/og-image.png"],
-	},
-};
+		alternates: {
+			canonical: "https://www.nowing.com/free",
+		},
+		openGraph: {
+			title: t("meta_title"),
+			description: t("meta_og_description"),
+			url: "https://www.nowing.com/free",
+			siteName: "Nowing",
+			type: "website",
+			images: [
+				{
+					url: "/og-image.png",
+					width: 1200,
+					height: 630,
+					alt: "Nowing - ChatGPT Free Online, Claude AI Free, No Login Required",
+				},
+			],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: t("meta_title"),
+			description: t("meta_twitter_description"),
+			images: ["/og-image.png"],
+		},
+	};
+}
 
 async function getModels(): Promise<AnonModel[]> {
 	try {
@@ -100,7 +100,6 @@ async function getModels(): Promise<AnonModel[]> {
 		return [];
 	}
 }
-
 
 export default async function FreeHubPage() {
 	const t = await getTranslations("free");
@@ -162,22 +161,18 @@ export default async function FreeHubPage() {
 				<Separator className="my-12 max-w-4xl mx-auto" />
 
 				{/* In-content ad: above the model table */}
-				<aside aria-label="Advertisement" className="max-w-4xl mx-auto mb-8 min-h-[100px]">
+				<aside
+					aria-label={t("aria_advertisement")}
+					className="max-w-4xl mx-auto mb-8 min-h-[100px]"
+				>
 					<AdUnit slot={ADSENSE_SLOTS.freeHubInContent} />
 				</aside>
 
 				{/* Model Table */}
 				{seoModels.length > 0 ? (
-					<section
-						className="max-w-4xl mx-auto"
-						aria-label="Free AI models available without login"
-					>
-						<h2 className="font-serif text-2xl sm:text-3xl font-normal mb-2">
-							{t("table_title")}
-						</h2>
-						<p className="text-sm text-muted-foreground mb-6">
-							{t("table_sub")}
-						</p>
+					<section className="max-w-4xl mx-auto" aria-label={t("aria_free_models")}>
+						<h2 className="font-serif text-2xl sm:text-3xl font-normal mb-2">{t("table_title")}</h2>
+						<p className="text-sm text-muted-foreground mb-6">{t("table_sub")}</p>
 
 						<div className="overflow-hidden rounded-lg border">
 							<Table>
@@ -228,9 +223,7 @@ export default async function FreeHubPage() {
 					</section>
 				) : (
 					<section className="mt-12 text-center max-w-4xl mx-auto">
-						<p className="text-muted-foreground">
-							{t("no_models")}
-						</p>
+						<p className="text-muted-foreground">{t("no_models")}</p>
 					</section>
 				)}
 
@@ -242,21 +235,15 @@ export default async function FreeHubPage() {
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div className="rounded-lg border bg-card p-5">
 							<h3 className="font-semibold mb-1.5">{t("why1_title")}</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								{t("why1_desc")}
-							</p>
+							<p className="text-sm text-muted-foreground leading-relaxed">{t("why1_desc")}</p>
 						</div>
 						<div className="rounded-lg border bg-card p-5">
 							<h3 className="font-semibold mb-1.5">{t("why2_title")}</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								{t("why2_desc")}
-							</p>
+							<p className="text-sm text-muted-foreground leading-relaxed">{t("why2_desc")}</p>
 						</div>
 						<div className="rounded-lg border bg-card p-5">
 							<h3 className="font-semibold mb-1.5">{t("why3_title")}</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								{t("why3_desc")}
-							</p>
+							<p className="text-sm text-muted-foreground leading-relaxed">{t("why3_desc")}</p>
 						</div>
 					</div>
 				</section>
@@ -266,9 +253,7 @@ export default async function FreeHubPage() {
 				{/* CTA */}
 				<section className="max-w-3xl mx-auto text-center">
 					<h2 className="text-2xl font-bold mb-3">{t("cta_title")}</h2>
-					<p className="text-muted-foreground mb-6 leading-relaxed">
-						{t("cta_desc")}
-					</p>
+					<p className="text-muted-foreground mb-6 leading-relaxed">{t("cta_desc")}</p>
 					<Button size="lg" asChild>
 						<Link href="/register">{t("cta_button")}</Link>
 					</Button>
@@ -277,7 +262,10 @@ export default async function FreeHubPage() {
 				<Separator className="my-12 max-w-4xl mx-auto" />
 
 				{/* In-content ad: after CTA, before FAQ */}
-				<aside aria-label="Advertisement" className="max-w-3xl mx-auto my-8 min-h-[100px]">
+				<aside
+					aria-label={t("aria_advertisement")}
+					className="max-w-3xl mx-auto my-8 min-h-[100px]"
+				>
 					<AdUnit slot={ADSENSE_SLOTS.freeHubBeforeFaq} />
 				</aside>
 
@@ -297,7 +285,7 @@ export default async function FreeHubPage() {
 				</section>
 
 				{/* Internal links */}
-				<nav aria-label="Related pages" className="mt-16 max-w-3xl mx-auto">
+				<nav aria-label={t("aria_related_pages")} className="mt-16 max-w-3xl mx-auto">
 					<h2 className="text-lg font-semibold mb-3">{t("nav_title")}</h2>
 					<ul className="flex flex-wrap gap-2">
 						<li>

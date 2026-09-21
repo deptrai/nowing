@@ -20,8 +20,8 @@ import {
 	UserPlus,
 	Users,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -245,7 +245,9 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 			<div className="space-y-4 md:space-y-6">
 				<div className="flex items-center justify-between gap-4 flex-wrap">
 					<div className="flex items-baseline gap-3">
-						<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">{t("members_title")}</h1>
+						<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">
+							{t("members_title")}
+						</h1>
 					</div>
 					<div className="flex items-center gap-2">
 						<Button
@@ -329,7 +331,9 @@ export function TeamContent({ workspaceId }: TeamContentProps) {
 		<div className="space-y-4 md:space-y-6">
 			<div className="flex items-center justify-between gap-4 flex-wrap">
 				<div className="flex items-baseline gap-3">
-					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">{t("members_title")}</h1>
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal text-foreground">
+						{t("members_title")}
+					</h1>
 					<p className="text-xs text-muted-foreground font-mono whitespace-nowrap">
 						{t("member_count", { count: members.length })}
 					</p>
@@ -613,7 +617,8 @@ function MemberRow({
 										<AlertDialogHeader>
 											<AlertDialogTitle>{t("remove_member_title")}</AlertDialogTitle>
 											<AlertDialogDescription>
-												{t("remove_member_desc_1")} <span className="font-medium">{member.user_email}</span>{" "}
+												{t("remove_member_desc_1")}{" "}
+												<span className="font-medium">{member.user_email}</span>{" "}
 												{t("remove_member_desc_2")}
 											</AlertDialogDescription>
 										</AlertDialogHeader>
@@ -747,9 +752,7 @@ function CreateInviteDialog({
 								<Check className="h-5 w-5 text-emerald-500" aria-hidden="true" />
 								{t("invite_created_title")}
 							</DialogTitle>
-							<DialogDescription>
-								{t("invite_created_desc")}
-							</DialogDescription>
+							<DialogDescription>{t("invite_created_desc")}</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-3 py-2 md:py-4">
 							<div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
@@ -777,7 +780,9 @@ function CreateInviteDialog({
 								{createdInvite.expires_at && (
 									<span className="flex items-center gap-1">
 										<Clock className="h-3 w-3" aria-hidden="true" />
-										{t("expires", { date: new Date(createdInvite.expires_at).toLocaleDateString() })}
+										{t("expires", {
+											date: new Date(createdInvite.expires_at).toLocaleDateString(),
+										})}
 									</span>
 								)}
 							</div>
@@ -790,9 +795,7 @@ function CreateInviteDialog({
 					<>
 						<DialogHeader>
 							<DialogTitle>{t("invite_dialog_title")}</DialogTitle>
-							<DialogDescription>
-								{t("invite_dialog_desc")}
-							</DialogDescription>
+							<DialogDescription>{t("invite_dialog_desc")}</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-3 py-2 md:py-4">
 							<div className="space-y-2">
@@ -816,7 +819,9 @@ function CreateInviteDialog({
 												<span className="flex items-center gap-2">
 													{role.name}
 													{role.is_default && (
-														<span className="text-xs text-muted-foreground">{t("default_marker")}</span>
+														<span className="text-xs text-muted-foreground">
+															{t("default_marker")}
+														</span>
 													)}
 												</span>
 											</SelectItem>
@@ -931,7 +936,9 @@ function AllInvitesDialog({
 						<div key={invite.id} className="rounded-lg border border-border/40 p-3 space-y-2.5">
 							<div className="flex items-center justify-between gap-2">
 								<div className="flex items-center gap-2 min-w-0">
-									<p className="text-sm font-medium truncate">{invite.name || t("unnamed_invite")}</p>
+									<p className="text-sm font-medium truncate">
+										{invite.name || t("unnamed_invite")}
+									</p>
 									<div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground shrink-0">
 										{invite.role?.name && (
 											<span className="rounded bg-muted px-1.5 py-0.5">{invite.role.name}</span>
@@ -963,9 +970,7 @@ function AllInvitesDialog({
 									<AlertDialogContent>
 										<AlertDialogHeader>
 											<AlertDialogTitle>{t("revoke_title")}</AlertDialogTitle>
-											<AlertDialogDescription>
-												{t("revoke_desc")}
-											</AlertDialogDescription>
+											<AlertDialogDescription>{t("revoke_desc")}</AlertDialogDescription>
 										</AlertDialogHeader>
 										<AlertDialogFooter>
 											<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>

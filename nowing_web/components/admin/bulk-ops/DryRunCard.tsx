@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertOctagon, AlertTriangle, CheckCircle2, HelpCircle, Play } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { DryRunResponse } from "@/contracts/types/admin-bulk-ops.types";
-import { useTranslations } from "next-intl";
 
 interface DryRunCardProps {
 	dryRunResult: DryRunResponse | null;
@@ -56,9 +56,7 @@ export function DryRunCard({
 				<div className="flex items-center justify-between">
 					<div>
 						<CardTitle className="text-base font-semibold">{t("dry_run_simulation")}</CardTitle>
-						<CardDescription className="text-xs">
-							{t("simulation_desc")}
-						</CardDescription>
+						<CardDescription className="text-xs">{t("simulation_desc")}</CardDescription>
 					</div>
 					<Button
 						type="button"
@@ -90,9 +88,7 @@ export function DryRunCard({
 				{isDryRunning && (
 					<div className="py-8 text-center space-y-2">
 						<div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-						<p className="text-xs text-muted-foreground">
-							{t("evaluating_filters")}
-						</p>
+						<p className="text-xs text-muted-foreground">{t("evaluating_filters")}</p>
 					</div>
 				)}
 
@@ -122,7 +118,9 @@ export function DryRunCard({
 								</div>
 							</div>
 							<div className="p-3 rounded-lg border bg-card col-span-2 sm:col-span-1">
-								<span className="text-xs text-muted-foreground block">{t("warnings_conflicts")}</span>
+								<span className="text-xs text-muted-foreground block">
+									{t("warnings_conflicts")}
+								</span>
 								<span className="text-2xl font-bold tracking-tight text-amber-500">
 									{warnings.length + conflicts.length}
 								</span>
@@ -136,7 +134,9 @@ export function DryRunCard({
 								className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200"
 							>
 								<AlertTriangle className="h-4 w-4 text-amber-600" />
-								<AlertTitle className="text-xs font-semibold">{t("simulation_warnings")}</AlertTitle>
+								<AlertTitle className="text-xs font-semibold">
+									{t("simulation_warnings")}
+								</AlertTitle>
 								<AlertDescription className="text-xs mt-1 space-y-1">
 									{warnings.map((w) => (
 										<div key={`warning-${w}`}>• {w}</div>
@@ -226,7 +226,11 @@ export function DryRunCard({
 					className="gap-2 h-9 text-xs shrink-0"
 				>
 					<Play className="h-3.5 w-3.5 fill-current" />
-					{isExecuting ? t("queuing_job") : isHighRisk ? t("confirm_execute") : t("execute_operation")}
+					{isExecuting
+						? t("queuing_job")
+						: isHighRisk
+							? t("confirm_execute")
+							: t("execute_operation")}
 				</Button>
 			</CardFooter>
 		</Card>

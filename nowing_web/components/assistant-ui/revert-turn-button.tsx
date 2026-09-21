@@ -19,6 +19,7 @@ import { ActionBarMorePrimitive } from "@assistant-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { CheckIcon, RotateCcw, XCircleIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { chatSessionStateAtom } from "@/atoms/chat/chat-session-state.atom";
@@ -33,7 +34,6 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { getToolDisplayName } from "@/contracts/enums/toolIcons";
 import {
@@ -192,9 +192,7 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t("revert_results_title")}</AlertDialogTitle>
-						<AlertDialogDescription>
-							{t("revert_results_desc")}
-						</AlertDialogDescription>
+						<AlertDialogDescription>{t("revert_results_desc")}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ul className="max-h-72 overflow-y-auto space-y-2 text-sm">
 						{results.map((r) => (
@@ -202,7 +200,9 @@ export function RevertTurnButton({ chatTurnId, variant = "button" }: RevertTurnB
 						))}
 					</ul>
 					<AlertDialogFooter>
-						<AlertDialogAction onClick={() => setResultsOpen(false)}>{tCommon("close")}</AlertDialogAction>
+						<AlertDialogAction onClick={() => setResultsOpen(false)}>
+							{tCommon("close")}
+						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

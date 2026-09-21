@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Webhook } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -22,11 +22,14 @@ import { EnumConnectorName } from "@/contracts/enums/connector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const createCirclebackFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
-	name: z.string().min(3, {
-		message: t("connector_name_min"),
-	}),
-});
+const createCirclebackFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z.object({
+		name: z.string().min(3, {
+			message: t("connector_name_min"),
+		}),
+	});
 
 type CirclebackFormValues = z.infer<ReturnType<typeof createCirclebackFormSchema>>;
 

@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { MoreHorizontal, Pause, Play, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { updateAutomationMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import { Button } from "@/components/ui/button";

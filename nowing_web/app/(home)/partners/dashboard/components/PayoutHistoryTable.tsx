@@ -42,9 +42,7 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 					<h3 className="font-bold text-neutral-900 dark:text-white text-base">
 						{t("payout_ledger_title")}
 					</h3>
-					<p className="text-xs text-neutral-500 mt-0.5">
-						{t("payout_ledger_subtitle")}
-					</p>
+					<p className="text-xs text-neutral-500 mt-0.5">{t("payout_ledger_subtitle")}</p>
 				</div>
 				<Button
 					size="sm"
@@ -56,9 +54,7 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 			</div>
 
 			{payouts.length === 0 ? (
-				<div className="p-12 text-center text-neutral-500 text-sm">
-					{t("no_payouts")}
-				</div>
+				<div className="p-12 text-center text-neutral-500 text-sm">{t("no_payouts")}</div>
 			) : (
 				<div className="overflow-x-auto">
 					<table className="w-full text-left text-sm">
@@ -161,7 +157,9 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 												<button
 													type="button"
 													className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[11px] cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700"
-													onClick={() => handleCopy(payout.napas_ref || "", t("napas_reference_label"))}
+													onClick={() =>
+														handleCopy(payout.napas_ref || "", t("napas_reference_label"))
+													}
 													title={t("copy_napas_ref")}
 												>
 													<span className="truncate">{payout.napas_ref}</span>
@@ -208,9 +206,7 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 							<IconShieldCheck className="size-6 text-emerald-600" aria-hidden="true" />
 							<span>{t("audit_receipt_title")}</span>
 						</DialogTitle>
-						<DialogDescription>
-							{t("audit_receipt_desc")}
-						</DialogDescription>
+						<DialogDescription>{t("audit_receipt_desc")}</DialogDescription>
 					</DialogHeader>
 
 					{selectedReceipt && (
@@ -240,7 +236,9 @@ export function PayoutHistoryTable({ payouts, onNewPayoutClick }: PayoutHistoryT
 									</span>
 								</div>
 								<div className="border-t border-neutral-200 dark:border-neutral-700 pt-2 flex justify-between">
-									<span className="font-bold text-neutral-900 dark:text-white">{t("net_deposited")}</span>
+									<span className="font-bold text-neutral-900 dark:text-white">
+										{t("net_deposited")}
+									</span>
 									<span className="font-mono font-black text-emerald-600 text-base">
 										{(
 											selectedReceipt.net_amount_vnd ??

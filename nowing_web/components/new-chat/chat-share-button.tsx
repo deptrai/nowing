@@ -1,10 +1,10 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 import { useAtomValue } from "jotai";
 import { Earth, User, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -100,9 +100,7 @@ export function ChatShareButton({ thread, onVisibilityChange, className }: ChatS
 				});
 
 				onVisibilityChange?.(updatedThread.visibility);
-				toast.success(
-					newVisibility === "SEARCH_SPACE" ? t("toast_shared") : t("toast_private")
-				);
+				toast.success(newVisibility === "SEARCH_SPACE" ? t("toast_shared") : t("toast_private"));
 				setOpen(false);
 			} catch (error) {
 				console.error("Failed to update visibility:", error);

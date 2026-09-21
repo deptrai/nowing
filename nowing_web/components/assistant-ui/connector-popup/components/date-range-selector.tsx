@@ -60,9 +60,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 		<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 			<h3 className="font-medium text-sm sm:text-base mb-4">{t("select_date_range")}</h3>
 			<p className="text-xs sm:text-sm text-muted-foreground mb-6">
-				{allowFutureDates
-					? t("date_range_desc_future")
-					: t("date_range_desc_past")}
+				{allowFutureDates ? t("date_range_desc_future") : t("date_range_desc_past")}
 			</p>
 
 			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

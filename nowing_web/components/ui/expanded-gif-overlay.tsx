@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -19,7 +19,8 @@ function ExpandedMediaOverlay({
 	alt: string;
 	onClose: () => void;
 }) {
-	const t = useTranslations("ui");	const overlayRef = useRef<HTMLDivElement>(null);
+	const t = useTranslations("ui");
+	const overlayRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		overlayRef.current?.focus();

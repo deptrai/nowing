@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { AlarmClock } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 interface AutomationsEmptyStateProps {
@@ -22,11 +22,10 @@ export function AutomationsEmptyState({ workspaceId, canCreate }: AutomationsEmp
 			<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
 				<AlarmClock className="h-6 w-6" aria-hidden />
 			</div>
-			<h3 className="mt-4 text-base font-semibold text-foreground">{t("auto_no_automations_yet")}</h3>
-			<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-				Automations let Nowing run agent tasks on a schedule. Describe what you want in chat and
-				Nowing drafts the automation for your approval.
-			</p>
+			<h3 className="mt-4 text-base font-semibold text-foreground">
+				{t("auto_no_automations_yet")}
+			</h3>
+			<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">{t("auto_empty_desc")}</p>
 			{canCreate ? (
 				<div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
 					<Button asChild>
@@ -37,7 +36,9 @@ export function AutomationsEmptyState({ workspaceId, canCreate }: AutomationsEmp
 						variant="ghost"
 						className="h-10 justify-start rounded-md bg-muted px-3 text-sm hover:bg-accent"
 					>
-						<Link href={`/dashboard/${workspaceId}/automations/new`}>{t("auto_create_manually")}</Link>
+						<Link href={`/dashboard/${workspaceId}/automations/new`}>
+							{t("auto_create_manually")}
+						</Link>
 					</Button>
 				</div>
 			) : (

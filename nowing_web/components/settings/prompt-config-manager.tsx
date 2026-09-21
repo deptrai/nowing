@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { AlertTriangle, Info } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { updateWorkspaceMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

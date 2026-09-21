@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { ArrowRight, Target } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -33,9 +33,7 @@ export function WizardStepsHeader({ currentStep, onStepChange }: WizardStepsHead
 						{t("story_tag")}
 					</Badge>
 				</div>
-				<p className="text-xs text-zinc-400">
-					{t("campaign_wizard_desc")}
-				</p>
+				<p className="text-xs text-zinc-400">{t("campaign_wizard_desc")}</p>
 			</div>
 
 			<div className="flex items-center gap-2">

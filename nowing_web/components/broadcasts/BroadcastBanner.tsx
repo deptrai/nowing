@@ -1,9 +1,9 @@
 "use client";
 
 import { AlertTriangle, Info, Sparkles, Wrench, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { BannerType } from "@/contracts/types/broadcasts.types";
 import { useBroadcastAnnouncements } from "@/lib/hooks/use-broadcast-announcements";
-import { useTranslations } from "next-intl";
 
 interface BroadcastBannerProps {
 	workspaceId?: number | null;

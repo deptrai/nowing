@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -314,9 +314,7 @@ export function FolderTreeView({
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-1 px-4 py-12 text-muted-foreground select-none">
 				<p className="text-sm font-medium">{t("no_documents")}</p>
-				<p className="text-xs text-muted-foreground/70">
-					{t("no_documents_desc")}
-				</p>
+				<p className="text-xs text-muted-foreground/70">{t("no_documents_desc")}</p>
 			</div>
 		);
 	}

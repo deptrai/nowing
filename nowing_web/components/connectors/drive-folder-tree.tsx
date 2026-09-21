@@ -347,7 +347,7 @@ export function DriveFolderTree({
 
 						{children.length === 0 && (
 							<div className="text-[10px] sm:text-xs text-muted-foreground py-1 sm:py-2 pl-1 sm:pl-2">
-								Empty folder
+								{t("connectors.empty_folder")}
 							</div>
 						)}
 					</div>
@@ -402,7 +402,7 @@ export function DriveFolderTree({
 
 					{!isLoadingRoot && !rootError && rootItems.length === 0 && (
 						<div className="text-center text-xs sm:text-sm text-muted-foreground py-4 sm:py-8">
-							No files or folders found in your {providerName}
+							{t("connectors.no_files_or_folders", { provider: providerName })}
 						</div>
 					)}
 				</div>

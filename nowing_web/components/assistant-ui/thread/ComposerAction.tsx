@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import {
 	agentToolsAtom,
@@ -68,7 +69,6 @@ import { useElectronAPI } from "@/hooks/use-platform";
 import { captureDisplayToPngDataUrl } from "@/lib/chat/display-media-capture";
 import { groupConnectorsByType } from "@/lib/connectors/group-connectors-by-type";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
 import { ConnectedScraperIcons } from "./ConnectedScraperIcons";
 import { TOOL_GROUPS } from "./constants";
 
@@ -87,15 +87,23 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 	const tChat = useTranslations("chat");
 	const tCommon = useTranslations("common");
 
-	const getGroupDisplayLabel = useCallback((label: string) => {
-		switch (label) {
-			case "Research": return tChat("tool_group_research");
-			case "Generate": return tChat("tool_group_generate");
-			case "Memory": return tChat("tool_group_memory");
-			case "Other": return tChat("tool_group_other");
-			default: return label;
-		}
-	}, [tChat]);
+	const getGroupDisplayLabel = useCallback(
+		(label: string) => {
+			switch (label) {
+				case "Research":
+					return tChat("tool_group_research");
+				case "Generate":
+					return tChat("tool_group_generate");
+				case "Memory":
+					return tChat("tool_group_memory");
+				case "Other":
+					return tChat("tool_group_other");
+				default:
+					return label;
+			}
+		},
+		[tChat]
+	);
 	const mentionedDocuments = useAtomValue(mentionedDocumentsAtom);
 	const setImportRequest = useSetAtom(importConnectorRequestAtom);
 	const router = useRouter();
@@ -660,7 +668,9 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 																) : (
 																	<Wrench className="h-4 w-4" aria-hidden="true" />
 																)}
-																<span className="min-w-0 flex-1 truncate">{getGroupDisplayLabel(group.label)}</span>
+																<span className="min-w-0 flex-1 truncate">
+																	{getGroupDisplayLabel(group.label)}
+																</span>
 																<Switch
 																	checked={!allDisabled}
 																	tabIndex={-1}
@@ -806,7 +816,7 @@ export const ComposerAction: FC<ComposerActionProps> = ({
 							size="icon"
 							className="aui-composer-cancel size-7 shrink-0 rounded-full"
 							aria-label={tChat("stop_generating")}
-						title={tChat("stop_generating")}
+							title={tChat("stop_generating")}
 						>
 							<SquareIcon
 								className="aui-composer-cancel-icon size-2.5 fill-current"

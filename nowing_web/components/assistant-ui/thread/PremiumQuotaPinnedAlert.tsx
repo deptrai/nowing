@@ -2,13 +2,13 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { AlertCircle, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { currentThreadAtom } from "@/atoms/chat/current-thread.atom";
 import {
 	clearPremiumAlertForThreadAtom,
 	premiumAlertByThreadAtom,
 } from "@/atoms/chat/premium-alert.atom";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 export const PremiumQuotaPinnedAlert: FC = () => {

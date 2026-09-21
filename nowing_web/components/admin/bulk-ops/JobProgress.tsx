@@ -10,6 +10,7 @@ import {
 	Download,
 	XCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { BulkOpErrorRead, JobStatusResponse } from "@/contracts/types/admin-bulk-ops.types";
-import { useTranslations } from "next-intl";
 
 interface JobProgressProps {
 	job: JobStatusResponse | null;
@@ -175,9 +175,7 @@ export function JobProgress({
 				{/* Progress bar */}
 				<div className="space-y-1.5">
 					<div className="flex justify-between text-xs text-muted-foreground">
-						<span>
-							{t("progress_text", { processed, total })}
-						</span>
+						<span>{t("progress_text", { processed, total })}</span>
 						<span>{percentage}%</span>
 					</div>
 					<Progress value={percentage} className="h-2" />

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
 	Bar,
@@ -171,8 +171,18 @@ export default function LlmCostPanel({ tick }: LlmCostPanelProps) {
 								<YAxis tick={{ fontSize: 10 }} />
 								<Tooltip />
 								<Legend />
-								<Line type="monotone" dataKey="cost_micros" name={t("cost_micros_legend")} stroke="#8884d8" />
-								<Line type="monotone" dataKey="total_tokens" name={t("tokens_legend")} stroke="#82ca9d" />
+								<Line
+									type="monotone"
+									dataKey="cost_micros"
+									name={t("cost_micros_legend")}
+									stroke="#8884d8"
+								/>
+								<Line
+									type="monotone"
+									dataKey="total_tokens"
+									name={t("tokens_legend")}
+									stroke="#82ca9d"
+								/>
 							</LineChart>
 						</ResponsiveContainer>
 					</div>

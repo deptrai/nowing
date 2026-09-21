@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -32,14 +32,17 @@ import { DateRangeSelector } from "../../components/date-range-selector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const createLumaConnectorFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
-	name: z.string().min(3, {
-		message: t("connector_name_min"),
-	}),
-	api_key: z.string().min(10, {
-		message: t("luma_api_key_required"),
-	}),
-});
+const createLumaConnectorFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z.object({
+		name: z.string().min(3, {
+			message: t("connector_name_min"),
+		}),
+		api_key: z.string().min(10, {
+			message: t("luma_api_key_required"),
+		}),
+	});
 
 type LumaConnectorFormValues = z.infer<ReturnType<typeof createLumaConnectorFormSchema>>;
 
@@ -177,7 +180,9 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 							<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 								<div className="flex items-center justify-between">
 									<div className="space-y-1">
-										<h3 className="font-medium text-sm sm:text-base">{t("enable_periodic_sync")}</h3>
+										<h3 className="font-medium text-sm sm:text-base">
+											{t("enable_periodic_sync")}
+										</h3>
 										<p className="text-xs sm:text-sm text-muted-foreground">
 											{t("periodic_sync_desc")}
 										</p>

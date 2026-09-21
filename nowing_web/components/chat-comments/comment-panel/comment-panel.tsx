@@ -42,7 +42,7 @@ export function CommentPanel({
 			>
 				<div className="flex items-center gap-2 text-sm text-muted-foreground">
 					<div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-					Loading comments...
+					{t("loading_comments")}
 				</div>
 			</div>
 		);
@@ -95,7 +95,7 @@ export function CommentPanel({
 					members={members}
 					membersLoading={membersLoading}
 					placeholder={t("comment_mention_placeholder")}
-					submitLabel="Comment"
+					submitLabel={t("comment_submit")}
 					isSubmitting={isSubmitting}
 					onSubmit={handleCommentSubmit}
 					autoFocus={!hasThreads}

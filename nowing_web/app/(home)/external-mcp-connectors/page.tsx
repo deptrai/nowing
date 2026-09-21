@@ -1,8 +1,8 @@
 import { IconBrandGithub } from "@tabler/icons-react";
 import { ArrowRight, Check, Plug, ShieldCheck, Wrench } from "lucide-react";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { ConnectorFaq } from "@/components/connectors-marketing/connector-faq";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
@@ -15,39 +15,39 @@ import type { FaqItem } from "@/lib/connectors-marketing/types";
 
 const canonicalUrl = "https://www.nowing.com/external-mcp-connectors";
 
-const metaDescription =
-	"External MCP connectors let your Nowing agents use any MCP server. Paste a config, tools are auto-discovered, and every call runs with per-tool approval. Try it free.";
-
-export const metadata: Metadata = {
-	title: "External MCP Connectors: Add Any MCP Server | Nowing",
-	description: metaDescription,
-	keywords: [
-		"mcp connector",
-		"external mcp connectors",
-		"what is an mcp connector",
-		"mcp client",
-		"add mcp server",
-		"connect mcp server",
-		"mcp integrations",
-	],
-	alternates: { canonical: canonicalUrl },
-	openGraph: {
-		title: "External MCP Connectors: Add Any MCP Server | Nowing",
-		description: metaDescription,
-		url: canonicalUrl,
-		siteName: "Nowing",
-		type: "website",
-		images: [
-			{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing external MCP connectors" },
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("extMcp");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		keywords: [
+			"mcp connector",
+			"external mcp connectors",
+			"what is an mcp connector",
+			"mcp client",
+			"add mcp server",
+			"connect mcp server",
+			"mcp integrations",
 		],
-	},
-	twitter: {
-		card: "summary_large_image",
-		title: "External MCP Connectors: Add Any MCP Server | Nowing",
-		description: metaDescription,
-		images: ["/og-image.png"],
-	},
-};
+		alternates: { canonical: canonicalUrl },
+		openGraph: {
+			title: t("meta_title"),
+			description: t("meta_description"),
+			url: canonicalUrl,
+			siteName: "Nowing",
+			type: "website",
+			images: [
+				{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing external MCP connectors" },
+			],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: t("meta_title"),
+			description: t("meta_description"),
+			images: ["/og-image.png"],
+		},
+	};
+}
 
 /* Mirrors the real server_config contract (stdio + HTTP transports). */
 const STDIO_CONFIG = `{
@@ -124,7 +124,7 @@ export default async function ExternalMcpConnectorsPage() {
 					name: "Nowing External MCP Connectors",
 					applicationCategory: "DeveloperApplication",
 					operatingSystem: "Web",
-					description: metaDescription,
+					description: t("meta_description"),
 					url: canonicalUrl,
 					offers: {
 						"@type": "Offer",
@@ -193,9 +193,7 @@ export default async function ExternalMcpConnectorsPage() {
 				{/* How it works */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("how_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("how_title")}</h2>
 					</Reveal>
 					<div className="mt-8 grid gap-4 sm:grid-cols-3">
 						{STEPS.map((step) => (
@@ -217,12 +215,8 @@ export default async function ExternalMcpConnectorsPage() {
 				{/* One-click apps */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("apps_title")}
-						</h2>
-						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-							{t("apps_desc")}
-						</p>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("apps_title")}</h2>
+						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">{t("apps_desc")}</p>
 					</Reveal>
 					<Reveal>
 						<div className="mt-8 flex flex-wrap gap-2">
@@ -242,9 +236,7 @@ export default async function ExternalMcpConnectorsPage() {
 				{/* Connector vs server */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("vs_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("vs_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
 							{t("vs_desc_1")} <em>{t("vs_client")}</em>: {t("vs_desc_2")}{" "}
 							<Link
@@ -275,9 +267,7 @@ export default async function ExternalMcpConnectorsPage() {
 				{/* FAQ */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("faq_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("faq_title")}</h2>
 					</Reveal>
 					<Reveal>
 						<div className="mt-6 max-w-3xl">
@@ -290,9 +280,7 @@ export default async function ExternalMcpConnectorsPage() {
 				<MarketingSection>
 					<Reveal>
 						<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
-							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-								{t("cta_title")}
-							</h2>
+							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("cta_title")}</h2>
 							<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
 								{t("cta_desc_1")}{" "}
 								<Link href="/" className="font-medium text-foreground underline underline-offset-4">

@@ -1,8 +1,8 @@
 import { IconBrandGithub } from "@tabler/icons-react";
 import { ArrowRight, Check, Database, KeyRound, Server, TerminalSquare } from "lucide-react";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { ConnectorFaq } from "@/components/connectors-marketing/connector-faq";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
@@ -16,40 +16,40 @@ import type { FaqItem } from "@/lib/connectors-marketing/types";
 
 const canonicalUrl = "https://www.nowing.com/mcp-server";
 
-const metaDescription =
-	"The Nowing MCP server gives Claude, Cursor, and any MCP client native tools for your workspace: scrape Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, Vietnamese real estate, and the web, plus full knowledge base access. One API key.";
-
-export const metadata: Metadata = {
-	title: "Nowing MCP Server: Scraper APIs and Knowledge Base as Agent Tools",
-	description: metaDescription,
-	keywords: [
-		"nowing mcp server",
-		"mcp server",
-		"mcp server for web scraping",
-		"reddit mcp server",
-		"youtube mcp server",
-		"google maps mcp server",
-		"serp mcp server",
-		"mcp server for claude",
-		"mcp server for cursor",
-		"knowledge base mcp server",
-	],
-	alternates: { canonical: canonicalUrl },
-	openGraph: {
-		title: "Nowing MCP Server: Scraper APIs and Knowledge Base as Agent Tools",
-		description: metaDescription,
-		url: canonicalUrl,
-		siteName: "Nowing",
-		type: "website",
-		images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing MCP server" }],
-	},
-	twitter: {
-		card: "summary_large_image",
-		title: "Nowing MCP Server: Scraper APIs and Knowledge Base as Agent Tools",
-		description: metaDescription,
-		images: ["/og-image.png"],
-	},
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("mcpServer");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		keywords: [
+			"nowing mcp server",
+			"mcp server",
+			"mcp server for web scraping",
+			"reddit mcp server",
+			"youtube mcp server",
+			"google maps mcp server",
+			"serp mcp server",
+			"mcp server for claude",
+			"mcp server for cursor",
+			"knowledge base mcp server",
+		],
+		alternates: { canonical: canonicalUrl },
+		openGraph: {
+			title: t("meta_title"),
+			description: t("meta_description"),
+			url: canonicalUrl,
+			siteName: "Nowing",
+			type: "website",
+			images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing MCP server" }],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: t("meta_title"),
+			description: t("meta_description"),
+			images: ["/og-image.png"],
+		},
+	};
+}
 
 /* The hosted Cursor config; mirrors lib/mcp/clients.ts. */
 const CURSOR_CONFIG = `{
@@ -79,13 +79,26 @@ function useToolGroups(t: (k: string) => string) {
 			title: t("tg_scrapers"),
 			description: t("tg_scrapers_desc"),
 			tools: [
-				"nowing_reddit_scrape","nowing_youtube_scrape","nowing_youtube_comments",
-				"nowing_instagram_scrape","nowing_instagram_details","nowing_tiktok_scrape",
-				"nowing_tiktok_comments","nowing_tiktok_user_search","nowing_tiktok_trending",
-				"nowing_google_maps_scrape","nowing_google_maps_reviews","nowing_google_search",
-				"nowing_amazon_scrape","nowing_batdongsan_scrape","nowing_chotot_bds_scrape",
-				"nowing_muaban_bds_scrape","nowing_vn_bds_aggregate","nowing_web_crawl",
-				"nowing_list_scraper_runs","nowing_get_scraper_run",
+				"nowing_reddit_scrape",
+				"nowing_youtube_scrape",
+				"nowing_youtube_comments",
+				"nowing_instagram_scrape",
+				"nowing_instagram_details",
+				"nowing_tiktok_scrape",
+				"nowing_tiktok_comments",
+				"nowing_tiktok_user_search",
+				"nowing_tiktok_trending",
+				"nowing_google_maps_scrape",
+				"nowing_google_maps_reviews",
+				"nowing_google_search",
+				"nowing_amazon_scrape",
+				"nowing_batdongsan_scrape",
+				"nowing_chotot_bds_scrape",
+				"nowing_muaban_bds_scrape",
+				"nowing_vn_bds_aggregate",
+				"nowing_web_crawl",
+				"nowing_list_scraper_runs",
+				"nowing_get_scraper_run",
 			],
 		},
 		{
@@ -93,15 +106,20 @@ function useToolGroups(t: (k: string) => string) {
 			title: t("tg_kb"),
 			description: t("tg_kb_desc"),
 			tools: [
-				"nowing_search_knowledge_base","nowing_list_documents","nowing_get_document",
-				"nowing_add_document","nowing_upload_file","nowing_update_document","nowing_delete_document",
+				"nowing_search_knowledge_base",
+				"nowing_list_documents",
+				"nowing_get_document",
+				"nowing_add_document",
+				"nowing_upload_file",
+				"nowing_update_document",
+				"nowing_delete_document",
 			],
 		},
 		{
 			icon: KeyRound,
 			title: t("tg_ws"),
 			description: t("tg_ws_desc"),
-			tools: ["nowing_list_workspaces","nowing_select_workspace"],
+			tools: ["nowing_list_workspaces", "nowing_select_workspace"],
 		},
 	];
 }
@@ -145,7 +163,7 @@ export default async function McpServerPage() {
 					name: "Nowing MCP Server",
 					applicationCategory: "DeveloperApplication",
 					operatingSystem: "Web",
-					description: metaDescription,
+					description: t("meta_description"),
 					url: canonicalUrl,
 					offers: {
 						"@type": "Offer",
@@ -214,9 +232,7 @@ export default async function McpServerPage() {
 				{/* How it works */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("how_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("how_title")}</h2>
 					</Reveal>
 					<div className="mt-8 grid gap-4 sm:grid-cols-3">
 						{STEPS.map((step) => (
@@ -238,9 +254,7 @@ export default async function McpServerPage() {
 				{/* Per-agent setup */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("setup_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("setup_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
 							{t("setup_desc")}
 						</p>
@@ -255,9 +269,7 @@ export default async function McpServerPage() {
 				{/* Tools */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("tools_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("tools_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
 							{t("tools_desc")}
 						</p>
@@ -289,9 +301,7 @@ export default async function McpServerPage() {
 				{/* Server vs external connectors */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("vs_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("vs_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
 							{t("vs_desc_1")} <em>{t("vs_server")}</em> {t("vs_desc_2")}{" "}
 							<Link
@@ -308,9 +318,7 @@ export default async function McpServerPage() {
 				{/* FAQ */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							{t("faq_title")}
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("faq_title")}</h2>
 					</Reveal>
 					<Reveal>
 						<div className="mt-6 max-w-3xl">
@@ -323,9 +331,7 @@ export default async function McpServerPage() {
 				<MarketingSection>
 					<Reveal>
 						<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
-							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-								{t("cta_title")}
-							</h2>
+							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("cta_title")}</h2>
 							<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
 								{t("cta_desc_1")}{" "}
 								<Link href="/" className="font-medium text-foreground underline underline-offset-4">

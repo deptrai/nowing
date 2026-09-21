@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
 	Bar,
 	CartesianGrid,
@@ -10,7 +11,6 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UsageTimeSeriesPoint } from "@/contracts/types/usage.types";
 

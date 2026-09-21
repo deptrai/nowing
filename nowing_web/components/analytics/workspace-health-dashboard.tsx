@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 import {
 	Activity,
 	AlertCircle,
@@ -21,6 +20,7 @@ import {
 	Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -176,9 +176,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 			<div className="p-8 text-center border rounded-xl bg-card space-y-3">
 				<AlertCircle className="h-10 w-10 text-destructive mx-auto" />
 				<h3 className="font-semibold text-lg">{t("load_failed")}</h3>
-				<p className="text-sm text-muted-foreground max-w-md mx-auto">
-					{t("load_failed_desc")}
-				</p>
+				<p className="text-sm text-muted-foreground max-w-md mx-auto">{t("load_failed_desc")}</p>
 				<Button onClick={() => refetch()} variant="outline" size="sm">
 					<RefreshCw className="h-4 w-4 mr-2" />
 					Retry
@@ -194,9 +192,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 				<div className="flex items-center justify-between gap-3 p-3.5 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs">
 					<div className="flex items-center gap-2">
 						<Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-						<span>
-							{t("public_snapshot_desc")}
-						</span>
+						<span>{t("public_snapshot_desc")}</span>
 					</div>
 					<Badge
 						variant="outline"
@@ -215,12 +211,8 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 							<Activity className="h-5 w-5" />
 						</div>
 						<div>
-							<h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
-								{t("title")}
-							</h1>
-							<p className="text-xs text-muted-foreground">
-								{t("subtitle")}
-							</p>
+							<h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{t("title")}</h1>
+							<p className="text-xs text-muted-foreground">{t("subtitle")}</p>
 						</div>
 					</div>
 				</div>
@@ -294,9 +286,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						</div>
 						<div className="space-y-1 max-w-md">
 							<h3 className="font-semibold text-lg">{t("no_activity")}</h3>
-							<p className="text-sm text-muted-foreground">
-								{t("no_activity_desc")}
-							</p>
+							<p className="text-sm text-muted-foreground">{t("no_activity_desc")}</p>
 						</div>
 						<div className="flex items-center gap-3 pt-2">
 							<Button asChild size="sm">
@@ -373,9 +363,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									</div>
 									{renderChangeBadge(summary.total_members.change_pct)}
 								</div>
-								<div className="text-[11px] text-muted-foreground">
-									{t("total_members_desc")}
-								</div>
+								<div className="text-[11px] text-muted-foreground">{t("total_members_desc")}</div>
 								<Sparkline
 									values={summary.total_members.sparkline}
 									colorClassName="text-sky-500"
@@ -399,9 +387,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									</div>
 									{renderChangeBadge(summary.total_memories.change_pct)}
 								</div>
-								<div className="text-[11px] text-muted-foreground">
-									{t("total_memories_desc")}
-								</div>
+								<div className="text-[11px] text-muted-foreground">{t("total_memories_desc")}</div>
 								<Sparkline
 									values={summary.total_memories.sparkline}
 									colorClassName="text-emerald-500"
@@ -425,9 +411,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									</div>
 									{renderChangeBadge(summary.memory_growth_count.change_pct)}
 								</div>
-								<div className="text-[11px] text-muted-foreground">
-									{t("memory_growth_desc")}
-								</div>
+								<div className="text-[11px] text-muted-foreground">{t("memory_growth_desc")}</div>
 								<Sparkline
 									values={summary.memory_growth_count.sparkline}
 									colorClassName="text-indigo-500"
@@ -492,9 +476,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 											</div>
 											{renderChangeBadge(summary.credits_consumed_micros.change_pct)}
 										</div>
-										<div className="text-[11px] text-muted-foreground">
-											{t("credits_desc")}
-										</div>
+										<div className="text-[11px] text-muted-foreground">{t("credits_desc")}</div>
 										<Sparkline
 											values={summary.credits_consumed_micros.sparkline}
 											colorClassName="text-amber-500"
@@ -554,9 +536,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 											{t("advisory")}
 										</Badge>
 									</CardTitle>
-									<CardDescription className="text-xs mt-0.5">
-										{t("quota_desc")}
-									</CardDescription>
+									<CardDescription className="text-xs mt-0.5">{t("quota_desc")}</CardDescription>
 								</div>
 								<Button asChild size="sm" variant="outline" className="h-7 text-xs">
 									<Link href={`/dashboard/${workspaceId}/workspace-settings/limits`}>
@@ -641,9 +621,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<CardHeader className="p-4 pb-3 flex flex-row items-center justify-between space-y-0">
 							<div>
 								<CardTitle className="text-sm font-semibold">{t("sources_title")}</CardTitle>
-								<CardDescription className="text-xs mt-0.5">
-									{t("sources_desc")}
-								</CardDescription>
+								<CardDescription className="text-xs mt-0.5">{t("sources_desc")}</CardDescription>
 							</div>
 
 							<Button

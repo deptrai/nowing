@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -32,18 +32,21 @@ import { DateRangeSelector } from "../../components/date-range-selector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const createBookstackConnectorFormSchema = (t: (k: string, o?: Record<string, string | number | Date>) => string) => z.object({
-	name: z.string().min(3, {
-		message: t("connector_name_min"),
-	}),
-	base_url: z.string().url({ message: t("bookstack_base_url_invalid") }),
-	token_id: z.string().min(1, {
-		message: t("bookstack_token_id_required"),
-	}),
-	token_secret: z.string().min(1, {
-		message: t("bookstack_token_secret_required"),
-	}),
-});
+const createBookstackConnectorFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z.object({
+		name: z.string().min(3, {
+			message: t("connector_name_min"),
+		}),
+		base_url: z.string().url({ message: t("bookstack_base_url_invalid") }),
+		token_id: z.string().min(1, {
+			message: t("bookstack_token_id_required"),
+		}),
+		token_secret: z.string().min(1, {
+			message: t("bookstack_token_secret_required"),
+		}),
+	});
 
 type BookStackConnectorFormValues = z.infer<ReturnType<typeof createBookstackConnectorFormSchema>>;
 
@@ -221,7 +224,9 @@ export const BookStackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitt
 							<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 								<div className="flex items-center justify-between">
 									<div className="space-y-1">
-										<h3 className="font-medium text-sm sm:text-base">{t("enable_periodic_sync")}</h3>
+										<h3 className="font-medium text-sm sm:text-base">
+											{t("enable_periodic_sync")}
+										</h3>
 										<p className="text-xs sm:text-sm text-muted-foreground">
 											{t("periodic_sync_desc")}
 										</p>
@@ -286,9 +291,7 @@ export const BookStackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitt
 			{/* What you get section */}
 			{getConnectorBenefits(EnumConnectorName.BOOKSTACK_CONNECTOR) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
-					<h4 className="text-xs sm:text-sm font-medium">
-						{t("bookstack_what_you_get")}
-					</h4>
+					<h4 className="text-xs sm:text-sm font-medium">{t("bookstack_what_you_get")}</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.BOOKSTACK_CONNECTOR)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

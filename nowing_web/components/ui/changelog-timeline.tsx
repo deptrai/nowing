@@ -1,6 +1,6 @@
-import { useTranslations } from "next-intl";
 import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +101,9 @@ export const ChangelogTimeline = ({
 						))}
 					</div>
 				) : (
-					<p className="mx-auto mt-16 max-w-3xl rounded-lg border border-dashed p-8 text-center text-muted-foreground">{t("ui_no_changelog_entries_yet")}</p>
+					<p className="mx-auto mt-16 max-w-3xl rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+						{t("ui_no_changelog_entries_yet")}
+					</p>
 				)}
 			</div>
 		</section>

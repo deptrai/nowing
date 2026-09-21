@@ -1,7 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import { useParams, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -35,7 +35,9 @@ export function PodcastErrorState({ title, error }: { title: string; error: stri
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">{t("tu_podcast_generation_failed")}</p>
+				<p className="text-sm font-semibold text-destructive">
+					{t("tu_podcast_generation_failed")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -156,7 +158,7 @@ export function PodcastPlayer({
 			if (err instanceof DOMException && err.name === "AbortError") {
 				setError("Request timed out. Please try again.");
 			} else {
-				setError(err instanceof Error ? err.message: t("tu_failed_to_load_podcast"));
+				setError(err instanceof Error ? err.message : t("tu_failed_to_load_podcast"));
 			}
 		} finally {
 			setIsLoading(false);
@@ -191,7 +193,9 @@ export function PodcastPlayer({
 					<div className="mx-5 h-px bg-border/50" />
 					<Accordion type="single" collapsible className="px-5">
 						<AccordionItem value="transcript" className="border-b-0">
-							<AccordionTrigger className="py-3 text-xs sm:text-sm font-medium text-muted-foreground hover:text-accent-foreground hover:no-underline">{t("tu_view_transcript")}</AccordionTrigger>
+							<AccordionTrigger className="py-3 text-xs sm:text-sm font-medium text-muted-foreground hover:text-accent-foreground hover:no-underline">
+								{t("tu_view_transcript")}
+							</AccordionTrigger>
 							<AccordionContent className="pb-0">
 								<div className="space-y-2 max-h-64 sm:max-h-96 overflow-y-auto select-text">
 									{transcriptLines.map((line) => (

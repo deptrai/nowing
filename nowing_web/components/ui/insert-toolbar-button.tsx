@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 
 import type { DropdownMenuProps } from "@radix-ui/react-dropdown-menu";
 import {
@@ -21,6 +20,7 @@ import {
 	SuperscriptIcon,
 	TableIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { KEYS } from "platejs";
 import { type PlateEditor, useEditorRef } from "platejs/react";
 import * as React from "react";
@@ -178,7 +178,8 @@ const getGroups = (t: (k: string) => string): Group[] => [
 ];
 
 export function InsertToolbarButton(props: DropdownMenuProps) {
-	const t = useTranslations("ui");	const editor = useEditorRef();
+	const t = useTranslations("ui");
+	const editor = useEditorRef();
 	const [open, setOpen] = React.useState(false);
 
 	return (

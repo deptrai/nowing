@@ -1,8 +1,8 @@
 "use client";
 
 import { XIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { RunDetail } from "@/app/dashboard/[workspace_id]/playground/components/run-detail";
 import { Button } from "@/components/ui/button";

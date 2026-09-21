@@ -92,7 +92,7 @@ export function IcpBuilderStep({
 							variant="outline"
 							className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
 						>
-							AI Powered
+							{t("ai_powered")}
 						</Badge>
 					</CardTitle>
 					<CardDescription className="text-xs text-zinc-400">

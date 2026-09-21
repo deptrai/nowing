@@ -1,8 +1,8 @@
 "use client";
 
 import { ChevronDown, ChevronRight, FileText, Folder, FolderOpen } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_EXCLUDE_PATTERNS } from "@/components/sources/FolderWatchDialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -477,9 +477,7 @@ export function LocalFilesystemBrowser({
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-10 text-center text-muted-foreground">
 				<p className="text-sm font-medium">{t("no_local_folder_selected")}</p>
-				<p className="text-xs text-muted-foreground/80">
-					{t("add_local_folder_hint")}
-				</p>
+				<p className="text-xs text-muted-foreground/80">{t("add_local_folder_hint")}</p>
 			</div>
 		);
 	}
@@ -543,7 +541,9 @@ export function LocalFilesystemBrowser({
 							key={rootPath}
 							className="rounded-md border border-destructive/20 bg-destructive/5 p-3"
 						>
-							<p className="text-sm font-medium text-destructive">{t("failed_to_load_local_folder")}</p>
+							<p className="text-sm font-medium text-destructive">
+								{t("failed_to_load_local_folder")}
+							</p>
 							<p className="mt-1 text-xs text-muted-foreground">{state.error}</p>
 						</div>
 					);

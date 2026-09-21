@@ -184,7 +184,11 @@ export function parseDockContent(
 	// Push tabs in the same order as DockHeader's TAB_ORDER so the default
 	// active tab and the rendered tab order are consistent.
 	if (options.hasLeads) {
-		tabs.push({ id: "leads", label: options.t ? options.t("leads_label") : "Leads", payload: { kind: "leads" } });
+		tabs.push({
+			id: "leads",
+			label: options.t ? options.t("leads_label") : "Leads",
+			payload: { kind: "leads" },
+		});
 	}
 
 	if (webAppResult?.app_id) {
@@ -214,27 +218,48 @@ export function parseDockContent(
 	}
 
 	if (reportPart) {
-		tabs.push({ id: "reports", label: options.t ? options.t("report_label") : "Report", payload: { kind: "reports", part: reportPart } });
+		tabs.push({
+			id: "reports",
+			label: options.t ? options.t("report_label") : "Report",
+			payload: { kind: "reports", part: reportPart },
+		});
 	}
 
 	if (images.length > 0) {
 		tabs.push({
 			id: "images",
-			label: images.length > 1 ? `${options.t ? options.t("images_label") : "Images"} (${images.length})` : options.t ? options.t("image_label") : "Image",
+			label:
+				images.length > 1
+					? `${options.t ? options.t("images_label") : "Images"} (${images.length})`
+					: options.t
+						? options.t("image_label")
+						: "Image",
 			payload: { kind: "images", parts: images },
 		});
 	}
 
 	if (media.length > 0) {
-		tabs.push({ id: "media", label: options.t ? options.t("media_label") : "Media", payload: { kind: "media", parts: media } });
+		tabs.push({
+			id: "media",
+			label: options.t ? options.t("media_label") : "Media",
+			payload: { kind: "media", parts: media },
+		});
 	}
 
 	if (chartSpecs.length > 0) {
-		tabs.push({ id: "charts", label: options.t ? options.t("charts_label") : "Charts", payload: { kind: "charts", specs: chartSpecs } });
+		tabs.push({
+			id: "charts",
+			label: options.t ? options.t("charts_label") : "Charts",
+			payload: { kind: "charts", specs: chartSpecs },
+		});
 	}
 
 	if (codeBlocks.length > 0) {
-		tabs.push({ id: "code", label: options.t ? options.t("code_label") : "Code", payload: { kind: "code", blocks: codeBlocks } });
+		tabs.push({
+			id: "code",
+			label: options.t ? options.t("code_label") : "Code",
+			payload: { kind: "code", blocks: codeBlocks },
+		});
 	}
 
 	if (artifacts.length > 0) {

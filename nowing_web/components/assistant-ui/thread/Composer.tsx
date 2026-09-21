@@ -668,7 +668,9 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 							className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80 transition-all shadow-2xs select-none cursor-pointer"
 						>
 							<span className="text-amber-500">💡</span>
-							<span>{tChat("suggested_next_steps_count", { count: dynamicSuggestedActions.length })}</span>
+							<span>
+								{tChat("suggested_next_steps_count", { count: dynamicSuggestedActions.length })}
+							</span>
 							<ChevronUp className="size-3 opacity-60" />
 						</button>
 					</div>
