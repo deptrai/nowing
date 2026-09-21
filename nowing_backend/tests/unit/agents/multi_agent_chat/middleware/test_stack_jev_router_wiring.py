@@ -1,10 +1,12 @@
 """Assembly test — ``build_main_agent_deepagent_middleware`` must forward
-``workspace_id``/``user_id``/``client_id`` into ``build_jev_router_mw``.
+``workspace_id``/``user_id``/``client_id``/``thread_id`` into
+``build_jev_router_mw``.
 
 Dropping those kwargs silently kills all routing telemetry (decide()
 would run with ``session=None``/``user_id=None`` and ``_record_usage``
-would skip every row). Heavy siblings are stubbed out so the call can
-reach the builder cheaply.
+would skip every row; a missing thread_id unlinks the row from the chat
+thread). Heavy siblings are stubbed out so the call can reach the
+builder cheaply.
 """
 
 from __future__ import annotations
@@ -95,3 +97,4 @@ def test_stack_forwards_telemetry_ids_to_jev_router(monkeypatch):
     assert kwargs["workspace_id"] == 42
     assert kwargs["user_id"] == "user-1"
     assert kwargs["client_id"] == "web-chat"
+    assert kwargs["thread_id"] == 7

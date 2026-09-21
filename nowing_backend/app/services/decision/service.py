@@ -70,6 +70,7 @@ class DecisionService:
         workspace_id: int | None = None,
         user_id: UUID | None = None,
         client_id: str | None = None,
+        thread_id: int | None = None,
     ) -> DecisionResult:
         """Evaluate ``questions`` against ``state``.
 
@@ -91,7 +92,8 @@ class DecisionService:
 
         ``session``/``workspace_id``/``user_id`` are optional; when all
         are provided the call's token usage is persisted to
-        ``TokenUsage`` (fail-open).
+        ``TokenUsage`` (fail-open). ``thread_id`` is forwarded to that
+        row so decision spend can be joined back to the chat thread.
 
         ``model`` is validated against the ACTIVE backend's pin (AD-J3):
         for a Jev primary it must equal ``DECISION_JEV_MODEL`` — passing
@@ -264,6 +266,7 @@ class DecisionService:
                     workspace_id=workspace_id,
                     user_id=user_id,
                     client_id=client_id,
+                    thread_id=thread_id,
                     extra_call_details={
                         "failed": True,
                         "error_code": fallback_exc.code,
@@ -306,6 +309,7 @@ class DecisionService:
                 workspace_id=workspace_id,
                 user_id=user_id,
                 client_id=client_id,
+                thread_id=thread_id,
                 # Only a multi-leg call (a fallback actually ran) exposes
                 # the per-leg trace — a single-leg success stays terse.
                 extra_call_details={"legs": legs} if len(legs) > 1 else None,
@@ -377,6 +381,7 @@ class DecisionService:
         workspace_id: int | None,
         user_id: UUID | None,
         client_id: str | None,
+        thread_id: int | None = None,
         extra_call_details: dict[str, Any] | None = None,
     ) -> None:
         """Persist the call to ``TokenUsage``. Fail-open (AD-J7).
@@ -417,6 +422,7 @@ class DecisionService:
                     **(extra_call_details or {}),
                 },
                 client_id=client_id,
+                thread_id=thread_id,
             )
         except Exception:  # best-effort telemetry; never abort a decision
             logger.warning(

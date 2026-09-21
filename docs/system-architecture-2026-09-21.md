@@ -397,7 +397,7 @@ flowchart LR
 | Repo | Path | What |
 |------|------|------|
 | nowing | `app/agents/.../middleware/stack.py` | 26-middleware stack, jev_router at position 10 |
-| nowing | `app/agents/.../middleware/jev_router.py` | JevRouterMiddleware — calls typesafe_sdk directly |
+| nowing | `app/agents/.../middleware/jev_router.py` | JevRouterMiddleware — routes via `DecisionService` (no direct typesafe_sdk import; gated by `enable_jev_router` + `DECISION_ENABLED`/`DECISION_ROUTING_ENABLED`) |
 | nowing | `app/agents/.../shared/feature_flags.py` | `enable_jev_router` flag, default OFF |
 | nowing | `app/agents/.../subagents/builtins/` | 21 subagent directories |
 | nowing | `app/services/` | 120+ service files |

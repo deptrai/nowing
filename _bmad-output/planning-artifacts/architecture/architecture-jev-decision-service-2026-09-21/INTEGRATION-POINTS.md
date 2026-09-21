@@ -46,9 +46,9 @@ Research `technical-jev-ultrafast-browser-agent-integration-2026-09-21` identifi
 
 - **What:** `JevRouterMiddleware` — injects `<jev_routing_hint>` before LLM call
 - **Where:** `app/agents/chat/multi_agent_chat/main_agent/middleware/jev_router.py`
-- **Flag:** `NOWING_ENABLE_JEV_ROUTER=true` + `TYPESAFE_API_KEY` set
+- **Flag:** `NOWING_ENABLE_JEV_ROUTER=true` + `DECISION_ENABLED=true`/`DECISION_ROUTING_ENABLED=true` (no `TYPESAFE_API_KEY` builder gate — the decision layer owns key checks and the fallback chain)
 - **Eval:** 100% accuracy on 20 Vietnamese routing cases
-- **Missing:** `DecisionService` port (currently calls SDK directly — Epic 39.1)
+- **Wired (story 39.2):** goes through `DecisionService` — no direct `typesafe_sdk` import; model pinned via `DECISION_JEV_MODEL`, threshold via `DECISION_ROUTING_THRESHOLD`
 
 #### 2. Content guardrails — RAG passage + user input filter
 

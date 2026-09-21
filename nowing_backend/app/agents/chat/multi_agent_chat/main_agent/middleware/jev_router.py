@@ -84,11 +84,13 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
         workspace_id: int | None = None,
         user_id: str | None = None,
         client_id: str | None = None,
+        thread_id: int | None = None,
     ) -> None:
         super().__init__()
         self._workspace_id = workspace_id
         self._user_id = user_id
         self._client_id = client_id
+        self._thread_id = thread_id
         self._last_classified: str | None = None
         self._questions: dict[str, Question] | None = None
         self._question_set_label = ""
@@ -167,6 +169,7 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
             "workspace_id": self._workspace_id,
             "user_id": user_uuid,
             "client_id": self._client_id,
+            "thread_id": self._thread_id,
         }
         service = get_decision_service()
         state = {"user_message": user_text}
@@ -331,6 +334,7 @@ def build_jev_router_mw(
     workspace_id: int | None = None,
     user_id: str | None = None,
     client_id: str | None = None,
+    thread_id: int | None = None,
 ) -> JevRouterMiddleware | None:
     """Builder for the Jev pre-router middleware."""
     if not enabled(flags, "enable_jev_router"):
@@ -340,6 +344,7 @@ def build_jev_router_mw(
         workspace_id=workspace_id,
         user_id=user_id,
         client_id=client_id,
+        thread_id=thread_id,
     )
 
 

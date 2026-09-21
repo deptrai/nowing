@@ -489,6 +489,7 @@ async def test_session_opened_and_committed_with_ids(monkeypatch):
         workspace_id=7,
         user_id=uid,
         client_id="web-chat",
+        thread_id=11,
     )
 
     out = await mw.abefore_model(
@@ -502,6 +503,7 @@ async def test_session_opened_and_committed_with_ids(monkeypatch):
     assert call["workspace_id"] == 7
     assert call["user_id"].hex == uid.replace("-", "")
     assert call["client_id"] == "web-chat"
+    assert call["thread_id"] == 11
     assert maker.sessions[0].commits == 1
 
 

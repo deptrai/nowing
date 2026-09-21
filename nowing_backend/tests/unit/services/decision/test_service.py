@@ -276,6 +276,25 @@ async def test_decide_records_token_usage(_enabled, monkeypatch):
 
 
 @pytest.mark.unit
+async def test_decide_thread_id_reaches_record_token_usage(
+    _enabled, monkeypatch
+):
+    """thread_id is a first-class TokenUsage field — the usage row must
+    be joinable back to the chat thread that paid for the decision."""
+    recorded = _patch_record(monkeypatch)
+    service = DecisionService(_StubBackend(_result()))
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+        thread_id=7,
+    )
+    assert recorded["thread_id"] == 7
+
+
+@pytest.mark.unit
 async def test_decide_taskless_records_generic(_enabled, monkeypatch):
     recorded = _patch_record(monkeypatch)
     service = DecisionService(_StubBackend(_result()))

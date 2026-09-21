@@ -274,6 +274,7 @@ def build_main_agent_deepagent_middleware(
             workspace_id=workspace_id,
             user_id=user_id,
             client_id=client_id,
+            thread_id=thread_id,
         ),
         build_mode_budget_mw(flags),
         resilience.model_call_limit,
