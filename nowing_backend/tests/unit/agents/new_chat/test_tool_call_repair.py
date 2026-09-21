@@ -121,3 +121,110 @@ class TestRepair:
         out = mw.after_model(_make_state(msg), runtime)
         assert out is not None
         assert out["messages"][0].tool_calls[0]["name"] == "dynamictool"
+
+
+_MARKUP = (
+    '<|open|>tools<|sep|><|open|>call tool="task" index="1"<|sep|>'
+    '<|open|>argument key="subagent_type" type="string"<|sep|>chainlens'
+    '<|close|>argument<|sep|>'
+    '<|open|>argument key="description" type="string"<|sep|>Find a code example'
+    '<|close|>argument<|sep|><|close|>call<|sep|><|close|>tools<|sep|>'
+    "<|close|>message<|sep|>"
+)
+
+
+class TestMarkupRecovery:
+    """Stage 0 — tool calls emitted as text markup instead of tool_calls."""
+
+    def test_markup_only_message_recovers_tool_call(self) -> None:
+        mw = ToolCallNameRepairMiddleware(
+            registered_tool_names={"task"}, fuzzy_match_threshold=None
+        )
+        msg = AIMessage(content=_MARKUP)
+        out = mw.after_model(_make_state(msg), _FakeRuntime())
+        assert out is not None
+        repaired = out["messages"][0]
+        assert repaired.tool_calls == [
+            {
+                "name": "task",
+                "args": {
+                    "subagent_type": "chainlens",
+                    "description": "Find a code example",
+                },
+                "id": "call_markup_0",
+                "type": "tool_call",
+            }
+        ]
+        # Markup stripped from the visible content.
+        assert repaired.content == ""
+        # Stage-1/2 metadata absent — the name was already valid.
+        assert "repair" not in (repaired.response_metadata or {})
+
+    def test_markup_deduped_against_structured_call(self) -> None:
+        mw = ToolCallNameRepairMiddleware(
+            registered_tool_names={"task"}, fuzzy_match_threshold=None
+        )
+        structured = {
+            "name": "task",
+            "args": {
+                "subagent_type": "chainlens",
+                "description": "Find a code example",
+            },
+            "id": "call_x",
+            "type": "tool_call",
+        }
+        msg = AIMessage(content=_MARKUP, tool_calls=[structured])
+        out = mw.after_model(_make_state(msg), _FakeRuntime())
+        assert out is not None
+        # The recovered markup call matches the structured one — not duplicated.
+        assert out["messages"][0].tool_calls == [structured]
+        assert out["messages"][0].content == ""
+
+    def test_markup_unknown_name_routes_to_invalid(self) -> None:
+        mw = ToolCallNameRepairMiddleware(
+            registered_tool_names={"task", INVALID_TOOL_NAME},
+            fuzzy_match_threshold=None,
+        )
+        bad_markup = _MARKUP.replace('tool="task"', 'tool="Bogus"').replace(
+            "chainlens", "x"
+        )
+        msg = AIMessage(content=bad_markup)
+        out = mw.after_model(_make_state(msg), _FakeRuntime())
+        assert out is not None
+        repaired = out["messages"][0]
+        assert repaired.tool_calls[0]["name"] == INVALID_TOOL_NAME
+        assert repaired.tool_calls[0]["args"]["tool"] == "Bogus"
+        assert repaired.content == ""
+
+    def test_plain_text_without_markup_untouched(self) -> None:
+        mw = ToolCallNameRepairMiddleware(
+            registered_tool_names={"task"}, fuzzy_match_threshold=None
+        )
+        msg = AIMessage(content="Just a normal answer.")
+        assert mw.after_model(_make_state(msg), _FakeRuntime()) is None
+
+    def test_markup_inside_list_content_stripped_per_block(self) -> None:
+        mw = ToolCallNameRepairMiddleware(
+            registered_tool_names={"task"}, fuzzy_match_threshold=None
+        )
+        msg = AIMessage(
+            content=[
+                {"type": "text", "text": "Before. " + _MARKUP + " After"},
+            ]
+        )
+        out = mw.after_model(_make_state(msg), _FakeRuntime())
+        assert out is not None
+        repaired = out["messages"][0]
+        assert repaired.tool_calls[0]["name"] == "task"
+        # Surrounding text preserved, markup gone.
+        assert repaired.content == [{"type": "text", "text": "Before.  After"}]
+
+    def test_partial_markup_without_call_body_ignored(self) -> None:
+        mw = ToolCallNameRepairMiddleware(
+            registered_tool_names={"task"}, fuzzy_match_threshold=None
+        )
+        # A truncated emission: stray tokens but no complete call block.
+        msg = AIMessage(content="<|open|>tools<|sep|><|close|>tools<|sep|>")
+        out = mw.after_model(_make_state(msg), _FakeRuntime())
+        # No calls recovered → nothing to do → no update.
+        assert out is None
