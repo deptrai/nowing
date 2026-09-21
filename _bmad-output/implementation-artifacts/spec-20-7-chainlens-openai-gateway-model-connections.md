@@ -2,10 +2,10 @@
 title: 'Story 20.7: ChainLens OpenAI Gateway Model Connections'
 type: 'feature'
 created: '2026-09-21'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 1
 baseline_revision: 5fd99c78983ca1f978bf27d3cc155af4aae7f2ba
-followup_review_recommended: false
+followup_review_recommended: false  # 1 high bad_spec + 2 low patches; score = 3*0 + 1*3 = 3 < 5 → false
 context:
   - '_bmad-output/implementation-artifacts/epic-20-context.md'
   - '_bmad-output/planning-artifacts/ux-spec-epic20-chainlens-agent-tools-2026-09-20.md'
@@ -144,3 +144,40 @@ deferred: []
 - If ChainLens upstream live: paste bearer token → "Test connection" → success + models discovered.
 - Open workspace model picker → verify "ChainLens (Web-Grounded)" group header with globe icon.
 - Switch locale to vi → hover ChainLens group → tooltip in Vietnamese.
+
+
+## Auto Run Result
+
+Status: done
+
+### Tóm tắt thay đổi
+Đăng ký `chainlens` làm preset OpenAI-compatible provider: backend `ProviderSpec` (transport OPENAI_COMPATIBLE, litellm_prefix=openai, discovery=openai_models, default_base_url=https://research-api.chainlens.net/v1, bearer auth) + frontend PROVIDER_ORDER/DISPLAY entry + Globe icon + i18n `chainlens.model_group`/`model_tooltip`. Model picker (`model-selector.tsx`) render "ChainLens (Web-Grounded)" group với globe icon + tooltip latency. Zero backend schema change.
+
+### Files changed
+- `nowing_backend/app/services/provider_registry.py` — append `chainlens` ProviderSpec vào `REGISTRY`
+- `nowing_backend/tests/unit/services/test_provider_capabilities.py` — 3 tests: `test_chainlens_provider_registered`, `test_chainlens_listed_in_registry`, `test_chainlens_serialized_by_list_model_providers`
+- `nowing_web/components/settings/model-connections/provider-metadata.tsx` — `PROVIDER_ORDER` += `"chainlens"`, `PROVIDER_DISPLAY` entry
+- `nowing_web/lib/provider-icons.tsx` — `case "CHAINLENS"` → `<Globe />`
+- `nowing_web/components/new-chat/model-selector.tsx` — chainlens group header dùng `t("chainlens.model_group")` + Globe icon + `title={t("chainlens.model_tooltip")}` (review pass 1)
+- `nowing_web/messages/{en,vi,es,hi,ko,pt,zh}.json` — `chainlens` namespace với `model_group` + `model_tooltip` (7 locales)
+
+### Review findings breakdown
+- Review pass 1:
+  - Patches applied: 3 (low 3)
+  - Bad_spec amendments: 2 (high 1, medium 1) → triggered spec change log + code re-derivation
+  - Deferred: 3 (AC2/AC3 upstream verification, "Web-Grounded" consistency, base URL duplication)
+  - Rejected: 4
+- Follow-up review: patched counts (high 0, medium 0, low 3) → score = 3×0 + 1×3 = 3 < 5 → **false**
+
+### Verification
+- `python -c "from app.services.provider_registry import spec_for; s = spec_for('chainlens'); print(s.transport, s.default_base_url, s.discovery)"` → `OPENAI_COMPATIBLE https://research-api.chainlens.net/v1 openai_models` ✅
+- `pytest tests/unit/services/test_provider_capabilities.py -k chainlens -q` → **3 passed** ✅
+- `pnpm tsc --noEmit` → clean ✅
+- `pnpm exec biome check` (all changed files) → clean after auto-fix ✅
+- Manual check (deferred to runtime): provider dropdown shows ChainLens, base_url prefilled, model picker renders "ChainLens (Web-Grounded)" group with globe icon + tooltip
+
+### Residual risks
+- AC2 (streaming chat via ChainLens connection) + AC3 (connection test GET /v1/models) — inherited từ OPENAI_COMPATIBLE transport, chưa có integration test verify end-to-end (cần upstream live; defer sang integration suite).
+- "(Web-Grounded)" label ở 3 chỗ (`PROVIDER_DISPLAY.subtitle`, `model_group`, `model_tooltip`) — UX spec binding, không localize trong `model_group` (giữ English theo spec).
+- Base URL duplicated backend `provider_registry.py` + frontend `provider-metadata.tsx` — drift risk thấp vì cùng là constant.
+- `manageModelConnections` unused warning trong `model-selector.tsx` — pre-existing, không phải của story này.
