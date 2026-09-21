@@ -1842,3 +1842,12 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   summary: Import-guard test chỉ scan `app/services/decision/` — `jev_router.py` vẫn import `typesafe_sdk` trực tiếp (legacy path, rewire ở story 39.2).
   evidence: `tests/unit/services/decision/test_import_guard.py` scan scope decision/; `app/agents/chat/multi_agent_chat/main_agent/middleware/jev_router.py:99,120` import typesafe_sdk ngoài scope — invariant "chỉ jev.py import SDK" chưa enforce repo-wide.
   resolved: 2026-09-22 — guard extended to all `app/**/*.py` with explicit allowlist `{decision/backends/jev.py, jev_router.py}`; any NEW typesafe_sdk importer fails the test.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-2-subagent-routing-jev-choice.md`
+  summary: Thread `thread_id` through `DecisionService.decide()` → `record_token_usage` so decision TokenUsage rows link to the originating chat thread (stack.py:111 has it; record_token_usage supports it; decide() lacks the param).
+  evidence: review finding — routing telemetry rows are unlinked from chat threads; adding the param is a cross-story API surface change.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-2-subagent-routing-jev-choice.md`
+  summary: Import guard only detects AST `import`/`from` nodes — misses `importlib.import_module("typesafe_sdk")` and `__import__` dynamic imports.
+  evidence: pre-existing test_import_guard.py limitation from story 39.1; repo-wide scan passed but dynamic-import bypass is unguarded.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-2-subagent-routing-jev-choice.md`
+  summary: Sync stale docs — `docs/system-architecture-2026-09-21.md` + `architecture-jev-decision-service/INTEGRATION-POINTS.md` still describe direct typesafe_sdk integration; `.env.example` lacks `NOWING_ENABLE_JEV_ROUTER` flag.
+  evidence: story 39.2 rewired jev_router.py through DecisionService (no direct SDK, no TYPESAFE_API_KEY gate); docs predate the rewire.

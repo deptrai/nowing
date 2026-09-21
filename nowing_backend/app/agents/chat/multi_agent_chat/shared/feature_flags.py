@@ -85,9 +85,10 @@ class AgentFeatureFlags:
     # misses are frequent enough to justify the extra global state.
     enable_agent_cache_share_gp_subagent: bool = False
 
-    # Jev pre-router — classify user intent via TypeSafe Jev before the LLM
-    # sees it, injecting a <jev_routing_hint> into the system prompt. Saves
-    # routing tokens + latency. Requires TYPESAFE_API_KEY. Default OFF.
+    # Jev pre-router — classify user intent via DecisionService before the
+    # LLM sees it, injecting a <jev_routing_hint> into the system prompt.
+    # Saves routing tokens + latency. Requires DECISION_ENABLED=true with a
+    # working decision backend. Default OFF.
     enable_jev_router: bool = False
 
     @classmethod

@@ -10,13 +10,11 @@ import pytest
 APP_ROOT = Path(__file__).resolve().parents[4] / "app"
 JEV_BACKEND = APP_ROOT / "services" / "decision" / "backends" / "jev.py"
 
-# jev.py is the sanctioned adapter boundary (AD-J1); jev_router.py is the
-# documented legacy path pending the story 39.2 rewire onto
-# DecisionService. Any NEW importer anywhere under app/ fails the guard.
+# jev.py is the sanctioned adapter boundary (AD-J1). Any NEW importer
+# anywhere under app/ fails the guard.
 ALLOWLIST = frozenset(
     {
         Path("services/decision/backends/jev.py"),
-        Path("agents/chat/multi_agent_chat/main_agent/middleware/jev_router.py"),
     }
 )
 
