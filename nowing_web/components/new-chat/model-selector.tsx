@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
-import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Globe, Search, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { UIEvent } from "react";
@@ -99,6 +99,7 @@ function groupedModels(models: ChatModel[]) {
 
 export function ModelSelector({ workspaceId, className, onChatModelSelected }: ModelSelectorProps) {
 	const t = useTranslations("newChat");
+	const tChainlens = useTranslations("chainlens");
 	const router = useRouter();
 	const isMobile = useIsMobile();
 	const [open, setOpen] = useState(false);
@@ -200,39 +201,47 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 						{hasSearchQuery ? t("no_matching_chat_models") : t("no_enabled_chat_models")}
 					</div>
 				) : (
-					Object.entries(groups).map(([connection, models]) => (
-						<div key={connection} className="mt-3">
-							<div className="px-2 py-1 text-sm font-semibold text-muted-foreground">
-								{connection}
-							</div>
-							{models.map((model) => (
-								<button
-									type="button"
-									key={model.id}
-									className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
-									onClick={() => selectModel(model.id)}
+					Object.entries(groups).map(([connection, models]) => {
+						const isChainlensGroup = models.some((model) => model.provider === "chainlens");
+						const groupLabel = isChainlensGroup ? tChainlens("model_group") : connection;
+						const groupTitle = isChainlensGroup ? tChainlens("model_tooltip") : undefined;
+						return (
+							<div key={connection} className="mt-3">
+								<div
+									className="flex items-center gap-1.5 px-2 py-1 text-sm font-semibold text-muted-foreground"
+									title={groupTitle}
 								>
-									<div className="min-w-0 flex-1">
-										<div className="flex min-w-0 items-center gap-2 font-medium">
-											{getProviderIcon(model.provider, { className: "size-4 shrink-0" })}
-											<span className="truncate">{modelName(model)}</span>
-										</div>
-										{/* {model.max_input_tokens ? (
+									{isChainlensGroup ? <Globe className="size-3.5" aria-hidden="true" /> : null}
+									{groupLabel}
+								</div>
+								{models.map((model) => (
+									<button
+										type="button"
+										key={model.id}
+										className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+										onClick={() => selectModel(model.id)}
+									>
+										<div className="min-w-0 flex-1">
+											<div className="flex min-w-0 items-center gap-2 font-medium">
+												{getProviderIcon(model.provider, { className: "size-4 shrink-0" })}
+												<span className="truncate">{modelName(model)}</span>
+											</div>
+											{/* {model.max_input_tokens ? (
 											<div className="text-xs text-muted-foreground">
 												{model.max_input_tokens.toLocaleString()} context
 											</div>
 										) : null} */}
-									</div>
-									<div className="ml-3 flex shrink-0 items-center gap-2">
-										{isFreeGlobalModel(model) ? (
-											<Badge
-												variant="secondary"
-												className="h-5 shrink-0 rounded-sm border-0 bg-popover-foreground/10 px-1.5 text-[11px] text-popover-foreground hover:bg-popover-foreground/10"
-											>
-												Free
-											</Badge>
-										) : null}
-										{/*
+										</div>
+										<div className="ml-3 flex shrink-0 items-center gap-2">
+											{isFreeGlobalModel(model) ? (
+												<Badge
+													variant="secondary"
+													className="h-5 shrink-0 rounded-sm border-0 bg-popover-foreground/10 px-1.5 text-[11px] text-popover-foreground hover:bg-popover-foreground/10"
+												>
+													Free
+												</Badge>
+											) : null}
+											{/*
 											Re-enable this once the chat composer supports image input.
 											For now, surfacing `supports_image_input` in the chat model
 											selector is misleading because users cannot attach images.
@@ -243,12 +252,13 @@ export function ModelSelector({ workspaceId, className, onChatModelSelected }: M
 												</Badge>
 											) : null}
 										*/}
-										{roles?.chat_model_id === model.id ? <Check className="h-4 w-4" /> : null}
-									</div>
-								</button>
-							))}
-						</div>
-					))
+											{roles?.chat_model_id === model.id ? <Check className="h-4 w-4" /> : null}
+										</div>
+									</button>
+								))}
+							</div>
+						);
+					})
 				)}
 			</div>
 		</div>
