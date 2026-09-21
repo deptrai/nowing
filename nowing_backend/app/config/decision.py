@@ -27,14 +27,24 @@ def _env_flag(name: str, default: bool) -> bool:
 # stories (39.2+) land and each path is verified advisory.
 DECISION_ENABLED = _env_flag("DECISION_ENABLED", False)
 
-# Backend selection (AD-J2). "llm_json" is reserved — the LLM fallback
-# chain is split into a later story; selecting it raises DecisionError
-# in the service factory.
+# Backend selection (AD-J2).
 DECISION_BACKEND = _env_choice("DECISION_BACKEND", "jev", ("jev", "llm_json", "mock"))
 
-# Pinned model — never "jev-latest" (AD-J3).
+# Fallback chain (story 39.1b): a primary-leg DecisionError with code in
+# {timeout, backend_error, backend_unavailable, missing_api_key} retries
+# once through this backend. "none" disables the chain.
+DECISION_FALLBACK_BACKEND = _env_choice(
+    "DECISION_FALLBACK_BACKEND", "llm_json", ("llm_json", "none")
+)
+
+# Pinned models, per backend — never "jev-latest" (AD-J3). The LLM pin
+# defaults to the eval baseline model.
 DECISION_JEV_MODEL = (
     os.getenv("DECISION_JEV_MODEL", "jev-1.13.0").strip() or "jev-1.13.0"
+)
+DECISION_LLM_MODEL = (
+    os.getenv("DECISION_LLM_MODEL", "claude-haiku-4-5-20251001").strip()
+    or "claude-haiku-4-5-20251001"
 )
 
 # Hard ceiling per decide() call; callers should never wait longer.
@@ -85,9 +95,11 @@ __all__ = [
     "DECISION_BACKEND",
     "DECISION_ENABLED",
     "DECISION_ENTITY_ENABLED",
+    "DECISION_FALLBACK_BACKEND",
     "DECISION_FILTER_ENABLED",
     "DECISION_INTENT_ENABLED",
     "DECISION_JEV_MODEL",
+    "DECISION_LLM_MODEL",
     "DECISION_ROUTING_ENABLED",
     "DECISION_TIMEOUT_SECONDS",
     "DECISION_VOICE_ENABLED",

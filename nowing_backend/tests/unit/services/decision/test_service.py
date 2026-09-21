@@ -31,9 +31,14 @@ _TASK_FLAGS = ("ROUTING", "FILTER", "ENTITY", "INTENT", "VOICE")
 class _StubBackend:
     """In-memory backend — returns a canned BackendResult or raises."""
 
-    name = "stub"
-
-    def __init__(self, result: BackendResult | None = None, exc=None, delay=0.0):
+    def __init__(
+        self,
+        result: BackendResult | None = None,
+        exc=None,
+        delay=0.0,
+        name="stub",
+    ):
+        self.name = name
         self._result = result
         self._exc = exc
         self._delay = delay
@@ -61,8 +66,14 @@ def _result(**overrides) -> BackendResult:
 
 @pytest.fixture
 def _enabled(monkeypatch):
-    """Enable master + all per-task flags — isolated from ambient env."""
+    """Enable master + all per-task flags — isolated from ambient env.
+
+    Fallback is pinned off: a failing primary must never reach the real
+    llm_json backend (a paid network call) unless a test wires one up
+    via ``_patch_fallback`` or the config attr.
+    """
     monkeypatch.setenv("DECISION_ENABLED", "true")
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
     for task in _TASK_FLAGS:
         monkeypatch.setenv(f"DECISION_{task}_ENABLED", "true")
 
@@ -185,7 +196,9 @@ async def test_decide_backend_error_propagates_as_decision_error(_enabled):
 
 
 @pytest.mark.unit
-async def test_decide_backend_decision_error_passes_through(_enabled):
+async def test_decide_backend_decision_error_passes_through(_enabled, monkeypatch):
+    # fallback off: the primary's DecisionError propagates unwrapped
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
     service = DecisionService(
         _StubBackend(exc=DecisionError("no key", code="missing_api_key"))
     )
@@ -369,15 +382,302 @@ def test_build_backend_jev(_enabled, monkeypatch):
 
 
 @pytest.mark.unit
-def test_build_backend_llm_json_unavailable(_enabled, monkeypatch):
+def test_build_backend_llm_json(_enabled, monkeypatch):
     monkeypatch.setattr(decision_config, "DECISION_BACKEND", "llm_json")
     service = DecisionService()
-    with pytest.raises(DecisionError) as exc_info:
-        service._get_backend()
-    assert exc_info.value.code == "backend_unavailable"
+    assert service._get_backend().name == "llm_json"
 
 
 @pytest.mark.unit
 def test_get_decision_service_singleton(monkeypatch):
     monkeypatch.setattr(service_module, "_decision_service", None)
     assert get_decision_service() is get_decision_service()
+
+
+# ---------------------------------------------------------------------------
+# Fallback chain (story 39.1b) — primary → DECISION_FALLBACK_BACKEND
+# ---------------------------------------------------------------------------
+
+
+def _patch_fallback(monkeypatch, backend) -> None:
+    """Route the service's fallback resolution to an in-memory backend."""
+    monkeypatch.setattr(
+        service_module, "_build_fallback_backend", lambda primary_name: backend
+    )
+
+
+def _llm_result() -> BackendResult:
+    """What the llm_json leg returns — model/backend reflect that leg."""
+    return BackendResult(
+        answers={"q": Answer(kind="noul", value=0.6, confidence=0.6)},
+        model=decision_config.DECISION_LLM_MODEL,
+        latency_ms=4.2,
+        input_tokens=50,
+        output_tokens=5,
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "code", ["timeout", "backend_error", "backend_unavailable", "missing_api_key"]
+)
+async def test_decide_fallback_on_retryable_codes(_enabled, monkeypatch, code):
+    primary = _StubBackend(exc=DecisionError("primary down", code=code))
+    fallback = _StubBackend(_llm_result(), name="llm_json")
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService(primary)
+
+    result = await service.decide({"s": 1}, {"q": NOUL_Q})
+
+    assert result.backend == "llm_json"
+    assert result.model == decision_config.DECISION_LLM_MODEL
+    assert result.answers["q"].value == 0.6
+    # the fallback leg is pinned to the LLM model, not the Jev pin
+    assert fallback.calls[0]["model"] == decision_config.DECISION_LLM_MODEL
+    # and inherits the same clamped timeout as the primary leg
+    assert fallback.calls[0]["timeout"] == decision_config.DECISION_TIMEOUT_SECONDS
+
+
+@pytest.mark.unit
+async def test_decide_fallback_inherits_clamped_timeout(_enabled, monkeypatch):
+    primary = _StubBackend(exc=DecisionError("down", code="timeout"))
+    fallback = _StubBackend(_llm_result(), name="llm_json")
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService(primary)
+    await service.decide({}, {"q": NOUL_Q}, timeout=2.0)
+    assert primary.calls[0]["timeout"] == 2.0
+    assert fallback.calls[0]["timeout"] == 2.0
+
+
+@pytest.mark.unit
+async def test_decide_no_fallback_when_primary_succeeds(_enabled, monkeypatch):
+    fallback = _StubBackend(_llm_result(), name="llm_json")
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService(_StubBackend(_result()))
+    result = await service.decide({}, {"q": NOUL_Q})
+    assert result.backend == "stub"
+    assert fallback.calls == []
+
+
+@pytest.mark.unit
+async def test_decide_construction_failure_falls_back(_enabled, monkeypatch):
+    """An unrecognized DECISION_BACKEND (backend_unavailable at build
+    time) may still be served by the fallback leg."""
+    monkeypatch.setattr(decision_config, "DECISION_BACKEND", "bogus")
+    fallback = _StubBackend(_llm_result(), name="llm_json")
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService()
+
+    result = await service.decide({}, {"q": NOUL_Q})
+
+    assert result.backend == "llm_json"
+    assert result.model == decision_config.DECISION_LLM_MODEL
+    assert fallback.calls[0]["model"] == decision_config.DECISION_LLM_MODEL
+
+
+@pytest.mark.unit
+async def test_decide_mock_primary_never_falls_back(_enabled, monkeypatch):
+    """A deterministic/offline mock primary must not trigger a paid call."""
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "llm_json")
+
+    import litellm
+
+    litellm_calls: list[dict] = []
+
+    async def _spy(**kwargs):
+        litellm_calls.append(kwargs)
+        raise AssertionError("litellm must not be called")
+
+    monkeypatch.setattr(litellm, "acompletion", _spy)
+    primary = _StubBackend(exc=DecisionError("down", code="timeout"), name="mock")
+    service = DecisionService(primary)
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide({}, {"q": NOUL_Q})
+    assert exc_info.value.code == "timeout"
+    assert litellm_calls == []
+
+
+@pytest.mark.unit
+async def test_decide_fallback_logs_primary_code(_enabled, monkeypatch, caplog):
+    primary = _StubBackend(exc=DecisionError("primary down", code="timeout"))
+    _patch_fallback(monkeypatch, _StubBackend(_llm_result(), name="llm_json"))
+    service = DecisionService(primary)
+    with caplog.at_level("WARNING", logger="app.services.decision.service"):
+        await service.decide({}, {"q": NOUL_Q})
+    assert "timeout" in caplog.text
+    assert "llm_json" in caplog.text
+
+
+@pytest.mark.unit
+async def test_decide_fallback_leg_failure_propagates(_enabled, monkeypatch, caplog):
+    """Both legs fail → the fallback leg's DecisionError reaches the caller."""
+    primary = _StubBackend(exc=DecisionError("primary down", code="timeout"))
+    fallback = _StubBackend(
+        exc=DecisionError("llm also down", code="backend_error"), name="llm_json"
+    )
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService(primary)
+    with (
+        caplog.at_level("WARNING", logger="app.services.decision.service"),
+        pytest.raises(DecisionError) as exc_info,
+    ):
+        await service.decide({}, {"q": NOUL_Q})
+    assert exc_info.value.code == "backend_error"
+    assert "llm also down" in str(exc_info.value)
+    # the failed fallback leg is surfaced — its spend is otherwise invisible
+    assert "llm_json" in caplog.text
+    assert "backend_error" in caplog.text
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "exc",
+    [
+        InvalidDecisionAnswer("malformed answer"),
+        DecisionError("caller error", code="invalid_request"),
+        DecisionError("bad model", code="invalid_model"),
+        DecisionError("off", code="disabled"),
+    ],
+)
+async def test_decide_no_fallback_on_non_retryable(_enabled, monkeypatch, exc):
+    """InvalidDecisionAnswer / caller errors never pay for a second leg."""
+    primary = _StubBackend(exc=exc)
+    fallback = _StubBackend(_llm_result(), name="llm_json")
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService(primary)
+    with pytest.raises(DecisionError):
+        await service.decide({}, {"q": NOUL_Q})
+    assert fallback.calls == []
+
+
+@pytest.mark.unit
+async def test_decide_no_fallback_when_configured_none(_enabled, monkeypatch):
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
+    primary = _StubBackend(exc=DecisionError("down", code="timeout"))
+    service = DecisionService(primary)
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide({}, {"q": NOUL_Q})
+    assert exc_info.value.code == "timeout"
+
+
+@pytest.mark.unit
+async def test_decide_fallback_records_winning_leg(_enabled, monkeypatch):
+    """Telemetry describes the leg that actually answered, not the primary."""
+    recorded = _patch_record(monkeypatch)
+    primary = _StubBackend(exc=DecisionError("down", code="missing_api_key"))
+    _patch_fallback(monkeypatch, _StubBackend(_llm_result(), name="llm_json"))
+    service = DecisionService(primary)
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    assert recorded["call_details"]["backend"] == "llm_json"
+    assert recorded["call_details"]["model"] == decision_config.DECISION_LLM_MODEL
+    assert recorded["prompt_tokens"] == 50
+    assert recorded["completion_tokens"] == 5
+
+
+@pytest.mark.unit
+async def test_decide_model_pin_is_per_backend(_enabled):
+    """A model valid for Jev is invalid when the active backend is llm_json."""
+    backend = _StubBackend(_llm_result(), name="llm_json")
+    service = DecisionService(backend)
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide(
+            {}, {"q": NOUL_Q}, model=decision_config.DECISION_JEV_MODEL
+        )
+    assert exc_info.value.code == "invalid_model"
+    assert backend.calls == []
+
+    await service.decide({}, {"q": NOUL_Q}, model=decision_config.DECISION_LLM_MODEL)
+    assert backend.calls[0]["model"] == decision_config.DECISION_LLM_MODEL
+
+
+@pytest.mark.unit
+async def test_decide_llm_json_primary_end_to_end(_enabled, monkeypatch):
+    """DECISION_BACKEND=llm_json → one fake acompletion → validated result."""
+    import json
+
+    import litellm
+
+    payload = {
+        "answers": [
+            {
+                "question_id": "q",
+                "answer": 0.7,
+                "confidence": 0.7,
+                "probabilities": None,
+            }
+        ]
+    }
+    calls: list[dict] = []
+
+    class _FakeResponse:
+        choices = [
+            type(
+                "C", (), {"message": type("M", (), {"content": json.dumps(payload)})()}
+            )()
+        ]
+        model = decision_config.DECISION_LLM_MODEL
+        usage = None
+
+    async def _fake_acompletion(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse()
+
+    monkeypatch.setattr(litellm, "acompletion", _fake_acompletion)
+    monkeypatch.setattr(decision_config, "DECISION_BACKEND", "llm_json")
+    service = DecisionService()
+
+    result = await service.decide({"user_message": "xin chào"}, {"q": NOUL_Q})
+
+    assert len(calls) == 1
+    assert calls[0]["model"] == decision_config.DECISION_LLM_MODEL
+    assert result.backend == "llm_json"
+    assert result.model == decision_config.DECISION_LLM_MODEL
+    assert result.answers["q"].value == 0.7
+
+
+@pytest.mark.unit
+def test_build_fallback_backend_llm_json(_enabled, monkeypatch):
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "llm_json")
+    fallback = service_module._build_fallback_backend("jev")
+    assert fallback is not None and fallback.name == "llm_json"
+
+
+@pytest.mark.unit
+def test_build_fallback_backend_none(_enabled, monkeypatch):
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
+    assert service_module._build_fallback_backend("jev") is None
+
+
+@pytest.mark.unit
+def test_build_fallback_backend_skips_self_retry(_enabled, monkeypatch):
+    """llm_json → llm_json is not a chain — litellm already retries."""
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "llm_json")
+    assert service_module._build_fallback_backend("llm_json") is None
+
+
+@pytest.mark.unit
+def test_build_fallback_backend_skips_mock(_enabled, monkeypatch):
+    """mock → llm_json is not allowed — offline tests must not pay."""
+    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "llm_json")
+    assert service_module._build_fallback_backend("mock") is None
+
+
+@pytest.mark.unit
+async def test_decide_fallback_builder_failure_reraises_primary(_enabled, monkeypatch):
+    """A raise inside the fallback builder must not mask the primary error."""
+    primary = _StubBackend(exc=DecisionError("primary down", code="timeout"))
+
+    def _boom(primary_name):
+        raise RuntimeError("builder exploded")
+
+    monkeypatch.setattr(service_module, "_build_fallback_backend", _boom)
+    service = DecisionService(primary)
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide({}, {"q": NOUL_Q})
+    assert exc_info.value.code == "timeout"
