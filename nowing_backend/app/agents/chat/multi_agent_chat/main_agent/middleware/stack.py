@@ -76,6 +76,7 @@ from app.db import ChatVisibility
 from app.utils.perf import get_perf_logger
 
 from .action_log import build_action_log_mw
+from .jev_router import build_jev_router_mw
 from .anonymous_document import build_anonymous_doc_mw
 from .busy_mutex import build_busy_mutex_mw
 from .checkpointed_subagent_middleware import (
@@ -263,6 +264,13 @@ def build_main_agent_deepagent_middleware(
             system_prompt=None,
             task_description=TASK_TOOL_DESCRIPTION,
             workspace_id=workspace_id,
+        ),
+        build_jev_router_mw(
+            flags=flags,
+            subagent_descriptors=[
+                {"name": s["name"], "description": s.get("description", "")}
+                for s in subagents
+            ],
         ),
         build_mode_budget_mw(flags),
         resilience.model_call_limit,
