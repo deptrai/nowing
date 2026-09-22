@@ -2,7 +2,7 @@
 title: 'Story 39.8 — Eval Harness CI Integration'
 type: 'feature'
 created: '2026-09-22'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '8ed9f6b46ecdd3787b490e2c9e794a7edb4f7c62'
