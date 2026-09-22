@@ -66,6 +66,47 @@ async def test_drop_removes_doc(_enabled, monkeypatch):
     assert out == []
 
 
+async def test_irrelevant_drop_demotes_to_tail(_enabled, monkeypatch):
+    """Relevance-negative demotes instead of dropping — recall-safe fix
+    for Jev over-dropping VN content lacking literal query geo terms."""
+
+    def _route(_doc, text):
+        if "off-topic" in text:
+            return PassageVerdict(
+                action=GuardrailAction.DROP, reasons=("irrelevant",)
+            )
+        return PassageVerdict(action=GuardrailAction.PASS)
+
+    _patch_filter(monkeypatch, _route)
+    docs = [_doc("keep one"), _doc("off-topic"), _doc("keep two")]
+    out = await core._filter_rag_results(docs, query_text="q", workspace_id=1)
+    assert [d["content"] for d in out] == [
+        "keep one",
+        "keep two",
+        "off-topic",
+    ]
+
+
+async def test_injection_still_hard_drops_when_mixed(_enabled, monkeypatch):
+    """Mixed batch: injection removed entirely, irrelevant demoted."""
+
+    def _route(_doc, text):
+        if "inject" in text:
+            return PassageVerdict(
+                action=GuardrailAction.DROP, reasons=("prompt_injection",)
+            )
+        if "weak" in text:
+            return PassageVerdict(
+                action=GuardrailAction.DROP, reasons=("irrelevant",)
+            )
+        return PassageVerdict(action=GuardrailAction.PASS)
+
+    _patch_filter(monkeypatch, _route)
+    docs = [_doc("inject me"), _doc("good"), _doc("weak match")]
+    out = await core._filter_rag_results(docs, query_text="q", workspace_id=1)
+    assert [d["content"] for d in out] == ["good", "weak match"]
+
+
 async def test_mask_rewrites_doc_and_chunk_fields_separately(
     _enabled, monkeypatch
 ):

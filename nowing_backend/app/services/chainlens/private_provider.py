@@ -238,8 +238,13 @@ class PrivateProviderService:
                     workspace_id=workspace_id,
                 )
                 kept_chunks: list[PrivateProviderChunk] = []
+                demoted: list[PrivateProviderChunk] = []
                 for chunk, verdict in filtered:
                     if verdict.action is GuardrailAction.DROP:
+                        # Relevance-negative demotes to the tail instead of
+                        # dropping (same recall-safe rule as connector RAG).
+                        if "irrelevant" in verdict.reasons:
+                            demoted.append(chunk)
                         continue
                     if verdict.action is GuardrailAction.MASK:
                         # MASK without usable masked text can't pass through
@@ -248,7 +253,7 @@ class PrivateProviderService:
                             continue
                         chunk.content = verdict.masked_text
                     kept_chunks.append(chunk)
-                chunks = kept_chunks
+                chunks = kept_chunks + demoted
             except Exception:
                 logger.warning(
                     "[content_filter] private_provider filter failed — "

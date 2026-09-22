@@ -275,9 +275,11 @@ async def run_rag(args: argparse.Namespace) -> None:
     out = await core_mod._filter_rag_results(
         docs, query_text=query, workspace_id=1
     )
-    print(f"[rag] {len(docs)} docs -> {len(out)} kept")
+    # Relevance-negative docs are demoted to the tail, not removed
+    # (real-data finding: Jev over-drops VN text lacking literal geo terms).
+    print(f"[rag] {len(docs)} docs -> {len(out)} returned (tail = demoted)")
     for d in out:
-        print(f"  kept doc={d['document_id']} content={d['content'][:70]!r}")
+        print(f"  doc={d['document_id']} content={d['content'][:70]!r}")
 
 
 async def main() -> None:

@@ -426,8 +426,15 @@ async def _filter_rag_results(
             workspace_id=workspace_id,
         )
         kept: list[dict[str, Any]] = []
+        demoted: list[dict[str, Any]] = []
         for doc, verdict in filtered:
             if verdict.action is GuardrailAction.DROP:
+                # Relevance-negative demotes to the tail instead of
+                # dropping: live Jev verdicts over-drop VN content whose
+                # text lacks the query's literal geo terms (Story 39.4
+                # real-data finding). Injection/mask_failed still hard-drop.
+                if "irrelevant" in verdict.reasons:
+                    demoted.append(doc)
                 continue
             if verdict.action is GuardrailAction.MASK:
                 # MASK without usable masked text can't pass through
@@ -443,7 +450,7 @@ async def _filter_rag_results(
                             chunk["content"], context="lead_enrichment"
                         ).text
             kept.append(doc)
-        return kept
+        return kept + demoted
     except Exception:
         logger.warning(
             "[content_filter] rag filter failed — returning unfiltered "

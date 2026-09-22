@@ -93,11 +93,13 @@ context: []
 - `persist_user_turn`: check đặt SAU `turn_id` guard (turn_id rỗng → không tốn call), TRƯỚC insert — try/except riêng dù check_passage đã fail-open.
 - Verified: ruff clean; 142 targeted tests pass; full unit suite 6905 pass — chỉ còn 6 fails pre-existing không liên quan (phone_waterfall AsyncMock ×5, pat_fail_closed_static route drift), deselect-confirmed.
 - Outer fail-open `try/except` quanh `filter_passages` ở cả 3 batch call sites (core/private_provider/ingest) — per-item fail-open của service không cover lỗi ở gather level.
+- **Post-live-verify amendment (2026-09-22):** relevance-negative (`DROP` + `reasons=("irrelevant",)`) trên rag surfaces **demote xuống cuối kết quả** thay vì drop — live Jev run cho thấy over-drop VN content thiếu literal geo terms (6/18 real Q3 listings bị rel=0.04–0.09 dù đúng quận). Injection/mask_failed vẫn hard-drop. Service-level verdict không đổi — chỉ call-site handling ở `_filter_rag_results` + `private_provider.search`.
 - Pre-existing failures (không phải story này): `test_phone_waterfall_service.py` ×5 (`coroutine.scalar_one_or_none` — AsyncMock issue), `test_pat_fail_closed_static` (route allowlist drift `workspaces_routes.py`→`workspaces/core.py`).
 
 ## Spec Change Log
 
 - 2026-09-22 — spec review round 1 (6 fixes): `_serialize_chunk`→mutation in-place (`_chunk_to_dict` chỉ để đọc); MASK doc-dict phải mask từng field riêng, KHÔNG gán `masked_text` concatenated vào chunks[]; Design Notes mới: MockBackend noul=0.9 (test cần `_StubBackend`), Jev ingest additive trên `_redact_text` regex có sẵn, user-input advisory cost ~300ms+1 paid call/message, `_combined_rrf_search` 1 hook cover ~10 connector types + private_provider là entry riêng (không double-filter).
+- 2026-09-22 — post-live-verify amendment: relevance-negative trên rag surfaces đổi DROP → **demote-to-tail** (recall-safe; Jev over-drop VN geo text — 6/18 real Q3 listings rel≤0.09). Approved bằng directive "giải quyết luôn" sau khi xem live evidence. I/O matrix FILTER_IRRELEVANT row áp cho service-level verdict; call-site demote là surface policy.
 
 ## Review Triage Log
 

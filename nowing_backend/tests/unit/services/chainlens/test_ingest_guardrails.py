@@ -353,6 +353,37 @@ async def test_provider_flags_off_skips_filter(monkeypatch):
     assert [c.content for c in response.chunks] == ["raw"]
 
 
+async def test_provider_irrelevant_demotes_not_drops(_enabled, monkeypatch):
+    """Relevance-negative chunk sinks to the tail; injection still drops."""
+    fake_session = MagicMock()
+    workspace = SimpleNamespace(id=7, user_id=None)
+    chunks = [
+        _provider_chunk("inject this", 1),
+        _provider_chunk("good hit", 2),
+        _provider_chunk("weak match", 3),
+    ]
+    service = _stubbed_search_service(fake_session, chunks)
+
+    async def _fake_filter(items, **_kwargs):
+        def _route(_c, text):
+            if "inject" in text:
+                return _verdict(GuardrailAction.DROP)
+            if "weak" in text:
+                return PassageVerdict(
+                    action=GuardrailAction.DROP, reasons=("irrelevant",)
+                )
+            return _verdict(GuardrailAction.PASS)
+
+        return ([(c, _route(c, t)) for c, t in items], None)
+
+    monkeypatch.setattr(pp, "filter_passages", _fake_filter)
+    monkeypatch.setattr(pp, "embed_text", lambda _t: [0.1] * 8)
+    monkeypatch.setattr(pp, "set_request_tenant_context", AsyncMock())
+
+    response = await service.search(_make_request(), workspace)
+    assert [c.content for c in response.chunks] == ["good hit", "weak match"]
+
+
 async def test_provider_filter_raise_returns_chunks(_enabled, monkeypatch):
     """Fail-open: filter_passages raising must not 500 the search."""
     fake_session = MagicMock()
