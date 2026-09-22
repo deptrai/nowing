@@ -8,16 +8,27 @@ Runs each EvalCase through 4 backends:
 
 Usage:
     uv run scripts/jev_eval/runner.py                     # dry-run, no API keys needed
+    uv run scripts/jev_eval/runner.py --dry-run           # explicit mock-only run (CI harness check)
     uv run scripts/jev_eval/runner.py --live              # real Jev + LLM calls
     uv run scripts/jev_eval/runner.py --backend jev       # Jev only
     uv run scripts/jev_eval/runner.py --backend llm_json  # LLM baseline only
     uv run scripts/jev_eval/runner.py --backend decision_llm_json  # production backend contract
     uv run scripts/jev_eval/runner.py --task ENTITY_MATCH # one task only
     uv run scripts/jev_eval/runner.py --limit 10          # first N cases
+    uv run scripts/jev_eval/runner.py --backend jev --gate         # CI gate: exit 1 below floor
+    uv run scripts/jev_eval/runner.py --backend jev --gate --floor 0.95
+    uv run scripts/jev_eval/runner.py --backend jev --model jev-1.14.0
+
+Gate (--gate):
+    Exit 0 when every evaluated (task, backend) group reaches --floor
+    (default 0.90); exit 1 on any group below floor or zero evaluable
+    results. baseline.json deltas are informational — the floor is the
+    hard criterion. The gate applies to whatever ran, including mock.
 
 Output:
     results.jsonl — one row per (case, backend) with scores
-    summary.md — per-task accuracy / latency / cost table
+    summary.md — per-task accuracy / latency / cost table (+ ## Gate when --gate)
+    baseline.json — ratified per-task accuracies (checked in, informational)
 """
 
 from __future__ import annotations
@@ -30,6 +41,7 @@ import os
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +62,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 OUT_DIR = Path(__file__).resolve().parent
 RESULTS_FILE = OUT_DIR / "results.jsonl"
 SUMMARY_FILE = OUT_DIR / "summary.md"
+BASELINE_FILE = OUT_DIR / "baseline.json"
 
 # Jev pricing: $42 per billion input tokens, output free
 JEV_PRICE_PER_BTOK_INPUT = 42.0
@@ -68,6 +81,7 @@ class EvalResult:
     input_tokens: int | None = None
     output_tokens: int | None = None
     error: str | None = None
+    model: str | None = None  # model override used for this row (e.g. jev-1.14.0)
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +146,9 @@ def _build_jev_questions(case: EvalCase) -> dict[str, Any]:
     return q_objects
 
 
-async def run_jev(case: EvalCase, client: Any) -> EvalResult:
+async def run_jev(
+    case: EvalCase, client: Any, model: str | None = None
+) -> EvalResult:
     """Run a single case through Jev."""
     try:
         q_objects = _build_jev_questions(case)
@@ -147,11 +163,14 @@ async def run_jev(case: EvalCase, client: Any) -> EvalResult:
             correct=False,
             latency_ms=0.0,
             error="typesafe-sdk not installed: uv add typesafe-sdk",
+            model=model,
         )
 
     start = time.perf_counter()
     try:
-        response = await client.system_one(state=case.state, questions=q_objects)
+        response = await client.system_one(
+            state=case.state, questions=q_objects, model=model
+        )
     except Exception as e:
         return EvalResult(
             case_id=case.id,
@@ -163,6 +182,7 @@ async def run_jev(case: EvalCase, client: Any) -> EvalResult:
             correct=False,
             latency_ms=(time.perf_counter() - start) * 1000,
             error=f"{type(e).__name__}: {e}",
+            model=model,
         )
     latency = (time.perf_counter() - start) * 1000
 
@@ -188,6 +208,7 @@ async def run_jev(case: EvalCase, client: Any) -> EvalResult:
             correct=False,
             latency_ms=latency,
             error=f"question_id '{case.question_id}' not in response answers",
+            model=model,
         )
 
     # Extract the typed answer value — use explicit None checks (0.0 is falsy!)
@@ -221,6 +242,7 @@ async def run_jev(case: EvalCase, client: Any) -> EvalResult:
         latency_ms=latency,
         input_tokens=getattr(usage, "input_tokens", None) if usage else None,
         output_tokens=getattr(usage, "output_tokens", None) if usage else None,
+        model=model,
     )
 
 
@@ -434,9 +456,24 @@ async def run_decision_llm_json(case: EvalCase, model: str | None = None) -> Eva
 
 
 def run_mock(case: EvalCase) -> EvalResult:
-    """Return the expected answer with 0.9 confidence — validates harness."""
+    """Deterministic stub — picks the first option, ignores ground truth.
+
+    Validates the harness end-to-end (argparse → run → results → summary →
+    gate) without API keys. Accuracy is intentionally meaningless, so a
+    ``--gate`` dry-run correctly fails the floor — the floor applies to
+    real evals only.
+    """
     start = time.perf_counter()
-    predicted = case.expected
+    spec = get_questions_for_task(case.task)[case.question_id]
+    criteria = spec.get("criteria") or {}
+    if spec["type"] == "choice":
+        predicted = next(iter(criteria), None)
+    elif spec["type"] == "noul":
+        predicted = 1.0  # first criteria key is "true"
+    elif spec["type"] == "score":
+        predicted = 0.0  # first score level
+    else:
+        predicted = None
     latency = (time.perf_counter() - start) * 1000
     return EvalResult(
         case_id=case.id,
@@ -456,7 +493,10 @@ def run_mock(case: EvalCase) -> EvalResult:
 
 
 async def run_all(
-    backends: list[str], task_filter: str | None = None, limit: int | None = None
+    backends: list[str],
+    task_filter: str | None = None,
+    limit: int | None = None,
+    model: str | None = None,
 ) -> list[EvalResult]:
     cases = cases_by_task(task_filter) if task_filter else ALL_CASES
     if limit:
@@ -489,7 +529,7 @@ async def run_all(
         logger.info("[%d/%d] %s (%s)", i + 1, len(cases), case.id, case.task)
         for backend in backends:
             if backend == "jev" and jev_client:
-                r = await run_jev(case, jev_client)
+                r = await run_jev(case, jev_client, model=model)
             elif backend == "llm_json":
                 r = await run_llm_json(case)
             elif backend == "decision_llm_json":
@@ -510,6 +550,83 @@ async def run_all(
     return results
 
 
+def load_baseline(path: Path | None = None) -> dict[str, Any] | None:
+    """Load the ratified baseline.json; warn + None when missing/invalid."""
+    path = path or BASELINE_FILE
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning(
+            "baseline.json unavailable (%s) — floor still enforced, comparison skipped",
+            e,
+        )
+        return None
+    if not isinstance(data, dict):
+        logger.warning(
+            "baseline.json malformed (expected object, got %s) — floor still "
+            "enforced, comparison skipped",
+            type(data).__name__,
+        )
+        return None
+    if "tasks" in data and not isinstance(data["tasks"], dict):
+        logger.warning(
+            "baseline.json malformed ('tasks' is not an object) — floor still "
+            "enforced, comparison skipped"
+        )
+        return None
+    return data
+
+
+def evaluate_gate(
+    results: list[EvalResult],
+    floor: float,
+    baseline: dict[str, Any] | None,
+) -> tuple[bool, list[str]]:
+    """Pure gate evaluation — per (task, backend) accuracy vs ``floor``.
+
+    Returns ``(passed, report)``. Baseline deltas are informational only;
+    the hard fail criterion is the floor. ``error`` rows count as
+    incorrect; zero results or all-error rows → "no evaluable results".
+    """
+    report: list[str] = []
+    if baseline is None:
+        report.append(
+            "baseline.json missing/invalid — floor enforced, comparison skipped"
+        )
+
+    groups: dict[tuple[str, str], list[EvalResult]] = {}
+    for r in results:
+        groups.setdefault((r.task, r.backend), []).append(r)
+
+    if not groups or all(r.error for r in results):
+        report.append("GATE FAIL — no evaluable results")
+        return False, report
+
+    baseline_tasks = (baseline or {}).get("tasks") or {}
+    passed = True
+    n_failed = 0
+    for (task, backend), rs in sorted(groups.items()):
+        acc = sum(1 for r in rs if r.correct) / len(rs)
+        ok = acc >= floor
+        if not ok:
+            passed = False
+            n_failed += 1
+        delta = ""
+        if task in baseline_tasks:
+            d = acc - baseline_tasks[task]
+            delta = f" | baseline {baseline_tasks[task]:.1%} | delta {d:+.1%}"
+        verdict = "PASS" if ok else "FAIL"
+        report.append(f"{verdict} {task} [{backend}] {acc:.1%} (floor {floor:.0%}){delta}")
+
+    report.append(
+        "GATE PASS — all evaluated tasks ≥ floor"
+        if passed
+        else f"GATE FAIL — {n_failed} task(s) below floor"
+    )
+    return passed, report
+
+
 def write_results(results: list[EvalResult]) -> None:
     with open(RESULTS_FILE, "w") as f:
         for r in results:
@@ -517,8 +634,10 @@ def write_results(results: list[EvalResult]) -> None:
     logger.info("Wrote %d results to %s", len(results), RESULTS_FILE)
 
 
-def write_summary(results: list[EvalResult]) -> None:
-    """Aggregate per-task, per-backend stats."""
+def write_summary(
+    results: list[EvalResult], gate_report: list[str] | None = None
+) -> None:
+    """Aggregate per-task, per-backend stats (+ ## Gate when gated)."""
     from collections import defaultdict
 
     stats: dict[tuple[str, str], list[EvalResult]] = defaultdict(list)
@@ -528,7 +647,7 @@ def write_summary(results: list[EvalResult]) -> None:
     lines = [
         "# Jev Vietnamese eval — summary",
         "",
-        f"**Cases:** {len(results)} | **Date:** 2026-09-21",
+        f"**Cases:** {len(results)} | **Date:** {date.today().isoformat()}",
         "",
         "| Task | Backend | N | Accuracy | Median latency | P95 latency | Errors |",
         "|---|---|---|---|---|---|---|",
@@ -560,6 +679,14 @@ def write_summary(results: list[EvalResult]) -> None:
             f"- Estimated cost: ${cost:.4f} (${JEV_PRICE_PER_BTOK_INPUT}/Btok input, output free)",
         ]
 
+    if gate_report is not None:
+        lines += [
+            "",
+            "## Gate",
+            "",
+            *[f"- {line}" for line in gate_report],
+        ]
+
     lines += [
         "",
         "## Per-case detail",
@@ -576,15 +703,21 @@ def write_summary(results: list[EvalResult]) -> None:
     logger.info("Wrote summary to %s", SUMMARY_FILE)
 
 
-async def main() -> int:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument(
         "--live", action="store_true", help="Run Jev + LLM backends (requires API keys)"
     )
-    p.add_argument(
+    backend_group = p.add_mutually_exclusive_group()
+    backend_group.add_argument(
         "--backend",
         choices=["jev", "llm_json", "decision_llm_json", "mock", "all"],
         default=None,
+    )
+    backend_group.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Explicit alias for --backend mock — harness validation, no API keys",
     )
     p.add_argument(
         "--task",
@@ -597,19 +730,61 @@ async def main() -> int:
         default=None,
     )
     p.add_argument("--limit", type=int, default=None)
-    args = p.parse_args()
+    p.add_argument(
+        "--model",
+        default=None,
+        help="Jev model override — passed through to client.system_one(model=...)",
+    )
+    p.add_argument(
+        "--gate",
+        action="store_true",
+        help="Exit 1 when any evaluated (task, backend) accuracy < --floor",
+    )
+    p.add_argument(
+        "--floor",
+        type=float,
+        default=0.90,
+        help="Per-task accuracy floor for --gate (default: 0.90)",
+    )
+    args = p.parse_args(argv)
+    if args.dry_run and args.live:
+        p.error("--dry-run cannot be combined with --live")
+    if args.live and args.backend:
+        p.error("--live cannot be combined with --backend (use --backend all)")
+    return args
 
-    if args.backend and args.backend != "all":
+
+async def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+
+    if args.dry_run:
+        backends = ["mock"]
+    elif args.backend and args.backend != "all":
         backends = [args.backend]
     elif args.backend == "all" or args.live:
         backends = ["jev", "llm_json", "decision_llm_json", "mock"]
     else:
         backends = ["mock"]  # default: harness validation only
 
-    results = await run_all(backends, task_filter=args.task, limit=args.limit)
+    if args.model:
+        logger.info("Model override: %s (applies to Jev backend)", args.model)
+
+    results = await run_all(
+        backends, task_filter=args.task, limit=args.limit, model=args.model
+    )
     write_results(results)
-    write_summary(results)
-    return 0
+
+    gate_report: list[str] | None = None
+    exit_code = 0
+    if args.gate:
+        baseline = load_baseline()
+        passed, gate_report = evaluate_gate(results, args.floor, baseline)
+        for line in gate_report:
+            logger.info("%s", line)
+        exit_code = 0 if passed else 1
+
+    write_summary(results, gate_report=gate_report)
+    return exit_code
 
 
 if __name__ == "__main__":

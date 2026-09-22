@@ -11,7 +11,7 @@ Ground truth labels are hand-assigned based on the Vietnamese text semantics.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal
 
 TaskType = Literal["SUBAGENT_ROUTING", "ENTITY_MATCH", "CONTENT_FILTER", "INTENT_CLASSIFY"]
