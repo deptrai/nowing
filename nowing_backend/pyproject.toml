@@ -230,6 +230,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "app/zero_publication.py" = ["T201"]
 "tests/integration/document_upload/conftest.py" = ["T201"]
 "scripts/verify_entity_resolution_39_3.py" = ["T201"]
+"scripts/verify_content_guardrails_39_4.py" = ["T201"]
 
 [tool.ruff.format]
 # Use double quotes for strings.
