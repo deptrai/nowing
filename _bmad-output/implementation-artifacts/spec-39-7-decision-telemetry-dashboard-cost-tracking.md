@@ -2,7 +2,7 @@
 title: 'Story 39.7 — Decision Telemetry Dashboard + Cost Tracking'
 type: 'feature'
 created: '2026-09-22'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '87bed3a4cdb1210bfc189549dc3ab66c6a86d1e0'
