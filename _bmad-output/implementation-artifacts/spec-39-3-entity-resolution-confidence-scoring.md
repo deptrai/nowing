@@ -139,3 +139,16 @@ Review 2026-09-22 — 3 layers (blind-hunter, edge-case-hunter, verification-gap
 **Commands:**
 - `cd nowing_backend && ruff check app/services/entity_resolution app/services/decision/questions app/services/bds_aggregator app/services/corporate_verification_service.py tests/unit/services/entity_resolution tests/unit/services/bds_aggregator` — expected: clean
 - `cd nowing_backend && uv run pytest tests/unit/services/entity_resolution tests/unit/services/bds_aggregator tests/unit/services/decision tests/unit/services/test_corporate_verification.py -m unit -q` — expected: all pass
+
+## Live Verification (2026-09-23, real `api.typesafe.ai` + real data)
+
+`TYPESAFE_API_KEY` từ XActions env (không commit); `DECISION_BACKEND=jev DECISION_ENABLED=true DECISION_ENTITY_ENABLED=true`.
+
+| Mode | Command | Result |
+|---|---|---|
+| `merge` | `--mode merge` | 1 Jev fanout call (1080ms, 592 in) → conf=1.0 merge cross-post clone đúng, 3→2 canonicals |
+| `corp` | `--mode corp` | Masothue live + 4 Jev pairwise (740–794ms): `BĐS Vinhomes Đan Phượng` conf=0.79→**auto_merge**; Vinhomes/Công ty Vinhomes/Đại Phát → `review` |
+| `bds` | `--mode bds --district "Quận 7" --max-items 12 --max-pages 1` | Scrape thật 36 listings (batdongsan/chotot/muaban) → 27 canonicals → 6 candidate pairs → 5 Jev fanout calls (296–896ms): 1 gate-reject conf=0.46, 4 no_match conf 0.93–1.0 → 27→27, không false merge |
+| `_jev_verdict` cache | `verify_company('Bất động sản Vinhomes Đan Phượng')` không force_refresh | `is_verified=True, manual=False, cached=True` — verdict tồn tại qua cache, flip-flop fix hoạt động live |
+
+Corp rescore/fan-out không ghi `token_usage` (no `user_id` trong context — `NOT NULL`, đúng design log-only).
