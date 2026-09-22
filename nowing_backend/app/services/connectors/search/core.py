@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+import app.config.decision as decision_config
 from app.db import (
     NATIVE_TO_LEGACY_DOCTYPE,
     Chunk,
@@ -21,6 +22,8 @@ from app.db import (
 )
 from app.retriever.chunks_hybrid_search import ChunksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
+from app.services.content_guardrails import GuardrailAction, filter_passages
+from app.services.pii.redact import redact_pii
 from app.utils.perf import get_perf_logger
 
 logger = logging.getLogger(__name__)
@@ -372,6 +375,10 @@ class ConnectorSearchCore:
                     result["chunks"] = doc_data[did]["chunks"]
                 combined_results.append(result)
 
+        combined_results = await _filter_rag_results(
+            combined_results, query_text=query_text, workspace_id=workspace_id
+        )
+
         perf.info(
             "[connector_svc] _combined_rrf_search TOTAL in %.3fs results=%d type=%s space=%d",
             time.perf_counter() - t0,
@@ -387,3 +394,60 @@ class ConnectorSearchCore:
         if len(text) <= limit:
             return text
         return text[:limit] + "..."
+
+
+async def _filter_rag_results(
+    results: list[dict[str, Any]],
+    *,
+    query_text: str,
+    workspace_id: int,
+) -> list[dict[str, Any]]:
+    """Jev content guardrails on merged RAG docs (Story 39.4).
+
+    One wire point covers every connector search type — they all funnel
+    through ``_combined_rrf_search``. Flag-off returns input untouched
+    before any pair list is built; per-doc failures pass through
+    unguarded. ``MASK`` rewrites ``content`` and each nested
+    ``chunks[].content`` field-by-field (the masked concatenation must
+    not be copied into every chunk).
+    """
+    if not results or not (
+        decision_config.decision_enabled()
+        and decision_config.decision_task_enabled("filter")
+    ):
+        return results
+
+    try:
+        pairs = [(doc, str(doc.get("content") or "")) for doc in results]
+        filtered, _stats = await filter_passages(
+            pairs,
+            query=query_text,
+            surface="rag",
+            workspace_id=workspace_id,
+        )
+        kept: list[dict[str, Any]] = []
+        for doc, verdict in filtered:
+            if verdict.action is GuardrailAction.DROP:
+                continue
+            if verdict.action is GuardrailAction.MASK:
+                # MASK without usable masked text can't pass through
+                # unmasked — drop the doc (mask_failed parity).
+                if not verdict.masked_text:
+                    continue
+                doc["content"] = verdict.masked_text
+                for chunk in doc.get("chunks") or []:
+                    if isinstance(chunk, dict) and isinstance(
+                        chunk.get("content"), str
+                    ):
+                        chunk["content"] = redact_pii(
+                            chunk["content"], context="lead_enrichment"
+                        ).text
+            kept.append(doc)
+        return kept
+    except Exception:
+        logger.warning(
+            "[content_filter] rag filter failed — returning unfiltered "
+            "results",
+            exc_info=True,
+        )
+        return results

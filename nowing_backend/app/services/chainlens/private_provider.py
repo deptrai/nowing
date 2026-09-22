@@ -14,6 +14,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+import app.config.decision as decision_config
 from app.db import (
     NATIVE_TO_LEGACY_DOCTYPE,
     Document,
@@ -28,6 +29,7 @@ from app.services.chainlens.schemas import (
     PrivateProviderChunk,
     PrivateProviderChunkMetadata,
 )
+from app.services.content_guardrails import GuardrailAction, filter_passages
 from app.services.memory.search import MemoryHybridSearch, ScoredMemory
 from app.services.token_tracking_service import UsageType, record_token_usage
 from app.tenant_context import set_request_tenant_context
@@ -216,6 +218,43 @@ class PrivateProviderService:
         # Respect caller's topK while guaranteeing a stable shape.
         if len(chunks) > request.topK:
             chunks = chunks[: request.topK]
+
+        # Jev content guardrails (Story 39.4) — separate entry point from
+        # connectors/search, so this is not a second pass over already-
+        # filtered content. Flag-off is a no-op before any work happens.
+        # NOTE: no session/user_id is forwarded — filter_passages fans out
+        # to FILTER_CONCURRENCY concurrent decide() calls, and concurrent
+        # session.execute on one AsyncSession violates asyncpg's
+        # single-connection rule. Decision telemetry here is log-only.
+        if decision_config.decision_enabled() and decision_config.decision_task_enabled(
+            "filter"
+        ):
+            try:
+                pairs = [(chunk, chunk.content) for chunk in chunks]
+                filtered, _stats = await filter_passages(
+                    pairs,
+                    query=request.query,
+                    surface="rag",
+                    workspace_id=workspace_id,
+                )
+                kept_chunks: list[PrivateProviderChunk] = []
+                for chunk, verdict in filtered:
+                    if verdict.action is GuardrailAction.DROP:
+                        continue
+                    if verdict.action is GuardrailAction.MASK:
+                        # MASK without usable masked text can't pass through
+                        # unmasked — drop the chunk (mask_failed parity).
+                        if not verdict.masked_text:
+                            continue
+                        chunk.content = verdict.masked_text
+                    kept_chunks.append(chunk)
+                chunks = kept_chunks
+            except Exception:
+                logger.warning(
+                    "[content_filter] private_provider filter failed — "
+                    "returning unfiltered chunks",
+                    exc_info=True,
+                )
 
         await self._record_usage(
             workspace_id=workspace_id,

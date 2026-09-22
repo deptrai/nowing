@@ -66,6 +66,7 @@ from app.db import (
     TokenUsage,
     shielded_async_session,
 )
+from app.services.content_guardrails import check_passage
 from app.services.token_tracking_service import (
     TurnTokenAccumulator,
 )
@@ -207,6 +208,19 @@ async def persist_user_turn(
             chat_id,
         )
         return None
+
+    # Advisory content-guardrail flag (Story 39.4): the Jev verdict is
+    # logged via [content_filter] and nothing else — the user message is
+    # never blocked, dropped, or masked here. check_passage already
+    # fail-opens; the extra guard keeps a guardrail bug from ever
+    # breaking persistence.
+    try:
+        await check_passage(user_query, surface="user_input")
+    except Exception:
+        logger.warning(
+            "[content_filter] user_input check raised — continuing",
+            exc_info=True,
+        )
 
     t0 = time.perf_counter()
     outcome = "failed"

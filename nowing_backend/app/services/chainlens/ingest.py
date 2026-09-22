@@ -13,6 +13,7 @@ import httpx
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.config.decision as decision_config
 from app.config import config
 from app.connectors.exceptions import (
     ConnectorAPIError,
@@ -21,6 +22,11 @@ from app.connectors.exceptions import (
     ConnectorTimeoutError,
 )
 from app.observability import metrics
+from app.services.content_guardrails import (
+    MAX_INGEST_FILTER_CALLS,
+    GuardrailAction,
+    filter_passages,
+)
 from app.utils.async_retry import build_retry
 
 from .auth import ChainLensServiceAuth
@@ -45,6 +51,88 @@ def _chunk_to_dict(chunk: Any) -> dict[str, Any]:
     if isinstance(chunk, BaseModel):
         return chunk.model_dump()
     return dict(chunk)
+
+
+def _chunk_text(chunk: Any) -> str:
+    """Read the text a ``Chunk`` model or dict carries."""
+    if isinstance(chunk, BaseModel):
+        return str(getattr(chunk, "content", "") or "")
+    if isinstance(chunk, dict):
+        return str(chunk.get("content") or "")
+    return ""
+
+
+def _set_chunk_content(chunk: Any, text: str) -> bool:
+    """Rewrite a chunk's ``content`` field in place; False if immutable."""
+    try:
+        if isinstance(chunk, BaseModel):
+            chunk.content = text  # type: ignore[attr-defined]
+        elif isinstance(chunk, dict):
+            chunk["content"] = text
+        else:
+            return False
+    except Exception:
+        return False
+    return True
+
+
+async def _guardrail_filter_chunks(
+    chunks: Sequence[Any],
+    *,
+    scraper_id: str,
+    workspace_id: int,
+) -> list[Any]:
+    """Jev content guardrails before storage (Story 39.4).
+
+    Additive on top of the serializer's fail-closed regex mask: Jev adds
+    prompt-injection DROP and semantic-PII MASK for what regex misses.
+    Flag-off returns input untouched; per-chunk failures pass through.
+    A sensitive chunk whose content cannot be rewritten is dropped —
+    storing it unmasked is the worst outcome.
+
+    No session/user_id is forwarded: filter_passages fans out to
+    FILTER_CONCURRENCY concurrent decide() calls, and concurrent
+    session.execute on one AsyncSession violates asyncpg's
+    single-connection rule. Decision telemetry here is log-only.
+    """
+    if not chunks or not (
+        decision_config.decision_enabled()
+        and decision_config.decision_task_enabled("filter")
+    ):
+        return list(chunks)
+
+    pairs = [(chunk, _chunk_text(chunk)) for chunk in chunks]
+    try:
+        filtered, _stats = await filter_passages(
+            pairs,
+            query=f"scraped {scraper_id} content",
+            surface="ingest",
+            max_calls=MAX_INGEST_FILTER_CALLS,
+            workspace_id=workspace_id,
+        )
+        kept: list[Any] = []
+        for chunk, verdict in filtered:
+            if verdict.action is GuardrailAction.DROP:
+                continue
+            # MASK without usable masked text, or a chunk that cannot be
+            # rewritten — drop rather than store sensitive content raw.
+            if verdict.action is GuardrailAction.MASK and (
+                not verdict.masked_text
+                or not _set_chunk_content(chunk, verdict.masked_text)
+            ):
+                logger.warning(
+                    "[content_filter] ingest chunk content immutable — "
+                    "dropping sensitive chunk"
+                )
+                continue
+            kept.append(chunk)
+        return kept
+    except Exception:
+        logger.warning(
+            "[content_filter] ingest filter failed — ingesting unfiltered",
+            exc_info=True,
+        )
+        return list(chunks)
 
 
 def _iter_batches(items: Sequence[Any], batch_size: int) -> list[list[Any]]:
@@ -299,6 +387,19 @@ class NowingIngestService:
                 ingest_job_id=None,
                 status="service_auth_unavailable",
                 error="CHAINLENS_SERVICE_TOKEN not configured",
+            )
+
+        # Jev content guardrails (Story 39.4) — mask/drop before storage.
+        chunks = await _guardrail_filter_chunks(
+            chunks,
+            scraper_id=scraper_id,
+            workspace_id=workspace_id,
+        )
+        if not chunks:
+            return IngestResult(
+                ingest_job_id=None,
+                status="noop",
+                error="no chunks to ingest",
             )
 
         batch_size = _positive_int(
