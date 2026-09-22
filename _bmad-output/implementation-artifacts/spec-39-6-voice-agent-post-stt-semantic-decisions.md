@@ -2,7 +2,7 @@
 title: '39.6 Voice Agent Post-STT Semantic Decisions'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-review'
+status: 'done'
 baseline_commit: '6e12c960ea4e8204c041e6246a097b32da84bfce'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -134,4 +134,11 @@ context: []
 
 **Manual checks (nếu chạy được live):**
 - `DECISION_BACKEND=jev DECISION_VOICE_ENABLED=true TYPESAFE_API_KEY=... uv run python` — `evaluate_voice_turn("cho tôi nói chuyện với người thật")` → `transfer=True`.
+
+**Live verify 2026-09-22** (real `api.typesafe.ai`, `DECISION_BACKEND=jev`, key từ XActions env):
+- `"cho tôi nói chuyện với người thật"` → `transfer=True`, `frustration=1.01`, **765ms**
+- `"nhà này giá bao nhiêu vậy"` → respond, `frustration=0.0`, **313ms**
+- `"ừ"` → `suppress=True` qua LOCAL_BACKCHANNELS — **0 Jev call**
+- Cold-start call (TLS handshake) timeout → fail-open respond, đúng design
+- **Calibration finding:** batched 3-question `voice_turn` calls = 313–765ms thật — pin 0.45s drop ~30-50% calls (kể cả transfer request quan trọng nhất). `VOICE_DECIDE_TIMEOUT_SECONDS` giờ env-tunable (default 0.45 giữ AC ≤500ms); filler watchdog 80ms mask perceived wait nên ops có thể nới 0.8-1.0s.
 </content>

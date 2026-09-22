@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -44,7 +45,12 @@ VOICE_TRANSFER_MIN_CONFIDENCE = 0.7
 # acceptance bound. The fallback leg is disabled for voice
 # (``use_fallback=False``) because it would double the worst case to
 # ~0.9s; a missed decision is preferable to a stalled turn.
-VOICE_DECIDE_TIMEOUT_SECONDS = 0.45
+# Env-tunable: real Jev 3-question batched calls observed at
+# 313-765ms (spec-39-6 live verify), so ops may raise this — the 80ms
+# filler watchdog masks the wait for the caller anyway.
+VOICE_DECIDE_TIMEOUT_SECONDS = float(
+    os.environ.get("VOICE_DECIDE_TIMEOUT_SECONDS", "0.45")
+)
 
 # Below this stripped length a transcript is STT noise/debris — not
 # worth a paid call, the turn responds per existing behavior. Note the
