@@ -211,36 +211,21 @@ async def section_incorporations() -> list[dict]:
 async def section_scan_e2e(redis_client, tmp_ws_id: int, inc_items: list[dict]) -> list[int]:
     print("\n== F. scan happy path (temp workspace) ==")
     sig_ids: list[int] = []
-    # Env drift workaround: .env.local pins nomic-embed-text (768) but this DB's
-    # memories.embedding column was migrated under a 384-dim model. Align BOTH
-    # the declared column dim (pgvector validates client-side) and the zero-vector
-    # size with the real DB column so the persist path can complete.
-    from app.config import config
-    from app.models.memory import Memory
-
-    emb_col = Memory.__table__.c.embedding.type
-    orig_col_dim, orig_dim = emb_col.dim, config.embedding_model_instance.dimension
-    emb_col.dim = 384
-    config.embedding_model_instance._dimension = 384
-    try:
-        async with async_session_maker() as s:
-            r = await scan_workspace_high_intent(
-                s, redis_client, workspace_id=tmp_ws_id, new_incorporations=inc_items
+    async with async_session_maker() as s:
+        r = await scan_workspace_high_intent(
+            s, redis_client, workspace_id=tmp_ws_id, new_incorporations=inc_items
+        )
+        report("scan ok", r.get("status") == "ok", str(r))
+        sigs = (
+            await s.execute(
+                select(SignalEvent).where(SignalEvent.workspace_id == tmp_ws_id)
             )
-            report("scan ok", r.get("status") == "ok", str(r))
-            sigs = (
-                await s.execute(
-                    select(SignalEvent).where(SignalEvent.workspace_id == tmp_ws_id)
-                )
-            ).scalars().all()
-            sig_ids.extend(x.id for x in sigs)
-            ok = len(sigs) == len(inc_items) and all(
-                x.signal_type == "incorporation" and (x.confidence or 0) >= 75 for x in sigs
-            )
-            report("incorporation SignalEvents ≥75", ok, f"created={len(sigs)}")
-    finally:
-        emb_col.dim = orig_col_dim
-        config.embedding_model_instance._dimension = orig_dim
+        ).scalars().all()
+        sig_ids.extend(x.id for x in sigs)
+        ok = len(sigs) == len(inc_items) and all(
+            x.signal_type == "incorporation" and (x.confidence or 0) >= 75 for x in sigs
+        )
+        report("incorporation SignalEvents ≥75", ok, f"created={len(sigs)}")
     return sig_ids
 
 

@@ -1886,5 +1886,5 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   summary: Consumer lag/DLQ-depth không có metric — backlog growth trên stream + intent_dlq silent; masothue/DKKD parse fragility (listing markup thay đổi → 0 items, chỉ warn-log).
   evidence: review findings 2026-09-22; nếu vận hành cần, thêm gauge metric cho xlen stream + dlq depth vào telemetry path hiện có.
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
-  summary: Local env drift — `EMBEDDING_MODEL` resolve 768-dim (nomic) nhưng `memories.embedding` column 384-dim (migrated trước khi .env.local đổi) → mọi signal/memory write fail ở local. Cần align model config hoặc re-migrate column.
-  evidence: live verify 37.1 (2026-09-22) — `signal_events=0` trên DB local; insert `memories` raise "expected 384 dimensions, not 768"; prod env cần kiểm chứng tương tự trước khi radar chạy thật.
+  summary: RESOLVED local — env drift `EMBEDDING_MODEL` 768 vs cột 384 đã sửa bằng `scripts/fix_embedding_dim_drift.py` (alter 384→768, re-embed 1453 vectors qua ollama, recreate HNSW). Script idempotent — dùng lại cho dev DB khác bị drift. **Prod vẫn cần kiểm chứng**: check `pg_attribute.atttypmod` của memories/documents/chunks/social_posts khớp dim model đang pin.
+  evidence: live verify 37.1 (2026-09-22) — trước fix `signal_events=0`; sau fix 17/17 pass, SignalEvents persist thật.
