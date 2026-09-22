@@ -309,6 +309,18 @@ class SequencerInboundMixin:
                     email=email or contact.email,
                 )
 
+            # Story 37.3 / AC-1: record positive meeting intent on the inbound
+            # event so downstream auto-reply (MeetingBookingService) can trace
+            # which messages triggered slot proposals.
+            meeting_intent = False
+            if not is_opt_out and text:
+                try:
+                    from app.services.meeting_booking import detect_meeting_intent
+
+                    meeting_intent = detect_meeting_intent(text)
+                except Exception:  # detection best-effort; never break flow
+                    logger.debug("Meeting intent detection failed", exc_info=True)
+
             # Story 37.2 / AC-2: resolve the honorific context so downstream
             # auto-reply generation addresses the prospect correctly.
             honorific_ctx: dict[str, str] = {}
@@ -355,6 +367,7 @@ class SequencerInboundMixin:
                         if honorific_ctx
                         else {}
                     ),
+                    **({"meeting_intent": True} if meeting_intent else {}),
                 },
             )
             session.add(event)

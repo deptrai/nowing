@@ -290,6 +290,7 @@ LIVE_CONNECTOR_TYPES: frozenset[SearchSourceConnectorType] = frozenset(
         SearchSourceConnectorType.CLICKUP_CONNECTOR,
         SearchSourceConnectorType.GOOGLE_CALENDAR_CONNECTOR,
         SearchSourceConnectorType.COMPOSIO_GOOGLE_CALENDAR_CONNECTOR,
+        SearchSourceConnectorType.LARK_CALENDAR_CONNECTOR,
         SearchSourceConnectorType.AIRTABLE_CONNECTOR,
         SearchSourceConnectorType.GOOGLE_GMAIL_CONNECTOR,
         SearchSourceConnectorType.COMPOSIO_GMAIL_CONNECTOR,

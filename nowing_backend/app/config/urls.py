@@ -11,6 +11,10 @@ BACKEND_URL = (
     os.getenv("BACKEND_URL") or NOWING_PUBLIC_URL or "http://localhost:8000"
 )
 
+# Base URL for the public self-serve meeting booking page (Story 37.3 / AC-5).
+# Falls back to the web frontend origin when unset.
+MEETING_BOOKING_BASE_URL = os.getenv("MEETING_BOOKING_BASE_URL")
 
 
-__all__ = ['BACKEND_URL']
+
+__all__ = ['BACKEND_URL', 'MEETING_BOOKING_BASE_URL']

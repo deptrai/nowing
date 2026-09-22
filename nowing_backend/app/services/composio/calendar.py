@@ -90,6 +90,7 @@ class ComposioCalendarMixin(ComposioClientMixin):
         location: str | None = None,
         attendees: list[str] | None = None,
         calendar_id: str = "primary",
+        create_meeting_room: bool | None = None,
     ) -> tuple[str | None, str | None, str | None]:
         """Create a Google Calendar event via GOOGLECALENDAR_CREATE_EVENT."""
         try:
@@ -101,6 +102,8 @@ class ComposioCalendarMixin(ComposioClientMixin):
             }
             if timezone:
                 params["timezone"] = timezone
+            if create_meeting_room:
+                params["create_meeting_room"] = True
             if description:
                 params["description"] = description
             if location:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
@@ -32,6 +33,10 @@ from app.schemas.lead_pipeline import (
     LeadPipelineStageRead,
     LeadStageTransitionRequest,
     LeadStageTransitionResponse,
+    MeetingBookRequest,
+    MeetingBookResponse,
+    MeetingSlotProposal,
+    MeetingSlotsResponse,
     MemberLeadCapacityUpdateRequest,
     MemberSpendCapUpdateRequest,
 )
@@ -53,8 +58,9 @@ DEFAULT_STAGES = [
     {"name": "Mới săn", "slug": "new", "position": 0, "color": "#3B82F6"},
     {"name": "Đang tiếp cận", "slug": "approaching", "position": 1, "color": "#EAB308"},
     {"name": "Tiềm năng", "slug": "qualified", "position": 2, "color": "#8B5CF6"},
-    {"name": "Đã chốt", "slug": "won", "position": 3, "color": "#10B981"},
-    {"name": "Hủy / Không nhu cầu", "slug": "lost", "position": 4, "color": "#EF4444"},
+    {"name": "Đã đặt lịch hẹn", "slug": "meeting_scheduled", "position": 3, "color": "#06B6D4"},
+    {"name": "Đã chốt", "slug": "won", "position": 4, "color": "#10B981"},
+    {"name": "Hủy / Không nhu cầu", "slug": "lost", "position": 5, "color": "#EF4444"},
 ]
 
 
@@ -603,3 +609,145 @@ async def update_member_lead_capacity(
     membership.is_accepting_leads = payload.is_accepting_leads
     membership.lead_capacity = payload.lead_capacity
     await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Story 37.3: Smart Meeting Booking — CRM-side availability & manual booking.
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/{lead_id}/meeting/slots",
+    response_model=MeetingSlotsResponse,
+)
+async def list_meeting_slots(
+    workspace_id: int,
+    lead_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    redis_client: Any = Depends(get_redis_client),
+) -> MeetingSlotsResponse:
+    """Return free meeting slots (ICT working hours) for the workspace calendar."""
+    await _set_lead_tenant_context(session, workspace_id, membership)
+    await _require_lead_visible(session, workspace_id, lead_id, membership)
+
+    from app.services.meeting_booking import (
+        CalendarAvailabilityService,
+        MeetingBookingService,
+        select_proposals,
+    )
+
+    availability = CalendarAvailabilityService(session)
+    free, credentials = await availability.compute_availability(workspace_id)
+    if not credentials:
+        return MeetingSlotsResponse(slots=[], provider=None)
+    owner_id = MeetingBookingService.pick_owner_credential(
+        credentials, str(auth.user.id) if auth.user else None
+    ).user_id
+    proposals = select_proposals(free, count=10)
+
+    # Hide slots already soft-locked by an in-flight booking conversation.
+    available: list[Any] = []
+    for slot in proposals:
+        key = MeetingBookingService.slot_lock_key(owner_id, slot)
+        try:
+            if await redis_client.exists(key):
+                continue
+        except Exception:
+            continue  # fail closed: don't advertise a possibly-locked slot
+        available.append(slot)
+
+    return MeetingSlotsResponse(
+        slots=[
+            MeetingSlotProposal(
+                start=s.start, end=s.end, label=s.label_ict()
+            )
+            for s in available
+        ],
+        provider=credentials[0].provider,
+    )
+
+
+@router.post(
+    "/{lead_id}/meeting/book",
+    response_model=MeetingBookResponse,
+)
+async def book_meeting_for_lead(
+    workspace_id: int,
+    lead_id: UUID,
+    payload: MeetingBookRequest,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+    membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+) -> MeetingBookResponse:
+    """Book a concrete slot on the workspace calendar and sync the CRM lead.
+
+    The slot is soft-locked in Redis (AD-117) before the calendar event is
+    created; a competing conversation holding the lock yields a 409.
+    """
+    await _set_lead_tenant_context(session, workspace_id, membership)
+    lead = await _require_lead_visible(
+        session, workspace_id, lead_id, membership
+    )
+
+    from app.services.meeting_booking import (
+        MEETING_SCHEDULED_STATUS,
+        CalendarSlot,
+        MeetingBookingService,
+    )
+
+    service = MeetingBookingService(session)
+    credentials = await service.availability.resolve_credentials(workspace_id)
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No calendar connector configured for this workspace",
+        )
+    # Same owner-resolution rule as the auto-reply flow so both sides share
+    # one lock namespace (AD-117).
+    owner_id = MeetingBookingService.pick_owner_credential(
+        credentials, str(auth.user.id) if auth.user else None
+    ).user_id
+
+    slot = CalendarSlot(
+        start=payload.start,
+        end=payload.start + timedelta(minutes=payload.duration_minutes),
+    )
+
+    locked, lock_token = await service.soft_lock_slots(owner_id, [slot])
+    if not locked:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This time slot is already locked by another booking",
+        )
+
+    attendee_email = payload.attendee_email
+    if attendee_email is None:
+        attendee_email = await service._resolve_attendee_email(lead)
+
+    result = await service.book_slot(
+        workspace_id,
+        owner_id,
+        slot,
+        lead=lead,
+        attendee_email=attendee_email,
+        summary=payload.summary,
+        credentials=credentials,
+        lock_token=lock_token,
+    )
+    # Release on success too - the real calendar event now guards the slot.
+    await service.release_slot_locks(owner_id, [slot], lock_token)
+    if not result.booked:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to create calendar event: {result.reason}",
+        )
+
+    await session.commit()
+    return MeetingBookResponse(
+        booked=True,
+        event_id=result.event_id,
+        meeting_link=result.meeting_link,
+        lead_status=MEETING_SCHEDULED_STATUS,
+    )

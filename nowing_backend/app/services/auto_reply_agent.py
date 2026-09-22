@@ -573,6 +573,80 @@ class AutoReplyAgent:
             logger.exception("Failed to get or create lead for auto-reply")
             return None
 
+    async def _handle_meeting_turn(
+        self,
+        *,
+        session: AsyncSession | None,
+        workspace_id: int,
+        channel: str,
+        sender_id: str,
+        text: str,
+        thread_id: str,
+        user_id: UUID | None,
+    ) -> Any | None:
+        """Story 37.3: advance the meeting-booking state machine.
+
+        Returns a ``MeetingTurnResult`` when the message is part of the
+        booking conversation (slot proposal / confirmation / rejection /
+        escalation), else ``None`` so the caller falls through to normal RAG
+        answering.
+        """
+        if session is None:
+            return None
+        try:
+            from app.services.meeting_booking import MeetingBookingService
+
+            async def _lead_getter() -> Any | None:
+                return await self._get_or_create_lead(
+                    session, workspace_id, sender_id, channel
+                )
+
+            service = MeetingBookingService(session)
+            return await service.handle_turn(
+                workspace_id,
+                thread_id,
+                text,
+                user_id=str(user_id) if user_id else None,
+                lead_getter=_lead_getter,
+            )
+        except Exception:  # meeting flow must never break auto-reply
+            logger.warning("Meeting booking turn failed", exc_info=True)
+            return None
+
+    async def _maybe_alert_hot_lead(
+        self,
+        *,
+        session: AsyncSession,
+        workspace_id: int,
+        channel: str,
+        sender_id: str,
+        thread_id: str,
+        intent_reason: str,
+        message_content: str,
+    ) -> None:
+        """Fire the hot-lead Telegram alert; failures never break replies."""
+        try:
+            lead = await self._get_or_create_lead(
+                session, workspace_id, sender_id, channel
+            )
+            recipient_chat_id = None
+            workspace = await session.get(Workspace, workspace_id)
+            if workspace is not None:
+                recipient_chat_id = workspace.auto_reply_recipient_chat_id
+            await self._dispatch_hot_lead_alert(
+                session=session,
+                workspace_id=workspace_id,
+                channel=channel,
+                sender_id=sender_id,
+                thread_id=thread_id,
+                intent_reason=intent_reason,
+                message_content=message_content,
+                lead=lead,
+                recipient_chat_id=recipient_chat_id,
+            )
+        except Exception:
+            logger.warning("Hot-lead alert dispatch failed", exc_info=True)
+
     async def generate_reply(
         self,
         workspace_id: int,
@@ -596,6 +670,39 @@ class AutoReplyAgent:
 
         # 2. Evaluate Buying Intent
         intent_score, intent_reason, is_hot = self.classifier.evaluate_intent(text)
+
+        # 2b. Story 37.3: Smart Meeting Booking — propose/confirm soft-locked
+        # calendar slots before falling back to generic RAG answering.
+        meeting_result = await self._handle_meeting_turn(
+            session=session,
+            workspace_id=workspace_id,
+            channel=channel,
+            sender_id=sender_id,
+            text=text,
+            thread_id=thread_id,
+            user_id=user_id,
+        )
+        if meeting_result is not None:
+            # Preserve the hot-lead alert for meeting-intent messages — the
+            # early return above would otherwise skip step 7 entirely.
+            if is_hot and thread_id and session is not None:
+                await self._maybe_alert_hot_lead(
+                    session=session,
+                    workspace_id=workspace_id,
+                    channel=channel,
+                    sender_id=sender_id,
+                    thread_id=thread_id,
+                    intent_reason=intent_reason,
+                    message_content=text,
+                )
+            return AutoReplyResult(
+                reply_text=meeting_result.reply_text,
+                is_answered=True,
+                is_fallback=False,
+                intent_score=intent_score,
+                is_hot_intent=is_hot or meeting_result.booked,
+                intent_reason=meeting_result.reason or intent_reason,
+            )
 
         # 3. Load workspace settings and resolve fallback.
         collection_ids: list[int] | None = None
@@ -645,13 +752,7 @@ class AutoReplyAgent:
 
         # 7. Hot lead alert (after we have a reply so the alert can include the prospect's message)
         if is_hot and thread_id and session is not None:
-            lead = await self._get_or_create_lead(session, workspace_id, sender_id, channel)
-            recipient_chat_id = None
-            if session is not None:
-                workspace = await session.get(Workspace, workspace_id)
-                if workspace is not None:
-                    recipient_chat_id = workspace.auto_reply_recipient_chat_id
-            await self._dispatch_hot_lead_alert(
+            await self._maybe_alert_hot_lead(
                 session=session,
                 workspace_id=workspace_id,
                 channel=channel,
@@ -659,8 +760,6 @@ class AutoReplyAgent:
                 thread_id=thread_id,
                 intent_reason=intent_reason,
                 message_content=text,
-                lead=lead,
-                recipient_chat_id=recipient_chat_id,
             )
 
         return AutoReplyResult(
