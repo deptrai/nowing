@@ -23,9 +23,12 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.config import config
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +121,37 @@ NEUTRAL_RESOLUTION = HonorificResolution(
     tone="vi",
     reason="fallback_neutral",
 )
+
+
+async def workspace_sender_demographics(
+    session: AsyncSession, workspace_id: int
+) -> tuple[int | None, str | None]:
+    """Per-workspace sender profile — overrides the global env defaults.
+
+    Reads ``sequencer_sender_birth_year`` / ``sequencer_sender_gender``
+    from ``workspaces.icp_criteria`` (the existing workspace settings
+    bag). Returns ``(None, None)`` when unset so callers keep the global
+    ``SEQUENCER_SENDER_*`` fallbacks inside ``resolve()``.
+    """
+    try:
+        from app.db import Workspace
+
+        workspace = await session.get(Workspace, workspace_id)
+        settings = getattr(workspace, "icp_criteria", None)
+        if not isinstance(settings, dict):
+            return None, None
+        raw_year = settings.get("sequencer_sender_birth_year")
+        birth_year = None
+        if raw_year is not None:
+            try:
+                birth_year = int(str(raw_year).strip())
+            except (TypeError, ValueError):
+                birth_year = None
+        gender = settings.get("sequencer_sender_gender")
+        return birth_year, gender if isinstance(gender, str) else None
+    except Exception:  # settings read must never block dispatch
+        logger.debug("workspace sender demographics read failed", exc_info=True)
+        return None, None
 
 
 # ---------------------------------------------------------------------------

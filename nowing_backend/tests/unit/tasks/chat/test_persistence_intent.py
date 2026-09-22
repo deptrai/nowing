@@ -112,8 +112,8 @@ def _inserts(captured: list) -> list[dict]:
 async def test_intent_written_on_gate_pass(_fake_db, _quiet_guardrail, monkeypatch):
     seen: list[str] = []
 
-    async def _classify(user_message: str):
-        seen.append(user_message)
+    async def _classify(*_a, **_k):
+        seen.append(_a[0])
         return dict(_INTENT_PAYLOAD)
 
     monkeypatch.setattr(persistence, "classify_intent", _classify)
@@ -136,7 +136,7 @@ async def test_intent_written_on_gate_pass(_fake_db, _quiet_guardrail, monkeypat
 async def test_intent_merges_into_copied_metadata(
     _fake_db, _quiet_guardrail, monkeypatch
 ):
-    async def _classify(_msg: str):
+    async def _classify(*_a, **_k):
         return dict(_INTENT_PAYLOAD)
 
     monkeypatch.setattr(persistence, "classify_intent", _classify)
@@ -166,7 +166,7 @@ async def test_no_intent_key_when_classifier_returns_none(
 ):
     """Below-gate / flag-off inside classify_intent -> None -> no key."""
 
-    async def _classify(_msg: str):
+    async def _classify(*_a, **_k):
         return None
 
     monkeypatch.setattr(persistence, "classify_intent", _classify)
@@ -207,7 +207,7 @@ async def test_guardrail_raise_does_not_block_intent(_fake_db, monkeypatch):
     async def _boom(*_a, **_k):
         raise RuntimeError("guardrail exploded")
 
-    async def _classify(_msg: str):
+    async def _classify(*_a, **_k):
         return dict(_INTENT_PAYLOAD)
 
     monkeypatch.setattr(persistence, "check_passage", _boom)
@@ -231,7 +231,7 @@ async def test_caller_supplied_intent_key_is_stripped(
     """platform_metadata is client-controlled — a spoofed "intent" key
     must not reach the row when the classifier produced no payload."""
 
-    async def _classify(_msg: str):
+    async def _classify(*_a, **_k):
         return None
 
     monkeypatch.setattr(persistence, "classify_intent", _classify)
@@ -254,7 +254,7 @@ async def test_caller_supplied_intent_key_is_stripped(
 async def test_insert_succeeds_when_classify_raises(
     _fake_db, _quiet_guardrail, monkeypatch
 ):
-    async def _boom(_msg: str):
+    async def _boom(*_a, **_k):
         raise RuntimeError("classify exploded")
 
     monkeypatch.setattr(persistence, "classify_intent", _boom)
@@ -280,7 +280,7 @@ async def test_race_path_does_not_rewrite_metadata(_quiet_guardrail, monkeypatch
         lambda: _FakeSessionCM(captured, insert_id=None),  # conflict
     )
 
-    async def _classify(_msg: str):
+    async def _classify(*_a, **_k):
         return dict(_INTENT_PAYLOAD)
 
     monkeypatch.setattr(persistence, "classify_intent", _classify)

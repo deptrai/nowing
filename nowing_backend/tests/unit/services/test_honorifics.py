@@ -772,3 +772,81 @@ class TestAutoReplyHonorific:
 
         assert result.reply_text == "Dạ chị Lan"
         assert mock_gen.await_args.kwargs["honorific"] is resolution
+
+
+class TestWorkspaceSenderDemographics:
+    """Per-workspace sender profile overrides SEQUENCER_SENDER_* envs."""
+
+    async def test_workspace_settings_override_env(self, monkeypatch) -> None:
+        import types
+
+        from app.services.sequencer.honorifics import (
+            workspace_sender_demographics,
+        )
+
+        monkeypatch.setenv("SEQUENCER_SENDER_BIRTH_YEAR", "1980")
+        workspace = types.SimpleNamespace(
+            icp_criteria={
+                "sequencer_sender_birth_year": "1996",
+                "sequencer_sender_gender": "female",
+            }
+        )
+        session = _FakeSession(scalar=workspace)
+        year, gender = await workspace_sender_demographics(session, 1)
+        assert year == 1996
+        assert gender == "female"
+
+    async def test_missing_workspace_settings_returns_nones(self) -> None:
+        import types
+
+        from app.services.sequencer.honorifics import (
+            workspace_sender_demographics,
+        )
+
+        session = _FakeSession(scalar=types.SimpleNamespace(icp_criteria=None))
+        assert await workspace_sender_demographics(session, 1) == (None, None)
+
+    async def test_lookup_failure_is_fail_open(self) -> None:
+        from app.services.sequencer.honorifics import (
+            workspace_sender_demographics,
+        )
+
+        class _BoomSession(_FakeSession):
+            async def get(self, *_a: Any, **_k: Any) -> Any:
+                raise RuntimeError("db down")
+
+        assert await workspace_sender_demographics(_BoomSession(), 1) == (
+            None,
+            None,
+        )
+
+    async def test_resolver_falls_back_to_env_when_workspace_unset(
+        self, monkeypatch
+    ) -> None:
+        """Workspace without sender keys → global env defaults still apply."""
+        import types
+
+        from app.config import config
+        from app.services.sequencer.honorifics import (
+            VietnamHonorificResolver,
+            workspace_sender_demographics,
+        )
+
+        # Config attrs are read at import time — patch the attr, not env.
+        monkeypatch.setattr(config, "SEQUENCER_SENDER_BIRTH_YEAR", 1980)
+        session = _FakeSession(
+            scalar=types.SimpleNamespace(icp_criteria={})
+        )
+        year, gender = await workspace_sender_demographics(session, 1)
+        res = VietnamHonorificResolver().resolve(
+            profile={
+                "name": "Nguyễn Lan",
+                "birth_year": 1970,
+                "gender": "female",
+            },
+            sender_birth_year=year,
+            sender_gender=gender,
+        )
+        # env sender 1980 is younger than the 1970 prospect → sender "Em".
+        assert res.prospect_pronoun == "Chị"
+        assert res.sender_pronoun == "Em"

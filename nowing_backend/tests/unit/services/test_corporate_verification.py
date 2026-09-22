@@ -238,6 +238,50 @@ class TestCorporateVerificationRedisCaching:
         assert client_mock.call_count == 1  # Bypassed cache due to force_refresh=True
         fake_redis.set.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_cached_jev_verdict_stays_verified_on_fuzzy_mismatch(self):
+        """Story 39.3 deferred fix: a name-cache payload Jev promoted must
+        stay verified — re-running fuzzy on the cached read must not flip
+        it back to manual confirmation."""
+        session = AsyncMock()
+        fake_redis = AsyncMock()
+        fake_redis.mget.return_value = [None, "0"]  # breaker closed
+        # Fuzzy score between the query name and the cached company is far
+        # below the auto-link threshold; only the Jev marker keeps it verified.
+        payload = {
+            **MOCK_MASOTHUE_AMBIGUOUS_COMPANY,
+            "_jev_verdict": True,
+        }
+        fake_redis.get.return_value = json.dumps(payload)
+
+        service = CorporateVerificationService(
+            session, masothue_client=MockMasothueClient(), redis_client=fake_redis
+        )
+        result = await service.verify_company(company_name="Công ty Á Châu")
+
+        assert result.is_cached is True
+        assert result.is_verified is True
+        assert result.requires_manual_confirmation is False
+        assert result.confidence < AUTO_LINK_CONFIDENCE_THRESHOLD
+
+    @pytest.mark.asyncio
+    async def test_cached_payload_without_jev_marker_uses_fuzzy_verdict(self):
+        """Without the marker the cached read keeps the original fuzzy
+        semantics — low score still requires manual confirmation."""
+        session = AsyncMock()
+        fake_redis = AsyncMock()
+        fake_redis.mget.return_value = [None, "0"]
+        fake_redis.get.return_value = json.dumps(MOCK_MASOTHUE_AMBIGUOUS_COMPANY)
+
+        service = CorporateVerificationService(
+            session, masothue_client=MockMasothueClient(), redis_client=fake_redis
+        )
+        result = await service.verify_company(company_name="Công ty Á Châu")
+
+        assert result.is_cached is True
+        assert result.is_verified is False
+        assert result.requires_manual_confirmation is True
+
 
 # ─────────────────────────────────────────────────────────────
 # 4. Circuit Breaker & Resilience Tests (INV-24.3 / AC-3)

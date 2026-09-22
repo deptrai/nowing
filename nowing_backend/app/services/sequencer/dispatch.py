@@ -34,6 +34,7 @@ from app.services.pii.verified_contact_encryption import VerifiedContactEncrypti
 from app.services.sequencer.honorifics import (
     NEUTRAL_RESOLUTION,
     VietnamHonorificResolver,
+    workspace_sender_demographics,
 )
 from app.services.sequencer.scheduling import calculate_step_eta, is_dispatch_curfew
 from app.services.sequencer.templates import (
@@ -347,7 +348,12 @@ class SequencerDispatchMixin:
 
         # AC-1/AC-2 (Story 37.2 / AD-116): deterministic honorific resolution,
         # injected under the {salutation} token for template interpolation.
+        # Per-workspace sender profile (icp_criteria) overrides the global
+        # SEQUENCER_SENDER_* env defaults.
         try:
+            sender_birth_year, sender_gender = await workspace_sender_demographics(
+                session, enrollment.workspace_id
+            )
             honorific = VietnamHonorificResolver().resolve(
                 lead=lead,
                 contact=contact,
@@ -355,6 +361,8 @@ class SequencerDispatchMixin:
                     "name": self._decrypt_field(getattr(contact, "name", None)),
                     "title": self._decrypt_field(getattr(contact, "title", None)),
                 },
+                sender_birth_year=sender_birth_year,
+                sender_gender=sender_gender,
             )
         except Exception:  # honorific resolution must never block dispatch
             logger.exception("Honorific resolution failed for lead %s", lead.id)

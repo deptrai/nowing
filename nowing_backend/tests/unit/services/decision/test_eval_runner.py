@@ -463,3 +463,68 @@ async def test_main_dry_run_gate_floor_zero_passes(hermetic_runner, tmp_path):
     code = await hermetic_runner.main(["--dry-run", "--gate", "--floor", "0.0"])
     assert code == 0
     assert "GATE PASS" in (tmp_path / "summary.md").read_text()
+
+
+# ---------------------------------------------------------------------------
+# --persist: eval rows land as labeled decision_eval TokenUsage rows
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_parse_args_persist_requires_attribution():
+    runner = importlib.import_module("scripts.jev_eval.runner")
+    with pytest.raises(SystemExit):
+        runner._parse_args(["--persist"])  # missing --workspace-id/--user-id
+    with pytest.raises(SystemExit):
+        runner._parse_args(["--persist", "--workspace-id", "7"])
+    args = runner._parse_args(
+        ["--persist", "--workspace-id", "7", "--user-id", "abc"]
+    )
+    assert args.persist is True
+    assert args.workspace_id == 7
+    assert args.user_id == "abc"
+
+
+@pytest.mark.unit
+async def test_persist_eval_rows_writes_labeled_usage(monkeypatch):
+    """--persist writes decision_eval rows with call_details.correct — the
+    dashboard accuracy metric picks them up without manual labeling."""
+    runner = importlib.import_module("scripts.jev_eval.runner")
+
+    written: list[dict] = []
+
+    class _Session:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_exc):
+            return None
+
+        async def commit(self):
+            pass
+
+    async def _fake_record(session, **kwargs):
+        written.append(kwargs)
+        return object()
+
+    # Both are imported inside persist_eval_rows — patch module attrs.
+    import app.db
+    import app.services.token_tracking_service as tts
+
+    monkeypatch.setattr(app.db, "async_session_maker", lambda: _Session())
+    monkeypatch.setattr(tts, "record_token_usage", _fake_record)
+
+    results = _make_results({"ENTITY_MATCH": 1.0}, backend="jev", n=3)
+    results.append(
+        runner.EvalResult(
+            case_id="mock_0", task="ENTITY_MATCH", backend="mock",
+            predicted=2, confidence=0.9, expected=2, correct=True,
+            latency_ms=0.1,
+        )
+    )
+    n = await runner.persist_eval_rows(results, workspace_id=7, user_id="u1")
+    assert n == 3  # mock backend row skipped — harness noise
+    assert all(r["usage_type"] == "decision_eval" for r in written)
+    assert all(r["workspace_id"] == 7 and r["user_id"] == "u1" for r in written)
+    assert all(r["call_details"]["eval_run"] is True for r in written)
+    assert all("correct" in r["call_details"] for r in written)

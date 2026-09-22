@@ -89,6 +89,9 @@ STREAM_TELEGRAM_INTENT_DLQ = "stream:telegram:intent_dlq"
 DLQ_MAXLEN = 10_000
 AUTOCLAIM_MIN_IDLE_TIME_MS = 60_000
 MAX_MESSAGES_PER_BATCH = 100
+# The global incorporation listing is broadcast to every workspace — cap how
+# many signals one run may create per workspace so a long listing can't flood.
+MAX_INCORPORATION_SIGNALS_PER_SCAN = 25
 
 TELEGRAM_CHANNEL_PLATFORM = "telegram_channel"
 
@@ -598,6 +601,34 @@ async def _route_telegram_intent_to_dlq(
             )
 
 
+async def _log_stream_health(redis_client: Any) -> None:
+    """Log stream backlog metrics each consumer run — xlen + group pending +
+    DLQ depth — so a silent backlog growth or DLQ accumulation shows up in logs.
+    """
+    try:
+        stream_len = await redis_client.xlen(STREAM_TELEGRAM_RAW_EVENTS)
+        dlq_len = await redis_client.xlen(STREAM_TELEGRAM_INTENT_DLQ)
+        pending = await redis_client.xpending(
+            STREAM_TELEGRAM_RAW_EVENTS, TELEGRAM_INTENT_CONSUMER_GROUP
+        )
+        pending_count = (
+            pending.get("pending", 0)
+            if isinstance(pending, dict)
+            else int(pending[0])
+            if pending
+            else 0
+        )
+        log = logger.warning if (dlq_len or pending_count) else logger.info
+        log(
+            "telegram_intent stream health: stream_len=%s pending=%s dlq_len=%s",
+            stream_len,
+            pending_count,
+            dlq_len,
+        )
+    except Exception as exc:  # metrics must never break the consumer
+        logger.debug("Suppressed %r", exc)
+
+
 async def run_telegram_intent_consumer(
     redis_client: Any | None = None,
     consumer_name: str | None = None,
@@ -639,6 +670,8 @@ async def run_telegram_intent_consumer(
         except Exception as exc:  # group creation failure; abort this run
             logger.exception("Failed to create telegram intent consumer group: %s", exc)
             return 0
+
+        await _log_stream_health(redis_client)
 
         count = max(1, min(batch_size, MAX_MESSAGES_PER_BATCH))
         processed = 0
@@ -905,6 +938,44 @@ async def scan_workspace_high_intent(
         )
         return {"workspace_id": workspace_id, "status": "paused_low_credit"}
 
+    # Billing actually debits the billing user's wallet (record_signal_scan →
+    # wallet_credit.apply_debit), so guard that pool too — otherwise scans keep
+    # running while the wallet is already empty (per-signal debit then raises
+    # InsufficientCreditsError inside _persist and signals persist unbilled).
+    cost_per_item = config.SIGNAL_SCAN_MICROS_PER_SIGNAL
+    billing_user_id = (
+        await _resolve_billing_user_id(session, workspace_id)
+        if cost_per_item > 0
+        else None
+    )
+    if billing_user_id is not None:
+        from app.services import wallet_credit
+
+        try:
+            wallet_available = await wallet_credit.spendable_micros(
+                session, billing_user_id
+            )
+        except Exception as exc:  # wallet read failure; keep scanning
+            logger.warning(
+                "Wallet balance read failed for user %s: %r",
+                billing_user_id,
+                exc,
+            )
+        else:
+            if wallet_available < MIN_WORKSPACE_CREDIT_MICROS:
+                logger.info(
+                    "Signal radar paused for workspace %s: billing wallet "
+                    "user=%s spendable %s < %s micros",
+                    workspace_id,
+                    billing_user_id,
+                    wallet_available,
+                    MIN_WORKSPACE_CREDIT_MICROS,
+                )
+                return {
+                    "workspace_id": workspace_id,
+                    "status": "paused_low_credit",
+                }
+
     used = await _scans_used_today(redis_client, workspace_id, day)
     if used >= MAX_SCANS_PER_WORKSPACE_PER_DAY:
         logger.info(
@@ -915,13 +986,6 @@ async def scan_workspace_high_intent(
         )
         return {"workspace_id": workspace_id, "status": "budget_exhausted"}
     remaining = MAX_SCANS_PER_WORKSPACE_PER_DAY - used
-
-    cost_per_item = config.SIGNAL_SCAN_MICROS_PER_SIGNAL
-    billing_user_id = (
-        await _resolve_billing_user_id(session, workspace_id)
-        if cost_per_item > 0
-        else None
-    )
 
     signals_created = 0
     scans_used = 0
@@ -959,9 +1023,12 @@ async def scan_workspace_high_intent(
 
     # --- Newly incorporated tax codes -----------------------------------------
     # Runs BEFORE the hiring loop so a hiring-heavy watchlist cannot starve
-    # incorporation signals of the shared daily budget.
+    # incorporation signals of the shared daily budget. The listing is global
+    # and broadcast to every workspace — cap per run so a long listing cannot
+    # flood a workspace's signal feed (surplus items recur next run via dedupe).
+    incorporation_cap = MAX_INCORPORATION_SIGNALS_PER_SCAN
     for item in new_incorporations or []:
-        if remaining <= 0:
+        if remaining <= 0 or incorporation_cap <= 0:
             break
         # SignalInput.company_name is capped at 200 chars.
         company_name = str(item.get("company_name") or "").strip()[:200]
@@ -1004,6 +1071,7 @@ async def scan_workspace_high_intent(
             continue
         if signal is not None:
             signals_created += 1
+            incorporation_cap -= 1
 
     # --- Hiring surges (TopCV / VietnamWorks) ---------------------------------
     if aggregate_fn is None:

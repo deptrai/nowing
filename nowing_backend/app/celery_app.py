@@ -217,6 +217,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.social_xactions_ingest",
         "app.tasks.celery_tasks.social_stream_worker",
         "app.tasks.celery_tasks.signal_radar_tasks",
+        "app.tasks.celery_tasks.decision_telemetry_task",
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
         "app.tasks.celery_tasks.stale_meeting_minutes_cleanup_task",
@@ -374,6 +375,13 @@ celery_app.conf.beat_schedule = {
         "task": "scan_high_intent_companies_periodic",
         "schedule": crontab(hour="*/6", minute="23"),
         "options": {"expires": 3600},
+    },
+    # Decision daily-cost alert check (Story 39.7) — fires the deduped
+    # AdminHealthAlert even when nobody is viewing the admin dashboard.
+    "evaluate-decision-daily-cost-alert": {
+        "task": "evaluate_decision_daily_cost_alert",
+        "schedule": crontab(minute="*/15"),
+        "options": {"expires": 300},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup

@@ -646,6 +646,130 @@ class TestScanWorkspaceHighIntent:
         assert signals[0].signal_type == "incorporation"
         assert signals[0].confidence >= 75.0
 
+    async def test_pauses_when_billing_wallet_low(self, monkeypatch):
+        """Credit guard covers the pool actually debited — the billing
+        user's wallet, not just the workspace balance."""
+        from app.config import config
+        from app.lead_intelligence.signals import radar
+        from app.services import wallet_credit
+
+        monkeypatch.setattr(config, "SIGNAL_SCAN_MICROS_PER_SIGNAL", 100)
+        monkeypatch.setattr(
+            wallet_credit, "spendable_micros", AsyncMock(return_value=0)
+        )
+        session = _ScanSession(
+            workspace=_workspace(10_000_000_000),  # workspace pool healthy
+            execute_queue=[_FakeResult(uuid4())],  # subscription creator
+        )
+        result = await radar.scan_workspace_high_intent(
+            session, _FakeRedis(), workspace_id=7
+        )
+        assert result["status"] == "paused_low_credit"
+
+    async def test_wallet_read_failure_keeps_scanning(self, monkeypatch):
+        """Wallet balance read failure is fail-open — scans proceed."""
+        from app.config import config
+        from app.lead_intelligence.signals import radar
+        from app.services import wallet_credit
+
+        monkeypatch.setattr(config, "SIGNAL_SCAN_MICROS_PER_SIGNAL", 100)
+        monkeypatch.setattr(
+            wallet_credit,
+            "spendable_micros",
+            AsyncMock(side_effect=RuntimeError("db down")),
+        )
+        session = _ScanSession(
+            workspace=_workspace(10_000_000_000),
+            execute_queue=[
+                _FakeResult(uuid4()),  # billing user
+                _FakeResult(rows=[]),  # empty hiring watchlist
+            ],
+        )
+        result = await radar.scan_workspace_high_intent(
+            session,
+            _FakeRedis(),
+            workspace_id=7,
+            aggregate_fn=AsyncMock(),
+        )
+        assert result["status"] == "ok"
+
+    async def test_incorporation_broadcast_capped_per_scan(self, monkeypatch):
+        """The global listing is broadcast to every workspace — cap keeps a
+        long listing from flooding one workspace's feed in a single run."""
+        from app.config import config
+        from app.db import SignalEvent
+        from app.lead_intelligence.signals import radar
+
+        monkeypatch.setattr(config, "SIGNAL_SCAN_MICROS_PER_SIGNAL", 0)
+        monkeypatch.setattr(radar, "MAX_INCORPORATION_SIGNALS_PER_SCAN", 2)
+
+        session = _ScanSession(
+            workspace=_workspace(10_000_000_000),
+            execute_queue=[
+                _FakeResult(None),  # dedupe item 1
+                _FakeResult(None),  # persist idempotency item 1
+                _FakeResult(None),  # dedupe item 2
+                _FakeResult(None),  # persist idempotency item 2
+                _FakeResult(rows=[]),  # empty hiring watchlist
+            ],
+        )
+        incorporations = [
+            {"company_name": f"CÔNG TY TNHH MỚI {i}", "tax_code": f"031234567{i}"}
+            for i in range(5)
+        ]
+        result = await radar.scan_workspace_high_intent(
+            session,
+            _FakeRedis(),
+            workspace_id=7,
+            aggregate_fn=AsyncMock(),
+            new_incorporations=incorporations,
+        )
+        signals = [o for o in session.added if isinstance(o, SignalEvent)]
+        assert len(signals) == 2  # capped, not 5
+
+
+class TestStreamHealthMetrics:
+    async def test_logs_pending_and_dlq_at_warning(self, caplog):
+        import logging
+
+        from app.lead_intelligence.signals.radar import _log_stream_health
+
+        class _Redis(_FakeRedis):
+            async def xlen(self, _key: str) -> int:
+                return 40 if "raw" in _key else 3
+
+            async def xpending(self, *_a: Any) -> dict:
+                return {"pending": 7}
+
+        with caplog.at_level(logging.WARNING):
+            await _log_stream_health(_Redis())
+        assert "stream_len=40 pending=7 dlq_len=3" in caplog.text
+
+    async def test_tuple_xpending_and_quiet_info_log(self, caplog):
+        import logging
+
+        from app.lead_intelligence.signals.radar import _log_stream_health
+
+        class _Redis(_FakeRedis):
+            async def xlen(self, _key: str) -> int:
+                return 5
+
+            async def xpending(self, *_a: Any) -> tuple:
+                return (0, None, None, None)
+
+        with caplog.at_level(logging.INFO):
+            await _log_stream_health(_Redis())
+        assert "pending=0 dlq_len=5" in caplog.text
+
+    async def test_metric_failure_never_raises(self):
+        from app.lead_intelligence.signals.radar import _log_stream_health
+
+        class _Redis(_FakeRedis):
+            async def xlen(self, _key: str) -> int:
+                raise RuntimeError("redis down")
+
+        await _log_stream_health(_Redis())  # must not raise
+
 
 # ---------------------------------------------------------------------------
 # AC-1: incorporation source fetch + parse

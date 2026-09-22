@@ -197,7 +197,10 @@ class AutoReplyAgent:
         if session is None:
             return None
         try:
-            from app.services.sequencer.honorifics import VietnamHonorificResolver
+            from app.services.sequencer.honorifics import (
+                VietnamHonorificResolver,
+                workspace_sender_demographics,
+            )
 
             lead = await self._first_scalar(
                 await session.execute(
@@ -307,8 +310,16 @@ class AutoReplyAgent:
                 except Exception:  # decryption best-effort
                     logger.debug("Honorific PII decrypt failed", exc_info=True)
 
+            # Per-workspace sender profile overrides the global env defaults.
+            ws_year, ws_gender = await workspace_sender_demographics(
+                session, workspace_id
+            )
             return VietnamHonorificResolver().resolve(
-                lead=lead, contact=contact, profile=profile
+                lead=lead,
+                contact=contact,
+                profile=profile,
+                sender_birth_year=ws_year,
+                sender_gender=ws_gender,
             )
         except Exception:  # honorific resolution must never block auto-reply
             logger.debug("Honorific resolution failed for auto-reply", exc_info=True)

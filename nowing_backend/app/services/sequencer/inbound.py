@@ -26,7 +26,10 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.lead_intelligence.dnc.service import DncComplianceService
 from app.services.pii.redact import redact_pii
-from app.services.sequencer.honorifics import VietnamHonorificResolver
+from app.services.sequencer.honorifics import (
+    VietnamHonorificResolver,
+    workspace_sender_demographics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -170,11 +173,17 @@ class SequencerInboundMixin:
                 if isinstance(value, str) and value:
                     profile[field_name] = value
 
+        # Per-workspace sender profile overrides the global env defaults
+        # (explicit caller param still wins over the workspace setting).
+        ws_year, ws_gender = await workspace_sender_demographics(
+            session, workspace_id
+        )
         resolution = VietnamHonorificResolver().resolve(
             lead=lead,
             contact=contact,
             profile=profile,
-            sender_birth_year=sender_birth_year,
+            sender_birth_year=sender_birth_year or ws_year,
+            sender_gender=ws_gender,
         )
         return resolution.to_context_vars()
 
