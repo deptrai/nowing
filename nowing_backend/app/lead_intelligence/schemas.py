@@ -28,6 +28,7 @@ class LeadStatusUpdate(BaseModel):
             "converted",
             "lost",
             "pending",
+            "pending_enrichment",
         }
         if cleaned not in allowed:
             raise ValueError(

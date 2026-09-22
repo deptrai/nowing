@@ -1,6 +1,7 @@
 ---
 story_key: 37-1-proactive-intent-signal-radar-background-ingestion-tele
-status: ready-for-dev
+status: done
+baseline_commit: '205236aa6dc57356855d2e64202104cd90cace68'
 epic: 37
 priority: P1
 target_codebase: nowing_backend
@@ -27,3 +28,31 @@ So that buying-intent leads are captured into the workspace matrix without requi
 - **AC-2 (Aho-Corasick Telegram Stream Intent Matcher):** A consumer worker listening to Redis stream `stream:telegram:raw_events` runs an in-memory compiled Aho-Corasick keyword trie ($O(n)$) per AD-115 to pre-filter messages matching purchase intent patterns ("cần tìm nhà cung cấp", "báo giá", "tìm agency", "thuê ngoài"), extracts contact info, and creates an enriched `Lead` assigned round-robin via `LeadAssignmentService`.
 - **AC-3 (Zero-Credit Penalty for Missing Contact):** If a Telegram intent message contains NO extractable phone or email, the system creates an Unqualified Signal Lead with `status='pending_enrichment'` and does NOT deduct workspace credits until contact data is resolved.
 - **AC-4 (Budget Guardrails & Rate Limits):** Background scanning enforces AD-115 budget caps: maximum 100 scans per workspace per day, pausing automatically if credit balance falls below 50 credits.
+
+## Review Triage Log
+
+**2026-09-22 — 3 layers (blind-hunter / edge-case-hunter / verification-gap), ~35 findings sau dedup.**
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| `xgroup_create(id="0")` replays toàn bộ backlog lần đầu | high | patch | `id="$"` — group mới chỉ đọc message mới |
+| `company_name` fallback → hmac collapse mọi sender trong 1 channel thành 1 lead | high | patch | fold `sender_id`/`message_id` vào hmac material khi thiếu sender name |
+| `enriched=has_contact` — không VerifiedContact, downstream skip waterfall | medium | patch | `enriched=False`, `needs_enrichment=True` luôn; waterfall materialize contact |
+| Workspace enum không filter archived/paused | medium | patch | `archived_at`/`scrape_paused_at IS NULL` |
+| Dedupe check sau `_incr_scan_count` + scrape → đốt budget | medium | patch | reorder dedupe trước scan/scrape |
+| Undated `posted_at` tính vào "≥3 trong 7 ngày" | medium | patch | chỉ count dated-in-window (AC fidelity) |
+| Incorporation loop bị hiring starve + `_persist` không try/except + name >200 ValidationError | medium | patch | incorporation trước, per-item try/except, truncate 200 |
+| `_resolve_workspace_id` tin tưởng explicit id + `.limit(1)` không ORDER BY | medium | patch | `session.get` validate + `order_by` deterministic |
+| Scan counter fail-open khi Redis lỗi + INCR/EXPIRE non-atomic | medium | patch | fail-closed (return MAX) + `SET NX EX` + `INCR` |
+| DKKD names↔tax_codes index pairing misalign | low | patch | chỉ pair khi len bằng nhau, else None |
+| DKKD fetch thiếu User-Agent; masothue empty-parse silent | low | patch | UA header + `empty_parse` degradation reason |
+| Matcher: multi-space miss; non-string source_url; `client_id=None` vs `"default"`; entities non-list; `batch_size<=0`; `lookback_days=0`; consent hardcode; trie fail-link dedupe; billing docstring | low | patch | từng cái 1–3 dòng |
+| Throughput ceiling ~10msgs/30s | medium | patch | `batch_size=100, max_loops=3` (~300/tick) |
+| Vacuous assignment test (lead.id None), thiếu test: workspace-resolve positive, DLQ+xack, `detect("incorporation")` | medium | patch | +5 tests, `_FakeSession.flush` gán uuid |
+| Pool guard (workspace) vs debit (user wallet) — 2 hệ credit | medium | defer | cần policy: pool nào là "workspace credits"; record_signal_scan theo convention hiện có |
+| Broadcast incorporation listing tới mọi workspace không relevance filter | low | defer | AC-literal; revisit nếu spam |
+| Thiếu lag/DLQ-depth metric; word-boundary matching; overlap-scan race; `record_signal_scan` commit giữa scan | low | defer | observability/hardening sau |
+| `-NNN` branch suffix truncate trong `_TAX_CODE_RE` | false | reject | intentional — capture group ngoài suffix |
+| `stream:telegram:raw_events` không có producer in-repo | — | note | AC-2 consumer inert tới khi producer ngoài push; environmental |
+
+**Verification post-patch:** ruff clean (touched files); 59/59 tests pass (27 radar + 28 signal detection + 4 telegram listener).

@@ -1873,3 +1873,15 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-7-decision-telemetry-dashboard-cost-tracking.md`
   summary: Dashboard chỉ thấy tasks của consumers forward session — hiện chỉ `jev_router` (routing) mở async_session_maker riêng; filter/intent/entity calls log-only nên không xuất hiện trên dashboard.
   evidence: spec Always "coverage honesty" + review pass (verified jev_router.py:190-205); mở rộng coverage = quyết định per-consumer (mỗi surface cần workspace_id/user_id context + session an toàn — 39.4 cố ý không forward shared session vì asyncpg single-connection).
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
+  summary: AC-4 credit guard check `workspaces.credit_micros_balance` nhưng billing debit `users.credit_micros_balance` (record_signal_scan → user wallet) — hai pool khác nhau; pause có thể fire khi wallet còn tiền, hoặc scan chạy khi wallet cạn.
+  evidence: radar.py `scan_workspace_high_intent` guard + `_persist` billing path (review 2026-09-22); codebase có 2 hệ credit inconsistency sẵn — cần policy quyết định pool nào là "workspace credits" theo AC-4.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
+  summary: Incorporation listing (global, toàn quốc) được persist vào MỌI workspace có lead/subscription — không relevance filter; có thể spam SignalEvent khi listing dài.
+  evidence: radar.py `run_periodic_signal_scan` broadcast loop (AC-1 literal đọc); nếu spam thành vấn đề, thêm filter theo workspace industry/ICP hoặc signal subscription opt-in.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
+  summary: `stream:telegram:raw_events` không có producer trong repo — `TelegramStreamDaemon` chưa được instantiate; consumer AC-2 inert end-to-end tới khi producer ngoài (XActions?) push events.
+  evidence: verification-gap review 2026-09-22 (stream_daemon.py:132-164 chỉ re-export, không caller); cần xác nhận ai produce stream này trong deployment.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
+  summary: Consumer lag/DLQ-depth không có metric — backlog growth trên stream + intent_dlq silent; masothue/DKKD parse fragility (listing markup thay đổi → 0 items, chỉ warn-log).
+  evidence: review findings 2026-09-22; nếu vận hành cần, thêm gauge metric cho xlen stream + dlq depth vào telemetry path hiện có.

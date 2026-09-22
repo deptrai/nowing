@@ -31,7 +31,14 @@ from app.services.memory.encryption import MemoryEncryptionService
 
 logger = logging.getLogger(__name__)
 
-SIGNAL_TYPES = {"funding", "hiring", "tech_stack", "executive_move", "news"}
+SIGNAL_TYPES = {
+    "funding",
+    "hiring",
+    "tech_stack",
+    "executive_move",
+    "news",
+    "incorporation",
+}
 
 
 class SignalDetectionService:
@@ -80,6 +87,9 @@ class SignalDetectionService:
                 degradation_reasons.extend(reasons)
             elif signal_type == "executive_move":
                 raw_items, reasons = await self._detect_executive_move(input)
+                degradation_reasons.extend(reasons)
+            elif signal_type == "incorporation":
+                raw_items, reasons = await self._detect_incorporation(input)
                 degradation_reasons.extend(reasons)
         except wallet_credit.InsufficientCreditsError:
             return SignalOutput(
@@ -302,7 +312,40 @@ class SignalDetectionService:
                 raw.get("summary")
                 or f"{signal.company_name} executive change detected."
             )
+        if signal.signal_type == "incorporation":
+            tax_code = raw.get("tax_code")
+            mst = f" (MST {tax_code})" if tax_code else ""
+            return f"{signal.company_name}{mst} newly incorporated."
         return f"{signal.company_name} {signal.signal_type} signal."
+
+    async def persist_signal(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: int,
+        client_id: str | None,
+        company_name: str,
+        signal_type: str,
+        raw: dict[str, Any],
+        confidence_threshold: float = 0.0,
+    ) -> SignalEvent | None:
+        """Persist an externally-detected signal (Story 37.1 radar producers).
+
+        Thin public wrapper over ``_persist_signal`` so background scanners do
+        not reach into a private method.
+        """
+        input = SignalInput(
+            company_name=company_name,
+            confidence_threshold=confidence_threshold,
+        )
+        return await self._persist_signal(
+            session,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            input=input,
+            signal_type=signal_type,
+            raw=raw,
+        )
 
     async def _detect_funding(
         self, input: SignalInput
@@ -571,3 +614,61 @@ class SignalDetectionService:
                 "source_url": None,
             }
         ], []
+
+    async def _detect_incorporation(
+        self, input: SignalInput
+    ) -> tuple[list[dict[str, Any]], list[str]]:
+        """Check masothue.com whether the company was recently incorporated."""
+        reasons: list[str] = []
+        try:
+            from app.proprietary.platforms.masothue.schemas import (
+                MasothueSearchInput,
+            )
+            from app.proprietary.platforms.masothue.scraper import scrape_masothue
+
+            output = await scrape_masothue(
+                MasothueSearchInput(
+                    query=input.company_name,
+                    max_pages=1,
+                    max_items=5,
+                )
+            )
+        except Exception as exc:  # lead intelligence operation fallback
+            reasons.append(f"masothue.error: {exc}")
+            return [], reasons
+
+        if getattr(output, "degraded", False):
+            reasons.append(
+                f"masothue.{getattr(output, 'degradation_reason', None) or 'degraded'}"
+            )
+
+        items = getattr(output, "items", []) or []
+        results: list[dict[str, Any]] = []
+        lookback_days = input.lookback_days if input.lookback_days is not None else 30
+        cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
+        for company in items:
+            raw_date = getattr(company, "active_date", None) or getattr(
+                company, "founding_date", None
+            )
+            detected_at = datetime.now(UTC)
+            is_recent = False
+            if raw_date:
+                for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+                    try:
+                        parsed = datetime.strptime(str(raw_date).strip(), fmt)
+                        detected_at = parsed.replace(tzinfo=UTC)
+                        is_recent = detected_at >= cutoff
+                        break
+                    except ValueError:
+                        continue
+            results.append(
+                {
+                    "company_name": getattr(company, "name", None)
+                    or input.company_name,
+                    "tax_code": getattr(company, "tax_code", None),
+                    "source_url": getattr(company, "detail_url", None),
+                    "confidence": 80.0 if is_recent else 40.0,
+                    "detected_at": detected_at,
+                }
+            )
+        return results, reasons
