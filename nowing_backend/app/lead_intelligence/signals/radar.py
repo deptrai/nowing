@@ -92,7 +92,9 @@ MAX_MESSAGES_PER_BATCH = 100
 
 TELEGRAM_CHANNEL_PLATFORM = "telegram_channel"
 
-MASOTHUE_NEW_COMPANIES_URL = "https://masothue.com/tra-cuu-ma-so-thue-moi"
+MASOTHUE_NEW_COMPANIES_URL = (
+    "https://masothue.com/tra-cuu-ma-so-thue-doanh-nghiep-moi-thanh-lap"
+)
 DKKD_NEW_BUSINESSES_URL = "https://dangkykinhdoanh.gov.vn/vn/Pages/DoanhNghiepMoi.aspx"
 HTTP_TIMEOUT_S = 15.0
 

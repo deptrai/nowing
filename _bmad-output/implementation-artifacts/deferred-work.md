@@ -1885,3 +1885,6 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
   summary: Consumer lag/DLQ-depth không có metric — backlog growth trên stream + intent_dlq silent; masothue/DKKD parse fragility (listing markup thay đổi → 0 items, chỉ warn-log).
   evidence: review findings 2026-09-22; nếu vận hành cần, thêm gauge metric cho xlen stream + dlq depth vào telemetry path hiện có.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
+  summary: Local env drift — `EMBEDDING_MODEL` resolve 768-dim (nomic) nhưng `memories.embedding` column 384-dim (migrated trước khi .env.local đổi) → mọi signal/memory write fail ở local. Cần align model config hoặc re-migrate column.
+  evidence: live verify 37.1 (2026-09-22) — `signal_events=0` trên DB local; insert `memories` raise "expected 384 dimensions, not 768"; prod env cần kiểm chứng tương tự trước khi radar chạy thật.

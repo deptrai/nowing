@@ -56,3 +56,15 @@ So that buying-intent leads are captured into the workspace matrix without requi
 | `stream:telegram:raw_events` không có producer in-repo | — | note | AC-2 consumer inert tới khi producer ngoài push; environmental |
 
 **Verification post-patch:** ruff clean (touched files); 59/59 tests pass (27 radar + 28 signal detection + 4 telegram listener).
+
+## Live Verification (2026-09-22)
+
+`scripts/verify_intent_radar_37_1.py` chạy trên **Redis 6380 + Postgres thật**: **17/17 PASS**.
+
+- Matcher 8/8 cases + 12 patterns compiled; Celery tasks registered, beat 6h + 30s đúng.
+- Consumer E2E: 3 messages thật vào `stream:telegram:raw_events` → 2 leads persist (`new` có phone, `pending_enrichment` không contact), activity logs + extracted phone đúng, stream acked hết, DLQ rỗng.
+- AC-4: `paused_low_credit` (ws 0 credits) + `budget_exhausted` (100/day) đúng.
+- `fetch_new_incorporations` live HTTP: **25 công ty thật** từ masothue (URL đã fix: `/tra-cuu-ma-so-thue-doanh-nghiep-moi-thanh-lap` — URL cũ `/tra-cuu-ma-so-thue-moi` trả 404); DKKD vẫn 404 → degradation reason `dkkd.http_404`, không crash.
+- Scan happy path: 2 `SignalEvent` incorporation (conf ≥75) persist thật + signal memories, cleanup sạch.
+
+**Env drift phát hiện (pre-existing, không phải story code):** `.env.local` pin `EMBEDDING_MODEL=ollama/nomic-embed-text` (768-dim) nhưng cột `memories.embedding` của DB local được migrate dưới model 384-dim → mọi `persist_signal`/`detect()` write fail (`expected 384, not 768`; `signal_events=0` chứng minh chưa từng write được trong env này). Verify script align `_dimension`/column type tạm để chứng minh path persist đúng khi env consistent.
