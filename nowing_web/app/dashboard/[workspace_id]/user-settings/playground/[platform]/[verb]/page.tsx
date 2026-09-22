@@ -1,6 +1,5 @@
 import { PlaygroundRunner } from "../../../../playground/components/playground-runner";
 
-
 export default async function PlaygroundSettingsVerbPage({
 	params,
 }: {

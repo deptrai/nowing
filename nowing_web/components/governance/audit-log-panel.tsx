@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -13,12 +16,9 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import type { AuditLogEntry } from "@/contracts/types/governance.types";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface AuditLogPanelProps {
 	workspaceId: number;
@@ -142,9 +142,7 @@ export function AuditLogPanel({ workspaceId, className }: AuditLogPanelProps) {
 										{log.action}
 									</Badge>
 								</TableCell>
-								<TableCell className="font-mono text-xs">
-									{log.actor_id || "—"}
-								</TableCell>
+								<TableCell className="font-mono text-xs">{log.actor_id || "—"}</TableCell>
 								<TableCell>
 									{new Date(log.created_at).toLocaleString(undefined, {
 										dateStyle: "short",

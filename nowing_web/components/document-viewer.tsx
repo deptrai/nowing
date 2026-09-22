@@ -1,4 +1,7 @@
+"use client";
+
 import { FileText } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { Button } from "@/components/ui/button";
@@ -17,13 +20,14 @@ interface DocumentViewerProps {
 }
 
 export function DocumentViewer({ title, content, trigger }: DocumentViewerProps) {
+	const t = useTranslations("docViewer");
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
 				{trigger || (
 					<Button variant="ghost" size="sm" className="flex items-center gap-1">
 						<FileText size={16} />
-						<span>View Content</span>
+						<span>{t("view_content")}</span>
 					</Button>
 				)}
 			</DialogTrigger>

@@ -1,6 +1,7 @@
 "use client";
 import { useAtomValue } from "jotai";
 import { MoreHorizontal, Pause, Play, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { updateAutomationMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function AutomationRowActions({
 	canUpdate,
 	canDelete,
 }: AutomationRowActionsProps) {
+	const t = useTranslations("automations");
 	const { mutateAsync: updateAutomation, isPending: updating } = useAtomValue(
 		updateAutomationMutationAtom
 	);
@@ -58,7 +60,7 @@ export function AutomationRowActions({
 						variant="ghost"
 						size="icon"
 						className="h-6 w-6 hover:bg-transparent"
-						aria-label={`Actions for ${automation.name}`}
+						aria-label={t("actions_for", { name: automation.name })}
 					>
 						<MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
 					</Button>

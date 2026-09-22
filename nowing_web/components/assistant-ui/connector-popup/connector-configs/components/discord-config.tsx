@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Hash, Info, Megaphone, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ export interface DiscordConfigProps extends ConnectorConfigProps {
 }
 
 export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
+	const t = useTranslations("assistant");
 	const [channels, setChannels] = useState<DiscordChannel[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 			setLastFetched(new Date());
 		} catch (err) {
 			console.error("Failed to fetch Discord channels:", err);
-			setError(err instanceof Error ? err.message : "Failed to fetch channels");
+			setError(err instanceof Error ? err.message : t("failed_fetch_channels"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -65,9 +67,9 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 		const diffSecs = Math.floor(diffMs / 1000);
 		const diffMins = Math.floor(diffSecs / 60);
 
-		if (diffSecs < 60) return "just now";
-		if (diffMins === 1) return "1 minute ago";
-		if (diffMins < 60) return `${diffMins} minutes ago`;
+		if (diffSecs < 60) return t("just_now");
+		if (diffMins === 1) return t("minute_ago");
+		if (diffMins < 60) return t("minutes_ago", { count: diffMins });
 		return lastFetched.toLocaleTimeString();
 	};
 
@@ -76,7 +78,7 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 			{/* Info box */}
 			<Alert>
 				<Info />
-				<AlertTitle>Grant Channel Permissions</AlertTitle>
+				<AlertTitle>{t("grant_channel_permissions")}</AlertTitle>
 				<AlertDescription>
 					The bot needs &quot;Read Message History&quot; permission to access channels. Ask a server
 					admin to grant this permission for channels shown below.
@@ -87,7 +89,7 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 			<div className="space-y-3">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
-						<h3 className="text-sm font-semibold">Channel Access</h3>
+						<h3 className="text-sm font-semibold">{t("channel_access")}</h3>
 					</div>
 					<div className="flex items-center gap-2">
 						{lastFetched && (
@@ -101,7 +103,7 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 							className="h-7 px-2.5 text-[11px] bg-slate-400/10 dark:bg-white/10 hover:bg-accent hover:text-accent-foreground border-slate-400/20 dark:border-white/20"
 						>
 							<RefreshCw className={cn("mr-1.5 size-3", isLoading && "animate-spin")} />
-							Refresh
+							{t("refresh")}
 						</Button>
 					</div>
 				</div>
@@ -115,7 +117,7 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 				{isLoading && channels.length === 0 ? (
 					<div className="flex items-center justify-center py-8">
 						<Spinner size="sm" />
-						<span className="ml-2 text-sm text-muted-foreground">Loading channels</span>
+						<span className="ml-2 text-sm text-muted-foreground">{t("loading_channels")}</span>
 					</div>
 				) : channels.length === 0 && !error ? (
 					<div className="text-center py-8 text-sm text-muted-foreground">
@@ -129,9 +131,9 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 							<div className={cn("p-3", needsPermissions.length > 0 && "border-b border-border")}>
 								<div className="flex items-center gap-2 mb-2">
 									<CheckCircle2 className="size-3.5 text-emerald-500" aria-hidden="true" />
-									<span className="text-[11px] font-medium">Accessible</span>
+									<span className="text-[11px] font-medium">{t("accessible")}</span>
 									<span className="text-[10px] text-muted-foreground">
-										{accessible.length} {accessible.length === 1 ? "channel" : "channels"}
+										{t("channels_count", { count: accessible.length })}
 									</span>
 								</div>
 								<div className="flex flex-wrap gap-1.5">
@@ -147,7 +149,7 @@ export const DiscordConfig: FC<DiscordConfigProps> = ({ connector }) => {
 							<div className="p-3">
 								<div className="flex items-center gap-2 mb-2">
 									<AlertCircle className="size-3.5 text-amber-500" aria-hidden="true" />
-									<span className="text-[11px] font-medium">Needs permissions</span>
+									<span className="text-[11px] font-medium">{t("needs_permissions")}</span>
 									<span className="text-[10px] text-muted-foreground">
 										{needsPermissions.length}{" "}
 										{needsPermissions.length === 1 ? "channel" : "channels"}

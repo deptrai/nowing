@@ -208,11 +208,27 @@ class RedisRunEventBus:
     async def _listener(self) -> None:
         """Forward Redis pub/sub messages to local queues."""
         while self._pubsub is not None:
+            # redis-py raises ``RuntimeError: pubsub connection not set`` when
+            # ``get_message`` is called before any channel is subscribed. The
+            # listener is started before the first ``_subscribe_channel`` lands,
+            # so wait for a subscription instead of treating it as fatal.
+            if not self._pubsub.subscribed:
+                await asyncio.sleep(0.05)
+                continue
             try:
                 message = await self._pubsub.get_message(
                     ignore_subscribe_messages=True,
                     timeout=1.0,
                 )
+            except RuntimeError as exc:
+                # Same guard for races where the last channel unsubscribes
+                # between the ``subscribed`` check and ``get_message``.
+                if "not set" in str(exc) or "subscribe" in str(exc):
+                    await asyncio.sleep(0.05)
+                    continue
+                logger.exception("run_event_bus redis listener error")
+                await self._handle_listener_error()
+                return
             except Exception:  # redis listener receive error; handle error and terminate listener loop
                 logger.exception("run_event_bus redis listener error")
                 await self._handle_listener_error()
@@ -246,6 +262,24 @@ class RedisRunEventBus:
     def _subscribe_channel(self, run_id: str) -> None:
         async def _sub() -> None:
             channel = _channel(run_id)
+            # The pubsub listener is started via a separate fire-and-forget task
+            # (``_ensure_listener`` → ``_start``). If this subscribe coroutine is
+            # scheduled first, ``self._pubsub`` may still be ``None``; returning
+            # here would drop the subscription entirely and the run's events
+            # would never reach this replica. Wait briefly for the listener to
+            # come up instead of giving up.
+            deadline = asyncio.get_running_loop().time() + 5.0
+            while self._pubsub is None:
+                if asyncio.get_running_loop().time() >= deadline:
+                    logger.warning(
+                        "run %s: redis pubsub listener never started; subscribe dropped",
+                        run_id,
+                    )
+                    metrics.record_run_event_bus_subscribe_failure(
+                        reason="listener_not_started"
+                    )
+                    return
+                await asyncio.sleep(0.01)
             async with self._listener_lock:
                 if self._pubsub is None:
                     return

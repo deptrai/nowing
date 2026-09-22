@@ -1,15 +1,19 @@
 import { loader } from "fumadocs-core/source";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { blog } from "@/.source/server";
 import { BlogWithSearchMagazine } from "./blog-magazine";
 
-export const metadata: Metadata = {
-	title: "Blog | Nowing - AI Search & Knowledge Management",
-	description: "Product updates, tutorials, and tips from the Nowing team.",
-	alternates: {
-		canonical: "https://www.nowing.com/blog",
-	},
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("home");
+	return {
+		title: t("blog_meta_title"),
+		description: t("blog_meta_description"),
+		alternates: {
+			canonical: "https://www.nowing.com/blog",
+		},
+	};
+}
 
 const source = loader({
 	baseUrl: "/blog",

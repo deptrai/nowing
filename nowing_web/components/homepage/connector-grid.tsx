@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { getAllConnectors } from "@/lib/connectors-marketing";
 
 /** Registry-driven connector grid with a live count badge (brief: never list connectors in copy). */
 export function ConnectorGrid() {
+	const t = useTranslations("homepage");
 	const connectors = getAllConnectors();
 
 	return (
@@ -15,16 +17,14 @@ export function ConnectorGrid() {
 			<Reveal>
 				<div className="flex flex-wrap items-center gap-3">
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						Connectors for every platform where answers live
+						{t("home_connectors_for_every_platform")}
 					</h2>
 					<Badge variant="outline" className="py-1">
-						{connectors.length} connectors and growing
+						{connectors.length} {t("connectors_count")}
 					</Badge>
 				</div>
 				<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-					Each connector is a platform-native REST API. Call it from your own app with your Nowing
-					API key, or hand it to your agents through the Nowing MCP server. Live data in, structured
-					intelligence out.
+					{t("connectors_lede")}
 				</p>
 			</Reveal>
 			<Reveal>
@@ -47,7 +47,7 @@ export function ConnectorGrid() {
 									{connector.heroLede}
 								</p>
 								<span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-foreground">
-									Explore
+									{t("explore")}
 									<ArrowRight
 										className="size-4 transition-transform group-hover:translate-x-0.5"
 										aria-hidden="true"
@@ -60,7 +60,7 @@ export function ConnectorGrid() {
 				<div className="mt-6">
 					<Button asChild variant="outline">
 						<Link href="/connectors">
-							View all connectors
+							{t("home_view_all_connectors")}
 							<ArrowRight className="size-4" aria-hidden="true" />
 						</Link>
 					</Button>

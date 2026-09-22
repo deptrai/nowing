@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Circle, CircleDashed, ListTodo, PartyPopper, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useMemo, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -111,6 +112,7 @@ export const Plan: FC<PlanProps> = ({
 	onResponseAction,
 	onBeforeResponseAction,
 }) => {
+	const t = useTranslations("toolUi");
 	const [isExpanded, setIsExpanded] = useState(false);
 
 	// Calculate progress
@@ -198,8 +200,8 @@ export const Plan: FC<PlanProps> = ({
 								className="w-full mt-2 text-xs text-muted-foreground hover:text-accent-foreground"
 							>
 								{isExpanded
-									? "Show less"
-									: `Show ${hiddenTodos.length} more ${hiddenTodos.length === 1 ? "task" : "tasks"}`}
+									? t("plan_show_less")
+									: t("plan_show_more", { count: hiddenTodos.length })}
 							</Button>
 						</CollapsibleTrigger>
 						<CollapsibleContent>

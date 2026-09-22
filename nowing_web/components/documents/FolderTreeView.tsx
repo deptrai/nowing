@@ -2,6 +2,7 @@
 
 import { useAtom } from "jotai";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -85,6 +86,7 @@ export function FolderTreeView({
 	onStopWatchingFolder,
 	onExportFolder,
 }: FolderTreeViewProps) {
+	const t = useTranslations("documents");
 	const foldersByParent = useMemo(() => groupBy(folders, (f) => f.parentId ?? "root"), [folders]);
 
 	const docsByFolder = useMemo(() => groupBy(documents, (d) => d.folderId ?? "root"), [documents]);
@@ -311,10 +313,8 @@ export function FolderTreeView({
 	if (treeNodes.length === 0 && folders.length === 0 && documents.length === 0) {
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-1 px-4 py-12 text-muted-foreground select-none">
-				<p className="text-sm font-medium">No documents found</p>
-				<p className="text-xs text-muted-foreground/70">
-					Use the Import button above to add files, or the plus menu to manage connectors
-				</p>
+				<p className="text-sm font-medium">{t("no_documents")}</p>
+				<p className="text-xs text-muted-foreground/70">{t("no_documents_desc")}</p>
 			</div>
 		);
 	}
@@ -323,8 +323,8 @@ export function FolderTreeView({
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-12 text-muted-foreground">
 				<Search className="h-10 w-10" />
-				<p className="text-sm text-muted-foreground">No matching documents</p>
-				<p className="text-xs text-muted-foreground/70 mt-1">Try a different search term</p>
+				<p className="text-sm text-muted-foreground">{t("no_matching")}</p>
+				<p className="text-xs text-muted-foreground/70 mt-1">{t("try_different")}</p>
 			</div>
 		);
 	}

@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { buildIssueUrl } from "@/lib/error-toast";
@@ -12,6 +13,7 @@ export default function ErrorPage({
 	error: globalThis.Error & { digest?: string; code?: string; requestId?: string };
 	reset: () => void;
 }) {
+	const t = useTranslations("errors");
 	useEffect(() => {
 		import("posthog-js")
 			.then(({ default: posthog }) => {
@@ -24,10 +26,8 @@ export default function ErrorPage({
 
 	return (
 		<div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center px-4">
-			<h2 className="text-2xl font-semibold">Something went wrong</h2>
-			<p className="text-muted-foreground max-w-md">
-				An unexpected error occurred. Please try again, or report this issue if it persists.
-			</p>
+			<h2 className="text-2xl font-semibold">{t("something_went_wrong")}</h2>
+			<p className="text-muted-foreground max-w-md">{t("unexpected_error")}</p>
 
 			{(error.digest || error.code || error.requestId) && (
 				<div className="rounded-md border bg-muted/50 px-4 py-2 text-xs text-muted-foreground font-mono max-w-md">
@@ -39,7 +39,7 @@ export default function ErrorPage({
 
 			<div className="flex gap-2">
 				<Button type="button" onClick={reset}>
-					Try again
+					{t("try_again")}
 				</Button>
 				<a
 					href={issueUrl}
@@ -48,7 +48,7 @@ export default function ErrorPage({
 					className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
 				>
 					<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-					Report Issue
+					{t("report_issue")}
 				</a>
 			</div>
 		</div>

@@ -1,0 +1,10 @@
+{
+  "model": "jev-1.13.0",
+  "overall": 0.963,
+  "tasks": {
+    "SUBAGENT_ROUTING": 1.0,
+    "ENTITY_MATCH": 0.9,
+    "CONTENT_FILTER": 1.0,
+    "INTENT_CLASSIFY": 0.95
+  }
+}

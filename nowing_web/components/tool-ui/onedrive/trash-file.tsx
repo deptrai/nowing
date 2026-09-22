@@ -2,6 +2,7 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { CornerDownLeftIcon, InfoIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<OneDriveTrashFileContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [deleteFromKb, setDeleteFromKb] = useState(false);
 
@@ -120,21 +122,21 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-							? "OneDrive File Deletion Rejected"
+							? t("onedrive_delete_rejected")
 							: phase === "processing" || phase === "complete"
-								? "OneDrive File Deletion Approved"
-								: "Delete OneDrive File"}
+								? t("onedrive_delete_approved")
+								: t("onedrive_delete_title")}
 					</p>
 					{phase === "processing" ? (
-						<TextShimmerLoader text="Trashing file" size="sm" />
+						<TextShimmerLoader text={t("common_trashing_file")} size="sm" />
 					) : phase === "complete" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File trashed</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_file_trashed")}</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File deletion was cancelled</p>
-					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("common_file_deletion_cancelled")}
 						</p>
+					) : (
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 			</div>
@@ -149,7 +151,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">OneDrive Account</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("onedrive_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -157,7 +161,9 @@ function ApprovalCard({
 								)}
 								{file && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">File to Delete</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("common_file_to_delete")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-0.5">
 											<div className="font-medium">{file.name}</div>
 											{file.web_url && (
@@ -167,7 +173,7 @@ function ApprovalCard({
 													rel="noopener noreferrer"
 													className="text-xs text-primary hover:underline"
 												>
-													Open in OneDrive
+													{t("onedrive_open_in_onedrive")}
 												</a>
 											)}
 										</div>
@@ -183,9 +189,7 @@ function ApprovalCard({
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 space-y-3 select-none">
-						<p className="text-xs text-muted-foreground">
-							The file will be moved to the OneDrive recycle bin. You can restore it within 93 days.
-						</p>
+						<p className="text-xs text-muted-foreground">{t("onedrive_recycle_bin_note")}</p>
 						<div className="flex items-center gap-2.5">
 							<Checkbox
 								id="od-delete-from-kb"
@@ -194,9 +198,9 @@ function ApprovalCard({
 								className="shrink-0"
 							/>
 							<label htmlFor="od-delete-from-kb" className="flex-1 cursor-pointer">
-								<span className="text-sm text-foreground">Also remove from knowledge base</span>
+								<span className="text-sm text-foreground">{t("common_also_remove_kb")}</span>
 								<p className="text-xs text-muted-foreground mt-0.5">
-									This will permanently delete the file from your knowledge base
+									{t("common_delete_kb_warning")}
 								</p>
 							</label>
 						</div>
@@ -209,7 +213,8 @@ function ApprovalCard({
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 flex items-center gap-2 select-none">
 						<Button size="sm" className="rounded-lg gap-1.5" onClick={handleApprove}>
-							Approve <CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+							{t("common_approve")}{" "}
+							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button
 							size="sm"
@@ -217,10 +222,10 @@ function ApprovalCard({
 							className="rounded-lg text-muted-foreground"
 							onClick={() => {
 								setRejected();
-								onDecision({ type: "reject", message: "User rejected the action." });
+								onDecision({ type: "reject", message: t("user_rejected") });
 							}}
 						>
-							Reject
+							{t("common_reject")}
 						</Button>
 					</div>
 				</>
@@ -230,10 +235,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to delete file</p>
+				<p className="text-sm font-semibold text-destructive">{t("common_failed_to_delete")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -255,10 +261,11 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">OneDrive authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("onedrive_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -269,11 +276,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "File moved to recycle bin"}
+					{result.message || t("onedrive_recycle_bin_success")}
 				</p>
 			</div>
 			{result.deleted_from_kb && (
@@ -281,7 +289,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4 text-xs">
 						<span className="text-green-600 dark:text-green-500">
-							Also removed from knowledge base
+							{t("common_also_removed_kb")}
 						</span>
 					</div>
 				</>

@@ -14,6 +14,17 @@ from app.proprietary.platforms.xactions.adapter_v2 import (
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 
 
+@pytest.fixture(autouse=True)
+def _pin_dispatch_flags_off(monkeypatch):
+    """Force XACTIONS_USE_UNIFIED_DISPATCH + XACTIONS_LEGACY_TOOL_DEPRECATION
+    OFF so flag-dependent tests are deterministic regardless of the developer's
+    .env.local. Tests covering the ON path set the flags themselves afterward."""
+    from app.config import config
+
+    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False)
+    monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", False)
+
+
 class FakeTarget:
     def __init__(
         self,
@@ -264,6 +275,175 @@ class TestXActionsSocialAdapterV2:
             await adapter.fetch_posts_for_target(target)
         assert exc_info.value.code == "XACT_4291"
         assert client.call_tool.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_ingest_raw_post_to_stream_single_writer_enabled_skips_xadd(
+        self, monkeypatch
+    ):
+        """Defense-in-depth guard: single-writer flag ON bypasses Redis XADD."""
+        from app.config import config
+        from app.proprietary.platforms.xactions.models import SocialPostData
+
+        monkeypatch.setattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", True)
+
+        client = XActionsMcpClientWithAdmin()
+        adapter = XActionsSocialAdapterV2(client=client)
+        redis_client = MagicMock()
+        redis_client.xadd = AsyncMock()
+
+        post = SocialPostData(
+            platform="facebook",
+            external_post_id="fb_1",
+            content="hello",
+        )
+        result = await adapter.ingest_raw_post_to_stream(post, redis_client=redis_client)
+
+        assert result is None
+        redis_client.xadd.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_ingest_raw_post_to_stream_single_writer_disabled_calls_xadd(
+        self, monkeypatch
+    ):
+        """Legacy dual-write: flag OFF publishes to stream:social:raw_posts."""
+        from app.config import config
+        from app.proprietary.platforms.xactions.constants import (
+            STREAM_SOCIAL_RAW_POSTS,
+        )
+        from app.proprietary.platforms.xactions.models import SocialPostData
+
+        monkeypatch.setattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", False)
+
+        client = XActionsMcpClientWithAdmin()
+        adapter = XActionsSocialAdapterV2(client=client)
+        redis_client = MagicMock()
+        redis_client.xadd = AsyncMock(return_value="123-0")
+
+        post = SocialPostData(
+            platform="facebook",
+            external_post_id="fb_1",
+            content="hello",
+        )
+        result = await adapter.ingest_raw_post_to_stream(post, redis_client=redis_client)
+
+        assert result == "123-0"
+        redis_client.xadd.assert_called_once()
+        call_args = redis_client.xadd.call_args
+        assert call_args.args[0] == STREAM_SOCIAL_RAW_POSTS
+
+    @pytest.mark.asyncio
+    async def test_ingest_raw_post_to_stream_payload_has_no_none_values(
+        self, monkeypatch
+    ):
+        """Regression test for spec-bugfix-adapter-v2-todict-none-fields:
+        payload passed to xadd must not contain None values (Redis rejects with
+        ``DataError``). Verify Optional fields omitted or coerced to non-None
+        strings, datetimes to ISO strings, collections to JSON strings."""
+        import json
+        from datetime import UTC, datetime
+
+        from app.config import config
+        from app.proprietary.platforms.xactions.constants import (
+            STREAM_SOCIAL_RAW_POSTS,
+        )
+        from app.proprietary.platforms.xactions.models import SocialPostData
+
+        monkeypatch.setattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", False)
+
+        client = XActionsMcpClientWithAdmin()
+        adapter = XActionsSocialAdapterV2(client=client)
+        redis_client = MagicMock()
+        redis_client.xadd = AsyncMock(return_value="456-0")
+
+        post = SocialPostData(
+            platform="facebook",
+            external_post_id="fb_2",
+            content="hello world",
+            # Many Optional fields default to None — the bug was that to_dict()
+            # leaked them into the xadd payload.
+            author_id=None,
+            category=None,
+            client_id=None,
+            published_at=datetime(2026, 9, 14, 12, 0, 0, tzinfo=UTC),
+            media_urls=["https://example.com/a.jpg", "https://example.com/b.jpg"],
+            raw_entities={"emails": ["x@y.z"], "phones": []},
+        )
+        result = await adapter.ingest_raw_post_to_stream(post, redis_client=redis_client)
+
+        assert result == "456-0"
+        redis_client.xadd.assert_called_once()
+        call_args = redis_client.xadd.call_args
+        assert call_args.args[0] == STREAM_SOCIAL_RAW_POSTS
+
+        payload = call_args.args[1]
+        # No None values anywhere — Redis would reject with DataError.
+        assert all(v is not None for v in payload.values()), (
+            f"payload contains None values: "
+            f"{[k for k, v in payload.items() if v is None]}"
+        )
+        # Optional fields that were None must not appear in payload at all.
+        for absent in ("author_id", "category", "client_id"):
+            # Either the key is absent OR it was coerced to a non-None string.
+            if absent in payload:
+                assert payload[absent] is not None
+        # Datetimes serialized to ISO-8601 string.
+        assert payload["published_at"] == "2026-09-14T12:00:00+00:00"
+        # Collections serialized to JSON strings that round-trip.
+        assert json.loads(payload["media_urls"]) == [
+            "https://example.com/a.jpg",
+            "https://example.com/b.jpg",
+        ]
+        assert json.loads(payload["raw_entities"]) == {
+            "emails": ["x@y.z"],
+            "phones": [],
+        }
+        # Schema contract — producer emits schema_version for REQ-X2 contract.
+        assert payload.get("schema_version") == "1"
+
+    @pytest.mark.asyncio
+    async def test_fetch_posts_for_target_unified_and_deprecation_flags_on(
+        self, monkeypatch
+    ):
+        """Integration: both flags ON routes legacy facebook_group through x_scrape
+        and preserves adapter envelope enrichment (accountId/proxyUrl/dryRun)."""
+        from app.config import config
+        from app.proprietary.platforms.xactions.action_matrix import (
+            CanonicalActionMatrix,
+        )
+
+        monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+        monkeypatch.setattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", True)
+        CanonicalActionMatrix.reset()
+        try:
+            client = XActionsMcpClientWithAdmin()
+            adapter = XActionsSocialAdapterV2(client=client)
+            target = FakeTarget(
+                "facebook_group",
+                "group123",
+                account_id="fb_acct",
+                proxy_url="http://proxy:8080",
+                id=10,
+            )
+            target.workspace_id = 20
+
+            await adapter.fetch_posts_for_target(target)
+
+            call_args = client._session.call_tool.call_args
+            tool_name = call_args[0][0]
+            arguments = call_args.kwargs["arguments"]
+            assert tool_name == "x_scrape"
+            assert arguments["platform"] == "facebook"
+            assert arguments["action"] == "group_posts"
+            assert arguments["args"] == {
+                "groupId": "group123",
+                "limit": 20,
+            }
+            assert arguments["context"] == {"targetId": 10, "workspaceId": 20}
+            assert arguments["accountId"] == "fb_acct"
+            assert arguments["proxyUrl"] == "http://proxy:8080"
+            assert arguments["dryRun"] is False
+        finally:
+            CanonicalActionMatrix.reset()
 
 
 class XActionsMcpClientWithAdmin:

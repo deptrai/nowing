@@ -2,6 +2,7 @@
 
 import { useAtom, useSetAtom } from "jotai";
 import { Expand, MessageSquare, PanelRightOpen, Shrink, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
 	type DockTabId,
 	dockActiveTabAtom,
@@ -35,6 +36,7 @@ const TAB_ORDER: DockTabId[] = [
 ];
 
 export function DockHeader({ tabs }: DockHeaderProps) {
+	const t = useTranslations("dock");
 	const [activeTab, setActiveTab] = useAtom(dockActiveTabAtom);
 	const setOpen = useSetAtom(dockOpenAtom);
 	const [verbose, setVerbose] = useAtom(dockVerboseModeAtom);
@@ -59,10 +61,10 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 							className="size-7 -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted"
 						>
 							<X className="size-3.5" aria-hidden="true" />
-							<span className="sr-only">Close canvas</span>
+							<span className="sr-only">{t("x_close_canvas")}</span>
 						</Button>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">Close canvas</TooltipContent>
+					<TooltipContent side="bottom">{t("close_canvas")}</TooltipContent>
 				</Tooltip>
 
 				<Tooltip>
@@ -79,9 +81,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 							) : (
 								<Expand className="size-3.5" aria-hidden="true" />
 							)}
-							<span className="sr-only">
-								{isExpanded ? "Thu nhỏ panel" : "Mở rộng panel"}
-							</span>
+							<span className="sr-only">{isExpanded ? "Thu nhỏ panel" : "Mở rộng panel"}</span>
 						</Button>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">
@@ -91,7 +91,7 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 
 				<div
 					role="tablist"
-					aria-label="Dock tabs"
+					aria-label={t("dock_tabs")}
 					className="flex flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar min-w-0"
 				>
 					{sortedTabs.map((tab) => (
@@ -125,11 +125,11 @@ export function DockHeader({ tabs }: DockHeaderProps) {
 						) : (
 							<PanelRightOpen className="size-3.5" aria-hidden="true" />
 						)}
-						<span className="sr-only">Toggle verbose mode</span>
+						<span className="sr-only">{t("toggle_verbose")}</span>
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent side="bottom">
-					{verbose ? "Rich output shown in chat" : "Show full output in chat"}
+					{verbose ? t("verbose_shown") : t("verbose_hidden")}
 				</TooltipContent>
 			</Tooltip>
 		</div>

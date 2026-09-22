@@ -1,5 +1,6 @@
 "use client";
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { removeTriggerMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import {
@@ -34,6 +35,7 @@ export function DeleteTriggerDialog({
 	triggerId,
 	triggerLabel,
 }: DeleteTriggerDialogProps) {
+	const t = useTranslations("automations");
 	const { mutateAsync: removeTrigger } = useAtomValue(removeTriggerMutationAtom);
 	const [submitting, setSubmitting] = useState(false);
 
@@ -51,14 +53,14 @@ export function DeleteTriggerDialog({
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Remove this trigger?</AlertDialogTitle>
+					<AlertDialogTitle>{t("auto_remove_this_trigger")}</AlertDialogTitle>
 					<AlertDialogDescription>
 						<span className="font-medium text-foreground">{triggerLabel}</span> will be detached.
 						The automation itself stays, but it won't fire on this trigger anymore.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+					<AlertDialogCancel disabled={submitting}>{t("cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						onClick={handleConfirm}
 						disabled={submitting}
@@ -67,10 +69,10 @@ export function DeleteTriggerDialog({
 						{submitting ? (
 							<span className="inline-flex items-center gap-2">
 								<Spinner size="xs" />
-								Removing…
+								{t("auto_removing")}
 							</span>
 						) : (
-							"Remove"
+							t("auto_remove")
 						)}
 					</AlertDialogAction>
 				</AlertDialogFooter>

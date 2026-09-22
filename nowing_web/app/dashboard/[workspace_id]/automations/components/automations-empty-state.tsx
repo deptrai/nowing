@@ -1,6 +1,7 @@
 "use client";
 import { AlarmClock } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 interface AutomationsEmptyStateProps {
@@ -15,33 +16,33 @@ interface AutomationsEmptyStateProps {
  * don't go hunting for an "add" button that doesn't exist.
  */
 export function AutomationsEmptyState({ workspaceId, canCreate }: AutomationsEmptyStateProps) {
+	const t = useTranslations("automations");
 	return (
 		<div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-6 py-12 text-center">
 			<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
 				<AlarmClock className="h-6 w-6" aria-hidden />
 			</div>
-			<h3 className="mt-4 text-base font-semibold text-foreground">No automations yet</h3>
-			<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-				Automations let Nowing run agent tasks on a schedule. Describe what you want in chat and
-				Nowing drafts the automation for your approval.
-			</p>
+			<h3 className="mt-4 text-base font-semibold text-foreground">
+				{t("auto_no_automations_yet")}
+			</h3>
+			<p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">{t("auto_empty_desc")}</p>
 			{canCreate ? (
 				<div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
 					<Button asChild>
-						<Link href={`/dashboard/${workspaceId}/new-chat`}>Create via chat</Link>
+						<Link href={`/dashboard/${workspaceId}/new-chat`}>{t("auto_create_via_chat")}</Link>
 					</Button>
 					<Button
 						asChild
 						variant="ghost"
 						className="h-10 justify-start rounded-md bg-muted px-3 text-sm hover:bg-accent"
 					>
-						<Link href={`/dashboard/${workspaceId}/automations/new`}>Create manually</Link>
+						<Link href={`/dashboard/${workspaceId}/automations/new`}>
+							{t("auto_create_manually")}
+						</Link>
 					</Button>
 				</div>
 			) : (
-				<p className="mt-6 text-xs text-muted-foreground">
-					You don't have permission to create automations in this workspace.
-				</p>
+				<p className="mt-6 text-xs text-muted-foreground">{t("auto_you_don_t_have")}</p>
 			)}
 		</div>
 	);

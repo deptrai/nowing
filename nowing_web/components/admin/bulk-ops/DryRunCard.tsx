@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertOctagon, AlertTriangle, CheckCircle2, HelpCircle, Play } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function DryRunCard({
 	disabled = false,
 	isHighRisk = false,
 }: DryRunCardProps) {
+	const t = useTranslations("bulkOps");
 	const count = dryRunResult?.affected_count ?? dryRunResult?.total_count ?? 0;
 	const sample = dryRunResult?.sample_affected ?? dryRunResult?.sample_subjects ?? [];
 	const warnings = dryRunResult?.warnings ?? [];
@@ -53,11 +55,8 @@ export function DryRunCard({
 			<CardHeader className="pb-3">
 				<div className="flex items-center justify-between">
 					<div>
-						<CardTitle className="text-base font-semibold">Dry-Run Simulation</CardTitle>
-						<CardDescription className="text-xs">
-							Simulate the query to preview affected targets and identify potential conflicts before
-							running.
-						</CardDescription>
+						<CardTitle className="text-base font-semibold">{t("dry_run_simulation")}</CardTitle>
+						<CardDescription className="text-xs">{t("simulation_desc")}</CardDescription>
 					</div>
 					<Button
 						type="button"
@@ -68,11 +67,11 @@ export function DryRunCard({
 						className="h-8 gap-1.5 text-xs"
 					>
 						{isDryRunning ? (
-							<>Simulating...</>
+							<>{t("simulating")}</>
 						) : (
 							<>
 								<CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />
-								Run Simulation
+								{t("run_simulation")}
 							</>
 						)}
 					</Button>
@@ -82,17 +81,14 @@ export function DryRunCard({
 			<CardContent className="space-y-4 pt-1">
 				{!dryRunResult && !isDryRunning && (
 					<div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-						No simulation results yet. Configure your action and filters above, then click &quot;Run
-						Simulation&quot; to preview impact.
+						{t("no_simulation_results")}
 					</div>
 				)}
 
 				{isDryRunning && (
 					<div className="py-8 text-center space-y-2">
 						<div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-						<p className="text-xs text-muted-foreground">
-							Evaluating filters and calculating targets...
-						</p>
+						<p className="text-xs text-muted-foreground">{t("evaluating_filters")}</p>
 					</div>
 				)}
 
@@ -101,28 +97,30 @@ export function DryRunCard({
 						{/* Affected Metrics */}
 						<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
 							<div className="p-3 rounded-lg border bg-card">
-								<span className="text-xs text-muted-foreground block">Affected Count</span>
+								<span className="text-xs text-muted-foreground block">{t("affected_count")}</span>
 								<span className="text-2xl font-bold tracking-tight text-primary">{count}</span>
 							</div>
 							<div className="p-3 rounded-lg border bg-card">
-								<span className="text-xs text-muted-foreground block">Execution Safety</span>
+								<span className="text-xs text-muted-foreground block">{t("execution_safety")}</span>
 								<div className="mt-1">
 									{canExecute && conflicts.length === 0 ? (
 										<Badge
 											variant="outline"
 											className="text-green-600 border-green-500/30 bg-green-500/10 text-xs"
 										>
-											Safe to Execute
+											{t("safe_to_execute")}
 										</Badge>
 									) : (
 										<Badge variant="destructive" className="text-xs">
-											Execution Blocked
+											{t("execution_blocked")}
 										</Badge>
 									)}
 								</div>
 							</div>
 							<div className="p-3 rounded-lg border bg-card col-span-2 sm:col-span-1">
-								<span className="text-xs text-muted-foreground block">Warnings / Conflicts</span>
+								<span className="text-xs text-muted-foreground block">
+									{t("warnings_conflicts")}
+								</span>
 								<span className="text-2xl font-bold tracking-tight text-amber-500">
 									{warnings.length + conflicts.length}
 								</span>
@@ -136,7 +134,9 @@ export function DryRunCard({
 								className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200"
 							>
 								<AlertTriangle className="h-4 w-4 text-amber-600" />
-								<AlertTitle className="text-xs font-semibold">Simulation Warnings</AlertTitle>
+								<AlertTitle className="text-xs font-semibold">
+									{t("simulation_warnings")}
+								</AlertTitle>
 								<AlertDescription className="text-xs mt-1 space-y-1">
 									{warnings.map((w) => (
 										<div key={`warning-${w}`}>• {w}</div>
@@ -150,7 +150,7 @@ export function DryRunCard({
 							<Alert variant="destructive">
 								<AlertOctagon className="h-4 w-4" />
 								<AlertTitle className="text-xs font-semibold">
-									Execution Conflicts Detected
+									{t("execution_conflicts_detected")}
 								</AlertTitle>
 								<AlertDescription className="text-xs mt-1 space-y-1">
 									{conflicts.map((c) => {
@@ -169,14 +169,14 @@ export function DryRunCard({
 						{sample.length > 0 && (
 							<div className="space-y-2">
 								<span className="text-xs font-semibold text-muted-foreground block">
-									Sample Affected Subjects (Showing up to {sample.length})
+									{t("sample_affected_subjects", { count: sample.length })}
 								</span>
 								<div className="rounded-md border overflow-x-auto max-h-48">
 									<Table className="text-xs">
 										<TableHeader>
 											<TableRow className="h-8">
-												<TableHead className="w-[80px]">ID</TableHead>
-												<TableHead>Details</TableHead>
+												<TableHead className="w-[80px]">{t("table_id")}</TableHead>
+												<TableHead>{t("table_details")}</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
@@ -208,7 +208,7 @@ export function DryRunCard({
 			<CardFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t pt-3 bg-muted/10">
 				<div className="text-xs text-muted-foreground flex items-center gap-1.5">
 					<HelpCircle className="h-3.5 w-3.5" />
-					Execution runs asynchronously in batches of 100 with transactional rollback on errors.
+					{t("execution_note")}
 				</div>
 				<Button
 					type="button"
@@ -226,7 +226,11 @@ export function DryRunCard({
 					className="gap-2 h-9 text-xs shrink-0"
 				>
 					<Play className="h-3.5 w-3.5 fill-current" />
-					{isExecuting ? "Queuing Job..." : isHighRisk ? "Confirm & Execute" : "Execute Operation"}
+					{isExecuting
+						? t("queuing_job")
+						: isHighRisk
+							? t("confirm_execute")
+							: t("execute_operation")}
 				</Button>
 			</CardFooter>
 		</Card>

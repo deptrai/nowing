@@ -1,0 +1,141 @@
+name: Jev Eval Gate
+
+# Story 39.8: CI integration for the Vietnamese eval harness.
+#
+# - harness-check (PR, no secrets): validates the harness end-to-end via
+#   the mock backend (`--dry-run`). Never runs paid/live calls.
+# - live-gate (workflow_dispatch, paid): runs the real Jev eval with
+#   `--gate`, exiting non-zero when any task's accuracy drops below
+#   --floor (default 90%). Baseline deltas vs baseline.json are
+#   informational — the floor is the hard criterion.
+
+on:
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'nowing_backend/scripts/jev_eval/**'
+      - 'nowing_backend/app/services/decision/**'
+      - 'nowing_backend/app/config/decision.py'
+      - '.github/workflows/jev-eval-gate.yml'
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Jev model version (passed via --model)'
+        required: true
+        default: 'jev-1.13.0'
+      task:
+        description: 'Task filter (optional: SUBAGENT_ROUTING, ENTITY_MATCH, CONTENT_FILTER, INTENT_CLASSIFY)'
+        required: false
+        default: ''
+      limit:
+        description: 'Max cases to run (optional, sets --limit)'
+        required: false
+        default: ''
+      floor:
+        description: 'Per-task accuracy floor for --gate (0-1)'
+        required: true
+        default: '0.90'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # PR pushes cancel stale harness checks, but a second workflow_dispatch
+  # must NOT kill an in-flight paid run (chat-regression-gate convention).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  harness-check:
+    name: Eval harness check (mock)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Install dependencies
+        working-directory: nowing_backend
+        run: uv sync
+
+      - name: Run eval harness (mock backend)
+        working-directory: nowing_backend
+        run: uv run scripts/jev_eval/runner.py --dry-run
+
+  live-gate:
+    name: Jev live eval gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Install dependencies
+        working-directory: nowing_backend
+        run: uv sync
+
+      - name: Run gated Jev eval
+        working-directory: nowing_backend
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          # Route inputs through env to avoid shell-injection via ${{ inputs.* }}
+          IN_MODEL: ${{ inputs.model }}
+          IN_TASK: ${{ inputs.task }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_FLOOR: ${{ inputs.floor }}
+        run: |
+          args=(--backend jev --gate --model "$IN_MODEL" --floor "${IN_FLOOR:-0.90}")
+          [[ -n "$IN_TASK" ]] && args+=(--task "$IN_TASK")
+          [[ -n "$IN_LIMIT" ]] && args+=(--limit "$IN_LIMIT")
+          uv run scripts/jev_eval/runner.py "${args[@]}"
+
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jev-eval-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            nowing_backend/scripts/jev_eval/results.jsonl
+            nowing_backend/scripts/jev_eval/summary.md
+          if-no-files-found: ignore

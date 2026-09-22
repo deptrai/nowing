@@ -1,6 +1,7 @@
 import { SquareArrowOutUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { AdUnit } from "@/components/ads/ad-unit";
 import { ADSENSE_SLOTS } from "@/components/ads/adsense-config";
 import { FAQJsonLd, JsonLd } from "@/components/seo/json-ld";
@@ -18,75 +19,75 @@ import {
 import type { AnonModel } from "@/contracts/types/anonymous-chat.types";
 import { SERVER_BACKEND_URL } from "@/lib/env-config";
 
-export const metadata: Metadata = {
-	title: "Free AI Chat, No Login Required | Nowing",
-	description:
-		"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more for free. No sign-up required. Open-core long-term research memory for AI agents, with free AI chat and document Q&A.",
-	keywords: [
-		"chatgpt free",
-		"chat gpt free",
-		"free chatgpt",
-		"free chat gpt",
-		"chatgpt online",
-		"chat gpt online",
-		"online chatgpt",
-		"chatgpt free online",
-		"chatgpt online free",
-		"chat gpt free online",
-		"chatgpt no login",
-		"chatgpt without login",
-		"chat gpt login free",
-		"chat gpt login",
-		"free chatgpt without login",
-		"free chatgpt no login",
-		"ai chat no login",
-		"ai chat without login",
-		"claude ai without login",
-		"claude no login",
-		"chatgpt for free",
-		"gpt chat free",
-		"claude ai free",
-		"claude free",
-		"free claude ai",
-		"free claude",
-		"ai like chatgpt",
-		"sites like chatgpt",
-		"free ai chatbot like chatgpt",
-		"free ai chatbots like chatgpt",
-		"apps like chatgpt for free",
-		"best free alternative to chatgpt",
-		"free ai apps",
-		"ai with no restrictions",
-		"open core research memory",
-		"long-term research memory",
-	],
-	alternates: {
-		canonical: "https://www.nowing.com/free",
-	},
-	openGraph: {
-		title: "Free AI Chat, No Login Required | Nowing",
-		description:
-			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and 100+ AI models. Open-core long-term research memory for AI agents.",
-		url: "https://www.nowing.com/free",
-		siteName: "Nowing",
-		type: "website",
-		images: [
-			{
-				url: "/og-image.png",
-				width: 1200,
-				height: 630,
-				alt: "Nowing - ChatGPT Free Online, Claude AI Free, No Login Required",
-			},
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("free");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		keywords: [
+			"chatgpt free",
+			"chat gpt free",
+			"free chatgpt",
+			"free chat gpt",
+			"chatgpt online",
+			"chat gpt online",
+			"online chatgpt",
+			"chatgpt free online",
+			"chatgpt online free",
+			"chat gpt free online",
+			"chatgpt no login",
+			"chatgpt without login",
+			"chat gpt login free",
+			"chat gpt login",
+			"free chatgpt without login",
+			"free chatgpt no login",
+			"ai chat no login",
+			"ai chat without login",
+			"claude ai without login",
+			"claude no login",
+			"chatgpt for free",
+			"gpt chat free",
+			"claude ai free",
+			"claude free",
+			"free claude ai",
+			"free claude",
+			"ai like chatgpt",
+			"sites like chatgpt",
+			"free ai chatbot like chatgpt",
+			"free ai chatbots like chatgpt",
+			"apps like chatgpt for free",
+			"best free alternative to chatgpt",
+			"free ai apps",
+			"ai with no restrictions",
+			"open core research memory",
+			"long-term research memory",
 		],
-	},
-	twitter: {
-		card: "summary_large_image",
-		title: "Free AI Chat, No Login Required | Nowing",
-		description:
-			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more. No sign-up needed.",
-		images: ["/og-image.png"],
-	},
-};
+		alternates: {
+			canonical: "https://www.nowing.com/free",
+		},
+		openGraph: {
+			title: t("meta_title"),
+			description: t("meta_og_description"),
+			url: "https://www.nowing.com/free",
+			siteName: "Nowing",
+			type: "website",
+			images: [
+				{
+					url: "/og-image.png",
+					width: 1200,
+					height: 630,
+					alt: "Nowing - ChatGPT Free Online, Claude AI Free, No Login Required",
+				},
+			],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: t("meta_title"),
+			description: t("meta_twitter_description"),
+			images: ["/og-image.png"],
+		},
+	};
+}
 
 async function getModels(): Promise<AnonModel[]> {
 	try {
@@ -100,57 +101,12 @@ async function getModels(): Promise<AnonModel[]> {
 	}
 }
 
-const FAQ_ITEMS = [
-	{
-		question: "Can I use ChatGPT without login?",
-		answer:
-			"Yes. Nowing lets you use ChatGPT without login or any sign-up. Just pick a model and start chatting. No email, no password, no account needed. You get 500,000 free tokens to use across ChatGPT, Claude AI, Gemini, and other models.",
-	},
-	{
-		question: "Is ChatGPT really free on Nowing?",
-		answer:
-			"Yes. Nowing gives you free access to ChatGPT (GPT-4), Claude AI, Gemini, and other models without login. You get 500,000 free tokens across any model with no sign-up required.",
-	},
-	{
-		question: "How do I use ChatGPT no login?",
-		answer:
-			"Go to any model page on Nowing and start typing your message. There is no login wall, no account creation, and no verification step. ChatGPT no login works instantly in your browser.",
-	},
-	{
-		question: "What AI models can I use for free without login?",
-		answer:
-			"Nowing offers free access without login to models from OpenAI (GPT-4, GPT-4 Turbo), Anthropic (Claude 3, Claude free), Google (Gemini), DeepSeek, Mistral, Llama, and more. All available as a free AI chat online with no login required.",
-	},
-	{
-		question: "What happens after I use my free tokens?",
-		answer:
-			"After your free tokens, create a free Nowing account to unlock $5 of premium credit. Additional credit can be topped up at $1 for $1 of credit, billed at the actual provider cost. Non-premium models remain unlimited for registered users.",
-	},
-	{
-		question: "Is Claude AI available without login?",
-		answer:
-			"Yes. You can use Claude AI free without login on Nowing. Both Claude 3 and other Anthropic models are available with no sign-up, alongside ChatGPT and Gemini.",
-	},
-	{
-		question: "How is Nowing different from ChatGPT?",
-		answer:
-			"Nowing is open-core long-term research memory for AI agents. It gives you access to multiple AI models in one place without login. Unlike ChatGPT alone, Nowing includes document Q&A with citations, integrations with Slack, Google Drive, Notion, and Confluence, plus team collaboration features.",
-	},
-	{
-		question: "Is Nowing a free AI chat without login?",
-		answer:
-			"Yes. Nowing is a free, open-core AI chat that works without login. It gives you access to Claude AI free, Gemini, and other AI models alongside document Q&A with citations, team collaboration, and 30+ integrations.",
-	},
-	{
-		question: "Is my data private when using free AI chat without login?",
-		answer:
-			"Anonymous chat sessions are not stored in any database. No account means no personal data collected. Nowing is open-core, so you can self-host for complete data control and privacy.",
-	},
-];
-
 export default async function FreeHubPage() {
+	const t = await getTranslations("free");
 	const models = await getModels();
 	const seoModels = models.filter((m) => m.seo_slug);
+	const faqKeys = ["faq1", "faq2", "faq3", "faq4", "faq5", "faq6", "faq7", "faq8", "faq9"];
+	const faqItems = faqKeys.map((k) => ({ question: t(`${k}_q`), answer: t(`${k}_a`) }));
 
 	return (
 		<div className="min-h-screen pt-20">
@@ -175,31 +131,29 @@ export default async function FreeHubPage() {
 					},
 				}}
 			/>
-			<FAQJsonLd questions={FAQ_ITEMS} />
+			<FAQJsonLd questions={faqItems} />
 
 			<article className="container mx-auto px-4 pb-20">
 				{/* Hero */}
 				<section className="mt-8 text-center max-w-3xl mx-auto">
 					<h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight">
-						ChatGPT Free Online Without Login
+						{t("hero_title")}
 					</h1>
 					<p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-sans leading-relaxed">
-						Use <strong>ChatGPT</strong>, <strong>Claude AI</strong>, <strong>Gemini</strong>, and
-						other AI models free online without login. No sign-up, no email, no password. Pick a
-						model and start chatting instantly.
+						{t("hero_sub")}
 					</p>
 					<div className="flex flex-wrap items-center justify-center gap-2 mt-6">
 						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
-							No login required
+							{t("badge_no_login")}
 						</Badge>
 						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
-							500K free tokens
+							{t("badge_tokens")}
 						</Badge>
 						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
-							{seoModels.length} AI models
+							{t("badge_models", { count: seoModels.length })}
 						</Badge>
 						<Badge variant="secondary" className="px-2.5 py-1 text-xs">
-							Open-core
+							{t("badge_opencore")}
 						</Badge>
 					</div>
 				</section>
@@ -207,31 +161,26 @@ export default async function FreeHubPage() {
 				<Separator className="my-12 max-w-4xl mx-auto" />
 
 				{/* In-content ad: above the model table */}
-				<aside aria-label="Advertisement" className="max-w-4xl mx-auto mb-8 min-h-[100px]">
+				<aside
+					aria-label={t("aria_advertisement")}
+					className="max-w-4xl mx-auto mb-8 min-h-[100px]"
+				>
 					<AdUnit slot={ADSENSE_SLOTS.freeHubInContent} />
 				</aside>
 
 				{/* Model Table */}
 				{seoModels.length > 0 ? (
-					<section
-						className="max-w-4xl mx-auto"
-						aria-label="Free AI models available without login"
-					>
-						<h2 className="font-serif text-2xl sm:text-3xl font-normal mb-2">
-							Free AI Models Available Without Login
-						</h2>
-						<p className="text-sm text-muted-foreground mb-6">
-							All models below work without login or sign-up. Click any model to start a free AI
-							chat instantly.
-						</p>
+					<section className="max-w-4xl mx-auto" aria-label={t("aria_free_models")}>
+						<h2 className="font-serif text-2xl sm:text-3xl font-normal mb-2">{t("table_title")}</h2>
+						<p className="text-sm text-muted-foreground mb-6">{t("table_sub")}</p>
 
 						<div className="overflow-hidden rounded-lg border">
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead className="w-[45%]">Model</TableHead>
-										<TableHead>Provider</TableHead>
-										<TableHead>Tier</TableHead>
+										<TableHead className="w-[45%]">{t("col_model")}</TableHead>
+										<TableHead>{t("col_provider")}</TableHead>
+										<TableHead>{t("col_tier")}</TableHead>
 										<TableHead className="text-right w-[100px]" />
 									</TableRow>
 								</TableHeader>
@@ -252,16 +201,16 @@ export default async function FreeHubPage() {
 											<TableCell>
 												{model.is_premium ? (
 													<Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border-0">
-														Premium
+														{t("tier_premium")}
 													</Badge>
 												) : (
-													<Badge variant="secondary">Free</Badge>
+													<Badge variant="secondary">{t("tier_free")}</Badge>
 												)}
 											</TableCell>
 											<TableCell className="text-right">
 												<Button variant="ghost" size="sm" asChild>
 													<Link href={`/free/${model.seo_slug}`}>
-														Chat
+														{t("chat_link")}
 														<SquareArrowOutUpRight className="size-3" aria-hidden="true" />
 													</Link>
 												</Button>
@@ -274,9 +223,7 @@ export default async function FreeHubPage() {
 					</section>
 				) : (
 					<section className="mt-12 text-center max-w-4xl mx-auto">
-						<p className="text-muted-foreground">
-							No models are currently available. Please check back later.
-						</p>
+						<p className="text-muted-foreground">{t("no_models")}</p>
 					</section>
 				)}
 
@@ -284,31 +231,19 @@ export default async function FreeHubPage() {
 
 				{/* Why Nowing */}
 				<section className="max-w-4xl mx-auto">
-					<h2 className="text-2xl font-bold mb-6">Why Use Nowing for Free AI Chat</h2>
+					<h2 className="text-2xl font-bold mb-6">{t("why_title")}</h2>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div className="rounded-lg border bg-card p-5">
-							<h3 className="font-semibold mb-1.5">Multiple AI Models in One Place</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								Access ChatGPT, Claude AI free, Gemini, DeepSeek, and more. Works like sites like
-								ChatGPT but with all AI models available, not just GPT. A true free AI chatbot like
-								ChatGPT and beyond.
-							</p>
+							<h3 className="font-semibold mb-1.5">{t("why1_title")}</h3>
+							<p className="text-sm text-muted-foreground leading-relaxed">{t("why1_desc")}</p>
 						</div>
 						<div className="rounded-lg border bg-card p-5">
-							<h3 className="font-semibold mb-1.5">No Login, No Sign-Up Required</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								Start using ChatGPT free online immediately. No email, no password, no verification.
-								Get ChatGPT no login access and Claude AI free access from one platform. AI with no
-								restrictions on which model you can use.
-							</p>
+							<h3 className="font-semibold mb-1.5">{t("why2_title")}</h3>
+							<p className="text-sm text-muted-foreground leading-relaxed">{t("why2_desc")}</p>
 						</div>
 						<div className="rounded-lg border bg-card p-5">
-							<h3 className="font-semibold mb-1.5">Open-Core Research Memory for AI Agents</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								Nowing is free, open-core long-term research memory for AI agents, with document Q&A
-								and citations, integrations with Slack, Google Drive, Notion, and Confluence, plus
-								team collaboration and self-hosting support.
-							</p>
+							<h3 className="font-semibold mb-1.5">{t("why3_title")}</h3>
+							<p className="text-sm text-muted-foreground leading-relaxed">{t("why3_desc")}</p>
 						</div>
 					</div>
 				</section>
@@ -317,29 +252,28 @@ export default async function FreeHubPage() {
 
 				{/* CTA */}
 				<section className="max-w-3xl mx-auto text-center">
-					<h2 className="text-2xl font-bold mb-3">Want More Features?</h2>
-					<p className="text-muted-foreground mb-6 leading-relaxed">
-						Create a free Nowing account to unlock $5 of premium credit, document uploads with
-						citations, team collaboration, and integrations with Slack, Google Drive, Notion, and
-						30+ more tools.
-					</p>
+					<h2 className="text-2xl font-bold mb-3">{t("cta_title")}</h2>
+					<p className="text-muted-foreground mb-6 leading-relaxed">{t("cta_desc")}</p>
 					<Button size="lg" asChild>
-						<Link href="/register">Create Free Account</Link>
+						<Link href="/register">{t("cta_button")}</Link>
 					</Button>
 				</section>
 
 				<Separator className="my-12 max-w-4xl mx-auto" />
 
 				{/* In-content ad: after CTA, before FAQ */}
-				<aside aria-label="Advertisement" className="max-w-3xl mx-auto my-8 min-h-[100px]">
+				<aside
+					aria-label={t("aria_advertisement")}
+					className="max-w-3xl mx-auto my-8 min-h-[100px]"
+				>
 					<AdUnit slot={ADSENSE_SLOTS.freeHubBeforeFaq} />
 				</aside>
 
 				{/* FAQ */}
 				<section className="max-w-3xl mx-auto">
-					<h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+					<h2 className="text-2xl font-bold text-center mb-8">{t("faq_title")}</h2>
 					<dl className="flex flex-col gap-4">
-						{FAQ_ITEMS.map((item) => (
+						{faqItems.map((item) => (
 							<div key={item.question} className="rounded-lg border bg-card p-5">
 								<dt className="font-medium text-sm">{item.question}</dt>
 								<dd className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -351,27 +285,27 @@ export default async function FreeHubPage() {
 				</section>
 
 				{/* Internal links */}
-				<nav aria-label="Related pages" className="mt-16 max-w-3xl mx-auto">
-					<h2 className="text-lg font-semibold mb-3">Explore Nowing</h2>
+				<nav aria-label={t("aria_related_pages")} className="mt-16 max-w-3xl mx-auto">
+					<h2 className="text-lg font-semibold mb-3">{t("nav_title")}</h2>
 					<ul className="flex flex-wrap gap-2">
 						<li>
 							<Button variant="outline" size="sm" asChild>
-								<Link href="/pricing">Pricing</Link>
+								<Link href="/pricing">{t("nav_pricing")}</Link>
 							</Button>
 						</li>
 						<li>
 							<Button variant="outline" size="sm" asChild>
-								<Link href="/docs">Documentation</Link>
+								<Link href="/docs">{t("nav_docs")}</Link>
 							</Button>
 						</li>
 						<li>
 							<Button variant="outline" size="sm" asChild>
-								<Link href="/blog">Blog</Link>
+								<Link href="/blog">{t("nav_blog")}</Link>
 							</Button>
 						</li>
 						<li>
 							<Button variant="outline" size="sm" asChild>
-								<Link href="/register">Sign Up Free</Link>
+								<Link href="/register">{t("nav_signup")}</Link>
 							</Button>
 						</li>
 					</ul>

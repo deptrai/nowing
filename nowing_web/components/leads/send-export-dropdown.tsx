@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Cloud, Download, FileSpreadsheet, Share2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -20,6 +21,7 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 	onShareLink,
 }) => {
 	const [isOpen, setIsOpen] = useState<boolean>(false);
+	const t = useTranslations("leads");
 	const [copied, setCopied] = useState<boolean>(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +56,7 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 				className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-2xs focus:outline-none"
 			>
 				<Download className="size-3.5" aria-hidden="true" />
-				<span>Send & Export</span>
+				<span>{t("send_export")}</span>
 				<ChevronDown
 					className={`size-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
 				/>
@@ -74,8 +76,8 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 					>
 						<Download className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 						<div>
-							<div className="font-medium">Tải file CSV</div>
-							<div className="text-[10px] text-zinc-400">Xuất file Excel / CSV tải trực tiếp</div>
+							<div className="font-medium">{t("export_csv")}</div>
+							<div className="text-[10px] text-zinc-400">{t("export_csv_desc")}</div>
 						</div>
 					</button>
 
@@ -90,8 +92,8 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 					>
 						<Cloud className="w-4 h-4 text-blue-400" aria-hidden="true" />
 						<div>
-							<div className="font-medium">Đẩy sang Lark Base</div>
-							<div className="text-[10px] text-zinc-400">1-click push Bitable tự động map cột</div>
+							<div className="font-medium">{t("push_lark")}</div>
+							<div className="text-[10px] text-zinc-400">{t("push_lark_desc")}</div>
 						</div>
 					</button>
 
@@ -106,8 +108,8 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 					>
 						<FileSpreadsheet className="w-4 h-4 text-emerald-400" aria-hidden="true" />
 						<div>
-							<div className="font-medium">Đẩy sang Google Sheets</div>
-							<div className="text-[10px] text-zinc-400">Append dòng mới vào Google Sheet</div>
+							<div className="font-medium">{t("push_sheets")}</div>
+							<div className="text-[10px] text-zinc-400">{t("push_sheets_desc")}</div>
 						</div>
 					</button>
 
@@ -124,10 +126,8 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 								<Share2 className="w-4 h-4 text-indigo-400" aria-hidden="true" />
 							)}
 							<div>
-								<div className="font-medium">
-									{copied ? "Đã sao chép link!" : "Chia sẻ liên kết Read-only"}
-								</div>
-								<div className="text-[10px] text-zinc-400">Tạo link bảo mật chỉ xem</div>
+								<div className="font-medium">{copied ? t("link_copied") : t("share_link")}</div>
+								<div className="text-[10px] text-zinc-400">{t("share_link_desc")}</div>
 							</div>
 						</button>
 					</div>

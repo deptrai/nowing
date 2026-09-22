@@ -20,6 +20,7 @@ import {
 	Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +97,7 @@ function renderChangeBadge(changePct: number | null | undefined) {
 }
 
 export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboardProps) {
+	const t = useTranslations("analytics");
 	const [range, setRange] = useState<WorkspaceHealthRange>("30d");
 	const [customStartDate, setCustomStartDate] = useState("");
 	const [customEndDate, setCustomEndDate] = useState("");
@@ -173,10 +175,8 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 		return (
 			<div className="p-8 text-center border rounded-xl bg-card space-y-3">
 				<AlertCircle className="h-10 w-10 text-destructive mx-auto" />
-				<h3 className="font-semibold text-lg">Unable to load workspace health analytics</h3>
-				<p className="text-sm text-muted-foreground max-w-md mx-auto">
-					Ensure you have the required workspace permissions (ANALYTICS_READ or MEMORY_READ).
-				</p>
+				<h3 className="font-semibold text-lg">{t("load_failed")}</h3>
+				<p className="text-sm text-muted-foreground max-w-md mx-auto">{t("load_failed_desc")}</p>
 				<Button onClick={() => refetch()} variant="outline" size="sm">
 					<RefreshCw className="h-4 w-4 mr-2" />
 					Retry
@@ -192,17 +192,13 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 				<div className="flex items-center justify-between gap-3 p-3.5 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs">
 					<div className="flex items-center gap-2">
 						<Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-						<span>
-							<strong>Public Snapshot Mode:</strong> Financial metrics (credit burn, cost-per-turn)
-							and individual member identities are masked. Contact a workspace owner for full
-							access.
-						</span>
+						<span>{t("public_snapshot_desc")}</span>
 					</div>
 					<Badge
 						variant="outline"
 						className="border-amber-500/40 text-destructive dark:text-destructive-foreground text-[10px]"
 					>
-						INV-29.3 Read Only
+						{t("read_only")}
 					</Badge>
 				</div>
 			)}
@@ -215,12 +211,8 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 							<Activity className="h-5 w-5" />
 						</div>
 						<div>
-							<h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
-								Workspace Health & Adoption
-							</h1>
-							<p className="text-xs text-muted-foreground">
-								Real-time adoption sparklines, knowledge coverage, and quota telemetry
-							</p>
+							<h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{t("title")}</h1>
+							<p className="text-xs text-muted-foreground">{t("subtitle")}</p>
 						</div>
 					</div>
 				</div>
@@ -252,15 +244,15 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 								value={customStartDate}
 								onChange={(e) => setCustomStartDate(e.target.value)}
 								className="h-8 text-xs w-32"
-								placeholder="Start date"
+								placeholder={t("start_date")}
 							/>
-							<span className="text-muted-foreground">to</span>
+							<span className="text-muted-foreground">{t("range_to")}</span>
 							<Input
 								type="date"
 								value={customEndDate}
 								onChange={(e) => setCustomEndDate(e.target.value)}
 								className="h-8 text-xs w-32"
-								placeholder="End date"
+								placeholder={t("end_date")}
 							/>
 						</div>
 					)}
@@ -270,15 +262,15 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" size="sm" className="h-8 text-xs" disabled={isExporting}>
 								<Download className="h-3.5 w-3.5 mr-1.5" />
-								{isExporting ? "Exporting..." : "Export"}
+								{isExporting ? t("exporting") : t("export")}
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => handleExport("csv")}>
-								Export CSV (.csv)
+								{t("export_csv")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onClick={() => handleExport("json")}>
-								Export JSON (.json)
+								{t("export_json")}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -293,21 +285,18 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 							<Sparkles className="h-7 w-7" />
 						</div>
 						<div className="space-y-1 max-w-md">
-							<h3 className="font-semibold text-lg">No Health Activity Yet</h3>
-							<p className="text-sm text-muted-foreground">
-								Start by connecting your workspace data sources or having conversations with agents
-								to populate memories and queries.
-							</p>
+							<h3 className="font-semibold text-lg">{t("no_activity")}</h3>
+							<p className="text-sm text-muted-foreground">{t("no_activity_desc")}</p>
 						</div>
 						<div className="flex items-center gap-3 pt-2">
 							<Button asChild size="sm">
 								<Link href={`/dashboard/${workspaceId}/connectors`}>
 									<Plus className="h-4 w-4 mr-1.5" />
-									Connect Sources
+									{t("connect_sources")}
 								</Link>
 							</Button>
 							<Button asChild variant="outline" size="sm">
-								<Link href={`/dashboard/${workspaceId}/new-chat`}>Start New Chat</Link>
+								<Link href={`/dashboard/${workspaceId}/new-chat`}>{t("start_chat")}</Link>
 							</Button>
 						</div>
 					</CardContent>
@@ -320,7 +309,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<Card className="shadow-none">
 							<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
 								<CardTitle className="text-xs font-medium text-muted-foreground">
-									Active Members
+									{t("active_members")}
 								</CardTitle>
 								<Users className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
@@ -329,7 +318,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									<div className="flex items-center gap-1.5 py-1">
 										<Lock className="h-4 w-4 text-muted-foreground" />
 										<span className="text-sm text-muted-foreground italic font-medium">
-											Protected (Masked)
+											{t("protected_masked")}
 										</span>
 									</div>
 								) : (
@@ -363,7 +352,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<Card className="shadow-none">
 							<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
 								<CardTitle className="text-xs font-medium text-muted-foreground">
-									Total Members
+									{t("total_members")}
 								</CardTitle>
 								<Users className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
@@ -374,9 +363,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									</div>
 									{renderChangeBadge(summary.total_members.change_pct)}
 								</div>
-								<div className="text-[11px] text-muted-foreground">
-									Total workspace members as of selected period
-								</div>
+								<div className="text-[11px] text-muted-foreground">{t("total_members_desc")}</div>
 								<Sparkline
 									values={summary.total_members.sparkline}
 									colorClassName="text-sky-500"
@@ -389,7 +376,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<Card className="shadow-none">
 							<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
 								<CardTitle className="text-xs font-medium text-muted-foreground">
-									Total Memories
+									{t("total_memories")}
 								</CardTitle>
 								<Database className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
@@ -400,9 +387,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									</div>
 									{renderChangeBadge(summary.total_memories.change_pct)}
 								</div>
-								<div className="text-[11px] text-muted-foreground">
-									Total retained workspace knowledge assets
-								</div>
+								<div className="text-[11px] text-muted-foreground">{t("total_memories_desc")}</div>
 								<Sparkline
 									values={summary.total_memories.sparkline}
 									colorClassName="text-emerald-500"
@@ -415,7 +400,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<Card className="shadow-none">
 							<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
 								<CardTitle className="text-xs font-medium text-muted-foreground">
-									Memory Growth Rate
+									{t("memory_growth")}
 								</CardTitle>
 								<TrendingUp className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
@@ -426,9 +411,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									</div>
 									{renderChangeBadge(summary.memory_growth_count.change_pct)}
 								</div>
-								<div className="text-[11px] text-muted-foreground">
-									New memories extracted in selected period
-								</div>
+								<div className="text-[11px] text-muted-foreground">{t("memory_growth_desc")}</div>
 								<Sparkline
 									values={summary.memory_growth_count.sparkline}
 									colorClassName="text-indigo-500"
@@ -441,7 +424,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<Card className="shadow-none">
 							<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
 								<CardTitle className="text-xs font-medium text-muted-foreground">
-									Query Volume
+									{t("query_volume")}
 								</CardTitle>
 								<Search className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
@@ -454,11 +437,11 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 								</div>
 								<div className="flex items-center gap-2 text-[11px] text-muted-foreground">
 									<span>
-										Recall: <strong>{summary.recall_queries}</strong>
+										{t("recall")}: <strong>{summary.recall_queries}</strong>
 									</span>
 									<span>•</span>
 									<span>
-										Research: <strong>{summary.research_queries}</strong>
+										{t("research")}: <strong>{summary.research_queries}</strong>
 									</span>
 								</div>
 								<Sparkline
@@ -473,7 +456,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<Card className="shadow-none">
 							<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
 								<CardTitle className="text-xs font-medium text-muted-foreground">
-									Credits Consumed
+									{t("credits_consumed")}
 								</CardTitle>
 								<Zap className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
@@ -482,7 +465,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									<div className="flex items-center gap-1.5 py-1">
 										<Lock className="h-4 w-4 text-muted-foreground" />
 										<span className="text-sm text-muted-foreground italic font-medium">
-											Protected (Owner only)
+											{t("protected_owner")}
 										</span>
 									</div>
 								) : (
@@ -493,9 +476,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 											</div>
 											{renderChangeBadge(summary.credits_consumed_micros.change_pct)}
 										</div>
-										<div className="text-[11px] text-muted-foreground">
-											Burn across agents and background pipelines
-										</div>
+										<div className="text-[11px] text-muted-foreground">{t("credits_desc")}</div>
 										<Sparkline
 											values={summary.credits_consumed_micros.sparkline}
 											colorClassName="text-amber-500"
@@ -510,7 +491,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<Card className="shadow-none">
 							<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
 								<CardTitle className="text-xs font-medium text-muted-foreground">
-									Cost Per Turn
+									{t("cost_per_turn")}
 								</CardTitle>
 								<DollarSign className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
@@ -519,7 +500,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 									<div className="flex items-center gap-1.5 py-1">
 										<Lock className="h-4 w-4 text-muted-foreground" />
 										<span className="text-sm text-muted-foreground italic font-medium">
-											Protected (Owner only)
+											{t("protected_owner")}
 										</span>
 									</div>
 								) : (
@@ -531,7 +512,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 											{renderChangeBadge(summary.cost_per_turn_micros.change_pct)}
 										</div>
 										<div className="text-[11px] text-muted-foreground">
-											Average credits per agent execution turn
+											{t("cost_per_turn_desc")}
 										</div>
 										<Sparkline
 											values={summary.cost_per_turn_micros.sparkline}
@@ -550,18 +531,16 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 							<CardHeader className="p-4 pb-3 flex flex-row items-center justify-between space-y-0">
 								<div>
 									<CardTitle className="text-sm font-semibold flex items-center gap-2">
-										<span>Quota Utilization & Plan Progression</span>
+										<span>{t("quota_title")}</span>
 										<Badge variant="outline" className="text-[10px] font-normal">
-											Advisory
+											{t("advisory")}
 										</Badge>
 									</CardTitle>
-									<CardDescription className="text-xs mt-0.5">
-										Monitor usage limits against your workspace plan. Operations are never blocked.
-									</CardDescription>
+									<CardDescription className="text-xs mt-0.5">{t("quota_desc")}</CardDescription>
 								</div>
 								<Button asChild size="sm" variant="outline" className="h-7 text-xs">
 									<Link href={`/dashboard/${workspaceId}/workspace-settings/limits`}>
-										Upgrade Plan
+										{t("upgrade_plan")}
 									</Link>
 								</Button>
 							</CardHeader>
@@ -582,11 +561,11 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 															variant="destructive"
 															className="text-[10px] px-1.5 py-0 uppercase"
 														>
-															Quota Exceeded
+															{t("quota_exceeded")}
 														</Badge>
 													) : isWarning ? (
 														<Badge className="bg-amber-500 text-white text-[10px] px-1.5 py-0 uppercase">
-															Warning (80%+)
+															{t("warning_80")}
 														</Badge>
 													) : (
 														<span className="text-[11px] text-muted-foreground font-medium">
@@ -618,14 +597,14 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 															? item.metric.includes("credit")
 																? formatUsd(item.limit_value)
 																: formatCompactNumber(item.limit_value)
-															: "Unlimited"}
+															: t("unlimited")}
 													</span>
 												</div>
 
 												{/* Advisory Banner */}
 												{(isWarning || isAlert) && item.recommended_tier && (
 													<div className="pt-1 text-[11px] text-destructive dark:text-destructive-foreground">
-														Recommended tier:{" "}
+														{t("recommended_tier")}{" "}
 														<strong className="capitalize">{item.recommended_tier}</strong>
 													</div>
 												)}
@@ -641,10 +620,8 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 					<Card className="shadow-none">
 						<CardHeader className="p-4 pb-3 flex flex-row items-center justify-between space-y-0">
 							<div>
-								<CardTitle className="text-sm font-semibold">Knowledge & Scraper Sources</CardTitle>
-								<CardDescription className="text-xs mt-0.5">
-									Ranked contribution of memories, citations, and coverage health
-								</CardDescription>
+								<CardTitle className="text-sm font-semibold">{t("sources_title")}</CardTitle>
+								<CardDescription className="text-xs mt-0.5">{t("sources_desc")}</CardDescription>
 							</div>
 
 							<Button
@@ -654,7 +631,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 								className="h-8 text-xs relative"
 							>
 								<AlertCircle className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
-								<span>Coverage Gaps</span>
+								<span>{t("coverage_gaps")}</span>
 								{summary.source_coverage_gap_count > 0 && (
 									<Badge className="ml-1.5 px-1.5 py-0 text-[10px] bg-amber-500 text-white">
 										{summary.source_coverage_gap_count}
@@ -666,18 +643,18 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 						<CardContent className="p-0 border-t">
 							{summary.top_sources.length === 0 ? (
 								<div className="p-8 text-center text-xs text-muted-foreground">
-									No sources detected for this period.
+									{t("no_sources")}
 								</div>
 							) : (
 								<Table>
 									<TableHeader>
 										<TableRow className="text-xs">
 											<TableHead className="w-12 text-center">#</TableHead>
-											<TableHead>Source Type</TableHead>
-											<TableHead className="text-right">Memories</TableHead>
-											<TableHead className="text-right">Query Citations</TableHead>
-											<TableHead className="text-right">Cost Attribution</TableHead>
-											<TableHead className="text-center">Status</TableHead>
+											<TableHead>{t("col_source_type")}</TableHead>
+											<TableHead className="text-right">{t("col_memories")}</TableHead>
+											<TableHead className="text-right">{t("col_citations")}</TableHead>
+											<TableHead className="text-right">{t("col_cost")}</TableHead>
+											<TableHead className="text-center">{t("status")}</TableHead>
 											<TableHead className="w-10"></TableHead>
 										</TableRow>
 									</TableHeader>
@@ -708,7 +685,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 													</TableCell>
 													<TableCell className="text-right font-mono">
 														{summary.is_public_snapshot || src.cost_micros === null
-															? "Protected"
+															? t("protected")
 															: formatUsd(src.cost_micros)}
 													</TableCell>
 													<TableCell className="text-center">
@@ -717,14 +694,14 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 																variant="outline"
 																className="text-amber-600 border-amber-500/40 text-[10px]"
 															>
-																Gap Detected
+																{t("gap_detected")}
 															</Badge>
 														) : (
 															<Badge
 																variant="secondary"
 																className="text-emerald-600 dark:text-emerald-400 text-[10px]"
 															>
-																Active
+																{t("status_active")}
 															</Badge>
 														)}
 													</TableCell>

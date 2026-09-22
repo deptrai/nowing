@@ -368,6 +368,99 @@ def test_runner_swallows_checkpointer_dispose_errors() -> None:
     assert calls["n"] == 2  # before + after both attempted, both swallowed
 
 
+def test_runner_disposes_mcp_client_around_call_and_before_close() -> None:
+    """The loop-scoped MCP client must be disposed before and after each task,
+    on the task's fresh loop, and BEFORE the loop is closed.
+    """
+    import app.tasks.celery_tasks as celery_pkg
+    from app.tasks.celery_tasks import run_async_celery_task
+
+    engine_stub = _StaleLoopEngine()
+    dispose_events: list[tuple[int, bool]] = []
+
+    original_dispose_mcp = celery_pkg._dispose_loop_mcp_client
+
+    def _tracking_dispose(loop: asyncio.AbstractEventLoop) -> None:
+        dispose_events.append((id(loop), loop.is_closed()))
+        original_dispose_mcp(loop)
+
+    async def _body() -> str:
+        # Before the task body, MCP client dispose must have run once on open loop.
+        assert len(dispose_events) == 1
+        assert not dispose_events[0][1]
+        return "mcp_ok"
+
+    with (
+        _patch_shared_engine(engine_stub),
+        patch.object(celery_pkg, "_dispose_loop_mcp_client", side_effect=_tracking_dispose),
+    ):
+        result = run_async_celery_task(_body)
+
+    assert result == "mcp_ok"
+    # Ran twice: once before body, once in finally before loop.close()
+    assert len(dispose_events) == 2
+    assert dispose_events[0][0] == dispose_events[1][0]
+    # In both calls, loop was still open
+    assert not dispose_events[0][1]
+    assert not dispose_events[1][1]
+
+
+def test_runner_swallows_mcp_client_dispose_errors() -> None:
+    """A failing MCP client dispose must never crash the celery task."""
+    from app.tasks.celery_tasks import run_async_celery_task
+
+    engine_stub = _StaleLoopEngine()
+    calls = {"n": 0}
+
+    async def _angry_release(loop: asyncio.AbstractEventLoop) -> None:
+        calls["n"] += 1
+        raise RuntimeError("mcp dispose exploded")
+
+    async def _body() -> int:
+        return 99
+
+    with (
+        _patch_shared_engine(engine_stub),
+        patch(
+            "app.proprietary.platforms.xactions.mcp_client.release_shared_client_for_loop",
+            side_effect=_angry_release,
+        ),
+    ):
+        assert run_async_celery_task(_body) == 99
+
+    assert calls["n"] == 2  # before + after both attempted and swallowed
+
+
+def test_runner_mcp_client_timeout_protection() -> None:
+    """If release_shared_client_for_loop hangs, the runner times out and closes safely."""
+    import app.tasks.celery_tasks as celery_pkg
+    from app.tasks.celery_tasks import run_async_celery_task
+
+    engine_stub = _StaleLoopEngine()
+
+    async def _hanging_release(loop: asyncio.AbstractEventLoop) -> None:
+        await asyncio.sleep(100.0)
+
+    async def _fast_wait_for(fut, timeout):
+        # Accelerate the 2.0s timeout to 0.01s so unit test is instantaneous
+        return await asyncio.wait_for(fut, timeout=0.01)
+
+    async def _body() -> str:
+        return "survived"
+
+    with (
+        _patch_shared_engine(engine_stub),
+        patch(
+            "app.proprietary.platforms.xactions.mcp_client.release_shared_client_for_loop",
+            side_effect=_hanging_release,
+        ),
+        patch("asyncio.wait_for", side_effect=_fast_wait_for),
+    ):
+        result = run_async_celery_task(_body)
+
+    assert result == "survived"
+
+
 def test_runner_uses_proactor_loop_on_windows() -> None:
     """On Windows the celery worker preselects a Proactor policy so
     subprocess (ffmpeg) calls work. The helper must not silently fall

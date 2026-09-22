@@ -86,7 +86,7 @@ const mockStatuses = {
 	total: 2,
 };
 
-const mockAlerts = [];
+const mockAlerts: unknown[] = [];
 
 async function setupXActionsHealthMocks(page: Page, degraded = false) {
 	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/overview$/, async (route: Route) => {

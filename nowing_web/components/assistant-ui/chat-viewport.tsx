@@ -2,22 +2,26 @@
 
 import { AuiIf, ThreadPrimitive } from "@assistant-ui/react";
 import { ArrowDownIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
-const ChatScrollToBottom: FC = () => (
-	<ThreadPrimitive.ScrollToBottom asChild>
-		<Button
-			type="button"
-			variant="ghost"
-			size="icon"
-			aria-label="Scroll to bottom"
-			className="aui-thread-scroll-to-bottom -top-12 absolute z-10 size-10 self-center rounded-full border border-input bg-muted p-0 text-foreground shadow-sm shadow-black/5 hover:bg-accent hover:text-accent-foreground disabled:invisible dark:shadow-black/10"
-		>
-			<ArrowDownIcon />
-		</Button>
-	</ThreadPrimitive.ScrollToBottom>
-);
+const ChatScrollToBottom: FC = () => {
+	const t = useTranslations("assistantUi");
+	return (
+		<ThreadPrimitive.ScrollToBottom asChild>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				aria-label={t("scroll_to_bottom")}
+				className="aui-thread-scroll-to-bottom -top-12 absolute z-10 size-10 self-center rounded-full border border-input bg-muted p-0 text-foreground shadow-sm shadow-black/5 hover:bg-accent hover:text-accent-foreground disabled:invisible dark:shadow-black/10"
+			>
+				<ArrowDownIcon />
+			</Button>
+		</ThreadPrimitive.ScrollToBottom>
+	);
+};
 
 export interface ChatViewportProps {
 	children: ReactNode;

@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,7 +18,7 @@ export const ConfluenceConfig: FC<ConfluenceConfigProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
-	// Check if this is an OAuth connector (has access_token or _token_encrypted flag)
+	const t = useTranslations("assistant"); // Check if this is an OAuth connector (has access_token or _token_encrypted flag)
 	const isOAuth = !!(connector.config?.access_token || connector.config?._token_encrypted);
 
 	const [baseUrl, setBaseUrl] = useState<string>(
@@ -75,13 +76,13 @@ export const ConfluenceConfig: FC<ConfluenceConfigProps> = ({
 				{/* OAuth Info */}
 				<Alert>
 					<Info />
-					<AlertTitle>Connected via OAuth</AlertTitle>
+					<AlertTitle>{t("connected_oauth")}</AlertTitle>
 					<AlertDescription>
-						<p>This connector is authenticated using OAuth 2.0. Your Confluence instance is:</p>
+						<p>{t("confluence_oauth_desc")}</p>
 						<p>
 							<code className="bg-muted px-1 py-0.5 rounded text-inherit">{siteUrl}</code>
 						</p>
-						<p>To update your connection, reconnect this connector.</p>
+						<p>{t("oauth_reconnect")}</p>
 					</AlertDescription>
 				</Alert>
 			</div>
@@ -94,28 +95,26 @@ export const ConfluenceConfig: FC<ConfluenceConfigProps> = ({
 			{/* Connector Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Connector Name</Label>
+					<Label className="text-xs sm:text-sm">{t("connector_name")}</Label>
 					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="My Confluence Connector"
+						placeholder={t("confluence_name_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("connector_name_desc")}</p>
 				</div>
 			</div>
 
 			{/* Configuration */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Configuration</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("configuration")}</h3>
 				</div>
 
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label className="text-xs sm:text-sm">Confluence Base URL</Label>
+						<Label className="text-xs sm:text-sm">{t("confluence_base_url")}</Label>
 						<Input
 							type="url"
 							value={baseUrl}
@@ -124,38 +123,38 @@ export const ConfluenceConfig: FC<ConfluenceConfigProps> = ({
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							The base URL of your Confluence instance.
+							{t("confluence_base_url_desc")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
-						<Label className="text-xs sm:text-sm">Email Address</Label>
+						<Label className="text-xs sm:text-sm">{t("confluence_email")}</Label>
 						<Input
 							type="email"
 							value={email}
 							onChange={(e) => handleEmailChange(e.target.value)}
-							placeholder="your-email@example.com"
+							placeholder={t("confluence_email_placeholder")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							The email address associated with your Atlassian account.
+							{t("confluence_email_desc")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
 							<KeyRound className="h-4 w-4" aria-hidden="true" />
-							API Token
+							{t("confluence_api_token")}
 						</Label>
 						<Input
 							type="password"
 							value={apiToken}
 							onChange={(e) => handleApiTokenChange(e.target.value)}
-							placeholder="Your API Token"
+							placeholder={t("confluence_api_token_placeholder")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Update your Confluence API Token if needed.
+							{t("confluence_update_token_2")}
 						</p>
 					</div>
 				</div>

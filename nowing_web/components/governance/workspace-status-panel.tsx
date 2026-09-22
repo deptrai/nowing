@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -12,11 +14,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import type { WorkspaceStatus } from "@/contracts/types/governance.types";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface WorkspaceStatusPanelProps {
 	workspaceId: number;
@@ -109,9 +109,7 @@ export function WorkspaceStatusPanel({
 						{isArchived && (
 							<p className="text-xs text-muted-foreground mt-2">
 								{t("workspace_status.archived_at")}:{" "}
-								{status?.archived_at
-									? new Date(status.archived_at).toLocaleString()
-									: "—"}
+								{status?.archived_at ? new Date(status.archived_at).toLocaleString() : "—"}
 							</p>
 						)}
 					</CardContent>

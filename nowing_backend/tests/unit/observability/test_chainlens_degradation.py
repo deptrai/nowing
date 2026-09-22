@@ -6,7 +6,10 @@ import pytest
 
 import app.observability.metrics.genai as genai_metrics
 import app.observability.metrics.research as research_metrics
+from app.config import config as _cfg
 from app.utils.crawl.classifier import BlockType
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 pytestmark = pytest.mark.unit
 
@@ -181,7 +184,7 @@ async def test_kb_search_duration_is_recorded_and_bounded(monkeypatch):
         query="hello",
         scope=SearchScope(),
         top_k=5,
-        query_embedding=[0.0] * 384,
+        query_embedding=[0.0] * _EMBEDDING_DIM,
     )
 
     assert recorded.get("value") == pytest.approx(4.5, abs=0.1)

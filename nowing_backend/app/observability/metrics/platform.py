@@ -48,6 +48,14 @@ def _run_event_bus_subscribe_failures():
     )
 
 
+@lru_cache(maxsize=1)
+def _scraper_ingest_failures():
+    return _get_meter().create_counter(
+        "nowing.scraper.ingest.failures",
+        description="Count of scraper ingest failures per platform.",
+    )
+
+
 def record_auth_failure(*, reason: str) -> None:
     _add(_auth_failures(), 1, {"reason": reason})
 
@@ -58,6 +66,11 @@ def record_rate_limit_rejection(*, scope: str) -> None:
 
 def record_perf_elapsed(duration_ms: float, *, label: str) -> None:
     _record(_perf_elapsed(), duration_ms, {"label": label})
+
+
+def record_scraper_ingest_failure(platform: str, reason: str) -> None:
+    """Record a scraper ingest failure per platform and reason (Story 35.3)."""
+    _add(_scraper_ingest_failures(), 1, {"platform": platform, "reason": reason})
 
 
 def record_run_event_bus_dropped(*, reason: str = "queue_full") -> None:

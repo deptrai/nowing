@@ -48,6 +48,14 @@ interface LocaleContextType {
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
 const LOCALE_STORAGE_KEY = "nowing-locale";
+const LOCALE_COOKIE = "NEXT_LOCALE";
+
+/** Persist locale to a cookie so server-rendered getTranslations() honors it. */
+function persistLocaleCookie(locale: Locale) {
+	if (typeof document === "undefined") return;
+	// 1 year, site-wide, lax — readable by the server on subsequent requests.
+	document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+}
 
 /**
  * Detect initial locale based on browser languages and timezone.
@@ -107,6 +115,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 			if (stored && (SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
 				const storedLocale = stored as Locale;
 				setLocaleState(storedLocale);
+				persistLocaleCookie(storedLocale);
 				// Load messages for non-English locale
 				if (storedLocale !== "en") {
 					loadMessages(storedLocale).then(setMessages);
@@ -116,6 +125,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 				const detected = detectInitialLocale();
 				setLocaleState(detected);
 				localStorage.setItem(LOCALE_STORAGE_KEY, detected);
+				persistLocaleCookie(detected);
 				if (detected !== "en") {
 					loadMessages(detected).then(setMessages);
 				}
@@ -131,6 +141,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 		setLocaleState(newLocale);
 		if (typeof window !== "undefined") {
 			localStorage.setItem(LOCALE_STORAGE_KEY, newLocale);
+			persistLocaleCookie(newLocale);
 			// Update HTML lang attribute
 			document.documentElement.lang = newLocale;
 		}

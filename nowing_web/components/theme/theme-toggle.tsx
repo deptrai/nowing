@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useId, useState } from "react";
 
@@ -697,6 +698,7 @@ export const ThemeToggleButton = ({
 	blur?: boolean;
 	gifUrl?: string;
 }) => {
+	const t = useTranslations("theme");
 	const { isDark, toggleTheme } = useThemeToggle({
 		variant,
 		start,
@@ -717,9 +719,9 @@ export const ThemeToggleButton = ({
 				className
 			)}
 			onClick={toggleTheme}
-			aria-label="Toggle theme"
+			aria-label={t("toggle_theme")}
 		>
-			<span className="sr-only">Toggle theme</span>
+			<span className="sr-only">{t("toggle_theme")}</span>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				aria-hidden="true"

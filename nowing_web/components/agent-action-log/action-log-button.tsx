@@ -2,6 +2,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { Workflow } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { openActionLogDialogAtom } from "@/atoms/agent/action-log-dialog.atom";
 import { agentFlagsAtom } from "@/atoms/agent/agent-flags-query.atom";
@@ -20,6 +21,7 @@ interface ActionLogButtonProps {
  *   - there is no active thread (lazy-created chats haven't started).
  */
 export function ActionLogButton({ threadId }: ActionLogButtonProps) {
+	const t = useTranslations("actionLog");
 	const { data: flags } = useAtomValue(agentFlagsAtom);
 	const open = useSetAtom(openActionLogDialogAtom);
 
@@ -38,13 +40,13 @@ export function ActionLogButton({ threadId }: ActionLogButtonProps) {
 					size="sm"
 					variant="ghost"
 					className="size-8 p-0"
-					aria-label="Open agent action log"
+					aria-label={t("open_log")}
 					onClick={handleClick}
 				>
 					<Workflow className="size-4 text-muted-foreground" aria-hidden="true" />
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>Agent actions</TooltipContent>
+			<TooltipContent>{t("title")}</TooltipContent>
 		</Tooltip>
 	);
 }

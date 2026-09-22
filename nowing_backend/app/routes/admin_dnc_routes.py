@@ -192,3 +192,53 @@ async def delete_global_dnc_entry(
     await session.commit()
     # Invalidate Redis cache post-commit
     await service.invalidate_cache()
+
+
+from pydantic import BaseModel, Field
+
+
+class CompliancePurgeRequest(BaseModel):
+    """Request payload for GDPR / Decree 13 Right-to-be-Forgotten purge."""
+
+    record_type: str = Field(..., pattern="^(phone|email|domain)$")
+    value: str = Field(..., min_length=1, max_length=255)
+    reason: str = Field(default="GDPR / Decree 13 Right-to-be-Forgotten request")
+    ticket_ref: str | None = None
+
+
+@router.post(
+    "/purge",
+    status_code=status.HTTP_200_OK,
+    summary="Superadmin cross-workspace GDPR / Decree 13 Right-to-be-Forgotten purge (Story 33.2)",
+)
+async def compliance_purge(
+    request: Request,
+    body: CompliancePurgeRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_superuser),
+):
+    """Purge an individual's PII across all workspaces and append to Global DNC."""
+    from app.services.compliance_purge_service import CompliancePurgeService
+
+    try:
+        result = await CompliancePurgeService.purge_individual(
+            session,
+            record_type=body.record_type,
+            value=body.value,
+            reason=body.reason,
+            ticket_ref=body.ticket_ref,
+        )
+        await session.commit()
+        return result
+    except ValueError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except Exception as exc:
+        await session.rollback()
+        logger.exception("Compliance purge failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to execute compliance purge",
+        ) from exc

@@ -29,6 +29,7 @@ import {
 	Video,
 	Workflow,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { canPerform, myAccessAtom } from "@/atoms/members/members-query.atoms";
@@ -86,137 +87,136 @@ import { rolesApiService } from "@/lib/apis/roles-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { cn } from "@/lib/utils";
 
-const CATEGORY_CONFIG: Record<
-	string,
-	{ label: string; icon: LucideIcon; description: string; order: number }
-> = {
+const getCategoryConfig = (
+	t: (k: string) => string
+): Record<string, { label: string; icon: LucideIcon; description: string; order: number }> => ({
 	documents: {
 		label: "Documents",
 		icon: FileText,
-		description: "Manage files, notes, and content",
+		description: t("f_manage_files_notes_and"),
 		order: 1,
 	},
 	analytics: {
 		label: "Analytics",
 		icon: BarChart3,
-		description: "View workspace analytics & adoption metrics",
+		description: t("f_view_workspace_analytics_adoption"),
 		order: 1.5,
 	},
 	chats: {
 		label: "AI Chats",
 		icon: MessageSquare,
-		description: "Create and manage AI conversations",
+		description: t("roles_chats_desc"),
 		order: 2,
 	},
 	comments: {
 		label: "Comments",
 		icon: MessageCircleReply,
-		description: "Add annotations to documents",
+		description: t("roles_comments_desc"),
 		order: 3,
 	},
 	llm_configs: {
 		label: "AI Models",
 		icon: Bot,
-		description: "Configure AI model settings",
+		description: t("roles_ai_models_desc"),
 		order: 4,
 	},
 	image_generations: {
 		label: "Image Models",
 		icon: Image,
-		description: "Configure image generation model settings",
+		description: t("roles_perm_image_desc"),
 		order: 4.1,
 	},
 	vision_configs: {
 		label: "Vision Models",
 		icon: ScanEye,
-		description: "Configure vision model settings",
+		description: t("roles_vision_models_desc"),
 		order: 4.2,
 	},
 	video_presentations: {
 		label: "Video Presentations",
 		icon: Video,
-		description: "Generate and manage video presentations",
+		description: t("roles_perm_video_desc"),
 		order: 4.3,
 	},
 	podcasts: {
-		label: "Podcasts",
+		label: t("x_podcasts"),
 		icon: Mic,
-		description: "Generate AI podcasts from content",
+		description: t("roles_podcasts_desc"),
 		order: 5,
 	},
 	automations: {
-		label: "Automations",
+		label: t("x_automations"),
 		icon: Workflow,
-		description: "Scheduled and event-driven agent tasks",
+		description: t("roles_automations_desc"),
 		order: 5.5,
 	},
 	connectors: {
 		label: "Connectors",
 		icon: Unplug,
-		description: "Connect external data sources",
+		description: t("roles_connectors_desc"),
 		order: 6,
 	},
 	source: {
 		label: "Sources & Connectors",
 		icon: Unplug,
-		description: "Configure scraper and data connector sources",
+		description: t("roles_scrapers_desc"),
 		order: 6.1,
 	},
 	tools: {
 		label: "Agent Tools",
 		icon: Bot,
-		description: "Toggle MCP tools and agent tool configurations",
+		description: t("roles_mcp_tools_desc"),
 		order: 6.2,
 	},
 	logs: {
 		label: "Activity Logs",
 		icon: Logs,
-		description: "View and manage audit trail",
+		description: t("roles_perm_audit_desc"),
 		order: 7,
 	},
 	memory: {
 		label: "Memory",
 		icon: Shield,
-		description: "Search, recall, and manage research memories",
+		description: t("roles_memory_desc"),
 		order: 7.5,
 	},
 	members: {
 		label: "Team Members",
 		icon: Users,
-		description: "Manage team membership",
+		description: t("roles_team_desc"),
 		order: 8,
 	},
 	roles: {
 		label: "Roles",
 		icon: Shield,
-		description: "Configure role permissions",
+		description: t("roles_permissions_desc"),
 		order: 9,
 	},
 	settings: {
 		label: "Settings",
 		icon: Settings,
-		description: "Manage workspace settings",
+		description: t("roles_workspace_settings_desc"),
 		order: 10,
 	},
 	billing: {
 		label: "Billing",
 		icon: CreditCard,
-		description: "View workspace plans, credit balances, and invoices",
+		description: t("roles_billing_desc"),
 		order: 10.5,
 	},
 	public_sharing: {
 		label: "Public Chat Sharing",
 		icon: Earth,
-		description: "Share chats publicly via links",
+		description: t("roles_perm_share_desc"),
 		order: 11,
 	},
 	general: {
 		label: "General",
 		icon: SlidersHorizontal,
-		description: "General workspace permissions",
+		description: t("roles_general_desc"),
 		order: 12,
 	},
-};
+});
 
 const ACTION_LABELS: Record<string, string> = {
 	create: "Create",
@@ -233,11 +233,11 @@ const ACTION_LABELS: Record<string, string> = {
 	execute: "Execute",
 };
 
-export const ROLE_TEMPLATES = {
+export const getRolePresets = (t: (k: string) => string) => ({
 	viewer: {
-		name: "Custom Viewer",
-		label: "Viewer",
-		description: "Read-only access with ability to add comments",
+		name: t("roles_preset_viewer_name"),
+		label: t("roles_preset_viewer_label"),
+		description: t("roles_viewer_desc"),
 		permissions: [
 			"documents:read",
 			"chats:read",
@@ -255,9 +255,9 @@ export const ROLE_TEMPLATES = {
 		],
 	},
 	editor: {
-		name: "Custom Editor",
-		label: "Editor",
-		description: "Create, read, and edit content. No delete or admin access.",
+		name: t("roles_preset_editor_name"),
+		label: t("roles_preset_editor_label"),
+		description: t("roles_editor_desc"),
 		permissions: [
 			"documents:read",
 			"chats:read",
@@ -289,9 +289,9 @@ export const ROLE_TEMPLATES = {
 		],
 	},
 	analyst: {
-		name: "Analyst",
-		label: "Analyst",
-		description: "Deep research, intelligence, documents, and analytics read-only access.",
+		name: t("roles_preset_analyst_name"),
+		label: t("roles_preset_analyst_label"),
+		description: t("roles_researcher_desc"),
 		permissions: [
 			"documents:read",
 			"chats:read",
@@ -302,24 +302,20 @@ export const ROLE_TEMPLATES = {
 		],
 	},
 	billing: {
-		name: "Billing Viewer",
-		label: "Billing",
-		description: "Manage plans, credit balances, payment methods, and invoices.",
-		permissions: [
-			"settings:view",
-			"members:view",
-			"billing:read",
-			"billing:manage",
-		],
+		name: t("roles_preset_billing_name"),
+		label: t("roles_preset_billing_label"),
+		description: t("roles_billing_admin_desc"),
+		permissions: ["settings:view", "members:view", "billing:read", "billing:manage"],
 	},
 	custom: {
-		name: "Custom Role",
-		label: "Custom",
-		description: "Start from scratch with an empty permission set.",
+		name: t("roles_preset_custom_name"),
+		label: t("roles_preset_custom_label"),
+		description: t("roles_custom_desc"),
 		permissions: [] as string[],
 	},
-};
+});
 
+export const ROLE_TEMPLATES = getRolePresets((k) => k);
 export const ROLE_PRESETS = ROLE_TEMPLATES;
 
 type PermissionWithDescription = PermissionInfo;
@@ -416,17 +412,18 @@ export function RolesManager({ workspaceId }: { workspaceId: number }) {
 }
 
 function PermissionsBadge({ permissions }: { permissions: string[] }) {
+	const t = useTranslations("settings");
 	if (permissions.includes("*")) {
 		return (
 			<div className="rounded-md border-0 bg-muted px-1.5 py-0.5 text-muted-foreground">
-				<span className="text-[10px] font-medium whitespace-nowrap">Full access</span>
+				<span className="text-[10px] font-medium whitespace-nowrap">{t("roles_full_access")}</span>
 			</div>
 		);
 	}
 	return (
 		<div className="rounded-md border-0 bg-muted px-1.5 py-0.5 text-muted-foreground">
 			<span className="text-[10px] font-medium whitespace-nowrap">
-				{permissions.length} permissions
+				{t("roles_permissions_count", { count: permissions.length })}
 			</span>
 		</div>
 	);
@@ -463,6 +460,7 @@ function RolesContent({
 	canDelete: boolean;
 	canCreate: boolean;
 }) {
+	const t = useTranslations("settings");
 	const [showCreateRole, setShowCreateRole] = useState(false);
 	const [cloningRole, setCloningRole] = useState<Role | null>(null);
 	const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
@@ -539,8 +537,8 @@ function RolesContent({
 						}
 					}
 					const sortedCategories = Object.keys(grouped).sort((a, b) => {
-						const orderA = CATEGORY_CONFIG[a]?.order ?? 99;
-						const orderB = CATEGORY_CONFIG[b]?.order ?? 99;
+						const orderA = getCategoryConfig(t)[a]?.order ?? 99;
+						const orderB = getCategoryConfig(t)[b]?.order ?? 99;
 						return orderA - orderB;
 					});
 
@@ -595,13 +593,13 @@ function RolesContent({
 														onClick={() => handleCloneRole(role)}
 													>
 														<Copy className="h-4 w-4 mr-2" aria-hidden="true" />
-														Clone Role
+														{t("roles_clone_role")}
 													</DropdownMenuItem>
 												)}
 												{canUpdate && (
 													<DropdownMenuItem onClick={() => setEditingRoleId(role.id)}>
 														<Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
-														Edit Role
+														{t("edit_role")}
 													</DropdownMenuItem>
 												)}
 												{canDelete && (
@@ -611,24 +609,23 @@ function RolesContent({
 															<AlertDialogTrigger asChild>
 																<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
 																	<Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
-																	Delete Role
+																	{t("roles_delete_role")}
 																</DropdownMenuItem>
 															</AlertDialogTrigger>
 															<AlertDialogContent>
 																<AlertDialogHeader>
-																	<AlertDialogTitle>Delete role?</AlertDialogTitle>
+																	<AlertDialogTitle>{t("roles_delete_title")}</AlertDialogTitle>
 																	<AlertDialogDescription>
-																		This will permanently delete the &quot;{role.name}&quot; role.
-																		Members with this role will lose their permissions.
+																		{t("roles_delete_desc", { name: role.name })}
 																	</AlertDialogDescription>
 																</AlertDialogHeader>
 																<AlertDialogFooter>
-																	<AlertDialogCancel>Cancel</AlertDialogCancel>
+																	<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 																	<AlertDialogAction
 																		onClick={() => onDeleteRole(role.id)}
 																		className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 																	>
-																		Delete
+																		{t("delete")}
 																	</AlertDialogAction>
 																</AlertDialogFooter>
 															</AlertDialogContent>
@@ -644,7 +641,11 @@ function RolesContent({
 									type="button"
 									variant="ghost"
 									size="icon"
-									aria-label={isExpanded ? `Collapse ${role.name}` : `Expand ${role.name}`}
+									aria-label={
+										isExpanded
+											? t("roles_collapse_role", { name: role.name })
+											: t("roles_expand_role", { name: role.name })
+									}
 									aria-expanded={isExpanded}
 									className="size-6 shrink-0 p-1 hover:bg-transparent hover:text-inherit focus-visible:ring-0"
 									onClick={() => setExpandedRoleId(isExpanded ? null : role.id)}
@@ -667,15 +668,13 @@ function RolesContent({
 												className="h-4 w-4 text-muted-foreground shrink-0"
 												aria-hidden="true"
 											/>
-											<p className="text-sm text-muted-foreground">
-												Full access — all permissions granted across every category
-											</p>
+											<p className="text-sm text-muted-foreground">{t("roles_full_access_desc")}</p>
 										</div>
 									) : (
 										<div className="divide-y divide-border/30">
 											{sortedCategories.map((category) => {
 												const actions = grouped[category];
-												const config = CATEGORY_CONFIG[category] || {
+												const config = getCategoryConfig(t)[category] || {
 													label: category,
 													icon: FileText,
 												};
@@ -732,12 +731,14 @@ function PermissionsEditor({
 	onToggleCategory: (category: string) => void;
 	templateBaseline?: string[] | null;
 }) {
+	const t = useTranslations("layout");
+	const tRoles = useTranslations("roles");
 	const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
 	const sortedCategories = useMemo(() => {
 		return Object.keys(groupedPermissions).sort((a, b) => {
-			const orderA = CATEGORY_CONFIG[a]?.order ?? 99;
-			const orderB = CATEGORY_CONFIG[b]?.order ?? 99;
+			const orderA = getCategoryConfig(t)[a]?.order ?? 99;
+			const orderB = getCategoryConfig(t)[b]?.order ?? 99;
 			return orderA - orderB;
 		});
 	}, [groupedPermissions]);
@@ -765,7 +766,7 @@ function PermissionsEditor({
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<Label className="text-sm font-medium">
-					Permissions ({selectedPermissions.length} selected)
+					{t("roles_permissions_selected", { count: selectedPermissions.length })}
 				</Label>
 				<Button
 					type="button"
@@ -778,13 +779,15 @@ function PermissionsEditor({
 						)
 					}
 				>
-					{expandedCategories.length === sortedCategories.length ? "Collapse All" : "Expand All"}
+					{expandedCategories.length === sortedCategories.length
+						? t("roles_collapse_all")
+						: t("roles_expand_all")}
 				</Button>
 			</div>
 
 			<div className="space-y-1.5">
 				{sortedCategories.map((category) => {
-					const config = CATEGORY_CONFIG[category] || {
+					const config = getCategoryConfig(t)[category] || {
 						label: category,
 						icon: FileText,
 						description: "",
@@ -810,7 +813,7 @@ function PermissionsEditor({
 									className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium"
 								>
 									<AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
-									<span>This exceeds the recommended template</span>
+									<span>{t("exceeds_template")}</span>
 								</div>
 							)}
 							<div className="group/category-header flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-accent hover:text-accent-foreground focus-within:bg-accent focus-within:text-accent-foreground">
@@ -832,7 +835,7 @@ function PermissionsEditor({
 											className="hidden sm:inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium"
 										>
 											<AlertTriangle className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
-											Exceeds template
+											{t("exceeds_template")}
 										</span>
 									)}
 									<span className="text-[11px] text-muted-foreground tabular-nums">
@@ -843,13 +846,17 @@ function PermissionsEditor({
 									<Checkbox
 										checked={stats.allSelected}
 										onCheckedChange={() => onToggleCategory(category)}
-										aria-label={`Select all ${config.label} permissions`}
+										aria-label={tRoles("select_all_permissions", { label: config.label })}
 									/>
 									<Button
 										type="button"
 										variant="ghost"
 										size="icon"
-										aria-label={isExpanded ? `Collapse ${config.label}` : `Expand ${config.label}`}
+										aria-label={
+											isExpanded
+												? t("roles_collapse_category", { label: config.label })
+												: t("roles_expand_category", { label: config.label })
+										}
 										aria-expanded={isExpanded}
 										className="size-6 p-1 hover:bg-transparent hover:text-inherit focus-visible:ring-0"
 										onClick={() => toggleCategoryExpanded(category)}
@@ -930,15 +937,17 @@ function CreateRoleDialog({
 	onCreateRole: (data: CreateRoleRequest["data"]) => Promise<Role>;
 	cloneRole?: Role | null;
 }) {
+	const t = useTranslations("settings");
 	const [creating, setCreating] = useState(false);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 	const [isDefault, setIsDefault] = useState(false);
+	const rolePresets = useMemo(() => getRolePresets(t), [t]);
 
 	useEffect(() => {
 		if (cloneRole) {
-			setName(`${cloneRole.name} (Copy)`);
+			setName(`${cloneRole.name} ${t("roles_copy_suffix")}`);
 			setDescription(cloneRole.description || "");
 			setSelectedPermissions([...cloneRole.permissions]);
 			setIsDefault(false);
@@ -955,7 +964,7 @@ function CreateRoleDialog({
 
 	const handleCreate = async () => {
 		if (!name.trim()) {
-			toast.error("Please enter a role name");
+			toast.error(t("roles_name_required"));
 			return;
 		}
 
@@ -996,14 +1005,14 @@ function CreateRoleDialog({
 	);
 
 	const applyPreset = useCallback(
-		(presetKey: keyof typeof ROLE_PRESETS) => {
-			const preset = ROLE_PRESETS[presetKey];
+		(presetKey: keyof ReturnType<typeof getRolePresets>) => {
+			const preset = rolePresets[presetKey];
 			setSelectedPermissions(preset.permissions);
 			if (!name.trim()) {
 				setName(preset.name);
 				setDescription(preset.description);
 			}
-			toast.success(`Applied ${preset.name} preset`);
+			toast.success(t("roles_preset_applied", { name: preset.name }));
 		},
 		[name]
 	);
@@ -1012,22 +1021,22 @@ function CreateRoleDialog({
 		<Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : handleClose())}>
 			<DialogContent className="!flex !flex-col w-[92vw] max-w-[92vw] sm:max-w-2xl p-0 gap-0 max-h-[85vh] overflow-hidden">
 				<DialogHeader className="px-5 pt-5 pb-4 shrink-0">
-					<DialogTitle className="text-lg">Create Custom Role</DialogTitle>
+					<DialogTitle className="text-lg">{t("roles_create_custom_title")}</DialogTitle>
 					<DialogDescription className="text-sm text-muted-foreground">
-						Define permissions for a new role in this workspace
+						{t("roles_define_permissions_desc")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="flex-1 min-h-0 overflow-y-auto">
 					<div className="px-5 py-5 space-y-5">
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Start from a template</Label>
+							<Label className="text-sm font-medium">{t("roles_start_from_template")}</Label>
 							<div className="grid grid-cols-3 gap-2">
-								{Object.entries(ROLE_PRESETS).map(([key, preset]) => (
+								{Object.entries(rolePresets).map(([key, preset]) => (
 									<Button
 										key={key}
 										type="button"
 										variant="outline"
-										onClick={() => applyPreset(key as keyof typeof ROLE_PRESETS)}
+										onClick={() => applyPreset(key as keyof typeof rolePresets)}
 										className={cn(
 											"h-auto p-3 whitespace-normal transition-colors hover:bg-accent hover:text-accent-foreground",
 											"flex items-center justify-center text-center sm:block sm:text-left",
@@ -1048,21 +1057,21 @@ function CreateRoleDialog({
 
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
-								<Label htmlFor="role-name">Role Name *</Label>
+								<Label htmlFor="role-name">{t("roles_name_label")} *</Label>
 								<Input
 									id="role-name"
 									maxLength={100}
-									placeholder="e.g., Content Manager"
+									placeholder={t("roles_name_placeholder")}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="role-description">Description</Label>
+								<Label htmlFor="role-description">{t("roles_description_label")}</Label>
 								<Input
 									id="role-description"
 									maxLength={500}
-									placeholder="Brief description of this role"
+									placeholder={t("roles_description_placeholder")}
 									value={description}
 									onChange={(e) => setDescription(e.target.value)}
 								/>
@@ -1077,11 +1086,9 @@ function CreateRoleDialog({
 							/>
 							<div className="flex-1">
 								<Label htmlFor="is-default" className="cursor-pointer font-medium text-sm">
-									Set as default role
+									{t("roles_set_default")}
 								</Label>
-								<p className="text-xs text-muted-foreground">
-									New members without a specific role will be assigned this role
-								</p>
+								<p className="text-xs text-muted-foreground">{t("roles_default_role_desc")}</p>
 							</div>
 						</div>
 
@@ -1095,16 +1102,16 @@ function CreateRoleDialog({
 				</div>
 				<div className="flex items-center justify-end gap-3 px-5 py-3 shrink-0">
 					<Button variant="secondary" onClick={handleClose}>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button onClick={handleCreate} disabled={creating || !name.trim()}>
 						{creating ? (
 							<>
 								<Spinner size="sm" className="mr-2" />
-								Creating
+								{t("roles_creating")}
 							</>
 						) : (
-							"Create Role"
+							t("roles_create_role")
 						)}
 					</Button>
 				</div>
@@ -1136,6 +1143,7 @@ function EditRoleDialog({
 		}
 	) => Promise<Role>;
 }) {
+	const t = useTranslations("settings");
 	const [saving, setSaving] = useState(false);
 	const [name, setName] = useState(role.name);
 	const [description, setDescription] = useState(role.description || "");
@@ -1153,7 +1161,7 @@ function EditRoleDialog({
 
 	const handleSave = async () => {
 		if (!name.trim()) {
-			toast.error("Please enter a role name");
+			toast.error(t("roles_name_required"));
 			return;
 		}
 
@@ -1165,11 +1173,11 @@ function EditRoleDialog({
 				permissions: selectedPermissions,
 				is_default: isDefault,
 			});
-			toast.success("Role updated successfully");
+			toast.success(t("roles_updated_success"));
 			onOpenChange(false);
 		} catch (error) {
 			console.error("Failed to update role:", error);
-			toast.error("Failed to update role");
+			toast.error(t("roles_update_failed"));
 		} finally {
 			setSaving(false);
 		}
@@ -1199,30 +1207,30 @@ function EditRoleDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="!flex !flex-col w-[92vw] max-w-[92vw] sm:max-w-2xl p-0 gap-0 max-h-[85vh] overflow-hidden">
 				<DialogHeader className="px-5 py-4 shrink-0">
-					<DialogTitle className="text-base">Edit Role</DialogTitle>
+					<DialogTitle className="text-base">{t("edit_role")}</DialogTitle>
 					<DialogDescription className="text-xs">
-						Modify permissions for &quot;{role.name}&quot;
+						{t("roles_modify_permissions_desc", { name: role.name })}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="flex-1 min-h-0 overflow-y-auto">
 					<div className="px-5 py-5 space-y-5">
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
-								<Label htmlFor="edit-role-name">Role Name *</Label>
+								<Label htmlFor="edit-role-name">{t("roles_name_label")} *</Label>
 								<Input
 									id="edit-role-name"
 									maxLength={100}
-									placeholder="e.g., Content Manager"
+									placeholder={t("roles_name_placeholder")}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="edit-role-description">Description</Label>
+								<Label htmlFor="edit-role-description">{t("roles_description_label")}</Label>
 								<Input
 									id="edit-role-description"
 									maxLength={500}
-									placeholder="Brief description of this role"
+									placeholder={t("roles_description_placeholder")}
 									value={description}
 									onChange={(e) => setDescription(e.target.value)}
 								/>
@@ -1237,11 +1245,9 @@ function EditRoleDialog({
 							/>
 							<div className="flex-1">
 								<Label htmlFor="edit-is-default" className="cursor-pointer font-medium text-sm">
-									Set as default role
+									{t("roles_set_default")}
 								</Label>
-								<p className="text-xs text-muted-foreground">
-									New members without a specific role will be assigned this role
-								</p>
+								<p className="text-xs text-muted-foreground">{t("roles_default_role_desc")}</p>
 							</div>
 						</div>
 
@@ -1255,16 +1261,16 @@ function EditRoleDialog({
 				</div>
 				<div className="flex items-center justify-end gap-3 px-5 py-3 border-t shrink-0">
 					<Button variant="secondary" onClick={() => onOpenChange(false)}>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button onClick={handleSave} disabled={saving || !name.trim()}>
 						{saving ? (
 							<>
 								<Spinner size="sm" className="mr-2" />
-								Saving...
+								{t("saving")}
 							</>
 						) : (
-							"Save Changes"
+							t("save_changes")
 						)}
 					</Button>
 				</div>

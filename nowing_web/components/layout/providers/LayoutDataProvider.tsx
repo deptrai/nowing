@@ -193,7 +193,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 				duration: 8000,
 				icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
 				action: {
-					label: "Buy credits",
+					label: t("x_buy_credits"),
 					onClick: () => router.push(`/dashboard/${workspaceId}/buy-more`),
 				},
 			});
@@ -317,7 +317,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 						isActive: isUsageActive,
 					},
 					{
-						title: "Integrations",
+						title: t("x_integrations"),
 						url: `/dashboard/${workspaceId}/connectors`,
 						icon: Puzzle,
 						isActive: isConnectorsActive,
@@ -329,19 +329,19 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 						isActive: isMemoryBrowserActive,
 					},
 					{
-						title: "Automations",
+						title: t("x_automations"),
 						url: `/dashboard/${workspaceId}/automations`,
 						icon: AlarmClock,
 						isActive: isAutomationsActive,
 					},
 					{
-						title: "Playbooks",
+						title: t("x_playbooks"),
 						url: `/dashboard/${workspaceId}/playbooks`,
 						icon: BookOpen,
 						isActive: isPlaybooksActive,
 					},
 					{
-						title: "Artifacts",
+						title: t("x_artifacts"),
 						url: `/dashboard/${workspaceId}/artifacts`,
 						icon: Shapes,
 						isActive: isArtifactsActive,
@@ -499,12 +499,9 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 		[prefetchChatThread]
 	);
 
-	const handleNavItemClick = useCallback(
-		(item: NavItem) => {
-			router.push(item.url);
-		},
-		[router]
-	);
+	const handleNavItemClick = useCallback((_item: NavItem) => {
+		// Semantic <Link> handles navigation directly; no-op callback for compatibility
+	}, []);
 
 	const handleNewChat = useCallback(() => {
 		router.push(`/dashboard/${workspaceId}/new-chat`);
@@ -515,6 +512,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 			activateChatThread({
 				id: chat.id,
 				workspaceId,
+				navigate: false,
 			});
 		},
 		[activateChatThread, workspaceId]
@@ -653,7 +651,6 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 	const isAutomationsPage = pathname?.includes("/automations") === true;
 	const isArtifactsPage = pathname?.endsWith("/artifacts") === true;
 	const isAllChatsPage = pathname?.endsWith("/chats") === true;
-	const isNewChatRoot = pathname?.endsWith("/new-chat") === true;
 	const handleViewAllChats = useCallback(() => {
 		router.push(
 			isAllChatsPage ? `/dashboard/${workspaceId}/new-chat` : `/dashboard/${workspaceId}/chats`
@@ -723,7 +720,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 						? "items-start justify-center px-6 py-8 md:px-10 md:pb-10 md:pt-16"
 						: undefined
 				}
-				workspacePanelContentClassName={useWorkspacePanel ? "max-w-5xl select-none" : undefined}
+				workspacePanelContentClassName={useWorkspacePanel ? "max-w-5xl" : undefined}
 				isLoadingChats={isLoadingThreads}
 				notifications={{
 					totalUnreadCount,

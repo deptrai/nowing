@@ -2,6 +2,7 @@
 
 import { type ToolCallMessagePartProps, useAuiState } from "@assistant-ui/react";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { z } from "zod";
 import {
@@ -43,11 +44,12 @@ type WriteTodosData = z.infer<typeof WriteTodosSchema>;
  * Loading state component
  */
 function WriteTodosLoading() {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 w-full max-w-xl rounded-2xl border bg-card/60 px-5 py-4 shadow-sm">
 			<div className="flex items-center gap-3">
 				<Spinner size="md" className="text-primary" />
-				<span className="text-sm text-muted-foreground">Creating plan...</span>
+				<span className="text-sm text-muted-foreground">{t("tu_creating_plan")}</span>
 			</div>
 		</div>
 	);

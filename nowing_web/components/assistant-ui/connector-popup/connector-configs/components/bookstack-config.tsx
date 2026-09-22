@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ export const BookStackConfig: FC<BookStackConfigProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
+	const t = useTranslations("assistant");
 	const [baseUrl, setBaseUrl] = useState<string>(
 		(connector.config?.BOOKSTACK_BASE_URL as string) || ""
 	);
@@ -69,28 +71,26 @@ export const BookStackConfig: FC<BookStackConfigProps> = ({
 			{/* Connector Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Connector Name</Label>
+					<Label className="text-xs sm:text-sm">{t("connector_name")}</Label>
 					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="My BookStack Connector"
+						placeholder={t("bookstack_name_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("connector_name_desc")}</p>
 				</div>
 			</div>
 
 			{/* Configuration */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Configuration</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("configuration")}</h3>
 				</div>
 
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label className="text-xs sm:text-sm">BookStack Base URL</Label>
+						<Label className="text-xs sm:text-sm">{t("bookstack_base_url")}</Label>
 						<Input
 							type="url"
 							value={baseUrl}
@@ -99,37 +99,37 @@ export const BookStackConfig: FC<BookStackConfigProps> = ({
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							The base URL of your BookStack instance.
+							{t("bookstack_base_url_short")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
-						<Label className="text-xs sm:text-sm">Token ID</Label>
+						<Label className="text-xs sm:text-sm">{t("token_id")}</Label>
 						<Input
 							value={tokenId}
 							onChange={(e) => handleTokenIdChange(e.target.value)}
-							placeholder="Your Token ID"
+							placeholder={t("bookstack_token_placeholder")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Your BookStack API Token ID.
+							{t("bookstack_token_id_desc")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
 							<KeyRound className="h-4 w-4" aria-hidden="true" />
-							Token Secret
+							{t("token_secret")}
 						</Label>
 						<Input
 							type="password"
 							value={tokenSecret}
 							onChange={(e) => handleTokenSecretChange(e.target.value)}
-							placeholder="Your Token Secret"
+							placeholder={t("bookstack_secret_placeholder")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Update your BookStack Token Secret if needed.
+							{t("bookstack_update_secret")}
 						</p>
 					</div>
 				</div>

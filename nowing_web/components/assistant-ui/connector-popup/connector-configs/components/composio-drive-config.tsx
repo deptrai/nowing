@@ -11,6 +11,7 @@ import {
 	Presentation,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
 import { DriveFolderTree, type SelectedFolder } from "@/components/connectors/drive-folder-tree";
@@ -80,6 +81,7 @@ function getFileIconFromName(fileName: string, className: string = "size-3.5 shr
 }
 
 export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onConfigChange }) => {
+	const t = useTranslations("assistant");
 	const isIndexable = connector.config?.is_indexable as boolean;
 
 	const existingFolders =
@@ -163,12 +165,12 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 
 	return (
 		<div className="space-y-6">
-			{/* Folder & File Selection */}
+			{/* {t("folder_file_selection")} */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Folder & File Selection</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("folder_file_selection")}</h3>
 					<p className="text-xs sm:text-sm text-muted-foreground">
-						Select specific folders and/or individual files to index from your Google Drive.
+						{t("folder_file_selection_desc")}
 					</p>
 				</div>
 
@@ -285,25 +287,21 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 				)}
 			</div>
 
-			{/* Indexing Options */}
+			{/* {t("indexing_options")} */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Indexing Options</h3>
-					<p className="text-xs sm:text-sm text-muted-foreground">
-						Configure how files are indexed from your Google Drive.
-					</p>
+					<h3 className="font-medium text-sm sm:text-base">{t("indexing_options")}</h3>
+					<p className="text-xs sm:text-sm text-muted-foreground">{t("indexing_options_desc")}</p>
 				</div>
 
-				{/* Max files per folder */}
+				{/* {t("max_files_per_folder")} */}
 				<div className="space-y-2">
 					<div className="flex items-center justify-between">
 						<div className="space-y-0.5">
 							<Label htmlFor="max-files" className="text-sm font-medium">
-								Max files per folder
+								{t("max_files_per_folder")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								Maximum number of files to index from each folder
-							</p>
+							<p className="text-xs text-muted-foreground">{t("max_files_per_folder_desc")}</p>
 						</div>
 						<Select
 							value={indexingOptions.max_files_per_folder.toString()}
@@ -315,7 +313,7 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 								id="max-files"
 								className="w-[140px] bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 text-xs sm:text-sm"
 							>
-								<SelectValue placeholder="Select limit" />
+								<SelectValue placeholder={t("select_limit")} />
 							</SelectTrigger>
 							<SelectContent className="z-[100]">
 								<SelectItem value="50" className="text-xs sm:text-sm">
@@ -338,15 +336,13 @@ export const ComposioDriveConfig: FC<ConnectorConfigProps> = ({ connector, onCon
 					</div>
 				</div>
 
-				{/* Include subfolders toggle */}
+				{/* {t("include_subfolders")} toggle */}
 				<div className="flex items-center justify-between pt-2 border-t border-slate-400/20">
 					<div className="space-y-0.5">
 						<Label htmlFor="include-subfolders" className="text-sm font-medium">
-							Include subfolders
+							{t("include_subfolders")}
 						</Label>
-						<p className="text-xs text-muted-foreground">
-							Recursively index files in subfolders of selected folders
-						</p>
+						<p className="text-xs text-muted-foreground">{t("include_subfolders_desc")}</p>
 					</div>
 					<Switch
 						id="include-subfolders"

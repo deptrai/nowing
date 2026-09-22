@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { AnnouncementCard } from "@/components/announcements/AnnouncementCard";
 import { AnnouncementsEmptyState } from "@/components/announcements/AnnouncementsEmptyState";
@@ -10,6 +11,7 @@ import { useAnnouncements } from "@/hooks/use-announcements";
 // ---------------------------------------------------------------------------
 
 export default function AnnouncementsPage() {
+	const t = useTranslations("announcements");
 	const { announcements, markAllRead } = useAnnouncements({ includeExpired: true });
 
 	// Auto-mark all visible announcements as read when the page is opened
@@ -24,7 +26,7 @@ export default function AnnouncementsPage() {
 				<div className="max-w-5xl mx-auto relative">
 					<div className="p-6">
 						<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-neutral-900 dark:text-neutral-50">
-							What&apos;s New
+							{t("whats_new")}
 						</h1>
 					</div>
 				</div>

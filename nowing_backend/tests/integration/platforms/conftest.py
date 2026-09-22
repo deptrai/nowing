@@ -45,9 +45,10 @@ async def platform_async_engine():
 
     yield engine
 
-    async with engine.begin() as conn:
-        await conn.execute(text("DROP SCHEMA public CASCADE"))
-        await conn.execute(text("CREATE SCHEMA public"))
+    # NOTE: do NOT `DROP SCHEMA public CASCADE` here — it would wipe the shared
+    # test schema out from under the root `async_engine` (and any other
+    # session-scoped engine on the same TEST_DATABASE_URL) that still has tests
+    # running. See tests/integration/conftest.py for the full rationale.
     await engine.dispose()
 
 

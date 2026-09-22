@@ -78,7 +78,7 @@ export function DocumentsFilters({
 									<FolderPlus size={13} />
 								</ToggleGroupItem>
 							</TooltipTrigger>
-							<TooltipContent>New folder</TooltipContent>
+							<TooltipContent>{t("new_folder")}</TooltipContent>
 						</Tooltip>
 					)}
 
@@ -99,7 +99,7 @@ export function DocumentsFilters({
 									</ToggleGroupItem>
 								</PopoverTrigger>
 							</TooltipTrigger>
-							<TooltipContent>Filter by type</TooltipContent>
+							<TooltipContent>{t("x_filter_by_type")}</TooltipContent>
 						</Tooltip>
 						<PopoverContent className="w-56 md:w-52 !p-0 overflow-hidden" align="start">
 							<div>
@@ -107,7 +107,7 @@ export function DocumentsFilters({
 									<div className="relative">
 										<Search className="absolute left-0.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 										<Input
-											placeholder="Search types"
+											placeholder={t("x_search_types")}
 											value={typeSearchQuery}
 											onChange={(e) => setTypeSearchQuery(e.target.value)}
 											className="h-6 pl-6 text-sm bg-transparent border-0 shadow-none"
@@ -125,7 +125,7 @@ export function DocumentsFilters({
 								>
 									{filteredTypes.length === 0 ? (
 										<div className="py-6 text-center text-sm text-muted-foreground">
-											No types found
+											{t("no_types_found")}
 										</div>
 									) : (
 										filteredTypes.map((value: DocumentTypeEnum, i) => (
@@ -151,8 +151,7 @@ export function DocumentsFilters({
 														{getDocumentTypeLabel(value)}
 													</span>
 													<span className="text-[11px] text-muted-foreground leading-tight">
-														{typeCounts.get(value)} document
-														{(typeCounts.get(value) ?? 0) !== 1 ? "s" : ""}
+														{t("documents_count", { count: typeCounts.get(value) ?? 0 })}
 													</span>
 												</div>
 												<Checkbox
@@ -181,7 +180,7 @@ export function DocumentsFilters({
 						className="h-8 w-full select-none border-0 bg-muted pl-8 pr-7 text-sm shadow-none focus:select-text"
 						value={searchValue}
 						onChange={(e) => onSearch(e.target.value)}
-						placeholder="Search docs"
+						placeholder={t("x_search_docs")}
 						type="text"
 						aria-label={t("filter_placeholder")}
 					/>
@@ -191,7 +190,7 @@ export function DocumentsFilters({
 							variant="ghost"
 							size="icon"
 							className="absolute right-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-							aria-label="Clear filter"
+							aria-label={t("x_clear_filter")}
 							onClick={() => {
 								onSearch("");
 								inputRef.current?.focus();

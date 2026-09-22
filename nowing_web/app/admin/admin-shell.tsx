@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { currentUserAtom, USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
@@ -12,6 +13,7 @@ import { redirectToLogin } from "@/lib/auth-utils";
 import { queryClient } from "@/lib/query-client/client";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
+	const t = useTranslations("admin");
 	const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 	const session = useSession();
 	const userResult = useAtomValue(currentUserAtom);
@@ -39,12 +41,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 	if (session.status === "authenticated" && user && !user.is_superuser) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-				<h1 className="text-2xl font-semibold">Access Denied</h1>
-				<p className="text-muted-foreground">
-					You must have superuser administrative privileges to view this area.
-				</p>
+				<h1 className="text-2xl font-semibold">{t("access_denied")}</h1>
+				<p className="text-muted-foreground">{t("access_denied_desc")}</p>
 				<Link href="/dashboard" className="text-sm text-primary underline">
-					Return to Dashboard
+					{t("return_to_dashboard")}
 				</Link>
 			</div>
 		);
@@ -56,40 +56,40 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 			<BroadcastBanner />
 			<nav className="bg-gray-900 text-white px-4 py-2 flex flex-wrap gap-4 text-sm">
 				<Link href="/admin/users" className="hover:underline">
-					Users
+					{t("nav_users")}
 				</Link>
 				<Link href="/admin/workspaces" className="hover:underline">
-					Workspaces
+					{t("nav_workspaces")}
 				</Link>
 				<Link href="/admin/saas/plans" className="hover:underline">
-					SaaS Plans
+					{t("nav_saas_plans")}
 				</Link>
 				<Link href="/admin/saas/bulk-ops" className="hover:underline">
-					Bulk Ops
+					{t("nav_bulk_ops")}
 				</Link>
 				<Link href="/admin/affiliates/payouts" className="hover:underline">
-					Affiliates & Payouts
+					{t("nav_affiliates_payouts")}
 				</Link>
 				<Link href="/admin/credits" className="hover:underline">
-					Credits
+					{t("nav_credits")}
 				</Link>
 				<Link href="/admin/telemetry" className="hover:underline">
-					Telemetry
+					{t("nav_telemetry")}
 				</Link>
 				<Link href="/admin/scrapers/rules" className="hover:underline">
-					Scraper Rules
+					{t("nav_scraper_rules")}
 				</Link>
 				<Link href="/admin/global-model-connections" className="hover:underline">
-					Global Models
+					{t("nav_global_models")}
 				</Link>
 				<Link href="/admin/audit-logs" className="hover:underline">
-					Audit Logs
+					{t("nav_audit_logs")}
 				</Link>
 				<Link href="/admin/dnc" className="hover:underline">
-					DNC Blacklist
+					{t("nav_dnc_blacklist")}
 				</Link>
 				<Link href="/admin/broadcasts" className="hover:underline">
-					Broadcasts
+					{t("nav_broadcasts")}
 				</Link>
 			</nav>
 			<div className="flex-1 min-h-0">{children}</div>

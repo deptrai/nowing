@@ -2,6 +2,7 @@ import { SquareArrowOutUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { FreeChatPage } from "@/components/free-chat/free-chat-page";
 import { FAQJsonLd, JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,10 @@ function buildModelFaq(model: AnonModel) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
 	const { model_slug } = await params;
 	const model = await getModel(model_slug);
-	if (!model) return { title: "Model Not Found | Nowing" };
+	if (!model) {
+		const t = await getTranslations("free_model");
+		return { title: t("model_not_found_title") };
+	}
 
 	const title = buildSeoTitle(model);
 	const description = buildSeoDescription(model);
@@ -143,6 +147,7 @@ export default async function FreeModelPage({ params }: PageProps) {
 	const { model_slug } = await params;
 	const [model, allModels] = await Promise.all([getModel(model_slug), getAllModels()]);
 	if (!model) notFound();
+	const t = await getTranslations("free_model");
 
 	const description = buildSeoDescription(model);
 	const faqItems = buildModelFaq(model);
@@ -222,8 +227,8 @@ export default async function FreeModelPage({ params }: PageProps) {
 					{relatedModels.length > 0 && (
 						<>
 							<Separator className="my-8" />
-							<nav aria-label="Other free AI models">
-								<h2 className="text-xl font-bold mb-4">Try Other Free AI Models</h2>
+							<nav aria-label={t("other_models_aria")}>
+								<h2 className="text-xl font-bold mb-4">{t("try_other_models")}</h2>
 								<div className="flex flex-wrap gap-2">
 									{relatedModels.map((m) => (
 										<Button key={m.id} variant="outline" size="sm" asChild>
@@ -234,7 +239,7 @@ export default async function FreeModelPage({ params }: PageProps) {
 										</Button>
 									))}
 									<Button variant="outline" size="sm" asChild>
-										<Link href="/free">View All Models</Link>
+										<Link href="/free">{t("view_all_models")}</Link>
 									</Button>
 								</div>
 							</nav>

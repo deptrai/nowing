@@ -123,6 +123,22 @@ class WebBuilderApiService {
 			body: { workspace_id: Number(workspaceId) },
 		});
 	};
+
+	rotateCustomDomainToken = async (
+		appId: string,
+		workspaceId: number | string
+	): Promise<{ custom_domain_verify_token: string }> => {
+		return baseApiService.post(
+			`/api/v1/web-builder/apps/${appId}/custom-domain/rotate-token?workspace_id=${workspaceId}`,
+			undefined
+		);
+	};
+
+	unbindCustomDomain = async (appId: string, workspaceId: number | string): Promise<void> => {
+		return baseApiService.delete(
+			`/api/v1/web-builder/apps/${appId}/custom-domain?workspace_id=${workspaceId}`
+		);
+	};
 }
 
 export const webBuilderApiService = new WebBuilderApiService();

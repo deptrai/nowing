@@ -1,6 +1,13 @@
 "use client";
 
-import { Check, CheckCircle2, CornerDownLeft, HelpCircle, MessageSquarePlus, Sparkles } from "lucide-react";
+import {
+	Check,
+	CheckCircle2,
+	CornerDownLeft,
+	HelpCircle,
+	MessageSquarePlus,
+	Sparkles,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +30,10 @@ export function isQuestionInterrupt(result: unknown): boolean {
 	if (r.interrupt_type === "question" || r.interrupt_type === "clarification") return true;
 
 	const actions = r.action_requests as Array<{ name?: string }> | undefined;
-	if (Array.isArray(actions) && actions.some((a) => a.name === "ask_user_question" || a.name === "prompt_clarification")) {
+	if (
+		Array.isArray(actions) &&
+		actions.some((a) => a.name === "ask_user_question" || a.name === "prompt_clarification")
+	) {
 		return true;
 	}
 	return false;
@@ -50,11 +60,16 @@ function QuestionApprovalCardView({
 		(interruptData.message as string) ||
 		"Agent cần bạn cung cấp thêm thông tin để tiếp tục:";
 
-	const header = (args.header as string) || (interruptData.context?.header as string) || "Làm rõ yêu cầu";
-	const isMultiSelect = Boolean(args.multiSelect || args.multi_select || interruptData.context?.multi_select);
+	const header =
+		(args.header as string) || (interruptData.context?.header as string) || "Làm rõ yêu cầu";
+	const isMultiSelect = Boolean(
+		args.multiSelect || args.multi_select || interruptData.context?.multi_select
+	);
 
 	// Parse options
-	const rawOptions = (args.options || interruptData.context?.options || []) as Array<QuestionOptionItem | string>;
+	const rawOptions = (args.options || interruptData.context?.options || []) as Array<
+		QuestionOptionItem | string
+	>;
 	const options: QuestionOptionItem[] = useMemo(() => {
 		return rawOptions.map((opt) => {
 			if (typeof opt === "string") return { label: opt };
@@ -106,7 +121,12 @@ function QuestionApprovalCardView({
 	// Shortcut: Enter to submit if something is selected
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Enter" && !e.shiftKey && phase === "pending" && (selectedLabels.length > 0 || customInput.trim())) {
+			if (
+				e.key === "Enter" &&
+				!e.shiftKey &&
+				phase === "pending" &&
+				(selectedLabels.length > 0 || customInput.trim())
+			) {
 				e.preventDefault();
 				handleSubmit();
 			}
@@ -115,7 +135,8 @@ function QuestionApprovalCardView({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [handleSubmit, phase, selectedLabels.length, customInput]);
 
-	const hasSelection = selectedLabels.length > 0 || (isCustomActive && customInput.trim().length > 0);
+	const hasSelection =
+		selectedLabels.length > 0 || (isCustomActive && customInput.trim().length > 0);
 
 	return (
 		<div className="my-4 max-w-xl overflow-hidden rounded-2xl border border-primary/20 bg-card/90 shadow-sm backdrop-blur-xs transition-all duration-300">
@@ -127,7 +148,10 @@ function QuestionApprovalCardView({
 					</div>
 					<div>
 						<div className="flex items-center gap-2">
-							<Badge variant="secondary" className="text-[10px] font-semibold tracking-wide uppercase px-1.5 py-0.5">
+							<Badge
+								variant="secondary"
+								className="text-[10px] font-semibold tracking-wide uppercase px-1.5 py-0.5"
+							>
 								{header}
 							</Badge>
 							{isMultiSelect && (
@@ -139,7 +163,10 @@ function QuestionApprovalCardView({
 				{phase === "processing" ? (
 					<TextShimmerLoader text="Đang xử lý..." size="sm" />
 				) : phase === "complete" ? (
-					<Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs gap-1">
+					<Badge
+						variant="outline"
+						className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs gap-1"
+					>
 						<Check className="size-3" /> Đã trả lời
 					</Badge>
 				) : null}
@@ -206,7 +233,11 @@ function QuestionApprovalCardView({
 							className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium select-none"
 						>
 							<MessageSquarePlus className="size-3.5" />
-							<span>{isCustomActive ? "Nhập yêu cầu tùy chỉnh:" : "+ Nhập phương án hoặc hướng dẫn khác..."}</span>
+							<span>
+								{isCustomActive
+									? "Nhập yêu cầu tùy chỉnh:"
+									: "+ Nhập phương án hoặc hướng dẫn khác..."}
+							</span>
 						</button>
 						{isCustomActive && (
 							<Input
@@ -225,7 +256,9 @@ function QuestionApprovalCardView({
 			{phase === "pending" && (
 				<div className="flex items-center justify-between px-5 py-3.5 border-t border-border/50 bg-muted/10">
 					<span className="text-[11px] text-muted-foreground">
-						{hasSelection ? "Nhấn Enter hoặc nút bên phải để xác nhận" : "Vui lòng chọn 1 phương án"}
+						{hasSelection
+							? "Nhấn Enter hoặc nút bên phải để xác nhận"
+							: "Vui lòng chọn 1 phương án"}
 					</span>
 					<Button
 						size="sm"

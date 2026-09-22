@@ -1,6 +1,7 @@
 "use client";
 
 import { CornerDownLeftIcon, OctagonAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -33,6 +34,7 @@ function DoomLoopCardView({
 	interruptData: InterruptResult;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("chatMessages");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 
 	const context = (interruptData.context ?? {}) as Record<string, unknown>;
@@ -62,7 +64,7 @@ function DoomLoopCardView({
 	const handleStop = useCallback(() => {
 		if (phase !== "pending") return;
 		setRejected();
-		onDecision({ type: "reject", message: "Doom loop: user requested stop." });
+		onDecision({ type: "reject", message: t("x_doom_loop_user_requested") });
 	}, [phase, setRejected, onDecision]);
 
 	useEffect(() => {
@@ -103,16 +105,21 @@ function DoomLoopCardView({
 					<TextShimmerLoader text="Resuming…" size="sm" />
 				) : phase === "rejected" ? (
 					<p className="text-xs">
-						I stopped retrying <span className="font-medium">{displayName}</span> as you asked.
+						{t("x_i_stopped_retrying")}
+						<span className="font-medium">{displayName}</span>
+						{t("x_as_you_asked")}
 					</p>
 				) : phase === "complete" ? (
 					<p className="text-xs">
-						Continuing to call <span className="font-medium">{displayName}</span> as you asked.
+						{t("x_continuing_to_call")}
+						<span className="font-medium">{displayName}</span>
+						{t("x_as_you_asked")}
 					</p>
 				) : (
 					<p className="text-xs">
-						I called <span className="font-medium">{displayName}</span> {threshold} times in a row
-						with similar arguments. Should I keep going or stop and rethink?
+						{t("x_i_called")}
+						<span className="font-medium">{displayName}</span> {threshold} times in a row with
+						similar arguments. Should I keep going or stop and rethink?
 					</p>
 				)}
 
@@ -121,7 +128,7 @@ function DoomLoopCardView({
 						<Separator />
 						<div className="flex flex-col gap-1">
 							<p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-								Last arguments
+								{t("f_last_arguments")}
 							</p>
 							<pre className="max-h-32 overflow-auto rounded-md bg-muted/50 p-2 text-[11px] text-foreground/80">
 								{argPreview}
@@ -148,11 +155,11 @@ function DoomLoopCardView({
 				{phase === "pending" && (
 					<div className="flex items-center gap-2">
 						<Button size="sm" variant="outline" className="rounded-lg gap-1.5" onClick={handleStop}>
-							Stop and rethink
+							{t("f_stop_and_rethink")}
 							<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 						</Button>
 						<Button size="sm" variant="ghost" onClick={handleContinue}>
-							Continue anyway
+							{t("f_continue_anyway")}
 						</Button>
 					</div>
 				)}

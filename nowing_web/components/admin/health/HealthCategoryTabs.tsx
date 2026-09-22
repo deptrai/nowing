@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { HealthOverviewResponse } from "@/lib/apis/admin-health-api.service";
@@ -17,6 +18,7 @@ export default function HealthCategoryTabs({
 	onSelectCategory,
 	overview,
 }: HealthCategoryTabsProps) {
+	const t = useTranslations("admin");
 	const categoryMeta = overview?.categories || {};
 
 	const formatCategoryTitle = (cat: string) => {

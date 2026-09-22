@@ -1,6 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useIsSelfHosted } from "@/components/providers/runtime-config";
 import { EnumConnectorName } from "@/contracts/enums/connector";
@@ -36,6 +37,7 @@ type DeploymentFilterableConnector = {
  * Returns just the identifier (e.g : john@example.com).
  */
 export function getConnectorDisplayName(fullName: string): string {
+	const t = useTranslations("assistant");
 	const separatorIndex = fullName.indexOf(" - ");
 	if (separatorIndex !== -1) {
 		return fullName.substring(separatorIndex + 3);
@@ -73,12 +75,19 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 	onManage,
 	onViewAccountsList,
 }) => {
+	const t = useTranslations("assistant");
 	const selfHosted = useIsSelfHosted();
 	const { isDesktop } = usePlatform();
 
 	const matchesSearch = (title: string, description: string) =>
 		title.toLowerCase().includes(searchQuery.toLowerCase()) ||
 		description.toLowerCase().includes(searchQuery.toLowerCase());
+
+	// Resolve the localized connector description. Each catalog entry carries a
+	// `descKey` i18n key (namespace "assistant"); the English `description`
+	// string stays as the source/fallback and for search matching.
+	const localizedDesc = (c: { description: string; descKey?: string }) =>
+		c.descKey ? t(c.descKey as Parameters<typeof t>[0]) : c.description;
 
 	const passesDeploymentFilter = (c: DeploymentFilterableConnector) =>
 		(!c.selfHostedOnly || selfHosted) && (!c.desktopOnly || isDesktop);
@@ -90,22 +99,22 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 
 	// Filter connectors based on search, deployment mode, and import exclusion
 	const filteredOAuth = OAUTH_CONNECTORS.filter(
-		(c) => matchesSearch(c.title, c.description) && passesDeploymentFilter(c) && notImport(c)
+		(c) => matchesSearch(c.title, localizedDesc(c)) && passesDeploymentFilter(c) && notImport(c)
 	);
 
 	const filteredCrawlers = CRAWLERS.filter(
-		(c) => matchesSearch(c.title, c.description) && passesDeploymentFilter(c) && notImport(c)
+		(c) => matchesSearch(c.title, localizedDesc(c)) && passesDeploymentFilter(c) && notImport(c)
 	);
 
 	const filteredOther = OTHER_CONNECTORS.filter(
-		(c) => matchesSearch(c.title, c.description) && passesDeploymentFilter(c) && notImport(c)
+		(c) => matchesSearch(c.title, localizedDesc(c)) && passesDeploymentFilter(c) && notImport(c)
 	);
 
 	// Filter Composio connectors
 	const filteredComposio = COMPOSIO_CONNECTORS.filter(
 		(c) =>
 			(c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				c.description.toLowerCase().includes(searchQuery.toLowerCase())) &&
+				localizedDesc(c).toLowerCase().includes(searchQuery.toLowerCase())) &&
 			notImport(c)
 	);
 
@@ -162,7 +171,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 				key={connector.id}
 				id={connector.id}
 				title={connector.title}
-				description={connector.description}
+				description={localizedDesc(connector)}
 				connectorType={connector.connectorType}
 				isConnected={isConnected}
 				isConnecting={isConnecting}
@@ -211,7 +220,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 				key={connector.id}
 				id={connector.id}
 				title={connector.title}
-				description={connector.description}
+				description={localizedDesc(connector)}
 				connectorType={connector.connectorType}
 				isConnected={isConnected}
 				isConnecting={isConnecting}
@@ -261,7 +270,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 				key={crawler.id}
 				id={crawler.id}
 				title={crawler.title}
-				description={crawler.description}
+				description={localizedDesc(crawler)}
 				connectorType={crawler.connectorType || undefined}
 				isConnected={isConnected}
 				isConnecting={isConnecting}
@@ -295,8 +304,8 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 		return (
 			<div className="flex flex-col items-center justify-center py-20 text-center">
 				<Search className="size-8 text-muted-foreground mb-3" aria-hidden="true" />
-				<p className="text-sm text-muted-foreground">No connectors found</p>
-				<p className="text-xs text-muted-foreground/60 mt-1">Try a different search term</p>
+				<p className="text-sm text-muted-foreground">{t("asst_no_connectors_found")}</p>
+				<p className="text-xs text-muted-foreground/60 mt-1">{t("asst_try_a_different_search")}</p>
 			</div>
 		);
 	}
@@ -338,7 +347,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 			{hasDeprecated && (
 				<section>
 					<div className="flex items-center gap-2 mb-4">
-						<h3 className="text-sm font-semibold text-muted-foreground">Deprecated</h3>
+						<h3 className="text-sm font-semibold text-muted-foreground">{t("asst_deprecated")}</h3>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{deprecated.oauth.map(renderOAuthCard)}

@@ -221,6 +221,18 @@ async def execute_with_context(
     except httpx.RequestError:
         degradation_reason = "unreachable"
     except ChainLensError as exc:
+        # Upstream emitted a `type:"error"` SSE frame (e.g. engine model load
+        # failure). exc.message carries the verbatim upstream error; log it so
+        # the file record distinguishes an engine fault from a transport
+        # timeout — previously this path was silent and only set a reason.
+        logger.warning(
+            "chainlens_research_upstream_sse_error",
+            extra={
+                "error": exc.message,
+                "code": exc.code,
+                "workspace_id": payload.workspace_id,
+            },
+        )
         degradation_reason = "upstream_error"
         engine_reason = str(exc)
     except Exception as exc:  # research search error; mark engine_unavailable upstream_error

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { Switch } from "@/components/ui/switch";
 
 interface UnattendedToggleProps {
@@ -12,22 +13,21 @@ interface UnattendedToggleProps {
  * agent raises is rejected and the step can stall.
  */
 export function UnattendedToggle({ checked, onChange }: UnattendedToggleProps) {
+	const t = useTranslations("automations");
 	return (
 		<div className="flex items-start justify-between gap-3 rounded-md bg-transparent">
 			<div className="space-y-0.5 min-w-0">
 				<div className="flex items-center gap-1.5">
 					<span className="text-sm font-medium text-foreground">
-						Run without asking for approvals
+						{t("auto_run_without_asking_for")}
 					</span>
 				</div>
-				<p className="text-xs text-muted-foreground">
-					Tasks run automatically without asking for confirmation
-				</p>
+				<p className="text-xs text-muted-foreground">{t("auto_tasks_run_automatically_without")}</p>
 			</div>
 			<Switch
 				checked={checked}
 				onCheckedChange={onChange}
-				aria-label="Run without asking for approvals"
+				aria-label={t("auto_run_without_asking_for")}
 			/>
 		</div>
 	);

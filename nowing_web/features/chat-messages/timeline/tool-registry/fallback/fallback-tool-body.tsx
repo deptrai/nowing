@@ -37,7 +37,11 @@ export const FallbackToolBody: TimelineToolComponent = (props) => {
 		if (isDoomLoopInterrupt(props.result)) {
 			return <DoomLoopApproval {...approvalProps} />;
 		}
-		if (isQuestionInterrupt(props.result) || props.toolName === "ask_user_question" || props.toolName === "prompt_clarification") {
+		if (
+			isQuestionInterrupt(props.result) ||
+			props.toolName === "ask_user_question" ||
+			props.toolName === "prompt_clarification"
+		) {
 			return <QuestionChoiceApproval {...approvalProps} />;
 		}
 		return <GenericHitlApproval {...approvalProps} />;

@@ -11,6 +11,10 @@ from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 
+from app.config import config as _cfg
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 
@@ -63,7 +67,7 @@ def patched_embeddings(monkeypatch):
     """Return deterministic embeddings so tests don't need a real model."""
 
     def _fake_embed_texts(texts: list[str]) -> list[list[float]]:
-        return [[0.1] * 384 for _ in texts]
+        return [[0.1] * _EMBEDDING_DIM for _ in texts]
 
     monkeypatch.setattr(
         "app.services.memory.repository.embed_texts",
@@ -288,7 +292,7 @@ async def test_extract_updates_near_duplicate(
     first = await repo.create_memory(
         workspace_id=db_workspace.id,
         content="Competitor X raised prices last quarter.",
-        embedding=[0.1] * 384,
+        embedding=[0.1] * _EMBEDDING_DIM,
         type="semantic",
         source_type="chat_message",
         source_id=None,

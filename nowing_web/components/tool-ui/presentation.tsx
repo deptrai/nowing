@@ -7,6 +7,7 @@ import {
 	ExternalLinkIcon,
 	Loader2Icon,
 	PresentationIcon,
+	SparklesIcon,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -83,6 +84,7 @@ export function GeneratePresentationToolUI({
 	result: rawResult,
 	status,
 }: ToolCallMessagePartProps<PresentationBuildArgs, PresentationBuildResult | string>) {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const tChat = useTranslations("chat");
 	const workspaceId = getWorkspaceIdNumber(params);
@@ -90,6 +92,7 @@ export function GeneratePresentationToolUI({
 	const result = useMemo(() => parseToolResult(rawResult), [rawResult]);
 
 	const isRunning = status.type === "running" || status.type === "requires-action";
+	const isPlanLimited = result.status === "plan_limited";
 	const isFailed =
 		result.status === "validation_failed" ||
 		result.status === "error" ||
@@ -122,7 +125,7 @@ export function GeneratePresentationToolUI({
 					</div>
 					<Badge variant="secondary" className="ml-auto gap-1 px-2 py-0.5 text-xs">
 						<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
-						Generating
+						{t("tu_generating")}
 					</Badge>
 				</div>
 				{prompt && (
@@ -130,6 +133,32 @@ export function GeneratePresentationToolUI({
 						Prompt: &ldquo;{prompt}&rdquo;
 					</p>
 				)}
+			</div>
+		);
+	}
+
+	if (isPlanLimited) {
+		return (
+			<div className="my-4 max-w-xl overflow-hidden rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5 shadow-sm">
+				<div className="flex items-center gap-3">
+					<div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+						<SparklesIcon className="size-5" aria-hidden="true" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<h4 className="truncate text-sm font-semibold text-foreground">
+							{tChat("presentation_plan_limited_title")}
+						</h4>
+						<p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+							{result.error || tChat("presentation_plan_limited_desc")}
+						</p>
+					</div>
+					<Badge
+						variant="outline"
+						className="shrink-0 font-medium text-xs border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+					>
+						{tChat("limits_upgrade_cta")}
+					</Badge>
+				</div>
 			</div>
 		);
 	}
@@ -143,7 +172,7 @@ export function GeneratePresentationToolUI({
 					</div>
 					<div className="min-w-0 flex-1">
 						<h4 className="truncate text-sm font-semibold text-destructive">
-							Slide Deck Generation Failed
+							{t("tu_slide_deck_generation_failed")}
 						</h4>
 						<p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
 							{result.error || "Unable to generate the requested slide deck."}
@@ -213,7 +242,7 @@ export function GeneratePresentationToolUI({
 					>
 						<a href={previewUrl} target="_blank" rel="noopener noreferrer">
 							<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-							Preview
+							{t("tu_preview")}
 						</a>
 					</Button>
 				)}

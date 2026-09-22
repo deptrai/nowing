@@ -2,6 +2,7 @@
 
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { AlertCircleIcon, ImageIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 import {
 	Image,
@@ -34,6 +35,7 @@ type GenerateImageArgs = z.infer<typeof GenerateImageArgsSchema>;
 type GenerateImageResult = z.infer<typeof GenerateImageResultSchema>;
 
 function ImageErrorState({ prompt, error }: { prompt: string; error: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5 p-4 max-w-md">
 			<div className="flex items-center gap-4">
@@ -41,7 +43,7 @@ function ImageErrorState({ prompt, error }: { prompt: string; error: string }) {
 					<AlertCircleIcon className="size-6 text-destructive" aria-hidden="true" />
 				</div>
 				<div className="flex-1 min-w-0">
-					<p className="font-medium text-destructive text-sm">Image generation failed</p>
+					<p className="font-medium text-destructive text-sm">{t("image_gen_failed")}</p>
 					<p className="text-muted-foreground text-xs mt-0.5 truncate">{prompt}</p>
 					<p className="text-muted-foreground text-xs mt-1">{error}</p>
 				</div>
@@ -51,11 +53,14 @@ function ImageErrorState({ prompt, error }: { prompt: string; error: string }) {
 }
 
 function ImageCancelledState({ prompt }: { prompt: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 rounded-xl border border-muted p-4 text-muted-foreground max-w-md">
 			<p className="flex items-center gap-2">
 				<ImageIcon className="size-4" aria-hidden="true" />
-				<span className="line-through truncate">Generate: {prompt}</span>
+				<span className="line-through truncate">
+					{t("image_gen_label")}: {prompt}
+				</span>
 			</p>
 		</div>
 	);
@@ -89,12 +94,13 @@ export const GenerateImageToolUI = ({
 	result,
 	status,
 }: ToolCallMessagePartProps<GenerateImageArgs, GenerateImageResult>) => {
-	const prompt = args.prompt || "Generating image...";
+	const t = useTranslations("toolUi");
+	const prompt = args.prompt || t("image_generating");
 
 	if (status.type === "running" || status.type === "requires-action") {
 		return (
 			<div className="my-4">
-				<ImageLoading title="Generating image" />
+				<ImageLoading title={t("image_generating")} />
 			</div>
 		);
 	}
@@ -116,7 +122,7 @@ export const GenerateImageToolUI = ({
 	if (!result) {
 		return (
 			<div className="my-4">
-				<ImageLoading title="Loading" />
+				<ImageLoading title={t("common_loading")} />
 			</div>
 		);
 	}

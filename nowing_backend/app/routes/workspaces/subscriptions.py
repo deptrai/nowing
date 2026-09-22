@@ -4,18 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.config import config as app_config
 from app.db import (
     Permission,
     Workspace,
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
 from app.schemas import (
     AutoExtractUsage,
     PlanDefinitionRead,
     SubscriptionChangeCreate,
     SubscriptionChangeRead,
+    WorkspaceEntitlementResponse,
     WorkspaceLimitsResponse,
     WorkspaceLimitUsage,
     WorkspaceSubscriptionResponse,
@@ -110,6 +112,38 @@ async def get_workspace_subscription(
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspace subscription: {e!s}"
         ) from e
+
+
+@router.get(
+    "/workspaces/{workspace_id}/entitlement",
+    response_model=WorkspaceEntitlementResponse,
+)
+async def get_workspace_entitlement(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+):
+    """Member-readable entitlement summary (plan tier + PPTX capability).
+
+    Unlike ``/subscription`` (SETTINGS_VIEW), this only requires workspace
+    membership so any member's client can gate plan-tier features such as the
+    PPTX export chips — a paid workspace member must not be told they are on a
+    free plan merely because they lack settings permission.
+    """
+    workspace = await session.get(Workspace, workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    limits = await workspace_limit_service.get_effective_limits(
+        session, workspace_id
+    )
+    tier = (limits.plan_tier or "free").strip().lower()
+    can_use_pptx = tier in {"team", "growth", "enterprise"}
+    return WorkspaceEntitlementResponse(
+        plan_tier=tier,
+        can_use_pptx=can_use_pptx,
+        self_hosted=app_config.SELF_HOSTED_EXPLICIT,
+    )
 
 
 @router.post(

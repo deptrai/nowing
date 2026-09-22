@@ -16,6 +16,7 @@ export interface ToolGroup {
 	tools: string[];
 	connectorIcon?: string;
 	tooltip?: string;
+	tooltipKey?: string;
 }
 
 export const TOOL_GROUPS: ToolGroup[] = [
@@ -48,7 +49,8 @@ export const TOOL_GROUPS: ToolGroup[] = [
 			"trash_gmail_email",
 		],
 		connectorIcon: "gmail",
-		tooltip: "Search, read, draft, update, send, and trash emails in Gmail",
+		tooltip: "assistant.connector_gmail_tooltip",
+		tooltipKey: "assistant.connector_gmail_tooltip",
 	},
 	{
 		label: "Google Calendar",
@@ -59,66 +61,77 @@ export const TOOL_GROUPS: ToolGroup[] = [
 			"delete_calendar_event",
 		],
 		connectorIcon: "google_calendar",
-		tooltip: "Search, create, update, and delete events in Google Calendar",
+		tooltip: "assistant.connector_gcal_tooltip",
+		tooltipKey: "assistant.connector_gcal_tooltip",
 	},
 	{
 		label: "Google Drive",
 		tools: ["create_google_drive_file", "delete_google_drive_file"],
 		connectorIcon: "google_drive",
-		tooltip: "Create and delete files in Google Drive",
+		tooltip: "assistant.connector_drive_tooltip",
+		tooltipKey: "assistant.connector_drive_tooltip",
 	},
 	{
 		label: "OneDrive",
 		tools: ["create_onedrive_file", "delete_onedrive_file"],
 		connectorIcon: "onedrive",
-		tooltip: "Create and delete files in OneDrive",
+		tooltip: "assistant.connector_onedrive_tooltip",
+		tooltipKey: "assistant.connector_onedrive_tooltip",
 	},
 	{
 		label: "Dropbox",
 		tools: ["create_dropbox_file", "delete_dropbox_file"],
 		connectorIcon: "dropbox",
-		tooltip: "Create and delete files in Dropbox",
+		tooltip: "assistant.connector_dropbox_tooltip",
+		tooltipKey: "assistant.connector_dropbox_tooltip",
 	},
 	{
 		label: "Notion",
 		tools: ["create_notion_page", "update_notion_page", "delete_notion_page"],
 		connectorIcon: "notion",
-		tooltip: "Create, update, and delete pages in Notion",
+		tooltip: "assistant.connector_notion_tooltip",
+		tooltipKey: "assistant.connector_notion_tooltip",
 	},
 	{
 		label: "Linear",
 		tools: ["create_linear_issue", "update_linear_issue", "delete_linear_issue"],
 		connectorIcon: "linear",
-		tooltip: "Create, update, and delete issues in Linear",
+		tooltip: "assistant.connector_linear_tooltip",
+		tooltipKey: "assistant.connector_linear_tooltip",
 	},
 	{
 		label: "Jira",
 		tools: ["create_jira_issue", "update_jira_issue", "delete_jira_issue"],
 		connectorIcon: "jira",
-		tooltip: "Create, update, and delete issues in Jira",
+		tooltip: "assistant.connector_jira_tooltip",
+		tooltipKey: "assistant.connector_jira_tooltip",
 	},
 	{
 		label: "Confluence",
 		tools: ["create_confluence_page", "update_confluence_page", "delete_confluence_page"],
 		connectorIcon: "confluence",
-		tooltip: "Create, update, and delete pages in Confluence",
+		tooltip: "assistant.connector_confluence_tooltip",
+		tooltipKey: "assistant.connector_confluence_tooltip",
 	},
 	{
 		label: "Discord",
 		tools: ["list_discord_channels", "read_discord_messages", "send_discord_message"],
 		connectorIcon: "discord",
-		tooltip: "List channels, read messages, and send messages in Discord",
+		tooltip: "assistant.connector_discord_tooltip",
+		tooltipKey: "assistant.connector_discord_tooltip",
 	},
 	{
 		label: "Microsoft Teams",
 		tools: ["list_teams_channels", "read_teams_messages", "send_teams_message"],
 		connectorIcon: "teams",
-		tooltip: "List channels, read messages, and send messages in Microsoft Teams",
+		tooltip: "assistant.connector_teams_tooltip",
+		tooltipKey: "assistant.connector_teams_tooltip",
 	},
 	{
 		label: "Luma",
 		tools: ["list_luma_events", "read_luma_event", "create_luma_event"],
 		connectorIcon: "luma",
-		tooltip: "List, read, and create events in Luma",
+		tooltip: "assistant.connector_luma_tooltip",
+		tooltipKey: "assistant.connector_luma_tooltip",
 	},
 ];

@@ -1,0 +1,1479 @@
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index 89d50b51d..f583aae90 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -68,6 +68,7 @@ from app.config.scraper import *  # noqa: E402, F403
+ from app.config.storage import *  # noqa: E402, F403
+ from app.config.urls import *  # noqa: E402, F403
+ from app.config.web_builder import *  # noqa: E402, F403
++from app.config.voice import *  # noqa: E402, F403
+ 
+ 
+ class Config:
+@@ -123,6 +124,12 @@ CNAME_INGRESS_HOST = config.CNAME_INGRESS_HOST
+ FILE_STORAGE_LOCAL_PATH = config.FILE_STORAGE_LOCAL_PATH
+ WEB_BUILDER_TXT_VERIFY_LABEL = config.WEB_BUILDER_TXT_VERIFY_LABEL
+ WEB_BUILDER_TXT_VERIFY_PREFIX = config.WEB_BUILDER_TXT_VERIFY_PREFIX
++LIVEKIT_URL = config.LIVEKIT_URL
++LIVEKIT_API_KEY = config.LIVEKIT_API_KEY
++LIVEKIT_API_SECRET = config.LIVEKIT_API_SECRET
++SIP_OUTBOUND_GATEWAY_HOST = config.SIP_OUTBOUND_GATEWAY_HOST
++SIP_OUTBOUND_GATEWAY_PORT = config.SIP_OUTBOUND_GATEWAY_PORT
++SIP_GATEWAY_SIP_URI = config.SIP_GATEWAY_SIP_URI
+ 
+ __all__ = [
+     "BASE_DIR",
+@@ -131,6 +138,12 @@ __all__ = [
+     "HOSTING_BASE_DOMAIN",
+     "WEB_BUILDER_TXT_VERIFY_LABEL",
+     "WEB_BUILDER_TXT_VERIFY_PREFIX",
++    "LIVEKIT_API_KEY",
++    "LIVEKIT_API_SECRET",
++    "LIVEKIT_URL",
++    "SIP_GATEWAY_SIP_URI",
++    "SIP_OUTBOUND_GATEWAY_HOST",
++    "SIP_OUTBOUND_GATEWAY_PORT",
+     "Config",
+     "config",
+     "initialize_image_gen_router",
+diff --git a/nowing_backend/pyproject.toml b/nowing_backend/pyproject.toml
+index 0cc7b12ee..66ec193c2 100644
+--- a/nowing_backend/pyproject.toml
++++ b/nowing_backend/pyproject.toml
+@@ -4,6 +4,7 @@ version = "0.0.34"
+ description = "Nowing Backend"
+ requires-python = ">=3.12"
+ dependencies = [
++    "livekit-api>=1.0.0",
+     "alembic>=1.13.0",
+     "asyncpg>=0.30.0",
+     "authlib>=1.6.9",
+diff --git a/docker/docker-compose.telephony.yml b/docker/docker-compose.telephony.yml
+new file mode 100644
+index 000000000..dbdea51de
+--- /dev/null
++++ b/docker/docker-compose.telephony.yml
+@@ -0,0 +1,68 @@
++# =============================================================================
++# Nowing Telephony & Voice AI Infrastructure Stack
++# Story 38.1 / Invariant AD-122: Kamailio SBC Edge & LiveKit SIP Gateway Cluster
++# Direct host/internal RTP routing (10000-20000/UDP), no Caddy/Traefik reverse proxy.
++# =============================================================================
++
++name: nowing-telephony
++
++services:
++  kamailio:
++    image: kamailio/kamailio:5.8.3
++    container_name: nowing-kamailio
++    restart: unless-stopped
++    ports:
++      - "5060:5060/udp"
++      - "5060:5060/tcp"
++    volumes:
++      - ./kamailio/kamailio.cfg:/etc/kamailio/kamailio.cfg:ro
++      - ./kamailio/dispatcher.list:/etc/kamailio/dispatcher.list:ro
++    environment:
++      - SIP_PORT=5060
++      - KAMAILIO_LOG_LEVEL=2
++    networks:
++      - telephony_net
++    depends_on:
++      - livekit-sip-1
++      - livekit-sip-2
++
++  livekit-sip-1:
++    image: livekit/sip:latest
++    container_name: nowing-livekit-sip-1
++    restart: unless-stopped
++    volumes:
++      - ./livekit/sip.yaml:/etc/livekit/sip.yaml:ro
++    environment:
++      - LIVEKIT_URL=${LIVEKIT_URL:-http://livekit:7880}
++      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
++      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
++      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
++    ports:
++      - "10000-15000:10000-15000/udp"
++    networks:
++      telephony_net:
++        aliases:
++          - livekit-sip-1
++
++  livekit-sip-2:
++    image: livekit/sip:latest
++    container_name: nowing-livekit-sip-2
++    restart: unless-stopped
++    volumes:
++      - ./livekit/sip.yaml:/etc/livekit/sip.yaml:ro
++    environment:
++      - LIVEKIT_URL=${LIVEKIT_URL:-http://livekit:7880}
++      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
++      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
++      - SIP_CONFIG_FILE=/etc/livekit/sip.yaml
++    ports:
++      - "15001-20000:15001-20000/udp"
++    networks:
++      telephony_net:
++        aliases:
++          - livekit-sip-2
++
++networks:
++  telephony_net:
++    name: nowing_telephony_net
++    driver: bridge
+diff --git a/docker/kamailio/kamailio.cfg b/docker/kamailio/kamailio.cfg
+new file mode 100644
+index 000000000..b4173f826
+--- /dev/null
++++ b/docker/kamailio/kamailio.cfg
+@@ -0,0 +1,181 @@
++#!KAMAILIO
++# =============================================================================
++# Nowing Telecom SBC - Kamailio Configuration
++# Story 38.1 / Invariant AD-122: Direct internal routing, sub-3ms latency,
++# domestic carrier whitelist, G.711a (PCMA) / Opus audio, 2s OPTIONS healthcheck.
++# =============================================================================
++
++####### Global Parameters #########
++debug=2
++log_stderror=yes
++log_facility=LOG_LOCAL0
++
++fork=yes
++children=4
++
++listen=udp:0.0.0.0:5060
++listen=tcp:0.0.0.0:5060
++
++tcp_connection_lifetime=3600
++tcp_accept_no_cl=yes
++
++####### Modules Section ########
++loadmodule "kex.so"
++loadmodule "corex.so"
++loadmodule "tm.so"
++loadmodule "tmx.so"
++loadmodule "sl.so"
++loadmodule "rr.so"
++loadmodule "pv.so"
++loadmodule "maxfwd.so"
++loadmodule "textops.so"
++loadmodule "xlog.so"
++loadmodule "sanity.so"
++loadmodule "siputils.so"
++loadmodule "dispatcher.so"
++loadmodule "nathelper.so"
++
++####### Module Parameters #########
++# ----- tm params -----
++modparam("tm", "failure_reply_mode", 3)
++modparam("tm", "fr_timer", 3000)
++modparam("tm", "fr_inv_timer", 40000)
++
++# ----- rr params -----
++modparam("rr", "enable_full_lr", 1)
++modparam("rr", "append_fromtag", 1)
++
++# ----- dispatcher params -----
++# AD-122 / Spec: SIP OPTIONS healthcheck every 2 seconds
++modparam("dispatcher", "list_file", "/etc/kamailio/dispatcher.list")
++modparam("dispatcher", "flags", 2)
++modparam("dispatcher", "ds_ping_interval", 2)
++modparam("dispatcher", "ds_probing_mode", 1)
++modparam("dispatcher", "ds_ping_from", "sip:kamailio-sbc@nowing.internal")
++modparam("dispatcher", "ds_ping_method", "OPTIONS")
++modparam("dispatcher", "ds_ping_latency_stats", 1)
++modparam("dispatcher", "ds_probing_threshold", 1)
++
++# ----- sanity params -----
++modparam("sanity", "default_checks", 17895)
++
++####### Routing Logic ########
++request_route {
++    # 1. Per-request initial sanity checks
++    if (!mf_process_maxfwd_header("10")) {
++        sl_send_reply("483", "Too Many Hops");
++        exit;
++    }
++
++    if (!sanity_check()) {
++        xlog("L_WARN", "[SBC] Malformed SIP request from $si:$sp - dropping\n");
++        exit;
++    }
++
++    # 2. Block malicious scanners and SIP bots
++    if ($ua =~ "(friendly-scanner|sipvicious|sipcli|VaxSIPUserAgent)") {
++        xlog("L_WARN", "[SBC] Blocked scanner User-Agent: $ua from $si:$sp\n");
++        sl_send_reply("403", "Forbidden");
++        exit;
++    }
++
++    # 3. IP Whitelist Verification (Carrier Trunk Validation & Anti-Fraud)
++    # Whitelisted: Localhost, private networks (Docker / internal VPC), and carrier whitelist
++    if (!($si =~ "^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)")) {
++        xlog("L_WARN", "[SBC] Unauthorized SIP source IP: $si - 403 Forbidden\n");
++        sl_send_reply("403", "Forbidden - IP Not Authorized");
++        exit;
++    }
++
++    # 4. Handle SIP OPTIONS keepalive to Kamailio itself
++    if (is_method("OPTIONS")) {
++        if ($rU == $null || uri == myself) {
++            sl_send_reply("200", "Keepalive OK");
++            exit;
++        }
++    }
++
++    # 5. Handle In-Dialog Requests (ACK, BYE, CANCEL, PRACK, INFO)
++    if (has_totag()) {
++        if (loose_route()) {
++            t_relay();
++            exit;
++        }
++        if (is_method("ACK")) {
++            if (t_check_trans()) {
++                t_relay();
++                exit;
++            } else {
++                exit;
++            }
++        }
++        sl_send_reply("404", "Not here");
++        exit;
++    }
++
++    # 6. Handle CANCEL
++    if (is_method("CANCEL")) {
++        if (t_check_trans()) {
++            t_relay_cancel();
++        }
++        exit;
++    }
++
++    # 7. Codec Verification for INVITE (Invariant: G.711a PCMA 8kHz / Opus)
++    if (is_method("INVITE")) {
++        # Check for unsupported codecs: e.g. G.729 (payload 18) when PCMA (payload 8) or Opus is absent
++        if (has_body("application/sdp")) {
++            if (search_body("a=rtpmap:18 G729") && !search_body("a=rtpmap:8 PCMA") && !search_body("a=rtpmap:.*opus")) {
++                xlog("L_WARN", "[SBC] Audio Codec Mismatch: Unsupported G.729 from $si. Remote SDP: $rb\n");
++                sl_send_reply("488", "Not Acceptable Here");
++                exit;
++            }
++        }
++
++        # Record route for stateful dialog tracking
++        record_route();
++
++        # Select LiveKit SIP Gateway via round-robin (set 1, alg 4)
++        if (!ds_select_dst("1", "4")) {
++            xlog("L_ERR", "[SBC] No active LiveKit SIP Gateway available in dispatcher set 1\n");
++            sl_send_reply("503", "Service Unavailable - No Gateway Available");
++            exit;
++        }
++
++        xlog("L_INFO", "[SBC] Routing INVITE $rU to LiveKit SIP Gateway $du (source: $si)\n");
++        t_on_failure("DISPATCH_FAILOVER");
++        if (!t_relay()) {
++            sl_reply_error();
++        }
++        exit;
++    }
++
++    # 8. Relay any other SIP methods
++    if (!t_relay()) {
++        sl_reply_error();
++    }
++}
++
++# Failure route for automatic failover when a SIP Gateway node drops
++failure_route[DISPATCH_FAILOVER] {
++    if (t_is_canceled()) {
++        exit;
++    }
++
++    # 500/502/503/504 or branch timeout indicates gateway failure
++    if (t_check_status("500|502|503|504") || t_branch_timeout()) {
++        xlog("L_WARN", "[SBC] LiveKit SIP Gateway failure ($T_reply_code). Failing over to next destination.\n");
++        # Mark current destination as probing/inactive
++        ds_mark_dst("p");
++        if (ds_next_dst()) {
++            xlog("L_INFO", "[SBC] Failover to secondary LiveKit SIP Gateway: $du\n");
++            t_on_failure("DISPATCH_FAILOVER");
++            t_relay();
++            exit;
++        } else {
++            xlog("L_ERR", "[SBC] All LiveKit SIP Gateway nodes exhausted in dispatcher\n");
++            t_reply("503", "Service Unavailable - All Gateways Down");
++            exit;
++        }
++    }
++}
+diff --git a/docker/kamailio/dispatcher.list b/docker/kamailio/dispatcher.list
+new file mode 100644
+index 000000000..6c27d1082
+--- /dev/null
++++ b/docker/kamailio/dispatcher.list
+@@ -0,0 +1,8 @@
++# =============================================================================
++# Kamailio Dispatcher List: LiveKit SIP Gateway Backend Pool
++# Format: setid destination flags priority attributes
++# flags: 0=active, 8=probing
++# Invariant AD-122: Direct internal network routing
++# =============================================================================
++1 sip:livekit-sip-1:5060 0 0
++1 sip:livekit-sip-2:5060 0 0
+diff --git a/docker/livekit/sip.yaml b/docker/livekit/sip.yaml
+new file mode 100644
+index 000000000..acf6f026d
+--- /dev/null
++++ b/docker/livekit/sip.yaml
+@@ -0,0 +1,52 @@
++# =============================================================================
++# LiveKit SIP Gateway Configuration
++# Story 38.1 / Invariant AD-122
++# Bridges domestic SIP Trunks (G.711a PCMA 8kHz) with LiveKit WebRTC SFU (Opus 48kHz).
++# =============================================================================
++
++# LiveKit Server Authentication & Signaling
++api_key: ${LIVEKIT_API_KEY}
++api_secret: ${LIVEKIT_API_SECRET}
++ws_url: ${LIVEKIT_URL}
++
++# Internal Redis Coordination
++redis:
++  address: ${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
++  password: ${REDIS_PASSWORD:-}
++  db: 0
++
++# SIP Signaling Network
++sip_port: 5060
++sip_port_listen: 5060
++sip_hostname: ${SIP_GATEWAY_HOST:-livekit-sip}
++
++# RTP Audio Stream Port Range (Invariant AD-122: Direct internal routing)
++rtp_port:
++  start: 10000
++  end: 20000
++
++# Audio Codec & Transcoding Configuration
++# Bi-directional transcoding: G.711 A-law (PCMA 8kHz) for SIP Trunk <-> Opus 48kHz for WebRTC SFU
++audio:
++  codecs:
++    - pcma # G.711 A-law 8kHz
++    - opus # WebRTC Opus 48kHz
++  sample_rate: 48000
++  channels: 1
++
++# Room Dispatch & Mapping Template
++# Automatically creates room call_<session_uuid> upon receiving SIP INVITE
++room_prefix: "call_"
++room_template: "call_{uuid}"
++
++# Performance & Reliability Limits
++max_active_calls: 100
++max_cpu_utilization: 0.9
++media_timeout: 60s
++media_timeout_initial: 5s
++enable_jitter_buffer: false
++
++# Monitoring & Logging
++log_level: info
++health_port: 8081
++prometheus_port: 8082
+diff --git a/nowing_backend/app/config/voice.py b/nowing_backend/app/config/voice.py
+new file mode 100644
+index 000000000..ef52b1952
+--- /dev/null
++++ b/nowing_backend/app/config/voice.py
+@@ -0,0 +1,44 @@
++"""Config domain: telephony & voice AI SDR infrastructure."""
++
++from __future__ import annotations
++
++import os
++
++# LiveKit Media Server & SIP Gateway Configuration
++LIVEKIT_URL = os.getenv("LIVEKIT_URL", "http://localhost:7880")
++LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "")
++LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
++
++# SIP Signaling & Gateway Parameters
++SIP_OUTBOUND_GATEWAY_HOST = os.getenv("SIP_OUTBOUND_GATEWAY_HOST", "127.0.0.1")
++SIP_OUTBOUND_GATEWAY_PORT = int(os.getenv("SIP_OUTBOUND_GATEWAY_PORT", "5060"))
++SIP_GATEWAY_SIP_URI = os.getenv(
++    "SIP_GATEWAY_SIP_URI",
++    f"sip:{SIP_OUTBOUND_GATEWAY_HOST}:{SIP_OUTBOUND_GATEWAY_PORT}",
++)
++
++# Telephony Defaults & Constraints (Invariant AD-122)
++SIP_DEFAULT_TRUNK_ID = os.getenv("SIP_DEFAULT_TRUNK_ID", "")
++SIP_ROOM_PREFIX = os.getenv("SIP_ROOM_PREFIX", "call_")
++SIP_CALL_MAX_DURATION_SECONDS = int(os.getenv("SIP_CALL_MAX_DURATION_SECONDS", "180"))
++SIP_RINGING_TIMEOUT_SECONDS = int(os.getenv("SIP_RINGING_TIMEOUT_SECONDS", "30"))
++
++# Voice Channel Feature Flag
++SEQUENCER_VOICE_ENABLED = (
++    os.getenv("SEQUENCER_VOICE_ENABLED", "false").strip().lower()
++    in ("true", "1", "t", "yes")
++)
++
++__all__ = [
++    "LIVEKIT_API_KEY",
++    "LIVEKIT_API_SECRET",
++    "LIVEKIT_URL",
++    "SEQUENCER_VOICE_ENABLED",
++    "SIP_CALL_MAX_DURATION_SECONDS",
++    "SIP_DEFAULT_TRUNK_ID",
++    "SIP_GATEWAY_SIP_URI",
++    "SIP_OUTBOUND_GATEWAY_HOST",
++    "SIP_OUTBOUND_GATEWAY_PORT",
++    "SIP_RINGING_TIMEOUT_SECONDS",
++    "SIP_ROOM_PREFIX",
++]
+diff --git a/nowing_backend/app/services/voice/__init__.py b/nowing_backend/app/services/voice/__init__.py
+new file mode 100644
+index 000000000..c11a796a4
+--- /dev/null
++++ b/nowing_backend/app/services/voice/__init__.py
+@@ -0,0 +1,29 @@
++"""Voice AI SDR and Telephony services package."""
++
++from __future__ import annotations
++
++from app.services.voice.telephony_client import (
++    LiveKitTelephonyClient,
++    RoomCreationError,
++    SIPCallNotFoundError,
++    SIPCodecNotAcceptableError,
++    SIPDispatchError,
++    SIPServiceUnavailableError,
++    SIPTrunkBusyError,
++    SIPTrunkFailoverError,
++    TelephonyError,
++    TokenGenerationError,
++)
++
++__all__ = [
++    "LiveKitTelephonyClient",
++    "RoomCreationError",
++    "SIPCallNotFoundError",
++    "SIPCodecNotAcceptableError",
++    "SIPDispatchError",
++    "SIPServiceUnavailableError",
++    "SIPTrunkBusyError",
++    "SIPTrunkFailoverError",
++    "TelephonyError",
++    "TokenGenerationError",
++]
+diff --git a/nowing_backend/app/services/voice/telephony_client.py b/nowing_backend/app/services/voice/telephony_client.py
+new file mode 100644
+index 000000000..ed24f7db3
+--- /dev/null
++++ b/nowing_backend/app/services/voice/telephony_client.py
+@@ -0,0 +1,551 @@
++"""Telephony client for LiveKit SIP Gateway and Room orchestration.
++
++Story 38.1 / Invariant AD-122:
++- Connects to LiveKit Server SDK to create audio rooms (call_<session_uuid>).
++- Generates secure participant access tokens with Audio/WebRTC grants for Voice Workers.
++- Dispatches SIP outbound calls to domestic carriers via LiveKit SIP Gateway.
++- Handles failover routing across SIP trunk pools (e.g. Viettel, VNPT, FPT, CMC).
++"""
++
++from __future__ import annotations
++
++import datetime
++import logging
++import re
++from typing import Any
++
++import aiohttp
++from livekit.api import (
++    AccessToken,
++    CreateRoomRequest,
++    CreateSIPParticipantRequest,
++    LiveKitAPI,
++    Room,
++    SIPParticipantInfo,
++    TwirpError,
++    TwirpErrorCode,
++    VideoGrants,
++)
++
++from app.config import (
++    LIVEKIT_API_KEY,
++    LIVEKIT_API_SECRET,
++    LIVEKIT_URL,
++    SIP_CALL_MAX_DURATION_SECONDS,
++    SIP_OUTBOUND_GATEWAY_HOST,
++    SIP_OUTBOUND_GATEWAY_PORT,
++    SIP_RINGING_TIMEOUT_SECONDS,
++    SIP_ROOM_PREFIX,
++)
++
++logger = logging.getLogger(__name__)
++
++
++# ---------------------------------------------------------------------------
++# Telephony Domain Exceptions
++# ---------------------------------------------------------------------------
++
++class TelephonyError(Exception):
++    """Base exception for telephony and voice SDR operations."""
++
++
++class RoomCreationError(TelephonyError):
++    """Raised when creating a LiveKit call room fails."""
++
++
++class TokenGenerationError(TelephonyError):
++    """Raised when generating a LiveKit participant token fails."""
++
++
++class SIPDispatchError(TelephonyError):
++    """Base exception for SIP outbound dispatch failures."""
++
++    def __init__(
++        self,
++        message: str,
++        phone_number: str | None = None,
++        trunk_id: str | None = None,
++        sip_code: int | None = None,
++        attempted_trunks: list[str] | None = None,
++    ) -> None:
++        super().__init__(message)
++        self.phone_number = phone_number
++        self.trunk_id = trunk_id
++        self.sip_code = sip_code
++        self.attempted_trunks = attempted_trunks or []
++
++
++class SIPTrunkBusyError(SIPDispatchError):
++    """Raised when carrier SIP trunk returns 486 Busy Here."""
++
++    def __init__(
++        self,
++        message: str = "SIP trunk returned 486 Busy Here",
++        phone_number: str | None = None,
++        trunk_id: str | None = None,
++        attempted_trunks: list[str] | None = None,
++    ) -> None:
++        super().__init__(
++            message=message,
++            phone_number=phone_number,
++            trunk_id=trunk_id,
++            sip_code=486,
++            attempted_trunks=attempted_trunks,
++        )
++
++
++class SIPServiceUnavailableError(SIPDispatchError):
++    """Raised when carrier or SIP gateway returns 503 Service Unavailable."""
++
++    def __init__(
++        self,
++        message: str = "SIP Gateway or trunk returned 503 Service Unavailable",
++        phone_number: str | None = None,
++        trunk_id: str | None = None,
++        attempted_trunks: list[str] | None = None,
++    ) -> None:
++        super().__init__(
++            message=message,
++            phone_number=phone_number,
++            trunk_id=trunk_id,
++            sip_code=503,
++            attempted_trunks=attempted_trunks,
++        )
++
++
++class SIPCodecNotAcceptableError(SIPDispatchError):
++    """Raised when remote peer returns 488 Not Acceptable Here (codec mismatch)."""
++
++    def __init__(
++        self,
++        message: str = "SIP peer returned 488 Not Acceptable Here (unsupported audio codec)",
++        phone_number: str | None = None,
++        trunk_id: str | None = None,
++    ) -> None:
++        super().__init__(
++            message=message,
++            phone_number=phone_number,
++            trunk_id=trunk_id,
++            sip_code=488,
++        )
++
++
++class SIPCallNotFoundError(SIPDispatchError):
++    """Raised when dialed number or trunk does not exist (404 Not Found)."""
++
++    def __init__(
++        self,
++        message: str = "SIP peer returned 404 Not Found",
++        phone_number: str | None = None,
++        trunk_id: str | None = None,
++    ) -> None:
++        super().__init__(
++            message=message,
++            phone_number=phone_number,
++            trunk_id=trunk_id,
++            sip_code=404,
++        )
++
++
++class SIPTrunkFailoverError(SIPDispatchError):
++    """Raised when all primary and fallback SIP trunks fail."""
++
++
++# ---------------------------------------------------------------------------
++# Telephony Client Implementation
++# ---------------------------------------------------------------------------
++
++class LiveKitTelephonyClient:
++    """Async client orchestrating LiveKit rooms and SIP outbound dispatches."""
++
++    def __init__(
++        self,
++        url: str | None = None,
++        api_key: str | None = None,
++        api_secret: str | None = None,
++        sip_gateway_host: str | None = None,
++        sip_gateway_port: int | None = None,
++        api: LiveKitAPI | None = None,
++        session: aiohttp.ClientSession | None = None,
++    ) -> None:
++        self.url = (url or LIVEKIT_URL or "").strip()
++        self.api_key = (api_key or LIVEKIT_API_KEY or "").strip()
++        self.api_secret = (api_secret or LIVEKIT_API_SECRET or "").strip()
++        self.sip_gateway_host = sip_gateway_host or SIP_OUTBOUND_GATEWAY_HOST
++        self.sip_gateway_port = sip_gateway_port or SIP_OUTBOUND_GATEWAY_PORT
++
++        self._api: LiveKitAPI | None = api
++        self._session: aiohttp.ClientSession | None = session
++        self._owns_api: bool = api is None
++
++    def _get_api(self) -> LiveKitAPI:
++        """Lazily initialize LiveKitAPI inside an active event loop."""
++        if self._api is None:
++            if not self.url or not self.api_key or not self.api_secret:
++                raise TelephonyError(
++                    "LiveKit URL, API key, and API secret must be configured"
++                )
++            self._api = LiveKitAPI(
++                url=self.url,
++                api_key=self.api_key,
++                api_secret=self.api_secret,
++                session=self._session,
++            )
++        return self._api
++
++    @staticmethod
++    def normalize_room_name(session_id: str) -> str:
++        """Format room name with call_ prefix compliant with Invariant AD-122."""
++        session_id_clean = session_id.strip()
++        if not session_id_clean:
++            raise ValueError("session_id must not be empty")
++        if session_id_clean.startswith(SIP_ROOM_PREFIX):
++            return session_id_clean
++        return f"{SIP_ROOM_PREFIX}{session_id_clean}"
++
++    @staticmethod
++    def normalize_phone_number(phone_number: str) -> str:
++        """Normalize phone number to standard clean format."""
++        cleaned = re.sub(r"[\s\-\(\)\.]+", "", phone_number.strip())
++        if not cleaned:
++            raise ValueError("phone_number must not be empty")
++        return cleaned
++
++    async def create_call_room(
++        self,
++        session_id: str,
++        empty_timeout: int = 300,
++        departure_timeout: int = 60,
++        metadata: str | None = None,
++    ) -> Room:
++        """Create a LiveKit room designated for a telephony call session.
++
++        Args:
++            session_id: Unique session identifier or UUID.
++            empty_timeout: Seconds before closing an empty room (default 300s).
++            departure_timeout: Seconds before closing after participants leave.
++            metadata: Custom JSON metadata attached to the room.
++
++        Returns:
++            Room descriptor object from LiveKit server.
++
++        Raises:
++            RoomCreationError: If creation fails or server rejects request.
++        """
++        room_name = self.normalize_room_name(session_id)
++        api = self._get_api()
++
++        request = CreateRoomRequest(
++            name=room_name,
++            empty_timeout=empty_timeout,
++            departure_timeout=departure_timeout,
++            metadata=metadata or f'{{"session_id": "{session_id}"}}',
++        )
++
++        try:
++            logger.info("Creating LiveKit call room: %s", room_name)
++            room = await api.room.create_room(request)
++            logger.info("Successfully created LiveKit room: %s", room.name)
++            return room
++        except TwirpError as exc:
++            logger.error("Twirp error creating room %s: %s", room_name, exc)
++            raise RoomCreationError(
++                f"LiveKit server error creating room {room_name}: {exc.message}"
++            ) from exc
++        except Exception as exc:
++            logger.error("Unexpected error creating room %s: %s", room_name, exc)
++            raise RoomCreationError(
++                f"Failed to create LiveKit room {room_name}: {exc}"
++            ) from exc
++
++    def generate_participant_token(
++        self,
++        room_name: str,
++        identity: str,
++        name: str | None = None,
++        metadata: str | None = None,
++        ttl: int | datetime.timedelta = 3600,
++        is_agent: bool = True,
++        can_publish: bool = True,
++        can_subscribe: bool = True,
++        can_publish_data: bool = True,
++    ) -> str:
++        """Generate a signed JWT token granting access to a specific call room.
++
++        Args:
++            room_name: LiveKit room name (e.g. call_<uuid>).
++            identity: Unique participant identifier (e.g. worker_0, agent_sdr).
++            name: Human-readable participant display name.
++            metadata: Custom metadata passed to room events.
++            ttl: Token lifetime in seconds or as timedelta (default 1h).
++            is_agent: Flag granting Voice Agent worker privileges.
++            can_publish: Permission to publish audio tracks.
++            can_subscribe: Permission to subscribe to audio tracks.
++            can_publish_data: Permission to send DataTrack control messages.
++
++        Returns:
++            Signed JWT string.
++
++        Raises:
++            TokenGenerationError: If API credentials or inputs are invalid.
++        """
++        if not self.api_key or not self.api_secret:
++            raise TokenGenerationError("API key and secret required for token generation")
++        if not room_name or not identity:
++            raise TokenGenerationError("room_name and identity must not be empty")
++
++        token_ttl = (
++            datetime.timedelta(seconds=ttl)
++            if isinstance(ttl, (int, float))
++            else ttl
++        )
++
++        try:
++            token = (
++                AccessToken(self.api_key, self.api_secret)
++                .with_identity(identity)
++                .with_ttl(token_ttl)
++                .with_grants(
++                    VideoGrants(
++                        room_join=True,
++                        room=room_name,
++                        agent=is_agent,
++                        can_publish=can_publish,
++                        can_subscribe=can_subscribe,
++                        can_publish_data=can_publish_data,
++                    )
++                )
++            )
++            if name:
++                token = token.with_name(name)
++            if metadata:
++                token = token.with_metadata(metadata)
++
++            jwt_str = token.to_jwt()
++            logger.debug(
++                "Generated participant token for %s in room %s",
++                identity,
++                room_name,
++            )
++            return jwt_str
++        except Exception as exc:
++            logger.error("Failed to generate participant token: %s", exc)
++            raise TokenGenerationError(f"Token generation failed: {exc}") from exc
++
++    async def dispatch_sip_outbound(
++        self,
++        phone_number: str,
++        trunk_id: str,
++        room_name: str,
++        fallback_trunk_ids: list[str] | None = None,
++        participant_identity: str | None = None,
++        participant_name: str | None = None,
++        dtmf: str | None = None,
++        ringing_timeout: int | None = None,
++        max_call_duration: int | None = None,
++        headers: dict[str, str] | None = None,
++    ) -> SIPParticipantInfo:
++        """Dispatch an outbound SIP call via LiveKit SIP Gateway with trunk failover.
++
++        Args:
++            phone_number: Destination phone number (E.164 format preferred).
++            trunk_id: Primary SIP Trunk ID configured in LiveKit SIP Gateway.
++            room_name: Target LiveKit room (call_<uuid>).
++            fallback_trunk_ids: Optional ordered list of fallback SIP trunk IDs.
++            participant_identity: Unique identity for the SIP participant.
++            participant_name: Display name for the SIP participant.
++            dtmf: DTMF digits to send upon answer.
++            ringing_timeout: Timeout in seconds waiting for remote answer.
++            max_call_duration: Hard ceiling duration in seconds (AD-126b: 175-180s).
++            headers: Custom SIP headers forwarded in INVITE.
++
++        Returns:
++            SIPParticipantInfo containing participant_id and sip_call_id.
++
++        Raises:
++            SIPTrunkBusyError: If trunk returns 486 and all fallbacks fail.
++            SIPServiceUnavailableError: If trunk/gateway returns 503.
++            SIPCodecNotAcceptableError: If remote rejects codec (488).
++            SIPCallNotFoundError: If remote number not found (404).
++            SIPDispatchError: For general dispatch failures.
++        """
++        clean_phone = self.normalize_phone_number(phone_number)
++        norm_room = self.normalize_room_name(room_name)
++        effective_identity = participant_identity or f"sip_{clean_phone}"
++        effective_name = participant_name or f"Tel {clean_phone}"
++        effective_ringing_timeout = (
++            ringing_timeout if ringing_timeout is not None else SIP_RINGING_TIMEOUT_SECONDS
++        )
++        effective_max_duration = (
++            max_call_duration if max_call_duration is not None else SIP_CALL_MAX_DURATION_SECONDS
++        )
++
++        trunks_to_try = [trunk_id]
++        if fallback_trunk_ids:
++            for fb_id in fallback_trunk_ids:
++                if fb_id and fb_id not in trunks_to_try:
++                    trunks_to_try.append(fb_id)
++
++        attempted_trunks: list[str] = []
++        last_exception: Exception | None = None
++
++        api = self._get_api()
++
++        for idx, current_trunk in enumerate(trunks_to_try):
++            attempted_trunks.append(current_trunk)
++            request = CreateSIPParticipantRequest(
++                sip_trunk_id=current_trunk,
++                sip_call_to=clean_phone,
++                room_name=norm_room,
++                participant_identity=effective_identity,
++                participant_name=effective_name,
++                dtmf=dtmf or "",
++                ringing_timeout=datetime.timedelta(seconds=effective_ringing_timeout),
++                max_call_duration=datetime.timedelta(seconds=effective_max_duration),
++                headers=headers or {},
++            )
++
++            try:
++                logger.info(
++                    "Dispatching outbound SIP call: to=%s, trunk=%s, room=%s (attempt %d/%d)",
++                    clean_phone,
++                    current_trunk,
++                    norm_room,
++                    idx + 1,
++                    len(trunks_to_try),
++                )
++                participant_info = await api.sip.create_sip_participant(request)
++                logger.info(
++                    "SIP outbound dispatch successful: participant_id=%s, call_id=%s, trunk=%s",
++                    participant_info.participant_id,
++                    participant_info.sip_call_id,
++                    current_trunk,
++                )
++                return participant_info
++
++            except TwirpError as exc:
++                last_exception = exc
++                err_code = exc.code
++                err_msg = exc.message.lower()
++
++                logger.warning(
++                    "SIP dispatch failed on trunk %s: code=%s, msg=%s",
++                    current_trunk,
++                    err_code,
++                    exc.message,
++                )
++
++                # Check if this error is eligible for fallback trunk retry
++                is_busy = (
++                    "486" in err_msg
++                    or "busy" in err_msg
++                    or err_code == TwirpErrorCode.RESOURCE_EXHAUSTED
++                )
++                is_unavailable = (
++                    "503" in err_msg
++                    or "unavailable" in err_msg
++                    or err_code in (TwirpErrorCode.UNAVAILABLE, TwirpErrorCode.DEADLINE_EXCEEDED)
++                )
++
++                if (is_busy or is_unavailable) and idx < len(trunks_to_try) - 1:
++                    logger.info(
++                        "Failover: Trunk %s busy/unavailable. Trying next fallback trunk: %s",
++                        current_trunk,
++                        trunks_to_try[idx + 1],
++                    )
++                    continue
++
++                # Map to specific telephony error
++                if is_busy:
++                    raise SIPTrunkBusyError(
++                        message=f"SIP Trunk {current_trunk} busy: {exc.message}",
++                        phone_number=clean_phone,
++                        trunk_id=current_trunk,
++                        attempted_trunks=attempted_trunks,
++                    ) from exc
++
++                if is_unavailable:
++                    raise SIPServiceUnavailableError(
++                        message=f"SIP Trunk/Gateway {current_trunk} unavailable: {exc.message}",
++                        phone_number=clean_phone,
++                        trunk_id=current_trunk,
++                        attempted_trunks=attempted_trunks,
++                    ) from exc
++
++                if "488" in err_msg or "codec" in err_msg:
++                    raise SIPCodecNotAcceptableError(
++                        message=f"SIP Codec mismatch on {current_trunk}: {exc.message}",
++                        phone_number=clean_phone,
++                        trunk_id=current_trunk,
++                    ) from exc
++
++                if "404" in err_msg or err_code == TwirpErrorCode.NOT_FOUND:
++                    raise SIPCallNotFoundError(
++                        message=f"Destination or trunk not found (404): {exc.message}",
++                        phone_number=clean_phone,
++                        trunk_id=current_trunk,
++                    ) from exc
++
++                raise SIPDispatchError(
++                    message=f"SIP dispatch error on trunk {current_trunk}: {exc.message}",
++                    phone_number=clean_phone,
++                    trunk_id=current_trunk,
++                    attempted_trunks=attempted_trunks,
++                ) from exc
++
++            except (aiohttp.ClientError, TimeoutError) as exc:
++                last_exception = exc
++                logger.warning(
++                    "Network error on trunk %s: %s",
++                    current_trunk,
++                    exc,
++                )
++                if idx < len(trunks_to_try) - 1:
++                    logger.info(
++                        "Failover on network failure to next fallback trunk: %s",
++                        trunks_to_try[idx + 1],
++                    )
++                    continue
++                raise SIPServiceUnavailableError(
++                    message=f"Network failure connecting to SIP gateway: {exc}",
++                    phone_number=clean_phone,
++                    trunk_id=current_trunk,
++                    attempted_trunks=attempted_trunks,
++                ) from exc
++
++            except Exception as exc:
++                last_exception = exc
++                logger.error("Unexpected error dispatching SIP call: %s", exc)
++                raise SIPDispatchError(
++                    message=f"Unexpected error dispatching SIP call: {exc}",
++                    phone_number=clean_phone,
++                    trunk_id=current_trunk,
++                    attempted_trunks=attempted_trunks,
++                ) from exc
++
++        raise SIPTrunkFailoverError(
++            message=f"All {len(attempted_trunks)} attempted SIP trunks failed: {last_exception}",
++            phone_number=clean_phone,
++            trunk_id=trunk_id,
++            attempted_trunks=attempted_trunks,
++        )
++
++    async def aclose(self) -> None:
++        """Close underlying LiveKitAPI resources."""
++        if self._owns_api and self._api is not None:
++            try:
++                await self._api.aclose()
++            except Exception as exc:
++                logger.debug("Error closing LiveKitAPI: %s", exc)
++            finally:
++                self._api = None
++
++    async def close(self) -> None:
++        """Alias for aclose()."""
++        await self.aclose()
++
++    async def __aenter__(self) -> LiveKitTelephonyClient:
++        return self
++
++    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
++        await self.aclose()
+diff --git a/nowing_backend/tests/unit/voice/__init__.py b/nowing_backend/tests/unit/voice/__init__.py
+new file mode 100644
+index 000000000..9af2dbf8a
+--- /dev/null
++++ b/nowing_backend/tests/unit/voice/__init__.py
+@@ -0,0 +1 @@
++"""Unit tests for Voice AI SDR and Telephony services."""
+diff --git a/nowing_backend/tests/unit/voice/test_telephony_client.py b/nowing_backend/tests/unit/voice/test_telephony_client.py
+new file mode 100644
+index 000000000..0c2316e8a
+--- /dev/null
++++ b/nowing_backend/tests/unit/voice/test_telephony_client.py
+@@ -0,0 +1,441 @@
++"""Unit tests for LiveKitTelephonyClient (Story 38.1 / Invariant AD-122).
++
++Hermetic tests verifying:
++- LiveKit room creation with call_<session_uuid> naming convention.
++- Participant token generation with WebRTC audio/agent grants.
++- SIP outbound call dispatching with carrier failover routing (486/503).
++- Telecom error code mapping (486 Busy, 503 Unavailable, 488 Codec, 404 Not Found).
++- Lifecycle & async context manager resource cleanup.
++"""
++
++from __future__ import annotations
++
++import datetime
++from unittest.mock import AsyncMock, MagicMock, patch
++
++import aiohttp
++import jwt
++import pytest
++from livekit.api import (
++    LiveKitAPI,
++    Room,
++    SIPParticipantInfo,
++    TwirpError,
++    TwirpErrorCode,
++)
++
++from app.services.voice.telephony_client import (
++    LiveKitTelephonyClient,
++    RoomCreationError,
++    SIPCallNotFoundError,
++    SIPCodecNotAcceptableError,
++    SIPServiceUnavailableError,
++    SIPTrunkBusyError,
++    TelephonyError,
++    TokenGenerationError,
++)
++
++TEST_API_KEY = "API_KEY_MOCK_32_BYTES_LONG_00001"
++TEST_API_SECRET = "API_SECRET_MOCK_32_BYTES_LONG_0001"
++TEST_URL = "http://mock-livekit:7880"
++
++
++@pytest.fixture
++def mock_livekit_api():
++    """Create a fully mocked LiveKitAPI instance."""
++    api = MagicMock(spec=LiveKitAPI)
++    api.room = MagicMock()
++    api.room.create_room = AsyncMock()
++    api.sip = MagicMock()
++    api.sip.create_sip_participant = AsyncMock()
++    api.aclose = AsyncMock()
++    return api
++
++
++@pytest.fixture
++def telephony_client(mock_livekit_api):
++    """Fixture providing LiveKitTelephonyClient injected with mock API."""
++    return LiveKitTelephonyClient(
++        url=TEST_URL,
++        api_key=TEST_API_KEY,
++        api_secret=TEST_API_SECRET,
++        api=mock_livekit_api,
++    )
++
++
++# ---------------------------------------------------------------------------
++# Room Creation Tests (call_<uuid> convention)
++# ---------------------------------------------------------------------------
++
++@pytest.mark.unit
++class TestRoomCreation:
++    """Tests for LiveKit call room creation."""
++
++    @pytest.mark.asyncio
++    async def test_create_call_room_success(self, telephony_client, mock_livekit_api):
++        """Room creation prepends call_ prefix and returns Room descriptor."""
++        expected_room = Room(name="call_sess-uuid-1234", sid="RM_123")
++        mock_livekit_api.room.create_room.return_value = expected_room
++
++        room = await telephony_client.create_call_room("sess-uuid-1234")
++
++        assert room.name == "call_sess-uuid-1234"
++        mock_livekit_api.room.create_room.assert_awaited_once()
++        req = mock_livekit_api.room.create_room.call_args[0][0]
++        assert req.name == "call_sess-uuid-1234"
++        assert req.empty_timeout == 300
++        assert req.departure_timeout == 60
++        assert "sess-uuid-1234" in req.metadata
++
++    @pytest.mark.asyncio
++    async def test_create_call_room_idempotent_prefix(self, telephony_client, mock_livekit_api):
++        """Room creation does not duplicate call_ prefix if already present."""
++        expected_room = Room(name="call_already_prefixed")
++        mock_livekit_api.room.create_room.return_value = expected_room
++
++        room = await telephony_client.create_call_room("call_already_prefixed")
++
++        assert room.name == "call_already_prefixed"
++        req = mock_livekit_api.room.create_room.call_args[0][0]
++        assert req.name == "call_already_prefixed"
++
++    @pytest.mark.asyncio
++    async def test_create_call_room_twirp_error_raises_room_creation_error(
++        self, telephony_client, mock_livekit_api
++    ):
++        """Twirp errors are wrapped in RoomCreationError with descriptive message."""
++        mock_livekit_api.room.create_room.side_effect = TwirpError(
++            code=TwirpErrorCode.INTERNAL,
++            msg="Internal database error",
++            status=500,
++        )
++
++        with pytest.raises(RoomCreationError) as exc_info:
++            await telephony_client.create_call_room("sess-error-500")
++
++        assert "Internal database error" in str(exc_info.value)
++
++    @pytest.mark.asyncio
++    async def test_create_call_room_empty_session_id_raises_value_error(self, telephony_client):
++        """Empty session_id string raises ValueError."""
++        with pytest.raises(ValueError) as exc_info:
++            await telephony_client.create_call_room("   ")
++        assert "session_id must not be empty" in str(exc_info.value)
++
++
++# ---------------------------------------------------------------------------
++# Participant Token Generation Tests
++# ---------------------------------------------------------------------------
++
++@pytest.mark.unit
++class TestTokenGeneration:
++    """Tests for participant token generation with WebRTC audio grants."""
++
++    def test_generate_participant_token_success(self, telephony_client):
++        """Generates valid signed JWT token containing room and identity claims."""
++        token_jwt = telephony_client.generate_participant_token(
++            room_name="call_test_room",
++            identity="voice_agent_worker_1",
++            name="AI SDR Worker",
++            ttl=1800,
++            is_agent=True,
++        )
++
++        assert isinstance(token_jwt, str)
++        assert len(token_jwt) > 20
++
++        # Decode and verify JWT claims using secret
++        decoded = jwt.decode(token_jwt, TEST_API_SECRET, algorithms=["HS256"])
++        assert decoded["iss"] == TEST_API_KEY
++        assert decoded["sub"] == "voice_agent_worker_1"
++        assert decoded["name"] == "AI SDR Worker"
++        assert decoded["video"]["room"] == "call_test_room"
++        assert decoded["video"]["roomJoin"] is True
++        assert decoded["video"]["agent"] is True
++
++    def test_generate_participant_token_timedelta_ttl(self, telephony_client):
++        """Accepts datetime.timedelta for TTL."""
++        token_jwt = telephony_client.generate_participant_token(
++            room_name="call_test_room",
++            identity="worker_user",
++            ttl=datetime.timedelta(minutes=15),
++        )
++        decoded = jwt.decode(token_jwt, TEST_API_SECRET, algorithms=["HS256"])
++        assert decoded["sub"] == "worker_user"
++
++    def test_generate_participant_token_missing_credentials_raises_error(self):
++        """Raises TokenGenerationError if credentials are empty."""
++        client = LiveKitTelephonyClient(url=TEST_URL, api_key="", api_secret="")
++        with pytest.raises(TokenGenerationError) as exc_info:
++            client.generate_participant_token(
++                room_name="call_room",
++                identity="agent",
++            )
++        assert "API key and secret required" in str(exc_info.value)
++
++    def test_generate_participant_token_empty_identity_raises_error(self, telephony_client):
++        """Raises TokenGenerationError if identity is empty."""
++        with pytest.raises(TokenGenerationError) as exc_info:
++            telephony_client.generate_participant_token(
++                room_name="call_room",
++                identity="",
++            )
++        assert "must not be empty" in str(exc_info.value)
++
++
++# ---------------------------------------------------------------------------
++# Outbound SIP Dispatch Tests (Failover & Error Mapping)
++# ---------------------------------------------------------------------------
++
++@pytest.mark.unit
++class TestSIPOutboundDispatch:
++    """Tests for outbound SIP dispatching, carrier failover, and status codes."""
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_success(self, telephony_client, mock_livekit_api):
++        """Primary trunk dispatch succeeds and returns participant info."""
++        expected_info = SIPParticipantInfo(
++            participant_id="part_sip_123",
++            participant_identity="sip_0912345678",
++            room_name="call_lead_1",
++            sip_call_id="call_viettel_001",
++        )
++        mock_livekit_api.sip.create_sip_participant.return_value = expected_info
++
++        result = await telephony_client.dispatch_sip_outbound(
++            phone_number="0912345678",
++            trunk_id="trunk_viettel",
++            room_name="lead_1",
++            ringing_timeout=25,
++            max_call_duration=175,
++        )
++
++        assert result.participant_id == "part_sip_123"
++        assert result.sip_call_id == "call_viettel_001"
++
++        req = mock_livekit_api.sip.create_sip_participant.call_args[0][0]
++        assert req.sip_trunk_id == "trunk_viettel"
++        assert req.sip_call_to == "0912345678"
++        assert req.room_name == "call_lead_1"
++        assert req.ringing_timeout.seconds == 25
++        assert req.max_call_duration.seconds == 175
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_failover_on_503_service_unavailable(
++        self, telephony_client, mock_livekit_api
++    ):
++        """Primary trunk returning 503 triggers automatic failover to secondary trunk."""
++        success_info = SIPParticipantInfo(
++            participant_id="part_backup",
++            sip_call_id="call_fpt_002",
++        )
++
++        # First call fails with 503 Unavailable, second call succeeds
++        mock_livekit_api.sip.create_sip_participant.side_effect = [
++            TwirpError(code=TwirpErrorCode.UNAVAILABLE, msg="503 Service Unavailable", status=503),
++            success_info,
++        ]
++
++        result = await telephony_client.dispatch_sip_outbound(
++            phone_number="+84987654321",
++            trunk_id="trunk_viettel",
++            fallback_trunk_ids=["trunk_fpt", "trunk_vnpt"],
++            room_name="call_session_99",
++        )
++
++        assert result.participant_id == "part_backup"
++        assert mock_livekit_api.sip.create_sip_participant.call_count == 2
++        # Verify trunk IDs tried in order
++        calls = mock_livekit_api.sip.create_sip_participant.call_args_list
++        assert calls[0][0][0].sip_trunk_id == "trunk_viettel"
++        assert calls[1][0][0].sip_trunk_id == "trunk_fpt"
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_failover_on_486_busy(
++        self, telephony_client, mock_livekit_api
++    ):
++        """Primary trunk returning 486 Busy triggers failover to fallback trunk."""
++        success_info = SIPParticipantInfo(
++            participant_id="part_secondary",
++            sip_call_id="call_vnpt_003",
++        )
++
++        mock_livekit_api.sip.create_sip_participant.side_effect = [
++            TwirpError(code=TwirpErrorCode.RESOURCE_EXHAUSTED, msg="486 Busy Here", status=486),
++            success_info,
++        ]
++
++        result = await telephony_client.dispatch_sip_outbound(
++            phone_number="0901122334",
++            trunk_id="trunk_fpt",
++            fallback_trunk_ids=["trunk_vnpt"],
++            room_name="lead_100",
++        )
++
++        assert result.participant_id == "part_secondary"
++        assert mock_livekit_api.sip.create_sip_participant.call_count == 2
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_all_busy_raises_sip_trunk_busy_error(
++        self, telephony_client, mock_livekit_api
++    ):
++        """When all candidate trunks return 486, raises SIPTrunkBusyError."""
++        mock_livekit_api.sip.create_sip_participant.side_effect = [
++            TwirpError(code=TwirpErrorCode.RESOURCE_EXHAUSTED, msg="486 Busy Here", status=486),
++            TwirpError(code=TwirpErrorCode.RESOURCE_EXHAUSTED, msg="486 Busy Here", status=486),
++        ]
++
++        with pytest.raises(SIPTrunkBusyError) as exc_info:
++            await telephony_client.dispatch_sip_outbound(
++                phone_number="0909999888",
++                trunk_id="trunk_viettel",
++                fallback_trunk_ids=["trunk_fpt"],
++                room_name="lead_busy",
++            )
++
++        err = exc_info.value
++        assert err.sip_code == 486
++        assert err.phone_number == "0909999888"
++        assert err.attempted_trunks == ["trunk_viettel", "trunk_fpt"]
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_all_unavailable_raises_service_unavailable_error(
++        self, telephony_client, mock_livekit_api
++    ):
++        """When all candidate trunks return 503, raises SIPServiceUnavailableError."""
++        mock_livekit_api.sip.create_sip_participant.side_effect = [
++            TwirpError(code=TwirpErrorCode.UNAVAILABLE, msg="503 Service Unavailable", status=503),
++            TwirpError(code=TwirpErrorCode.UNAVAILABLE, msg="503 Service Unavailable", status=503),
++        ]
++
++        with pytest.raises(SIPServiceUnavailableError) as exc_info:
++            await telephony_client.dispatch_sip_outbound(
++                phone_number="0909999888",
++                trunk_id="trunk_viettel",
++                fallback_trunk_ids=["trunk_cmc"],
++                room_name="lead_down",
++            )
++
++        err = exc_info.value
++        assert err.sip_code == 503
++        assert err.attempted_trunks == ["trunk_viettel", "trunk_cmc"]
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_codec_mismatch_raises_codec_not_acceptable(
++        self, telephony_client, mock_livekit_api
++    ):
++        """Peer rejecting unsupported codec (488) raises SIPCodecNotAcceptableError."""
++        mock_livekit_api.sip.create_sip_participant.side_effect = TwirpError(
++            code=TwirpErrorCode.FAILED_PRECONDITION,
++            msg="488 Not Acceptable Here: unsupported audio codec G.729",
++            status=488,
++        )
++
++        with pytest.raises(SIPCodecNotAcceptableError) as exc_info:
++            await telephony_client.dispatch_sip_outbound(
++                phone_number="0911223344",
++                trunk_id="trunk_fpt",
++                room_name="lead_codec",
++            )
++
++        err = exc_info.value
++        assert err.sip_code == 488
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_not_found_raises_call_not_found_error(
++        self, telephony_client, mock_livekit_api
++    ):
++        """Non-existent destination or trunk (404) raises SIPCallNotFoundError."""
++        mock_livekit_api.sip.create_sip_participant.side_effect = TwirpError(
++            code=TwirpErrorCode.NOT_FOUND,
++            msg="404 Not Found: destination number unknown",
++            status=404,
++        )
++
++        with pytest.raises(SIPCallNotFoundError) as exc_info:
++            await telephony_client.dispatch_sip_outbound(
++                phone_number="0999999999",
++                trunk_id="trunk_viettel",
++                room_name="lead_404",
++            )
++
++        err = exc_info.value
++        assert err.sip_code == 404
++
++    @pytest.mark.asyncio
++    async def test_dispatch_sip_outbound_network_error_failover(
++        self, telephony_client, mock_livekit_api
++    ):
++        """Network error on primary trunk fails over to fallback trunk."""
++        success_info = SIPParticipantInfo(
++            participant_id="part_net_backup",
++            sip_call_id="call_net_001",
++        )
++
++        mock_livekit_api.sip.create_sip_participant.side_effect = [
++            aiohttp.ClientConnectionError("Connection refused on primary SBC"),
++            success_info,
++        ]
++
++        result = await telephony_client.dispatch_sip_outbound(
++            phone_number="0901234567",
++            trunk_id="trunk_primary",
++            fallback_trunk_ids=["trunk_secondary"],
++            room_name="lead_net_failover",
++        )
++
++        assert result.participant_id == "part_net_backup"
++        assert mock_livekit_api.sip.create_sip_participant.call_count == 2
++
++
++# ---------------------------------------------------------------------------
++# Client Lifecycle & Resource Management Tests
++# ---------------------------------------------------------------------------
++
++@pytest.mark.unit
++class TestClientLifecycle:
++    """Tests for async context management and connection closing."""
++
++    @pytest.mark.asyncio
++    async def test_async_context_manager_clean_exit(self, mock_livekit_api):
++        """Async context manager exits cleanly and invokes aclose."""
++        client = LiveKitTelephonyClient(
++            url=TEST_URL,
++            api_key=TEST_API_KEY,
++            api_secret=TEST_API_SECRET,
++            api=mock_livekit_api,
++        )
++
++        async with client as ctx:
++            assert ctx is client
++
++        mock_livekit_api.aclose.assert_not_called()  # External API instance not closed
++
++    @pytest.mark.asyncio
++    async def test_owned_api_closed_on_aclose(self):
++        """Client closes internally owned LiveKitAPI on aclose."""
++        client = LiveKitTelephonyClient(
++            url=TEST_URL,
++            api_key=TEST_API_KEY,
++            api_secret=TEST_API_SECRET,
++        )
++
++        with patch("app.services.voice.telephony_client.LiveKitAPI") as mock_cls:
++            mock_inst = MagicMock()
++            mock_inst.aclose = AsyncMock()
++            mock_cls.return_value = mock_inst
++
++            # Trigger lazy creation
++            api = client._get_api()
++            assert api is mock_inst
++
++            await client.aclose()
++            mock_inst.aclose.assert_awaited_once()
++            assert client._api is None
++
++    def test_missing_credentials_raises_telephony_error(self):
++        """Lazy _get_api raises TelephonyError if credentials missing."""
++        client = LiveKitTelephonyClient(url="", api_key="", api_secret="")
++        with pytest.raises(TelephonyError) as exc_info:
++            client._get_api()
++        assert "must be configured" in str(exc_info.value)

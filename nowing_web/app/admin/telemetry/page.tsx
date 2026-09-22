@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, Layers, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import AlertBanner from "@/components/admin/health/AlertBanner";
@@ -9,6 +10,7 @@ import HealthDrillDown from "@/components/admin/health/HealthDrillDown";
 import HealthOverviewGrid from "@/components/admin/health/HealthOverviewGrid";
 import HealthStatusCard from "@/components/admin/health/HealthStatusCard";
 import CeleryQueuePanel from "@/components/admin/telemetry/CeleryQueuePanel";
+import DecisionTelemetryPanel from "@/components/admin/telemetry/DecisionTelemetryPanel";
 import GrossMarginAlert from "@/components/admin/telemetry/GrossMarginAlert";
 import LlmCostPanel from "@/components/admin/telemetry/LlmCostPanel";
 import ProxyHealthPanel from "@/components/admin/telemetry/ProxyHealthPanel";
@@ -23,6 +25,7 @@ import {
 } from "@/lib/apis/admin-health-api.service";
 
 export default function AdminTelemetryPage() {
+	const t = useTranslations("admin");
 	const [tick, setTick] = useState(0);
 	const [activeTab, setActiveTab] = useState("health");
 
@@ -91,11 +94,11 @@ export default function AdminTelemetryPage() {
 			await adminHealthApiService.acknowledgeAlert(alertId, 60);
 			// Optimistically remove from alert list
 			setAlerts((prev) => prev.filter((a) => a.id !== alertId));
-			toast.success("Alert acknowledged and snoozed for 60 minutes");
+			toast.success(t("alert_acknowledged_toast"));
 			fetchHealthData();
 		} catch (err) {
 			console.error("Failed to acknowledge alert:", err);
-			toast.error("Failed to acknowledge alert. Please check your network and permissions.");
+			toast.error(t("alert_acknowledge_failed"));
 		}
 	};
 
@@ -162,15 +165,13 @@ export default function AdminTelemetryPage() {
 		<div className="p-6 space-y-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-2xl font-bold tracking-tight">Admin: Operations & Telemetry</h1>
-					<p className="text-sm text-slate-500">
-						Centralized monitoring for infrastructure, third-party APIs, and real-time costs
-					</p>
+					<h1 className="text-2xl font-bold tracking-tight">{t("ops_telemetry_title")}</h1>
+					<p className="text-sm text-slate-500">{t("ops_telemetry_desc")}</p>
 				</div>
 				<div className="flex items-center gap-3">
 					<div className="text-xs text-slate-500 flex items-center gap-1">
 						<RefreshCw className="h-3 w-3 animate-spin text-slate-400" />
-						Auto-refreshes live
+						{t("auto_refresh_live")}
 					</div>
 				</div>
 			</div>
@@ -179,11 +180,11 @@ export default function AdminTelemetryPage() {
 				<TabsList className="h-10">
 					<TabsTrigger value="health" className="gap-2" data-testid="tab-trigger-health">
 						<Activity className="h-4 w-4" />
-						Third-Party Health & Operations
+						{t("tab_health_ops")}
 					</TabsTrigger>
 					<TabsTrigger value="telemetry" className="gap-2" data-testid="tab-trigger-telemetry">
 						<Layers className="h-4 w-4" />
-						Cost & Queue Telemetry
+						{t("tab_telemetry")}
 					</TabsTrigger>
 				</TabsList>
 
@@ -197,9 +198,9 @@ export default function AdminTelemetryPage() {
 					{/* Category Selector Tabs */}
 					<div className="space-y-4">
 						<div className="flex items-center justify-between">
-							<h2 className="text-lg font-semibold tracking-tight">Monitored Services</h2>
+							<h2 className="text-lg font-semibold tracking-tight">{t("monitored_services")}</h2>
 							<span className="text-xs text-muted-foreground">
-								Showing {statuses.length} services
+								{t("showing_services", { count: statuses.length })}
 							</span>
 						</div>
 
@@ -213,10 +214,10 @@ export default function AdminTelemetryPage() {
 						{/* Service Health Cards Grid */}
 						{statuses.length === 0 ? (
 							<div className="text-center py-12 text-sm text-muted-foreground border border-dashed rounded-lg space-y-3">
-								<p>No services found for category &ldquo;{selectedCategory}&rdquo;.</p>
+								<p>{t("no_services_found", { category: selectedCategory })}</p>
 								{selectedCategory !== "all" && (
 									<Button variant="outline" size="sm" onClick={() => setSelectedCategory("all")}>
-										Switch to All Categories
+										{t("switch_all_categories")}
 									</Button>
 								)}
 							</div>
@@ -243,6 +244,7 @@ export default function AdminTelemetryPage() {
 
 				<TabsContent value="telemetry" className="space-y-6">
 					<GrossMarginAlert tick={tick} />
+					<DecisionTelemetryPanel tick={tick} />
 					<LlmCostPanel tick={tick} />
 					<ProxyHealthPanel tick={tick} />
 					<CeleryQueuePanel tick={tick} />

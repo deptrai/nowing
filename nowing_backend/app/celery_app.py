@@ -229,6 +229,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.gateway_tasks",
         "app.tasks.celery_tasks.enrichment_tasks",
         "app.tasks.celery_tasks.schedule_mission_tick",
+        "app.tasks.celery_tasks.takeover_sweep_task",
         "app.tasks.phone_waterfall_worker",
         "app.etl_pipeline.cache.eviction.task",
         "app.indexing_pipeline.cache.eviction.task",
@@ -537,5 +538,13 @@ celery_app.conf.beat_schedule = {
         "task": "cleanup_admin_health_history",
         "schedule": crontab(hour="2", minute="0"),
         "options": {"expires": 600},
+    },
+    # Sweep expired human takeover missions every minute (Story 32.1).
+    # Transitions waiting_for_human missions past their 15-minute TTL to
+    # cancelled/aborted_timeout and releases Redis takeover locks.
+    "dsh-sweep-expired-takeovers": {
+        "task": "dsh_sweep_expired_takeovers",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
     },
 }

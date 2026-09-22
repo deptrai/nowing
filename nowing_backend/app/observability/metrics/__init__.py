@@ -75,6 +75,7 @@ from app.observability.metrics.memory import (
 from app.observability.metrics.platform import (
     record_auth_failure,
     record_perf_elapsed,
+    record_scraper_ingest_failure,
     record_rate_limit_rejection,
     record_run_event_bus_dropped,
     record_run_event_bus_subscribe_failure,
@@ -155,6 +156,7 @@ __all__ = [
     "record_perf_elapsed",
     "record_permission_ask",
     "record_rate_limit_rejection",
+    "record_scraper_ingest_failure",
     "record_run_event_bus_dropped",
     "record_run_event_bus_subscribe_failure",
     "record_run_memory_created",

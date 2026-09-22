@@ -1,13 +1,17 @@
 // Server component
 
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import type React from "react";
 import { DashboardClientLayout } from "./client-layout";
 
-export const metadata: Metadata = {
-	title: { default: "Nowing Dashboard", template: "%s | Nowing Dashboard" },
-	description: "Open-core long-term research memory for AI agents",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("dashboard");
+	return {
+		title: { default: t("layout_default_title"), template: t("layout_title_template") },
+		description: t("layout_description"),
+	};
+}
 export default async function DashboardLayout({
 	params,
 	children,
@@ -17,9 +21,5 @@ export default async function DashboardLayout({
 }) {
 	const { workspace_id } = await params;
 
-	return (
-		<DashboardClientLayout workspaceId={workspace_id}>
-			{children}
-		</DashboardClientLayout>
-	);
+	return <DashboardClientLayout workspaceId={workspace_id}>{children}</DashboardClientLayout>;
 }

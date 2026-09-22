@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { activeTabIdAtom, removeChatTabAtom, type Tab, tabsAtom } from "@/atoms/tabs/tabs.atom";
 import { documentsApiService } from "@/lib/apis/documents-api.service";
 import { getThreadFull } from "@/lib/chat/thread-persistence";
-import { NotFoundError } from "@/lib/error";
+import { AuthorizationError, NotFoundError } from "@/lib/error";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 
 const THREAD_STALE_TIME_MS = 60 * 1000;
@@ -31,6 +31,12 @@ export function parseEntityId(entityId: string): number {
 
 export function isNotFoundError(error: unknown): boolean {
 	return error instanceof NotFoundError;
+}
+
+export function isInaccessibleError(error: unknown): boolean {
+	// 404 (gone) or 403 (owned by another workspace/user) both mean the tab
+	// cannot be opened — close it rather than retry + spam console errors.
+	return error instanceof NotFoundError || error instanceof AuthorizationError;
 }
 
 export function getChatUrl(workspaceId: number, entityId: string): string {
@@ -78,7 +84,7 @@ function getQueryOptions(tab: Tab): UseQueryOptions<unknown, Error, unknown> {
 }
 
 export function resolveTab(tab: Tab, result: UseQueryResult<unknown, Error>): ResolvedTab {
-	const isNotFound = isNotFoundError(result.error);
+	const isNotFound = isInaccessibleError(result.error);
 	let title = getFallbackTitle(tab);
 	let url: string | undefined;
 

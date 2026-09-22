@@ -3,11 +3,13 @@
 import { useAtom } from "jotai";
 import { X } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { pendingUserImageDataUrlsAtom } from "@/atoms/chat/pending-user-images.atom";
 import { Button } from "@/components/ui/button";
 
 export const PendingScreenImageStrip: FC = () => {
+	const t = useTranslations("chat");
 	const [urls, setUrls] = useAtom(pendingUserImageDataUrlsAtom);
 	if (urls.length === 0) return null;
 	return (
@@ -19,7 +21,7 @@ export const PendingScreenImageStrip: FC = () => {
 				>
 					<Image
 						src={url}
-						alt="Pending screenshot preview"
+						alt={t("pending_screenshot_preview")}
 						fill
 						sizes="56px"
 						className="object-cover"
@@ -32,7 +34,7 @@ export const PendingScreenImageStrip: FC = () => {
 						variant="ghost"
 						size="icon"
 						className="absolute right-0.5 top-0.5 size-5 rounded-full bg-background/90 text-muted-foreground shadow-sm transition-opacity hover:bg-background/90 hover:text-accent-foreground sm:opacity-0 sm:group-hover:opacity-100"
-						aria-label="Remove screenshot"
+						aria-label={t("remove_screenshot")}
 					>
 						<X className="size-3" aria-hidden="true" />
 					</Button>

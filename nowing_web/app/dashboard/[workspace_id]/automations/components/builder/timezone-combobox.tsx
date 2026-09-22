@@ -1,5 +1,6 @@
 "use client";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ interface TimezoneComboboxProps {
  * long, so it lives behind a Command search instead of a flat Select.
  */
 export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
+	const t = useTranslations("automations");
 	const [open, setOpen] = useState(false);
 	const timezones = useMemo(() => getTimezones(), []);
 
@@ -46,9 +48,9 @@ export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
 				align="start"
 			>
 				<Command className="bg-popover">
-					<CommandInput placeholder="Search timezone..." />
+					<CommandInput placeholder={t("auto_search_timezone")} />
 					<CommandList>
-						<CommandEmpty>No timezone found.</CommandEmpty>
+						<CommandEmpty>{t("auto_no_timezone_found")}</CommandEmpty>
 						<CommandGroup className="p-0">
 							{timezones.map((tz) => (
 								<CommandItem

@@ -2,6 +2,7 @@
 
 import { XIcon } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { RunDetail } from "@/app/dashboard/[workspace_id]/playground/components/run-detail";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export const RunCitationPanelContent: FC<RunCitationPanelContentProps> = ({
 	showHeader = true,
 }) => {
 	const params = useParams<{ workspace_id?: string }>();
+	const t = useTranslations("common");
 	const workspaceId = Number(params?.workspace_id);
 	const scraperRunId = runId.replace(/^run_/, "");
 
@@ -34,7 +36,7 @@ export const RunCitationPanelContent: FC<RunCitationPanelContentProps> = ({
 			<div className="shrink-0">
 				{showHeader && (
 					<div className="shrink-0 flex h-12 items-center justify-between px-3 border-b">
-						<h2 className="select-none text-lg font-semibold">Scraper run</h2>
+						<h2 className="select-none text-lg font-semibold">{t("scraper_run")}</h2>
 						<div className="flex items-center gap-1 shrink-0">
 							{onClose && (
 								<Button
@@ -44,7 +46,7 @@ export const RunCitationPanelContent: FC<RunCitationPanelContentProps> = ({
 									className="h-8 w-8 rounded-full shrink-0 text-muted-foreground hover:text-accent-foreground"
 								>
 									<XIcon className="h-4 w-4" />
-									<span className="sr-only">Close run panel</span>
+									<span className="sr-only">{t("close_run_panel")}</span>
 								</Button>
 							)}
 						</div>
@@ -54,7 +56,7 @@ export const RunCitationPanelContent: FC<RunCitationPanelContentProps> = ({
 
 			<div className="flex-1 overflow-y-auto px-5 py-4">
 				{!Number.isFinite(workspaceId) || workspaceId <= 0 ? (
-					<p className="text-sm text-muted-foreground">Open a workspace to view this run.</p>
+					<p className="text-sm text-muted-foreground">{t("open_workspace_for_run")}</p>
 				) : (
 					<RunDetail workspaceId={workspaceId} runId={scraperRunId} />
 				)}

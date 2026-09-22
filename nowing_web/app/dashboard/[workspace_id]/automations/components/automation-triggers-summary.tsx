@@ -1,5 +1,6 @@
 "use client";
 import { CalendarClock, Pause } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Trigger } from "@/contracts/types/automation.types";
 import { describeCron } from "@/lib/automations/describe-cron";
 
@@ -18,12 +19,17 @@ interface AutomationTriggersSummaryProps {
  * The detail page renders the full per-trigger editor.
  */
 export function AutomationTriggersSummary({ triggers }: AutomationTriggersSummaryProps) {
+	const t = useTranslations("automations");
 	if (triggers.length === 0) {
-		return <span className="text-xs text-muted-foreground">No triggers</span>;
+		return <span className="text-xs text-muted-foreground">{t("auto_no_triggers")}</span>;
 	}
 
 	if (triggers.length > 1) {
-		return <span className="text-xs text-muted-foreground">{triggers.length} triggers</span>;
+		return (
+			<span className="text-xs text-muted-foreground">
+				{t("auto_triggers_count", { count: triggers.length })}
+			</span>
+		);
 	}
 
 	const [trigger] = triggers;
@@ -31,7 +37,7 @@ export function AutomationTriggersSummary({ triggers }: AutomationTriggersSummar
 	if (trigger.type === "schedule") {
 		const cron = typeof trigger.params.cron === "string" ? trigger.params.cron : undefined;
 		const tz = typeof trigger.params.timezone === "string" ? trigger.params.timezone : "UTC";
-		const human = cron ? describeCron(cron) : "Schedule";
+		const human = cron ? describeCron(cron) : t("auto_schedule");
 
 		return (
 			<span className="inline-flex items-center gap-1.5 text-xs">

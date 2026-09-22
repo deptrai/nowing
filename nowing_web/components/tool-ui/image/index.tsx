@@ -2,6 +2,7 @@
 
 import { ExternalLinkIcon, ImageIcon, SparklesIcon } from "lucide-react";
 import NextImage from "next/image";
+import { useTranslations } from "next-intl";
 import { Component, type ReactNode, useState } from "react";
 import { z } from "zod";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -149,7 +150,7 @@ export class ImageErrorBoundary extends Component<
 					<div className="aspect-square bg-muted flex items-center justify-center">
 						<div className="flex flex-col items-center gap-2 text-muted-foreground">
 							<ImageIcon className="size-8" aria-hidden="true" />
-							<p className="text-sm">Failed to load image</p>
+							<p className="text-sm">Không thể tải ảnh</p>
 						</div>
 					</div>
 				</Card>
@@ -220,6 +221,7 @@ export function Image({
 	maxWidth = "512px",
 	className,
 }: ImageProps) {
+	const t = useTranslations("toolUi");
 	const [isHovered, setIsHovered] = useState(false);
 	const [imageError, setImageError] = useState(false);
 	const [imageLoaded, setImageLoaded] = useState(false);
@@ -247,7 +249,7 @@ export function Image({
 				<div className="aspect-square bg-muted flex items-center justify-center">
 					<div className="flex flex-col items-center gap-2 text-muted-foreground">
 						<ImageIcon className="size-8" aria-hidden="true" />
-						<p className="text-sm">Image not available</p>
+						<p className="text-sm">{t("tu_image_not_available")}</p>
 					</div>
 				</div>
 			</Card>

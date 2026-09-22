@@ -23,10 +23,14 @@ from __future__ import annotations
 
 import pytest
 
+from app.config import config as _cfg
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 # A deterministic embedding so create/update never touch the real model.
-_EMBEDDING = [0.1] * 384
+_EMBEDDING = [0.1] * _EMBEDDING_DIM
 
 
 @pytest.fixture
@@ -111,7 +115,7 @@ async def test_update_memory_publishes_memory_changed_as_updated(
         created.id,
         corrected_content="Competitor X raised prices by 12% in Q3.",
         corrected_by_id=db_user.id,
-        embedding=[0.2] * 384,
+        embedding=[0.2] * _EMBEDDING_DIM,
         commit=True,
     )
 
@@ -247,7 +251,7 @@ async def test_contextvar_origin_write_does_not_publish(
         source_type=MemorySourceType.MANUAL,
         tags=["competitor"],
         created_by_id=db_user.id,
-        embedding=[0.3] * 384,
+        embedding=[0.3] * _EMBEDDING_DIM,
         commit=True,
     )
     assert len(memory_events) == 1
@@ -370,7 +374,7 @@ async def test_multiple_commit_false_writes_are_all_flushed(
         source_type=MemorySourceType.CHAT_MESSAGE,
         tags=["pricing"],
         created_by_id=db_user.id,
-        embedding=[0.9] * 384,
+        embedding=[0.9] * _EMBEDDING_DIM,
         commit=False,
     )
 

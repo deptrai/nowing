@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronRight, Copy } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,7 @@ import { buildExamplePayload, buildSnippets } from "@/lib/playground/code-snippe
 import type { FormField } from "@/lib/playground/json-schema";
 
 function CopyButton({ text }: { text: string }) {
+	const t = useTranslations("playground");
 	const [copied, setCopied] = useState(false);
 	const copy = () => {
 		navigator.clipboard.writeText(text).then(() => {
@@ -22,7 +24,7 @@ function CopyButton({ text }: { text: string }) {
 			variant="ghost"
 			size="sm"
 			onClick={copy}
-			aria-label={copied ? "Copied" : "Copy"}
+			aria-label={copied ? t("copied") : t("copy")}
 			className="absolute right-2 top-2 h-7 w-7 p-0"
 		>
 			{copied ? (
@@ -82,6 +84,7 @@ export function ApiReference({
 	/** Absent only when talking to a backend that predates output schemas. */
 	outputSchema?: Record<string, unknown>;
 }) {
+	const t = useTranslations("playground");
 	const path = `/api/v1/workspaces/${workspaceId}/scrapers/${platform}/${verb}`;
 
 	// In proxy mode BACKEND_URL is intentionally empty (same-origin), so external
@@ -96,11 +99,8 @@ export function ApiReference({
 	return (
 		<section className="space-y-4">
 			<div>
-				<h2 className="text-base font-semibold">API reference</h2>
-				<p className="mt-1 text-sm text-muted-foreground">
-					Create an API key, enable API access for this workspace, then use the examples below to
-					call this endpoint.
-				</p>
+				<h2 className="text-base font-semibold">{t("api_reference")}</h2>
+				<p className="mt-1 text-sm text-muted-foreground">{t("api_reference_description")}</p>
 			</div>
 
 			<Tabs defaultValue="curl">
@@ -119,8 +119,8 @@ export function ApiReference({
 			</Tabs>
 
 			<div className="space-y-2">
-				<SchemaBlock title="Input schema (JSON)" schema={inputSchema} />
-				{outputSchema && <SchemaBlock title="Output schema (JSON)" schema={outputSchema} />}
+				<SchemaBlock title={t("input_schema")} schema={inputSchema} />
+				{outputSchema && <SchemaBlock title={t("output_schema")} schema={outputSchema} />}
 			</div>
 		</section>
 	);

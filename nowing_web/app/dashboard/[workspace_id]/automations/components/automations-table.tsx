@@ -1,5 +1,6 @@
 "use client";
 import { AlarmClock, CalendarDays, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AutomationSummary } from "@/contracts/types/automation.types";
 import { AutomationRow } from "./automation-row";
@@ -24,6 +25,7 @@ export function AutomationsTable({
 	canUpdate,
 	canDelete,
 }: AutomationsTableProps) {
+	const t = useTranslations("automations");
 	return (
 		<div className="rounded-lg border border-border/60 bg-accent overflow-hidden">
 			<Table className="table-fixed w-full">
@@ -32,7 +34,7 @@ export function AutomationsTable({
 						<TableHead className="px-4 md:px-6 border-r border-border/60">
 							<span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
 								<AlarmClock size={14} className="opacity-60 text-muted-foreground" />
-								Name
+								{t("auto_name")}
 							</span>
 						</TableHead>
 						<TableHead className="border-r border-border/60 w-32">
@@ -44,11 +46,11 @@ export function AutomationsTable({
 						<TableHead className="hidden md:table-cell border-r border-border/60 w-40">
 							<span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
 								<CalendarDays size={14} className="opacity-60 text-muted-foreground" />
-								Updated
+								{t("auto_updated")}
 							</span>
 						</TableHead>
 						<TableHead className="px-4 md:px-6 w-16">
-							<span className="sr-only">Actions</span>
+							<span className="sr-only">{t("auto_actions")}</span>
 						</TableHead>
 					</TableRow>
 				</TableHeader>

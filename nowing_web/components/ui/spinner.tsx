@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 interface SpinnerProps {
@@ -18,9 +19,10 @@ const sizeClasses = {
 };
 
 export function Spinner({ size = "md", hideTrack = false, className }: SpinnerProps) {
+	const t = useTranslations("ui");
 	return (
 		<output
-			aria-label="Loading"
+			aria-label={t("ui_loading")}
 			className={cn(
 				"block animate-spin rounded-full",
 				hideTrack ? "border-transparent" : "border-current/20",

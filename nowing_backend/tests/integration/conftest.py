@@ -80,12 +80,12 @@ async def async_engine():
 
     yield engine
 
-    # drop_all fails on circular FKs (new_chat_threads ↔ public_chat_snapshots).
-    # DROP SCHEMA CASCADE handles this without needing topological sort.
-    async with engine.begin() as conn:
-        await conn.execute(text("DROP SCHEMA public CASCADE"))
-        await conn.execute(text("CREATE SCHEMA public"))
-
+    # NOTE: do NOT `DROP SCHEMA public CASCADE` here. Other session-scoped
+    # engine fixtures (platforms, document_upload, agent_chat) point at the
+    # same TEST_DATABASE_URL; whichever fixture tears down first would wipe the
+    # schema out from under tests still running, producing spurious
+    # `relation "user" does not exist` errors. The test DB is throwaway and
+    # `create_all` is idempotent, so leaving the schema in place is safe.
     await engine.dispose()
 
 

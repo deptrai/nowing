@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { Dot, Download, Loader2, Presentation, X } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -71,6 +72,7 @@ type GenerateVideoPresentationResult = z.infer<typeof GenerateVideoPresentationR
 type VideoPresentationStatusResponse = z.infer<typeof VideoPresentationStatusResponseSchema>;
 
 function parseStatusResponse(data: unknown): VideoPresentationStatusResponse | null {
+	const t = useTranslations("toolUi");
 	const result = VideoPresentationStatusResponseSchema.safeParse(data);
 	if (!result.success) {
 		console.warn("Invalid video presentation status:", result.error.issues);
@@ -80,21 +82,23 @@ function parseStatusResponse(data: unknown): VideoPresentationStatusResponse | n
 }
 
 function GeneratingState({ title }: { title: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
-				<TextShimmerLoader text="Generating video presentation" size="sm" />
+				<TextShimmerLoader text={t("generating_video_presentation")} size="sm" />
 			</div>
 		</div>
 	);
 }
 
 function ErrorState({ title, error }: { title: string; error: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Video Generation Failed</p>
+				<p className="text-sm font-semibold text-destructive">{t("tu_video_generation_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -106,11 +110,12 @@ function ErrorState({ title, error }: { title: string; error: string }) {
 }
 
 function CompilationLoadingState({ title }: { title: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground line-clamp-2">{title}</p>
-				<TextShimmerLoader text="Compiling scenes" size="sm" />
+				<TextShimmerLoader text={t("compiling_scenes")} size="sm" />
 			</div>
 		</div>
 	);
@@ -125,6 +130,7 @@ function VideoPresentationPlayer({
 	title: string;
 	shareToken?: string | null;
 }) {
+	const t = useTranslations("toolUi");
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [compiledSlides, setCompiledSlides] = useState<CompiledSlide[]>([]);
@@ -217,7 +223,7 @@ function VideoPresentationPlayer({
 			setCompiledSlides(withBlobs);
 		} catch (err) {
 			console.error("Error loading video presentation:", err);
-			setError(err instanceof Error ? err.message : "Failed to load presentation");
+			setError(err instanceof Error ? err.message : t("tu_failed_to_load_presentation"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -457,7 +463,7 @@ function VideoPresentationPlayer({
 							className="gap-1.5 h-7 px-2.5 text-xs text-muted-foreground"
 						>
 							<Download className="size-3.5" aria-hidden="true" />
-							Download MP4
+							{t("tu_download_mp4")}
 						</Button>
 						<Button
 							variant="ghost"
@@ -474,7 +480,7 @@ function VideoPresentationPlayer({
 							) : (
 								<>
 									<Presentation className="size-3.5" aria-hidden="true" />
-									Download PPTX
+									{t("tu_download_pptx")}
 								</>
 							)}
 						</Button>
@@ -494,6 +500,7 @@ export function StatusPoller({
 	title: string;
 	shareToken?: string | null;
 }) {
+	const t = useTranslations("toolUi");
 	const [status, setStatus] = useState<VideoPresentationStatusResponse | null>(null);
 	const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -535,7 +542,7 @@ export function StatusPoller({
 	}
 
 	if (status.status === "failed") {
-		return <ErrorState title={title} error="Generation failed" />;
+		return <ErrorState title={title} error={t("generation_failed")} />;
 	}
 
 	if (status.status === "ready") {
@@ -548,7 +555,7 @@ export function StatusPoller({
 		);
 	}
 
-	return <ErrorState title={title} error="Unexpected state" />;
+	return <ErrorState title={title} error={t("unexpected_state")} />;
 }
 
 export const GenerateVideoPresentationToolUI = ({
@@ -556,6 +563,7 @@ export const GenerateVideoPresentationToolUI = ({
 	result,
 	status,
 }: ToolCallMessagePartProps<GenerateVideoPresentationArgs, GenerateVideoPresentationResult>) => {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const pathname = usePathname();
 	const isPublicRoute = pathname?.startsWith("/public/");
@@ -572,9 +580,11 @@ export const GenerateVideoPresentationToolUI = ({
 			return (
 				<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 					<div className="px-5 pt-5 pb-4">
-						<p className="text-sm font-semibold text-muted-foreground">Presentation Cancelled</p>
+						<p className="text-sm font-semibold text-muted-foreground">
+							{t("tu_presentation_cancelled")}
+						</p>
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Presentation generation was cancelled
+							{t("tu_presentation_generation_was_cancelled")}
 						</p>
 					</div>
 				</div>
@@ -595,17 +605,17 @@ export const GenerateVideoPresentationToolUI = ({
 	}
 
 	if (result.status === "failed") {
-		return <ErrorState title={title} error={result.error || "Generation failed"} />;
+		return <ErrorState title={title} error={result.error || t("generation_failed")} />;
 	}
 
 	if (result.status === "generating") {
 		return (
 			<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 				<div className="px-5 pt-5 pb-4">
-					<p className="text-sm font-semibold text-foreground">Presentation already in progress</p>
-					<p className="text-xs text-muted-foreground mt-0.5">
-						Please wait for the current presentation to complete.
+					<p className="text-sm font-semibold text-foreground">
+						{t("tu_presentation_already_in_progress")}
 					</p>
+					<p className="text-xs text-muted-foreground mt-0.5">{t("tu_please_wait_for_the")}</p>
 				</div>
 			</div>
 		);
@@ -631,5 +641,5 @@ export const GenerateVideoPresentationToolUI = ({
 		);
 	}
 
-	return <ErrorState title={title} error="Missing presentation ID" />;
+	return <ErrorState title={title} error={t("missing_presentation_id")} />;
 };

@@ -2,6 +2,7 @@
 
 import { addDays, format, subDays, subYears } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -27,9 +28,10 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 	allowFutureDates = false,
 	lastIndexedAt,
 }) => {
+	const t = useTranslations("assistant");
 	const startDatePlaceholder = lastIndexedAt
-		? `From ${formatRelativeDate(lastIndexedAt)}`
-		: "Default (1 year)";
+		? t("from_date", { date: formatRelativeDate(lastIndexedAt) })
+		: t("default_one_year");
 
 	const handleLast30Days = () => {
 		const today = new Date();
@@ -56,18 +58,16 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 
 	return (
 		<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
-			<h3 className="font-medium text-sm sm:text-base mb-4">Select Date Range</h3>
+			<h3 className="font-medium text-sm sm:text-base mb-4">{t("select_date_range")}</h3>
 			<p className="text-xs sm:text-sm text-muted-foreground mb-6">
-				{allowFutureDates
-					? "Choose the date range to sync your data. You can select future dates to index upcoming events."
-					: "Choose how far back you want to sync your data. You can always re-index later with different dates."}
+				{allowFutureDates ? t("date_range_desc_future") : t("date_range_desc_past")}
 			</p>
 
 			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				{/* Start Date */}
 				<div className="space-y-2">
 					<Label htmlFor="start-date" className="text-xs sm:text-sm">
-						Start Date
+						{t("start_date")}
 					</Label>
 					<Popover>
 						<PopoverTrigger asChild>
@@ -97,7 +97,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 				{/* End Date */}
 				<div className="space-y-2">
 					<Label htmlFor="end-date" className="text-xs sm:text-sm">
-						End Date
+						{t("end_date")}
 					</Label>
 					<Popover>
 						<PopoverTrigger asChild>
@@ -110,7 +110,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 								)}
 							>
 								<CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-								{endDate ? format(endDate, "PPP") : "Default (Today)"}
+								{endDate ? format(endDate, "PPP") : t("default_today")}
 							</Button>
 						</PopoverTrigger>
 						<PopoverContent className="w-auto p-0 z-[100]" align="start">
@@ -138,7 +138,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 					onClick={handleClearDates}
 					className="text-xs sm:text-sm bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 hover:bg-accent hover:text-accent-foreground"
 				>
-					Clear Dates
+					{t("clear_dates")}
 				</Button>
 				<Button
 					type="button"
@@ -147,7 +147,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 					onClick={handleLast30Days}
 					className="text-xs sm:text-sm bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 hover:bg-accent hover:text-accent-foreground"
 				>
-					Last 30 Days
+					{t("last_30_days")}
 				</Button>
 				{allowFutureDates && (
 					<Button
@@ -157,7 +157,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 						onClick={handleNext30Days}
 						className="text-xs sm:text-sm bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 hover:bg-accent hover:text-accent-foreground"
 					>
-						Next 30 Days
+						{t("next_30_days")}
 					</Button>
 				)}
 				<Button
@@ -167,7 +167,7 @@ export const DateRangeSelector: FC<DateRangeSelectorProps> = ({
 					onClick={handleLastYear}
 					className="text-xs sm:text-sm bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 hover:bg-accent hover:text-accent-foreground"
 				>
-					Last Year
+					{t("last_year")}
 				</Button>
 			</div>
 		</div>

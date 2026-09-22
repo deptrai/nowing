@@ -1,4 +1,5 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import { RootProvider } from "fumadocs-ui/provider/next";
 import type { ReactNode } from "react";
 import { baseOptions } from "@/app/layout.config";
 import { source } from "@/lib/source";
@@ -13,17 +14,19 @@ const docsSurfaceClass =
 
 export default function Layout({ children }: { children: ReactNode }) {
 	return (
-		<DocsLayout
-			tree={source.pageTree}
-			{...baseOptions}
-			containerProps={{ style: { gridTemplate }, className: docsSurfaceClass }}
-			sidebar={{
-				components: {
-					Separator: SidebarSeparator,
-				},
-			}}
-		>
-			{children}
-		</DocsLayout>
+		<RootProvider theme={{ enabled: false }}>
+			<DocsLayout
+				tree={source.pageTree}
+				{...baseOptions}
+				containerProps={{ style: { gridTemplate }, className: docsSurfaceClass }}
+				sidebar={{
+					components: {
+						Separator: SidebarSeparator,
+					},
+				}}
+			>
+				{children}
+			</DocsLayout>
+		</RootProvider>
 	);
 }

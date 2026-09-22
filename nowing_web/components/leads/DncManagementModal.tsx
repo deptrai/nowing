@@ -14,6 +14,7 @@ import {
 	UploadCloud,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import type { DncCsvImportResponse, DncRecord, DncRecordType } from "@/contracts/types/dnc.types";
@@ -30,6 +31,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 	onClose,
 	workspaceId,
 }) => {
+	const t = useTranslations("leads");
 	const [activeTab, setActiveTab] = useState<"list" | "add" | "import">("list");
 	const [records, setRecords] = useState<DncRecord[]>([]);
 	const [totalCount, setTotalCount] = useState<number>(0);
@@ -73,7 +75,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 			setRecords(res.records);
 			setTotalCount(res.total_count);
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(err instanceof Error ? err.message : t("dnc_err_generic"));
 		} finally {
 			setLoading(false);
 		}
@@ -98,19 +100,19 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 				value: newValue.trim(),
 				reason: newReason.trim(),
 			});
-			setSuccessMsg(`Added ${newType} '${newValue}' to DNC blacklist`);
+			setSuccessMsg(t("dnc_success_added", { type: newType, value: newValue }));
 			setNewValue("");
 			setActiveTab("list");
 			await fetchRecords();
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "Failed to add DNC entry");
+			setError(err instanceof Error ? err.message : t("dnc_err_add_failed"));
 		} finally {
 			setActionLoading(false);
 		}
 	};
 
 	const handleDelete = async (recordId: string) => {
-		if (!confirm("Are you sure you want to remove this record from the DNC blacklist?")) {
+		if (!confirm(t("dnc_confirm_remove"))) {
 			return;
 		}
 		setActionLoading(true);
@@ -119,9 +121,9 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 			await dncApiService.deleteDncRecord(workspaceId, recordId);
 			setRecords((prev) => prev.filter((r) => r.id !== recordId));
 			setTotalCount((prev) => Math.max(0, prev - 1));
-			setSuccessMsg("Removed record from DNC blacklist");
+			setSuccessMsg(t("dnc_success_removed"));
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "Failed to delete record");
+			setError(err instanceof Error ? err.message : t("dnc_err_delete_failed"));
 		} finally {
 			setActionLoading(false);
 		}
@@ -138,13 +140,17 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 			const res = await dncApiService.importDncCsv(workspaceId, selectedFile);
 			setImportResult(res);
 			setSuccessMsg(
-				`Import completed: ${res.imported_count} imported, ${res.skipped_count} skipped, ${res.failed_count} failed.`
+				t("dnc_success_imported", {
+					imported: res.imported_count,
+					skipped: res.skipped_count,
+					failed: res.failed_count,
+				})
 			);
 			setSelectedFile(null);
 			setActiveTab("list");
 			await fetchRecords();
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "CSV Import failed");
+			setError(err instanceof Error ? err.message : t("dnc_err_csv_failed"));
 		} finally {
 			setActionLoading(false);
 		}
@@ -163,15 +169,12 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 						</div>
 						<div>
 							<h2 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
-								Do-Not-Call (DNC) & Compliance Registry
+								{t("dnc_modal_heading")}
 								<span className="text-xs font-normal px-2 py-0.5 rounded-full bg-red-950/80 text-red-300 border border-red-800/40">
 									NĐ 91/2020 & NĐ 13/2023
 								</span>
 							</h2>
-							<p className="text-xs text-zinc-400">
-								Contacts in this registry are strictly excluded from automated outreach and phone
-								resolution.
-							</p>
+							<p className="text-xs text-zinc-400">{t("dnc_compliance_sub")}</p>
 						</div>
 					</div>
 					<button
@@ -199,7 +202,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 						}`}
 					>
 						<Filter className="w-4 h-4" aria-hidden="true" />
-						Blacklist Registry ({totalCount})
+						{t("dnc_blacklist_tab", { count: totalCount })}
 					</button>
 					<button
 						type="button"
@@ -215,7 +218,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 						}`}
 					>
 						<Plus className="w-4 h-4" aria-hidden="true" />
-						Add Single Record
+						{t("dnc_add_single_tab")}
 					</button>
 					<button
 						type="button"
@@ -231,7 +234,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 						}`}
 					>
 						<UploadCloud className="w-4 h-4" aria-hidden="true" />
-						Bulk CSV Import
+						{t("dnc_bulk_import_tab")}
 					</button>
 				</div>
 
@@ -267,7 +270,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 											setSearchQuery(e.target.value);
 											setPage(1);
 										}}
-										placeholder="Search number, domain, reason..."
+										placeholder={t("dnc_search_placeholder_full")}
 										className="w-full pl-9 pr-3 py-1.5 bg-zinc-800/80 border border-zinc-700 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
 									/>
 								</div>
@@ -281,18 +284,18 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 										}}
 										className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
 									>
-										<option value="all">All Types</option>
-										<option value="phone">Phone (+84)</option>
-										<option value="domain">Domain / Subdomain</option>
-										<option value="email">Email</option>
-										<option value="tax_id">Tax ID (MST)</option>
+										<option value="all">{t("dnc_all_types")}</option>
+										<option value="phone">{t("dnc_type_phone")}</option>
+										<option value="domain">{t("dnc_type_domain")}</option>
+										<option value="email">{t("dnc_email_opt")}</option>
+										<option value="tax_id">{t("dnc_type_tax_id")}</option>
 									</select>
 									<button
 										type="button"
 										onClick={fetchRecords}
 										disabled={loading}
 										className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-										title="Refresh"
+										title={t("dnc_refresh_btn")}
 									>
 										<RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
 									</button>
@@ -305,10 +308,10 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									<thead className="bg-zinc-900/60 text-xs font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
 										<tr>
 											<th className="px-4 py-3">Type</th>
-											<th className="px-4 py-3">Value / Match</th>
-											<th className="px-4 py-3">Reason</th>
-											<th className="px-4 py-3">Source</th>
-											<th className="px-4 py-3 text-right">Action</th>
+											<th className="px-4 py-3">{t("dnc_col_val_match")}</th>
+											<th className="px-4 py-3">{t("dnc_col_reason")}</th>
+											<th className="px-4 py-3">{t("dnc_col_source")}</th>
+											<th className="px-4 py-3 text-right">{t("dnc_col_action")}</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y divide-zinc-800/60">
@@ -319,13 +322,13 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 														className="w-6 h-6 animate-spin mx-auto text-emerald-400 mb-2"
 														aria-hidden="true"
 													/>
-													Loading compliance records...
+													{t("dnc_loading_records")}
 												</td>
 											</tr>
 										) : records.length === 0 ? (
 											<tr>
 												<td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
-													No DNC records found matching your filters.
+													{t("dnc_no_records")}
 												</td>
 											</tr>
 										) : (
@@ -344,9 +347,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 													</td>
 													<td className="px-4 py-3 text-xs text-zinc-500">
 														{r.source === "right_to_be_forgotten" ? (
-															<span className="text-amber-400/90 font-medium">
-																Right-to-be-Forgotten
-															</span>
+															<span className="text-amber-400/90 font-medium">{t("dnc_rtbf")}</span>
 														) : (
 															r.source
 														)}
@@ -357,7 +358,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 															onClick={() => handleDelete(r.id)}
 															disabled={actionLoading}
 															className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition-colors"
-															title="Remove from DNC"
+															title={t("dnc_remove_btn")}
 														>
 															<Trash2 className="w-4 h-4" aria-hidden="true" />
 														</button>
@@ -373,7 +374,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 							{totalCount > 20 && (
 								<div className="flex items-center justify-between text-xs text-zinc-400 px-1">
 									<span>
-										Showing {records.length} of {totalCount} records
+										{t("dnc_showing_count", { count: records.length, total: totalCount })}
 									</span>
 									<div className="flex items-center gap-2">
 										<button
@@ -382,16 +383,16 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 											disabled={page <= 1 || loading}
 											className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
 										>
-											Prev
+											{t("dnc_prev")}
 										</button>
-										<span>Page {page}</span>
+										<span>{t("dnc_page_num", { page })}</span>
 										<button
 											type="button"
 											onClick={() => setPage((p) => p + 1)}
 											disabled={records.length < 20 || loading}
 											className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
 										>
-											Next
+											{t("dnc_next")}
 										</button>
 									</div>
 								</div>
@@ -407,7 +408,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									htmlFor="dnc-record-type"
 									className="text-xs font-semibold text-zinc-300 uppercase tracking-wider"
 								>
-									Record Identifier Type
+									{t("dnc_rec_id_type")}
 								</label>
 								<select
 									id="dnc-record-type"
@@ -415,10 +416,10 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									onChange={(e) => setNewType(e.target.value as DncRecordType)}
 									className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
 								>
-									<option value="phone">Phone Number (e.g. 0908123456 or +84908123456)</option>
-									<option value="domain">Company Domain (e.g. vinhomes.vn or *.vinhomes.vn)</option>
-									<option value="email">Email Address (e.g. contact@domain.com)</option>
-									<option value="tax_id">Corporate Tax ID / MST (e.g. 0101234567)</option>
+									<option value="phone">{t("dnc_phone_opt")}</option>
+									<option value="domain">{t("dnc_domain_opt")}</option>
+									<option value="email">{t("dnc_email_opt")}</option>
+									<option value="tax_id">{t("dnc_tax_opt")}</option>
 								</select>
 							</div>
 
@@ -427,7 +428,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									htmlFor="dnc-target-val"
 									className="text-xs font-semibold text-zinc-300 uppercase tracking-wider"
 								>
-									Target Value
+									{t("dnc_target_val")}
 								</label>
 								<input
 									id="dnc-target-val"
@@ -453,14 +454,14 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									htmlFor="dnc-legal-context"
 									className="text-xs font-semibold text-zinc-300 uppercase tracking-wider"
 								>
-									Reason / Legal Opt-Out Context
+									{t("dnc_reason_legal")}
 								</label>
 								<input
 									id="dnc-legal-context"
 									type="text"
 									value={newReason}
 									onChange={(e) => setNewReason(e.target.value)}
-									placeholder="e.g. Customer requested opt-out via phone call"
+									placeholder={t("dnc_reason_placeholder")}
 									className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
 								/>
 							</div>
@@ -472,7 +473,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 									className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
 								>
 									{actionLoading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-									Add to DNC Blacklist
+									{t("dnc_btn_add_blacklist")}
 								</button>
 							</div>
 						</form>
@@ -484,14 +485,9 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 							<div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 text-xs text-zinc-400 space-y-2">
 								<p className="font-semibold text-zinc-200 flex items-center gap-2">
 									<FileSpreadsheet className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-									CSV File Structure Guide
+									{t("dnc_csv_guide")}
 								</p>
-								<p>
-									CSV should contain columns: <code className="text-emerald-300">type</code>,{" "}
-									<code className="text-emerald-300">value</code>, and optional{" "}
-									<code className="text-emerald-300">reason</code>. Supports up to 5,000 records per
-									upload.
-								</p>
+								<p>{t("dnc_csv_guide_detail")}</p>
 								<pre className="p-2 rounded bg-zinc-900 border border-zinc-800 font-mono text-[11px] text-zinc-300">
 									type,value,reason{"\n"}
 									phone,0908123456,Decree 91 Blacklist{"\n"}
@@ -517,12 +513,12 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 										aria-hidden="true"
 									/>
 									<span className="text-sm font-medium text-zinc-200">
-										{selectedFile ? selectedFile.name : "Click or drag CSV file here to upload"}
+										{selectedFile ? selectedFile.name : t("dnc_click_drag_csv")}
 									</span>
 									<span className="text-xs text-zinc-500">
 										{selectedFile
 											? `${(selectedFile.size / 1024).toFixed(1)} KB`
-											: "UTF-8 encoded .csv up to 10MB"}
+											: t("dnc_csv_size_hint")}
 									</span>
 								</label>
 							</div>
@@ -530,10 +526,13 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 							{importResult && (
 								<div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs space-y-1 text-zinc-300">
 									<p className="font-semibold text-emerald-400">
-										Import Complete: {importResult.imported_count} records inserted
+										{t("dnc_import_complete_header", { count: importResult.imported_count })}
 									</p>
 									<p className="text-zinc-400">
-										Skipped: {importResult.skipped_count} | Failed: {importResult.failed_count}
+										{t("dnc_skipped_failed", {
+											skipped: importResult.skipped_count,
+											failed: importResult.failed_count,
+										})}
 									</p>
 									{importResult.errors.length > 0 && (
 										<div className="mt-2 text-red-400 font-mono">
@@ -551,7 +550,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 								className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
 							>
 								{actionLoading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-								Upload & Process DNC CSV
+								{t("dnc_btn_upload_process")}
 							</button>
 						</form>
 					)}

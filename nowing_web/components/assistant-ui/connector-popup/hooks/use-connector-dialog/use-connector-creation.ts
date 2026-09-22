@@ -10,7 +10,10 @@ import {
 	updateConnectorMutationAtom,
 } from "@/atoms/connectors/connector-mutation.atoms";
 import { EnumConnectorName } from "@/contracts/enums/connector";
-import type { SearchSourceConnector } from "@/contracts/types/connector.types";
+import type {
+	SearchSourceConnector,
+	SearchSourceConnectorType,
+} from "@/contracts/types/connector.types";
 import { searchSourceConnector } from "@/contracts/types/connector.types";
 import {
 	trackConnectorConnected,
@@ -218,7 +221,7 @@ export function useConnectorCreation({
 				const newConnector = await createConnector({
 					data: {
 						...connectorData,
-						connector_type: connectorData.connector_type as EnumConnectorName,
+						connector_type: connectorData.connector_type as SearchSourceConnectorType,
 						is_active: true,
 						next_scheduled_at: connectorData.next_scheduled_at as string | null,
 						enable_vision_llm: false,

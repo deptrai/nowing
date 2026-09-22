@@ -1,4 +1,5 @@
 import { atomWithMutation } from "jotai-tanstack-query";
+import { translateToast } from "@/lib/i18n-toast";
 import { toast } from "sonner";
 import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms";
 import type {
@@ -27,7 +28,7 @@ export const createDocumentMutationAtom = atomWithMutation((get) => {
 		},
 
 		onSuccess: () => {
-			toast.success("Document created successfully");
+			toast.success(translateToast("toast.document_created"));
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.documents.globalQueryParams(documentsQueryParams),
 			});
@@ -67,7 +68,7 @@ export const updateDocumentMutationAtom = atomWithMutation((get) => {
 		},
 
 		onSuccess: (result: Document, request: UpdateDocumentRequest) => {
-			toast.success("Document updated successfully");
+			toast.success(translateToast("toast.document_updated"));
 			setDocumentTitle(queryClient, request.id, result.title);
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.documents.globalQueryParams(documentsQueryParams),

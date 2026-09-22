@@ -5,13 +5,86 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
+from collections import defaultdict
 from statistics import mean
 from typing import Any
+
+from app.services.location_normalize import remove_diacritics
 
 from .normalize import _parse_post_date, make_canonical_id
 from .schemas import ConflictFlag, VnBdsAggregatedListing
 
 logger = logging.getLogger(__name__)
+
+# Stage-1 candidate narrowing for the Jev confirm stage (Story 39.3):
+# pairs in the same geo bucket whose title Jaccard reaches this floor
+# become "uncertain" candidates. There is no upper bound — near-identical
+# titles in the same city are exactly the false negatives union-find
+# misses (no shared phone/address/image key) and Jev is the arbiter for
+# same-project-different-block traps (Sunrise City vs Sunset City).
+CANDIDATE_JACCARD_MIN = 0.25
+
+
+def _candidate_bucket(listing: VnBdsAggregatedListing) -> str:
+    """Coarse geo bucket: city, else location, else district, else global.
+
+    Diacritics-stripped like the title tokens so "Hồ Chí Minh" and
+    "Ho Chi Minh" share a bucket; a whitespace-only/missing geo lands in
+    the shared "global" bucket.
+    """
+    key = remove_diacritics(
+        str(listing.city or listing.location or listing.district or "")
+        .strip()
+        .lower()
+    )
+    return key or "global"
+
+
+def _title_tokens(listing: VnBdsAggregatedListing) -> set[str]:
+    """Diacritics-insensitive lowercase word tokens of the listing title."""
+    text = remove_diacritics(listing.title or "")
+    return set(re.findall(r"\w+", text.lower()))
+
+
+def _jaccard(a: set[str], b: set[str]) -> float:
+    if not a or not b:
+        return 0.0
+    union = len(a | b)
+    return len(a & b) / union if union else 0.0
+
+
+def find_match_candidates(
+    listings: list[VnBdsAggregatedListing],
+) -> dict[int, list[int]]:
+    """Stage-1 heuristic: map anchor index → surviving candidate indices.
+
+    Runs on the post-``deduplicate`` canonicals: each output listing is
+    already a merged cluster, so candidates are cross-cluster pairs the
+    exact-key union-find could not see (different phone mask, different
+    address spelling). Each unordered pair appears once, under the lower
+    index, so a pair is decided by exactly one ``decide()`` call.
+    """
+    buckets: dict[str, list[int]] = defaultdict(list)
+    for idx, listing in enumerate(listings):
+        buckets[_candidate_bucket(listing)].append(idx)
+
+    tokens = [_title_tokens(listing) for listing in listings]
+    scored: dict[int, list[tuple[int, float]]] = {}
+    for members in buckets.values():
+        for pos, i in enumerate(members):
+            for j in members[pos + 1 :]:
+                sim = _jaccard(tokens[i], tokens[j])
+                if sim >= CANDIDATE_JACCARD_MIN:
+                    scored.setdefault(i, []).append((j, sim))
+
+    return {
+        i: [
+            j
+            for j, _ in sorted(cands, key=lambda pair: (-pair[1], pair[0]))
+        ]
+        for i, cands in scored.items()
+    }
 
 
 def _most_recent_date(a: str | None, b: str | None) -> str | None:

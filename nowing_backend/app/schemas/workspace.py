@@ -229,6 +229,21 @@ class SubscriptionChangeRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class WorkspaceEntitlementResponse(BaseModel):
+    """Lightweight, member-readable workspace entitlement summary.
+
+    Exposes only the data a client needs to gate plan-tier features (e.g. PPTX
+    export) without requiring ``SETTINGS_VIEW``. Deliberately omits billing
+    history, pricing, and usage which remain admin-only on the full
+    ``/subscription`` endpoint.
+    """
+
+    plan_tier: str
+    can_use_pptx: bool
+    # True when the deployment is explicitly self-hosted (unlimited licensing).
+    self_hosted: bool = False
+
+
 class WorkspaceSubscriptionResponse(BaseModel):
     current_plan: str
     limits: WorkspaceLimitsResponse

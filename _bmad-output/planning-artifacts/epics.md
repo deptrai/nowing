@@ -28,6 +28,7 @@ inputDocuments:
   - "_bmad-output/planning-artifacts/research/technical-spike-topcv-itviec-2026-08-05.md (context)"
   - "_bmad-output/specs/spec-xactions-connection/SPEC.md (Epic 36 source)"
   - "_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md (Epic 36 ADs)"
+  - "_bmad-output/planning-artifacts/ux-spec-epic37-revenue-engine-mobile-responsive-2026-09-17.md (Epic 37 UX spec)"
 ---
 
 # Nowing - Epic Breakdown
@@ -125,6 +126,23 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[NEW — BACKLOG]` **FR-102 Tenant Subscription Tier & Quota Management** → superadmin quản lý plan/trial/upgrade/downgrade cho workspace, gán quota memory/credits/users theo tier, ghi ledger thay đổi.
 `[NEW — BACKLOG]` **FR-103 Admin Bulk Operations Console** → superadmin thực hiện bulk credit, suspend, export, delete, broadcast trên nhiều workspace/user từ một màn hình với dry-run và audit log.
 `[NEW — BACKLOG]` **FR-104 Memory Browser & Research Timeline for Analyst** → analyst/owner duyệt memory theo thread, source type, confidence, time; click-to-source citation; filter và flag noisy/corrupted facts (PRFAQ Q9, UX-DR-PRFAQ-1).
+
+`[NEW — READY-FOR-DEV]` **FR-105 Proactive Buying Intent Radar (Background Ingestion & Telegram Stream Matcher)** → **E37.1 P0** (Periodic Celery scan on TopCV/VietnamWorks/MST + Redis stream telegram regex keyword matcher).
+`[NEW — READY-FOR-DEV]` **FR-106 Vietnam Cultural Honorific & Relationship Tone Engine** → **E37.2 P0** (Hierarchy/age resolution from MST/LinkedIn, native Anh/Chị/Em/Quý đối tác phrasing for sequencer & auto-reply).
+`[NEW — READY-FOR-DEV]` **FR-107 Smart Meeting Booking Engine for Auto-Reply** → **E37.3 P1** (Google & Lark Calendar free/busy slot extraction, auto meeting invite on positive response).
+`[NEW — READY-FOR-DEV]` **FR-108 Zalo Web Co-pilot in Nowing Lead Clipper** → **E37.4 P0** (Human-in-the-loop contextual drawer on chat.zalo.me, 1-click prefilled message, zero-ban risk).
+`[NEW — READY-FOR-DEV]` **FR-109 Sequencer-to-Artifact Generator (1-Click Mini-Pitch Portal)** → **E37.5 P1** (Automatic static landing page `pitch.nowing.ai/{lead}` with prospect branding & audit from Web Builder).
+`[NEW — READY-FOR-DEV]` **FR-110 Realtime Prospect Engagement Tracker & Telegram Alert Bot Ping** → **E37.6 P1** (Live telemetry on pitch portal views, instant Telegram push alert to sales rep).
+`[NEW — READY-FOR-DEV]` **FR-111 Hybrid Pricing Tiers UI & Auto-Refund Guarantee SLA** → **E37.7 P0** (Starter 990k / Pro 2.490k / Business 5.990k VietQR checkout + 100% credit refund for invalid phones).
+
+`[NEW — READY-FOR-DEV]` **FR-112 LiveKit SIP Gateway & Kamailio SBC Low-Latency Telephony Bridge** → **E38.1 P0** (SIP Trunk G.711a to WebRTC Opus bridge, sub-5ms internal routing).
+`[NEW — READY-FOR-DEV]` **FR-113 Voice Agent Worker Runtime với Silero VAD & Micro-clause Streaming** → **E38.2 P0** (Silero VAD v5 ONNX, FPT/Deepgram STT, Cartesia/Vbee TTS streaming, Local Filler < 80ms).
+`[NEW — READY-FOR-DEV]` **FR-114 Anti-False-Interruption & Multi-tier Barge-in Engine** → **E38.3 P1** (Audio ducking -14dB, keyword spotting for backchannels, 400ms echo lockout).
+`[NEW — READY-FOR-DEV]` **FR-115 Telephony Compliance Gate, National DNC 5656 & Curfew Scheduler** → **E38.4 P0** (Decree 91 curfew, 1 call/24h frequency cap, 5656 DNC check, DTMF 9/0 opt-out).
+`[NEW — READY-FOR-DEV]` **FR-116 Telecom Signal Classifier, AMD & Dead-air Watchdog Engine** → **E38.5 P1** (AMD sub-4s hangup, dead-air re-prompt and drop before 8s, 180s hard max duration).
+`[NEW — READY-FOR-DEV]` **FR-117 Dynamic DID & Voice Brandname Multi-tenant BYO-SIP Architecture** → **E38.6 P1** (Day-1 instant DID 024/028 provisioning, encrypted BYO-SIP credentials, Brandname portal).
+`[NEW — READY-FOR-DEV]` **FR-118 Outbound Trigger Engine: Speed-to-Lead & Hiring Radar Integration** → **E38.7 P0** (Auto call within 5m of pitch view > 45s, hiring signal trigger, post-call Zalo handoff).
+`[NEW — READY-FOR-DEV]` **FR-119 Voice Billing, Realtime Metering & QA Scorecard** → **E38.8 P0** (2.500đ/min block 6s+1s, 10s hang-up protection cap 15%, automated BANT QA scoring).
 
 ### NonFunctional Requirements
 `[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*.  **NFR-11 Scraping compliance & anti-bot resilience (Vietnam job market)** *(mới 2026-08-05 — ToS review, legal counsel, anti-bot POC, PII pipeline)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
@@ -261,6 +279,48 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - `mission_control.impression` (phase, status, has_deliverable).
 - `mission_control.deliverable.download` (filename, size, include_pii, mission_type).
 - `phone_unlock.popover.open`, `phone_unlock.confirm`, `phone_unlock.fast.unlock`, `phone_unlock.undo`, `phone_unlock.error`.
+
+#### UX Design Requirements — Epic 37 Revenue Engine & Mobile-First Outbound Experience
+
+*Nguồn:* `_bmad-output/planning-artifacts/ux-spec-epic37-revenue-engine-mobile-responsive-2026-09-17.md` (produced 2026-09-17 by Sally).
+
+**UX-DR-E37-1: Mobile VietQR Checkout Adaptor (The "Cannot Scan Own Screen" Fix)**
+- Trên Desktop: Hiển thị mã QR to rõ (240px) ở trung tâm để quét bằng điện thoại.
+- Trên Mobile (< 640px): Không bắt buộc người dùng quét QR trên màn hình đang cầm; tự động hiển thị bảng 3 nút sao chép 1-chạm (STK, Số tiền, Nội dung chuyển khoản duy nhất) + Nút CTA chính `[📲 Mở App Ngân Hàng]` hỗ trợ deep-link mở trực tiếp app Mobile Banking / MoMo / ZaloPay.
+- Hiển thị countdown timer 10 phút, trạng thái loading xoay tự động chuyển tick xanh `Thanh toán thành công!` trong 3–5 giây khi nhận webhook Napas.
+
+**UX-DR-E37-2: Zalo Co-pilot Floating Pill & Collapsible Context Drawer**
+- Trạng thái nghỉ: Hiển thị dạng viên thuốc tròn nhỏ ($36 \times 36$px) màu xanh bạc hà Nowing (`bg-emerald-500`) ghim ở góc trên bên phải khung nhập liệu `chat.zalo.me` (`bottom: 80px, right: 24px`), không chiếm diện tích chat ngang của Zalo.
+- Khi click/hover: Trượt ra Flyout Drawer (320px) hiển thị tên khách hàng, chức vụ, badge tín hiệu mua hàng (`🔥 Hiring 5 Sales`), và 2 tab kịch bản mở đầu (`[Ngắn gọn]` / `[Kèm link Pitch]`).
+- Zero-Occlusion: Bấm `[Chèn vào chat]` thì văn bản được populate vào ô chat của Zalo và Drawer tự động thu gọn về Pill sau 150ms để nhường tầm nhìn cho sales rep kiểm tra lại trước khi gửi.
+- DNC Warning Guard: Nếu số điện thoại thuộc danh sách DNC, card hiển thị viền đỏ cảnh báo `⚠️ Thuộc danh sách DNC (NĐ 91/2020)` và khóa nút chèn tin nhắn.
+
+**UX-DR-E37-3: Mobile-First Mini-Pitch Portal (The 3-Second Trust Hook)**
+- Trang `pitch.nowing.ai/[workspace]/[lead]` tải dưới 100ms trên mạng di động 4G (Single Multi-Tenant SSR, Cloudflare edge cache).
+- 3 giây đầu hiển thị Dual-Branding: Logo khách hàng đặt cạnh Logo sender với tag `🔒 Báo cáo nội bộ dành riêng cho [Tên Công Ty]`.
+- Executive Card Stack 30 giây: 3 thẻ card xếp dọc tóm tắt Thực trạng (đỏ) - Khoảng trống (vàng) - Giải pháp (xanh).
+- Interactive ROI Calculator: Thanh trượt chọn quy mô sales team có vùng bắt chạm $\ge 48 \times 48$px, số nhảy real-time không xung đột với thao tác cuộn trang (scroll gesture).
+- Inline Meeting Booking Accordion: Bấm CTA mở rộng 3 khung giờ trống trực tiếp trên trang (chiều cao nút 52px), không dùng modal popup che màn hình điện thoại. Link Opt-out / Xóa dữ liệu (Nghị định 13) ở chân trang.
+
+**UX-DR-E37-4: 1-Tap Native Zalo Deep-Link on Telegram Push**
+- Bot Telegram gửi alert cho Sales Rep khi prospect đang đọc Mini-Pitch kèm thời gian đọc và section đang dừng.
+- Nút CTA trong tin nhắn Telegram gọi universal deep-link `zalo.me/{phone}`, tự động kích hoạt hệ điều hành iOS/Android mở thẳng ứng dụng Zalo native và nhảy vào cuộc hội thoại với khách hàng trong 1 lần chạm.
+- Cooldown rule: Tối đa 1 tin nhắn Telegram push trong 30 phút cho cùng 1 lead ID để tránh bão thông báo (Notification Fatigue).
+
+**UX-DR-E37-5: Responsive Pricing Grid & Priority Ordering on Mobile**
+- Trên Desktop ($\ge 1024$px): 3 cột ngang Starter (990k) | **Professional (2.490k - Highlight)** | Business (5.990k).
+- Trên Mobile (< 768px): Xếp chồng 1 cột, trong đó **thẻ Professional tự động đảo lên vị trí đầu tiên (Order-1)** kèm badge `ĐƯỢC CHỌN NHIỀU NHẤT`.
+- Thanh trượt quy đổi tín dụng (Interactive Credit Calculator): Mô phỏng trực quan giá trị thật (ví dụ: *"3.500 credits = Mở khóa 350 số điện thoại đã xác minh Zalo"*).
+- Trust Seal: Banner khiên bảo vệ xanh ngọc cam kết hoàn 100% credit nếu số điện thoại không có Zalo hoặc không liên lạc được.
+
+**UX-DR-E37-6: Nowing Split Canvas Mobile Adaptive Tab Bar**
+- Trên màn hình nhỏ (< 768px), `NowingSplitCanvas` chuyển từ chia đôi cột sang thanh điều hướng 2 tab ở đáy màn hình: `[💬 Trợ Lý Chat]` và `[📋 Bảng Lead & Radar]`.
+- Khi có lead mới từ Radar (Story 37.1), tab Bảng Lead hiển thị chấm đỏ notification `🔴` kèm số lượng lead mới. Hỗ trợ vuốt ngang (swipe gesture) để chuyển tab mượt mà.
+
+**UX-DR-E37-7: Touch Target & Ergonomics Acceptance Criteria**
+- Toàn bộ các interactive elements (buttons, slider thumbs, links, tabs) trên mobile viewports đạt kích thước tối thiểu $44 \times 44$px (chuẩn Apple HIG).
+- Tuân thủ `env(safe-area-inset-bottom)` trên iPhone để thanh CTA không bị che bởi Home bar.
+- Typography tương phản cao $\ge 4.5:1$ (WCAG AA), font size tối thiểu 15px cho body text trên di động. Zero layout shift (CLS < 0.05) với skeleton loader khớp wireframe.
 
 
 ### FR Coverage Map
@@ -2095,6 +2155,131 @@ _Governed by `AD-5`, FR-60, `AD-16`._
 ---
 ## Epic 12: HR/Recruitment Vertical
 
+
+
+### Story 20.5: `chainlens.contents` URL Extraction
+
+As a Nowing agent or scraper pipeline,
+I want to extract clean, token-efficient markdown content from one or more URLs via ChainLens,
+so that I can read web pages, articles, and documentation without launching heavy browser sandboxes.
+
+**Acceptance Criteria:**
+1. **Given** a request to read one or more URLs with optional focus query, **When** `chainlens.contents` capability is invoked, **Then** it calls ChainLens `POST /api/v1/search` with `output: 'contents'`, `urls: [...]`, and `summary: true`.
+2. **Given** ChainLens returns extracted page contents and highlights, **When** parsing the response, **Then** the output conforms to `ContentsOutput` containing clean markdown `content`, `sourceUrls`, and `cost_micros`.
+3. **Given** the capability completes, **When** billing is processed, **Then** a `TokenUsage` record with `usage_type="chainlens_contents"` is recorded.
+4. **Given** any outbound query payload (AD-25/AD-49), **When** the request leaves Nowing, **Then** it passes through `redact_pii()` first — no raw PII leaves the boundary.
+5. **Given** a URL behind an authenticated portal or interactive form, **When** contents extraction is requested, **Then** the capability returns a typed `unsupported_auth_wall` hint directing the caller to Browser Operator (Epic 32) — this capability is a public-web Fast-Reader only.
+
+**Dev notes (Amelia 2026-09-20):** copy `app/capabilities/news/entity_search/` structure (`definition.py` + `executor.py` + `schemas.py`; `billing_unit=BillingUnit.CHAINLENS_QUERY`, `context_aware=True`). Dedicated `ContentsInput`/`ContentsOutput` — do NOT widen `ResearchInput.output` Literal (`schemas.py:116`). Wire into `_CI_VERBS` in `app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/tools/index.py`; `build_capability_tools()` auto-generates the LLM tool — description verbatim from UX spec Part A. To surface to the agent: (a) register `Capability`, (b) append the verb to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` `<available_tools>`+`<playbook>` + `description.md` triggers (UX spec Part A).
+
+_Governed by `AD-15`, `AD-34`, FR-58._
+
+
+### Story 20.6: `chainlens.code_search` Code Search
+
+As a developer using Nowing Web Builder or coding sub-agents,
+I want to search GitHub repositories, documentation, and Stack Overflow for high-signal code context,
+so that my agent receives token-efficient code snippets and API usage instead of generic prose.
+
+**Acceptance Criteria:**
+1. **Given** a technical programming query, **When** `chainlens.code_search` is invoked, **Then** it calls ChainLens `POST /api/v1/search` with `output: 'code_context'`, `sources: ['web']`.
+2. **Given** the SSE stream returns code blocks and citations, **When** the stream finalizes, **Then** the output returns formatted code blocks, repository references, and file path markers.
+3. **Given** the capability tool completes, **When** recording usage, **Then** `TokenUsage` is recorded with `usage_type="chainlens_code_search"`.
+4. **Given** code results are returned, **When** rendered in chat, **Then** they map to PlateJS code-block schema (language tag + line numbers) with copy button and source repo link; >5 snippets collapse to top-3 with an expander.
+
+**Dev notes (Amelia 2026-09-20):** same `entity_search` structure; dedicated `CodeSearchInput`/`CodeSearchOutput` (`query`, `language` regex `^[a-z0-9+#-]+$`, `maxResults` 1–20, `mode` instant/fast/balanced/auto). Wire into `_CI_VERBS` (`tools/index.py`); description verbatim from UX spec Part A. To surface to the agent: (a) register `Capability`, (b) append `CHAINLENS_CODE_SEARCH` to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` + `description.md` triggers.
+
+_Governed by `AD-15`, FR-24._
+
+
+### Story 20.7: ChainLens OpenAI Gateway Model Connections
+
+As a Nowing superadmin or workspace owner,
+I want to connect ChainLens as an OpenAI-compatible model provider,
+so that any chat agent in Nowing can directly select ChainLens grounded models without custom code.
+
+**Acceptance Criteria:**
+1. **Given** the Admin Global Model Connections page, **When** an admin adds a new connection, **Then** ChainLens is available as a preset template (`https://research-api.chainlens.net/v1`, models: `claude-sonnet-4-6`, `haiku-4.5`, `deepseek-v4-pro`).
+2. **Given** a chat request using a ChainLens-connected model, **When** Nowing calls `POST /v1/chat/completions`, **Then** ChainLens executes the request and streams standard OpenAI SSE chunks back.
+3. **Given** connection test is clicked, **When** calling `GET /v1/models`, **Then** it returns HTTP 200 and lists active models.
+4. **Given** the model picker UI, **When** ChainLens models are listed, **Then** they appear under a distinct "ChainLens (Web-Grounded)" group with a globe icon and tooltip setting latency expectation (~3–6s first token).
+
+**Dev notes (Amelia 2026-09-20):** generic OpenAI provider already supported — `app/routes/model_connections_routes.py` `list_model_providers` (`:262`) + `app/services/provider_registry.py` `REGISTRY`. Work = add preset template (`default_base_url=https://research-api.chainlens.net/v1`) + frontend badge `[Web-Grounded]` in `nowing_web/app/admin/global-model-connections/page.tsx`. Zero backend schema change.
+
+_Governed by `AD-8`, FR-41._
+
+
+### Story 20.8: ChainLens Webhook Monitors Automations
+
+As a Nowing user setting up automations,
+I want to schedule recurring web search monitors on ChainLens that ping Nowing via webhook,
+so that my automations trigger automatically when new market news or competitor updates emerge.
+
+**Acceptance Criteria:**
+1. **Given** an Automation with trigger type `chainlens_monitor`, **When** enabled, **Then** Nowing calls ChainLens `POST /v1/monitors` with query, cron, and Nowing webhook URL.
+2. **Given** ChainLens detects new delta results on schedule, **When** it posts findings to Nowing's webhook, **Then** Nowing enqueues an `AutomationRun` with the new search results as trigger payload.
+3. **Given** an automation is paused or deleted, **When** status changes, **Then** Nowing calls ChainLens API to delete or pause the recurring monitor.
+4. **Given** an inbound monitor webhook, **When** it arrives at Nowing, **Then** the endpoint verifies HMAC-SHA256 signature (shared secret `CHAINLENS_AUTH_CONTEXT_SECRET`) before enqueueing any `AutomationRun` — forged webhooks are rejected 401 and never drain credits.
+5. **Given** a monitor run with zero new deltas, **When** the run timeline renders, **Then** it shows a friendly empty state ("Chưa có tin mới kể từ lần kiểm tra trước"), never an error.
+
+**Dev notes (Amelia 2026-09-20):**
+- `TriggerType` lives at `app/automations/persistence/enums/trigger_type.py` (values `schedule|event|manual|memory_change`), column `SQLAlchemyEnum(name="automation_trigger_type")` (`models/trigger.py:31`). Adding `CHAINLENS_MONITOR` requires **Alembic migration `ALTER TYPE automation_trigger_type ADD VALUE 'chainlens_monitor'`** — Postgres enum, cannot run in a transaction block on PG<12.
+- Store `{query, cron, dedupKeyPolicy, monitorId}` in existing `AutomationTrigger.params` JSONB (`models/trigger.py:39`) — no new column.
+- Enable-path in `app/automations/services/trigger.py` → `POST /v1/monitors`; inbound route `app/routes/webhooks/chainlens_monitor.py` → enqueue `AutomationRun`. HMAC via `hmac.compare_digest` (pattern `app/routes/gateway_webhook/webhooks.py:119`).
+
+_Governed by `AD-15`, FR-19, FR-20._
+
+
+### Story 20.9: Async Research Jobs Resumption
+
+As a system operator,
+I want long-running deep research queries (over 60 seconds) to execute via ChainLens Async Jobs,
+so that client HTTP disconnections or reverse-proxy timeouts do not abort in-flight research.
+
+**Acceptance Criteria:**
+1. **Given** an execution mode configured for asynchronous dispatch, **When** research is requested, **Then** Nowing calls ChainLens `POST /async-jobs` and receives `{ runId, status: "pending" }`.
+2. **Given** an active `runId`, **When** Nowing listens to `GET /async-jobs/{runId}/events`, **Then** it streams live research phases to the client and persists final deliverables.
+3. **Given** a worker restart during deep research, **When** it recovers, **Then** it inspects `GET /async-jobs/{runId}` to recover the completed report without re-paying token or search costs.
+
+**Dev notes (Amelia 2026-09-20):** two distinct run systems — implement `app/services/chainlens/async_jobs.py` `AsyncJobsClient` (external `POST /async-jobs` + `GET /async-jobs/{runId}/events`) then map external `runId` → Nowing `run_id` via `app/capabilities/core/async_runner.py` `start_async_run` (`:50`).
+
+_Governed by `AD-17`, FR-38._
+
+### Story 20.10: `chainlens.pulse_feed` Curated Intelligence Feed
+
+As a Nowing agent, dashboard surface, or automation,
+I want to pull the ChainLens Pulse curated intelligence feed plus each item's pre-generated research angles,
+so that users can browse proactive market/competitor news instead of only on-demand search.
+
+**Acceptance Criteria:**
+1. **Given** a request for the intelligence feed with optional `topic` and `cursor`, **When** `chainlens.pulse_feed` is invoked, **Then** it calls `GET /v1/pulse/feed?topic=&cursor=` (alias `/v1/news/feed`) and returns `{ items, pagination:{nextCursor,hasMore,limit} }`. `topic` ∈ `tech|ai|finance|science|security|startup`; `cursor` is an ISO date for keyset pagination (older-than), not an offset.
+2. **Given** a feed `itemId`, **When** angles are requested via `GET /v1/pulse/items/{id}/angles`, **Then** it returns `PulseAngleResponse[]` with `{angleId,label,description,prompt,estimatedCredits,costDollars,model}` — cost hint drives the UX cost badge.
+3. **Given** the call completes, **When** billing is processed, **Then** `TokenUsage` records `usage_type="chainlens_pulse_feed"`.
+4. **Given** an empty feed page or zero angles, **When** the surface renders, **Then** it shows a friendly empty state, never an error.
+
+**Dev notes (Amelia 2026-09-20):** copy `news/entity_search/` structure → `app/capabilities/chainlens/pulse/`; `billing_unit=BillingUnit.CHAINLENS_QUERY`, `context_aware=True`. Feed/angles are PUBLIC throttled GETs — plain `httpx.get` with `ChainLensServiceAuth.get_outbound_headers`, NOT the SSE parser. Client `app/services/chainlens/pulse.py`. Wire into `_CI_VERBS` (`tools/index.py`); description verbatim from UX spec Part A. To surface to the agent: (a) register `Capability`, (b) append the verb to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` `<available_tools>`+`<playbook>` + `description.md` triggers (UX spec Part A).
+
+_Governed by `AD-15`, FR-24._
+
+
+### Story 20.11: `chainlens.pulse_research` Angle Deep-Research
+
+As a Nowing agent or automation acting on a Pulse angle,
+I want to run the ChainLens angle deep-research stream on a chosen `{itemId, angleId}`,
+so that a single click converts a curated news angle into a cited deep-research report.
+
+**Acceptance Criteria:**
+1. **Given** a `{itemId, angleId}` pair plus optional `mode` and `chatId`, **When** `chainlens.pulse_research` is invoked, **Then** it calls `POST /v1/pulse/research` with `{itemId,angleId,mode,output:"news",chatId}` (`mode` ∈ research|balanced|deep|speed|auto|fast|instant|quality) and streams SSE.
+2. **Given** the upstream SSE stream, **When** parsing frames, **Then** the executor reuses `searchStream` parser — events are the SAME contract as `chainlens.research` (`init`→`text_delta`→`done{usage,chatId}`), so `sse_parser.py` + `ResearchOutput` are reused, not reimplemented.
+3. **Given** the `done` frame `usage.costDollars`, **When** billing is processed, **Then** `TokenUsage` records `usage_type="chainlens_pulse_research"` and `cost_micros` via `cost_dollars_to_micros`.
+4. **Given** 402/404 upstream, **When** resolving, **Then** return typed degradation (engine_unavailable / insufficient_credits), never a raw error.
+5. **Given** a `chatId`, **When** research completes, **Then** persist the session handle so `chainlens_chats`/`chainlens_ask` can resume the SEP-2567 thread.
+
+**Dev notes (Amelia 2026-09-20):** register `CHAINLENS_PULSE_RESEARCH` in `app/capabilities/chainlens/pulse_research/`. REUSE `research/sse_parser.py` + `ResearchOutput` — upstream `pulse-research.service.ts` pipes through `searchService.searchStream` (same events). Executor mirrors `research/executor.py:_call_chainlens` but posts `/v1/pulse/research`, forces `output="news"` + `tier="research"` (internal — upstream bills once). To surface to the agent: (a) register `Capability`, (b) append the verb to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` `<available_tools>`+`<playbook>` + `description.md` triggers (UX spec Part A).
+
+_Governed by `AD-15`, FR-24._
+
+---
 ### Story 12.0: ToS & Legal Review
 
 As a product owner,
@@ -4129,6 +4314,23 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 ### Story 26.9b: Pro Excel Formatter in Daytona Sandbox
 **Scope:** Nhận `checkpoint.wide_research_matrix` từ 26.9a, chạy Pro Excel Template Script trong **Daytona sandbox đã có sẵn** để xuất `.xlsx` đa tab. **Tận dụng code đã có:** Daytona sandbox lifecycle (`middleware/filesystem/sandbox.py`), `sandbox_routes.py`, pre-installed `pandas`/`numpy`/`openpyxl` (`execute_code/description.py`). **Code mới:** template `scripts/sandbox_pro_excel_template.py` và node `deliver` trong LangGraph (hoặc mở rộng `ingestion`). Governed by `AD-112`.
 
+### Story 26.9c: Native `wide_research` Matrix Upgrade
+
+As a DSH Mission researcher,
+I want the LangGraph `crawl` subgraph to use ChainLens's native `output=wide_research` engine,
+so that multi-entity competitive research matrices (up to 50 entities) are generated with native matrix citations rather than the fallback `output=table` workaround.
+
+**Acceptance Criteria:**
+1. **Given** a DSH mission with research targets (10–50 entities), **When** the LangGraph crawl subgraph executes, **Then** it calls ChainLens `POST /api/v1/search` with `output: 'wide_research'`, `stream: true`, and `numEntities: N`.
+2. **Given** ChainLens streams `entity_result` events containing `entityName`, `attributes`, and `citations`, **When** the stream completes, **Then** `dsh_worker_crawl_subgraph.py` aggregates all entities into `checkpoint.wide_research_matrix`.
+3. **Given** `checkpoint.wide_research_matrix` exists, **When** mission resumes from checkpoint, **Then** the crawl node skips re-invoking ChainLens and transitions directly to reasoning.
+4. **Given** `entity_result` events stream in over 45–120s (AD-108), **When** each entity completes, **Then** it is persisted incrementally to `checkpoint.wide_research_matrix` so a worker restart never loses completed entities; UI shows live progress "Đã phân tích N/M thực thể…".
+
+**Dev notes (Amelia 2026-09-20):** `dsh_worker_crawl_subgraph.py` already forwards `output`/`outputSchema`; change to `output="wide_research"` + `numEntities`, handle SSE `entity_result` events, persist each entity incrementally to `checkpoint.wide_research_matrix` (AD-108). `ResearchInput.output` Literal (`schemas.py:116`) may need `"wide_research"` added.
+
+_Governed by `AD-102`, `AD-106`, `AD-108`, `AD-112`._
+
+
 ---
 
 ### Story 24.8: Browser Operator CDP Tool for DSH Crawl + Human Live Takeover
@@ -4627,6 +4829,13 @@ _FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 ·
 - **30.6**: Explicit `num_retries=1` in `scripts/verify_chat_image_capability.py`.
 - **30.7**: Comprehensive unit tests for `test_model()` in `model_connection_service.py`.
 
+### Story 30.10: Frontend Navigation Performance & Layout Modernization
+*Status: ready-for-dev.* Consolidates frontend technical debt and eliminates navigation delays and UI freezing when switching dashboard views:
+- **Instant Navigation & Prefetch**: Refactor `Sidebar.tsx`, `SidebarButton.tsx`, `IconRail.tsx`, and `AllChatsSidebar.tsx` from raw `router.push()` buttons to polymorphic Next.js `<Link href="..." prefetch={true}>` with hover prefetch triggers and instant `:active` visual state.
+- **Comprehensive Route Loading Boundaries**: Standardize `DashboardPageSkeleton.tsx` as a pure Server Component (CLS < 0.05). Provide universal root fallback `loading.tsx` in `app/dashboard/[workspace_id]/` and dedicated `loading.tsx` skeletons across all leaf routes (`health`, `usage`, `connectors`, `automations`, `artifacts`, `playbooks`, `chats`, `workspace-settings`, `user-settings`, `crm`, `leads`, `research`, `team`, `governance`) ensuring zero frozen UI transitions (< 50ms visual response).
+- **Persistent Shell & Layout Stability**: Unify `MainContentPanel` and `WorkspacePanel` inside `LayoutShell.tsx` into a single persistent `<main id="main-workspace-root">` element to eliminate layout thrashing and unnecessary DOM unmount/remount cycles during view transitions.
+- **Provider Decoupling & Bundle Optimization**: Decouple `Fumadocs RootProvider` from root layout to `/docs/layout.tsx`, deduplicate `useSession()` via shared atom/query, dynamic import heavy `recharts` components, and register explicit Radix UI packages in `optimizePackageImports` (`next.config.ts`).
+
 ## Epic 31: Web Builder Container Isolation, AST Security & Entitlements
 
 *Status: backlog.* Provides enterprise multi-tenant container isolation on Dokploy, AST security policy, and plan-tier entitlements.
@@ -4879,3 +5088,348 @@ So that action-name or argument changes on XActions never require editing Nowing
 - **And** legacy per-platform tools migrate to `x_scrape` only behind feature flag `XACTIONS_USE_UNIFIED_DISPATCH` and only for platforms whose descriptor + stream routing are confirmed live — so working Facebook/Twitter monitoring does not regress.
 
 > **Cross-repo note:** `SocialMonitoredTarget.platform` values must equal XActions canonical platform keys; the shared matrix (REQ-X4) is the single source both sides validate against.
+
+
+## Epic 37: Nowing Revenue Engine — Unified Outbound Workstation
+
+*Status: in-progress.* Governed by `sprint-change-proposal-2026-09-17-phase-next-ai-sdr-impact-gap-analysis.md`, Market Research Deep-Recon (`market-dinh-gia-dung-luong-thi-truong-b2b-outbo-2026-09-17`), and Architectural Review (AD-115 to AD-121).
+
+> **Strategic Scope:** Tận dụng 100% nền tảng hạ tầng sẵn có (Epics 21, 22, 24, 26, 27, 34) để hoàn thiện 7 mắt xích cuối cùng (Last-Mile Gaps), biến Nowing thành cỗ máy tạo doanh thu tự hành (Autonomous Revenue Engine) chuẩn hóa cho thị trường B2B Việt Nam & Đông Nam Á.
+
+### Architectural Invariants (AD-115 – AD-121)
+- **AD-115 (Aho-Corasick Pre-Filtering & Signal Budget Cap):** Telegram purchase intent stream matching runs an in-memory compiled Aho-Corasick keyword trie ($O(n)$) before regex execution. Workspace background scans capped at 100 scans/day with automatic pause below 50 credits.
+- **AD-116 (Deterministic Zero-Latency Honorific Engine):** Age and title hierarchy mapping runs on deterministic rules (0ms latency, $0 token cost) without LLM calls. Foreign names default to English business tone; unresolvable contacts safely fallback to `Quý anh/chị` or `Quý đối tác`.
+- **AD-117 (Calendar Slot Soft-Lock & Strict Timezone Separation):** Meeting slots proposed by the auto-reply agent are soft-locked in Redis (`lock:calendar_slot:{user_id}:{slot}`) with a 15-minute TTL to prevent concurrent double-booking. Backend stores ISO 8601 UTC; localized ICT (UTC+7) formatting applied only in rendered templates.
+- **AD-118 (Semantic Selector & Human-in-the-Loop Zalo Co-pilot):** Extension injects via semantic attributes (`div[contenteditable="true"]`, `div[role="textbox"]`), avoiding obfuscated CSS classes. Message insertion uses standard `InputEvent`/`insertText`; user clicks Send manually (Zero Ban Penalty).
+- **AD-119 (Single Multi-Tenant SSR Pitch Engine — NO per-lead Dokploy containers):** Interactive mini-pitch portals are served via a unified Next.js SSR route (`/pitch/[workspace_slug]/[lead_id]`) reading metadata from Postgres/Redis with Cloudflare edge caching. Dokploy container-per-lead deployment is strictly prohibited.
+- **AD-120 (Beacon Debounce & 30-Minute Alert Cooldown):** Pitch view beacon triggers Telegram bot push alerts at most once per 30 minutes per lead ID via Redis lock. Crawler user-agents and sessions $< 3$s are filtered as preview pings; subsequent interactions update CRM timeline silently.
+- **AD-121 (Objective Technical Refund SLA & 15% Circuit Breaker):** Phone unlock auto-refunds are triggered strictly by telco/Zalo programmatic error codes (`ZALO_USER_NOT_FOUND`, `TELCO_NUMBER_UNALLOCATED`), not manual user claims. Kế thừa AD-110: auto-refund volume is capped at 15% of monthly unlocked leads.
+
+---
+
+### Story 37.1: Proactive Intent Signal Radar (Background Ingestion & Telegram Stream Matcher)
+
+As a Growth / RevOps Engineer,
+I want a background daemon and stream listener that proactively scans hiring spikes, newly registered tax codes, and Telegram buy-requests,
+So that buying-intent leads are captured into the workspace matrix without requiring manual query triggers.
+
+**Acceptance Criteria:**
+- **Given** `SignalDetectionService` (`app/lead_intelligence/signals/service.py`), **When** Celery Beat task `scan_high_intent_companies_periodic` executes every 6 hours, **Then** it scans hiring surges ($\ge 3$ new job postings in 7 days across TopCV/VietnamWorks) and newly incorporated tax codes from `masothue.com`/`dangkykinhdoanh.gov.vn`, persisting `SignalEvent` records with `intent_score >= 0.75`.
+- **Given** Redis stream `stream:telegram:raw_events` (Epic 22), **When** incoming messages pass the Aho-Corasick pre-filter and match purchase intent patterns ("cần tìm nhà cung cấp", "báo giá", "tìm agency", "thuê ngoài"), **Then** the listener extracts contact details and creates an enriched `Lead` assigned round-robin to active workspace sales reps via `LeadAssignmentService`.
+- **Given** a Telegram intent message containing NO extractable phone or email, **When** processed, **Then** the system creates an Unqualified Signal Lead with `status='pending_enrichment'` and does NOT deduct workspace credits.
+- **And** background scanning enforces AD-115 budget caps: maximum 100 scans per workspace per day, pausing automatically if credit balance falls below 50 credits.
+
+### Story 37.2: Vietnam Cultural Honorific & Relationship Tone Engine
+
+As a B2B Sales Representative,
+I want the sequencer and auto-reply agent to dynamically select native Vietnamese honorific pronouns (Anh/Chị/Em/Quý đối tác) based on prospect seniority and estimated age,
+So that cold outreach and automated replies sound respectful, professional, and indistinguishable from an experienced local sales rep.
+
+**Acceptance Criteria:**
+- **Given** an enriched prospect profile with title, birth year (from CCCD/MST), or education graduation year, **When** `VietnamHonorificResolver` evaluates the contact using AD-116 deterministic rules, **Then** it calculates age differential relative to the sender and resolves the address tuple (`Anh - Em`, `Chị - Em`, `Quý đối tác - Chúng tôi`).
+- **And** the resolved honorific tuple is injected into the LLM context of `app/services/sequencer/services/executor.py` and `app/services/sequencer/inbound.py` under the `{salutation}` token.
+- **And** if the prospect is identified as a foreign national or international domain, the engine defaults to standard English business honorifics (`Dear Mr./Ms. [Lastname]`).
+- **And** if age or gender is ambiguous, the engine safely defaults to neutral professional business phrasing (`Quý anh/chị` or `Quý đối tác`).
+- **And** outbound sequence execution is curfews-enforced: message dispatch strictly halts between 21:00 and 08:00 ICT in compliance with Decree 91/2020/NĐ-CP.
+
+### Story 37.3: Smart Meeting Booking Engine for Auto-Reply (Google & Lark Calendar)
+
+As an Account Executive,
+I want the two-way AI auto-reply agent to extract my calendar availability and propose concrete meeting slots when a prospect shows interest,
+So that meetings are booked automatically into my calendar without back-and-forth scheduling ping-pong.
+
+**Acceptance Criteria:**
+- **Given** connected Google Calendar or Lark Calendar OAuth credentials in Workspace Settings, **When** `app/services/sequencer/inbound.py` detects positive meeting intent, **Then** `CalendarAvailabilityService` queries free/busy slots across 5 upcoming business days, restricted to working hours (09:00–12:00, 13:30–17:30 ICT, Monday–Friday) with a 15-minute buffer before/after existing events.
+- **And** proposed meeting slots are soft-locked in Redis with a 15-minute TTL per AD-117 to prevent double-booking across concurrent prospect conversations.
+- **And** the AI auto-reply proposes exactly 2-3 specific time options formatted in ICT ("14:00 Thứ Ba" hoặc "10:00 Thứ Năm").
+- **And** upon prospect confirmation, the agent creates the calendar event with Google Meet or Lark Video link, sends calendar invites to both parties, releases the Redis soft lock, and updates `Lead.status` to `meeting_scheduled` in the CRM pipeline.
+- **And** if the prospect rejects proposed slots across 2 negotiation turns, the agent provides a direct calendar booking link and appends a `human_takeover_needed` tag.
+
+### Story 37.4: Zalo Desktop/Web Co-pilot Overlay in Nowing Lead Clipper
+
+As a Sales Rep using Zalo on browser or desktop,
+I want the Nowing Lead Clipper extension to detect open Zalo chats and provide a 1-click contextual prompt drawer,
+So that I can execute personalized outbound touches with human-in-the-loop control without risking account bans.
+
+**Acceptance Criteria:**
+- **Given** the Nowing Lead Clipper Chrome extension is active, **When** the user opens `chat.zalo.me` with an unlocked prospect phone number, **Then** a floating action pill (36px) appears at the right edge, expanding on click into a 320px contextual flyout drawer.
+- **And** the overlay fetches company context, recent intent signals, and recommended pitch scripts generated by Nowing.
+- **And** clicking `Chèn tin nhắn` populates Zalo's active textbox via semantic selector (`div[contenteditable="true"]`, `div[role="textbox"]`) using standard `InputEvent` without background automated sending, ensuring zero account ban penalty per AD-118.
+- **And** if the prospect phone number exists in the DNC Blacklist (Decree 91/2020/NĐ-CP), the extension displays a red warning banner and disables message insertion.
+- **And** if the Zalo input already contains draft text, the extension prompts confirmation before overwriting or appends below.
+
+### Story 37.5: Sequencer-to-Artifact Integration (1-Click Mini-Pitch Portal Generator)
+
+As an Outbound Campaign Manager,
+I want the sequencer to automatically trigger the Web Builder (Epic 27.1) to generate personalized 1-click interactive mini-pitch portals for target prospects,
+So that our outreach emails and messages feature a tailored, branded interactive value proposition.
+
+**Acceptance Criteria:**
+- **Given** a cadence step configured with action `generate_pitch_portal`, **When** the sequence scheduler executes for a prospect company, **Then** it generates metadata rendered via unified multi-tenant SSR route `pitch.nowing.ai/[workspace_slug]/[lead_id]` per AD-119, with edge caching guaranteeing TTFB $< 100$ms.
+- **And** the mini-pitch portal features prospect branding (logo, company name, industry benchmarks), a 30-second executive summary, an interactive ROI calculator, and an inline meeting booking CTA.
+- **And** all dynamic prospect fields are sanitized against Stored XSS attacks (DOMPurify/HTML escaping).
+- **And** the portal footer includes a verified "Yêu cầu xóa thông tin của tôi / Opt-out" link compliant with Decree 13/2023/NĐ-CP.
+- **And** the generated unique URL is injected into template variable `{{pitch_portal_url}}` for inclusion in outreach copy.
+
+### Story 37.6: Realtime Prospect Engagement Tracker & Telegram Alert Bot Ping
+
+As a Sales Representative,
+I want real-time notifications sent to my Telegram bot whenever a prospect opens their personalized mini-pitch portal or presentation slides,
+So that I can follow up at the exact moment of peak buyer engagement.
+
+**Acceptance Criteria:**
+- **Given** an interactive pitch portal (`pitch.nowing.ai`), **When** a prospect accesses the link, **Then** a lightweight, cookieless beacon (`navigator.sendBeacon`) records dwell time, sections viewed, and device type.
+- **And** per AD-120, a Redis cooldown lock (`lock:pitch_beacon:{lead_id}`) limits Telegram push alerts to at most 1 alert per 30 minutes; subsequent dwell time updates record silently to `LeadActivityTimeline`.
+- **And** crawler user-agents (e.g. `facebookexternalhit`, `ZaloPC-crawler`) and sessions with dwell time $< 3$s are filtered out as preview pings.
+- **And** eligible views trigger an instant Telegram alert to the assigned sales rep with dwell time, section read, and 1-click Zalo chat deep-link.
+
+### Story 37.7: Hybrid Pricing Packaging UI & Auto-Refund Guarantee SLA
+
+As a Platform Administrator and Customer,
+I want the web dashboard to display transparent hybrid pricing tiers (Starter, Professional, Business) with instant VietQR checkout and an automated refund guarantee for invalid contacts,
+So that pricing matches local willingness-to-pay and eliminates buyer hesitation.
+
+**Acceptance Criteria:**
+- **Given** `/dashboard/[workspace_id]/buy-tokens`, **When** the page renders, **Then** it presents the 3 standard hybrid packages: Starter (990.000đ/tháng, 1.000 credits), Professional (2.490.000đ/tháng, 3.500 credits, 3 seats, highlighted), and Business (5.990.000đ/tháng, 10.000 credits, unlimited seats) with an interactive credit calculator slider.
+- **And** selecting a tier opens a dynamic VietQR payment modal with a 10-minute countdown timer, credited automatically within 5 seconds of Napas bank transfer webhook receipt.
+- **And** per AD-121, if an unlocked phone number programmatically returns `ZALO_USER_NOT_FOUND` or `TELCO_NUMBER_UNALLOCATED`, the 10 credits deducted are refunded immediately with an audited ledger entry `credit_refund_invalid_contact`.
+- **And** the refund circuit breaker enforces a monthly cap of 15% of total unlocked leads per workspace (AD-110); requests exceeding this threshold route to the manual Admin Desk.
+
+
+## Epic 38: Autonomous Voice AI SDR & Telephony Workstation
+
+*Status: in-progress.* Governed by `_bmad-output/planning-artifacts/research/technical-market-deep-recon-epic-38-voice-ai-sdr.md` and Architectural Decisions (AD-122 to AD-129).
+
+> **Strategic Scope:** Xây dựng trạm thoại AI tự hành đa kênh (Autonomous Voice SDR) chuẩn pháp lý viễn thông Việt Nam theo Nghị định 91/2020/NĐ-CP và Nghị định 13/2023/NĐ-CP. Đạt độ trễ hội thoại thời gian thực sub-800ms perceived latency qua LiveKit SIP Gateway, Kamailio SBC, Silero VAD v5, Streaming STT/TTS và Local Filler Audio.
+
+### Architectural Invariants (AD-122 – AD-129)
+- **AD-122 (Kamailio SBC & LiveKit SIP Gateway Bridge):** Kết nối SIP Trunk viễn thông nội địa (Viettel/VNPT/FPT/CMC) theo chuẩn G.711a 8kHz, chuyển đổi sang WebRTC Audio Track (Opus 48kHz) tại LiveKit SIP Gateway với độ trễ nội bộ $P99 < 3$ms.
+- **AD-123 (Sub-800ms Perceived Latency & Local Filler Audio):** Chèn câu đệm cục bộ ("Dạ vâng anh...", "Dạ để em kiểm tra...") trong vòng 80ms ngay khi VAD dứt câu nếu LLM chưa trả token đầu, đưa độ trễ nhận thức của người nghe về 300ms - 550ms.
+- **AD-124 (Multi-tier Barge-in & Anti-Echo Lockout):** Áp dụng 400ms lockout khi bot bắt đầu nói để triệt tiêu echo; giảm âm lượng bot -14dB (Audio Ducking) và dùng KWS cục bộ lọc từ đệm (< 280ms: "ừ", "dạ") trước khi gửi SIP Silence Packet cắt lời.
+- **AD-125 (Strict Compliance & DNC 5656 Filtering):** Kiểm tra danh sách DNC Quốc gia (5656) trước khi quay số; chỉ gọi trong khung giờ 09:00–11:30 và 13:30–17:00 ICT (Thứ 2 - Thứ 6); tự động ngắt và blacklist khi khách nói "đừng gọi nữa" hoặc nhấn phím 0/9.
+- **AD-126 (AMD & Dead-air Watchdog Protection):** Nhận diện tiếng chuông tổng đài / hộp thư thoại và cúp máy trước 4s; nếu khách nhấc máy nhưng im lặng quá 6s tự động cúp máy trước 8s; trần cuộc gọi tối đa 180s.
+- **AD-127 (Day-1 DID & Multi-tenant Brandname BYO-SIP):** Cấp đầu số cố định DID (024/028-7xxx) để gọi ngay trong ngày; hỗ trợ workspace cấu hình SIP credentials riêng mã hóa AES-256-GCM và gửi hồ sơ đăng ký Voice Brandname chính danh qua aggregator API.
+- **AD-128 (Speed-to-Lead & Post-Call Omnichannel Handoff):** Tự động kích hoạt cuộc gọi trong vòng 5 phút sau khi prospect xem Mini-Pitch Portal > 45s (Story 37.6); sau khi cúp máy tự động gửi tóm tắt qua Zalo ZNS / Zalo Co-pilot (Story 37.4) và đồng bộ CRM.
+- **AD-129 (Realtime Voice Metering & 15% Hang-up Protection):** Trừ credit theo block 6s + 1s (tỷ lệ 2.500đ/phút = 2.5 credits/phút); miễn phí cước cho cuộc gọi dập máy dưới 10s (tối đa 15% số cuộc/campaign); LLM tự động chấm QA Scorecard 1-100 sau cuộc gọi.
+
+---
+
+### Story 38.1: LiveKit SIP Gateway & Kamailio Media Infrastructure
+
+As a System Architect,
+I want to deploy Kamailio SBC and LiveKit SIP Gateway bridging Vietnamese telco SIP trunks to WebRTC SFU,
+So that telephony audio streams convert to real-time WebRTC audio tracks with sub-5ms internal transport latency.
+
+**Acceptance Criteria:**
+- **Given** SIP Trunking UDP from VN Telco (Viettel/VNPT/FPT/CMC) with G.711 A-law (PCMA 8kHz), **When** incoming/outgoing call is initiated, **Then** Kamailio SBC verifies anti-fraud and relays SIP signaling to LiveKit SIP Gateway.
+- **And** LiveKit SIP Gateway automatically creates a LiveKit Room `call_<session_uuid>` upon receiving SIP `INVITE`.
+- **And** bidirectional codec transcoding between G.711a 8kHz and WebRTC Opus 48kHz executes with no audible distortion.
+- **And** internal routing latency between SBC, SIP Gateway, and Media Server SFU measures $P99 < 3$ms.
+
+### Story 38.2: Voice Agent Worker Runtime với Silero VAD & Micro-clause Streaming
+
+As a Backend Engineer,
+I want an Asyncio Python Voice Agent Worker connected to LiveKit rooms executing streaming STT, LLM, and TTS with local filler audio injection,
+So that conversational voice round-trip latency stays below 800ms perceived latency.
+
+**Acceptance Criteria:**
+- **Given** an active LiveKit room, **When** Voice Agent Worker joins as participant, **Then** it reads/writes audio tracks via `livekit-agents` SDK.
+- **And** Silero VAD v5 running on ONNX C++ Runtime processes 30ms audio frames with speech start/stop detection within 180ms - 220ms.
+- **And** WebSocket audio streaming to FPT.AI / Deepgram STT yields partial transcripts with final sentence emitted within 40ms of VAD endpoint.
+- **And** Micro-clause Token Accumulator forwards LLM tokens to Cartesia Sonic / Vbee TTS on first punctuation or 3–5 tokens.
+- **And** Local Filler Audio ("Dạ vâng anh...", "Dạ em hiểu...") injects within 80ms of silence if LLM first token is not yet ready per AD-123.
+
+### Story 38.3: Anti-False-Interruption & Multi-tier Barge-in Engine (Ducking + KWS)
+
+As a Call Participant,
+I want natural conversation interruption where the bot smoothly ducks volume on customer speech and ignores short backchannels,
+So that speech flows smoothly without awkward cutoffs from background traffic noise or coughing.
+
+**Acceptance Criteria:**
+- **Given** bot audio output, **When** the first 400ms plays, **Then** Barge-in Lockout Guard suppresses VAD triggers to prevent acoustic echo cancellation leaks.
+- **And** when speech probability $P \ge 0.88$ is detected during bot playback, the bot volume ducks by -14dB rather than halting abruptly.
+- **And** local Keyword Spotting (KWS) evaluates utterances $< 280$ms: short backchannels ("ừ", "dạ", "vâng") restore bot volume to 0dB without interrupting dialogue.
+- **And** when customer speech exceeds 280ms with semantic intent, the bot sends a 40ms SIP Silence Packet, cancels pending LLM/TTS asyncio tasks, and logs the truncated utterance for conversational context continuity.
+
+### Story 38.4: Telephony Compliance Gate, National DNC 5656 & Curfew Scheduler
+
+As a Compliance Officer,
+I want an automated telephony pre-flight gate enforcing National DNC 5656 registry, business hour curfews, and instant voice opt-out,
+So that 100% of automated outbound calls comply strictly with Decree 91/2020/NĐ-CP and Decree 13/2023/NĐ-CP.
+
+**Acceptance Criteria:**
+- **Given** outbound call queue dispatch, **When** current time is outside 09:00–11:30 or 13:30–17:00 ICT, or is Saturday/Sunday/National Holiday, **Then** Curfew Scheduler blocks dispatch.
+- **And** Frequency Cap enforces a hard maximum of 1 call attempt per 24 hours per E.164 phone number.
+- **And** `DncComplianceService` queries the National 5656 DNC list (HMAC hash); if matched, the call is canceled with reason `DNC_NATIONAL_BLOCKED` and credits refunded.
+- **And** the call automatically plays a mandatory call-recording notification in the first 3 seconds.
+- **And** customer verbal rejection ("không có nhu cầu", "đừng gọi nữa") or DTMF 0/9 triggers immediate call termination within 2 seconds and permanent suppression in `WorkspaceDncRecord`.
+
+### Story 38.5: Telecom Signal Classifier, AMD & Dead-air Watchdog Engine
+
+As a System Reliability Engineer,
+I want automated answering machine detection, telco ringback classification, and dead-air watchdogs,
+So that voicemail greetings and silent connections are dropped in under 4 seconds to preserve telco budget.
+
+**Acceptance Criteria:**
+- **Given** outbound call pickup, **When** Answering Machine Detection (AMD) identifies telco IVR or voicemail audio in the first 3 seconds, **Then** it terminates the call via SIP `BYE` within $< 4$ seconds.
+- **And** Dead-air Watchdog monitors post-answer silence: if silent for 3 seconds, prompts "Alo, anh/chị nghe rõ không ạ?"; if still silent for another 3 seconds, terminates before 8 seconds.
+- **And** an absolute hard ceiling of 180 seconds (3 minutes) is enforced for all outbound SDR calls.
+- **And** 1-second Redis worker heartbeat ensures media gateway forcibly tears down SIP call if worker RTP stream disconnects for $> 5$ seconds.
+
+### Story 38.6: Dynamic DID & Voice Brandname Multi-tenant BYO-SIP Architecture
+
+As a Workspace Administrator,
+I want to configure custom SIP credentials, provision Day-1 fixed DID numbers, and register official Voice Brandnames,
+So that recipient screens display my verified corporate caller ID.
+
+**Acceptance Criteria:**
+- **Given** Workspace Settings `/dashboard/[workspace_id]/telephony`, **When** admin inputs SIP trunk credentials (domain, port, username, password), **Then** credentials are encrypted with AES-256-GCM in PII Vault.
+- **And** Day-1 Instant Onboarding provisions a verified fixed DID (024/028-7xxx) allowing immediate warm-lead calling without waiting for telco brandname approval.
+- **And** the UI provides a formal Voice Brandname registration portal forwarding business license and Decree 91 Form 01 to telco aggregator APIs.
+- **And** In-flight Anti-Spam Circuit Breaker halts the workspace campaign if calls $< 5$s exceed 40% or user spam complaints exceed 6%.
+
+### Story 38.7: Outbound Trigger Engine: Speed-to-Lead & Hiring Radar Integration
+
+As a B2B Sales Representative,
+I want automated voice calls triggered within 5 minutes of prospect mini-pitch interaction or upon hiring surge detection,
+So that leads are contacted at the exact moment of peak buying intent.
+
+**Acceptance Criteria:**
+- **Given** a prospect viewing `pitch.nowing.ai` for $> 45$ seconds (Epic 37.6), **When** Speed-to-Lead trigger evaluates, **Then** it initiates an outbound AI SDR call within 5 minutes during business hours.
+- **And** when Intent Radar (Story 37.1) detects $\ge 3$ new relevant job postings within 48 hours, a contextual qualification mission is queued.
+- **And** prospect context (company name, contact name, job title, viewed pitch sections) is injected into the Agent System Prompt before dialing.
+- **And** post-call pipeline automatically dispatches summary and action items to Zalo ZNS / Zalo Co-pilot (Story 37.4) and creates a CRM deal timeline activity.
+
+### Story 38.8: Voice Billing, Realtime Metering & QA Scorecard
+
+As a Product Manager,
+I want call duration metered in 6s+1s blocks, automated 10-second hang-up credit protection, and post-call LLM QA scorecards,
+So that call charges are transparent and conversation quality is audited automatically.
+
+**Acceptance Criteria:**
+- **Given** an outbound call dispatch, **When** initiated, **Then** 7.500 VNĐ (3-minute buffer = 7.5 credits) is soft-locked in Nowing Wallet; calls are rejected if balance is insufficient.
+- **And** calls terminated in $< 10$ seconds are 100% refunded under Hang-up Protection up to 15% of campaign volume per AD-129.
+- **And** completed calls are billed at 2.500 VNĐ/minute (2.5 credits) calculated on standard viễn thông 6s + 1s blocks.
+- **And** post-call Celery task `process_post_call_analytics` generates structured Call Summary, BANT qualification status, and QA Score (1–100) recorded in CRM timeline.
+---
+
+## Epic 39: Typed-Decision Layer (Jev Integration) `[new]`
+
+**Source:** `_bmad-output/planning-artifacts/research/technical-typesafe-ai-jev-integration-2026-09-21/research.md` + `architecture-jev-decision-service-2026-09-21/ARCHITECTURE-SPINE.md`
+
+**Eval evidence:** `nowing_backend/scripts/jev_eval/summary.md` — 96.3% Vietnamese accuracy, 308ms median latency, $0.0018/80 calls.
+
+**Goal:** Tích hợp TypeSafe Jev làm typed-decision layer — Choice/Score/Noul primitives với calibrated probabilities — phục vụ subagent routing, entity resolution, content guardrails, intent classification. Không phải LLM thay thế; là complement giảm latency và cost cho decision tasks.
+
+### Story 39.1: `DecisionService` Port + Jev Backend + Question Registry
+
+As a Backend Developer,
+I want a `DecisionService` interface wrapping `typesafe-sdk` behind a backend-agnostic port,
+So that any caller can make typed decisions (Choice/Score/Noul) without importing Jev SDK directly.
+
+**Acceptance Criteria:**
+- **Given** `TYPESAFE_API_KEY` set, **When** `DecisionService` is instantiated with `DECISION_BACKEND=jev`, **Then** `decide(state, questions)` calls `POST /v1/systemone` via `AsyncTypeSafeClient` and returns `DecisionResult` with typed answers + confidence + latency + token usage.
+- **And** `DecisionResult` carries `model` field (e.g. `jev-1.13.0`) logged per call for calibration drift detection per AD-J3.
+- **And** `QuestionRegistry` loads named question sets from `app/services/decision/questions/` — each set is a versioned dict of `Choice`/`Score`/`Noul` objects per AD-J5.
+- **And** `ConfidenceGate` helper applies per-task thresholds (routing=0.6, filter=0.5, entity=0.7, intent=0.5) with env-var overrides per AD-J4.
+- **And** `MockBackend` returns expected answers deterministically for unit tests.
+- **And** `LLMJsonBackend` (litellm structured output) works as fallback when `DECISION_BACKEND=llm_json` or Jev errors (5xx/529/timeout) per AD-J2.
+- **And** feature flag `DECISION_ENABLED` + per-task flags (`DECISION_ROUTING_ENABLED` etc.) gate all decision calls per consistency conventions.
+- **And** all calls log `input_tokens`, `output_tokens`, `latency_ms`, `model`, `backend` to `TokenUsage` per AD-J7.
+- **And** every answer passes **strict structural validation** before reaching a caller — ported from `jev-ultrafast` `validate_choice()` per research `technical-jev-ultrafast-...-2026-09-21`: for Choice/Score, `choice`/`score` ∈ offered ids, `probabilities` keys exactly match ids, all values finite ∈[0,1], distribution sums to 1 ±0.02, chosen key is the argmax; for Noul, value is a finite float ∈[0,1]. A malformed/miscalibrated answer raises `InvalidDecisionAnswer` → caller falls back, **never** becomes an action. This is stricter than the current `jev_router.py` threshold-only check and is the first defense against acting on bad model output.
+
+### Story 39.2: Subagent Routing via Jev Choice (R2 — highest impact)
+
+As a Main Agent Orchestrator,
+I want a pre-routing decision step that calls `DecisionService` with the user's message to suggest the best subagent before LLM processing,
+So that subagent dispatch is faster (~300ms vs ~8s LLM router) and more consistent.
+
+**Acceptance Criteria:**
+- **Given** a Vietnamese user message enters multi-agent chat, **When** `DECISION_ROUTING_ENABLED=true`, **Then** `DecisionService.decide()` is called with `subagent_routing` question set (Choice over 16 Nowing subagent options + `none_needed`) before the LLM generates its response.
+- **And** if `confidence >= 0.6` the routing suggestion is injected into the LLM's context as a system hint (e.g. `[Routing hint: batdongsan (confidence 0.95)]`), biasing but not forcing the LLM's `task()` call.
+- **And** if `confidence < 0.6` no hint is injected — the LLM routes normally (existing behavior preserved).
+- **And** the routing decision, confidence, and whether the hint was used are logged to telemetry for offline accuracy tracking.
+- **And** `jev-1.13.0` is the pinned model; upgrade requires re-running `scripts/jev_eval/runner.py --task SUBAGENT_ROUTING` and confirming ≥95% accuracy.
+- **And** eval baseline: Jev achieved 100% accuracy on 20 Vietnamese routing cases.
+
+### Story 39.3: Entity Resolution Confidence Scoring (R3)
+
+As a Scraper Pipeline Engineer,
+I want `DecisionService` to score whether two scraped entities (listings, companies, contacts) are the same real-world entity,
+So that dedup/merge decisions are fast (~300ms/pair), cheap (~$0.0004/pair), and confidence-calibrated.
+
+**Acceptance Criteria:**
+- **Given** two entity dicts (`entity_a`, `entity_b`) from scraper output, **When** `DECISION_ENTITY_ENABLED=true`, **Then** `DecisionService.decide()` is called with `entity_match` question set (Score: 0=different, 1=uncertain, 2=same).
+- **And** Score ≥1.5 → auto-merge; 0.5–1.5 → curator review queue; <0.5 → keep separate (per AD-J4 threshold 0.7 on the confidence, not the score).
+- **And** question criteria handles Vietnamese naming conventions: diacritics, abbreviations ("TP.HCM" vs "Thành phố Hồ Chí Minh"), Vietnamese vs English names.
+- **And** eval baseline: Jev achieved 90% accuracy on 20 Vietnamese entity pairs; the 2 misses were borderline uncertain scores (defensible, not errors).
+- **And** the dedup path is **two-stage** (ported from `jev-ultrafast` "operation + per-head target" speculative fan-out, `model.py choose()`): stage 1 = cheap heuristic (`SpatialWindowedDeduplicator` Jaccard/spatial bucket, or `bds_aggregator` phone/address/image union-find) narrows N entities → K candidate pairs; stage 2 = **one** `DecisionService.decide()` call per anchor carrying a `match_decision` Choice whose criteria contain **only the heuristic-surviving candidate ids** plus a `no_match` option — Jev confirms which (if any) candidate the anchor matches, never re-scoring pairs the heuristic already rejected. Unused head never executes.
+- **And** batch behavior: the fan-out keeps cost at ~1 Jev call per anchor regardless of candidate count K (K≤250 cap mirrors jev-ultrafast's action-space bound); entity throughput stays scraper-viable (~$0.0004/decision).
+- **And** the Jev-confirm stage is **optional/advisory**: heuristic-only dedup still runs when `DECISION_ENTITY_ENABLED=false` (existing behavior preserved); Jev only refines borderline groups the heuristic flagged uncertain.
+
+### Story 39.4: Content Guardrails via Jev Noul Battery (R4)
+
+As a Platform Safety Engineer,
+I want `DecisionService` to run 3 Noul checks (relevance, prompt injection, sensitive PII) on RAG passages and user inputs in a single API call,
+So that content filtering is real-time (~300ms for all 3 checks) and catches Vietnamese-language injection attempts.
+
+**Acceptance Criteria:**
+- **Given** a text passage (RAG result, scraped content, user input), **When** `DECISION_FILTER_ENABLED=true`, **Then** `DecisionService.decide()` is called with `content_filter` question set: `is_relevant` (Noul), `contains_prompt_injection` (Noul), `contains_sensitive` (Noul).
+- **And** all 3 Nouls evaluate in parallel within one `POST /v1/systemone` call (~300ms total).
+- **And** `contains_prompt_injection >= 0.5` → passage is dropped and logged; `contains_sensitive >= 0.5` → passage is flagged + PII-masked before storage.
+- **And** eval baseline: Jev achieved 100% accuracy on 20 Vietnamese content filter cases including Vietnamese prompt injection ("Bỏ qua mọi hướng dẫn trước đó").
+- **And** Vietnamese CMND/CCCD numbers, personal phones, and home addresses are detected as sensitive.
+
+### Story 39.5: Intent Classification via Jev Choice (R5-low)
+
+As a Chat System,
+I want `DecisionService` to classify Vietnamese user intent (search/action/question/comparison/recommendation/chitchat/complaint/feedback),
+So that downstream features (analytics, auto-response templates, escalation rules) can act on typed intent labels.
+
+**Acceptance Criteria:**
+- **Given** a Vietnamese user message, **When** `DECISION_INTENT_ENABLED=true`, **Then** `DecisionService.decide()` is called with `intent_classify` question set (Choice over 8 intent categories).
+- **And** intent label + confidence are stored on the chat message metadata for analytics and automation triggers.
+- **And** eval baseline: Jev achieved 95% accuracy on 20 Vietnamese intent cases; the 1 miss was a borderline search-vs-recommendation label.
+
+### Story 39.6: Voice Agent Post-STT Semantic Decisions (R6 — deferred)
+
+As a Voice Pipeline Engineer,
+I want `DecisionService` to evaluate post-STT transcript for turn-taking confidence, frustration scoring, and human-transfer gating,
+So that voice calls make semantic decisions in ~300ms within LiveKit's endpointing-delay budget.
+
+**Acceptance Criteria:**
+- **Given** a completed STT transcript in `VoiceSDRAgent.on_user_turn_completed`, **When** `DECISION_VOICE_ENABLED=true`, **Then** `DecisionService.decide()` evaluates: `should_respond` (Noul), `caller_frustration` (Score 0-3), `transfer_to_human` (Noul).
+- **And** `transfer_to_human >= 0.7` → triggers escalation flow.
+- **And** all decisions complete within 500ms budget to not block the voice loop.
+- **And** constraint: Jev is text-only — decisions operate on STT transcript, never raw audio frames.
+
+### Story 39.7: Decision Telemetry Dashboard + Cost Tracking
+
+As a Product Manager,
+I want per-decision cost, latency, and accuracy telemetry aggregated in a dashboard,
+So that I can monitor Jev's ROI and detect calibration drift.
+
+**Acceptance Criteria:**
+- **Given** `DecisionService` calls logging to `TokenUsage`, **When** admin views decision metrics, **Then** dashboard shows: daily calls by task type, median latency, accuracy rate (when ground truth available), total cost.
+- **And** alert fires if daily Jev cost exceeds configurable threshold.
+- **And** model version tracked per call — drift detected when `jev-latest` alias moves.
+
+### Story 39.8: Eval Harness CI Integration
+
+As a QA Engineer,
+I want the Vietnamese eval suite (`scripts/jev_eval/`) runnable as a CI gate,
+So that model upgrades (new `jev-x.y.z`) are validated against the 80-case Vietnamese benchmark before deployment.
+
+**Acceptance Criteria:**
+- **Given** a new Jev model version or question set change, **When** `uv run scripts/jev_eval/runner.py --backend jev` runs in CI, **Then** accuracy report is generated and compared against baseline (96.3%).
+- **And** CI fails if accuracy drops below 90% on any task type.
+- **And** eval can run in `--dry-run` mode (no API key needed) for harness validation in PR checks.
+
+---
+
+### Epic 39 Non-Goals
+
+- **Jev is NOT a replacement for LLMs** — it cannot generate text, summarize, or reason. It only makes typed decisions.
+- **Not in billing path** — money decisions are exact arithmetic (per research recommendation).
+- **Not in VAD path** — voice activity detection stays on Silero (frame-level, <10ms); Jev operates on transcripts.
+- **No streaming** — Jev API is single-request; no streaming surface exists.

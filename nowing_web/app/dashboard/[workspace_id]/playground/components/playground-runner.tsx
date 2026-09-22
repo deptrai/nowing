@@ -2,6 +2,8 @@
 
 import { Check, Coins, Copy, Hash, Info, Timer } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,8 +13,8 @@ import { useRunStream } from "@/hooks/use-run-stream";
 import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { scrapersApiService } from "@/lib/apis/scrapers-api.service";
 import { AppError } from "@/lib/error";
+import { translateToast } from "@/lib/i18n-toast";
 import { findVerb } from "@/lib/playground/catalog";
-import { usePathname } from "next/navigation";
 import { fieldErrorsFromError } from "@/lib/playground/field-errors";
 import { formatCost, formatDuration, formatPricing } from "@/lib/playground/format";
 import { buildPayload, initialFormValues, parseSchemaFields } from "@/lib/playground/json-schema";
@@ -72,16 +74,16 @@ function getRunErrorMessage(error: unknown): string {
 	const status = error instanceof AppError ? error.status : undefined;
 
 	if (status === 402) {
-		return "Insufficient credits. Add credits to run this API.";
+		return translateToast("playground.error_insufficient_credits");
 	}
 
 	if (status === 422) {
-		return "Invalid input. Check the fields above and try again.";
+		return translateToast("playground.error_invalid_data");
 	}
 
 	return error instanceof Error && error.message
 		? error.message
-		: "Something went wrong running this API.";
+		: translateToast("playground.error_generic");
 }
 
 function EndpointCopyButton({ endpoint }: { endpoint: string }) {
@@ -121,6 +123,7 @@ function usePlaygroundBase(workspaceId: number) {
 }
 
 export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunnerProps) {
+	const t = useTranslations("playground");
 	const catalogVerb = findVerb(platform, verb);
 	const {
 		data: capabilities,
@@ -212,7 +215,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 			const key = `${run.runId ?? "run"}:success`;
 			if (notifiedRunRef.current === key) return;
 			notifiedRunRef.current = key;
-			toast.success("API run completed.");
+			toast.success(t("api_run_completed"));
 			return;
 		}
 
@@ -270,9 +273,9 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 											href={capability.docs_url}
 											className="font-medium text-foreground underline-offset-4 hover:underline"
 										>
-											Read docs
+											{t("pg_read_docs")}
 										</Link>{" "}
-										for more info.
+										{t("for_more_info")}
 									</>
 								) : null}
 							</p>
@@ -284,7 +287,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 					<div className="space-y-2">
 						<EndpointCopyButton endpoint={endpoint} />
 						<div className="text-xs text-muted-foreground">
-							<span>Pricing: </span>
+							<span>{t("pricing")} </span>
 							<span className="font-medium tabular-nums text-foreground">
 								{formatPricing(capability.pricing)}
 							</span>
@@ -303,7 +306,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 
 					<div className="flex items-center gap-2">
 						<Button type="button" onClick={handleRun} disabled={isRunning} className="relative">
-							<span className={isRunning ? "opacity-0" : ""}>Run</span>
+							<span className={isRunning ? "opacity-0" : ""}>{t("run")}</span>
 							{isRunning && <Spinner size="sm" className="absolute" />}
 						</Button>
 						{isRunning && (
@@ -315,33 +318,37 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 				</div>
 
 				<div className="space-y-3" data-testid="playground-output">
-					<h2 className="text-sm font-medium text-muted-foreground">Output</h2>
+					<h2 className="text-sm font-medium text-muted-foreground">{t("output")}</h2>
 					{isRunning ? (
 						<RunProgressPanel latest={run.latest} events={run.events} elapsedMs={run.elapsedMs} />
 					) : run.status === "cancelled" ? (
 						<div className="flex h-64 items-center justify-center rounded-md border border-border/60 px-4 text-center text-sm text-muted-foreground">
-							Run cancelled.
+							{t("pg_run_cancelled")}
 						</div>
 					) : run.status === "success" && output ? (
 						<>
 							<div className="flex flex-wrap gap-2">
 								<RunStat
 									icon={Hash}
-									label="Items"
+									label={t("items")}
 									value={String(run.detail?.item_count ?? output.items.length)}
 								/>
 								<RunStat
 									icon={Timer}
-									label="Time"
+									label={t("time")}
 									value={formatDuration(run.detail?.duration_ms ?? run.elapsedMs)}
 								/>
-								<RunStat icon={Coins} label="Cost" value={formatCost(run.detail?.cost_micros)} />
+								<RunStat
+									icon={Coins}
+									label={t("cost")}
+									value={formatCost(run.detail?.cost_micros)}
+								/>
 							</div>
 							<OutputViewer data={output} filenameBase={`${platform}-${verb}`} />
 						</>
 					) : (
 						<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 px-4 text-center text-sm text-muted-foreground">
-							Run the API to see output here.
+							{t("run_to_see_output")}
 						</div>
 					)}
 				</div>

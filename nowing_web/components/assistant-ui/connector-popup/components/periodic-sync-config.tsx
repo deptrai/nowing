@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,14 +30,13 @@ export const PeriodicSyncConfig: FC<PeriodicSyncConfigProps> = ({
 	disabled = false,
 	disabledMessage,
 }) => {
+	const t = useTranslations("assistant");
 	return (
 		<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
-					<h3 className="font-medium text-sm sm:text-base">Enable Periodic Sync</h3>
-					<p className="text-xs sm:text-sm text-muted-foreground">
-						Automatically re-index at regular intervals
-					</p>
+					<h3 className="font-medium text-sm sm:text-base">{t("enable_periodic_sync")}</h3>
+					<p className="text-xs sm:text-sm text-muted-foreground">{t("periodic_sync_desc")}</p>
 				</div>
 				<Switch checked={enabled} onCheckedChange={onEnabledChange} disabled={disabled} />
 			</div>
@@ -53,36 +53,36 @@ export const PeriodicSyncConfig: FC<PeriodicSyncConfigProps> = ({
 				<div className="mt-4 pt-4 border-t border-slate-400/20 space-y-3">
 					<div className="space-y-2">
 						<Label htmlFor="frequency" className="text-xs sm:text-sm">
-							Sync Frequency
+							{t("sync_frequency")}
 						</Label>
 						<Select value={frequencyMinutes} onValueChange={onFrequencyChange}>
 							<SelectTrigger
 								id="frequency"
 								className="w-full bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 text-xs sm:text-sm"
 							>
-								<SelectValue placeholder="Select frequency" />
+								<SelectValue placeholder={t("select_frequency")} />
 							</SelectTrigger>
 							<SelectContent className="z-[100]">
 								<SelectItem value="5" className="text-xs sm:text-sm">
-									Every 5 minutes
+									{t("every_5_minutes")}
 								</SelectItem>
 								<SelectItem value="15" className="text-xs sm:text-sm">
-									Every 15 minutes
+									{t("every_15_minutes")}
 								</SelectItem>
 								<SelectItem value="60" className="text-xs sm:text-sm">
-									Every hour
+									{t("every_hour")}
 								</SelectItem>
 								<SelectItem value="360" className="text-xs sm:text-sm">
-									Every 6 hours
+									{t("every_6_hours")}
 								</SelectItem>
 								<SelectItem value="720" className="text-xs sm:text-sm">
-									Every 12 hours
+									{t("every_12_hours")}
 								</SelectItem>
 								<SelectItem value="1440" className="text-xs sm:text-sm">
-									Daily
+									{t("daily")}
 								</SelectItem>
 								<SelectItem value="10080" className="text-xs sm:text-sm">
-									Weekly
+									{t("weekly")}
 								</SelectItem>
 							</SelectContent>
 						</Select>

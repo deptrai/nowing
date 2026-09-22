@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelLeft, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -45,6 +46,7 @@ interface MobileSidebarProps {
 }
 
 export function MobileSidebarTrigger({ onClick }: { onClick: () => void }) {
+	const t = useTranslations("layout");
 	return (
 		<Button
 			variant="ghost"
@@ -53,7 +55,7 @@ export function MobileSidebarTrigger({ onClick }: { onClick: () => void }) {
 			className="md:hidden h-8 w-8 shrink-0 text-muted-foreground hover:bg-transparent hover:text-muted-foreground"
 		>
 			<PanelLeft className="h-4 w-4" aria-hidden="true" />
-			<span className="sr-only">Open menu</span>
+			<span className="sr-only">{t("open_menu")}</span>
 		</Button>
 	);
 }
@@ -92,6 +94,7 @@ export function MobileSidebar({
 	setTheme,
 	isLoadingChats = false,
 }: MobileSidebarProps) {
+	const t = useTranslations("layout");
 	const handleWorkspaceSelect = (id: number) => {
 		onWorkspaceSelect(id);
 	};
@@ -112,7 +115,7 @@ export function MobileSidebar({
 				side="left"
 				className="w-[340px] p-0 flex flex-row gap-0 bg-panel [&>button]:hidden"
 			>
-				<SheetTitle className="sr-only">Navigation</SheetTitle>
+				<SheetTitle className="sr-only">{t("navigation")}</SheetTitle>
 
 				{/* Vertical Workspaces Rail - left side */}
 				<div className="flex h-full w-14 shrink-0 flex-col items-center border-r bg-rail">
@@ -137,7 +140,7 @@ export function MobileSidebar({
 								className="h-10 w-10 shrink-0 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
 							>
 								<Plus className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-								<span className="sr-only">Add workspace</span>
+								<span className="sr-only">{t("add_workspace")}</span>
 							</Button>
 						</div>
 					</ScrollArea>

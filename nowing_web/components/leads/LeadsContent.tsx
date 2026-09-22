@@ -12,6 +12,7 @@ import {
 	Users,
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -56,6 +57,7 @@ const buildSearchQuery = (presets: FilterPresets): string => {
 };
 
 export const LeadsContent: React.FC = () => {
+	const t = useTranslations("leads");
 	const params = useParams();
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -225,15 +227,12 @@ export const LeadsContent: React.FC = () => {
 						</div>
 						<div>
 							<h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
-								<span>Lead Intelligence Panel</span>
+								<span>{t("panel_title")}</span>
 								<span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-									Story 21.15
+									{t("story_tag")}
 								</span>
 							</h1>
-							<p className="text-xs text-zinc-400">
-								SDR Lead Workbench, Campaign Builder 3-bước, Matrix Bảng tính & Tích hợp 1-Click
-								Reverse-ICP
-							</p>
+							<p className="text-xs text-zinc-400">{t("panel_desc")}</p>
 						</div>
 					</div>
 				</div>
@@ -251,7 +250,7 @@ export const LeadsContent: React.FC = () => {
 							}`}
 						>
 							<ListChecks className="w-3.5 h-3.5" />
-							<span>Lead Workbench</span>
+							<span>{t("tab_workbench")}</span>
 						</button>
 
 						<button
@@ -264,7 +263,7 @@ export const LeadsContent: React.FC = () => {
 							}`}
 						>
 							<PlusCircle className="w-3.5 h-3.5" />
-							<span>Campaign Builder</span>
+							<span>{t("tab_campaign")}</span>
 						</button>
 
 						<button
@@ -300,7 +299,7 @@ export const LeadsContent: React.FC = () => {
 						className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-sm shadow-emerald-500/20"
 					>
 						<Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-						<span>Reverse-ICP</span>
+						<span>{t("tab_icp")}</span>
 					</button>
 
 					<button
@@ -385,7 +384,7 @@ export const LeadsContent: React.FC = () => {
 								type="text"
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								placeholder="Tìm theo tên công ty, số điện thoại, ngành nghề, vị trí..."
+								placeholder={t("search_placeholder")}
 								className="w-full pl-9 pr-4 py-2 text-xs rounded-lg bg-zinc-950/70 border border-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
 							/>
 						</div>

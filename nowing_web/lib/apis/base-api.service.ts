@@ -1,4 +1,5 @@
 import type { ZodType } from "zod";
+import { translateToast } from "@/lib/i18n-toast";
 import { getDesktopAccessToken } from "@/lib/auth-fetch";
 import { buildBackendUrl } from "@/lib/env-config";
 import { getClientPlatform } from "../agent-filesystem";
@@ -151,7 +152,7 @@ class BaseApiService {
 				// Desktop refresh token is gone/revoked — send the user to /desktop/login
 				// (same treatment as a server 401 below) instead of erroring in place.
 				handleUnauthorized();
-				throw new AuthenticationError("You are not authenticated. Please login again.");
+				throw new AuthenticationError(translateToast("errors.not_authenticated"));
 			}
 
 			const fullUrl = buildBackendUrl(url);
@@ -240,7 +241,7 @@ class BaseApiService {
 					}
 					handleUnauthorized();
 					throw new AuthenticationError(
-						errorMessage || "You are not authenticated. Please login again.",
+						errorMessage || translateToast("errors.not_authenticated"),
 						response.status,
 						response.statusText
 					);
@@ -342,7 +343,7 @@ class BaseApiService {
 				requestError = new AbortedError();
 			} else if (error instanceof TypeError && !(error instanceof AppError)) {
 				requestError = new NetworkError(
-					"Unable to connect to the server. Check your internet connection and try again."
+					translateToast("errors.unable_to_connect")
 				);
 			}
 

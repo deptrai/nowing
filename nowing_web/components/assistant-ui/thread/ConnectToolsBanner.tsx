@@ -3,6 +3,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { Unplug, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { type FC, useEffect, useState } from "react";
 import { connectorDialogOpenAtom } from "@/atoms/connector-dialog/connector-dialog.atoms";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
@@ -15,6 +16,8 @@ export const ConnectToolsBanner: FC<{
 	isThreadEmpty: boolean;
 	onVisibleChange?: (visible: boolean) => void;
 }> = ({ isThreadEmpty, onVisibleChange }) => {
+	const t = useTranslations("chat");
+	const tCommon = useTranslations("common");
 	const { data: connectors } = useAtomValue(connectorsAtom);
 	const setConnectorDialogOpen = useSetAtom(connectorDialogOpenAtom);
 	const [dismissed, setDismissed] = useState(() => {
@@ -60,10 +63,10 @@ export const ConnectToolsBanner: FC<{
 						size="sm"
 						className="h-7 min-w-0 cursor-pointer justify-start gap-2 rounded-md px-0 text-[13px] font-normal text-muted-foreground select-none hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 						onClick={() => setConnectorDialogOpen(true)}
-						title="Connect your tools"
+						title={t("connect_tools")}
 					>
 						<Unplug className="size-4 shrink-0" aria-hidden="true" />
-						<span className="truncate">Connect your tools</span>
+						<span className="truncate">{t("connect_tools")}</span>
 					</Button>
 					<div className="min-w-0 flex-1" />
 					<AvatarGroup className="shrink-0" aria-hidden="true">
@@ -86,8 +89,8 @@ export const ConnectToolsBanner: FC<{
 						variant="ghost"
 						size="icon"
 						className="size-7 shrink-0 cursor-pointer rounded-md text-muted-foreground hover:bg-transparent hover:text-foreground"
-						aria-label="Dismiss"
-						title="Dismiss"
+						aria-label={tCommon("dismiss")}
+						title={tCommon("dismiss")}
 					>
 						<X className="size-3.5" aria-hidden="true" />
 					</Button>

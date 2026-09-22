@@ -1,4 +1,5 @@
 import { atomWithMutation } from "jotai-tanstack-query";
+import { translateToast } from "@/lib/i18n-toast";
 import { toast } from "sonner";
 import type {
 	PublicChatSnapshotCreateRequest,
@@ -22,18 +23,18 @@ export const createPublicChatSnapshotMutationAtom = atomWithMutation(() => ({
 		const publicUrl = `${window.location.origin}/public/${response.share_token}`;
 		navigator.clipboard.writeText(publicUrl);
 		if (response.is_new) {
-			toast.success("Public link created and copied to clipboard", {
-				description: "Anyone with this link can view a snapshot of this chat",
+			toast.success(translateToast("toast.public_link_created_copied"), {
+				description: translateToast("toast.public_link_created_desc"),
 			});
 		} else {
-			toast.success("Public link copied to clipboard", {
-				description: "This snapshot already exists",
+			toast.success(translateToast("toast.public_link_copied"), {
+				description: translateToast("toast.public_link_copied_desc"),
 			});
 		}
 	},
 	onError: (error: Error) => {
 		console.error("Failed to create snapshot:", error);
-		toast.error("Failed to create public link");
+		toast.error(translateToast("toast.public_link_create_failed"));
 	},
 }));
 
@@ -46,10 +47,10 @@ export const deletePublicChatSnapshotMutationAtom = atomWithMutation(() => ({
 		queryClient.invalidateQueries({
 			queryKey: cacheKeys.publicChatSnapshots.all,
 		});
-		toast.success("Public link deleted");
+		toast.success(translateToast("toast.public_link_deleted"));
 	},
 	onError: (error: Error) => {
 		console.error("Failed to delete public chat:", error);
-		toast.error("Failed to delete public link");
+		toast.error(translateToast("toast.public_link_delete_failed"));
 	},
 }));

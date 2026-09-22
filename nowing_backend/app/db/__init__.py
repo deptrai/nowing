@@ -242,11 +242,13 @@ from app.models.workspaces import (
     WorkspaceMcpToolSetting,
     WorkspaceTable,
 )
+from app.models.browser_operator_audit import BrowserOperatorAuditEvent
 from app.notifications.persistence import Notification
 from app.podcasts.persistence import Podcast, PodcastStatus
 from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone
 
 __all__ = [
+    "BrowserOperatorAuditEvent",
     "DATABASE_URL",
     # enums
     "DEFAULT_ROLE_PERMISSIONS",

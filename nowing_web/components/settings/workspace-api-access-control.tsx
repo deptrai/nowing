@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { updateWorkspaceApiAccessMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
@@ -22,6 +23,7 @@ export function WorkspaceApiAccessControl({
 	workspaceId,
 	className,
 }: WorkspaceApiAccessControlProps) {
+	const t = useTranslations("settings");
 	const {
 		data: workspace,
 		isLoading,
@@ -49,7 +51,7 @@ export function WorkspaceApiAccessControl({
 				await refetch();
 			} catch (error) {
 				console.error("Error updating API access:", error);
-				toast.error(error instanceof Error ? error.message : "Failed to update API access");
+				toast.error(error instanceof Error ? error.message : t("api_access_update_failed"));
 			} finally {
 				setSavingApiAccess(false);
 			}
@@ -83,11 +85,11 @@ export function WorkspaceApiAccessControl({
 				)}
 			>
 				<div className="space-y-1">
-					<Label>API key access</Label>
-					<p className="text-xs text-destructive">Failed to load workspace API access.</p>
+					<Label>{t("api_key_access")}</Label>
+					<p className="text-xs text-destructive">{t("api_access_load_failed")}</p>
 				</div>
 				<Button variant="outline" size="sm" onClick={() => refetch()}>
-					Retry
+					{t("retry")}
 				</Button>
 			</div>
 		);
@@ -101,8 +103,8 @@ export function WorkspaceApiAccessControl({
 			)}
 		>
 			<div className="space-y-1">
-				<Label htmlFor="api-access-enabled">API key access</Label>
-				<p className="text-xs text-muted-foreground">Allow API keys to access this workspace.</p>
+				<Label htmlFor="api-access-enabled">{t("api_key_access")}</Label>
+				<p className="text-xs text-muted-foreground">{t("api_access_desc")}</p>
 			</div>
 			<Switch
 				id="api-access-enabled"

@@ -3,6 +3,7 @@
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import { useAnnouncements } from "@/hooks/use-announcements";
  * - Any dismissal marks it as read so it never shows again.
  */
 export function AnnouncementSpotlight() {
+	const t = useTranslations("announcements");
 	const { announcements, markRead } = useAnnouncements();
 	const [ready, setReady] = useState(false);
 
@@ -63,7 +65,7 @@ export function AnnouncementSpotlight() {
 					<div className="relative aspect-video w-full border-b bg-muted">
 						<Image
 							src={current.image.src}
-							alt={current.image.alt}
+							alt={t(current.image.alt)}
 							fill
 							sizes="(max-width: 768px) 95vw, 448px"
 							className="object-cover"
@@ -72,9 +74,9 @@ export function AnnouncementSpotlight() {
 					</div>
 				)}
 				<div className="flex flex-col gap-3 p-6">
-					<DialogTitle className="text-xl">{current.title}</DialogTitle>
+					<DialogTitle className="text-xl">{t(current.title)}</DialogTitle>
 					<DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-						{current.description}
+						{t(current.description)}
 					</DialogDescription>
 					<DialogFooter className="mt-2">
 						{current.link && (
@@ -83,12 +85,12 @@ export function AnnouncementSpotlight() {
 									href={current.link.url}
 									target={current.link.url.startsWith("http") ? "_blank" : undefined}
 								>
-									{current.link.label}
+									{t(current.link.label)}
 									<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
 								</Link>
 							</Button>
 						)}
-						<Button onClick={handleAcknowledge}>Got it</Button>
+						<Button onClick={handleAcknowledge}>{t("got_it")}</Button>
 					</DialogFooter>
 				</div>
 			</DialogContent>

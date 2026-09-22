@@ -13,6 +13,7 @@ from app.db import (
 
 from ._helpers import _ALLOWED_PROVIDERS, _clamp_window
 from .costs import CostTelemetryMixin
+from .decisions import DecisionTelemetryMixin
 from .health import ProxyHealthMixin
 from .margin import MarginTelemetryMixin
 from .queues import QueueTelemetryMixin
@@ -21,7 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 class AdminTelemetryService(
-    CostTelemetryMixin, MarginTelemetryMixin, ProxyHealthMixin, QueueTelemetryMixin
+    CostTelemetryMixin,
+    DecisionTelemetryMixin,
+    MarginTelemetryMixin,
+    ProxyHealthMixin,
+    QueueTelemetryMixin,
 ):
     """Aggregate telemetry for platform superadmins.
 

@@ -224,7 +224,7 @@ export const YouTubeCrawlerView: FC<YouTubeCrawlerViewProps> = ({ workspaceId, o
 					className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
 					<ArrowLeft data-icon="inline-start" />
-					Back to connectors
+					{t("asst_back_to_connectors")}
 				</Button>
 
 				<div className="flex items-center gap-4 mb-6">
@@ -311,7 +311,7 @@ export const YouTubeCrawlerView: FC<YouTubeCrawlerViewProps> = ({ workspaceId, o
 												width="100%"
 												height="100%"
 												src={`https://www.youtube.com/embed/${videoId}`}
-												title="YouTube video player"
+												title={t("asst_youtube_video_player")}
 												allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
 												allowFullScreen
 											/>

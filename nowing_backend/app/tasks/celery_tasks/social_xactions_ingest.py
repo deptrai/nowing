@@ -5,8 +5,10 @@ spawns ``ingest_social_target`` for each active ``SocialMonitoredTarget`` whose
 ``scrape_interval_minutes`` has elapsed since ``last_scraped_at``.
 
 The per-target task uses ``XActionsSocialAdapterV2`` (streamable-http MCP) to
-fetch posts and pushes each one to Redis Stream ``stream:social:raw_posts`` with
-the target's ``workspace_id`` and internal ``target_id`` attached. Downstream
+fetch posts and, in legacy dual-write mode, pushes each one to Redis Stream
+``stream:social:raw_posts`` with the target's ``workspace_id`` and internal
+``target_id`` attached. When ``XACTIONS_STREAM_SINGLE_WRITER_ENABLED`` is active,
+stream publishing is bypassed (XActions sole-writer architecture AD-4). Downstream
 ``social_stream_worker`` picks up the stream, extracts entities, and UPSERTs
 into ``social_posts``.
 """
@@ -14,8 +16,10 @@ into ``social_posts``.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import redis.asyncio as aioredis
 from sqlalchemy import or_, select
@@ -26,6 +30,13 @@ from app.db import SocialMonitoredTarget, XActionsProxyBinding
 from app.proprietary.platforms.xactions.adapter_v2 import (
     TargetUnsupportedError,
     XActionsSocialAdapterV2,
+)
+from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_DEAD_LETTER
+from app.proprietary.platforms.xactions.error_map import (
+    BehaviorDecision,
+    TaskBehavior,
+    clamp_cooldown,
+    resolve_task_behavior,
 )
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
@@ -90,15 +101,78 @@ async def _pause_target(
     target: SocialMonitoredTarget,
     reason: str,
     retry_after_seconds: int | None = None,  # pragma: no mutate
+    suggested_action: str | None = None,
 ) -> None:
     """Pause a target after a transient scraping failure."""
     target.status = "paused"
-    if retry_after_seconds:
-        target.last_scraped_at = datetime.now(UTC) + timedelta(
-            seconds=retry_after_seconds
-        )
+    # decision.cooldown_seconds is already clamped in error_map; clamp again
+    # defensively for direct callers passing raw retry_after values.
+    cooldown = clamp_cooldown(retry_after_seconds)
+    target.last_scraped_at = datetime.now(UTC) + timedelta(seconds=cooldown)
     await session.commit()
-    logger.warning("Paused social target %s: %s", target.id, reason)
+    if suggested_action:
+        logger.warning(
+            "Paused social target %s: %s (suggested: %s)",
+            target.id,
+            reason,
+            suggested_action,
+        )
+    else:
+        logger.warning("Paused social target %s: %s", target.id, reason)
+
+
+def _get_task_retries(task: Any) -> int:
+    """Safely extract integer retry count from Celery task request or test mock."""
+    req = getattr(task, "request", None)
+    if req is None:
+        return 0
+    raw = getattr(req, "retries", 0)
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        return max(0, raw)
+    try:
+        return max(0, int(float(str(raw))))
+    except (TypeError, ValueError):
+        return 0
+
+
+async def _write_dlq(
+    redis_client: aioredis.Redis,
+    target: SocialMonitoredTarget,
+    exc: Exception,
+    decision: BehaviorDecision,
+    retries: int,
+) -> None:
+    """Write exhausted retry event to the dead-letter stream."""
+    try:
+        normalized_code = decision.code
+        await redis_client.xadd(
+            STREAM_SOCIAL_DEAD_LETTER,
+            {
+                "original_id": str(target.id),
+                "payload": json.dumps(
+                    {
+                        "target_id": target.id,
+                        "platform": target.platform,
+                        "workspace_id": target.workspace_id,
+                        "account_id": target.account_id,
+                        "code": normalized_code if normalized_code else None,
+                        "suggested_action": decision.suggested_action,
+                        "retries": retries,
+                    },
+                    default=str,
+                ),
+                "error": str(exc),
+                "code": normalized_code,
+                "suggested_action": str(decision.suggested_action or ""),
+                "retries": str(retries),
+                "failed_at": datetime.now(UTC).isoformat(),
+            },
+        )
+    except Exception:
+        logger.exception(
+            "Failed to move social target %s to dead-letter queue",
+            target.id,
+        )
 
 
 async def _halt_target(
@@ -194,40 +268,103 @@ async def _ingest_social_target(task, target_id: int) -> int:
                         await _mark_target_unsupported(session, target, str(exc))
                         return 0
                     except XActionsMcpError as exc:
-                        if exc.code == "XACT_4291":
-                            retry_after = exc.retry_after or 30
-                            logger.info(
-                                "Rate limited by XActions for target %s; retry in %ss",
-                                target_id,
-                                retry_after,
+                        decision = resolve_task_behavior(exc)
+                        if decision.behavior is TaskBehavior.RETRY:
+                            retries = _get_task_retries(task)
+                            retries_exhausted = (
+                                decision.max_retries is not None
+                                and retries >= decision.max_retries
                             )
-                            raise task.retry(countdown=retry_after) from exc
-                        if exc.code in (
-                            "ACCOUNT_HIBERNATION",
-                            "PROXY_EXHAUSTED",
-                            "XACT_5030",
-                        ):
-                            await _pause_target(session, target, str(exc), exc.retry_after)
+                            if retries_exhausted:
+                                if (
+                                    decision.exhausted_behavior
+                                    is TaskBehavior.HALT
+                                ):
+                                    if decision.write_dlq:
+                                        await _write_dlq(
+                                            redis_client,
+                                            target,
+                                            exc,
+                                            decision,
+                                            retries,
+                                        )
+                                    await _halt_target(
+                                        session, target, decision.reason
+                                    )
+                                    return 0
+                                if (
+                                    decision.exhausted_behavior
+                                    is TaskBehavior.PAUSE
+                                ):
+                                    await _pause_target(
+                                        session,
+                                        target,
+                                        decision.reason,
+                                        retry_after_seconds=decision.cooldown_seconds,
+                                    )
+                                    return 0
+                                if (
+                                    decision.exhausted_behavior
+                                    is TaskBehavior.RAISE
+                                ):
+                                    raise exc
+                                # No exhausted_behavior -> surface the original
+                                # error rather than triggering MaxRetriesExceededError.
+                                raise exc
+                            await session.commit()
+                            logger.info(
+                                "Retrying social target %s in %ss (attempt %d/%s): %s",
+                                target_id,
+                                decision.countdown,
+                                retries + 1,
+                                decision.max_retries
+                                if decision.max_retries is not None
+                                else "inf",
+                                decision.reason,
+                            )
+                            raise task.retry(
+                                exc=exc,
+                                countdown=decision.countdown,
+                                max_retries=decision.max_retries,
+                            ) from exc
+                        if decision.behavior is TaskBehavior.PAUSE:
+                            await _pause_target(
+                                session,
+                                target,
+                                decision.reason,
+                                retry_after_seconds=decision.cooldown_seconds,
+                                suggested_action=decision.suggested_action,
+                            )
                             return 0
-                        if exc.code == "XACT_4010":
-                            await _halt_target(session, target, str(exc))
+                        if decision.behavior is TaskBehavior.HALT:
+                            await _halt_target(session, target, decision.reason)
                             return 0
-                        if exc.code == "XACT_5000":
-                            # Signer crash — retry up to 3 times then DLQ/alert
-                            raise task.retry(countdown=60, max_retries=3) from exc
-                        raise
+                        raise exc
 
                     ingested = 0
-                    for post in posts:
-                        post.target_id = target.id
-                        post.workspace_id = target.workspace_id
-                        await adapter.ingest_raw_post_to_stream(
-                            post,
-                            redis_client=redis_client,
+                    if not config.XACTIONS_STREAM_SINGLE_WRITER_ENABLED:
+                        for post in posts:
+                            post.target_id = target.id
+                            post.workspace_id = target.workspace_id
+                            await adapter.ingest_raw_post_to_stream(
+                                post,
+                                redis_client=redis_client,
+                            )
+                            ingested += 1
+                    else:
+                        ingested = len(posts)
+                        logger.info(
+                            "Single-writer mode enabled; bypassed raw-posts stream publish for social target %s (%d posts)",
+                            target_id,
+                            ingested,
                         )
-                        ingested += 1
 
                     target.last_scraped_at = datetime.now(UTC)
+                    if target.status == "paused":
+                        # Successful resume — paused was a transient cooldown,
+                        # not a persistent state. Restore to active so the
+                        # status column reflects the real lifecycle.
+                        target.status = "active"
                     await session.commit()
 
                     logger.info(
@@ -274,13 +411,25 @@ async def _check_and_trigger_social_targets() -> int:
             )
             targets = result.scalars().all()
 
-            due_targets = [
-                target
-                for target in targets
-                if target.last_scraped_at is None
-                or target.last_scraped_at
-                <= now - timedelta(minutes=target.scrape_interval_minutes or 15)
-            ]
+            # Due semantics differ per status:
+            # - "active": periodic scrape — due once scrape_interval has elapsed
+            #   since last_scraped_at.
+            # - "paused": transient cooldown — _pause_target pushed
+            #   last_scraped_at into the future; due as soon as that timestamp
+            #   passes (do NOT also subtract scrape_interval, otherwise the
+            #   effective pause becomes cooldown + interval, doubling the wait).
+            due_targets = []
+            for target in targets:
+                if target.last_scraped_at is None:
+                    due_targets.append(target)
+                    continue
+                if target.status == "paused":
+                    if target.last_scraped_at <= now:
+                        due_targets.append(target)
+                else:  # "active" (and any other non-error status)
+                    interval = timedelta(minutes=target.scrape_interval_minutes or 15)
+                    if target.last_scraped_at <= now - interval:
+                        due_targets.append(target)
 
             if not due_targets:
                 logger.debug("No social targets due for scraping")

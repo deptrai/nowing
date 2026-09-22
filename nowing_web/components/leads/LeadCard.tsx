@@ -1,6 +1,7 @@
 "use client";
 
 import { Building2, Clock, ExternalLink, MapPin, Share2, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
 import type { Lead } from "@/contracts/types/leads.types";
@@ -15,12 +16,12 @@ export interface LeadCardProps {
 	className?: string;
 }
 
-const getFitScoreBadge = (score: number | null | undefined) => {
+const getFitScoreBadge = (score: number | null | undefined, t: (k: string) => string) => {
 	const raw = score ?? 0;
 	const val = Number.isFinite(raw) ? raw : 0;
 	if (val >= 80) {
 		return {
-			label: "High Fit",
+			label: t("fit_high"),
 			score: val,
 			colorClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 			dotClass: "bg-emerald-400",
@@ -28,14 +29,14 @@ const getFitScoreBadge = (score: number | null | undefined) => {
 	}
 	if (val >= 50) {
 		return {
-			label: "Medium Fit",
+			label: t("fit_medium"),
 			score: val,
 			colorClass: "bg-amber-500/15 text-amber-400 border-amber-500/30",
 			dotClass: "bg-amber-400",
 		};
 	}
 	return {
-		label: "Low Fit",
+		label: t("fit_low"),
 		score: val,
 		colorClass: "bg-rose-500/15 text-rose-400 border-rose-500/30",
 		dotClass: "bg-rose-400",
@@ -93,6 +94,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 	onStatusChange,
 	className,
 }) => {
+	const t = useTranslations("leads");
 	const [isPulsing, setIsPulsing] = useState(false);
 
 	useEffect(() => {
@@ -115,7 +117,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 		return () => window.removeEventListener("nowing:action-dispatched", handleActionDispatched);
 	}, []);
 
-	const fitBadge = getFitScoreBadge(lead.fit_score);
+	const fitBadge = getFitScoreBadge(lead.fit_score, t);
 	const intentBadge = getIntentBadge(lead.intent);
 	const sourceLabel = getSourceIcon(lead.source);
 
@@ -270,7 +272,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 						className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
 					>
 						<Share2 className="w-3.5 h-3.5" aria-hidden="true" />
-						<span>Xem Company Graph</span>
+						<span>{t("view_company_graph")}</span>
 					</button>
 
 					{isAllowedUrl(lead.source_url) && (

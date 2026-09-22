@@ -2,6 +2,7 @@
 
 import { formatCodeBlock, isLangSupported } from "@platejs/code-block";
 import { BracesIcon, Check, CheckIcon, CopyIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { NodeApi, type TCodeBlockElement, type TCodeSyntaxLeaf } from "platejs";
 import {
 	PlateElement,
@@ -27,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
+	const t = useTranslations("ui");
 	const { editor, element } = props;
 
 	return (
@@ -49,7 +51,7 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 							variant="ghost"
 							className="size-6 text-xs"
 							onClick={() => formatCodeBlock(editor, { element })}
-							title="Format code"
+							title={t("ui_format_code")}
 						>
 							<BracesIcon className="!size-3.5 text-muted-foreground" aria-hidden="true" />
 						</Button>
@@ -70,6 +72,7 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 }
 
 function CodeBlockCombobox() {
+	const t = useTranslations("ui");
 	const [open, setOpen] = React.useState(false);
 	const readOnly = useReadOnly();
 	const editor = useEditorRef();
@@ -79,7 +82,7 @@ function CodeBlockCombobox() {
 
 	const items = React.useMemo(
 		() =>
-			languages.filter(
+			getLanguages(t).filter(
 				(language) =>
 					!searchValue || language.label.toLowerCase().includes(searchValue.toLowerCase())
 			),
@@ -98,7 +101,7 @@ function CodeBlockCombobox() {
 					aria-expanded={open}
 					role="combobox"
 				>
-					{languages.find((language) => language.value === value)?.label ?? "Plain Text"}
+					{getLanguages(t).find((language) => language.value === value)?.label ?? "Plain Text"}
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className="w-[200px] p-0" onCloseAutoFocus={() => setSearchValue("")}>
@@ -107,9 +110,9 @@ function CodeBlockCombobox() {
 						className="h-9"
 						value={searchValue}
 						onValueChange={(value) => setSearchValue(value)}
-						placeholder="Search language..."
+						placeholder={t("ui_search_language")}
 					/>
-					<CommandEmpty>No language found.</CommandEmpty>
+					<CommandEmpty>{t("ui_no_language_found")}</CommandEmpty>
 
 					<CommandList className="h-[344px] overflow-y-auto">
 						<CommandGroup>
@@ -178,9 +181,9 @@ export function CodeSyntaxLeaf(props: PlateLeafProps<TCodeSyntaxLeaf>) {
 	return <PlateLeaf className={tokenClassName} {...props} />;
 }
 
-const languages: { label: string; value: string }[] = [
-	{ label: "Auto", value: "auto" },
-	{ label: "Plain Text", value: "plaintext" },
+const getLanguages = (t: (k: string) => string): { label: string; value: string }[] => [
+	{ label: t("ui_auto"), value: "auto" },
+	{ label: t("ui_plain_text"), value: "plaintext" },
 	{ label: "ABAP", value: "abap" },
 	{ label: "Agda", value: "agda" },
 	{ label: "Arduino", value: "arduino" },

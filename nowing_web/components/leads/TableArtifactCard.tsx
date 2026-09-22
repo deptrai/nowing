@@ -2,6 +2,7 @@
 
 import { useAtom, useSetAtom } from "jotai";
 import { ChevronDown, ChevronRight, Table as TableIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import {
@@ -31,6 +32,7 @@ export const TableArtifactCard: React.FC<TableArtifactCardProps> = ({
 	threadId,
 	className,
 }) => {
+	const t = useTranslations("leads");
 	const [activeArtifactId, setActiveArtifactId] = useAtom(activeArtifactIdAtom);
 	const setCanvasHighlight = useSetAtom(canvasHighlightTriggerAtom);
 	const [, setThreadModesMap] = useAtom(threadCanvasModeMapAtom);
@@ -129,7 +131,7 @@ export const TableArtifactCard: React.FC<TableArtifactCardProps> = ({
 						type="button"
 						onClick={handlePingRightPanel}
 						className="p-0.5 rounded text-muted-foreground/60 group-hover:text-foreground transition-all cursor-pointer focus:outline-none"
-						title="Chuyển sang Bảng Leads bên phải"
+						title={t("go_to_leads_table")}
 					>
 						<ChevronRight
 							className="size-3.5 group-hover:translate-x-0.5 transition-transform"

@@ -24,6 +24,7 @@ import redis.asyncio as aioredis
 from rapidfuzz import fuzz
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.config.decision as decision_config
 from app.config import config
 from app.db import Lead
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
@@ -570,6 +571,7 @@ class CorporateVerificationService:
         district: str | None = None,
         tax_id: str | None = None,
         force_refresh: bool = False,
+        workspace_id: int | None = None,
     ) -> CorporateMatchResult:
         """Run multi-attribute fuzzy verification against official company registries."""
         redis = self._get_redis()
@@ -782,17 +784,89 @@ class CorporateVerificationService:
                 )
 
         is_verified = best_score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+        requires_manual = not is_verified
+        # Advisory Jev rescore (Story 39.3): only the uncertain fuzzy band
+        # pays a decide() call, and Jev can only PROMOTE a match to
+        # verified — a reject/review verdict keeps the fuzzy outcome
+        # (manual queue). Exact-ID, cached, and breaker-degraded paths
+        # above return earlier and never reach this point.
+        if (
+            0 < best_score < AUTO_LINK_CONFIDENCE_THRESHOLD
+            and await self._jev_rescore_match(
+                company_name, city, district, tax_id, best_cand, workspace_id
+            )
+        ):
+            is_verified = True
+            requires_manual = False
         return CorporateMatchResult(
             tax_id=prof.tax_id,
             is_verified=is_verified,
             confidence=best_score,
-            requires_manual_confirmation=not is_verified,
+            requires_manual_confirmation=requires_manual,
             legal_representative=prof.legal_representative,
             charter_capital_vnd=prof.charter_capital_vnd,
             company_status=prof.company_status,
             profile=prof,
             is_cached=False,
         )
+
+    async def _jev_rescore_match(
+        self,
+        company_name: str,
+        city: str | None,
+        district: str | None,
+        tax_id: str | None,
+        best_cand: dict[str, Any],
+        workspace_id: int | None,
+    ) -> bool:
+        """Advisory Jev rescore of an uncertain fuzzy match (Story 39.3).
+
+        ``True`` means Jev confirmed the match (AUTO_MERGE verdict) and
+        the caller may auto-verify; ``False`` covers every other outcome —
+        review, separate, flags off, or any decision error — and the
+        caller keeps the fuzzy outcome. Fail-open by construction.
+        """
+        if not (
+            decision_config.decision_enabled()
+            and decision_config.decision_task_enabled("entity")
+        ):
+            return False
+        try:
+            from app.services.entity_resolution import (
+                EntityVerdict,
+                score_entity_pair,
+            )
+
+            query_entity = {
+                "company_name": company_name,
+                "city": city,
+                "district": district,
+                "tax_id": tax_id,
+            }
+            candidate_entity = {
+                "company_name": best_cand.get("company_name")
+                or best_cand.get("name"),
+                "international_name": best_cand.get("international_name"),
+                "short_name": best_cand.get("short_name"),
+                "tax_id": best_cand.get("tax_id"),
+                "address": best_cand.get("address"),
+                "city": best_cand.get("city"),
+                "district": best_cand.get("district"),
+            }
+            result = await score_entity_pair(
+                query_entity,
+                candidate_entity,
+                session=self.session,
+                workspace_id=workspace_id,
+                anchor_id=company_name,
+            )
+            return result.verdict is EntityVerdict.AUTO_MERGE
+        except Exception:
+            logger.warning(
+                "[entity_match] corp rescore failed — keeping fuzzy result",
+                exc_info=True,
+            )
+            return False
 
     async def verify_lead_corporate_info(
         self,
@@ -818,6 +892,7 @@ class CorporateVerificationService:
             district=district,
             tax_id=getattr(lead, "tax_id", None),
             force_refresh=force_refresh,
+            workspace_id=workspace_id,
         )
 
         if match_res.is_verified and match_res.profile:

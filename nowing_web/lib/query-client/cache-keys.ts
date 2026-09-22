@@ -59,6 +59,7 @@ export const cacheKeys = {
 		mcpTools: (workspaceId: number) => ["workspace-mcp-tools", workspaceId] as const,
 		limits: (workspaceId: number) => ["workspaces", "limits", workspaceId] as const,
 		subscription: (workspaceId: number) => ["workspaces", "subscription", workspaceId] as const,
+		entitlement: (workspaceId: number) => ["workspaces", "entitlement", workspaceId] as const,
 		subscriptionChanges: (workspaceId: number) =>
 			["workspaces", "subscription-changes", workspaceId] as const,
 		health: {

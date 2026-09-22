@@ -12,6 +12,7 @@ import {
 	UserCheck,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 	isOpen,
 	onClose,
 }) => {
+	const t = useTranslations("leads");
 	const [data, setData] = useState<CompanyGraph | null>(null);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 			.catch((err) => {
 				if (active) {
 					console.error("Failed to load company graph:", err);
-					setError("Không thể tải thông tin doanh nghiệp. Vui lòng thử lại.");
+					setError(t("graph_load_error"));
 					setLoading(false);
 				}
 			});
@@ -102,15 +104,13 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 							<div>
 								<div className="flex items-center gap-2">
 									<h2 className="text-lg font-bold text-zinc-100">
-										{companyName || "Company Graph"}
+										{companyName || t("graph_title_fallback")}
 									</h2>
 									<span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-										Enterprise Graph
+										{t("graph_badge")}
 									</span>
 								</div>
-								<p className="text-xs text-zinc-400">
-									Sơ đồ liên kết thực thể & danh bạ người ra quyết định (Widget U4)
-								</p>
+								<p className="text-xs text-zinc-400">{t("graph_subtitle")}</p>
 							</div>
 						</div>
 
@@ -118,7 +118,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 							type="button"
 							onClick={onClose}
 							className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
-							aria-label="Đóng panel"
+							aria-label={t("graph_close_panel")}
 						>
 							<X className="w-5 h-5" aria-hidden="true" />
 						</button>
@@ -129,7 +129,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 						{loading && (
 							<div className="flex flex-col items-center justify-center py-16 text-zinc-400 space-y-3">
 								<div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-								<p className="text-sm">Đang tải và tổng hợp Company Graph...</p>
+								<p className="text-sm">{t("graph_loading")}</p>
 							</div>
 						)}
 
@@ -146,38 +146,38 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 									<div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm border-b border-zinc-800/80 pb-2">
 											<Scale className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-											<span>Thông Tin Pháp Lý Doanh Nghiệp (dangkykinhdoanh.gov.vn)</span>
+											<span>{t("graph_legal_title")}</span>
 										</div>
 
 										<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
 											<div>
-												<span className="text-zinc-500">Mã Số Thuế (MST):</span>
+												<span className="text-zinc-500">{t("graph_tax_id")}:</span>
 												<p className="font-mono text-zinc-200 font-medium">
-													{data.legal_entity.tax_id || "Chưa cập nhật"}
+													{data.legal_entity.tax_id || t("graph_not_updated")}
 												</p>
 											</div>
 											<div>
-												<span className="text-zinc-500">Người Đại Diện Pháp Luật:</span>
+												<span className="text-zinc-500">{t("graph_rep")}:</span>
 												<p className="text-zinc-200 font-medium">
-													{data.legal_entity.representative || "Chưa cập nhật"}
+													{data.legal_entity.representative || t("graph_not_updated")}
 												</p>
 											</div>
 											<div>
-												<span className="text-zinc-500">Vốn Điều Lệ:</span>
+												<span className="text-zinc-500">{t("graph_capital")}:</span>
 												<p className="text-zinc-200 font-medium">
-													{data.legal_entity.charter_capital || "Chưa cập nhật"}
+													{data.legal_entity.charter_capital || t("graph_not_updated")}
 												</p>
 											</div>
 											<div>
-												<span className="text-zinc-500">Ngày Thành Lập:</span>
+												<span className="text-zinc-500">{t("graph_founded")}:</span>
 												<p className="text-zinc-200 font-medium">
-													{data.legal_entity.founding_date || "Chưa cập nhật"}
+													{data.legal_entity.founding_date || t("graph_not_updated")}
 												</p>
 											</div>
 											<div className="md:col-span-2">
-												<span className="text-zinc-500">Trụ Sở Chính:</span>
+												<span className="text-zinc-500">{t("graph_hq")}:</span>
 												<p className="text-zinc-200 font-medium">
-													{data.legal_entity.headquarters || "Chưa cập nhật"}
+													{data.legal_entity.headquarters || t("graph_not_updated")}
 												</p>
 											</div>
 										</div>
@@ -189,10 +189,10 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm">
 											<UserCheck className="w-4 h-4 text-blue-400" aria-hidden="true" />
-											<span>Danh Bạ Người Ra Quyết Định (Decision Makers)</span>
+											<span>{t("graph_dm_title")}</span>
 										</div>
 										<span className="text-xs text-zinc-400">
-											{data.decision_makers.length} lãnh đạo
+											{t("graph_dm_count", { count: data.decision_makers.length })}
 										</span>
 									</div>
 
@@ -208,7 +208,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 														<p className="text-xs text-zinc-400">{dm.title}</p>
 													</div>
 													<span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-														{Math.round(dm.confidence * 100)}% Match
+														{t("graph_dm_match", { pct: Math.round(dm.confidence * 100) })}
 													</span>
 												</div>
 
@@ -230,7 +230,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 														className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors pt-1"
 													>
 														<ExternalLink className="w-3 h-3" aria-hidden="true" />
-														<span>LinkedIn Profile</span>
+														<span>{t("graph_linkedin")}</span>
 													</a>
 												)}
 											</div>
@@ -243,7 +243,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 									<div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm">
 											<TrendingUp className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-											<span>Tín Hiệu Tăng Trưởng Tuyển Dụng (Hiring Velocity)</span>
+											<span>{t("graph_hiring_title")}</span>
 										</div>
 										{data.hiring_velocity_pct !== null &&
 											data.hiring_velocity_pct !== undefined && (
@@ -251,17 +251,16 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 													{data.hiring_velocity_pct > 0
 														? `+${data.hiring_velocity_pct}`
 														: data.hiring_velocity_pct}
-													% (30 ngày qua)
+													% {t("graph_hiring_30d")}
 												</span>
 											)}
 									</div>
 
 									<p className="text-xs text-zinc-300">
-										Đang mở{" "}
-										<span className="font-bold text-emerald-400">
-											{data.active_jobs_count} vị trí mới
-										</span>{" "}
-										trên các nền tảng tuyển dụng (TopCV, ITviec, VietnamWorks).
+										{t.rich("graph_hiring_body", {
+											count: data.active_jobs_count,
+											b: (c) => <span className="font-bold text-emerald-400">{c}</span>,
+										})}
 									</p>
 
 									<div className="space-y-2">
@@ -290,7 +289,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 									<div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
 										<div className="flex items-center gap-2 text-zinc-200 font-semibold text-sm border-b border-zinc-800/80 pb-2">
 											<FileText className="w-4 h-4 text-amber-400" aria-hidden="true" />
-											<span>Gói Thầu Mua Sắm Công (muasamcong.mpi.gov.vn)</span>
+											<span>{t("graph_tenders_title")}</span>
 										</div>
 
 										<div className="space-y-2">
@@ -308,11 +307,13 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 
 													<div className="flex flex-wrap items-center justify-between gap-2 text-zinc-400 text-[11px]">
 														<span>
-															Giá gói thầu:{" "}
+															{t("graph_tender_budget")}:{" "}
 															<strong className="text-emerald-400 font-mono">
 																{tender.budget_vnd
-																	? `${(tender.budget_vnd / 1_000_000_000).toFixed(1)} tỷ ₫`
-																	: "Thương lượng"}
+																	? t("graph_tender_billion", {
+																			v: (tender.budget_vnd / 1_000_000_000).toFixed(1),
+																		})
+																	: t("graph_tender_negotiable")}
 															</strong>
 														</span>
 
@@ -323,7 +324,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 																rel="noopener noreferrer"
 																className="text-blue-400 hover:underline flex items-center gap-1"
 															>
-																<span>Xem hồ sơ mời thầu</span>
+																<span>{t("graph_tender_view")}</span>
 																<ExternalLink className="w-3 h-3" aria-hidden="true" />
 															</a>
 														)}
@@ -341,23 +342,21 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 					<div className="sticky bottom-0 z-10 bg-zinc-950/90 backdrop-blur-md px-6 py-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3">
 						<button
 							type="button"
-							onClick={() =>
-								toast.success("Đã khởi tạo chuỗi Email Outreach với người ra quyết định!")
-							}
+							onClick={() => toast.success(t("graph_toast_email"))}
 							className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/50"
 						>
 							<Mail className="w-4 h-4" aria-hidden="true" />
-							<span>Khởi Tạo Email Outreach</span>
+							<span>{t("graph_btn_email")}</span>
 						</button>
 
 						<div className="flex items-center gap-2">
 							<button
 								type="button"
-								onClick={() => toast.info("Đã bật theo dõi biến động nhân sự cho công ty này!")}
+								onClick={() => toast.info(t("graph_toast_watch"))}
 								className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors border border-zinc-700"
 							>
 								<Bell className="w-3.5 h-3.5" aria-hidden="true" />
-								<span>Báo Khi Có Tuyển Thêm</span>
+								<span>{t("graph_btn_watch")}</span>
 							</button>
 
 							<button

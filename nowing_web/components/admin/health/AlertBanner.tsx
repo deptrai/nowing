@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, AlertTriangle, EyeOff, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ interface AlertBannerProps {
 }
 
 export default function AlertBanner({ alerts, onAcknowledge }: AlertBannerProps) {
+	const t = useTranslations("admin");
+
 	if (!alerts || alerts.length === 0) {
 		return null;
 	}
@@ -23,21 +26,21 @@ export default function AlertBanner({ alerts, onAcknowledge }: AlertBannerProps)
 					variant: "destructive" as const,
 					badgeVariant: "destructive" as const,
 					icon: AlertCircle,
-					label: "CRITICAL",
+					label: t("severity_critical"),
 				};
 			case "warning":
 				return {
 					variant: "default" as const,
 					badgeVariant: "secondary" as const,
 					icon: AlertTriangle,
-					label: "WARNING",
+					label: t("severity_warning"),
 				};
 			default:
 				return {
 					variant: "default" as const,
 					badgeVariant: "outline" as const,
 					icon: Info,
-					label: "INFO",
+					label: t("severity_info"),
 				};
 		}
 	};
@@ -75,7 +78,7 @@ export default function AlertBanner({ alerts, onAcknowledge }: AlertBannerProps)
 									data-testid={`acknowledge-alert-${alert.id}`}
 								>
 									<EyeOff className="h-3.5 w-3.5 mr-1" />
-									Acknowledge (60m)
+									{t("acknowledge_60m")}
 								</Button>
 							</div>
 						</div>

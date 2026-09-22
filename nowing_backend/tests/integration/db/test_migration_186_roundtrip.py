@@ -17,6 +17,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import config as _cfg
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 _MIGRATION_PATH = (
@@ -123,7 +125,7 @@ async def test_downgrade_removes_source_capability_and_input(db_session: AsyncSe
     assert not await _column_exists(db_session, "source_input")
 
 
-_EMBEDDING_DIM = 384
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 
 async def test_upgrade_backfills_recipe_for_existing_run_derived_memory(

@@ -1,44 +1,29 @@
+import { useTranslations } from "next-intl";
 import { ConnectorFaq } from "@/components/connectors-marketing/connector-faq";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
 import { FAQJsonLd } from "@/components/seo/json-ld";
 
 /** Answers are 40-60 words, written as quotable definitions for AI Overviews. */
-export const HOME_FAQ = [
-	{
-		question: "What is open web research?",
-		answer:
-			"Open web research is gathering and analyzing live public information from across the web: search results, community discussions, reviews, videos, and any page. Unlike asking a chatbot that reasons over a stale index, it works from what the web says right now. Nowing automates it: AI agents collect the live data and turn it into cited briefs and alerts.",
-	},
-	{
-		question: "What is an MCP server?",
-		answer:
-			"An MCP server exposes tools and data to AI agents through the Model Context Protocol, an open standard adopted by Claude, Cursor, and most agent frameworks. Add the Nowing MCP server and your agents can call every connector, such as reddit.scrape or google_search.scrape, as native tools.",
-	},
-	{
-		question: "How is Nowing different from a web scraping API?",
-		answer:
-			"A web scraping API returns raw data and leaves the intelligence to you. Nowing pairs platform-native connectors with an agent harness: retries, structured output, credit metering, and an MCP server, so your agents go from a question to a brief without you building the plumbing in between.",
-	},
-	{
-		question: "Can I use the connector APIs directly in my own app?",
-		answer:
-			"Yes. Every platform connector is a typed REST endpoint you can call from any language with your Nowing API key, no agent required. Send a POST request with your query and get structured JSON back. Each connector page has copy-paste examples in cURL, Python, JavaScript, Go, and more.",
-	},
-	{
-		question: "Can I self-host Nowing?",
-		answer:
-			"Yes. Nowing is open-core and self-hostable, so you can run the entire platform on your own infrastructure and keep sensitive research in-house. Use the cloud version to start in minutes, or deploy from the GitHub repository when you need full control.",
-	},
-];
+function getHomeFaq(t: (k: string) => string) {
+	return [
+		{ question: t("faq1_q"), answer: t("faq1_a") },
+		{ question: t("faq2_q"), answer: t("faq2_a") },
+		{ question: t("faq3_q"), answer: t("faq3_a") },
+		{ question: t("faq4_q"), answer: t("faq4_a") },
+		{ question: t("faq5_q"), answer: t("faq5_a") },
+	];
+}
 
 export function HomeFaq() {
+	const t = useTranslations("homepage");
+	const HOME_FAQ = getHomeFaq(t);
 	return (
 		<MarketingSection>
 			<FAQJsonLd questions={HOME_FAQ} />
 			<Reveal>
 				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
-					Frequently asked questions
+					{t("home_frequently_asked_questions")}
 				</h2>
 			</Reveal>
 			<Reveal>

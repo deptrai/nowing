@@ -323,3 +323,99 @@ def test_create_social_target_invalid_url_scheme(app: FastAPI, fake_auth: AuthCo
         }
         resp = client.post("/workspaces/10/social-monitored-targets", json=payload)
     assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_create_social_target_matrix_422_unsupported_platform(
+    app: FastAPI, fake_auth: AuthContext, fake_workspace: Workspace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Flag ON + unsupported platform → 422 with ``detail.supported_platforms``."""
+    from app.config import config
+    from app.proprietary.platforms.xactions.action_matrix import CanonicalActionMatrix
+
+    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+    CanonicalActionMatrix.reset()
+
+    session = _FakeSession(workspace=fake_workspace)
+    app.dependency_overrides[get_async_session] = lambda: session
+    app.dependency_overrides[get_auth_context] = lambda: fake_auth
+
+    try:
+        with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
+            client = TestClient(app)
+            payload = {
+                "platform": "xyz_unknown",
+                "target_id": "123",
+                "target_name": "Test",
+            }
+            resp = client.post("/workspaces/10/social-monitored-targets", json=payload)
+    finally:
+        CanonicalActionMatrix.reset()
+
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    detail = resp.json()["detail"]
+    assert "supported_platforms" in detail
+    assert "tiktok_hashtag" in detail["supported_platforms"]
+    assert "masothue_lookup" in detail["supported_platforms"]
+
+
+def test_create_social_target_matrix_422_ambiguous_platform(
+    app: FastAPI, fake_auth: AuthContext, fake_workspace: Workspace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Flag ON + ambiguous bare platform with multiple actions → 422."""
+    from app.config import config
+    from app.proprietary.platforms.xactions.action_matrix import CanonicalActionMatrix
+
+    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+    CanonicalActionMatrix.reset()
+
+    session = _FakeSession(workspace=fake_workspace)
+    app.dependency_overrides[get_async_session] = lambda: session
+    app.dependency_overrides[get_auth_context] = lambda: fake_auth
+
+    try:
+        with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
+            client = TestClient(app)
+            # 'facebook' bare platform — static fallback has 2 actions (group_posts
+            # + page_posts) → ambiguous, must 422
+            payload = {
+                "platform": "facebook",
+                "target_id": "123",
+                "target_name": "Test",
+            }
+            resp = client.post("/workspaces/10/social-monitored-targets", json=payload)
+    finally:
+        CanonicalActionMatrix.reset()
+
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    detail = resp.json()["detail"]
+    assert "supported_platforms" in detail
+
+
+def test_create_social_target_matrix_success_supported_platform(
+    app: FastAPI, fake_auth: AuthContext, fake_workspace: Workspace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Flag ON + valid platform_kind → creates target successfully."""
+    from app.config import config
+    from app.proprietary.platforms.xactions.action_matrix import CanonicalActionMatrix
+
+    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+    CanonicalActionMatrix.reset()
+
+    session = _FakeSession(workspace=fake_workspace)
+    app.dependency_overrides[get_async_session] = lambda: session
+    app.dependency_overrides[get_auth_context] = lambda: fake_auth
+
+    try:
+        with patch("app.dependencies.auth.check_permission", new=AsyncMock()):
+            client = TestClient(app)
+            payload = {
+                "platform": "tiktok_hashtag",
+                "target_id": "bds",
+                "target_name": "TikTok BDS",
+            }
+            resp = client.post("/workspaces/10/social-monitored-targets", json=payload)
+    finally:
+        CanonicalActionMatrix.reset()
+
+    assert resp.status_code == status.HTTP_201_CREATED
+    assert resp.json()["platform"] == "tiktok_hashtag"

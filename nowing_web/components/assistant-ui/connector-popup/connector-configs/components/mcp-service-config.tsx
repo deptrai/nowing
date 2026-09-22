@@ -1,15 +1,17 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import type { ConnectorConfigProps } from "../index";
 import { MCPTrustedTools } from "./mcp-trusted-tools";
 
 export const MCPServiceConfig: FC<ConnectorConfigProps> = ({ connector }) => {
+	const t = useTranslations("assistant");
 	const serviceName = connector.config?.mcp_service as string | undefined;
 	const displayName = serviceName
 		? serviceName.charAt(0).toUpperCase() + serviceName.slice(1)
-		: "this service";
+		: t("this_service");
 
 	return (
 		<div className="space-y-6">
@@ -18,9 +20,9 @@ export const MCPServiceConfig: FC<ConnectorConfigProps> = ({ connector }) => {
 					<CheckCircle2 className="size-4 text-emerald-500" aria-hidden="true" />
 				</div>
 				<div className="text-xs sm:text-sm">
-					<p className="font-medium text-xs sm:text-sm">Connected</p>
+					<p className="font-medium text-xs sm:text-sm">{t("connected")}</p>
 					<p className="text-muted-foreground mt-1 text-[10px] sm:text-sm">
-						Your agent can search, read, and take actions in {displayName}.
+						{t("agent_can_act_in", { name: displayName })}
 					</p>
 				</div>
 			</div>

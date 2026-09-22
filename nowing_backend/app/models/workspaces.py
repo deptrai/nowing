@@ -833,6 +833,7 @@ class WorkspaceApp(Base):
     custom_domain_status = Column(
         String(50), nullable=True
     )  # pending_verification, active, failed
+    custom_domain_verify_token = Column(String(255), nullable=True)
     storage_path = Column(String(512), nullable=True)
     container_id = Column(String(100), nullable=True)
     port = Column(Integer, nullable=True)

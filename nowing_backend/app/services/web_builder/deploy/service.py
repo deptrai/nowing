@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import logging
 import re
+import secrets
 import shutil
 from pathlib import Path
 from typing import Any
@@ -531,6 +532,83 @@ class WebAppDeployService:
             return True
         return any(clean.endswith(f".{sd}") for sd in system_domains if sd)
 
+    async def _verify_txt_ownership(
+        self, domain: str, token: str, detail_out: dict[str, Any] | None = None
+    ) -> bool:
+        """Verify cryptographic DNS proof-of-ownership via TXT record.
+
+        Queries _nowing-verify.<domain> for a TXT record matching
+        'nowing-verify=<token>' using constant-time comparison.
+        Fail-closed on any DNS timeout or error.
+        """
+        import dns.resolver
+
+        from app.config import (
+            WEB_BUILDER_TXT_VERIFY_LABEL,
+            WEB_BUILDER_TXT_VERIFY_PREFIX,
+        )
+
+        clean_domain = domain.lower().rstrip(".")
+
+        # Fail-closed guard: never dispatch a DNS query for an empty/missing
+        # token, otherwise a blank expected value could match a blank TXT.
+        if not token or not token.strip():
+            if detail_out is not None:
+                detail_out["reason"] = "missing"
+            return False
+
+        txt_host = f"{WEB_BUILDER_TXT_VERIFY_LABEL}.{clean_domain}"
+        expected = f"{WEB_BUILDER_TXT_VERIFY_PREFIX}{token}"
+
+        # RFC 1035 caps a DNS name at 253 octets; prepending the verify label
+        # can push a near-limit domain over it and raise NameTooLong inside the
+        # resolver. Fail fast with a distinct reason instead of reporting it as
+        # a missing TXT record.
+        if len(txt_host) > 253:
+            if detail_out is not None:
+                detail_out["reason"] = "invalid"
+            return False
+
+        try:
+            resolver = dns.resolver.Resolver()
+            resolver.lifetime = 5
+            answers = await asyncio.to_thread(resolver.resolve, txt_host, "TXT")
+            records_found = False
+            for rdata in answers:
+                records_found = True
+                if hasattr(rdata, "strings") and isinstance(
+                    rdata.strings, (list, tuple)
+                ):
+                    raw_str = b"".join(rdata.strings).decode(
+                        "utf-8", errors="replace"
+                    )
+                else:
+                    raw_str = str(rdata)
+                # dnspython may wrap rdata in double or single quotes.
+                txt_val = raw_str.strip().strip('"\'').strip()
+                if secrets.compare_digest(txt_val, expected):
+                    if detail_out is not None:
+                        detail_out["reason"] = "ok"
+                    return True
+            if records_found and detail_out is not None:
+                detail_out["reason"] = "mismatch"
+            elif detail_out is not None:
+                detail_out["reason"] = "missing"
+            return False
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+            if detail_out is not None:
+                detail_out["reason"] = "missing"
+            return False
+        except Exception as exc:  # Fail-closed on DNS timeout, connection error, etc.
+            logger.warning(
+                "[WebAppDeployService] TXT ownership lookup failed for %s: %s",
+                txt_host,
+                exc,
+            )
+            if detail_out is not None:
+                detail_out["reason"] = "missing"
+            return False
+
     async def _resolve_cname_ingress(
         self, domain: str, target: str, max_depth: int = 5
     ) -> bool:
@@ -634,7 +712,12 @@ class WebAppDeployService:
             return
 
         slug = app_entity.slug
-        custom_domain = app_entity.custom_domain
+        # Only configure ingress for custom domains that have passed verification
+        custom_domain = (
+            app_entity.custom_domain
+            if getattr(app_entity, "custom_domain_status", None) == "active"
+            else None
+        )
         workspace_id = app_entity.workspace_id
         target = self._caddy_target_for_app(
             workspace_id, slug, container_id or app_entity.container_id

@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +17,7 @@ export const NowingLogo: React.FC<NowingLogoProps> = ({
 	showText = false,
 	textClassName,
 }) => {
+	const t = useTranslations("landing.logo");
 	const svgAccessible = !showText;
 	return (
 		<div className={cn("inline-flex items-center gap-2.5 select-none", className)}>
@@ -43,7 +47,7 @@ export const NowingLogo: React.FC<NowingLogoProps> = ({
 						Nowing
 					</span>
 					<span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
-						AI Lead
+						{t("ai_lead")}
 					</span>
 				</div>
 			)}

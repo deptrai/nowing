@@ -249,6 +249,12 @@ export const workspaceSubscriptionResponse = z.object({
 	available_plans: z.array(planDefinition),
 });
 
+export const workspaceEntitlementResponse = z.object({
+	plan_tier: z.string(),
+	can_use_pptx: z.boolean(),
+	self_hosted: z.boolean().optional().default(false),
+});
+
 export const createSubscriptionChangeRequest = z.object({
 	to_plan: z.string(),
 	immediate: z.boolean().optional().default(false),
@@ -281,4 +287,5 @@ export type SubscriptionChange = z.infer<typeof subscriptionChange>;
 export type SubscriptionChangeConflictDetail = z.infer<typeof subscriptionChangeConflictDetail>;
 export type SubscriptionChangeConflict = z.infer<typeof subscriptionChangeConflict>;
 export type WorkspaceSubscriptionResponse = z.infer<typeof workspaceSubscriptionResponse>;
+export type WorkspaceEntitlementResponse = z.infer<typeof workspaceEntitlementResponse>;
 export type CreateSubscriptionChangeRequest = z.infer<typeof createSubscriptionChangeRequest>;

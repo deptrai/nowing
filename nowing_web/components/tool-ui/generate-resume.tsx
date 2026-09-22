@@ -4,6 +4,7 @@ import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Dot } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import * as pdfjsLib from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -52,13 +53,14 @@ type GenerateResumeArgs = z.infer<typeof GenerateResumeArgsSchema>;
 type GenerateResumeResult = z.infer<typeof GenerateResumeResultSchema>;
 
 function ResumeGeneratingState() {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
-					<p className="text-sm font-semibold text-foreground">Resume</p>
+					<p className="text-sm font-semibold text-foreground">{t("tu_resume")}</p>
 				</div>
-				<TextShimmerLoader text="Crafting your resume" size="sm" />
+				<TextShimmerLoader text={t("crafting_resume")} size="sm" />
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 pt-3 pb-4">
@@ -75,11 +77,14 @@ function ResumeGeneratingState() {
 }
 
 function ResumeErrorState({ title, error }: { title: string; error: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
-					<p className="text-sm font-semibold text-destructive">Resume Generation Failed</p>
+					<p className="text-sm font-semibold text-destructive">
+						{t("tu_resume_generation_failed")}
+					</p>
 				</div>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -96,13 +101,16 @@ function ResumeErrorState({ title, error }: { title: string; error: string }) {
 }
 
 function ResumeCancelledState() {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
-					<p className="text-sm font-semibold text-muted-foreground">Resume Cancelled</p>
+					<p className="text-sm font-semibold text-muted-foreground">{t("tu_resume_cancelled")}</p>
 				</div>
-				<p className="text-xs text-muted-foreground mt-0.5">Resume generation was cancelled</p>
+				<p className="text-xs text-muted-foreground mt-0.5">
+					{t("tu_resume_generation_was_cancelled")}
+				</p>
 			</div>
 		</div>
 	);
@@ -211,6 +219,7 @@ function ResumeCard({
 	shareToken?: string | null;
 	autoOpen?: boolean;
 }) {
+	const t = useTranslations("toolUi");
 	const openPanel = useSetAtom(openReportPanelAtom);
 	const panelState = useAtomValue(reportPanelAtom);
 	const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -303,7 +312,7 @@ function ResumeCard({
 				<div className="px-5 pt-3 pb-4">
 					{thumbState === "loading" && <ThumbnailSkeleton />}
 					{thumbState === "error" && (
-						<p className="text-sm text-muted-foreground">Preview unavailable</p>
+						<p className="text-sm text-muted-foreground">{t("tu_preview_unavailable")}</p>
 					)}
 					{pdfUrl && (
 						<div
@@ -328,6 +337,7 @@ export const GenerateResumeToolUI = ({
 	result,
 	status,
 }: ToolCallMessagePartProps<GenerateResumeArgs, GenerateResumeResult>) => {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const pathname = usePathname();
 	const isPublicRoute = pathname?.startsWith("/public/");
@@ -349,7 +359,7 @@ export const GenerateResumeToolUI = ({
 		if (status.reason === "error") {
 			return (
 				<ResumeErrorState
-					title="Resume"
+					title={t("tu_resume")}
 					error={typeof status.error === "string" ? status.error : "An error occurred"}
 				/>
 			);
@@ -382,5 +392,5 @@ export const GenerateResumeToolUI = ({
 		);
 	}
 
-	return <ResumeErrorState title="Resume" error="Missing report ID" />;
+	return <ResumeErrorState title={t("tu_resume")} error={t("missing_report_id")} />;
 };

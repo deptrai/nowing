@@ -1,36 +1,41 @@
 import { ArrowRight, Plug, Server } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getAllConnectors } from "@/lib/connectors-marketing";
 
 const canonicalUrl = "https://www.nowing.com/connectors";
 
-const metaDescription =
-	"Platform-native scraper APIs for AI agents. Pull live, structured data from the platforms where answers live through one typed API or the Nowing MCP server. Explore every connector.";
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("connectorsHub");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		keywords: [
+			"scraper api",
+			"web scraping api",
+			"scraper api for ai agents",
+			"data connectors",
+			"mcp server",
+			"open web research platform",
+		],
+		alternates: { canonical: canonicalUrl },
+		openGraph: {
+			title: t("meta_title"),
+			description: t("meta_description"),
+			url: canonicalUrl,
+			siteName: "Nowing",
+			type: "website",
+			images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing connectors" }],
+		},
+	};
+}
 
-export const metadata: Metadata = {
-	title: "Scraper APIs for AI Agents: All Connectors | Nowing",
-	description: metaDescription,
-	keywords: [
-		"scraper api",
-		"web scraping api",
-		"scraper api for ai agents",
-		"data connectors",
-		"mcp server",
-		"open web research platform",
-	],
-	alternates: { canonical: canonicalUrl },
-	openGraph: {
-		title: "Scraper APIs for AI Agents: All Connectors | Nowing",
-		description: metaDescription,
-		url: canonicalUrl,
-		siteName: "Nowing",
-		type: "website",
-		images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing connectors" }],
-	},
-};
+// Rendered per-request so the NEXT_LOCALE cookie can switch the language.
+export const dynamic = "force-dynamic";
 
-export default function ConnectorsIndexPage() {
+export default async function ConnectorsIndexPage() {
+	const t = await getTranslations("connectorsHub");
 	const connectors = getAllConnectors();
 
 	return (
@@ -38,13 +43,12 @@ export default function ConnectorsIndexPage() {
 			<div className="mx-auto w-full max-w-7xl px-2 md:px-8 xl:px-0">
 				<header className="max-w-2xl">
 					<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
-						Connectors for every platform where answers live
+						{t("title")}
 					</h1>
 					<p className="mt-4 text-sm sm:text-base leading-relaxed text-muted-foreground font-sans">
-						Each connector is a platform-native scraper API your AI agents can call directly, or
-						through the Nowing MCP server. They are the live data behind the Nowing{" "}
+						{t("lede_1")}{" "}
 						<Link href="/" className="font-medium text-foreground underline underline-offset-4">
-							open web research platform
+							{t("lede_platform")}
 						</Link>
 						.
 					</p>
@@ -66,10 +70,10 @@ export default function ConnectorsIndexPage() {
 									{connector.cardTitle ?? `${connector.name} API`}
 								</h2>
 								<p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground line-clamp-4">
-									{connector.heroLede}
+									{t(`${connector.slug.replace(/-/g, "_")}_lede` as Parameters<typeof t>[0])}
 								</p>
 								<span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
-									Explore
+									{t("explore")}
 									<ArrowRight
 										className="size-4 transition-transform group-hover:translate-x-0.5"
 										aria-hidden="true"
@@ -86,13 +90,12 @@ export default function ConnectorsIndexPage() {
 						<span className="flex size-11 items-center justify-center rounded-lg border bg-muted/40 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
 							<Server className="size-5 text-foreground" aria-hidden="true" />
 						</span>
-						<h2 className="mt-4 text-lg font-semibold">Nowing MCP Server</h2>
+						<h2 className="mt-4 text-lg font-semibold">{t("mcp_server")}</h2>
 						<p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground line-clamp-4">
-							Give Claude, Cursor, or any MCP client native tools for your workspace: every scraper
-							API plus knowledge base search, reads, and writes. One API key.
+							{t("mcp_server_desc")}
 						</p>
 						<span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
-							Explore
+							{t("explore")}
 							<ArrowRight
 								className="size-4 transition-transform group-hover:translate-x-0.5"
 								aria-hidden="true"
@@ -106,13 +109,12 @@ export default function ConnectorsIndexPage() {
 						<span className="flex size-11 items-center justify-center rounded-lg border bg-muted/40 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
 							<Plug className="size-5 text-foreground" aria-hidden="true" />
 						</span>
-						<h2 className="mt-4 text-lg font-semibold">External MCP Connectors</h2>
+						<h2 className="mt-4 text-lg font-semibold">{t("external_mcp")}</h2>
 						<p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground line-clamp-4">
-							Bring any MCP server to your agents. Paste a config like you would in Cursor, tools
-							are auto-discovered, and Notion, Slack, Jira, and more connect with one-click OAuth.
+							{t("external_mcp_desc")}
 						</p>
 						<span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
-							Explore
+							{t("explore")}
 							<ArrowRight
 								className="size-4 transition-transform group-hover:translate-x-0.5"
 								aria-hidden="true"

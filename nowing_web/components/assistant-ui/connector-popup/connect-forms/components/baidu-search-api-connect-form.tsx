@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -21,23 +22,27 @@ import { EnumConnectorName } from "@/contracts/enums/connector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const baiduSearchApiFormSchema = z.object({
-	name: z.string().min(3, {
-		message: "Connector name must be at least 3 characters.",
-	}),
-	api_key: z.string().min(10, {
-		message: "API key is required and must be valid.",
-	}),
-});
+const createBaiduSearchApiFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z.object({
+		name: z.string().min(3, {
+			message: t("connector_name_min"),
+		}),
+		api_key: z.string().min(10, {
+			message: t("api_key_required_valid"),
+		}),
+	});
 
-type BaiduSearchApiFormValues = z.infer<typeof baiduSearchApiFormSchema>;
+type BaiduSearchApiFormValues = z.infer<ReturnType<typeof createBaiduSearchApiFormSchema>>;
 
 export const BaiduSearchApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const form = useForm<BaiduSearchApiFormValues>({
-		resolver: zodResolver(baiduSearchApiFormSchema),
+		resolver: zodResolver(createBaiduSearchApiFormSchema(t)),
 		defaultValues: {
-			name: "Baidu Search Connector",
+			name: t("baidu_name_default"),
 			api_key: "",
 		},
 	});
@@ -72,10 +77,10 @@ export const BaiduSearchApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSu
 		<div className="space-y-6 pb-6">
 			<Alert>
 				<Info />
-				<AlertTitle>API Key Required</AlertTitle>
+				<AlertTitle>{t("api_key_required")}</AlertTitle>
 				<AlertDescription>
 					<p>
-						You'll need a Baidu AppBuilder API key to use this connector. You can get one by signing
+						{t("baidu_get_key_desc")}
 						up at{" "}
 						<a
 							href="https://qianfan.cloud.baidu.com/"
@@ -101,17 +106,17 @@ export const BaiduSearchApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSu
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Connector Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("connector_name")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="My Baidu Search Connector"
+											placeholder={t("baidu_name_placeholder")}
 											className="border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										A friendly name to identify this connector.
+										{t("connector_name_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -123,18 +128,18 @@ export const BaiduSearchApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSu
 							name="api_key"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Baidu AppBuilder API Key</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("baidu_api_key")}</FormLabel>
 									<FormControl>
 										<Input
 											type="password"
-											placeholder="Enter your Baidu API key"
+											placeholder={t("baidu_api_key_placeholder")}
 											className="border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										Your API key will be encrypted and stored securely.
+										{t("api_key_encrypted")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -147,7 +152,7 @@ export const BaiduSearchApiConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSu
 			{/* What you get section */}
 			{getConnectorBenefits(EnumConnectorName.BAIDU_SEARCH_API) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
-					<h4 className="text-xs sm:text-sm font-medium">What you get with Baidu Search:</h4>
+					<h4 className="text-xs sm:text-sm font-medium">{t("baidu_what_you_get")}</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.BAIDU_SEARCH_API)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

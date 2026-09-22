@@ -12,6 +12,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import type { WorkspaceTable } from "@/contracts/types/workspace-table.types";
@@ -41,6 +42,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 	onUpdateTable,
 	onDeleteTable,
 }) => {
+	const t = useTranslations("leads");
 	const [isAdding, setIsAdding] = useState<boolean>(false);
 	const [newTableName, setNewTableName] = useState<string>("");
 	const [newTableIcon, setNewTableIcon] = useState<string>("table");
@@ -164,7 +166,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 									type="button"
 									onClick={(e) => handleStartEdit(table, e)}
 									className="p-0.5 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
-									title="Đổi tên tab"
+									title={t("rename_tab")}
 								>
 									<Edit2 className="w-3 h-3" aria-hidden="true" />
 								</button>
@@ -172,7 +174,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 									type="button"
 									onClick={(e) => handleDelete(table.id, e)}
 									className="p-0.5 rounded text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10"
-									title="Xóa tab"
+									title={t("delete_tab")}
 								>
 									<Trash2 className="w-3 h-3" aria-hidden="true" />
 								</button>
@@ -200,7 +202,7 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 						type="text"
 						value={newTableName}
 						onChange={(e) => setNewTableName(e.target.value)}
-						placeholder="Tên danh sách mới..."
+						placeholder={t("new_list_name")}
 						className="px-2 py-0.5 text-xs rounded bg-zinc-950 border border-zinc-800 text-zinc-100 focus:outline-none focus:border-emerald-500 w-32"
 						onKeyDown={(e) => {
 							if (e.key === "Enter") handleConfirmAdd();

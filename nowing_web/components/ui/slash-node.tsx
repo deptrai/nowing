@@ -17,6 +17,7 @@ import {
 	SquareIcon,
 	TableIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { KEYS } from "platejs";
 import type { PlateElementProps } from "platejs/react";
 import { PlateElement, useEditorRef } from "platejs/react";
@@ -40,49 +41,51 @@ interface SlashCommandItem {
 	onSelect: (editor: any) => void;
 }
 
-const slashCommandGroups: { heading: string; items: SlashCommandItem[] }[] = [
+const getSlashCommandGroups = (
+	t: (k: string) => string
+): { heading: string; items: SlashCommandItem[] }[] => [
 	{
 		heading: "Basic Blocks",
 		items: [
 			{
 				icon: <PilcrowIcon />,
 				keywords: ["paragraph", "text", "plain"],
-				label: "Text",
+				label: t("ui_text"),
 				value: "text",
 				onSelect: (editor) => insertBlock(editor, KEYS.p),
 			},
 			{
 				icon: <Heading1Icon />,
 				keywords: ["title", "h1", "heading"],
-				label: "Heading 1",
+				label: t("ui_heading_1"),
 				value: "heading1",
 				onSelect: (editor) => insertBlock(editor, "h1"),
 			},
 			{
 				icon: <Heading2Icon />,
 				keywords: ["subtitle", "h2", "heading"],
-				label: "Heading 2",
+				label: t("ui_heading_2"),
 				value: "heading2",
 				onSelect: (editor) => insertBlock(editor, "h2"),
 			},
 			{
 				icon: <Heading3Icon />,
 				keywords: ["subtitle", "h3", "heading"],
-				label: "Heading 3",
+				label: t("ui_heading_3"),
 				value: "heading3",
 				onSelect: (editor) => insertBlock(editor, "h3"),
 			},
 			{
 				icon: <QuoteIcon />,
 				keywords: ["citation", "blockquote"],
-				label: "Quote",
+				label: t("ui_quote"),
 				value: "quote",
 				onSelect: (editor) => insertBlock(editor, KEYS.blockquote),
 			},
 			{
 				icon: <MinusIcon />,
 				keywords: ["divider", "separator", "line"],
-				label: "Divider",
+				label: t("ui_divider"),
 				value: "divider",
 				onSelect: (editor) => insertBlock(editor, KEYS.hr),
 			},
@@ -94,21 +97,21 @@ const slashCommandGroups: { heading: string; items: SlashCommandItem[] }[] = [
 			{
 				icon: <ListIcon />,
 				keywords: ["unordered", "ul", "bullet"],
-				label: "Bulleted list",
+				label: t("ui_bulleted_list"),
 				value: "bulleted-list",
 				onSelect: (editor) => insertBlock(editor, KEYS.ul),
 			},
 			{
 				icon: <ListOrderedIcon />,
 				keywords: ["ordered", "ol", "numbered"],
-				label: "Numbered list",
+				label: t("ui_numbered_list"),
 				value: "numbered-list",
 				onSelect: (editor) => insertBlock(editor, KEYS.ol),
 			},
 			{
 				icon: <SquareIcon />,
 				keywords: ["checklist", "task", "checkbox", "todo"],
-				label: "To-do list",
+				label: t("ui_to_do_list"),
 				value: "todo-list",
 				onSelect: (editor) => insertBlock(editor, KEYS.listTodo),
 			},
@@ -120,47 +123,47 @@ const slashCommandGroups: { heading: string; items: SlashCommandItem[] }[] = [
 			{
 				icon: <TableIcon />,
 				keywords: ["table", "grid"],
-				label: "Table",
+				label: t("ui_table"),
 				value: "table",
 				onSelect: (editor) => insertBlock(editor, KEYS.table),
 			},
 			{
 				icon: <FileCodeIcon />,
 				keywords: ["code", "codeblock", "snippet"],
-				label: "Code block",
+				label: t("ui_code_block"),
 				value: "code-block",
 				onSelect: (editor) => insertBlock(editor, KEYS.codeBlock),
 			},
 			{
 				icon: <InfoIcon />,
 				keywords: ["callout", "note", "info", "warning", "tip"],
-				label: "Callout",
+				label: t("ui_callout"),
 				value: "callout",
 				onSelect: (editor) => insertBlock(editor, KEYS.callout),
 			},
 			{
 				icon: <ChevronRightIcon />,
 				keywords: ["toggle", "collapsible", "expand"],
-				label: "Toggle",
+				label: t("ui_toggle"),
 				value: "toggle",
 				onSelect: (editor) => insertBlock(editor, KEYS.toggle),
 			},
 			{
 				icon: <RadicalIcon />,
 				keywords: ["equation", "math", "formula", "latex"],
-				label: "Equation",
+				label: t("ui_equation"),
 				value: "equation",
 				onSelect: (editor) => insertInlineElement(editor, KEYS.equation),
 			},
 		],
 	},
 	{
-		heading: "Inline",
+		heading: t("ui_inline"),
 		items: [
 			{
 				icon: <Code2Icon />,
 				keywords: ["link", "url", "href"],
-				label: "Link",
+				label: t("ui_link"),
 				value: "link",
 				onSelect: (editor) => insertInlineElement(editor, KEYS.link),
 			},
@@ -169,6 +172,7 @@ const slashCommandGroups: { heading: string; items: SlashCommandItem[] }[] = [
 ];
 
 export function SlashInputElement({ children, ...props }: PlateElementProps) {
+	const t = useTranslations("ui");
 	const editor = useEditorRef();
 
 	return (
@@ -177,9 +181,9 @@ export function SlashInputElement({ children, ...props }: PlateElementProps) {
 				<InlineComboboxInput />
 
 				<InlineComboboxContent>
-					<InlineComboboxEmpty>No results found.</InlineComboboxEmpty>
+					<InlineComboboxEmpty>{t("f_no_results_found")}</InlineComboboxEmpty>
 
-					{slashCommandGroups.map(({ heading, items }) => (
+					{getSlashCommandGroups(t).map(({ heading, items }) => (
 						<InlineComboboxGroup key={heading}>
 							<InlineComboboxGroupLabel>{heading}</InlineComboboxGroupLabel>
 

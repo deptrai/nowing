@@ -9,6 +9,10 @@ from __future__ import annotations
 
 import pytest
 
+from app.config import config as _cfg
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 BASE = "/api/v1/workspaces"
@@ -289,7 +293,7 @@ async def test_cannot_modify_other_users_personal_memory(
     mem = await repo.create_memory(
         workspace_id=None,
         content="Owner's private note.",
-        embedding=[0.1] * 384,
+        embedding=[0.1] * _EMBEDDING_DIM,
         created_by_id=db_user.id,
     )
 

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useState } from "react";
 import { toast } from "sonner";
 import { currentThreadAtom } from "@/atoms/chat/current-thread.atom";
@@ -35,6 +36,7 @@ interface AuthorMetadata {
 }
 
 const UserAvatar: FC<AuthorMetadata> = ({ displayName, avatarUrl }) => {
+	const t = useTranslations("assistant");
 	const [hasError, setHasError] = useState(false);
 
 	const initials = displayName
@@ -69,6 +71,7 @@ const UserAvatar: FC<AuthorMetadata> = ({ displayName, avatarUrl }) => {
 };
 
 const UserTextPart: FC = () => {
+	const t = useTranslations("assistant");
 	const messageId = useAuiState(({ message }) => message?.id);
 	const part = useMessagePartText();
 	const text = (part as { text?: string }).text ?? "";
@@ -138,7 +141,7 @@ const UserTextPart: FC = () => {
 								: doc.kind === "thread"
 									? `Chat: ${doc.title}`
 									: doc.kind === "connector"
-										? `Connector account: ${doc.title}`
+										? t("connector_account", { title: doc.title })
 										: doc.title
 						}
 						onClick={
@@ -192,6 +195,8 @@ export const UserMessage: FC = () => {
 };
 
 const UserActionBar: FC = () => {
+	const t = useTranslations("assistantUi");
+	const tCommon = useTranslations("common");
 	const isThreadRunning = useAuiState(({ thread }) => thread.isRunning);
 
 	// Get current message ID
@@ -220,7 +225,7 @@ const UserActionBar: FC = () => {
 			className="aui-user-action-bar-root flex items-center justify-end gap-1 text-muted-foreground"
 		>
 			<ActionBarPrimitive.Copy asChild>
-				<TooltipIconButton tooltip="Copy">
+				<TooltipIconButton tooltip={t("copy")}>
 					<AuiIf condition={({ message }) => message.isCopied}>
 						<CheckIcon />
 					</AuiIf>
@@ -231,7 +236,7 @@ const UserActionBar: FC = () => {
 			</ActionBarPrimitive.Copy>
 			{canEdit && (
 				<ActionBarPrimitive.Edit asChild>
-					<TooltipIconButton tooltip="Edit" className="aui-user-action-edit">
+					<TooltipIconButton tooltip={tCommon("edit")} className="aui-user-action-edit">
 						<Pencil />
 					</TooltipIconButton>
 				</ActionBarPrimitive.Edit>

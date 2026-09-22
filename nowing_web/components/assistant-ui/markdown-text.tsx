@@ -41,6 +41,7 @@ import { tryGetHostname } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
 function MarkdownCodeBlockLoading() {
+	const t = useTranslations("assistant");
 	return <div className="mt-4 h-32 overflow-hidden rounded-md bg-accent" />;
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
@@ -52,6 +53,7 @@ function toolArrayToString(value: string[]): string {
 }
 
 export default function AgentRegistryAdminPage() {
+	const t = useTranslations("admin");
 	const [{ data: user, isLoading: userLoading }] = useAtom(currentUserAtom);
 	const [agents, setAgents] = useState<AdminAgentConfigRead[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -68,7 +70,7 @@ export default function AgentRegistryAdminPage() {
 			const data = await adminAgentRegistryApiService.listAgents(clientId);
 			setAgents(data);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to load agents");
+			toast.error(error instanceof Error ? error.message : t("agents_load_failed"));
 		} finally {
 			setLoading(false);
 		}
@@ -117,7 +119,7 @@ export default function AgentRegistryAdminPage() {
 
 	async function handleSave() {
 		if (!draft.client_id.trim() || !draft.name.trim() || !draft.display_name.trim()) {
-			toast.error("Client ID, name, and display name are required");
+			toast.error(t("agents_required_fields"));
 			return;
 		}
 
@@ -141,28 +143,28 @@ export default function AgentRegistryAdminPage() {
 			if (editAgent) {
 				const update: AdminAgentConfigUpdateRequest = base;
 				await adminAgentRegistryApiService.updateAgent(editAgent.id, update);
-				toast.success("Agent updated");
+				toast.success(t("agents_updated"));
 			} else {
 				await adminAgentRegistryApiService.createAgent(createPayload);
-				toast.success("Agent created");
+				toast.success(t("agents_created"));
 			}
 			closeDialog();
 			await loadAgents(filterClientId || undefined);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to save agent");
+			toast.error(error instanceof Error ? error.message : t("agents_save_failed"));
 		} finally {
 			setIsSubmitting(false);
 		}
 	}
 
 	async function handleDelete(agent: AdminAgentConfigRead) {
-		if (!confirm(`Deactivate agent "${agent.display_name}"?`)) return;
+		if (!confirm(t("agents_confirm_deactivate", { name: agent.display_name }))) return;
 		try {
 			await adminAgentRegistryApiService.deleteAgent(agent.id);
-			toast.success("Agent deactivated");
+			toast.success(t("agents_deactivated"));
 			await loadAgents(filterClientId || undefined);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to deactivate agent");
+			toast.error(error instanceof Error ? error.message : t("agents_deactivate_failed"));
 		}
 	}
 
@@ -177,8 +179,8 @@ export default function AgentRegistryAdminPage() {
 	if (!user?.is_superuser) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-				<h1 className="text-2xl font-semibold">Access denied</h1>
-				<p className="text-muted-foreground">You must be a superuser to view this page.</p>
+				<h1 className="text-2xl font-semibold">{t("agents_access_denied")}</h1>
+				<p className="text-muted-foreground">{t("agents_access_denied_desc")}</p>
 			</div>
 		);
 	}
@@ -187,14 +189,14 @@ export default function AgentRegistryAdminPage() {
 		<div className="container mx-auto max-w-5xl p-6">
 			<div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="font-serif text-2xl sm:text-3xl font-normal">Agent registry</h1>
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal">{t("agents_title")}</h1>
 					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
-						Manage vertical-client agent configs.
+						{t("agents_subtitle")}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Input
-						placeholder="Filter by client_id"
+						placeholder={t("agents_filter_client")}
 						value={filterClientId}
 						onChange={(e) => setFilterClientId(e.target.value)}
 						onKeyDown={(e) => {
@@ -205,9 +207,9 @@ export default function AgentRegistryAdminPage() {
 						className="w-56"
 					/>
 					<Button onClick={() => void loadAgents(filterClientId.trim() || undefined)}>
-						Refresh
+						{t("agents_refresh")}
 					</Button>
-					<Button onClick={openCreate}>Add agent</Button>
+					<Button onClick={openCreate}>{t("agents_add")}</Button>
 				</div>
 			</div>
 
@@ -218,7 +220,7 @@ export default function AgentRegistryAdminPage() {
 			) : filteredAgents.length === 0 ? (
 				<Card>
 					<CardContent className="flex h-40 items-center justify-center text-muted-foreground">
-						No agent configs found.
+						{t("agents_empty")}
 					</CardContent>
 				</Card>
 			) : (
@@ -235,34 +237,37 @@ export default function AgentRegistryAdminPage() {
 									</div>
 									<div className="flex gap-1">
 										{agent.is_active ? (
-											<Badge variant="default">Active</Badge>
+											<Badge variant="default">{t("agents_active")}</Badge>
 										) : (
-											<Badge variant="secondary">Inactive</Badge>
+											<Badge variant="secondary">{t("agents_inactive")}</Badge>
 										)}
-										{agent.citations_enabled && <Badge variant="outline">Citations</Badge>}
+										{agent.citations_enabled && (
+											<Badge variant="outline">{t("agents_citations")}</Badge>
+										)}
 									</div>
 								</div>
 							</CardHeader>
 							<CardContent className="space-y-2">
 								<div className="text-sm text-muted-foreground">
-									<span className="font-medium">Name:</span> {agent.name}
+									<span className="font-medium">{t("agents_name")}:</span> {agent.name}
 								</div>
 								{agent.model_name && (
 									<div className="text-sm text-muted-foreground">
-										<span className="font-medium">Model:</span> {agent.model_name}
+										<span className="font-medium">{t("agents_model")}:</span> {agent.model_name}
 									</div>
 								)}
 								{agent.enabled_tools.length > 0 && (
 									<div className="text-sm text-muted-foreground">
-										<span className="font-medium">Tools:</span> {agent.enabled_tools.join(", ")}
+										<span className="font-medium">{t("agents_tools")}:</span>{" "}
+										{agent.enabled_tools.join(", ")}
 									</div>
 								)}
 								<div className="flex justify-end gap-2 pt-2">
 									<Button variant="outline" size="sm" onClick={() => openEdit(agent)}>
-										Edit
+										{t("agents_edit")}
 									</Button>
 									<Button variant="destructive" size="sm" onClick={() => void handleDelete(agent)}>
-										Deactivate
+										{t("agents_deactivate")}
 									</Button>
 								</div>
 							</CardContent>
@@ -274,17 +279,15 @@ export default function AgentRegistryAdminPage() {
 			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
 					<DialogHeader>
-						<DialogTitle>{editAgent ? "Edit agent" : "Add agent"}</DialogTitle>
+						<DialogTitle>{editAgent ? t("agents_edit_title") : t("agents_add_title")}</DialogTitle>
 						<DialogDescription>
-							{editAgent
-								? "Update the agent configuration below."
-								: "Create a new agent config. Client ID must match a registered vertical client."}
+							{editAgent ? t("agents_edit_desc") : t("agents_create_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="grid gap-4 py-4 sm:grid-cols-2">
 						<div className="space-y-2">
-							<Label htmlFor="client_id">Client ID</Label>
+							<Label htmlFor="client_id">{t("agents_client_id")}</Label>
 							<Input
 								id="client_id"
 								value={draft.client_id}
@@ -300,7 +303,7 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="slug">Slug</Label>
+							<Label htmlFor="slug">{t("agents_slug")}</Label>
 							<Input
 								id="slug"
 								value={draft.slug}
@@ -315,7 +318,7 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="name">Name</Label>
+							<Label htmlFor="name">{t("agents_field_name")}</Label>
 							<Input
 								id="name"
 								value={draft.name}
@@ -329,7 +332,7 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="display_name">Display name</Label>
+							<Label htmlFor="display_name">{t("agents_display_name")}</Label>
 							<Input
 								id="display_name"
 								value={draft.display_name}
@@ -343,7 +346,7 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2 sm:col-span-2">
-							<Label htmlFor="system_instructions">System instructions</Label>
+							<Label htmlFor="system_instructions">{t("agents_system_instructions")}</Label>
 							<Textarea
 								id="system_instructions"
 								value={draft.system_instructions ?? ""}
@@ -358,7 +361,7 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="enabled_tools">Enabled tools (comma-separated)</Label>
+							<Label htmlFor="enabled_tools">{t("agents_enabled_tools")}</Label>
 							<Input
 								id="enabled_tools"
 								value={toolArrayToString(draft.enabled_tools)}
@@ -373,7 +376,7 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="disabled_tools">Disabled tools (comma-separated)</Label>
+							<Label htmlFor="disabled_tools">{t("agents_disabled_tools")}</Label>
 							<Input
 								id="disabled_tools"
 								value={toolArrayToString(draft.disabled_tools)}
@@ -387,7 +390,7 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="model_name">Model name</Label>
+							<Label htmlFor="model_name">{t("agents_model_name")}</Label>
 							<Input
 								id="model_name"
 								value={draft.model_name ?? ""}
@@ -411,7 +414,7 @@ export default function AgentRegistryAdminPage() {
 									}
 								/>
 								<Label htmlFor="citations_enabled" className="cursor-pointer">
-									Citations
+									{t("agents_citations")}
 								</Label>
 							</div>
 
@@ -435,7 +438,11 @@ export default function AgentRegistryAdminPage() {
 							Cancel
 						</Button>
 						<Button onClick={() => void handleSave()} disabled={isSubmitting}>
-							{isSubmitting ? "Saving..." : editAgent ? "Save changes" : "Create"}
+							{isSubmitting
+								? t("agents_saving")
+								: editAgent
+									? t("agents_save_changes")
+									: t("agents_create")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

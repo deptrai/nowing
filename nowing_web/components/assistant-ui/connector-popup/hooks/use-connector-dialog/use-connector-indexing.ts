@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -39,6 +40,7 @@ export function useConnectorIndexing({
 		endDate?: Date
 	) => Promise<void>;
 } {
+	const t = useTranslations();
 	const { workspaceId, refetchAllConnectors, setIsOpen } = base;
 	const { mutateAsync: updateConnector } = useAtomValue(updateConnectorMutationAtom);
 	const { mutateAsync: indexConnector } = useAtomValue(indexConnectorMutationAtom);
@@ -71,7 +73,9 @@ export function useConnectorIndexing({
 			endDate.setDate(endDate.getDate() + (defaults?.daysForward ?? 0));
 
 			const toastId = "auto-index";
-			toast.loading(`Setting up ${connectorTitle}...`, { id: toastId });
+			toast.loading(t("toast.connector_setting_up", { connector: connectorTitle }), {
+				id: toastId,
+			});
 
 			try {
 				await updateConnector({
@@ -104,7 +108,7 @@ export function useConnectorIndexing({
 				console.error("Auto-index failed:", error);
 				toast.error(`${connectorTitle} connected, but sync failed`, {
 					id: toastId,
-					description: "You can start syncing from settings.",
+					description: t("connector.sync_settings_hint"),
 				});
 			} finally {
 				queryClient.invalidateQueries({
@@ -130,8 +134,7 @@ export function useConnectorIndexing({
 			) {
 				const dateRangeValidation = dateRangeSchema.safeParse({ startDate, endDate });
 				if (!dateRangeValidation.success) {
-					const firstIssueMsg =
-						dateRangeValidation.error.issues?.[0]?.message ?? "Invalid date range";
+					const firstIssueMsg = t("connector.invalid_date_range");
 					toast.error(firstIssueMsg);
 					return;
 				}
@@ -140,7 +143,7 @@ export function useConnectorIndexing({
 			if (periodicEnabled) {
 				const frequencyValidation = frequencyMinutesSchema.safeParse(frequencyMinutes);
 				if (!frequencyValidation.success) {
-					toast.error("Invalid frequency value");
+					toast.error(t("connector.invalid_frequency"));
 					return;
 				}
 			}

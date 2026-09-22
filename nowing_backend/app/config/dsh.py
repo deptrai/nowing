@@ -31,6 +31,9 @@ DSH_MAX_PAYLOAD_BYTES = int(
 )
 DSH_EXECUTOR_ENGINE = os.getenv("DSH_EXECUTOR_ENGINE", "legacy")
 
+# CDP Session Secret for cryptographic command authentication (Story 32.3)
+CDP_SESSION_SECRET = os.getenv("CDP_SESSION_SECRET", "dev-cdp-secret-change-in-production")
+
 # DSH Telegram Interactive Checkpoint & Auto-Refund (Story 26.6)
 DSH_TELEGRAM_FIT_SCORE_THRESHOLD = max(
     0, _env_int("DSH_TELEGRAM_FIT_SCORE_THRESHOLD", 80)
@@ -60,6 +63,7 @@ SCHEDULED_DSH_MISSION_TICK_SECONDS = int(
 
 __all__ = [
     'DSH_CONSUMER_GROUP',
+    'CDP_SESSION_SECRET',
     'DSH_EXECUTOR_ENGINE',
     'DSH_HEARTBEAT_INTERVAL_SECONDS',
     'DSH_INTERNAL_BASE_URL',

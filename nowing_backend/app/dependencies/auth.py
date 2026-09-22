@@ -294,6 +294,64 @@ class RequirePermissionFromBody:
         )
 
 
+class RequirePermissionFromForm:
+    """Enforce permission by resolving ``workspace_id`` from multipart form data.
+
+    Use for upload endpoints whose ``workspace_id`` arrives as a ``Form``
+    field rather than in the path/query (where plain ``RequirePermission``
+    would look) or a JSON body (``RequirePermissionFromBody``).
+
+    Usage::
+
+        @router.post("/documents/fileupload")
+        async def upload(
+            files: list[UploadFile],
+            workspace_id: int = Form(...),
+            _membership: WorkspaceMembership = Depends(
+                RequirePermissionFromForm(Permission.DOCUMENTS_CREATE.value, "...")
+            ),
+        ):
+            ...
+    """
+
+    def __init__(
+        self,
+        permission: str,
+        message: str = "You don't have permission to perform this action",
+        form_field: str = "workspace_id",
+    ) -> None:
+        self.permission = permission
+        self.message = message
+        self.form_field = form_field
+
+    async def __call__(
+        self,
+        request: "Request",
+        session: Annotated[AsyncSession, Depends(get_async_session)],
+        auth: Annotated[AuthContext, Depends(get_auth_context)],
+    ) -> WorkspaceMembership:
+        from fastapi import HTTPException
+
+        form = await request.form()
+        workspace_id = form.get(self.form_field)
+        if workspace_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required field: {self.form_field}",
+            )
+        try:
+            workspace_id = int(workspace_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid {self.form_field}: expected integer",
+            ) from exc
+
+        return await _resolve_permission(
+            workspace_id, session, auth, self.permission, self.message
+        )
+
+
 class RequireWorkspaceAccessFromBody:
     """Enforce workspace access by resolving ``workspace_id`` from request body."""
 
@@ -323,6 +381,7 @@ __all__ = [
     "RequirePermission",
     "RequirePermissionFromBody",
     "RequirePermissionFromEntity",
+    "RequirePermissionFromForm",
     "RequireWorkspaceAccess",
     "RequireWorkspaceAccessFromBody",
     "RequireWorkspaceAccessFromEntity",

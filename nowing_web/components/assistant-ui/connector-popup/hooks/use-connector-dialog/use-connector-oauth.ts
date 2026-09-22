@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { OAUTH_RESULT_COOKIE, type parseOAuthCallbackResult } from "@/contracts/types/oauth.types";
@@ -23,6 +24,7 @@ export function useConnectorOAuth(
 	workspaceId: string | null | undefined,
 	setConnectingId: (id: string | null) => void
 ): UseConnectorOAuthResult {
+	const t = useTranslations();
 	const handleConnectOAuth = useCallback(
 		async (connector: (typeof OAUTH_CONNECTORS)[number] | (typeof COMPOSIO_CONNECTORS)[number]) => {
 			if (!workspaceId || !connector.authEndpoint) return;
@@ -52,9 +54,9 @@ export function useConnectorOAuth(
 					"oauth_init"
 				);
 				if (error instanceof Error && error.message.includes("Invalid auth URL")) {
-					toast.error(`Invalid response from ${connector.title} OAuth endpoint`);
+					toast.error(t("toast.oauth_invalid_response", { connector: connector.title }));
 				} else {
-					toast.error(`Failed to connect to ${connector.title}`);
+					toast.error(t("toast.connect_failed", { connector: connector.title }));
 				}
 				setConnectingId(null);
 			}

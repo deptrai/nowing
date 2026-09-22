@@ -214,10 +214,12 @@ class CdpResultPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mission_id: UUID
+    command_id: str | None = None
     result: dict | None = None
     error: str | None = None
     requires_human: bool = False
     challenge: str | None = None
+    session_token: str = Field(..., description="Cryptographic session token for CDP command authentication (required).")
 
     @field_validator("result", mode="before")
     @classmethod

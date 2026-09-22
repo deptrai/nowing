@@ -2,6 +2,7 @@
 
 import { CheckIcon, CopyIcon } from "lucide-react";
 import mermaid from "mermaid";
+import { useTranslations } from "next-intl";
 import { memo, type ReactNode, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn, copyToClipboard } from "@/lib/utils";
@@ -30,6 +31,7 @@ function initializeMermaid() {
 }
 
 function MermaidDiagramComponent({ source, isDarkMode, fallback, className }: MermaidDiagramProps) {
+	const t = useTranslations("assistantUi");
 	const id = useId();
 	const [svg, setSvg] = useState<string | null>(null);
 	const [hasError, setHasError] = useState(false);
@@ -101,9 +103,9 @@ function MermaidDiagramComponent({ source, isDarkMode, fallback, className }: Me
 						const ok = await copyToClipboard(source);
 						if (ok) setHasCopied(true);
 					}}
-					aria-label={hasCopied ? "Copied Mermaid source" : "Copy Mermaid source"}
+					aria-label={hasCopied ? t("copied_mermaid_source") : t("copy_mermaid_source")}
 				>
-					<span className="sr-only">Copy Source</span>
+					<span className="sr-only">{t("copy_source")}</span>
 					{hasCopied ? (
 						<CheckIcon className="!size-3" aria-hidden="true" />
 					) : (
@@ -117,7 +119,7 @@ function MermaidDiagramComponent({ source, isDarkMode, fallback, className }: Me
 					// biome-ignore lint/performance/noImgElement: svg is in-memory string
 					<img
 						src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`}
-						alt="Mermaid diagram"
+						alt={t("mermaid_diagram")}
 						className={cn("mx-auto h-auto max-w-full", className)}
 					/>
 				) : (

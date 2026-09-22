@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Dialog,
 	DialogContent,
@@ -14,6 +14,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Table,
 	TableBody,
@@ -22,12 +24,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import type { RiskTier, SourceRiskTier, SourceRiskTierUpdate } from "@/contracts/types/governance.types";
+import type {
+	RiskTier,
+	SourceRiskTier,
+	SourceRiskTierUpdate,
+} from "@/contracts/types/governance.types";
 import { MemorySourceType } from "@/contracts/types/governance.types";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface SourceRiskTierPanelProps {
 	workspaceId: number;
@@ -53,14 +57,14 @@ const allMemorySourceTypes: string[] = [
 	"outcome_event",
 ];
 
-function riskBadge(risk: RiskTier) {
+function riskBadge(risk: RiskTier, tCommon: (key: string) => string) {
 	switch (risk) {
 		case "low":
-			return <Badge variant="secondary">Low</Badge>;
+			return <Badge variant="secondary">{tCommon("low")}</Badge>;
 		case "medium":
-			return <Badge variant="default">Medium</Badge>;
+			return <Badge variant="default">{tCommon("medium")}</Badge>;
 		case "high":
-			return <Badge variant="destructive">High</Badge>;
+			return <Badge variant="destructive">{tCommon("high")}</Badge>;
 	}
 }
 
@@ -156,15 +160,13 @@ export function SourceRiskTierPanel({
 						return (
 							<TableRow key={sourceType}>
 								<TableCell className="font-medium">{sourceType}</TableCell>
-								<TableCell>{tier ? riskBadge(tier.risk_tier as RiskTier) : "—"}</TableCell>
+								<TableCell>{tier ? riskBadge(tier.risk_tier as RiskTier, tCommon) : "—"}</TableCell>
 								<TableCell>
 									{tier?.recommended_retention_days
 										? `${tier.recommended_retention_days} days`
 										: "—"}
 								</TableCell>
-								<TableCell className="max-w-sm truncate">
-									{tier?.notes || "—"}
-								</TableCell>
+								<TableCell className="max-w-sm truncate">{tier?.notes || "—"}</TableCell>
 								<TableCell>
 									<Button
 										variant="ghost"
@@ -226,11 +228,7 @@ export function SourceRiskTierPanel({
 						<Button variant="outline" onClick={() => confirmHighRisk(false)}>
 							{tCommon("cancel")}
 						</Button>
-						<Button
-							variant="destructive"
-							disabled={saving}
-							onClick={() => confirmHighRisk(true)}
-						>
+						<Button variant="destructive" disabled={saving} onClick={() => confirmHighRisk(true)}>
 							{saving ? tCommon("save") : t("source_tiers.confirm_high_risk")}
 						</Button>
 					</DialogFooter>
@@ -279,9 +277,9 @@ function EditTierForm({
 						"flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					)}
 				>
-					<option value="low">Low</option>
-					<option value="medium">Medium</option>
-					<option value="high">High</option>
+					<option value="low">{tCommon("low")}</option>
+					<option value="medium">{tCommon("medium")}</option>
+					<option value="high">{tCommon("high")}</option>
 				</select>
 			</div>
 

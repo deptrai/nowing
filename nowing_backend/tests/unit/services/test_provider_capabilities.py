@@ -242,3 +242,51 @@ def test_is_known_text_only_returns_false_on_missing_key(monkeypatch):
         )
         is False
     )
+
+# ---------------------------------------------------------------------------
+# provider_registry — ChainLens preset (Story 20.7)
+# ---------------------------------------------------------------------------
+
+
+def test_chainlens_provider_registered():
+    """ChainLens preset exposes OpenAI-compatible transport + default base URL."""
+    from app.services.provider_registry import spec_for
+
+    spec = spec_for("chainlens")
+    assert spec.transport.value == "OPENAI_COMPATIBLE"
+    assert spec.litellm_prefix == "openai"
+    assert spec.discovery == "openai_models"
+    assert spec.default_base_url == "https://research-api.chainlens.net/v1"
+    assert spec.base_url_required is False
+    assert spec.auth_style == "bearer"
+    assert spec.display_name == "ChainLens"
+
+
+def test_chainlens_listed_in_registry():
+    """ChainLens key is enumerable via REGISTRY for /model-providers endpoint."""
+    from app.services.provider_registry import REGISTRY
+
+    assert "chainlens" in REGISTRY
+    assert REGISTRY["chainlens"].display_name == "ChainLens"
+
+
+def test_chainlens_serialized_by_list_model_providers():
+    """list_model_providers returns chainlens in the serialized response shape."""
+    from app.routes.model_connections_routes import list_model_providers
+    from app.schemas.model_connections import ModelProviderRead
+    import asyncio
+    from unittest.mock import MagicMock
+
+    # Bypass auth dependency by calling the underlying function directly
+    # list_model_providers ignores its `auth` arg (del auth), so any value works
+    result = asyncio.run(list_model_providers(auth=MagicMock()))
+    providers = {p.provider: p for p in result}
+
+    assert "chainlens" in providers
+    spec = providers["chainlens"]
+    assert isinstance(spec, ModelProviderRead)
+    assert spec.transport == "OPENAI_COMPATIBLE"
+    assert spec.default_base_url == "https://research-api.chainlens.net/v1"
+    assert spec.discovery == "openai_models"
+    assert spec.local_only is False
+

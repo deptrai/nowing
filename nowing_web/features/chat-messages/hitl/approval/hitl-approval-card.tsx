@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getToolDisplayName } from "@/contracts/enums/toolIcons";
@@ -31,6 +32,7 @@ function sliceForStep(
 	reviewConfig: InterruptReviewConfig | undefined,
 	stagedDecision: HitlDecision | undefined
 ): InterruptResult {
+	const t = useTranslations("chatMessages");
 	const baseAction =
 		stagedDecision?.type === "edit" && stagedDecision.edited_action
 			? { ...action, args: stagedDecision.edited_action.args }
@@ -61,6 +63,7 @@ export const HitlApprovalCard: FC<{
 	pendingInterrupt: PendingInterruptState;
 	onSubmit: (decisions: HitlDecision[]) => void;
 }> = ({ pendingInterrupt, onSubmit }) => {
+	const t = useTranslations("layout");
 	const interruptData = pendingInterrupt.interruptData as InterruptResult & Record<string, unknown>;
 	const actionRequests = (interruptData.action_requests ?? []) as InterruptActionRequest[];
 	const reviewConfigs = (interruptData.review_configs ?? []) as InterruptReviewConfig[];
@@ -219,49 +222,52 @@ const PagerBar: FC<{
 	onPrev,
 	onNext,
 	onSubmit,
-}) => (
-	<div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-sm">
-		<Button
-			type="button"
-			size="sm"
-			variant="outline"
-			onClick={onPrev}
-			disabled={currentStep === 0}
-			aria-label="Previous approval"
-		>
-			<ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
-		</Button>
-		<span className="font-medium tabular-nums">
-			{currentStep + 1} / {total}
-		</span>
-		<span className="text-muted-foreground">·</span>
-		<span className="text-muted-foreground">
-			{stagedCount} of {total} decided
-		</span>
-		<Button
-			type="button"
-			size="sm"
-			variant="outline"
-			onClick={onNext}
-			disabled={!canAdvance || currentStep >= total - 1}
-			aria-label="Next approval"
-			title={!canAdvance ? "Decide on this action first" : undefined}
-		>
-			<ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
-		</Button>
-		<span className="ml-2 truncate text-xs text-muted-foreground" title={actionName}>
-			{getToolDisplayName(actionName)}
-		</span>
-		<div className="ml-auto">
+}) => {
+	const t = useTranslations("chatMessages");
+	return (
+		<div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-sm">
 			<Button
 				type="button"
 				size="sm"
-				onClick={onSubmit}
-				disabled={!canSubmit}
-				title={canSubmit ? "Submit decisions" : "Decide every action first"}
+				variant="outline"
+				onClick={onPrev}
+				disabled={currentStep === 0}
+				aria-label={t("x_previous_approval")}
 			>
-				Submit decisions
+				<ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
 			</Button>
+			<span className="font-medium tabular-nums">
+				{currentStep + 1} / {total}
+			</span>
+			<span className="text-muted-foreground">·</span>
+			<span className="text-muted-foreground">
+				{stagedCount} of {total} decided
+			</span>
+			<Button
+				type="button"
+				size="sm"
+				variant="outline"
+				onClick={onNext}
+				disabled={!canAdvance || currentStep >= total - 1}
+				aria-label={t("x_next_approval")}
+				title={!canAdvance ? t("decide_first") : undefined}
+			>
+				<ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
+			</Button>
+			<span className="ml-2 truncate text-xs text-muted-foreground" title={actionName}>
+				{getToolDisplayName(actionName)}
+			</span>
+			<div className="ml-auto">
+				<Button
+					type="button"
+					size="sm"
+					onClick={onSubmit}
+					disabled={!canSubmit}
+					title={canSubmit ? "Submit decisions" : "Decide every action first"}
+				>
+					{t("x_submit_decisions")}
+				</Button>
+			</div>
 		</div>
-	</div>
-);
+	);
+};

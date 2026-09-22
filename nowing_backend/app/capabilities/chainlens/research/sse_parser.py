@@ -70,17 +70,42 @@ def _parse_sources(raw_sources: Any) -> list[Source]:
         meta = raw_source.get("metadata") or raw_source
         if not isinstance(meta, dict):
             continue
-        url = str(meta.get("url") or "").strip()
+        url = str(meta.get("url") or raw_source.get("url") or "").strip()
         if not url:
             continue
         content = raw_source.get("content")
         if content is None:
             content = raw_source.get("pageContent")
+        # Only string content is usable downstream; dict/list payloads would
+        # serialize to garbage if coerced via str() (code_search drops them).
+        if content is not None and not isinstance(content, str):
+            content = None
+        # Preserve upstream metadata fields for downstream consumers
+        # (e.g. code_search maps source/sourceId/score into CodeSnippet).
+        # Title may live at top level (code_context) or inside metadata.
+        raw_source_type = meta.get("source")
+        raw_source_id = meta.get("sourceId") or meta.get("source_id")
+        raw_score = meta.get("score")
+        title = (
+            meta.get("title")
+            or meta.get("name")
+            or raw_source.get("title")
+            or "Source"
+        )
         sources.append(
             Source(
-                title=str(meta.get("title") or meta.get("name") or "Source"),
+                title=str(title),
                 url=url,
                 content=str(content) if content is not None else None,
+                source_type=str(raw_source_type) if raw_source_type is not None else None,
+                source_id=str(raw_source_id) if raw_source_id is not None else None,
+                # bool is a subclass of int — True/False are not valid scores.
+                score=(
+                    float(raw_score)
+                    if isinstance(raw_score, (int, float))
+                    and not isinstance(raw_score, bool)
+                    else None
+                ),
             )
         )
     return sources
@@ -166,6 +191,8 @@ class _SSEParser:
         "saw_engine_first_token",
         "saw_first_token",
         "saw_heartbeat",
+        "next_action",
+        "message",
         "saw_unknown",
         "sources",
         "start_time",
@@ -198,6 +225,8 @@ class _SSEParser:
         self.cost_basis: Literal["actual", "estimated", "fallback"] | None = None
         self.cost_source: str | None = None
         self.resolved_mode: str | None = None
+        self.next_action: str | None = None
+        self.message: str | None = None
         self.model: str | None = None
         self.estimated: bool | None = None
         self.tokens_total: int | None = None
@@ -338,6 +367,17 @@ class _SSEParser:
             self._extract_cost(event)
             self._extract_gap_fill(event)
             self._set_structured_output(event.get("output"))
+            # code_context streams may carry status/nextAction/message in
+            # the terminal done frame — surface them for capability callers.
+            raw_status = event.get("status")
+            if isinstance(raw_status, str) and raw_status:
+                self.status = raw_status
+            raw_next = event.get("nextAction")
+            if isinstance(raw_next, str) and raw_next.strip():
+                self.next_action = raw_next.strip()
+            raw_msg = event.get("message")
+            if isinstance(raw_msg, str) and raw_msg.strip():
+                self.message = raw_msg.strip()
             return
 
         if event_type == "block" and isinstance(event.get("block"), dict):
@@ -743,6 +783,8 @@ class _SSEParser:
             first_token_time_ms=self.first_token_time_ms,
             gap_fill_needed=self.gap_fill_needed,
             suggested_domains=self.suggested_domains,
+            next_action=self.next_action,
+            message=self.message,
             insufficient_evidence=self.insufficient_evidence_flag,
             structured_output=self.structured_output,
         )

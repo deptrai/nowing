@@ -493,7 +493,7 @@ export function SidebarUserProfile({
 							{onAnnouncements && (
 								<DropdownMenuItem onClick={onAnnouncements}>
 									<Megaphone className="h-4 w-4" aria-hidden="true" />
-									<span className="flex-1">What's New</span>
+									<span className="flex-1">{t("whats_new")}</span>
 									{announcementUnreadCount > 0 && (
 										<span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-medium">
 											{formatAnnouncementCount(announcementUnreadCount)}
@@ -598,7 +598,7 @@ export function SidebarUserProfile({
 					{onAnnouncements && (
 						<DropdownMenuItem onClick={onAnnouncements}>
 							<Megaphone className="h-4 w-4" aria-hidden="true" />
-							<span className="flex-1">What's New</span>
+							<span className="flex-1">{t("whats_new")}</span>
 							{announcementUnreadCount > 0 && (
 								<span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-medium">
 									{formatAnnouncementCount(announcementUnreadCount)}

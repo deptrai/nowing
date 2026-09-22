@@ -162,8 +162,8 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			setImmediateUpgrade(false);
 			toast.success(
 				res.status === "active"
-					? `Plan upgraded to ${res.to_plan} immediately.`
-					: `Plan change to ${res.to_plan} scheduled for ${formatDate(res.effective_at)}.`
+					? t("plan_upgraded", { plan: res.to_plan })
+					: t("plan_change_scheduled", { plan: res.to_plan, date: formatDate(res.effective_at) })
 			);
 		},
 		onError: (err: unknown) => {
@@ -178,7 +178,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 					return;
 				}
 			}
-			toast.error(err instanceof Error ? err.message : "Failed to change subscription plan");
+			toast.error(err instanceof Error ? err.message : t("x_failed_to_change_subscription"));
 		},
 	});
 
@@ -191,10 +191,10 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.workspaces.subscriptionChanges(numericId),
 			});
-			toast.success("Scheduled plan change cancelled.");
+			toast.success(t("plan_change_cancelled"));
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to cancel change");
+			toast.error(err instanceof Error ? err.message : t("x_failed_to_cancel_change"));
 		},
 	});
 
@@ -208,10 +208,10 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.workspaces.subscriptionChanges(numericId),
 			});
-			toast.success("Plan reverted successfully.");
+			toast.success(t("plan_reverted_success"));
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to revert plan change");
+			toast.error(err instanceof Error ? err.message : t("x_failed_to_revert_plan"));
 		},
 	});
 
@@ -362,8 +362,8 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 						<CardTitle className="text-base font-medium">{t("limits_plan_label")}</CardTitle>
 						<CardDescription className="text-xs">
 							{currentPlanDef?.support_level
-								? `Support level: ${currentPlanDef.support_level}`
-								: "Plan details"}
+								? t("support_level", { level: currentPlanDef.support_level })
+								: t("plan_details")}
 							{currentPlanDef?.price_micros !== undefined &&
 								` • ${formatCurrency(currentPlanDef?.price_micros, currentPlanDef?.currency)}/month`}
 						</CardDescription>
@@ -415,9 +415,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 			<Card>
 				<CardHeader>
 					<CardTitle className="text-base font-medium">{t("limits_history_title")}</CardTitle>
-					<CardDescription className="text-xs">
-						Audit trail of plan upgrades, downgrades, and cancellations.
-					</CardDescription>
+					<CardDescription className="text-xs">{t("x_audit_trail_of_plan")}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{isHistoryLoading ? (
@@ -433,12 +431,12 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>From</TableHead>
+									<TableHead>{t("from")}</TableHead>
 									<TableHead>To</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Effective Date</TableHead>
-									<TableHead>Requested</TableHead>
-									<TableHead className="text-right">Action</TableHead>
+									<TableHead>{t("status")}</TableHead>
+									<TableHead>{t("x_effective_date")}</TableHead>
+									<TableHead>{t("x_requested")}</TableHead>
+									<TableHead className="text-right">{t("action")}</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -515,9 +513,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 				<DialogContent className="max-w-3xl">
 					<DialogHeader>
 						<DialogTitle>{t("limits_select_plan")}</DialogTitle>
-						<DialogDescription>
-							Choose the plan that best matches your team's workflow and intelligence requirements.
-						</DialogDescription>
+						<DialogDescription>{t("f_choose_the_plan_that")}</DialogDescription>
 					</DialogHeader>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
@@ -545,7 +541,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 											</CardTitle>
 											{isCurrent && (
 												<Badge variant="outline" className="text-[10px] px-1.5 py-0">
-													Current
+													{t("f_current")}
 												</Badge>
 											)}
 										</div>
@@ -662,7 +658,7 @@ export function WorkspaceLimitsManager({ workspaceId }: WorkspaceLimitsManagerPr
 
 					<DialogFooter>
 						<Button variant="default" onClick={() => setConflictData(null)}>
-							Understood
+							{t("f_understood")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

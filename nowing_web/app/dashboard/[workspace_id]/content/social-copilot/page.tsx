@@ -2,6 +2,7 @@
 
 import { FileText, Plus, Search, Sparkles, TrendingUp } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/apis/social-copilot-api.service";
 
 export default function SocialCopilotPage() {
+	const t = useTranslations("socialCopilot");
 	const params = useParams();
 	const workspaceId = (params?.workspace_id as string) || "1";
 
@@ -118,9 +120,9 @@ export default function SocialCopilotPage() {
 					is_active: p.id === profileId,
 				}))
 			);
-			toast.success("Đã kích hoạt hồ sơ giọng văn thành công!");
+			toast.success(t("toast_voice_activated"));
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Không thể kích hoạt hồ sơ";
+			const msg = err instanceof Error ? err.message : t("toast_activate_failed");
 			toast.error(msg);
 		}
 	};
@@ -144,10 +146,10 @@ export default function SocialCopilotPage() {
 			if (res.drafts && res.drafts.length > 0) {
 				setDrafts(res.drafts);
 				setActiveTab("drafts");
-				toast.success("Đã sinh 3 biến thể bản thảo thành công!");
+				toast.success(t("toast_drafts_generated"));
 			}
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Không thể sinh bản thảo";
+			const msg = err instanceof Error ? err.message : t("toast_generate_failed");
 			toast.error(msg);
 		} finally {
 			setIsGenerating(false);
@@ -183,9 +185,9 @@ export default function SocialCopilotPage() {
 			setSelectedOutlier(newPost);
 			setIsManualImportOpen(false);
 			setManualText("");
-			toast.success("Đã bóc tách cấu trúc bài viết mẫu thành công!");
+			toast.success(t("toast_ingest_success"));
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Không thể phân tích bài viết";
+			const msg = err instanceof Error ? err.message : t("toast_ingest_failed");
 			toast.error(msg);
 		}
 	};
@@ -197,12 +199,12 @@ export default function SocialCopilotPage() {
 				<div>
 					<div className="flex items-center gap-2 mb-1">
 						<span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary uppercase">
-							Content Mode
+							{t("content_mode")}
 						</span>
 						<span className="text-xs text-muted-foreground">Story 21.12</span>
 					</div>
 					<h1 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight text-foreground">
-						Viral Social Outbound Co-pilot
+						{t("title")}
 					</h1>
 					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
 						Phân tích các bài viết viral ngoại lệ, học giọng văn cá nhân độc bản và viết lại thành
@@ -231,7 +233,7 @@ export default function SocialCopilotPage() {
 						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
 					>
 						<Sparkles className="h-4 w-4" aria-hidden="true" />
-						{isGenerating ? "Đang tạo..." : "Tạo bản thảo / Generate Draft"}
+						{isGenerating ? t("generating") : t("btn_generate_draft")}
 					</button>
 				</div>
 			</div>
@@ -250,7 +252,7 @@ export default function SocialCopilotPage() {
 					}`}
 				>
 					<Sparkles className="h-4 w-4" aria-hidden="true" />
-					<span>Hồ sơ giọng văn / Voice Profile</span>
+					<span>{t("tab_voice_profile")}</span>
 					<span className="rounded-full bg-primary/20 text-primary text-xs px-2 py-0.5">
 						{profiles.length}
 					</span>
@@ -268,7 +270,7 @@ export default function SocialCopilotPage() {
 					}`}
 				>
 					<TrendingUp className="h-4 w-4" aria-hidden="true" />
-					<span>Bài viết Viral / Outlier Feed</span>
+					<span>{t("tab_outlier_feed")}</span>
 					<span className="rounded-full bg-orange-500/20 text-orange-600 text-xs px-2 py-0.5">
 						{outliers.length}
 					</span>
@@ -286,7 +288,7 @@ export default function SocialCopilotPage() {
 					}`}
 				>
 					<FileText className="h-4 w-4" aria-hidden="true" />
-					<span>Bản thảo AI / AI Drafts</span>
+					<span>{t("tab_ai_drafts")}</span>
 					{drafts.length > 0 && (
 						<span className="rounded-full bg-emerald-500/20 text-emerald-600 text-xs px-2 py-0.5">
 							{drafts.length}
@@ -316,7 +318,7 @@ export default function SocialCopilotPage() {
 							/>
 							<input
 								type="text"
-								placeholder="Tìm bài viral theo từ khóa (VD: bất động sản, dòng tiền, SaaS)..."
+								placeholder={t("search_placeholder")}
 								value={searchKeyword}
 								onChange={(e) => setSearchKeyword(e.target.value)}
 								className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -328,7 +330,7 @@ export default function SocialCopilotPage() {
 							onClick={() => setIsManualImportOpen(true)}
 							className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
 						>
-							<Plus className="h-4 w-4" aria-hidden="true" /> Dán bài mẫu thủ công
+							<Plus className="h-4 w-4" aria-hidden="true" /> {t("btn_paste_manual")}
 						</button>
 					</div>
 
@@ -368,15 +370,12 @@ export default function SocialCopilotPage() {
 			{isManualImportOpen && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
 					<div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg space-y-4">
-						<h3 className="text-lg font-semibold text-foreground">Dán Nội Dung Bài Viết Mẫu</h3>
-						<p className="text-xs text-muted-foreground">
-							AI sẽ tự động khử thông tin nhạy cảm (SĐT, email theo AD-25), bóc tách 4 thành phần
-							bài viết và phân loại Hook Taxonomy.
-						</p>
+						<h3 className="text-lg font-semibold text-foreground">{t("modal_paste_title")}</h3>
+						<p className="text-xs text-muted-foreground">{t("modal_paste_desc")}</p>
 						<form onSubmit={handleManualIngest} className="space-y-4">
 							<textarea
 								rows={6}
-								placeholder="Dán toàn bộ nội dung bài viết cần phân tích vào đây..."
+								placeholder={t("modal_paste_placeholder")}
 								value={manualText}
 								onChange={(e) => setManualText(e.target.value)}
 								className="w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"

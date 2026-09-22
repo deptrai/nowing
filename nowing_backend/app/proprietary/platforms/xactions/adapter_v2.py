@@ -10,19 +10,48 @@ XActions running with `MCP_TRANSPORT=http PORT=3001`.
 
 from __future__ import annotations
 
+import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from app.config import config
+from app.proprietary.platforms.xactions.action_matrix import (
+    CanonicalActionMatrix,
+    derive_platform_action,
+)
 from app.proprietary.platforms.xactions.constants import STREAM_SOCIAL_RAW_POSTS
 from app.proprietary.platforms.xactions.mcp_client import (
     XActionsMcpClient,
     XActionsMcpError,
+    get_shared_client,
 )
 from app.proprietary.platforms.xactions.models import SocialPostData
 
 logger = logging.getLogger(__name__)
+
+
+def _legacy_scrape_args(
+    target: Any, platform: str, action: str, action_args: dict[str, Any]
+) -> dict[str, Any]:
+    """Build the nested ``x_scrape`` envelope for flag-OFF ``PLATFORM_TOOL_MAP``.
+
+    ``x_scrape`` requires ``args`` as a nested object (AD-2) plus a ``context``
+    envelope carrying ``targetId``/``workspaceId`` so the single-writer Redis
+    stream keeps tenant routing (REQ-X2). Earlier builders passed action args
+    flat alongside ``platform``/``action`` — the server dropped them into a
+    missing-``args`` ``XACT_4002``.
+    """
+    target_db_id = getattr(target, "id", None)
+    return {
+        "platform": platform,
+        "action": action,
+        "args": action_args,
+        "context": {
+            "targetId": target_db_id if target_db_id is not None else getattr(target, "target_id", None),
+            "workspaceId": getattr(target, "workspace_id", None),
+        },
+    }
 
 
 # Map Nowing platform targets to XActions tool/action pairs.
@@ -46,55 +75,98 @@ PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
         "tool": "x_get_tweets",
         "args_builder": lambda t: {"username": t.target_id.strip("@"), "limit": 20},
     },
+    # NOTE (Epic 36 follow-up): these ``x_scrape`` arg_builders now emit the
+    # *canonical* action names + platform keys from the live ``x_actions_list``
+    # catalog (24 platforms / 189 actions), in the nested
+    # ``{platform, action, args, context}`` envelope per AD-2. The previous
+    # guess-names (``posts``/``lookup``/``company``/``search`` and platform
+    # ``b2b_registry``) all fail server-side ``mapAction`` validation — e.g.
+    # ``tiktok/posts`` → XACT "action not available", ``b2b_registry`` →
+    # "platform not supported". ``context`` forwards targetId/workspaceId so
+    # the single-writer stream carries tenant routing (REQ-X2).
     "tiktok_hashtag": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "tiktok", "action": "posts", "hashtag": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "tiktok", "hashtag_feed", {"tag": t.target_id}),
     },
     "chotot_category": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "chotot", "action": "posts", "category": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "chotot", "search_listings", {"category": t.target_id}),
     },
     "shopee_keyword": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "shopee", "action": "search", "keyword": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "shopee", "search_products", {"keyword": t.target_id}),
     },
     "topcv_search": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "topcv", "action": "search", "query": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "topcv", "search_jobs", {"keyword": t.target_id}),
     },
     "vietnamworks_search": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "vietnamworks", "action": "search", "query": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "vietnamworks", "search_jobs", {"keyword": t.target_id}),
     },
     "linkedin_company": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "linkedin", "action": "company", "company": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "linkedin", "company_profile", {"companySlug": t.target_id}),
     },
     "batdongsan_category": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "batdongsan", "action": "posts", "category": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "batdongsan", "search_listings", {"category": t.target_id}),
     },
     "masothue_lookup": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "masothue", "action": "lookup", "taxCode": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "masothue", "detail", {"taxCode": t.target_id}),
     },
     "b2b_registry_search": {
         "tool": "x_scrape",
-        "args_builder": lambda t: {"platform": "b2b_registry", "action": "search", "query": t.target_id},
+        "args_builder": lambda t: _legacy_scrape_args(t, "b2b_registry_extended", "search", {"q": t.target_id}),
     },
 }
 
 
 def _facebook_group_url(target_id: str) -> str:
-    if target_id.startswith("http"):
-        return target_id
-    return f"https://www.facebook.com/groups/{target_id}"
+    # Match fallback_crawl_post's canonical check: strip + lowercase + scheme
+    # prefix — guards against `" HTTPS://…"` or `"www.facebook.com/…"` inputs
+    # that would otherwise double-prefix the URL.
+    normalized = str(target_id).strip()
+    if normalized.lower().startswith(("http://", "https://")):
+        return normalized
+    return f"https://www.facebook.com/groups/{normalized}"
 
 
 def _facebook_page_url(target_id: str) -> str:
-    if target_id.startswith("http"):
-        return target_id
-    return f"https://www.facebook.com/{target_id}"
+    normalized = str(target_id).strip()
+    if normalized.lower().startswith(("http://", "https://")):
+        return normalized
+    return f"https://www.facebook.com/{normalized}"
+
+
+def _facebook_id_from_target(target_id: str, segment: str) -> str:
+    """Extract the numeric/slug id from a Facebook URL or bare id.
+
+    ``x_scrape`` group/page descriptors take ``groupId``/``pageId`` (the bare
+    id), not a URL — unlike the legacy tools that accepted ``url``. Accepts
+    ``"12345"``, ``"…/groups/12345"``, or ``"…/pagename"`` and returns the id.
+    """
+    normalized = str(target_id).strip()
+    if normalized.lower().startswith(("http://", "https://")):
+        # Take the path segment after ``segment`` (``groups``/``pages``) or the
+        # last non-empty path segment for a bare page URL.
+        path = normalized.split("://", 1)[1].split("?", 1)[0].rstrip("/")
+        parts = [p for p in path.split("/") if p]
+        if segment in parts:
+            idx = parts.index(segment)
+            if idx + 1 < len(parts):
+                return parts[idx + 1]
+        return parts[-1] if parts else normalized
+    return normalized
+
+
+def _facebook_group_id(target_id: str) -> str:
+    return _facebook_id_from_target(target_id, "groups")
+
+
+def _facebook_page_id(target_id: str) -> str:
+    return _facebook_id_from_target(target_id, "pages")
 
 
 def _normalize_platform_for_post(platform: str) -> str:
@@ -131,6 +203,92 @@ def _is_permanent_fallback_error(exc: XActionsMcpError) -> bool:
     return False
 
 
+def _is_legacy_tool_deprecated() -> bool:
+    """Check if legacy tool deprecation is active.
+
+    Deprecation requires BOTH XACTIONS_USE_UNIFIED_DISPATCH and
+    XACTIONS_LEGACY_TOOL_DEPRECATION to be truthy. Deprecation flag alone
+    is a no-op (Story 36.6b / AD-1, AD-2).
+    """
+    return bool(
+        getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False)
+        and getattr(config, "XACTIONS_LEGACY_TOOL_DEPRECATION", False)
+    )
+
+
+def _build_unified_args(
+    platform_kind: str,
+    target_id: Any,
+    descriptor: dict[str, Any],
+    action: str,
+) -> dict[str, Any]:
+    """Build canonical action args dictionary for a target.
+
+    Honours the descriptor's ``requiredArgs`` name (``url``, ``query``,
+    ``username``, …) rather than hard-coding. Applies platform-specific
+    transformations:
+
+    - ``facebook_group``/``facebook_page``: URL-ify ``target_id`` via
+      :func:`_facebook_group_url` / :func:`_facebook_page_url` — but only
+      when the declared arg is ``url``. If the descriptor ever renames the
+      arg to ``group_id``/``page_id``, the raw id is bound verbatim.
+    - ``twitter_user``: strip whitespace + leading/trailing ``@`` via
+      ``str(target_id).strip().strip("@")``.
+    - ``twitter_keyword`` and other kinds: pass ``target_id`` verbatim.
+
+    When the descriptor declares ``limit`` in ``optionalArgs``, the
+    canonical default ``limit=20`` is preserved so routing through
+    ``x_scrape`` matches the legacy ``PLATFORM_TOOL_MAP`` behaviour.
+    """
+    required_args = list(descriptor.get("requiredArgs") or [])
+    if not required_args:
+        return {}
+
+    if len(required_args) != 1:
+        raise ValueError(
+            f"Action {action or '<unknown>'} requires multiple args "
+            f"{required_args}; automatic binding not supported"
+        )
+
+    # Normalize: coerce non-string ids to str, strip whitespace.
+    raw = str(target_id).strip() if target_id is not None else ""
+
+    # ``arg_override`` lets a descriptor bind ``target_id`` to a different wire
+    # arg than ``requiredArgs[0]`` (e.g. ``twitter_user`` → ``search``'s
+    # ``from`` arg rather than ``query``).
+    arg_name = descriptor.get("arg_override") or required_args[0]
+    if platform_kind == "facebook_group" and arg_name in ("url", "groupId"):
+        val: Any = _facebook_group_id(raw)
+    elif platform_kind == "facebook_page" and arg_name in ("url", "pageId"):
+        val = _facebook_page_id(raw)
+    elif platform_kind == "twitter_user" and arg_name in ("username", "from"):
+        val = raw.strip("@")
+        if not val:
+            raise ValueError(
+                f"target_id required for action {action} "
+                f"(after stripping '@' from {target_id!r})"
+            )
+    else:
+        val = raw
+
+    args: dict[str, Any] = {arg_name: val}
+
+    # Preserve legacy `limit=20` for platforms that had it in PLATFORM_TOOL_MAP
+    # (facebook_*, twitter_*). Other kinds rely on the descriptor's own
+    # optionalArgs defaults — don't inject a limit the legacy path never set.
+    if platform_kind in (
+        "facebook_group",
+        "facebook_page",
+        "twitter_keyword",
+        "twitter_user",
+    ):
+        optional_args = list(descriptor.get("optionalArgs") or [])
+        if "limit" in optional_args:
+            args.setdefault("limit", 20)
+
+    return args
+
+
 class UniversalScrapeTargetMapper:
     """Map a Nowing social target to an XActions tool call.
 
@@ -138,15 +296,142 @@ class UniversalScrapeTargetMapper:
     XActions daemon does not yet expose `x_scrape` (per INTEGRATION-PLAN),
     callers should treat an MCP `tool_not_found`/`XACT_404`-style failure as
     a signal to fall back to `x_crawl_post` for post-detail-only ingestion.
+
+    When ``XACTIONS_USE_UNIFIED_DISPATCH`` is ON, platforms resolve their
+    ``(platform, action)`` pair from the :class:`CanonicalActionMatrix` and
+    emit the nested ``{platform, action, args, context}`` envelope per AD-2.
+    When ``XACTIONS_LEGACY_TOOL_DEPRECATION`` is also ON (Story 36.6b), Facebook
+    and Twitter legacy tools are also routed through ``x_scrape``; when OFF,
+    those four platforms remain on dedicated legacy tools.
     """
 
     @staticmethod
+    def _unified_envelope(
+        target: Any,
+        platform_kind: str,
+        matrix: dict[str, dict[str, dict[str, Any]]],
+    ) -> tuple[str, dict[str, Any]]:
+        """Build the nested ``x_scrape`` envelope for a matrix-backed platform.
+
+        Returns ``("x_scrape", {platform, action, args: {...}, context:
+        {targetId, workspaceId}})``. Action args are populated from the
+        descriptor's ``requiredArgs`` — the target's ``target_id`` is bound to
+        the single required arg (all current matrix entries have exactly one).
+        """
+        platform, action_key = derive_platform_action(platform_kind, matrix)
+        descriptor = matrix[platform][action_key]
+        # A descriptor may declare ``xactions_action`` to dispatch a different
+        # canonical verb on the wire (e.g. ``user_timeline`` → ``search``).
+        action = descriptor.get("xactions_action") or action_key
+        required_args = list(descriptor.get("requiredArgs") or [])
+
+        target_id_value = getattr(target, "target_id", None)
+        args: dict[str, Any] = {}
+        if required_args:
+            # Prefer the persisted ``target_url`` column over ``target_id``
+            # when the bound arg consumes a Facebook/URL-shaped value —
+            # ``url`` directly, or ``groupId``/``pageId`` which are extracted
+            # from the canonical URL by ``_facebook_*_id``. Story 36.6b review
+            # finding — ``target_url`` is the operator-curated field.
+            bound_arg = descriptor.get("arg_override") or required_args[0]
+            if (
+                len(required_args) == 1
+                and bound_arg in ("url", "groupId", "pageId")
+                and getattr(target, "target_url", None)
+            ):
+                candidate = getattr(target, "target_url")
+                if isinstance(candidate, str) and candidate.strip():
+                    target_id_value = candidate
+            if target_id_value is None or not str(target_id_value).strip():
+                raise ValueError(
+                    f"target_id required for action {action}"
+                )
+            args = _build_unified_args(
+                platform_kind, target_id_value, descriptor, action
+            )
+
+        # Prefer integer ``id`` over string ``target_id`` slug; ``id`` falsy
+        # values (``0``, ``None``) must still fall back via explicit None-check,
+        # not truthiness — ``0`` is a valid DB id in some test fixtures.
+        target_db_id = getattr(target, "id", None)
+        context = {
+            "targetId": target_db_id if target_db_id is not None else getattr(target, "target_id", None),
+            "workspaceId": getattr(target, "workspace_id", None),
+        }
+
+        arguments: dict[str, Any] = {
+            "platform": platform,
+            "action": action,
+            "args": args,
+            "context": context,
+        }
+        return "x_scrape", arguments
+
+    @staticmethod
     def map(target: Any) -> tuple[str, dict[str, Any]]:
+        """Map a target to ``(tool_name, arguments)``.
+
+        Sync — never touches the network. Under flag ON this consults
+        :meth:`CanonicalActionMatrix.get_sync` (fresh cache or static
+        fallback); under flag OFF it uses ``PLATFORM_TOOL_MAP`` verbatim.
+        """
         platform = getattr(target, "platform", None)
+
+        if getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            mapping = PLATFORM_TOOL_MAP.get(platform)
+            if mapping is None:
+                raise ValueError(f"Unsupported social platform: {platform}")
+            # Legacy dedicated tools (facebook/twitter) stay as-is unless
+            # deprecation flag is also ON.
+            if mapping["tool"] != "x_scrape":
+                if not _is_legacy_tool_deprecated():
+                    return mapping["tool"], mapping["args_builder"](target)
+                logger.debug(
+                    "Unified dispatch: routing legacy tool %s via x_scrape "
+                    "(platform=%s, XACTIONS_LEGACY_TOOL_DEPRECATION=on)",
+                    mapping["tool"], platform,
+                )
+            matrix = CanonicalActionMatrix.get_sync()
+            return UniversalScrapeTargetMapper._unified_envelope(
+                target, platform, matrix
+            )
+
         mapping = PLATFORM_TOOL_MAP.get(platform)
         if not mapping:
             raise ValueError(f"Unsupported social platform: {platform}")
         return mapping["tool"], mapping["args_builder"](target)
+
+    @staticmethod
+    async def map_async(
+        target: Any,
+        client: Any | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        """Async variant — refreshes the action matrix when the flag is ON.
+
+        Flag OFF → delegates to :meth:`map` unchanged. Flag ON → awaits
+        ``CanonicalActionMatrix.get(client)`` so the TTL cache can refresh
+        from ``x_actions_list`` before resolving ``(platform, action)``.
+        """
+        if not getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            return UniversalScrapeTargetMapper.map(target)
+
+        platform = getattr(target, "platform", None)
+        mapping = PLATFORM_TOOL_MAP.get(platform)
+        if mapping is None:
+            raise ValueError(f"Unsupported social platform: {platform}")
+        if mapping["tool"] != "x_scrape":
+            if not _is_legacy_tool_deprecated():
+                return mapping["tool"], mapping["args_builder"](target)
+            logger.debug(
+                "Unified dispatch: routing legacy tool %s via x_scrape "
+                "(platform=%s, XACTIONS_LEGACY_TOOL_DEPRECATION=on)",
+                mapping["tool"], platform,
+            )
+
+        matrix = await CanonicalActionMatrix.get(client)
+        return UniversalScrapeTargetMapper._unified_envelope(
+            target, platform, matrix
+        )
 
     @staticmethod
     def fallback_crawl_post(target: Any) -> tuple[str, dict[str, Any]]:
@@ -159,8 +444,10 @@ class UniversalScrapeTargetMapper:
             raise TargetUnsupportedError(
                 f"Target {getattr(target, 'id', None)} lacks valid platform for x_crawl_post fallback"
             )
-        raw_url = getattr(target, "target_url", None) or getattr(target, "target_id", "")
-        target_url = str(raw_url or "").strip()
+        raw_url = str(getattr(target, "target_url", None) or "").strip() or str(
+            getattr(target, "target_id", "") or ""
+        ).strip()
+        target_url = raw_url
         if not target_url.lower().startswith(("http://", "https://")):
             raise TargetUnsupportedError(
                 f"Target {getattr(target, 'id', None)} lacks valid HTTP(S) URL for x_crawl_post fallback: {target_url!r}"
@@ -177,21 +464,26 @@ class XActionsSocialAdapterV2:
         default_account_id: str | None = None,
     ):
         self.client = client
-        self._owns_client = client is None
+        self._is_shared = client is None
+        self._owns_client = not self._is_shared
         self.default_account_id = (
             default_account_id or getattr(config, "XACTIONS_FACEBOOK_ACCOUNT_ID", None)
         )
 
     async def _get_client(self) -> XActionsMcpClient:
-        if self.client is None:
-            self.client = XActionsMcpClient()
-            await self.client.__aenter__()
-        return self.client
+        if not self._is_shared and self.client is not None:
+            return self.client
+        return await get_shared_client()
 
-    async def fetch_posts_for_target(self, target: Any) -> list[dict[str, Any]]:
+    async def fetch_posts_for_target(self, target: Any) -> list[SocialPostData]:
         """Fetch posts for a monitored target via XActions MCP."""
         client = await self._get_client()
-        tool_name, arguments = UniversalScrapeTargetMapper.map(target)
+        if getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            tool_name, arguments = await UniversalScrapeTargetMapper.map_async(
+                target, client
+            )
+        else:
+            tool_name, arguments = UniversalScrapeTargetMapper.map(target)
 
         account_id = getattr(target, "account_id", None) or self.default_account_id
         if account_id:
@@ -255,9 +547,27 @@ class XActionsSocialAdapterV2:
         if not result.get("success"):
             err_msg = result.get("error") or "unknown error"
             if effective_tool == "x_crawl_post":
-                raise TargetUnsupportedError(
-                    f"Fallback {effective_tool} returned success=False for target {getattr(target, 'id', None)}: {err_msg}"
-                )
+                # Only a clean permanent failure should retire the target. A
+                # success=False envelope carries no MCP code, so classify by the
+                # error text; ambiguous/transient messages fall through to a
+                # RuntimeError so the existing retry/pause lifecycle handles them.
+                err_lower = str(err_msg).lower()
+                if any(
+                    term in err_lower
+                    for term in (
+                        "not found",
+                        "tool_not_found",
+                        "404",
+                        "4001",
+                        "unsupported",
+                        "action not available",
+                        "invalid url",
+                        "blocked",
+                    )
+                ):
+                    raise TargetUnsupportedError(
+                        f"Fallback {effective_tool} returned success=False for target {getattr(target, 'id', None)}: {err_msg}"
+                    )
             raise RuntimeError(
                 f"XActions tool {effective_tool} returned success=False: {err_msg}"
             )
@@ -265,9 +575,7 @@ class XActionsSocialAdapterV2:
         data = result.get("data", [])
         if isinstance(data, dict):
             data = [data]
-        elif isinstance(data, list):
-            pass
-        elif hasattr(data, "__iter__") and not isinstance(data, (str, bytes)):
+        elif isinstance(data, list) or (hasattr(data, "__iter__") and not isinstance(data, (str, bytes))):
             pass
         else:
             data = []
@@ -284,23 +592,39 @@ class XActionsSocialAdapterV2:
                     published_at = None
             elif isinstance(published_at, (int, float)):
                 try:
-                    published_at = datetime.fromtimestamp(published_at, tz=UTC)
+                    # XActions/scrapers may emit millisecond epoch timestamps;
+                    # normalize anything beyond a plausible seconds range.
+                    ts = published_at / 1000 if published_at > 1e11 else published_at
+                    published_at = datetime.fromtimestamp(ts, tz=UTC)
                 except (ValueError, OSError, OverflowError):
                     published_at = None
 
-            post_id = item.get("id") or item.get("externalId") or item.get("postId") or item.get("post_id")
+            post_id = next(
+                (
+                    item[k]
+                    for k in ("id", "externalId", "postId", "post_id")
+                    if item.get(k) is not None
+                ),
+                None,
+            )
             post_url = item.get("postUrl") or item.get("post_url") or item.get("url")
-            if not post_id:
+            if post_id is None or post_id == "":
                 if post_url:
                     post_id = post_url
                 else:
                     logger.warning("Skipping post without identifiable external ID: %s", item)
                     continue
 
+            raw_entities = item.get("entities") or item.get("raw_entities") or {}
+            if not isinstance(raw_entities, dict):
+                # Scrapers may emit entities as a list of dicts; coerce to a
+                # dict keyed by "items" so consumers calling .get(...) don't crash.
+                raw_entities = {"items": raw_entities}
+
             posts.append(
                 SocialPostData(
-                    platform=_normalize_platform_for_post(target.platform),
-                    external_post_id=str(post_id),
+                    platform=_normalize_platform_for_post(getattr(target, "platform", "") or ""),
+                    external_post_id=str(post_id)[:255],
                     author_id=item.get("authorId") or item.get("author_id"),
                     author_name=item.get("authorName") or item.get("author_name"),
                     author_url=item.get("authorUrl") or item.get("author_url"),
@@ -310,7 +634,7 @@ class XActionsSocialAdapterV2:
                     comments_count=item.get("comments") or item.get("commentsCount") or 0,
                     shares_count=item.get("shares") or item.get("sharesCount") or 0,
                     media_urls=item.get("mediaUrls") or item.get("media_urls") or [],
-                    raw_entities=item.get("entities") or item.get("raw_entities") or {},
+                    raw_entities=raw_entities,
                     published_at=published_at,
                     category=item.get("category") or item.get("post_category"),
                     storage_ref=item.get("storageRef") or item.get("storage_ref"),
@@ -328,8 +652,60 @@ class XActionsSocialAdapterV2:
         post: SocialPostData,
         redis_client: Any,
     ) -> str | None:
-        """Push a thin social post event to Redis Stream (AD-SOC-4)."""
-        payload = post.to_dict()
+        """Push a thin social post event to Redis Stream (AD-SOC-4).
+
+        .. deprecated:: Story 36.4 / AD-4
+            Legacy dual-write bridge. In the target architecture (AD-4 Sole Writer),
+            XActions publishes raw post events directly to stream:social:raw_posts
+            via its AbstractCrawler stream hook (REQ-X2).
+            Nowing acts solely as a consumer of this stream. This method is bypassed
+            when XACTIONS_STREAM_SINGLE_WRITER_ENABLED is True and will be removed
+            permanently once XActions REQ-X2 is confirmed live in production.
+        """
+        if getattr(config, "XACTIONS_STREAM_SINGLE_WRITER_ENABLED", False):
+            logger.debug(
+                "Skipping ingest_raw_post_to_stream: XACTIONS_STREAM_SINGLE_WRITER_ENABLED is active"
+            )
+            return None
+
+        # Build payload matching the consumer schema in social_stream_worker.
+        # ``post.to_dict()`` is unsafe here: asdict() keeps ``None`` fields which
+        # Redis ``xadd`` rejects with ``DataError``. Mirror the legacy v1 adapter
+        # (``adapter.py:ingest_raw_post_to_stream``) and serialize datetimes /
+        # collections to strings, omitting ``None`` optionals entirely.
+        payload: dict[str, Any] = {
+            "platform": post.platform,
+            "external_post_id": post.external_post_id,
+            "author_id": post.author_id or "",
+            "author_name": post.author_name or "",
+            "author_url": post.author_url or "",
+            "post_url": post.post_url or "",
+            "content": post.content or "",
+            "reactions_count": str(post.reactions_count),
+            "comments_count": str(post.comments_count),
+            "shares_count": str(post.shares_count),
+            "published_at": post.published_at.isoformat() if post.published_at else "",
+            "media_urls": json.dumps(post.media_urls or []),
+            "schema_version": "1",
+        }
+        if post.target_id is not None:
+            payload["target_id"] = str(post.target_id)
+        if post.workspace_id is not None:
+            payload["workspace_id"] = str(post.workspace_id)
+        if post.client_id is not None:
+            payload["client_id"] = post.client_id
+        if post.category is not None:
+            payload["category"] = post.category
+        if post.storage_ref is not None:
+            payload["storage_ref"] = post.storage_ref
+        if post.scraper_id is not None:
+            payload["scraper_id"] = post.scraper_id
+        if post.benchmark_health is not None:
+            payload["benchmark_health"] = post.benchmark_health
+        if post.benchmark_alert is not None:
+            payload["benchmark_alert"] = "true" if post.benchmark_alert else "false"
+        if post.raw_entities:
+            payload["raw_entities"] = json.dumps(post.raw_entities)
         try:
             msg_id = await redis_client.xadd(
                 STREAM_SOCIAL_RAW_POSTS,
@@ -343,7 +719,7 @@ class XActionsSocialAdapterV2:
             return None
 
     async def close(self) -> None:
-        if self.client is not None and self._owns_client:
+        if not self._is_shared and self.client is not None:
             await self.client.__aexit__(None, None, None)
             self.client = None
 

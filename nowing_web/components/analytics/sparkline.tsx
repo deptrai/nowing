@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export function Sparkline({
 	height = 32,
 	colorClassName = "text-primary",
 }: SparklineProps) {
+	const t = useTranslations("analytics");
 	const sanitized = useMemo(() => {
 		return values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
 	}, [values]);
@@ -54,9 +56,9 @@ export function Sparkline({
 			viewBox={`0 0 ${width} ${height}`}
 			preserveAspectRatio="none"
 			className={cn("overflow-visible", className)}
-			aria-label="Trend sparkline"
+			aria-label={t("trend_sparkline")}
 		>
-			<title>Trend sparkline</title>
+			<title>{t("trend_sparkline")}</title>
 			<path
 				d={pathData}
 				fill="none"

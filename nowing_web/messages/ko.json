@@ -32,6 +32,35 @@
 		"shared": "공유됨",
 		"settings": "설정"
 	},
+	"admin": {
+		"telemetry": {
+			"decision_title": "Decision calls",
+			"decision_desc": "Jev and llm_json decision telemetry — tasks appear as their callers opt into telemetry.",
+			"decision_window": "Window",
+			"decision_workspace_id": "Workspace ID",
+			"decision_all": "All",
+			"decision_refresh": "Refresh",
+			"decision_loading": "Loading...",
+			"decision_failed_load": "Failed to load decision telemetry",
+			"decision_calls": "Calls",
+			"decision_cost": "Cost",
+			"decision_median": "Median latency",
+			"decision_accuracy": "Accuracy",
+			"decision_accuracy_labeled": "{count} labeled",
+			"decision_na": "n/a",
+			"decision_by_task": "By task",
+			"decision_task": "Task",
+			"decision_chart_title": "Calls per bucket",
+			"decision_models": "Models",
+			"decision_model": "Model",
+			"decision_backend": "Backend",
+			"decision_last_seen": "Last seen",
+			"decision_pinned": "Pinned: {model}",
+			"decision_drift": "drift",
+			"decision_cost_alert": "Decision cost alert: {cost} spent today exceeds the {threshold} threshold.",
+			"decision_empty": "No decision calls in this window"
+		}
+	},
 	"auth": {
 		"login": "로그인",
 		"register": "회원가입",
@@ -1064,7 +1093,9 @@
 		"modal_setup_outreach": "Open Outreach Agent Setup",
 		"set_it_up": "Set it up",
 		"playbook_preset_jewelry": "보석 및 금은방",
-		"playbook_preset_jewelry_desc": "귀금속 매장, 금세공인, 보석상 및 고급 소매업체 찾기"
+		"playbook_preset_jewelry_desc": "귀금속 매장, 금세공인, 보석상 및 고급 소매업체 찾기",
+		"presentation_plan_limited_title": "PPTX보내기는 유료 기능입니다",
+		"presentation_plan_limited_desc": "이 워크스페이스는 무료 플랜입니다 — Marp로 전환하거나 업그레이드하여 PPTX를보내세요."
 	},
 	"leads": {
 		"matrix_title": "Lead Intelligence Matrix",
@@ -1125,5 +1156,9 @@
 		"per_turn_table_model": "Model",
 		"per_turn_table_tokens": "Tokens",
 		"per_turn_table_cost": "Cost"
+	},
+	"chainlens": {
+		"model_group": "ChainLens (Web-Grounded)",
+		"model_tooltip": "Web-grounded model — slower first token (~3–6s) but always up to date. Best for news, prices, live events."
 	}
 }

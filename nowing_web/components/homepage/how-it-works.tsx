@@ -1,35 +1,25 @@
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { FlowLine } from "@/components/homepage/flow-line";
 import { MarketingSection } from "@/components/marketing/section";
 
 /** Numbered because the content is genuinely sequential: connect, gather, act. */
-const STEPS = [
-	{
-		number: "01",
-		title: "Connect",
-		description:
-			"Grab one API key and call any connector straight from your own code, or add the Nowing MCP server to Claude, Cursor, or your own agents. Every connector is a REST endpoint and a native agent tool.",
-	},
-	{
-		number: "02",
-		title: "Agents gather",
-		description:
-			"Your agents pull live data through the agent harness: platform connectors, retries, structured output, and credit metering handled for you.",
-	},
-	{
-		number: "03",
-		title: "You act",
-		description:
-			"Get briefs and alerts instead of raw exports. A rank moves, a price changes, a thread turns on you, and you hear about it first.",
-	},
-];
+function getSteps(t: (k: string) => string) {
+	return [
+		{ number: "01", title: t("step1_title"), description: t("step1_desc") },
+		{ number: "02", title: t("step2_title"), description: t("step2_desc") },
+		{ number: "03", title: t("step3_title"), description: t("step3_desc") },
+	];
+}
 
 export function HowItWorks() {
+	const t = useTranslations("homepage");
+	const STEPS = getSteps(t);
 	return (
 		<MarketingSection>
 			<Reveal>
 				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
-					How Nowing works
+					{t("how_nowing_works")}
 				</h2>
 			</Reveal>
 			<FlowLine />

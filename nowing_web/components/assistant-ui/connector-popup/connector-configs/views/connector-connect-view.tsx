@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -48,6 +49,7 @@ export const ConnectorConnectView: FC<ConnectorConnectViewProps> = ({
 	onBack,
 	isSubmitting,
 }) => {
+	const t = useTranslations("assistant");
 	const formContainerRef = useRef<HTMLDivElement | null>(null);
 	// Get connector-specific form component
 	const ConnectFormComponent = useMemo(
@@ -97,7 +99,7 @@ export const ConnectorConnectView: FC<ConnectorConnectViewProps> = ({
 					className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
 					<ArrowLeft data-icon="inline-start" />
-					Back to connectors
+					{t("asst_back_to_connectors")}
 				</Button>
 
 				<div className="flex items-center gap-4 mb-6">
@@ -113,8 +115,8 @@ export const ConnectorConnectView: FC<ConnectorConnectViewProps> = ({
 						</h2>
 						<p className="text-xs sm:text-base text-muted-foreground mt-1">
 							{connectorType === "OBSIDIAN_CONNECTOR"
-								? "Follow the plugin setup steps below"
-								: "Enter your connection details"}
+								? t("conn_follow_setup")
+								: t("conn_enter_details")}
 						</p>
 					</div>
 				</div>

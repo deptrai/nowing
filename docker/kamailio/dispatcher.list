@@ -1,0 +1,8 @@
+# =============================================================================
+# Kamailio Dispatcher List: LiveKit SIP Gateway Backend Pool
+# Format: setid destination flags priority attributes
+# flags: 0=active, 8=probing
+# Invariant AD-122: Direct internal network routing
+# =============================================================================
+1 sip:livekit-sip-1:5060 0 0
+1 sip:livekit-sip-2:5060 0 0

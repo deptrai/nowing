@@ -3,6 +3,7 @@
 import { useAtomValue } from "jotai";
 import { Globe, Mic, Plus, Presentation, WandSparkles } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
 	forwardRef,
 	useCallback,
@@ -24,6 +25,7 @@ import {
 	ComposerSuggestionSeparator,
 	ComposerSuggestionSkeleton,
 } from "@/components/new-chat/composer-suggestion-popup";
+import { usePresentationStudioEntitlement } from "@/hooks/use-presentation-studio-entitlement";
 import { getWorkspaceIdParam } from "@/lib/route-params";
 
 export interface PromptPickerRef {
@@ -54,86 +56,91 @@ interface BuiltinPromptItem {
 	chatMode?: "web_builder" | "presentation_studio" | "meeting_minutes";
 }
 
-const BUILTIN_TEMPLATES: BuiltinPromptItem[] = [
-	{
-		id: "web-landing-page",
-		name: "/web landing page",
-		description: "High-converting SaaS / product landing page",
-		prompt:
-			"Build a modern high-converting landing page for a SaaS product with hero section, feature cards, testimonial carousel, pricing comparison, and email CTA.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-pricing",
-		name: "/web pricing",
-		description: "3-tier pricing page with billing toggle & FAQ",
-		prompt:
-			"Create a modern 3-tier pricing page with monthly/yearly billing toggle, feature comparison table, and FAQ accordion section.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-lead-capture",
-		name: "/web lead capture",
-		description: "Lead capture & opt-in page with social proof",
-		prompt:
-			"Create an engaging lead capture page with an email opt-in form, value proposition highlights, benefit bullet points, and social proof badges.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-waitlist",
-		name: "/web waitlist",
-		description: "Viral coming-soon waitlist page with countdown",
-		prompt:
-			"Build an exciting viral waitlist coming-soon page with early access email signup, countdown timer, and referral perk highlights.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "web-report",
-		name: "/web report",
-		description: "Interactive marketing report & whitepaper page",
-		prompt:
-			"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts, interactive charts summary, and download CTA.",
-		mode: "explore",
-		chatMode: "web_builder",
-	},
-	{
-		id: "slides-pptx",
-		name: "/slides pptx",
-		description: "Pitch deck as a PowerPoint PPTX file",
-		prompt:
-			"Create a 10-slide pitch deck as a PowerPoint PPTX file. Call generate_presentation with output_format=pptx. Cover problem, solution, market size, business model, traction, team, financials, and ask.",
-		mode: "explore",
-		chatMode: "presentation_studio",
-	},
-	{
-		id: "slides-marp",
-		name: "/slides marp",
-		description: "Marp Markdown slide deck",
-		prompt:
-			"Create Marp Markdown slides. Call generate_presentation with output_format=marp. Include YAML front-matter (theme, paginate), a title slide, content slides, and speaker notes.",
-		mode: "explore",
-		chatMode: "presentation_studio",
-	},
-	{
-		id: "meeting-minutes",
-		name: "/meeting",
-		description: "Summarize a meeting from an audio URL",
-		prompt: "Paste the meeting recording URL here",
-		mode: "explore",
-		chatMode: "meeting_minutes",
-	},
-];
+function builtinTemplates(t: (k: string) => string): BuiltinPromptItem[] {
+	return [
+		{
+			id: "web-landing-page",
+			name: "/web landing page",
+			description: t("tpl_landing"),
+			prompt:
+				"Build a modern high-converting landing page for a SaaS product with hero section, feature cards, testimonial carousel, pricing comparison, and email CTA.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-pricing",
+			name: "/web pricing",
+			description: t("tpl_pricing"),
+			prompt:
+				"Create a modern 3-tier pricing page with monthly/yearly billing toggle, feature comparison table, and FAQ accordion section.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-lead-capture",
+			name: "/web lead capture",
+			description: t("tpl_lead_capture"),
+			prompt:
+				"Create an engaging lead capture page with an email opt-in form, value proposition highlights, benefit bullet points, and social proof badges.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-waitlist",
+			name: "/web waitlist",
+			description: t("tpl_waitlist"),
+			prompt:
+				"Build an exciting viral waitlist coming-soon page with early access email signup, countdown timer, and referral perk highlights.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "web-report",
+			name: "/web report",
+			description: t("tpl_report"),
+			prompt:
+				"Generate a clean interactive marketing report and whitepaper showcase page with key metric callouts, interactive charts summary, and download CTA.",
+			mode: "explore",
+			chatMode: "web_builder",
+		},
+		{
+			id: "slides-pptx",
+			name: "/slides pptx",
+			description: t("tpl_slides_pptx"),
+			prompt:
+				"Create a 10-slide pitch deck as a PowerPoint PPTX file. Call generate_presentation with output_format=pptx. Cover problem, solution, market size, business model, traction, team, financials, and ask.",
+			mode: "explore",
+			chatMode: "presentation_studio",
+		},
+		{
+			id: "slides-marp",
+			name: "/slides marp",
+			description: t("tpl_slides_marp"),
+			prompt:
+				"Create Marp Markdown slides. Call generate_presentation with output_format=marp. Include YAML front-matter (theme, paginate), a title slide, content slides, and speaker notes.",
+			mode: "explore",
+			chatMode: "presentation_studio",
+		},
+		{
+			id: "meeting-minutes",
+			name: "/meeting",
+			description: t("tpl_meeting"),
+			prompt: "Paste the meeting recording URL here",
+			mode: "explore",
+			chatMode: "meeting_minutes",
+		},
+	];
+}
 
 export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(function PromptPicker(
 	{ onSelect, onDone, externalSearch = "" },
 	ref
 ) {
+	const t = useTranslations("newChat");
+	const BUILTIN_TEMPLATES = builtinTemplates(t);
 	const router = useRouter();
 	const params = useParams();
+	const { canUsePptx } = usePresentationStudioEntitlement();
 	const { data: prompts, isLoading, isError } = useAtomValue(promptsAtom);
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -149,15 +156,22 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 		return q;
 	}, [deferredSearch]);
 
+	const availableBuiltins = useMemo(() => {
+		if (!canUsePptx) {
+			return BUILTIN_TEMPLATES.filter((item) => item.id !== "slides-pptx");
+		}
+		return BUILTIN_TEMPLATES;
+	}, [canUsePptx]);
+
 	const filteredBuiltins = useMemo(() => {
-		if (!normalizedSearch) return BUILTIN_TEMPLATES;
-		return BUILTIN_TEMPLATES.filter(
+		if (!normalizedSearch) return availableBuiltins;
+		return availableBuiltins.filter(
 			(item) =>
 				item.name.toLowerCase().includes(normalizedSearch) ||
 				item.description.toLowerCase().includes(normalizedSearch) ||
 				item.prompt.toLowerCase().includes(normalizedSearch)
 		);
-	}, [normalizedSearch]);
+	}, [availableBuiltins, normalizedSearch]);
 	const filteredWebBuiltins = useMemo(
 		() => filteredBuiltins.filter((b) => b.chatMode === "web_builder"),
 		[filteredBuiltins]
@@ -316,17 +330,17 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 				<ComposerSuggestionSkeleton rows={8} mobileRows={8} />
 			) : isError ? (
 				<ComposerSuggestionMessage variant="destructive">
-					Failed to load prompts
+					{t("prompts_load_failed")}
 				</ComposerSuggestionMessage>
 			) : hasNoResults ? (
-				<ComposerSuggestionMessage>No matching prompts</ComposerSuggestionMessage>
+				<ComposerSuggestionMessage>{t("no_matching_prompts")}</ComposerSuggestionMessage>
 			) : (
 				<>
 					{/* Presentation Studio Templates Group */}
 					{filteredPresentationBuiltins.length > 0 && (
 						<ComposerSuggestionGroup>
 							<ComposerSuggestionGroupHeading>
-								Presentation Studio Templates
+								{t("grp_presentation")}
 							</ComposerSuggestionGroupHeading>
 							{filteredPresentationBuiltins.map((builtin, i) => {
 								const flatIdx = i;
@@ -363,7 +377,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 					{/* Web Builder Templates Group */}
 					{filteredWebBuiltins.length > 0 && (
 						<ComposerSuggestionGroup>
-							<ComposerSuggestionGroupHeading>Web Builder Templates</ComposerSuggestionGroupHeading>
+							<ComposerSuggestionGroupHeading>{t("grp_webbuilder")}</ComposerSuggestionGroupHeading>
 							{filteredWebBuiltins.map((builtin, i) => {
 								const flatIdx = filteredPresentationBuiltins.length + i;
 								return (
@@ -398,7 +412,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 					{/* Meeting Minutes Templates Group */}
 					{filteredMeetingMinutesBuiltins.length > 0 && (
 						<ComposerSuggestionGroup>
-							<ComposerSuggestionGroupHeading>Meeting Minutes</ComposerSuggestionGroupHeading>
+							<ComposerSuggestionGroupHeading>{t("grp_meeting")}</ComposerSuggestionGroupHeading>
 							{filteredMeetingMinutesBuiltins.map((builtin, i) => {
 								const flatIdx =
 									filteredPresentationBuiltins.length + filteredWebBuiltins.length + i;
@@ -429,7 +443,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 					{/* Saved Prompts Group */}
 					{filteredSaved.length > 0 && (
 						<ComposerSuggestionGroup>
-							<ComposerSuggestionGroupHeading>Saved Prompts</ComposerSuggestionGroupHeading>
+							<ComposerSuggestionGroupHeading>{t("grp_saved")}</ComposerSuggestionGroupHeading>
 							{filteredSaved.map((action, i) => {
 								const flatIdx = savedStartIdx + i;
 								return (
@@ -463,7 +477,7 @@ export const PromptPicker = forwardRef<PromptPickerRef, PromptPickerProps>(funct
 						onClick={() => handleSelect(createPromptIndex)}
 						onMouseEnter={() => setHighlightedIndex(createPromptIndex)}
 					>
-						<span>Create prompt</span>
+						<span>{t("create_prompt")}</span>
 					</ComposerSuggestionItem>
 				</>
 			)}

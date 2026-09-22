@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ import { useElectronAPI } from "@/hooks/use-platform";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 
 export function DesktopContent() {
+	const t = useTranslations("userSettings");
 	const api = useElectronAPI();
 	const [loading, setLoading] = useState(true);
 
@@ -68,9 +70,7 @@ export function DesktopContent() {
 	if (!api) {
 		return (
 			<div className="flex flex-col items-center justify-center py-12 text-center">
-				<p className="text-sm text-muted-foreground">
-					App preferences are only available in the Nowing desktop app.
-				</p>
+				<p className="text-sm text-muted-foreground">{t("desktop_only")}</p>
 			</div>
 		);
 	}
@@ -104,7 +104,7 @@ export function DesktopContent() {
 
 	const handleAutoLaunchToggle = async (checked: boolean) => {
 		if (!autoLaunchSupported || !api.setAutoLaunch) {
-			toast.error("Please update the desktop app to configure launch on startup");
+			toast.error(t("update_desktop_launch_startup"));
 			return;
 		}
 		setAutoLaunchEnabled(checked);
@@ -115,16 +115,16 @@ export function DesktopContent() {
 				setAutoLaunchHidden(next.openAsHidden);
 				setAutoLaunchSupported(next.supported);
 			}
-			toast.success(checked ? "Nowing will launch on startup" : "Launch on startup disabled");
+			toast.success(checked ? t("launch_startup_enabled") : t("launch_startup_disabled"));
 		} catch {
 			setAutoLaunchEnabled(!checked);
-			toast.error("Failed to update launch on startup");
+			toast.error(t("launch_startup_failed"));
 		}
 	};
 
 	const handleAutoLaunchHiddenToggle = async (checked: boolean) => {
 		if (!autoLaunchSupported || !api.setAutoLaunch) {
-			toast.error("Please update the desktop app to configure startup behavior");
+			toast.error(t("update_desktop_startup_behavior"));
 			return;
 		}
 		setAutoLaunchHidden(checked);
@@ -132,21 +132,21 @@ export function DesktopContent() {
 			await api.setAutoLaunch(autoLaunchEnabled, checked);
 		} catch {
 			setAutoLaunchHidden(!checked);
-			toast.error("Failed to update startup behavior");
+			toast.error(t("startup_behavior_failed"));
 		}
 	};
 
 	const handleWorkspaceChange = (value: string) => {
 		setActiveSpaceId(value);
 		api.setActiveWorkspace?.(value);
-		toast.success("Default workspace updated");
+		toast.success(t("default_workspace_updated"));
 	};
 
 	return (
 		<div className="flex flex-col gap-4 md:gap-6">
 			<section>
 				<div className="pb-2 md:pb-3">
-					<h2 className="text-base md:text-lg font-semibold">Default Workspace</h2>
+					<h2 className="text-base md:text-lg font-semibold">{t("default_workspace")}</h2>
 					<p className="text-xs md:text-sm text-muted-foreground">
 						Choose which workspace General Assist, Screenshot Assist, and Quick Assist use by
 						default.
@@ -156,7 +156,7 @@ export function DesktopContent() {
 					{workspaces.length > 0 ? (
 						<Select value={activeSpaceId ?? undefined} onValueChange={handleWorkspaceChange}>
 							<SelectTrigger className="w-full">
-								<SelectValue placeholder="Select a workspace" />
+								<SelectValue placeholder={t("select_workspace")} />
 							</SelectTrigger>
 							<SelectContent>
 								{workspaces.map((space) => (
@@ -167,7 +167,7 @@ export function DesktopContent() {
 							</SelectContent>
 						</Select>
 					) : (
-						<p className="text-sm text-muted-foreground">No workspaces found. Create one first.</p>
+						<p className="text-sm text-muted-foreground">{t("no_workspaces")}</p>
 					)}
 				</div>
 			</section>
@@ -177,7 +177,7 @@ export function DesktopContent() {
 			<section>
 				<div className="pb-2 md:pb-3">
 					<h2 className="text-base md:text-lg font-semibold flex items-center gap-2">
-						Launch on Startup
+						{t("launch_startup")}
 					</h2>
 					<p className="text-xs md:text-sm text-muted-foreground">
 						Automatically start Nowing when you sign in to your computer so global shortcuts and
@@ -188,12 +188,12 @@ export function DesktopContent() {
 					<div className="flex items-center justify-between rounded-lg bg-accent p-4">
 						<div className="space-y-0.5">
 							<Label htmlFor="auto-launch-toggle" className="text-sm font-medium cursor-pointer">
-								Open Nowing at login
+								{t("launch_startup_desc")}
 							</Label>
 							<p className="text-xs text-muted-foreground">
 								{autoLaunchSupported
 									? "Adds Nowing to your system's login items."
-									: "Only available in the packaged desktop app."}
+									: t("desktop_only_packaged")}
 							</p>
 						</div>
 						<Switch
@@ -209,11 +209,9 @@ export function DesktopContent() {
 								htmlFor="auto-launch-hidden-toggle"
 								className="text-sm font-medium cursor-pointer"
 							>
-								Start minimized to tray
+								{t("start_minimized")}
 							</Label>
-							<p className="text-xs text-muted-foreground">
-								Skip the main window on boot. Nowing lives in the system tray until you need it.
-							</p>
+							<p className="text-xs text-muted-foreground">{t("start_minimized_desc")}</p>
 						</div>
 						<Switch
 							id="auto-launch-hidden-toggle"

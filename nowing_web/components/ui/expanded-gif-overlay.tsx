@@ -1,10 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 function isVideoSrc(src: string) {
+	const t = useTranslations("ui");
 	return /\.(mp4|webm|ogg)(\?|$)/i.test(src);
 }
 
@@ -17,6 +19,7 @@ function ExpandedMediaOverlay({
 	alt: string;
 	onClose: () => void;
 }) {
+	const t = useTranslations("ui");
 	const overlayRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -60,7 +63,7 @@ function ExpandedMediaOverlay({
 		<motion.div
 			role="dialog"
 			aria-modal="true"
-			aria-label="Expanded media view"
+			aria-label={t("ui_expanded_media_view")}
 			tabIndex={-1}
 			ref={overlayRef}
 			initial={{ opacity: 0 }}

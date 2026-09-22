@@ -2,6 +2,7 @@
 
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { memo, useId } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -52,13 +53,14 @@ export function AutomationModelFields({
 	mode = "automation",
 	errors,
 }: AutomationModelFieldsProps) {
+	const t = useTranslations("automations");
 	const { llm, image, vision, isLoading } = useAutomationEligibleModels({ mode });
 	const rolesHref = `/dashboard/${workspaceId}/workspace-settings/models`;
 
 	return (
 		<div className="flex flex-col gap-4">
 			<ModelSelectField
-				label="Chat model"
+				label={t("auto_chat_model")}
 				kind={llm}
 				value={value.chatModelId}
 				isLoading={isLoading}
@@ -68,7 +70,7 @@ export function AutomationModelFields({
 				onChange={(id) => onChange({ chatModelId: id })}
 			/>
 			<ModelSelectField
-				label="Image model"
+				label={t("auto_image_model")}
 				kind={image}
 				value={value.imageConfigId}
 				isLoading={isLoading}
@@ -78,7 +80,7 @@ export function AutomationModelFields({
 				onChange={(id) => onChange({ imageConfigId: id })}
 			/>
 			<ModelSelectField
-				label="Vision model"
+				label={t("auto_vision_model")}
 				kind={vision}
 				value={value.visionConfigId}
 				isLoading={isLoading}
@@ -112,6 +114,7 @@ const ModelSelectField = memo(function ModelSelectField({
 	error,
 	onChange,
 }: ModelSelectFieldProps) {
+	const t = useTranslations("automations");
 	const triggerId = useId();
 
 	if (isLoading) {
@@ -127,20 +130,20 @@ const ModelSelectField = memo(function ModelSelectField({
 			<Field label={label}>
 				<Alert variant="warning">
 					<TriangleAlert aria-hidden />
-					<AlertTitle>No eligible models</AlertTitle>
+					<AlertTitle>{t("auto_no_eligible_models")}</AlertTitle>
 					<AlertDescription className="block leading-5">
 						{mode === "playbook" ? (
 							<>
 								Configure models in{" "}
 								<Link href={rolesHref} className="font-medium underline underline-offset-2">
-									role settings
+									{t("auto_role_settings")}
 								</Link>
 							</>
 						) : (
 							<>
 								Use a premium model or your own (BYOK) model in{" "}
 								<Link href={rolesHref} className="font-medium underline underline-offset-2">
-									role settings
+									{t("auto_role_settings")}
 								</Link>
 							</>
 						)}
@@ -170,7 +173,7 @@ const ModelSelectField = memo(function ModelSelectField({
 							<span className="truncate">{selected.name}</span>
 						</span>
 					) : (
-						<SelectValue placeholder="Select a model" />
+						<SelectValue placeholder={t("auto_select_a_model")} />
 					)}
 				</SelectTrigger>
 				<SelectContent matchTriggerWidth={false} className="w-auto min-w-80 max-w-[90vw]">
@@ -191,7 +194,7 @@ const ModelSelectField = memo(function ModelSelectField({
 					{globals.length > 0 && byok.length > 0 ? <SelectSeparator /> : null}
 					{byok.length > 0 ? (
 						<SelectGroup>
-							<SelectLabel>Your models</SelectLabel>
+							<SelectLabel>{t("auto_your_models")}</SelectLabel>
 							{byok.map((option) => (
 								<ModelOption key={option.id} option={option} badge="BYOK" />
 							))}
@@ -210,6 +213,7 @@ function ModelOption({
 	option: EligibleModelOption;
 	badge: "Premium" | "Free" | "BYOK";
 }) {
+	const t = useTranslations("automations");
 	return (
 		<SelectItem value={String(option.id)} description={option.modelName}>
 			<span className="flex items-center gap-2">

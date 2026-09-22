@@ -30,7 +30,10 @@ from app.services.presentation.schemas import (
     GeneratePresentationOutput,
     SlidePresentationRead,
 )
-from app.services.presentation.service import PresentationStudioService
+from app.services.presentation.service import (
+    PlanLimitedError,
+    PresentationStudioService,
+)
 from app.users import get_auth_context
 
 logger = logging.getLogger(__name__)
@@ -160,10 +163,13 @@ async def generate_presentation(
     payload.user_id = auth.user.id
 
     service = PresentationStudioService()
-    return await service.generate(
-        session=session,
-        build_input=payload,
-    )
+    try:
+        return await service.generate(
+            session=session,
+            build_input=payload,
+        )
+    except PlanLimitedError as exc:
+        raise HTTPException(status_code=403, detail=exc.detail) from exc
 
 
 @router.get("", response_model=list[SlidePresentationRead])

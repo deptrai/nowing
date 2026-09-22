@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, FileIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -93,6 +94,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<DropboxCreateFileContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -102,8 +104,8 @@ function ApprovalCard({
 	const validAccounts = accounts.filter((a) => !a.auth_expired);
 	const expiredAccounts = accounts.filter((a) => a.auth_expired);
 	const supportedTypes = interruptData.context?.supported_types ?? [
-		{ value: "paper", label: "Dropbox Paper (.paper)" },
-		{ value: "docx", label: "Word Document (.docx)" },
+		{ value: "paper", label: t("dropbox_paper_label") },
+		{ value: "docx", label: t("dropbox_docx_label") },
 	];
 
 	const defaultAccountId = useMemo(() => {
@@ -193,18 +195,20 @@ function ApprovalCard({
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? "Creating file with your changes" : "Creating file"}
+							text={pendingEdits ? t("creating_file_edits") : t("creating_file")}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{pendingEdits ? "File created with your changes" : "File created"}
+							{pendingEdits ? t("file_created_edits") : t("file_created")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File creation was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_file_creation_was_cancelled")}
+						</p>
 					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("tu_requires_your_approval_to")}
 						</p>
 					)}
 				</div>
@@ -244,11 +248,12 @@ function ApprovalCard({
 								{accounts.length > 0 && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											Dropbox Account <span className="text-destructive">*</span>
+											{t("tu_dropbox_account")}
+											<span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedAccountId} onValueChange={handleAccountChange}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select an account" />
+												<SelectValue placeholder={t("tu_select_an_account")} />
 											</SelectTrigger>
 											<SelectContent>
 												{validAccounts.map((account) => (
@@ -270,7 +275,7 @@ function ApprovalCard({
 								)}
 
 								<div className="space-y-2">
-									<p className="text-xs font-medium text-muted-foreground">File Type</p>
+									<p className="text-xs font-medium text-muted-foreground">{t("tu_file_type")}</p>
 									<Select value={selectedFileType} onValueChange={setSelectedFileType}>
 										<SelectTrigger className="w-full">
 											<SelectValue />
@@ -287,13 +292,15 @@ function ApprovalCard({
 
 								{selectedAccountId && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Parent Folder</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_parent_folder")}
+										</p>
 										<Select value={parentFolderPath} onValueChange={setParentFolderPath}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Dropbox Root" />
+												<SelectValue placeholder={t("tu_dropbox_root")} />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="__root__">Dropbox Root</SelectItem>
+												<SelectItem value="__root__">{t("tu_dropbox_root")}</SelectItem>
 												{availableParentFolders.map((folder) => (
 													<SelectItem key={folder.folder_path} value={folder.folder_path}>
 														{folder.name}
@@ -303,7 +310,7 @@ function ApprovalCard({
 										</Select>
 										{availableParentFolders.length === 0 && (
 											<p className="text-xs text-muted-foreground">
-												No folders found. File will be created at Dropbox root.
+												{t("tu_no_folders_found_file")}
 											</p>
 										)}
 									</div>
@@ -351,7 +358,8 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
 							>
-								Approve <CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+								{t("tu_approve")}
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (
@@ -365,7 +373,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("tu_reject")}
 							</Button>
 						)}
 					</div>
@@ -376,10 +384,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create Dropbox file</p>
+				<p className="text-sm font-semibold text-destructive">{t("dropbox_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -390,10 +399,11 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Dropbox authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("dropbox_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -404,11 +414,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Dropbox file created successfully"}
+					{result.message || t("dropbox_create_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -425,7 +436,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Dropbox
+							{t("dropbox_open_in_dropbox")}
 						</a>
 					</div>
 				)}

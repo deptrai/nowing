@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Edit, Layers, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +42,8 @@ import {
 } from "@/lib/apis/admin-saas-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 
-function formatBytes(value: number | null | undefined): string {
-	if (!value || value <= 0) return "Unlimited";
+function formatBytes(value: number | null | undefined, t: (k: string) => string): string {
+	if (!value || value <= 0) return t("plans_unlimited");
 	const units = ["B", "KB", "MB", "GB", "TB"];
 	const i = Math.floor(Math.log10(value) / 3);
 	const unit = units[Math.min(i, units.length - 1)];
@@ -50,8 +51,13 @@ function formatBytes(value: number | null | undefined): string {
 	return `${scaled.toFixed(0)} ${unit}`;
 }
 
-function formatCurrency(priceMicros: number | null | undefined, currency = "USD"): string {
-	if (priceMicros === null || priceMicros === undefined || priceMicros <= 0) return "Free";
+function formatCurrency(
+	priceMicros: number | null | undefined,
+	currency = "USD",
+	t?: (k: string) => string
+): string {
+	if (priceMicros === null || priceMicros === undefined || priceMicros <= 0)
+		return t ? t("plans_free") : "Free";
 	const amount = priceMicros / 1_000_000;
 	return new Intl.NumberFormat(undefined, {
 		style: "currency",
@@ -61,6 +67,7 @@ function formatCurrency(priceMicros: number | null | undefined, currency = "USD"
 }
 
 export default function AdminSaasPlansPage() {
+	const t = useTranslations("admin");
 	const queryClient = useQueryClient();
 
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -90,10 +97,10 @@ export default function AdminSaasPlansPage() {
 			queryClient.invalidateQueries({ queryKey: cacheKeys.admin.saasPlans() });
 			setIsCreateOpen(false);
 			resetForm();
-			toast.success("Plan tier created successfully");
+			toast.success(t("plans_created"));
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to create plan");
+			toast.error(err instanceof Error ? err.message : t("plans_create_failed"));
 		},
 	});
 
@@ -104,10 +111,10 @@ export default function AdminSaasPlansPage() {
 			queryClient.invalidateQueries({ queryKey: cacheKeys.admin.saasPlans() });
 			setEditingPlan(null);
 			resetForm();
-			toast.success("Plan updated (existing tenants grandfathered)");
+			toast.success(t("plans_updated"));
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to update plan");
+			toast.error(err instanceof Error ? err.message : t("plans_update_failed"));
 		},
 	});
 
@@ -116,10 +123,10 @@ export default function AdminSaasPlansPage() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: cacheKeys.admin.saasPlans() });
 			setDeletingPlanTier(null);
-			toast.success("Plan tier deleted successfully");
+			toast.success(t("plans_deleted"));
 		},
 		onError: (err: unknown) => {
-			toast.error(err instanceof Error ? err.message : "Failed to delete plan");
+			toast.error(err instanceof Error ? err.message : t("plans_delete_failed"));
 		},
 	});
 
@@ -173,7 +180,7 @@ export default function AdminSaasPlansPage() {
 	const handleCreateSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!formTier.trim()) {
-			toast.error("Please enter a plan tier name");
+			toast.error(t("plans_tier_required"));
 			return;
 		}
 
@@ -220,12 +227,9 @@ export default function AdminSaasPlansPage() {
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
 						<Layers className="h-6 w-6 text-primary" />
-						SaaS Plan Catalog
+						{t("plans_title")}
 					</h1>
-					<p className="text-sm text-muted-foreground mt-1">
-						Manage platform subscription tiers, resource quotas, support levels, and grandfathering
-						protection.
-					</p>
+					<p className="text-sm text-muted-foreground mt-1">{t("plans_subtitle")}</p>
 				</div>
 				<Button
 					onClick={() => {
@@ -234,17 +238,14 @@ export default function AdminSaasPlansPage() {
 					}}
 				>
 					<Plus className="mr-2 h-4 w-4" />
-					Create Plan Tier
+					{t("plans_create_tier")}
 				</Button>
 			</div>
 
 			<Card>
 				<CardHeader className="pb-3">
-					<CardTitle className="text-base font-semibold">Active Plan Tiers</CardTitle>
-					<CardDescription className="text-xs">
-						System default tiers (Free, Team, Growth, Enterprise) cannot be deleted. Modifying
-						defaults preserves existing tenant quotas via grandfathered overrides.
-					</CardDescription>
+					<CardTitle className="text-base font-semibold">{t("plans_active_tiers")}</CardTitle>
+					<CardDescription className="text-xs">{t("plans_active_desc")}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{isLoading ? (
@@ -254,24 +255,22 @@ export default function AdminSaasPlansPage() {
 							<Skeleton className="h-10 w-full" />
 						</div>
 					) : !plans || plans.length === 0 ? (
-						<p className="text-sm text-muted-foreground py-6 text-center">
-							No SaaS plans found in the catalog.
-						</p>
+						<p className="text-sm text-muted-foreground py-6 text-center">{t("plans_empty")}</p>
 					) : (
 						<div className="rounded-md border overflow-x-auto">
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead>Plan Tier</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Price / Mo</TableHead>
-										<TableHead>Support</TableHead>
-										<TableHead>Docs</TableHead>
-										<TableHead>Members</TableHead>
-										<TableHead>Runs</TableHead>
-										<TableHead>Storage</TableHead>
-										<TableHead>Credits</TableHead>
-										<TableHead className="text-right">Actions</TableHead>
+										<TableHead>{t("plans_col_tier")}</TableHead>
+										<TableHead>{t("plans_col_type")}</TableHead>
+										<TableHead>{t("plans_col_price")}</TableHead>
+										<TableHead>{t("plans_col_support")}</TableHead>
+										<TableHead>{t("plans_col_docs")}</TableHead>
+										<TableHead>{t("plans_col_members")}</TableHead>
+										<TableHead>{t("plans_col_runs")}</TableHead>
+										<TableHead>{t("plans_col_storage")}</TableHead>
+										<TableHead>{t("plans_col_credits")}</TableHead>
+										<TableHead className="text-right">{t("plans_col_actions")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -293,19 +292,27 @@ export default function AdminSaasPlansPage() {
 												)}
 											</TableCell>
 											<TableCell className="font-medium text-xs">
-												{formatCurrency(plan.price_micros, plan.currency)}
+												{formatCurrency(plan.price_micros, plan.currency, t)}
 											</TableCell>
 											<TableCell className="capitalize text-xs">
-												{plan.support_level || "Community"}
-											</TableCell>
-											<TableCell className="text-xs">{plan.max_documents ?? "Unlimited"}</TableCell>
-											<TableCell className="text-xs">{plan.max_members ?? "Unlimited"}</TableCell>
-											<TableCell className="text-xs">{plan.max_runs ?? "Unlimited"}</TableCell>
-											<TableCell className="text-xs">
-												{formatBytes(plan.max_storage_bytes)}
+												{plan.support_level || t("plans_community")}
 											</TableCell>
 											<TableCell className="text-xs">
-												{plan.max_monthly_credits ? `${plan.max_monthly_credits}/mo` : "Standard"}
+												{plan.max_documents ?? t("plans_unlimited")}
+											</TableCell>
+											<TableCell className="text-xs">
+												{plan.max_members ?? t("plans_unlimited")}
+											</TableCell>
+											<TableCell className="text-xs">
+												{plan.max_runs ?? t("plans_unlimited")}
+											</TableCell>
+											<TableCell className="text-xs">
+												{formatBytes(plan.max_storage_bytes, t)}
+											</TableCell>
+											<TableCell className="text-xs">
+												{plan.max_monthly_credits
+													? `${plan.max_monthly_credits}/mo`
+													: t("plans_standard")}
 											</TableCell>
 											<TableCell className="text-right space-x-1">
 												<Button
@@ -340,16 +347,14 @@ export default function AdminSaasPlansPage() {
 			<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
 				<DialogContent className="max-w-xl">
 					<DialogHeader>
-						<DialogTitle>Create New SaaS Plan</DialogTitle>
-						<DialogDescription>
-							Define a new plan tier with default limits and pricing for tenants.
-						</DialogDescription>
+						<DialogTitle>{t("plans_create_title")}</DialogTitle>
+						<DialogDescription>{t("plans_create_desc")}</DialogDescription>
 					</DialogHeader>
 
 					<form onSubmit={handleCreateSubmit} className="space-y-4 py-2">
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-1.5">
-								<Label htmlFor="create-tier">Plan Tier Name</Label>
+								<Label htmlFor="create-tier">{t("plans_tier_name")}</Label>
 								<Input
 									id="create-tier"
 									placeholder="e.g. enterprise_plus"
@@ -359,16 +364,16 @@ export default function AdminSaasPlansPage() {
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="create-support">Support Level</Label>
+								<Label htmlFor="create-support">{t("plans_support_level")}</Label>
 								<Select value={formSupport} onValueChange={setFormSupport}>
 									<SelectTrigger id="create-support">
-										<SelectValue placeholder="Select support level" />
+										<SelectValue placeholder={t("plans_support_placeholder")} />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="community">Community</SelectItem>
-										<SelectItem value="email">Email</SelectItem>
-										<SelectItem value="priority">Priority</SelectItem>
-										<SelectItem value="dedicated_24_7">Dedicated 24/7</SelectItem>
+										<SelectItem value="community">{t("plans_support_community")}</SelectItem>
+										<SelectItem value="email">{t("plans_support_email")}</SelectItem>
+										<SelectItem value="priority">{t("plans_support_priority")}</SelectItem>
+										<SelectItem value="dedicated_24_7">{t("plans_support_dedicated")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
@@ -376,7 +381,7 @@ export default function AdminSaasPlansPage() {
 
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-1.5">
-								<Label htmlFor="create-price">Price / Month ($)</Label>
+								<Label htmlFor="create-price">{t("plans_price_month")}</Label>
 								<Input
 									id="create-price"
 									type="number"
@@ -387,7 +392,7 @@ export default function AdminSaasPlansPage() {
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="create-currency">Currency</Label>
+								<Label htmlFor="create-currency">{t("plans_currency")}</Label>
 								<Input
 									id="create-currency"
 									value={formCurrency}
@@ -399,83 +404,83 @@ export default function AdminSaasPlansPage() {
 
 						<div className="border-t pt-3">
 							<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-								Default Resource Quotas (Leave empty for Unlimited)
+								{t("plans_quota_section")}
 							</h4>
 							<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
 								<div className="space-y-1">
 									<Label htmlFor="create-docs" className="text-xs">
-										Max Documents
+										{t("plans_max_docs")}
 									</Label>
 									<Input
 										id="create-docs"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formDocs}
 										onChange={(e) => setFormDocs(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="create-members" className="text-xs">
-										Max Members
+										{t("plans_max_members")}
 									</Label>
 									<Input
 										id="create-members"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formMembers}
 										onChange={(e) => setFormMembers(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="create-runs" className="text-xs">
-										Max Runs
+										{t("plans_max_runs")}
 									</Label>
 									<Input
 										id="create-runs"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formRuns}
 										onChange={(e) => setFormRuns(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="create-storage" className="text-xs">
-										Storage (GB)
+										{t("plans_storage_gb")}
 									</Label>
 									<Input
 										id="create-storage"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formStorageGb}
 										onChange={(e) => setFormStorageGb(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="create-credits" className="text-xs">
-										Monthly Credits
+										{t("plans_monthly_credits")}
 									</Label>
 									<Input
 										id="create-credits"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formCredits}
 										onChange={(e) => setFormCredits(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="create-sources" className="text-xs">
-										Max Sources
+										{t("plans_max_sources")}
 									</Label>
 									<Input
 										id="create-sources"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formSources}
 										onChange={(e) => setFormSources(e.target.value)}
 									/>
@@ -485,10 +490,10 @@ export default function AdminSaasPlansPage() {
 
 						<DialogFooter className="pt-4">
 							<Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>
-								Cancel
+								{t("plans_cancel")}
 							</Button>
 							<Button type="submit" disabled={createMutation.isPending}>
-								{createMutation.isPending ? "Creating..." : "Create Plan"}
+								{createMutation.isPending ? t("plans_creating") : t("plans_create")}
 							</Button>
 						</DialogFooter>
 					</form>
@@ -500,41 +505,35 @@ export default function AdminSaasPlansPage() {
 				<DialogContent className="max-w-xl">
 					<DialogHeader>
 						<DialogTitle>
-							Edit Plan: <span className="uppercase text-primary">{editingPlan?.plan_tier}</span>
+							{t("plans_edit_title")}:{" "}
+							<span className="uppercase text-primary">{editingPlan?.plan_tier}</span>
 						</DialogTitle>
-						<DialogDescription>
-							Update default limits and pricing. Existing tenant workspaces on this tier will be
-							grandfathered with their previous limits preserved.
-						</DialogDescription>
+						<DialogDescription>{t("plans_edit_desc")}</DialogDescription>
 					</DialogHeader>
 
 					<div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-md text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
 						<AlertCircle className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
-						<span>
-							Grandfathering active: Any workspace currently assigned to this tier will have its
-							existing quota snapshot recorded as a per-workspace override before new defaults
-							apply.
-						</span>
+						<span>{t("plans_grandfather_notice")}</span>
 					</div>
 
 					<form onSubmit={handleUpdateSubmit} className="space-y-4 py-2">
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-1.5">
-								<Label htmlFor="edit-support">Support Level</Label>
+								<Label htmlFor="edit-support">{t("plans_support_level")}</Label>
 								<Select value={formSupport} onValueChange={setFormSupport}>
 									<SelectTrigger id="edit-support">
-										<SelectValue placeholder="Select support level" />
+										<SelectValue placeholder={t("plans_support_placeholder")} />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="community">Community</SelectItem>
-										<SelectItem value="email">Email</SelectItem>
-										<SelectItem value="priority">Priority</SelectItem>
-										<SelectItem value="dedicated_24_7">Dedicated 24/7</SelectItem>
+										<SelectItem value="community">{t("plans_support_community")}</SelectItem>
+										<SelectItem value="email">{t("plans_support_email")}</SelectItem>
+										<SelectItem value="priority">{t("plans_support_priority")}</SelectItem>
+										<SelectItem value="dedicated_24_7">{t("plans_support_dedicated")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="edit-price">Price / Month ($)</Label>
+								<Label htmlFor="edit-price">{t("plans_price_month")}</Label>
 								<Input
 									id="edit-price"
 									type="number"
@@ -548,83 +547,83 @@ export default function AdminSaasPlansPage() {
 
 						<div className="border-t pt-3">
 							<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-								Default Resource Quotas (Leave empty for Unlimited)
+								{t("plans_quota_section")}
 							</h4>
 							<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
 								<div className="space-y-1">
 									<Label htmlFor="edit-docs" className="text-xs">
-										Max Documents
+										{t("plans_max_docs")}
 									</Label>
 									<Input
 										id="edit-docs"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formDocs}
 										onChange={(e) => setFormDocs(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="edit-members" className="text-xs">
-										Max Members
+										{t("plans_max_members")}
 									</Label>
 									<Input
 										id="edit-members"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formMembers}
 										onChange={(e) => setFormMembers(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="edit-runs" className="text-xs">
-										Max Runs
+										{t("plans_max_runs")}
 									</Label>
 									<Input
 										id="edit-runs"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formRuns}
 										onChange={(e) => setFormRuns(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="edit-storage" className="text-xs">
-										Storage (GB)
+										{t("plans_storage_gb")}
 									</Label>
 									<Input
 										id="edit-storage"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formStorageGb}
 										onChange={(e) => setFormStorageGb(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="edit-credits" className="text-xs">
-										Monthly Credits
+										{t("plans_monthly_credits")}
 									</Label>
 									<Input
 										id="edit-credits"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formCredits}
 										onChange={(e) => setFormCredits(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-1">
 									<Label htmlFor="edit-sources" className="text-xs">
-										Max Sources
+										{t("plans_max_sources")}
 									</Label>
 									<Input
 										id="edit-sources"
 										type="number"
 										min="0"
-										placeholder="Unlimited"
+										placeholder={t("plans_unlimited")}
 										value={formSources}
 										onChange={(e) => setFormSources(e.target.value)}
 									/>
@@ -634,10 +633,10 @@ export default function AdminSaasPlansPage() {
 
 						<DialogFooter className="pt-4">
 							<Button variant="outline" type="button" onClick={() => setEditingPlan(null)}>
-								Cancel
+								{t("plans_cancel")}
 							</Button>
 							<Button type="submit" disabled={updateMutation.isPending}>
-								{updateMutation.isPending ? "Saving..." : "Save Changes"}
+								{updateMutation.isPending ? t("plans_saving") : t("plans_save_changes")}
 							</Button>
 						</DialogFooter>
 					</form>
@@ -651,16 +650,14 @@ export default function AdminSaasPlansPage() {
 			>
 				<DialogContent className="max-w-sm">
 					<DialogHeader>
-						<DialogTitle>Delete Plan Tier</DialogTitle>
+						<DialogTitle>{t("plans_delete_title")}</DialogTitle>
 						<DialogDescription className="text-xs">
-							Are you sure you want to delete tier{" "}
-							<strong className="uppercase">{deletingPlanTier}</strong>? This operation cannot be
-							undone. Plans assigned to active workspaces cannot be deleted.
+							{t("plans_delete_confirm", { tier: deletingPlanTier ?? "" })}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="gap-2 sm:gap-0">
 						<Button variant="outline" onClick={() => setDeletingPlanTier(null)}>
-							Cancel
+							{t("plans_cancel")}
 						</Button>
 						<Button
 							variant="destructive"
@@ -671,7 +668,7 @@ export default function AdminSaasPlansPage() {
 								}
 							}}
 						>
-							{deleteMutation.isPending ? "Deleting..." : "Delete Plan"}
+							{deleteMutation.isPending ? t("plans_deleting") : t("plans_delete")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

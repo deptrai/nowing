@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -109,6 +110,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<CreateConfluencePageInterruptContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -183,26 +185,30 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-							? "Confluence Page Rejected"
+							? t("confluence_rejected_title")
 							: phase === "processing" || phase === "complete"
-								? "Confluence Page Approved"
-								: "Create Confluence Page"}
+								? t("confluence_approved_title")
+								: t("confluence_create_title")}
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? "Creating page with your changes" : "Creating page"}
+							text={
+								pendingEdits
+									? t("confluence_creating_page_with_changes")
+									: t("confluence_creating_page")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{pendingEdits ? "Page created with your changes" : "Page created"}
+							{pendingEdits ? t("common_page_created_with_changes") : t("common_page_created")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Page creation was cancelled</p>
-					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("confluence_creation_cancelled")}
 						</p>
+					) : (
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -226,7 +232,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -243,7 +249,7 @@ function ApprovalCard({
 								{accounts.length > 0 && (
 									<div className="space-y-1.5">
 										<p className="text-xs font-medium text-muted-foreground">
-											Confluence Account <span className="text-destructive">*</span>
+											{t("confluence_account_label")} <span className="text-destructive">*</span>
 										</p>
 										<Select
 											value={selectedAccountId}
@@ -253,7 +259,7 @@ function ApprovalCard({
 											}}
 										>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select an account" />
+												<SelectValue placeholder={t("confluence_select_account")} />
 											</SelectTrigger>
 											<SelectContent>
 												{validAccounts.map((a) => (
@@ -277,11 +283,11 @@ function ApprovalCard({
 								{selectedAccountId && spaces.length > 0 && (
 									<div className="space-y-1.5">
 										<p className="text-xs font-medium text-muted-foreground">
-											Space <span className="text-destructive">*</span>
+											{t("confluence_space")} <span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select a space" />
+												<SelectValue placeholder={t("confluence_select_space")} />
 											</SelectTrigger>
 											<SelectContent>
 												{spaces.map((s) => (
@@ -336,7 +342,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -351,7 +357,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -362,10 +368,13 @@ function ApprovalCard({
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">All Confluence accounts expired</p>
+				<p className="text-sm font-semibold text-destructive">
+					{t("confluence_all_accounts_expired")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -376,11 +385,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Additional Confluence permissions required
+					{t("confluence_insufficient_perms")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -392,10 +402,11 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create Confluence page</p>
+				<p className="text-sm font-semibold text-destructive">{t("confluence_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -406,11 +417,12 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Confluence page created successfully"}
+					{result.message || t("confluence_created_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -422,11 +434,13 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 						rel="noopener noreferrer"
 						className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
 					>
-						Open in Confluence
+						{t("confluence_open_in_confluence")}
 					</a>
 				) : (
 					<div>
-						<span className="font-medium text-muted-foreground">Page ID: </span>
+						<span className="font-medium text-muted-foreground">
+							{t("confluence_page_id_label")}{" "}
+						</span>
 						<span>{result.page_id}</span>
 					</div>
 				)}

@@ -1,6 +1,5 @@
 import { RunsTable } from "../../../playground/components/runs-table";
 
-
 export default async function PlaygroundSettingsRunsPage({
 	params,
 }: {

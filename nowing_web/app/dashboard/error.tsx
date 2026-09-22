@@ -2,6 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { buildIssueUrl } from "@/lib/error-toast";
@@ -13,6 +14,7 @@ export default function DashboardError({
 	error: globalThis.Error & { digest?: string; code?: string; requestId?: string };
 	reset: () => void;
 }) {
+	const t = useTranslations("dashboardErrors");
 	useEffect(() => {
 		import("posthog-js")
 			.then(({ default: posthog }) => {
@@ -25,11 +27,8 @@ export default function DashboardError({
 
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-			<h2 className="text-xl font-semibold">Something went wrong</h2>
-			<p className="text-muted-foreground max-w-md">
-				An error occurred in this section. Your dashboard is still available. If this keeps
-				happening, please report it so we can fix it.
-			</p>
+			<h2 className="text-xl font-semibold">{t("title")}</h2>
+			<p className="text-muted-foreground max-w-md">{t("desc")}</p>
 
 			{(error.digest || error.code || error.requestId) && (
 				<div className="rounded-md border bg-muted/50 px-4 py-2 text-xs text-muted-foreground font-mono max-w-md">
@@ -41,13 +40,13 @@ export default function DashboardError({
 
 			<div className="flex gap-2">
 				<Button type="button" onClick={reset}>
-					Try again
+					{t("try_again")}
 				</Button>
 				<Link
 					href="/dashboard"
 					className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
 				>
-					Go to dashboard home
+					{t("go_home")}
 				</Link>
 				<a
 					href={issueUrl}
@@ -56,7 +55,7 @@ export default function DashboardError({
 					className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
 				>
 					<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-					Report Issue
+					{t("report_issue")}
 				</a>
 			</div>
 		</div>

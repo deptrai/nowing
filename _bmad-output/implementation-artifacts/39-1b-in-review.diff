@@ -1,0 +1,1403 @@
+diff --git a/nowing_backend/.env.example b/nowing_backend/.env.example
+index d4c9ac241..2017b40e1 100644
+--- a/nowing_backend/.env.example
++++ b/nowing_backend/.env.example
+@@ -835,11 +835,17 @@ LANGSMITH_PROJECT=nowing
+ # Master switch; when false every decide() raises DecisionError("disabled")
+ # and callers keep existing heuristic behavior.
+ # DECISION_ENABLED=false
+-# Backend selection: jev | mock | llm_json (llm_json is reserved — raises
+-# backend_unavailable until story 39.1b lands).
++# Backend selection: jev | llm_json | mock.
+ # DECISION_BACKEND=jev
++# Fallback chain: when the primary backend raises DecisionError with code
++# timeout | backend_error | backend_unavailable | missing_api_key, the
++# request is retried once via this backend (llm_json | none). Malformed
++# answers and caller errors never fall back.
++# DECISION_FALLBACK_BACKEND=llm_json
+ # Pinned Jev model — never jev-latest (AD-J3).
+ # DECISION_JEV_MODEL=jev-1.13.0
++# Pinned LLM model for DECISION_BACKEND=llm_json and the fallback leg.
++# DECISION_LLM_MODEL=claude-haiku-4-5-20251001
+ # Hard ceiling per decide() call in seconds (min 0.1).
+ # DECISION_TIMEOUT_SECONDS=5.0
+ # Per-task gates (default on so DECISION_ENABLED=true is the single opt-in).
+diff --git a/nowing_backend/app/config/decision.py b/nowing_backend/app/config/decision.py
+index f93bea080..7f0368c7e 100644
+--- a/nowing_backend/app/config/decision.py
++++ b/nowing_backend/app/config/decision.py
+@@ -27,15 +27,25 @@ def _env_flag(name: str, default: bool) -> bool:
+ # stories (39.2+) land and each path is verified advisory.
+ DECISION_ENABLED = _env_flag("DECISION_ENABLED", False)
+ 
+-# Backend selection (AD-J2). "llm_json" is reserved — the LLM fallback
+-# chain is split into a later story; selecting it raises DecisionError
+-# in the service factory.
++# Backend selection (AD-J2).
+ DECISION_BACKEND = _env_choice("DECISION_BACKEND", "jev", ("jev", "llm_json", "mock"))
+ 
+-# Pinned model — never "jev-latest" (AD-J3).
++# Fallback chain (story 39.1b): a primary-leg DecisionError with code in
++# {timeout, backend_error, backend_unavailable, missing_api_key} retries
++# once through this backend. "none" disables the chain.
++DECISION_FALLBACK_BACKEND = _env_choice(
++    "DECISION_FALLBACK_BACKEND", "llm_json", ("llm_json", "none")
++)
++
++# Pinned models, per backend — never "jev-latest" (AD-J3). The LLM pin
++# defaults to the eval baseline model.
+ DECISION_JEV_MODEL = (
+     os.getenv("DECISION_JEV_MODEL", "jev-1.13.0").strip() or "jev-1.13.0"
+ )
++DECISION_LLM_MODEL = (
++    os.getenv("DECISION_LLM_MODEL", "claude-haiku-4-5-20251001").strip()
++    or "claude-haiku-4-5-20251001"
++)
+ 
+ # Hard ceiling per decide() call; callers should never wait longer.
+ # ``float("inf")``/``nan`` parse fine via _env_float but would disable the
+@@ -85,9 +95,11 @@ __all__ = [
+     "DECISION_BACKEND",
+     "DECISION_ENABLED",
+     "DECISION_ENTITY_ENABLED",
++    "DECISION_FALLBACK_BACKEND",
+     "DECISION_FILTER_ENABLED",
+     "DECISION_INTENT_ENABLED",
+     "DECISION_JEV_MODEL",
++    "DECISION_LLM_MODEL",
+     "DECISION_ROUTING_ENABLED",
+     "DECISION_TIMEOUT_SECONDS",
+     "DECISION_VOICE_ENABLED",
+diff --git a/nowing_backend/app/services/decision/service.py b/nowing_backend/app/services/decision/service.py
+index a4c341fef..beda9c8aa 100644
+--- a/nowing_backend/app/services/decision/service.py
++++ b/nowing_backend/app/services/decision/service.py
+@@ -83,6 +83,17 @@ class DecisionService:
+         ``session``/``workspace_id``/``user_id`` are optional; when all
+         are provided the call's token usage is persisted to
+         ``TokenUsage`` (fail-open).
++
++        Fallback (story 39.1b): when the primary backend raises a
++        ``DecisionError`` with code ``timeout``, ``backend_error``,
++        ``backend_unavailable`` or ``missing_api_key``, the request is
++        retried once through ``DECISION_FALLBACK_BACKEND`` (default
++        ``llm_json``, ``"none"`` disables). ``InvalidDecisionAnswer``
++        and caller errors never fall back — a malformed answer is not
++        worth a second paid call. The fallback leg gets its own
++        ``wait_for`` with the same clamped timeout, so worst-case
++        latency is 2 x ``DECISION_TIMEOUT_SECONDS``; the result and
++        telemetry always describe the leg that actually answered.
+         """
+         if not decision_config.decision_enabled():
+             raise DecisionError(
+@@ -100,15 +111,17 @@ class DecisionService:
+                 "questions must be a non-empty dict",
+                 code="invalid_request",
+             )
+-        # AD-J3: the model is pinned — a caller may not override it to
+-        # "jev-latest" or any other value.
+-        if model is not None and model != decision_config.DECISION_JEV_MODEL:
++        backend = self._get_backend()
++        # AD-J3: the model is pinned per backend — a caller may not
++        # override it to "jev-latest" or any other value.
++        pinned_model = _pinned_model(backend.name)
++        if model is not None and model != pinned_model:
+             raise DecisionError(
+-                f"model {model!r} is not allowed — the Jev model is pinned "
+-                f"to {decision_config.DECISION_JEV_MODEL!r}",
++                f"model {model!r} is not allowed — backend {backend.name!r} "
++                f"is pinned to {pinned_model!r}",
+                 code="invalid_model",
+             )
+-        model = decision_config.DECISION_JEV_MODEL
++        model = pinned_model
+         if timeout is None:
+             timeout = decision_config.DECISION_TIMEOUT_SECONDS
+         else:
+@@ -122,32 +135,32 @@ class DecisionService:
+             # back to the ceiling rather than hand wait_for a NaN delay.
+             timeout = decision_config.DECISION_TIMEOUT_SECONDS
+ 
+-        backend = self._get_backend()
+         try:
+-            # Port-level hard ceiling — enforced here so it holds for
+-            # every backend, not just Jev's internal timeout handling.
+-            backend_result = await asyncio.wait_for(
+-                backend.decide(state, questions, model=model, timeout=timeout),
++            backend_result = await self._call_backend(
++                backend, state, questions, model=model, timeout=timeout
++            )
++        except DecisionError as exc:
++            fallback = _build_fallback_backend(backend.name)
++            if fallback is None or exc.code not in _FALLBACK_TRIGGER_CODES:
++                raise
++            # The fallback leg runs under its own wait_for with the same
++            # clamped timeout — worst-case decide() latency is therefore
++            # 2 x DECISION_TIMEOUT_SECONDS.
++            logger.warning(
++                "Decision backend %r failed (code=%s) — retrying once "
++                "via fallback backend %r",
++                backend.name,
++                exc.code,
++                fallback.name,
++            )
++            backend = fallback
++            backend_result = await self._call_backend(
++                backend,
++                state,
++                questions,
++                model=_pinned_model(backend.name),
+                 timeout=timeout,
+             )
+-        except TimeoutError as exc:
+-            # asyncio.TimeoutError is an alias of builtin TimeoutError.
+-            raise DecisionError(
+-                f"decision timed out after {timeout}s",
+-                code="timeout",
+-            ) from exc
+-        except DecisionError:
+-            raise
+-        except Exception as exc:
+-            # Backends must raise DecisionError; wrap stragglers so
+-            # callers only ever see the documented taxonomy. The full
+-            # exception may embed request data — log it, don't
+-            # interpolate it into the error message.
+-            logger.exception("Decision backend %r failed", backend.name)
+-            raise DecisionError(
+-                f"Decision backend {backend.name!r} failed: {type(exc).__name__}",
+-                code="backend_error",
+-            ) from exc
+ 
+         task_label = task or "generic"
+         try:
+@@ -175,6 +188,7 @@ class DecisionService:
+             )
+             await self._record_usage(
+                 backend_result,
++                backend_name=backend.name,
+                 task=task_label,
+                 question_set=question_set,
+                 questions=questions,
+@@ -193,6 +207,42 @@ class DecisionService:
+             output_tokens=backend_result.output_tokens,
+         )
+ 
++    async def _call_backend(
++        self,
++        backend: DecisionBackend,
++        state: dict[str, Any],
++        questions: dict[str, Question],
++        *,
++        model: str,
++        timeout: float,
++    ) -> BackendResult:
++        """One backend leg: call + port-level ceiling + error taxonomy."""
++        try:
++            # Port-level hard ceiling — enforced here so it holds for
++            # every backend, not just Jev's internal timeout handling.
++            return await asyncio.wait_for(
++                backend.decide(state, questions, model=model, timeout=timeout),
++                timeout=timeout,
++            )
++        except TimeoutError as exc:
++            # asyncio.TimeoutError is an alias of builtin TimeoutError.
++            raise DecisionError(
++                f"decision timed out after {timeout}s",
++                code="timeout",
++            ) from exc
++        except DecisionError:
++            raise
++        except Exception as exc:
++            # Backends must raise DecisionError; wrap stragglers so
++            # callers only ever see the documented taxonomy. The full
++            # exception may embed request data — log it, don't
++            # interpolate it into the error message.
++            logger.exception("Decision backend %r failed", backend.name)
++            raise DecisionError(
++                f"Decision backend {backend.name!r} failed: {type(exc).__name__}",
++                code="backend_error",
++            ) from exc
++
+     @staticmethod
+     def _require_answer(backend_result: BackendResult, qid: str) -> Any:
+         answer = backend_result.answers.get(qid)
+@@ -206,6 +256,7 @@ class DecisionService:
+         self,
+         backend_result: BackendResult,
+         *,
++        backend_name: str,
+         task: str,
+         question_set: str | None,
+         questions: dict[str, Question],
+@@ -238,7 +289,7 @@ class DecisionService:
+                 total_tokens=input_tokens + output_tokens,
+                 e2e_ms=round(backend_result.latency_ms),
+                 call_details={
+-                    "backend": self._get_backend().name,
++                    "backend": backend_name,
+                     "model": backend_result.model,
+                     "latency_ms": backend_result.latency_ms,
+                     "task": task,
+@@ -255,6 +306,22 @@ class DecisionService:
+             )
+ 
+ 
++# Primary-leg failure codes that may retry once via the fallback
++# backend (story 39.1b). InvalidDecisionAnswer and caller errors
++# (disabled / invalid_request / invalid_model) are deliberately absent —
++# malformed answers and bad calls must not re-pay for a second leg.
++_FALLBACK_TRIGGER_CODES = frozenset(
++    {"timeout", "backend_error", "backend_unavailable", "missing_api_key"}
++)
++
++
++def _pinned_model(backend_name: str) -> str:
++    """The model a backend is pinned to (AD-J3, backend-aware)."""
++    if backend_name == "llm_json":
++        return decision_config.DECISION_LLM_MODEL
++    return decision_config.DECISION_JEV_MODEL
++
++
+ def _build_backend() -> DecisionBackend:
+     """Resolve the configured backend (AD-J2, factory-by-config)."""
+     backend = decision_config.DECISION_BACKEND
+@@ -262,6 +329,10 @@ def _build_backend() -> DecisionBackend:
+         from app.services.decision.backends.jev import JevBackend
+ 
+         return JevBackend()
++    if backend == "llm_json":
++        from app.services.decision.backends.llm_json import LLMJsonBackend
++
++        return LLMJsonBackend()
+     if backend == "mock":
+         logger.warning(
+             "Decision backend is 'mock' — deterministic answers, not real Jev decisions"
+@@ -269,13 +340,33 @@ def _build_backend() -> DecisionBackend:
+         from app.services.decision.backends.mock import MockBackend
+ 
+         return MockBackend()
+-    # "llm_json" is reserved — LLM fallback chain is a deferred story.
+     raise DecisionError(
+         f"Decision backend {backend!r} is not available in this build",
+         code="backend_unavailable",
+     )
+ 
+ 
++def _build_fallback_backend(primary_name: str) -> DecisionBackend | None:
++    """Resolve the fallback leg backend (story 39.1b chain).
++
++    Returns ``None`` when ``DECISION_FALLBACK_BACKEND=none`` or when the
++    configured fallback is the backend that just failed — an llm_json →
++    llm_json retry would double the cost for the same systemic failure
++    (litellm already retries transient errors once via ``num_retries``).
++    """
++    choice = decision_config.DECISION_FALLBACK_BACKEND
++    if choice == "none":
++        return None
++    if choice == "llm_json":
++        if primary_name == "llm_json":
++            return None
++        from app.services.decision.backends.llm_json import LLMJsonBackend
++
++        return LLMJsonBackend()
++    logger.warning("Unrecognized DECISION_FALLBACK_BACKEND=%r — no fallback", choice)
++    return None
++
++
+ _decision_service: DecisionService | None = None
+ 
+ 
+diff --git a/nowing_backend/tests/unit/services/decision/test_service.py b/nowing_backend/tests/unit/services/decision/test_service.py
+index f31006243..afddc084f 100644
+--- a/nowing_backend/tests/unit/services/decision/test_service.py
++++ b/nowing_backend/tests/unit/services/decision/test_service.py
+@@ -31,9 +31,14 @@ _TASK_FLAGS = ("ROUTING", "FILTER", "ENTITY", "INTENT", "VOICE")
+ class _StubBackend:
+     """In-memory backend — returns a canned BackendResult or raises."""
+ 
+-    name = "stub"
+-
+-    def __init__(self, result: BackendResult | None = None, exc=None, delay=0.0):
++    def __init__(
++        self,
++        result: BackendResult | None = None,
++        exc=None,
++        delay=0.0,
++        name="stub",
++    ):
++        self.name = name
+         self._result = result
+         self._exc = exc
+         self._delay = delay
+@@ -61,8 +66,14 @@ def _result(**overrides) -> BackendResult:
+ 
+ @pytest.fixture
+ def _enabled(monkeypatch):
+-    """Enable master + all per-task flags — isolated from ambient env."""
++    """Enable master + all per-task flags — isolated from ambient env.
++
++    Fallback is pinned off: a failing primary must never reach the real
++    llm_json backend (a paid network call) unless a test wires one up
++    via ``_patch_fallback`` or the config attr.
++    """
+     monkeypatch.setenv("DECISION_ENABLED", "true")
++    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
+     for task in _TASK_FLAGS:
+         monkeypatch.setenv(f"DECISION_{task}_ENABLED", "true")
+ 
+@@ -185,7 +196,9 @@ async def test_decide_backend_error_propagates_as_decision_error(_enabled):
+ 
+ 
+ @pytest.mark.unit
+-async def test_decide_backend_decision_error_passes_through(_enabled):
++async def test_decide_backend_decision_error_passes_through(_enabled, monkeypatch):
++    # fallback off: the primary's DecisionError propagates unwrapped
++    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
+     service = DecisionService(
+         _StubBackend(exc=DecisionError("no key", code="missing_api_key"))
+     )
+@@ -369,15 +382,213 @@ def test_build_backend_jev(_enabled, monkeypatch):
+ 
+ 
+ @pytest.mark.unit
+-def test_build_backend_llm_json_unavailable(_enabled, monkeypatch):
++def test_build_backend_llm_json(_enabled, monkeypatch):
+     monkeypatch.setattr(decision_config, "DECISION_BACKEND", "llm_json")
+     service = DecisionService()
+-    with pytest.raises(DecisionError) as exc_info:
+-        service._get_backend()
+-    assert exc_info.value.code == "backend_unavailable"
++    assert service._get_backend().name == "llm_json"
+ 
+ 
+ @pytest.mark.unit
+ def test_get_decision_service_singleton(monkeypatch):
+     monkeypatch.setattr(service_module, "_decision_service", None)
+     assert get_decision_service() is get_decision_service()
++
++
++# ---------------------------------------------------------------------------
++# Fallback chain (story 39.1b) — primary → DECISION_FALLBACK_BACKEND
++# ---------------------------------------------------------------------------
++
++
++def _patch_fallback(monkeypatch, backend) -> None:
++    """Route the service's fallback resolution to an in-memory backend."""
++    monkeypatch.setattr(
++        service_module, "_build_fallback_backend", lambda primary_name: backend
++    )
++
++
++def _llm_result() -> BackendResult:
++    """What the llm_json leg returns — model/backend reflect that leg."""
++    return BackendResult(
++        answers={"q": Answer(kind="noul", value=0.6, confidence=0.6)},
++        model=decision_config.DECISION_LLM_MODEL,
++        latency_ms=4.2,
++        input_tokens=50,
++        output_tokens=5,
++    )
++
++
++@pytest.mark.unit
++@pytest.mark.parametrize(
++    "code", ["timeout", "backend_error", "backend_unavailable", "missing_api_key"]
++)
++async def test_decide_fallback_on_retryable_codes(_enabled, monkeypatch, code):
++    primary = _StubBackend(exc=DecisionError("primary down", code=code))
++    fallback = _StubBackend(_llm_result(), name="llm_json")
++    _patch_fallback(monkeypatch, fallback)
++    service = DecisionService(primary)
++
++    result = await service.decide({"s": 1}, {"q": NOUL_Q})
++
++    assert result.backend == "llm_json"
++    assert result.model == decision_config.DECISION_LLM_MODEL
++    assert result.answers["q"].value == 0.6
++    # the fallback leg is pinned to the LLM model, not the Jev pin
++    assert fallback.calls[0]["model"] == decision_config.DECISION_LLM_MODEL
++
++
++@pytest.mark.unit
++async def test_decide_fallback_logs_primary_code(_enabled, monkeypatch, caplog):
++    primary = _StubBackend(exc=DecisionError("primary down", code="timeout"))
++    _patch_fallback(monkeypatch, _StubBackend(_llm_result(), name="llm_json"))
++    service = DecisionService(primary)
++    with caplog.at_level("WARNING", logger="app.services.decision.service"):
++        await service.decide({}, {"q": NOUL_Q})
++    assert "timeout" in caplog.text
++    assert "llm_json" in caplog.text
++
++
++@pytest.mark.unit
++async def test_decide_fallback_leg_failure_propagates(_enabled, monkeypatch):
++    """Both legs fail → the fallback leg's DecisionError reaches the caller."""
++    primary = _StubBackend(exc=DecisionError("primary down", code="timeout"))
++    fallback = _StubBackend(
++        exc=DecisionError("llm also down", code="backend_error"), name="llm_json"
++    )
++    _patch_fallback(monkeypatch, fallback)
++    service = DecisionService(primary)
++    with pytest.raises(DecisionError) as exc_info:
++        await service.decide({}, {"q": NOUL_Q})
++    assert exc_info.value.code == "backend_error"
++    assert "llm also down" in str(exc_info.value)
++
++
++@pytest.mark.unit
++@pytest.mark.parametrize(
++    "exc",
++    [
++        InvalidDecisionAnswer("malformed answer"),
++        DecisionError("caller error", code="invalid_request"),
++        DecisionError("bad model", code="invalid_model"),
++        DecisionError("off", code="disabled"),
++    ],
++)
++async def test_decide_no_fallback_on_non_retryable(_enabled, monkeypatch, exc):
++    """InvalidDecisionAnswer / caller errors never pay for a second leg."""
++    primary = _StubBackend(exc=exc)
++    fallback = _StubBackend(_llm_result(), name="llm_json")
++    _patch_fallback(monkeypatch, fallback)
++    service = DecisionService(primary)
++    with pytest.raises(DecisionError):
++        await service.decide({}, {"q": NOUL_Q})
++    assert fallback.calls == []
++
++
++@pytest.mark.unit
++async def test_decide_no_fallback_when_configured_none(_enabled, monkeypatch):
++    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
++    primary = _StubBackend(exc=DecisionError("down", code="timeout"))
++    service = DecisionService(primary)
++    with pytest.raises(DecisionError) as exc_info:
++        await service.decide({}, {"q": NOUL_Q})
++    assert exc_info.value.code == "timeout"
++
++
++@pytest.mark.unit
++async def test_decide_fallback_records_winning_leg(_enabled, monkeypatch):
++    """Telemetry describes the leg that actually answered, not the primary."""
++    recorded = _patch_record(monkeypatch)
++    primary = _StubBackend(exc=DecisionError("down", code="missing_api_key"))
++    _patch_fallback(monkeypatch, _StubBackend(_llm_result(), name="llm_json"))
++    service = DecisionService(primary)
++    await service.decide(
++        {},
++        {"q": NOUL_Q},
++        session=object(),
++        workspace_id=1,
++        user_id=UUID(int=1),
++    )
++    assert recorded["call_details"]["backend"] == "llm_json"
++    assert recorded["call_details"]["model"] == decision_config.DECISION_LLM_MODEL
++    assert recorded["prompt_tokens"] == 50
++    assert recorded["completion_tokens"] == 5
++
++
++@pytest.mark.unit
++async def test_decide_model_pin_is_per_backend(_enabled):
++    """A model valid for Jev is invalid when the active backend is llm_json."""
++    backend = _StubBackend(_llm_result(), name="llm_json")
++    service = DecisionService(backend)
++    with pytest.raises(DecisionError) as exc_info:
++        await service.decide(
++            {}, {"q": NOUL_Q}, model=decision_config.DECISION_JEV_MODEL
++        )
++    assert exc_info.value.code == "invalid_model"
++    assert backend.calls == []
++
++    await service.decide({}, {"q": NOUL_Q}, model=decision_config.DECISION_LLM_MODEL)
++    assert backend.calls[0]["model"] == decision_config.DECISION_LLM_MODEL
++
++
++@pytest.mark.unit
++async def test_decide_llm_json_primary_end_to_end(_enabled, monkeypatch):
++    """DECISION_BACKEND=llm_json → one fake acompletion → validated result."""
++    import json
++
++    import litellm
++
++    payload = {
++        "answers": [
++            {
++                "question_id": "q",
++                "answer": 0.7,
++                "confidence": 0.7,
++                "probabilities": None,
++            }
++        ]
++    }
++    calls: list[dict] = []
++
++    class _FakeResponse:
++        choices = [
++            type(
++                "C", (), {"message": type("M", (), {"content": json.dumps(payload)})()}
++            )()
++        ]
++        model = decision_config.DECISION_LLM_MODEL
++        usage = None
++
++    async def _fake_acompletion(**kwargs):
++        calls.append(kwargs)
++        return _FakeResponse()
++
++    monkeypatch.setattr(litellm, "acompletion", _fake_acompletion)
++    monkeypatch.setattr(decision_config, "DECISION_BACKEND", "llm_json")
++    service = DecisionService()
++
++    result = await service.decide({"user_message": "xin chào"}, {"q": NOUL_Q})
++
++    assert len(calls) == 1
++    assert calls[0]["model"] == decision_config.DECISION_LLM_MODEL
++    assert result.backend == "llm_json"
++    assert result.model == decision_config.DECISION_LLM_MODEL
++    assert result.answers["q"].value == 0.7
++
++
++@pytest.mark.unit
++def test_build_fallback_backend_llm_json(_enabled, monkeypatch):
++    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "llm_json")
++    fallback = service_module._build_fallback_backend("jev")
++    assert fallback is not None and fallback.name == "llm_json"
++
++
++@pytest.mark.unit
++def test_build_fallback_backend_none(_enabled, monkeypatch):
++    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "none")
++    assert service_module._build_fallback_backend("jev") is None
++
++
++@pytest.mark.unit
++def test_build_fallback_backend_skips_self_retry(_enabled, monkeypatch):
++    """llm_json → llm_json is not a chain — litellm already retries."""
++    monkeypatch.setattr(decision_config, "DECISION_FALLBACK_BACKEND", "llm_json")
++    assert service_module._build_fallback_backend("llm_json") is None
+diff --git a/nowing_backend/app/services/decision/backends/llm_json.py b/nowing_backend/app/services/decision/backends/llm_json.py
+new file mode 100644
+index 000000000..6380afcb9
+--- /dev/null
++++ b/nowing_backend/app/services/decision/backends/llm_json.py
+@@ -0,0 +1,324 @@
++"""LLM JSON backend — litellm structured output (story 39.1b, AD-J2).
++
++Usable as ``DECISION_BACKEND=llm_json`` and as the fallback leg when the
++primary backend raises a retryable ``DecisionError`` (timeout /
++backend_error / backend_unavailable / missing_api_key).
++
++One ``decide()`` = ONE ``litellm.acompletion`` call covering the whole
++``questions`` dict — the same batching as Jev ``system_one`` —
++``temperature=0``, strict ``json_schema`` response format. Prompt/schema
++ported from the eval baseline ``scripts/jev_eval/runner.py:193-296``,
++adapted from one-question-per-call to a single batched call.
++
++Failures never leak litellm exceptions: transport/timeout/auth →
++``DecisionError`` (uniform taxonomy, same codes callers already handle);
++unparseable or schema-mismatched payloads → ``InvalidDecisionAnswer`` —
++malformed output is never retried as a backend error.
++"""
++
++from __future__ import annotations
++
++import asyncio
++import json
++import logging
++import time
++from typing import Any
++
++import app.config.decision as decision_config
++from app.services.decision.errors import DecisionError, InvalidDecisionAnswer
++from app.services.decision.types import (
++    Answer,
++    BackendResult,
++    ChoiceQuestion,
++    NoulQuestion,
++    Question,
++    ScoreQuestion,
++)
++
++logger = logging.getLogger(__name__)
++
++# Strict schema stays key-stable regardless of how many questions or how
++# many option ids a call carries — dynamic keys are not allowed under
++# OpenAI-style strict mode, so probabilities travel as an array of
++# {"id", "p"} pairs and are normalized back to a str-keyed dict.
++_RESPONSE_FORMAT: dict[str, Any] = {
++    "type": "json_schema",
++    "json_schema": {
++        "name": "decision_answers",
++        "strict": True,
++        "schema": {
++            "type": "object",
++            "properties": {
++                "answers": {
++                    "type": "array",
++                    "items": {
++                        "type": "object",
++                        "properties": {
++                            "question_id": {"type": "string"},
++                            "answer": {"type": ["string", "number"]},
++                            "confidence": {"type": "number"},
++                            "probabilities": {
++                                "type": ["array", "null"],
++                                "items": {
++                                    "type": "object",
++                                    "properties": {
++                                        "id": {"type": "string"},
++                                        "p": {"type": "number"},
++                                    },
++                                    "required": ["id", "p"],
++                                    "additionalProperties": False,
++                                },
++                            },
++                        },
++                        "required": [
++                            "question_id",
++                            "answer",
++                            "confidence",
++                            "probabilities",
++                        ],
++                        "additionalProperties": False,
++                    },
++                },
++            },
++            "required": ["answers"],
++            "additionalProperties": False,
++        },
++    },
++}
++
++
++def _build_prompt(state: dict[str, Any], questions: dict[str, Question]) -> str:
++    """Batch version of the eval ``_build_llm_prompt`` — all questions in
++    one prompt, with the constraints strict validation demands spelled
++    out (full distribution over the offered ids, sum ≈ 1, answer is the
++    argmax / probability-weighted mean).
++    """
++    state_str = json.dumps(state, ensure_ascii=False, indent=2)
++    lines = [
++        "You are a decision engine. Evaluate every question below against this state:",
++        "",
++        state_str,
++        "",
++        'Reply with a single JSON object {"answers": [...]} holding exactly '
++        "one entry per question:",
++        '- "question_id": the question id, copied verbatim',
++        '- "answer": choice → the chosen option id; score → the numeric '
++        'score; noul → the probability that the answer is "yes" in [0,1]',
++        '- "confidence": your confidence in [0,1]',
++        '- "probabilities": choice/score → [{"id": "<option id>", "p": <0-1>}] '
++        "covering EVERY offered id exactly once and summing to 1.0; "
++        "noul → null",
++        "",
++        "Rules:",
++        "- The answer must be the argmax of your probabilities (choice), or "
++        "the probability-weighted mean of the level indices (score).",
++        "- Output JSON only — no prose, no markdown fences.",
++        "",
++        "Questions:",
++    ]
++    for i, (qid, question) in enumerate(questions.items(), 1):
++        lines.append(f"{i}. question_id={json.dumps(qid)} type={question.kind}")
++        lines.append(f"   instructions: {question.instructions}")
++        if isinstance(question, ChoiceQuestion):
++            lines.append(
++                "   options (id → description): "
++                + json.dumps(question.criteria, ensure_ascii=False)
++            )
++        elif isinstance(question, ScoreQuestion):
++            last = len(question.criteria) - 1
++            lines.append(
++                f'   levels (ids "0".."{last}"): '
++                + json.dumps(question.criteria, ensure_ascii=False)
++            )
++        elif not isinstance(question, NoulQuestion):
++            raise DecisionError(
++                f"Unsupported question type {type(question).__name__!r} "
++                "for llm_json backend",
++                code="backend_error",
++            )
++    return "\n".join(lines)
++
++
++async def _call(
++    litellm: Any, *, model: str, messages: list[dict[str, str]], timeout: float | None
++) -> Any:
++    """One strict-schema completion.
++
++    Providers that cannot do strict ``json_schema`` reject the request
++    (400-class) — degrade once to plain ``json_object`` like
++    ``hybrid_llm_router`` does. Transient failures (timeout, connection,
++    rate limit) are NOT retried here: they propagate to the caller's
++    taxonomy unchanged.
++    """
++    from litellm.exceptions import BadRequestError, UnsupportedParamsError
++
++    kwargs: dict[str, Any] = {
++        "model": model,
++        "messages": messages,
++        "temperature": 0,
++        "timeout": timeout,
++        "num_retries": 1,
++        "response_format": _RESPONSE_FORMAT,
++    }
++    try:
++        return await litellm.acompletion(**kwargs)
++    except (BadRequestError, UnsupportedParamsError):
++        kwargs["response_format"] = {"type": "json_object"}
++        return await litellm.acompletion(**kwargs)
++
++
++def _probs_to_dict(raw: Any) -> dict[str, float] | None:
++    """Normalize the schema's ``[{"id": str, "p": float}]`` array (and,
++    tolerantly, plain dicts from json_object mode) to a str-keyed dict."""
++    if raw is None:
++        return None
++    if isinstance(raw, dict):
++        return {str(k): float(v) for k, v in raw.items()}
++    if isinstance(raw, list):
++        return {str(item["id"]): float(item["p"]) for item in raw}
++    raise InvalidDecisionAnswer(f"probabilities is not an array: {type(raw).__name__}")
++
++
++def _to_answer(question: Question, item: dict[str, Any]) -> Answer:
++    """Normalize one ``answers[]`` entry into an ``Answer``.
++
++    Missing/unrecognized fields raise ``InvalidDecisionAnswer`` — a
++    malformed answer is not a transport failure and must not be retried.
++    """
++    raw = item.get("answer")
++    if raw is None:
++        raise InvalidDecisionAnswer(f"{question.kind} answer is missing 'answer'")
++    confidence = float(item.get("confidence") or 0.0)
++    probs = _probs_to_dict(item.get("probabilities"))
++    if isinstance(question, ChoiceQuestion):
++        return Answer(
++            kind="choice",
++            value=str(raw),
++            confidence=confidence,
++            probabilities=probs or {},
++        )
++    if isinstance(question, ScoreQuestion):
++        return Answer(
++            kind="score",
++            value=float(raw),
++            confidence=confidence,
++            probabilities=probs or {},
++        )
++    if isinstance(question, NoulQuestion):
++        value = float(raw)
++        # Like Jev: a noul IS a probability — it doubles as its own
++        # confidence so ConfidenceGate treats every kind uniformly.
++        return Answer(kind="noul", value=value, confidence=value, probabilities=None)
++    raise InvalidDecisionAnswer(
++        f"llm_json cannot answer question type {type(question).__name__!r}"
++    )
++
++
++def _parse_payload(payload: Any, questions: dict[str, Question]) -> dict[str, Answer]:
++    items = payload.get("answers") if isinstance(payload, dict) else None
++    if not isinstance(items, list):
++        raise InvalidDecisionAnswer("llm_json response has no 'answers' array")
++    answers: dict[str, Answer] = {}
++    for item in items:
++        if not isinstance(item, dict):
++            continue
++        qid = item.get("question_id")
++        # Skip entries that don't address a question we asked — the
++        # service flags still-missing answers itself (_require_answer).
++        if not isinstance(qid, str) or qid not in questions:
++            continue
++        answers[qid] = _to_answer(questions[qid], item)
++    return answers
++
++
++class LLMJsonBackend:
++    """``litellm.acompletion`` structured-output adapter implementing
++    ``DecisionBackend``."""
++
++    name = "llm_json"
++
++    async def decide(
++        self,
++        state: dict[str, Any],
++        questions: dict[str, Question],
++        *,
++        model: str | None = None,
++        timeout: float | None = None,
++    ) -> BackendResult:
++        try:
++            import litellm
++            from litellm.exceptions import (
++                APIConnectionError,
++                InternalServerError,
++                RateLimitError,
++                ServiceUnavailableError,
++                Timeout as LiteLLMTimeout,
++            )
++        except ImportError as exc:
++            raise DecisionError(
++                "litellm is not installed — llm_json backend unavailable",
++                code="backend_unavailable",
++            ) from exc
++
++        model = model or decision_config.DECISION_LLM_MODEL
++        messages = [{"role": "user", "content": _build_prompt(state, questions)}]
++
++        start = time.perf_counter()
++        try:
++            # asyncio.wait_for is the belt-and-suspenders ceiling on top
++            # of litellm's own timeout, same as the Jev adapter.
++            response = await asyncio.wait_for(
++                _call(litellm, model=model, messages=messages, timeout=timeout),
++                timeout=timeout,
++            )
++        except DecisionError:
++            raise
++        except (TimeoutError, LiteLLMTimeout) as exc:
++            raise DecisionError(
++                "LLM decision request timed out", code="timeout"
++            ) from exc
++        except (
++            APIConnectionError,
++            RateLimitError,
++            ServiceUnavailableError,
++            InternalServerError,
++        ) as exc:
++            logger.exception("llm_json request failed")
++            raise DecisionError(
++                f"llm_json request failed: {type(exc).__name__}",
++                code="backend_error",
++            ) from exc
++        except Exception as exc:
++            # Any other litellm failure (auth, persistent bad request,
++            # response-schema quirks) — the exception may embed request
++            # data; log it, don't interpolate it into the message.
++            logger.exception("llm_json request failed")
++            raise DecisionError(
++                f"llm_json request failed: {type(exc).__name__}",
++                code="backend_error",
++            ) from exc
++        latency_ms = (time.perf_counter() - start) * 1000
++
++        try:
++            content = response.choices[0].message.content
++            answers = _parse_payload(json.loads(content), questions)
++        except InvalidDecisionAnswer:
++            raise
++        except Exception as exc:
++            # JSON decode errors, missing choices/content — malformed
++            # answer, never retryable as a backend error.
++            logger.exception("Failed to parse llm_json response")
++            raise InvalidDecisionAnswer(
++                f"failed to parse llm_json response: {type(exc).__name__}"
++            ) from exc
++
++        usage = getattr(response, "usage", None)
++        return BackendResult(
++            answers=answers,
++            model=getattr(response, "model", None) or model,
++            latency_ms=latency_ms,
++            input_tokens=getattr(usage, "prompt_tokens", None) if usage else None,
++            output_tokens=(
++                getattr(usage, "completion_tokens", None) if usage else None
++            ),
++        )
+diff --git a/nowing_backend/tests/unit/services/decision/test_llm_json_backend.py b/nowing_backend/tests/unit/services/decision/test_llm_json_backend.py
+new file mode 100644
+index 000000000..547183afa
+--- /dev/null
++++ b/nowing_backend/tests/unit/services/decision/test_llm_json_backend.py
+@@ -0,0 +1,384 @@
++"""LLMJsonBackend — prompt/schema build, parse+normalize, error taxonomy."""
++
++from __future__ import annotations
++
++import asyncio
++import json
++
++import litellm
++import pytest
++from litellm.exceptions import (
++    APIConnectionError,
++    BadRequestError,
++    InternalServerError,
++    RateLimitError,
++    ServiceUnavailableError,
++    Timeout as LiteLLMTimeout,
++    UnsupportedParamsError,
++)
++
++import app.config.decision as decision_config
++from app.services.decision.backends.llm_json import (
++    _RESPONSE_FORMAT,
++    LLMJsonBackend,
++    _build_prompt,
++)
++from app.services.decision.errors import DecisionError, InvalidDecisionAnswer
++from app.services.decision.types import (
++    ChoiceQuestion,
++    NoulQuestion,
++    ScoreQuestion,
++)
++from app.services.decision.validation import validate_answer
++
++QUESTIONS = {
++    "pick": ChoiceQuestion(instructions="pick one", criteria={"a": "A", "b": "B"}),
++    "rate": ScoreQuestion(instructions="rate it", criteria=["l0", "l1", "l2"]),
++    "yes": NoulQuestion(instructions="yes or no"),
++}
++
++PAYLOAD = {
++    "answers": [
++        {
++            "question_id": "pick",
++            "answer": "b",
++            "confidence": 0.9,
++            "probabilities": [{"id": "a", "p": 0.1}, {"id": "b", "p": 0.9}],
++        },
++        {
++            "question_id": "rate",
++            "answer": 1.85,
++            "confidence": 0.8,
++            "probabilities": [
++                {"id": "0", "p": 0.05},
++                {"id": "1", "p": 0.05},
++                {"id": "2", "p": 0.9},
++            ],
++        },
++        {
++            "question_id": "yes",
++            "answer": 0.7,
++            "confidence": 0.6,
++            "probabilities": None,
++        },
++    ]
++}
++
++
++class _FakeUsage:
++    prompt_tokens = 321
++    completion_tokens = 45
++
++
++class _FakeMessage:
++    def __init__(self, content):
++        self.content = content
++
++
++class _FakeChoice:
++    def __init__(self, content):
++        self.message = _FakeMessage(content)
++
++
++_USAGE_DEFAULT = object()
++
++
++class _FakeResponse:
++    def __init__(
++        self, content, model="claude-haiku-4-5-20251001", usage=_USAGE_DEFAULT
++    ):
++        self.choices = [_FakeChoice(content)]
++        self.model = model
++        self.usage = _FakeUsage() if usage is _USAGE_DEFAULT else usage
++
++
++def _litellm_exc(cls, message="boom"):
++    return cls(message=message, model="m", llm_provider="anthropic")
++
++
++def _patch_acompletion(monkeypatch, *results, delay=0.0) -> list[dict]:
++    """Install a fake ``litellm.acompletion``; returns the recorded calls."""
++    calls: list[dict] = []
++    queue = list(results)
++
++    async def _fake(**kwargs):
++        calls.append(kwargs)
++        if delay:
++            await asyncio.sleep(delay)
++        result = queue.pop(0)
++        if isinstance(result, BaseException):
++            raise result
++        return result
++
++    monkeypatch.setattr(litellm, "acompletion", _fake)
++    return calls
++
++
++# ---------------------------------------------------------------------------
++# Prompt + schema
++# ---------------------------------------------------------------------------
++
++
++@pytest.mark.unit
++def test_build_prompt_covers_every_question():
++    prompt = _build_prompt({"user_message": "xin chào"}, QUESTIONS)
++    for qid in QUESTIONS:
++        assert json.dumps(qid) in prompt
++    # options + rubric levels travel with the questions so the model sees
++    # the same information Jev's criteria carry
++    assert '"a": "A"' in prompt
++    assert '"l0", "l1", "l2"' in prompt
++    assert "xin chào" in prompt
++    # strict-validation constraints are spelled out for the model
++    assert "summing to 1.0" in prompt
++    assert "argmax" in prompt
++    assert "probability-weighted mean" in prompt
++
++
++@pytest.mark.unit
++def test_response_format_is_strict_array_form():
++    fmt = _RESPONSE_FORMAT
++    assert fmt["type"] == "json_schema"
++    schema = fmt["json_schema"]["schema"]
++    assert fmt["json_schema"]["strict"] is True
++    item = schema["properties"]["answers"]["items"]
++    # dynamic option ids must not appear in the schema — probabilities
++    # travel as a [{id, p}] array instead
++    assert item["properties"]["probabilities"]["items"]["properties"] == {
++        "id": {"type": "string"},
++        "p": {"type": "number"},
++    }
++    assert set(item["required"]) == {
++        "question_id",
++        "answer",
++        "confidence",
++        "probabilities",
++    }
++    assert item["additionalProperties"] is False
++
++
++# ---------------------------------------------------------------------------
++# Happy path + normalization
++# ---------------------------------------------------------------------------
++
++
++@pytest.mark.unit
++async def test_decide_happy_path_batch(monkeypatch):
++    calls = _patch_acompletion(monkeypatch, _FakeResponse(json.dumps(PAYLOAD)))
++    backend = LLMJsonBackend()
++
++    result = await backend.decide(
++        {"user_message": "xin chào"}, QUESTIONS, model="m", timeout=5.0
++    )
++
++    # one decide() = ONE acompletion call for the whole question dict
++    assert len(calls) == 1
++    call = calls[0]
++    assert call["model"] == "m"
++    assert call["temperature"] == 0
++    assert call["num_retries"] == 1
++    assert call["timeout"] == 5.0
++    assert call["response_format"] == _RESPONSE_FORMAT
++    assert len(call["messages"]) == 1
++    assert call["messages"][0]["role"] == "user"
++
++    pick = result.answers["pick"]
++    assert pick.kind == "choice" and pick.value == "b"
++    assert pick.probabilities == {"a": 0.1, "b": 0.9}
++
++    rate = result.answers["rate"]
++    assert rate.kind == "score" and rate.value == 1.85
++    assert rate.probabilities == {"0": 0.05, "1": 0.05, "2": 0.9}
++
++    yes = result.answers["yes"]
++    assert yes.kind == "noul" and yes.value == 0.7
++    # noul doubles as its own confidence, like the Jev adapter
++    assert yes.confidence == 0.7
++    assert yes.probabilities is None
++
++    # normalized answers survive strict validation end-to-end
++    for qid, question in QUESTIONS.items():
++        validate_answer(result.answers[qid], question)
++
++    assert result.model == "claude-haiku-4-5-20251001"
++    assert result.input_tokens == 321
++    assert result.output_tokens == 45
++    assert result.latency_ms >= 0
++
++
++@pytest.mark.unit
++async def test_decide_probabilities_dict_tolerated(monkeypatch):
++    """json_object mode can return probabilities as a plain dict."""
++    payload = {
++        "answers": [
++            {
++                "question_id": "pick",
++                "answer": "a",
++                "confidence": 0.8,
++                "probabilities": {"a": 0.8, "b": 0.2},
++            }
++        ]
++    }
++    _patch_acompletion(monkeypatch, _FakeResponse(json.dumps(payload)))
++    result = await LLMJsonBackend().decide(
++        {}, {"pick": QUESTIONS["pick"]}, model="m", timeout=5.0
++    )
++    assert result.answers["pick"].probabilities == {"a": 0.8, "b": 0.2}
++
++
++@pytest.mark.unit
++async def test_decide_skips_unknown_question_ids(monkeypatch):
++    payload = {
++        "answers": [
++            {"question_id": "bogus", "answer": "x", "confidence": 0.5},
++            {
++                "question_id": "yes",
++                "answer": 0.3,
++                "confidence": 0.3,
++                "probabilities": None,
++            },
++        ]
++    }
++    _patch_acompletion(monkeypatch, _FakeResponse(json.dumps(payload)))
++    result = await LLMJsonBackend().decide(
++        {}, {"yes": QUESTIONS["yes"]}, model="m", timeout=5.0
++    )
++    assert set(result.answers) == {"yes"}
++    assert result.answers["yes"].value == 0.3
++
++
++@pytest.mark.unit
++async def test_decide_defaults_model_and_usage(
++    monkeypatch,
++):
++    calls = _patch_acompletion(
++        monkeypatch, _FakeResponse(json.dumps(PAYLOAD), model=None, usage=None)
++    )
++    result = await LLMJsonBackend().decide({}, QUESTIONS, timeout=5.0)
++    # no model kwarg → the configured LLM pin is used
++    assert calls[0]["model"] == decision_config.DECISION_LLM_MODEL
++    assert result.model == decision_config.DECISION_LLM_MODEL
++    assert result.input_tokens is None
++    assert result.output_tokens is None
++
++
++# ---------------------------------------------------------------------------
++# Malformed payloads → InvalidDecisionAnswer (never retried)
++# ---------------------------------------------------------------------------
++
++
++@pytest.mark.unit
++async def test_decide_invalid_json_raises_invalid(monkeypatch):
++    _patch_acompletion(monkeypatch, _FakeResponse("not json at all"))
++    with pytest.raises(InvalidDecisionAnswer):
++        await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
++
++
++@pytest.mark.unit
++async def test_decide_missing_answers_array_raises_invalid(monkeypatch):
++    for content in ("{}", '{"answers": "nope"}', "[1, 2]"):
++        _patch_acompletion(monkeypatch, _FakeResponse(content))
++        with pytest.raises(InvalidDecisionAnswer):
++            await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
++
++
++@pytest.mark.unit
++async def test_decide_missing_answer_field_raises_invalid(monkeypatch):
++    payload = {"answers": [{"question_id": "yes", "confidence": 0.5}]}
++    _patch_acompletion(monkeypatch, _FakeResponse(json.dumps(payload)))
++    with pytest.raises(InvalidDecisionAnswer):
++        await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
++
++
++@pytest.mark.unit
++async def test_decide_malformed_probabilities_raise_invalid(monkeypatch):
++    payload = {
++        "answers": [
++            {
++                "question_id": "pick",
++                "answer": "a",
++                "confidence": 0.9,
++                "probabilities": "not-an-array",
++            }
++        ]
++    }
++    _patch_acompletion(monkeypatch, _FakeResponse(json.dumps(payload)))
++    with pytest.raises(InvalidDecisionAnswer):
++        await LLMJsonBackend().decide(
++            {}, {"pick": QUESTIONS["pick"]}, model="m", timeout=5.0
++        )
++
++
++@pytest.mark.unit
++async def test_decide_empty_choices_raise_invalid(monkeypatch):
++    class _NoChoices:
++        choices = []
++        model = "m"
++        usage = None
++
++    _patch_acompletion(monkeypatch, _NoChoices())
++    with pytest.raises(InvalidDecisionAnswer):
++        await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
++
++
++# ---------------------------------------------------------------------------
++# Error taxonomy — litellm exceptions never leak
++# ---------------------------------------------------------------------------
++
++
++@pytest.mark.unit
++@pytest.mark.parametrize(
++    "exc,code",
++    [
++        (_litellm_exc(LiteLLMTimeout), "timeout"),
++        (_litellm_exc(APIConnectionError), "backend_error"),
++        (_litellm_exc(RateLimitError), "backend_error"),
++        (_litellm_exc(ServiceUnavailableError), "backend_error"),
++        (_litellm_exc(InternalServerError), "backend_error"),
++        (RuntimeError("surprise"), "backend_error"),
++    ],
++)
++async def test_decide_error_taxonomy(monkeypatch, exc, code):
++    _patch_acompletion(monkeypatch, exc)
++    with pytest.raises(DecisionError) as exc_info:
++        await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
++    assert exc_info.value.code == code
++
++
++@pytest.mark.unit
++async def test_decide_asyncio_timeout_maps_to_timeout(monkeypatch):
++    _patch_acompletion(monkeypatch, _FakeResponse(json.dumps(PAYLOAD)), delay=5.0)
++    with pytest.raises(DecisionError) as exc_info:
++        await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=0.01)
++    assert exc_info.value.code == "timeout"
++
++
++@pytest.mark.unit
++@pytest.mark.parametrize(
++    "exc",
++    [
++        _litellm_exc(BadRequestError, "json_schema not supported"),
++        _litellm_exc(UnsupportedParamsError, "response_format unsupported"),
++    ],
++)
++async def test_decide_degrades_to_json_object_once(monkeypatch, exc):
++    """Provider rejecting strict json_schema → one retry as json_object."""
++    calls = _patch_acompletion(monkeypatch, exc, _FakeResponse(json.dumps(PAYLOAD)))
++    result = await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
++    assert len(calls) == 2
++    assert calls[0]["response_format"] == _RESPONSE_FORMAT
++    assert calls[1]["response_format"] == {"type": "json_object"}
++    assert result.answers["pick"].value == "b"
++
++
++@pytest.mark.unit
++async def test_decide_persistent_bad_request_is_backend_error(monkeypatch):
++    calls = _patch_acompletion(
++        monkeypatch,
++        _litellm_exc(BadRequestError),
++        _litellm_exc(BadRequestError),
++    )
++    with pytest.raises(DecisionError) as exc_info:
++        await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
++    assert exc_info.value.code == "backend_error"
++    assert len(calls) == 2  # strict + one json_object retry, then it gives up
+diff --git a/_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md b/_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md
+new file mode 100644
+index 000000000..b1549c921
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md
+@@ -0,0 +1,101 @@
++---
++title: 'Story 39.1b: LLMJsonBackend + Jev→LLM Fallback Chain'
++type: 'feature'
++created: '2026-09-22'
++status: 'in-review'
++review_loop_iteration: 0
++baseline_commit: '93c40fbdebb128eef034e0fdee78b00e81ab4c9b'
++context:
++  - '_bmad-output/implementation-artifacts/epic-39-context.md'
++  - '_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md'
++---
++
++<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
++
++## Intent
++
++**Problem:** Story 39.1 đã reserve `DECISION_BACKEND=llm_json` nhưng raise `backend_unavailable` — khi Jev down/timeout/không có API key, decision path chết hoàn toàn thay vì fallback sang LLM (AD-J2, epic context: "fallback chain jev → llm_json on 5xx/529/timeout").
++
++**Approach:** Implement `LLMJsonBackend` (litellm structured output, port từ `scripts/jev_eval/runner.py:193-296` LLM baseline) + service-level fallback: primary backend raise `DecisionError` code ∈ {`timeout`, `backend_error`, `backend_unavailable`, `missing_api_key`} → retry một lần qua `llm_json`, `DecisionResult.backend` phản ánh backend thật sự trả lời.
++
++## Boundaries & Constraints
++
++**Always:**
++- `LLMJsonBackend` implement đúng `DecisionBackend` protocol (`backends/base.py`) — trả `BackendResult` unvalidated, mọi failure raise `DecisionError` (không leak litellm exceptions); service-level strict validation giữ nguyên không đổi.
++- Một `decide()` = MỘT `litellm.acompletion` call cho toàn bộ `questions` (batch như `system_one`), `temperature=0`, `response_format` json_schema strict.
++- LLM phải trả per-option `probabilities` cho choice/score — `Answer.probabilities` keys == offered ids, sum 1±0.02, argmax = chosen (strict validation đòi, không được nới).
++- Fallback CHỈ trigger trên `DecisionError` code ∈ {`timeout`, `backend_error`, `backend_unavailable`, `missing_api_key`}; `InvalidDecisionAnswer`/`disabled`/`invalid_request`/`invalid_model` KHÔNG fallback (malformed answer không retry — tốn tiền).
++- Telemetry ghi backend+model+tokens của leg thắng; fallback event log `logger.warning` rõ primary code lỗi.
++- `DECISION_LLM_MODEL` env (default `"claude-haiku-4-5-20251001"` — eval baseline model), `DECISION_FALLBACK_BACKEND` env (`"llm_json"`|`"none"`, default `"llm_json"`).
++- Model pin backend-aware: jev → `DECISION_JEV_MODEL`, llm_json → `DECISION_LLM_MODEL`; `model` kwarg nếu truyền phải bằng pin của backend đang dùng.
++
++**Ask First:** chọn default LLM model khác `claude-haiku-4-5-20251001`; thay đổi semantics `DECISION_BACKEND` hiện có; bật fallback cho `InvalidDecisionAnswer`.
++
++**Never:**
++- Không fallback/retry trên `InvalidDecisionAnswer` hoặc caller errors.
++- Không vendor/copy `typesafe_sdk`; chỉ `backends/jev.py` được import nó (import-guard test đang enforce).
++- Không dùng Jev cho text generation; LLMJsonBackend chỉ trả typed answers qua structured output.
++- Không thêm dependency mới (litellm đã có); không wire callers (`jev_router.py` vẫn là scope 39.2).
++- Không tách fallback thành per-question calls; không nới strict validation cho LLM answers.
++
++## I/O & Edge-Case Matrix
++
++| Scenario | Input / State | Expected Output / Behavior | Error Handling |
++|----------|--------------|---------------------------|----------------|
++| LLM_PRIMARY | `DECISION_BACKEND=llm_json`, questions hợp lệ | `DecisionResult.backend="llm_json"`, `model=DECISION_LLM_MODEL`, typed answers qua validation | N/A |
++| FALLBACK_TIMEOUT | jev primary, `system_one` timeout | llm_json trả lời, `backend="llm_json"`, warning log code=`timeout` | fallback thành công → result bình thường |
++| FALLBACK_FAILS | jev timeout + llm_json cũng fail | `DecisionError` của llm_json propagate | caller fallback như cũ |
++| NO_FALLBACK_INVALID | jev trả malformed answer (`InvalidDecisionAnswer`) | `InvalidDecisionAnswer` propagate, llm_json KHÔNG được gọi | không tốn paid call |
++| NO_FALLBACK_FLAG | `DECISION_FALLBACK_BACKEND=none`, jev fail | `DecisionError` của jev propagate nguyên trạng | N/A |
++| LLM_BAD_JSON | llm_json trả invalid JSON/schema mismatch | `InvalidDecisionAnswer` | malformed ≠ retryable |
++| LLM_TRANSPORT | litellm `Timeout`/`APIConnectionError`/`RateLimitError` | `DecisionError(code="timeout"` hoặc `"backend_error")` | taxonomy thống nhất |
++| MODEL_PER_BACKEND | `model="gpt-4o"` khi backend=llm_json | `DecisionError(code="invalid_model")` nếu ≠ `DECISION_LLM_MODEL` | pin per-backend |
++| BOTH_DISABLED | `DECISION_ENABLED=false` | `code="disabled"`, không backend nào chạy | gate trước fallback |
++
++</frozen-after-approval>
++
++## Code Map
++
++- `app/services/decision/backends/llm_json.py` — NEW — port `scripts/jev_eval/runner.py:193-296` (`_build_llm_prompt` + `run_llm_json`): prompt build, strict `json_schema`, `temperature=0`, `json.loads(content)` → `Answer`.
++- `scripts/jev_eval/runner.py:193-296` — REFERENCE ONLY — LLM baseline prompt/schema/parse; eval trả 1 question/call → adapt sang batch 1 call cho `dict[str, Question]`.
++- `app/tasks/chat/streaming/flows/new_chat/title_gen.py:143-153` — canonical litellm call envelope: `acompletion(timeout=..., num_retries=1)` + `asyncio.wait_for` (port-level `wait_for` đã có sẵn ở service — backend không cần wrap lại, giống jev.py vẫn giữ belt-and-suspenders được).
++- `app/services/hybrid_llm_router.py:487-521` — `_build_response_format` + retry `{"type":"json_object"}` khi provider không support strict schema; `litellm.drop_params` precedent `app/lead_intelligence/reverse_icp.py:224-246`.
++- `app/services/memory/pipeline.py:24-61` — litellm exception taxonomy: transient (`Timeout`/`APIConnectionError`/`RateLimitError`/`ServiceUnavailableError`/`InternalServerError`) vs terminal (`AuthenticationError`/`BadRequestError`).
++- `app/services/decision/service.py:57-194` — `decide()` gate order hiện tại; fallback hook ngay sau `except DecisionError`/`timeout` của leg primary (trước validation/telemetry block); `DecisionResult.backend`/`model` lấy từ leg thắng.
++- `app/services/decision/service.py:258-276` — `_build_backend()`: `"llm_json"` hiện raise `backend_unavailable` → map sang `LLMJsonBackend()`; fallback backend resolve qua helper riêng.
++- `app/services/decision/backends/mock.py` — contract deterministic answers (cho fallback tests: fake backend raise từng code).
++- `app/config/decision.py` — thêm `DECISION_LLM_MODEL`, `DECISION_FALLBACK_BACKEND` (`_env_choice` pattern dòng 33); export ở `__all__`.
++- `tests/unit/services/decision/` — test conventions: `_enabled` fixture pin flags, monkeypatch `record_token_usage`, import-guard AST test.
++- `nowing_backend/.env.example:837-` — DECISION_* block đã có, thêm 2 vars mới.
++
++## Tasks & Acceptance
++
++**Execution:**
++- [x] `app/services/decision/backends/llm_json.py` — NEW — `LLMJsonBackend(name="llm_json")`: build prompt+strict schema cho batch questions, `acompletion` (`timeout`, `num_retries=1`), parse JSON → `Answer`s, map exceptions → `DecisionError` taxonomy, malformed → `InvalidDecisionAnswer`, `BackendResult` với usage từ `response.usage`.
++- [x] `app/config/decision.py` — `DECISION_LLM_MODEL` + `DECISION_FALLBACK_BACKEND` (`_env_choice`); update `__all__` + `nowing_backend/.env.example`.
++- [x] `app/services/decision/service.py` — `_build_backend()` map `llm_json`; model pin per-backend; fallback block sau leg primary (codes whitelist), fallback model = `DECISION_LLM_MODEL`, `DecisionResult.backend` = leg thắng, warning log.
++- [x] `tests/unit/services/decision/test_llm_json_backend.py` — NEW — schema/prompt build, parse+normalize (probabilities array→dict), error taxonomy, malformed JSON → `InvalidDecisionAnswer`, usage extraction (fake `acompletion` qua monkeypatch).
++- [x] `tests/unit/services/decision/test_service.py` — extend — fallback trên từng trigger code, no-fallback (`InvalidDecisionAnswer`, disabled, `none`), `DecisionResult.backend` đúng leg, telemetry ghi leg thắng, model pin per-backend, `DECISION_BACKEND=llm_json` path.
++
++**Acceptance Criteria:**
++- Given `DECISION_BACKEND=llm_json`, when `decide(state, questions)`, then một `litellm.acompletion` strict-schema call trả `DecisionResult(backend="llm_json")` với answers pass strict validation (probabilities đủ ids, sum≈1, argmax=chosen).
++- And `DECISION_BACKEND=jev` + Jev fail (`timeout`/`backend_error`/`missing_api_key`/`backend_unavailable`) → auto-fallback `llm_json`, result `backend="llm_json"`, `model=DECISION_LLM_MODEL`.
++- And `InvalidDecisionAnswer` hoặc `DECISION_FALLBACK_BACKEND=none` → KHÔNG fallback, error propagate nguyên trạng.
++- And cả hai leg fail → `DecisionError` của fallback leg propagate tới caller.
++- And mọi call (primary hoặc fallback) vẫn log `input_tokens`/`output_tokens`/`latency_ms`/`model`/`backend` của leg thắng vào `TokenUsage` (fail-open như hiện tại).
++
++## Spec Change Log
++
++## Design Notes
++
++- Schema strict cần tránh dynamic keys (question ids + option ids động) → dùng array form: `{"answers": [{"question_id": str, "answer": str|number, "confidence": number, "probabilities": [{"id": str, "p": number}]}]}`; normalize `probabilities` array → dict str-keyed, noul thì omit. Provider không support strict schema → retry 1 lần `{"type":"json_object"}` (hybrid_llm_router precedent).
++- Fallback nằm ở service layer (không phải composite backend) vì telemetry + model pin + `DecisionResult.backend` cần biết leg nào thắng. Mỗi leg chịu `wait_for` riêng với cùng clamped timeout → worst-case latency = 2× `DECISION_TIMEOUT_SECONDS` (document trong docstring).
++- Model pin: `model is not None and model != pinned_for_active_backend` → `invalid_model`; `None` → pin của backend đó.
++
++## Verification
++
++**Commands:**
++- `cd nowing_backend && ruff check app/services/decision app/config/decision.py tests/unit/services/decision` — clean
++- `cd nowing_backend && ruff format app/services/decision app/config/decision.py tests/unit/services/decision` — no diff
++- `cd nowing_backend && uv run pytest tests/unit/services/decision -m unit -q` — all pass
++- `cd nowing_backend && DECISION_ENABLED=true DECISION_BACKEND=llm_json uv run python -c "..."` — decide() qua LLMJsonBackend path (fake acompletion) OK

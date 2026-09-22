@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
+import { useCallback } from "react";
 import { authenticatedFetch } from "@/lib/auth-fetch";
 import { isPublicRoute } from "@/lib/auth-utils";
 import { buildBackendUrl } from "@/lib/env-config";
@@ -31,75 +33,110 @@ type SessionState =
 			targetUser: null;
 	  };
 
-export function useSession() {
-	const [state, setState] = useState<SessionState>({
-		status: "loading",
-		authenticated: false,
-		accessExpiresAt: null,
-		isImpersonation: false,
-		impersonatedBy: null,
-		targetUser: null,
-	});
+interface AuthSessionPayload {
+	authenticated: boolean;
+	access_expires_at: number | null;
+	is_impersonation: boolean;
+	impersonated_by: string | null;
+	target_user: string | null;
+}
 
-	const refresh = useCallback(async () => {
-		try {
-			const response = await authenticatedFetch(buildBackendUrl("/auth/session"), {
-				skipAuthRedirect: true,
-			});
-			if (!response.ok) {
-				setState({
+async function fetchSession(): Promise<SessionState> {
+	try {
+		const response = await authenticatedFetch(buildBackendUrl("/auth/session"), {
+			skipAuthRedirect: true,
+		});
+		if (!response.ok) {
+			if (response.status === 401 || response.status === 403) {
+				return {
 					status: "unauthenticated",
 					authenticated: false,
 					accessExpiresAt: null,
 					isImpersonation: false,
 					impersonatedBy: null,
 					targetUser: null,
-				});
-				return;
+				};
 			}
-			const data = (await response.json()) as {
-				authenticated: boolean;
-				access_expires_at: number | null;
-				is_impersonation: boolean;
-				impersonated_by: string | null;
-				target_user: string | null;
+			throw new Error(`Session check failed with status ${response.status}`);
+		}
+		const data = (await response.json()) as AuthSessionPayload;
+		if (!data.authenticated) {
+			return {
+				status: "unauthenticated",
+				authenticated: false,
+				accessExpiresAt: null,
+				isImpersonation: false,
+				impersonatedBy: null,
+				targetUser: null,
 			};
-			setState({
-				status: "authenticated",
-				authenticated: true,
-				accessExpiresAt: data.access_expires_at,
-				isImpersonation: data.is_impersonation,
-				impersonatedBy: data.impersonated_by,
-				targetUser: data.target_user,
-			});
-		} catch {
-			setState({
-				status: "unauthenticated",
-				authenticated: false,
-				accessExpiresAt: null,
-				isImpersonation: false,
-				impersonatedBy: null,
-				targetUser: null,
-			});
 		}
-	}, []);
-
-	useEffect(() => {
-		// Public routes do not need an active session; skip the /auth/session
-		// call to avoid noisy 401 console errors for unauthenticated visitors.
-		if (typeof window !== "undefined" && isPublicRoute(window.location.pathname)) {
-			setState({
-				status: "unauthenticated",
-				authenticated: false,
-				accessExpiresAt: null,
-				isImpersonation: false,
-				impersonatedBy: null,
-				targetUser: null,
-			});
-			return;
+		return {
+			status: "authenticated",
+			authenticated: true,
+			accessExpiresAt: data.access_expires_at,
+			isImpersonation: data.is_impersonation,
+			impersonatedBy: data.impersonated_by,
+			targetUser: data.target_user,
+		};
+	} catch (error) {
+		if (error instanceof Error && error.message.includes("Session check failed with status")) {
+			throw error;
 		}
-		void refresh();
-	}, [refresh]);
+		return {
+			status: "unauthenticated",
+			authenticated: false,
+			accessExpiresAt: null,
+			isImpersonation: false,
+			impersonatedBy: null,
+			targetUser: null,
+		};
+	}
+}
 
-	return { ...state, refresh };
+export function useSession() {
+	const queryClient = useQueryClient();
+	const pathname = usePathname();
+	const isClient = typeof window !== "undefined";
+	const isPublic = isClient && isPublicRoute(pathname || "");
+
+	const { data, isLoading } = useQuery({
+		queryKey: ["auth-session"],
+		queryFn: fetchSession,
+		enabled: isClient && !isPublic,
+		staleTime: 5 * 60 * 1000,
+		gcTime: 10 * 60 * 1000,
+	});
+
+	const refresh = useCallback(async () => {
+		await queryClient.invalidateQueries({ queryKey: ["auth-session"] });
+	}, [queryClient]);
+
+	if (isClient && isPublic) {
+		return {
+			status: "unauthenticated" as const,
+			authenticated: false as const,
+			accessExpiresAt: null,
+			isImpersonation: false as const,
+			impersonatedBy: null,
+			targetUser: null,
+			refresh,
+		};
+	}
+
+	if (!isClient || isLoading || !data) {
+		return {
+			status: "loading" as const,
+			authenticated: false as const,
+			accessExpiresAt: null,
+			isImpersonation: false as const,
+			impersonatedBy: null,
+			targetUser: null,
+			refresh,
+		};
+	}
+
+	return {
+		...data,
+		refresh,
+	};
 }

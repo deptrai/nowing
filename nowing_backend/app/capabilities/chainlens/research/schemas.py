@@ -50,6 +50,15 @@ class Source(BaseModel):
         default=None,
         description="Publication date or time, ISO-8601 string when available.",
     )
+    source_id: str | None = Field(
+        default=None,
+        description="Upstream source identifier (e.g. 'path' or 'path:line' "
+        "ref from code_context sources).",
+    )
+    score: float | None = Field(
+        default=None,
+        description="Upstream relevance score.",
+    )
 
     def model_post_init(self, __context: object) -> None:
         """Derive KB locators and source type from internal URLs."""
@@ -211,6 +220,10 @@ class ResearchOutput(BaseModel):
     next_action: str | None = Field(
         default=None,
         description="Human-readable guidance when the result is partial or timed out.",
+    )
+    message: str | None = Field(
+        default=None,
+        description="Upstream informational or degradation message (e.g. timeout detail).",
     )
     degraded: bool | None = Field(
         default=None,

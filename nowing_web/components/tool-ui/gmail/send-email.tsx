@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, MailIcon, Pencil, UserIcon, UsersIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -100,6 +101,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<GmailSendEmailContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -182,25 +184,27 @@ function ApprovalCard({
 					<div>
 						<p className="text-sm font-semibold text-foreground">
 							{phase === "rejected"
-								? "Email Sending Rejected"
+								? t("gmail_email_sending_rejected")
 								: phase === "processing" || phase === "complete"
-									? "Email Sending Approved"
-									: "Send Email"}
+									? t("gmail_email_sending_approved")
+									: t("gmail_send_title")}
 						</p>
 						{phase === "processing" ? (
 							<TextShimmerLoader
-								text={pendingEdits ? "Sending email with your changes" : "Sending email"}
+								text={
+									pendingEdits ? t("gmail_sending_email_with_changes") : t("gmail_sending_email")
+								}
 								size="sm"
 							/>
 						) : phase === "complete" ? (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								{pendingEdits ? "Email sent with your changes" : "Email sent"}
+								{pendingEdits ? t("gmail_email_sent_with_changes") : t("gmail_email_sent")}
 							</p>
 						) : phase === "rejected" ? (
-							<p className="text-xs text-muted-foreground mt-0.5">Email sending was cancelled</p>
+							<p className="text-xs text-muted-foreground mt-0.5">{t("gmail_send_cancelled")}</p>
 						) : (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Requires your approval to proceed
+								{t("common_requires_approval")}
 							</p>
 						)}
 					</div>
@@ -253,7 +257,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -269,11 +273,11 @@ function ApprovalCard({
 							accounts.length > 0 && (
 								<div className="space-y-2">
 									<p className="text-xs font-medium text-muted-foreground">
-										Gmail Account <span className="text-destructive">*</span>
+										{t("gmail_account_label")} <span className="text-destructive">*</span>
 									</p>
 									<Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
 										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select an account" />
+											<SelectValue placeholder={t("gmail_select_account")} />
 										</SelectTrigger>
 										<SelectContent>
 											{validAccounts.map((account) => (
@@ -286,7 +290,7 @@ function ApprovalCard({
 													key={a.id}
 													className="relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 px-2 text-sm select-none opacity-50 pointer-events-none"
 												>
-													{a.name} (expired, retry after re-auth)
+													{a.name} ({t("common_expired_retry")})
 												</div>
 											))}
 										</SelectContent>
@@ -304,19 +308,25 @@ function ApprovalCard({
 				{(pendingEdits?.to ?? args.to) && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UserIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>To: {pendingEdits?.to ?? args.to}</span>
+						<span>
+							{t("gmail_to")}: {pendingEdits?.to ?? args.to}
+						</span>
 					</div>
 				)}
 				{(pendingEdits?.cc ?? args.cc) && (pendingEdits?.cc ?? args.cc)?.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>CC: {pendingEdits?.cc ?? args.cc}</span>
+						<span>
+							{t("gmail_cc")}: {pendingEdits?.cc ?? args.cc}
+						</span>
 					</div>
 				)}
 				{(pendingEdits?.bcc ?? args.bcc) && (pendingEdits?.bcc ?? args.bcc)?.trim() !== "" && (
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<UsersIcon className="size-3 shrink-0" aria-hidden="true" />
-						<span>BCC: {pendingEdits?.bcc ?? args.bcc}</span>
+						<span>
+							{t("gmail_bcc")}: {pendingEdits?.bcc ?? args.bcc}
+						</span>
 					</div>
 				)}
 			</div>
@@ -358,7 +368,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
 							>
-								Send
+								{t("common_send")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -370,10 +380,10 @@ function ApprovalCard({
 								disabled={isPanelOpen}
 								onClick={() => {
 									setRejected();
-									onDecision({ type: "reject", message: "User rejected the action." });
+									onDecision({ type: "reject", message: t("common_user_rejected_action") });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -384,10 +394,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to send email</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_send_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -398,10 +409,11 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Gmail authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -412,12 +424,11 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					Additional Gmail permissions required
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gmail_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -428,13 +439,14 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<div className="flex items-center gap-2">
 					<MailIcon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
 					<p className="text-sm font-semibold text-foreground">
-						{result.message || "Email sent successfully"}
+						{result.message || t("gmail_sent_success")}
 					</p>
 				</div>
 			</div>

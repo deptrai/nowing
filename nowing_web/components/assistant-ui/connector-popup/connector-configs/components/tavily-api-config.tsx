@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ export const TavilyApiConfig: FC<TavilyApiConfigProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
+	const t = useTranslations("assistant");
 	const [apiKey, setApiKey] = useState<string>((connector.config?.TAVILY_API_KEY as string) || "");
 	const [name, setName] = useState<string>(connector.name || "");
 
@@ -41,40 +43,36 @@ export const TavilyApiConfig: FC<TavilyApiConfigProps> = ({
 			{/* Connector Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Connector Name</Label>
+					<Label className="text-xs sm:text-sm">{t("connector_name")}</Label>
 					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="My Tavily API Connector"
+						placeholder={t("my_tavily_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
 			{/* Configuration */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Configuration</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("configuration")}</h3>
 				</div>
 
 				<div className="space-y-2">
 					<Label className="flex items-center gap-2 text-xs sm:text-sm">
 						<KeyRound className="h-4 w-4" aria-hidden="true" />
-						Tavily API Key
+						{t("tavily_api_key")}
 					</Label>
 					<Input
 						type="password"
 						value={apiKey}
 						onChange={(e) => handleApiKeyChange(e.target.value)}
-						placeholder="Enter your Tavily API key"
+						placeholder={t("enter_tavily_key")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						Update the Tavily API Key if needed.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("update_tavily_key")}</p>
 				</div>
 			</div>
 		</div>

@@ -12,6 +12,7 @@
  * exist (the caller checks first via ``downstreamReversibleCount``).
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import {
 	AlertDialog,
@@ -41,6 +42,8 @@ export function EditMessageDialog({
 	downstreamTotalCount,
 	onChoose,
 }: EditMessageDialogProps) {
+	const t = useTranslations("assistantUi");
+	const tCommon = useTranslations("common");
 	const [busy, setBusy] = useState<EditMessageDialogChoice | null>(null);
 
 	// The parent's ``handleEditDialogChoice`` calls
@@ -72,32 +75,29 @@ export function EditMessageDialog({
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Edit this message?</AlertDialogTitle>
+					<AlertDialogTitle>{t("edit_message_title")}</AlertDialogTitle>
 					<AlertDialogDescription>
-						This edit drops {downstreamTotalCount} downstream message
-						{downstreamTotalCount === 1 ? "" : "s"} from the thread. {downstreamReversibleCount}{" "}
-						action
-						{downstreamReversibleCount === 1 ? "" : "s"} (e.g. file writes, connector changes) can
-						be rolled back. Pick how to handle them before regenerating.
+						{t("edit_message_description", {
+							dropCount: downstreamTotalCount,
+							revertCount: downstreamReversibleCount,
+						})}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
 				<div className="grid gap-2">
 					<Button variant="default" disabled={busy !== null} onClick={() => handle("revert")}>
 						{busy === "revert"
-							? "Reverting & resubmitting…"
-							: `Revert ${downstreamReversibleCount} action${
-									downstreamReversibleCount === 1 ? "" : "s"
-								} & resubmit`}
+							? t("reverting_and_resubmitting")
+							: t("revert_and_resubmit", { count: downstreamReversibleCount })}
 					</Button>
 					<Button variant="outline" disabled={busy !== null} onClick={() => handle("continue")}>
-						{busy === "continue" ? "Resubmitting…" : "Continue without reverting"}
+						{busy === "continue" ? t("resubmitting") : t("continue_without_revert")}
 					</Button>
 				</div>
 
 				<AlertDialogFooter className="sm:justify-start">
 					<AlertDialogCancel disabled={busy !== null} onClick={() => handle("cancel")}>
-						Cancel
+						{tCommon("cancel")}
 					</AlertDialogCancel>
 				</AlertDialogFooter>
 			</AlertDialogContent>

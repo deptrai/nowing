@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -27,6 +28,7 @@ const PLUGIN_RELEASES_URL = "https://github.com/deptrai/nowing/releases?q=obsidi
  * nothing to validate or persist from this side.
  */
 export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
+	const t = useTranslations("assistant");
 	const { createdToken, isMutating, createToken } = usePats();
 	const [copied, setCopied] = useState(false);
 
@@ -52,11 +54,8 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 
 			<Alert>
 				<Info />
-				<AlertTitle>Plugin-based sync</AlertTitle>
-				<AlertDescription>
-					Nowing now syncs Obsidian via an official plugin that runs inside Obsidian itself. Works
-					on desktop and mobile, in cloud and self-hosted deployments.
-				</AlertDescription>
+				<AlertTitle>{t("obsidian_plugin_sync")}</AlertTitle>
+				<AlertDescription>{t("obsidian_alert_desc")}</AlertDescription>
 			</Alert>
 
 			<section className="rounded-xl border border-border bg-slate-400/5 p-3 sm:p-6 dark:bg-white/5">
@@ -67,12 +66,11 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<div className="flex size-7 items-center justify-center rounded-md border border-slate-400/30 text-xs font-medium">
 								1
 							</div>
-							<h3 className="text-sm font-medium sm:text-base">Install the plugin</h3>
+							<h3 className="text-sm font-medium sm:text-base">{t("obsidian_install")}</h3>
 						</header>
 						<p className="mb-3 text-[11px] text-muted-foreground sm:text-xs">
-							Grab the latest Nowing plugin release. Once it's in the community store, you'll also
-							be able to install it from{" "}
-							<span className="font-medium">Settings → Community plugins</span> inside Obsidian.
+							{t("obsidian_install_desc")}{" "}
+							<span className="font-medium">{t("obsidian_community_plugins")}</span>
 						</p>
 						<a
 							href={PLUGIN_RELEASES_URL}
@@ -86,7 +84,7 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 								size="sm"
 								className="gap-2 text-xs sm:text-sm"
 							>
-								Open plugin releases
+								{t("obsidian_open_releases")}
 							</Button>
 						</a>
 					</article>
@@ -99,11 +97,12 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<div className="flex size-7 items-center justify-center rounded-md border border-slate-400/30 text-xs font-medium">
 								2
 							</div>
-							<h3 className="text-sm font-medium sm:text-base">Create a personal access token</h3>
+							<h3 className="text-sm font-medium sm:text-base">{t("obsidian_create_pat")}</h3>
 						</header>
 						<p className="mb-3 text-[11px] text-muted-foreground sm:text-xs">
-							Create a token and paste it into the plugin's{" "}
-							<span className="font-medium">API token</span> setting. The token is shown only once.
+							{t("obsidian_pat_desc")}{" "}
+							<span className="font-medium">{t("obsidian_api_token")}</span>{" "}
+							{t("obsidian_pat_once")}
 						</p>
 
 						{createdToken ? (
@@ -119,7 +118,7 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 									size="icon"
 									onClick={() => copyToClipboard(createdToken.token)}
 									className="size-7 shrink-0 text-muted-foreground hover:text-accent-foreground"
-									aria-label="Copy personal access token"
+									aria-label={t("obsidian_copy_token")}
 								>
 									<Copy className="size-3.5" aria-hidden="true" />
 								</Button>
@@ -138,7 +137,7 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 								) : (
 									<Copy className="size-3.5" aria-hidden="true" />
 								)}
-								{copied ? "Created and copied" : "Create and copy token"}
+								{copied ? t("obsidian_created_copied") : t("obsidian_create_copy")}
 							</Button>
 						)}
 					</article>
@@ -151,12 +150,13 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<div className="flex size-7 items-center justify-center rounded-md border border-slate-400/30 text-xs font-medium">
 								3
 							</div>
-							<h3 className="text-sm font-medium sm:text-base">Point the plugin at this server</h3>
+							<h3 className="text-sm font-medium sm:text-base">{t("obsidian_point_server")}</h3>
 						</header>
 						<p className="text-[11px] text-muted-foreground sm:text-xs">
-							For Nowing Cloud, use the default <span className="font-medium">nowing.com</span>. If
-							you are self-hosting, set the plugin's <span className="font-medium">Server URL</span>{" "}
-							to your frontend domain.
+							{t("obsidian_cloud_default")} <span className="font-medium">nowing.com</span>.{" "}
+							{t("obsidian_selfhost_desc")}{" "}
+							<span className="font-medium">{t("obsidian_server_url")}</span>{" "}
+							{t("obsidian_workspace_choose")}
 						</p>
 					</article>
 
@@ -168,12 +168,12 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<div className="flex size-7 items-center justify-center rounded-md border border-slate-400/30 text-xs font-medium">
 								4
 							</div>
-							<h3 className="text-sm font-medium sm:text-base">Pick this workspace</h3>
+							<h3 className="text-sm font-medium sm:text-base">{t("obsidian_pick_workspace")}</h3>
 						</header>
 						<p className="text-[11px] text-muted-foreground sm:text-xs">
-							In the plugin's <span className="font-medium">Search space</span> setting, choose the
-							workspace you want this vault to sync into. The connector will appear here
-							automatically once the plugin makes its first sync.
+							{t("obsidian_workspace_desc")}{" "}
+							<span className="font-medium">{t("obsidian_search_space")}</span>{" "}
+							{t("obsidian_workspace_choose")}
 						</p>
 					</article>
 				</div>
@@ -181,9 +181,7 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 
 			{getConnectorBenefits(EnumConnectorName.OBSIDIAN_CONNECTOR) && (
 				<div className="space-y-2 rounded-xl border border-border bg-slate-400/5 px-3 py-4 sm:px-6 dark:bg-white/5">
-					<h4 className="text-xs font-medium sm:text-sm">
-						What you get with Obsidian integration:
-					</h4>
+					<h4 className="text-xs font-medium sm:text-sm">{t("obsidian_what_you_get")}</h4>
 					<ul className="list-disc space-y-1 pl-5 text-[10px] text-muted-foreground sm:text-xs">
 						{getConnectorBenefits(EnumConnectorName.OBSIDIAN_CONNECTOR)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

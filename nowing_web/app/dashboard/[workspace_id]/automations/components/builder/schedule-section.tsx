@@ -1,5 +1,6 @@
 "use client";
 import { CalendarClock, CalendarOff, Dot, Plus, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,14 +44,13 @@ export function ScheduleSection({
 	onScheduleChange,
 	onTimezoneChange,
 }: ScheduleSectionProps) {
+	const t = useTranslations("automations");
 	if (schedule === null) {
 		return (
 			<div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-6 text-center">
 				<CalendarOff className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden />
-				<p className="mt-2 text-sm text-foreground">No schedule</p>
-				<p className="mt-0.5 text-xs text-muted-foreground">
-					This automation won't run automatically until you add one.
-				</p>
+				<p className="mt-2 text-sm text-foreground">{t("auto_no_schedule")}</p>
+				<p className="mt-0.5 text-xs text-muted-foreground">{t("auto_this_automation_won_t")}</p>
 				<Button
 					type="button"
 					variant="outline"
@@ -59,7 +59,7 @@ export function ScheduleSection({
 					onClick={() => onScheduleChange({ mode: "preset", model: { ...DEFAULT_SCHEDULE } })}
 				>
 					<Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-					Add a schedule
+					{t("auto_add_a_schedule")}
 				</Button>
 			</div>
 		);
@@ -82,7 +82,7 @@ export function ScheduleSection({
 					variant="ghost"
 					size="icon"
 					className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-					aria-label="Remove schedule"
+					aria-label={t("auto_remove_schedule")}
 					onClick={() => onScheduleChange(null)}
 				>
 					<X className="h-4 w-4" aria-hidden="true" />
@@ -109,7 +109,7 @@ export function ScheduleSection({
 				/>
 			)}
 
-			<Field label="Timezone">
+			<Field label={t("auto_timezone")}>
 				<TimezoneCombobox value={timezone} onChange={onTimezoneChange} />
 			</Field>
 		</div>
@@ -123,12 +123,13 @@ interface PresetEditorProps {
 }
 
 function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
+	const t = useTranslations("automations");
 	const weeklyNoDays = model.frequency === "weekly" && model.daysOfWeek.length === 0;
 
 	return (
 		<div className="space-y-3">
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<Field label="Frequency">
+				<Field label={t("auto_frequency")}>
 					<Select
 						value={model.frequency}
 						onValueChange={(value) => onChange({ ...model, frequency: value as ScheduleFrequency })}
@@ -139,7 +140,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 						<SelectContent matchTriggerWidth={false} className="w-auto min-w-64">
 							{FREQUENCY_OPTIONS.map((option) => (
 								<SelectItem key={option.value} value={option.value}>
-									{option.label}
+									{t(option.label)}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -147,7 +148,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 				</Field>
 
 				{model.frequency === "hourly" ? (
-					<Field label="At minute">
+					<Field label={t("auto_at_minute")}>
 						<Input
 							type="number"
 							min={0}
@@ -157,7 +158,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 						/>
 					</Field>
 				) : (
-					<Field label="At time">
+					<Field label={t("auto_at_time")}>
 						<Input
 							type="time"
 							value={`${pad(model.hour)}:${pad(model.minute)}`}
@@ -175,7 +176,10 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 			</div>
 
 			{model.frequency === "weekly" && (
-				<Field label="On days" error={weeklyNoDays ? "Pick at least one day" : undefined}>
+				<Field
+					label={t("auto_on_days")}
+					error={weeklyNoDays ? t("pick_day_weekly_err") : undefined}
+				>
 					<div className="flex flex-wrap gap-1.5">
 						{WEEKDAY_OPTIONS.map((day) => {
 							const active = model.daysOfWeek.includes(day.value);
@@ -194,7 +198,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 											: "border-border/60 bg-background text-muted-foreground hover:bg-muted"
 									)}
 								>
-									{day.short}
+									{t(day.short)}
 								</button>
 							);
 						})}
@@ -203,7 +207,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 			)}
 
 			{model.frequency === "monthly" && (
-				<Field label="Day of month" hint={"1\u201331."}>
+				<Field label={t("auto_day_of_month")} hint={"1\u201331."}>
 					<Input
 						type="number"
 						min={1}
@@ -220,7 +224,7 @@ function PresetEditor({ model, onChange, onSwitchToCron }: PresetEditorProps) {
 				onClick={onSwitchToCron}
 				className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 			>
-				Advanced: enter a schedule expression
+				{t("auto_advanced_enter_a_schedule")}
 			</button>
 		</div>
 	);
@@ -234,13 +238,14 @@ interface CronEditorProps {
 }
 
 function CronEditor({ cron, error, onChange, onSwitchToPreset }: CronEditorProps) {
+	const t = useTranslations("automations");
 	const trimmed = cron.trim();
 	const label = trimmed ? describeCron(trimmed) : null;
 
 	return (
 		<div className="space-y-2">
 			<Field
-				label="Schedule expression"
+				label={t("auto_schedule_expression")}
 				hint="Five-field cron, e.g. 0 9 * * 1-5 (minute hour day month weekday)."
 				error={error}
 			>
@@ -257,7 +262,7 @@ function CronEditor({ cron, error, onChange, onSwitchToPreset }: CronEditorProps
 				onClick={onSwitchToPreset}
 				className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 			>
-				Use the simple picker
+				{t("auto_use_the_simple_picker")}
 			</button>
 		</div>
 	);

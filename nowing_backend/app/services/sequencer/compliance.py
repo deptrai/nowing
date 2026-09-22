@@ -46,6 +46,16 @@ class SequencerComplianceMixin:
         if isinstance(allowed, str):
             allowed = [c.strip() for c in allowed.split(",") if c.strip()]
         allowed_lower = {c.lower() for c in allowed}
+        # Voice channel: gated by SEQUENCER_VOICE_ENABLED (Story 38.2)
+        if channel.lower() == "voice":
+            if not getattr(config, "SEQUENCER_VOICE_ENABLED", False):
+                from app.services.sequencer.constants import DeferredChannelError
+
+                raise DeferredChannelError(
+                    "Channel 'voice' requires SEQUENCER_VOICE_ENABLED=true (Epic 38 / Story 38.2)."
+                )
+            return True
+
         if channel.lower() not in allowed_lower:
             from app.services.sequencer.constants import DeferredChannelError
 

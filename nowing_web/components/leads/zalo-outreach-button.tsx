@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Loader2, MessageCircle, Send, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import { leadsApiService } from "@/lib/apis/leads-api.service";
@@ -50,6 +51,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 	size = "sm",
 	disabled = false,
 }) => {
+	const t = useTranslations("leads");
 	const [loading, setLoading] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [showModal, setShowModal] = useState(false);
@@ -150,7 +152,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 					onClick={handleOpenModal}
 					disabled={disabled}
 					className="size-7 p-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/60 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-					title="Xem & chỉnh sửa kịch bản AI trước khi gửi"
+					title={t("zns_edit_ai_script")}
 				>
 					<Sparkles className="size-3.5 text-blue-500" aria-hidden="true" />
 				</button>
@@ -169,7 +171,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 						"disabled:opacity-50 disabled:cursor-not-allowed",
 						sizeClasses[size]
 					)}
-					title="Gửi tin nhắn ZNS (Zalo Notification Service) với template đã duyệt"
+					title={t("zns_send_tooltip")}
 				>
 					<Send className="size-3.5" aria-hidden="true" />
 					<span>ZNS</span>
@@ -181,7 +183,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 					<button
 						type="button"
-						aria-label="Đóng cửa sổ"
+						aria-label={t("close_window")}
 						className="absolute inset-0 bg-black/60 backdrop-blur-xs"
 						onClick={() => setShowModal(false)}
 					/>
@@ -225,7 +227,7 @@ export const ZaloOutreachButton: React.FC<ZaloOutreachButtonProps> = ({
 									value={draftText}
 									onChange={(e) => setDraftText(e.target.value)}
 									className="w-full text-xs sm:text-sm p-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none font-sans"
-									placeholder="Nội dung kịch bản..."
+									placeholder={t("zns_script_placeholder")}
 								/>
 							)}
 						</div>

@@ -23,6 +23,7 @@ import {
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
 	KEYS,
 	PathApi,
@@ -101,6 +102,7 @@ export const TableElement = withHOC(
 );
 
 function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeof PopoverContent>) {
+	const t = useTranslations("ui");
 	const { tf } = useEditorPlugin(TablePlugin);
 	const selected = useSelected();
 	const element = useElement<TTableElement>();
@@ -131,7 +133,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 							<ToolbarButton
 								onClick={() => tf.table.merge()}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Merge cells"
+								tooltip={t("ui_merge_cells")}
 							>
 								<CombineIcon />
 							</ToolbarButton>
@@ -140,7 +142,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 							<ToolbarButton
 								onClick={() => tf.table.split()}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Split cell"
+								tooltip={t("ui_split_cell")}
 							>
 								<SquareSplitHorizontalIcon />
 							</ToolbarButton>
@@ -148,7 +150,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 
 						{collapsedInside && (
 							<ToolbarGroup>
-								<ToolbarButton tooltip="Delete table" {...buttonProps}>
+								<ToolbarButton tooltip={t("ui_delete_table")} {...buttonProps}>
 									<Trash2Icon />
 								</ToolbarButton>
 							</ToolbarGroup>
@@ -162,7 +164,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 									tf.insert.tableRow({ before: true });
 								}}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Insert row before"
+								tooltip={t("ui_insert_row_before")}
 							>
 								<ArrowUp />
 							</ToolbarButton>
@@ -171,7 +173,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 									tf.insert.tableRow();
 								}}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Insert row after"
+								tooltip={t("ui_insert_row_after")}
 							>
 								<ArrowDown />
 							</ToolbarButton>
@@ -180,7 +182,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 									tf.remove.tableRow();
 								}}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Delete row"
+								tooltip={t("ui_delete_row")}
 							>
 								<XIcon />
 							</ToolbarButton>
@@ -194,7 +196,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 									tf.insert.tableColumn({ before: true });
 								}}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Insert column before"
+								tooltip={t("ui_insert_column_before")}
 							>
 								<ArrowLeft />
 							</ToolbarButton>
@@ -203,7 +205,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 									tf.insert.tableColumn();
 								}}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Insert column after"
+								tooltip={t("ui_insert_column_after")}
 							>
 								<ArrowRight />
 							</ToolbarButton>
@@ -212,7 +214,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
 									tf.remove.tableColumn();
 								}}
 								onMouseDown={(e) => e.preventDefault()}
-								tooltip="Delete column"
+								tooltip={t("ui_delete_column")}
 							>
 								<XIcon />
 							</ToolbarButton>

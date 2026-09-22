@@ -4,6 +4,7 @@ import asyncio
 import hmac
 import json
 import logging
+import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -33,6 +34,11 @@ from app.schemas.dsh import (
     DshMissionResponse,
     DshNotifyHighFitRequest,
     DshNotifyHighFitResponse,
+)
+from app.services.browser_operator_audit_service import (
+    BrowserOperatorAuditService,
+    generate_session_token,
+    validate_session_token,
 )
 from app.services.dsh_control_service import MissionControlService
 from app.services.dsh_mission_service import (
@@ -447,12 +453,14 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
         raise
 
     async def event_generator():
+        last_heartbeat = time.monotonic()
         try:
             while True:
                 if await request.is_disconnected():
                     break
 
                 message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                now = time.monotonic()
                 if message and message["type"] == "message":
                     raw_data = message["data"]
                     data = raw_data.decode("utf-8") if isinstance(raw_data, bytes) else str(raw_data)
@@ -460,6 +468,13 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
                         "event": "cdp_command",
                         "data": data,
                     }
+                    last_heartbeat = now
+                elif now - last_heartbeat >= 15.0:
+                    # Story 35.3: Emit keep-alive comment every 15s to keep idle SSE active
+                    yield {
+                        "comment": "ping",
+                    }
+                    last_heartbeat = now
         except asyncio.CancelledError:
             raise
         finally:
@@ -495,19 +510,55 @@ async def cdp_result(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Receive result from extension's CDP execution."""
+    """Receive result from extension's CDP execution with session token validation.
+
+    Fail-closed: audit log is committed BEFORE the result is pushed to Redis,
+    so a failed audit write prevents the worker from consuming an un-audited result.
+    """
     mission = await session.get(DshMission, payload.mission_id)
-    if mission:
-        _require_mission_access(auth, mission)
+    if mission is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mission not found",
+        )
+    _require_mission_access(auth, mission)
 
     redis = await get_redis_client()
+
+    # Validate CDP session token (required; missing or invalid → 401)
+    session_token = payload.session_token
+    valid, err = await validate_session_token(
+        session_token,
+        str(payload.mission_id),
+        str(auth.user.id),
+        redis_client=redis,
+    )
+    if not valid:
+        # Log failed auth attempt as audit event
+        await BrowserOperatorAuditService.log_event(
+            session,
+            mission_id=payload.mission_id,
+            workspace_id=mission.workspace_id,
+            user_id=auth.user.id,
+            command_id=payload.command_id or "unknown",
+            action="auth_failure",
+            success=False,
+            error_message=f"Session token validation failed: {err}",
+            metadata={"event_type": "auth_failure"},
+        )
+        await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid CDP session token: {err}",
+        )
+
     key = f"cdp_result:{auth.user.id}:{payload.mission_id}"
 
     redacted_result = _redact_cdp_result_value(payload.result) if payload.result is not None else None
-    command_id = (
+    command_id = payload.command_id or (
         payload.result.get("command_id")
         if isinstance(payload.result, dict)
-        else None
+        else "unknown"
     )
     result_data = {
         "result": redacted_result,
@@ -517,7 +568,29 @@ async def cdp_result(
         "challenge": payload.challenge,
     }
 
-    # Atomic pipeline push + expire + cap list length to avoid OOM.
+    # Extract action and target_url from result payload if present
+    result_dict = payload.result if isinstance(payload.result, dict) else {}
+    action = result_dict.get("action", "cdp_result")
+    target_url = result_dict.get("navigatedUrl") or result_dict.get("url")
+
+    # Fail-closed: commit audit log BEFORE pushing to Redis.
+    success = payload.error is None and not payload.requires_human
+    await BrowserOperatorAuditService.log_command_result(
+        session,
+        mission_id=payload.mission_id,
+        workspace_id=mission.workspace_id,
+        user_id=auth.user.id,
+        command_id=command_id,
+        action=action,
+        target_url=target_url,
+        success=success,
+        error_message=payload.error,
+        challenge=payload.challenge,
+        requires_human=payload.requires_human,
+    )
+    await session.commit()
+
+    # Only push to Redis after the audit event is durably committed.
     pipe = redis.pipeline()
     pipe.rpush(key, json.dumps(result_data))
     pipe.expire(key, 300)
@@ -587,7 +660,7 @@ async def resume_mission(
     if mission.phase != "waiting_for_human":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Mission is not awaiting human takeover.",
+            detail="Mission is not in waiting_for_human phase.",
         )
 
     # Verify challenge was addressed: the takeover lock still exists, has not expired,
@@ -646,3 +719,62 @@ async def resume_mission(
         await redis.delete(takeover_key)
 
     return {"mission_id": mission_id, "status": "running", "phase": "crawl"}
+
+
+@dsh_public_router.post("/dsh/missions/{mission_id}/abort", tags=["dsh"])
+async def abort_mission(
+    mission_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Explicitly abort a mission awaiting human takeover."""
+    mission = await session.get(DshMission, mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    _require_mission_access(auth, mission)
+
+    service = DshMissionService()
+    try:
+        updated = await service.abort_takeover_mission(session, mission_id)
+        await session.commit()
+    except DshMissionServiceError as exc:
+        await session.rollback()
+        # Phase conflict should map to 409; other errors to 400.
+        status_code = (
+            status.HTTP_409_CONFLICT
+            if "only waiting_for_human" in str(exc)
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+    return {
+        "mission_id": str(updated.id),
+        "status": updated.status,
+        "phase": updated.phase,
+    }
+
+
+@dsh_public_router.post(
+    "/workspaces/{workspace_id}/dsh/missions/sweep-takeovers", tags=["dsh"]
+)
+async def sweep_takeovers(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DSH_MISSIONS_WRITE.value,
+            "You don't have permission to run takeover sweeps in this workspace",
+        )
+    ),
+):
+    """Trigger a workspace-scoped maintenance sweep for expired takeovers."""
+    # Scope the sweep to the caller's workspace to avoid cross-tenant leakage.
+    service = DshMissionService()
+    swept = await service.sweep_expired_takeovers(
+        session, workspace_id=workspace_id
+    )
+    await session.commit()
+    return {"swept_count": len(swept)}
+

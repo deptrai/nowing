@@ -100,7 +100,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 										<th className="py-3 px-4 font-semibold">{t("col_name")}</th>
 										<th className="py-3 px-4 font-semibold">{t("col_source")}</th>
 										<th className="py-3 px-4 font-semibold">{t("col_phone")}</th>
-										<th className="py-3 px-4 font-semibold">Fit Score</th>
+										<th className="py-3 px-4 font-semibold">{t("col_fit_score")}</th>
 										<th className="py-3 px-4 font-semibold text-right">{t("col_action")}</th>
 									</tr>
 								</thead>
@@ -110,9 +110,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="font-semibold text-slate-900 dark:text-white">
 												Nguyễn Văn Hùng (Real Estate Broker)
 											</div>
-											<div className="text-xs text-slate-500">
-												Dang Van Bi Streetfront, Thu Duc City ($350k)
-											</div>
+											<div className="text-xs text-slate-500">{t("row1_desc")}</div>
 										</td>
 										<td className="py-3.5 px-4">
 											<span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-xs font-medium border border-blue-200/50">
@@ -128,7 +126,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="inline-flex items-center gap-1 font-semibold text-emerald-600">
 												<span>96%</span>
 												<span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
-													Fit
+													{t("tag_fit")}
 												</span>
 											</div>
 										</td>
@@ -138,7 +136,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
 												<MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
-												<span>Zalo Message</span>
+												<span>{t("btn_zalo_message")}</span>
 											</button>
 										</td>
 									</tr>
@@ -148,7 +146,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="font-semibold text-slate-900 dark:text-white">
 												Trần Thị Thu Mai (Direct Property Owner)
 											</div>
-											<div className="text-xs text-slate-500">Vo Van Ngan Alley House, Thu Duc</div>
+											<div className="text-xs text-slate-500">{t("row2_desc")}</div>
 										</td>
 										<td className="py-3.5 px-4">
 											<span className="px-2 py-0.5 rounded bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-xs font-medium border border-orange-200/50">
@@ -164,7 +162,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="inline-flex items-center gap-1 font-semibold text-emerald-600">
 												<span>92%</span>
 												<span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
-													Fit
+													{t("tag_fit")}
 												</span>
 											</div>
 										</td>
@@ -174,7 +172,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
 												<MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
-												<span>Zalo Message</span>
+												<span>{t("btn_zalo_message")}</span>
 											</button>
 										</td>
 									</tr>
@@ -184,9 +182,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="font-semibold text-slate-900 dark:text-white">
 												Lê Hoàng Nam (Founder & CTO - Software Enterprise)
 											</div>
-											<div className="text-xs text-slate-500">
-												Hiring 5 Senior Node.js & React Engineers
-											</div>
+											<div className="text-xs text-slate-500">{t("row3_desc")}</div>
 										</td>
 										<td className="py-3.5 px-4">
 											<span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-medium border border-emerald-200/50">
@@ -202,7 +198,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 											<div className="inline-flex items-center gap-1 font-semibold text-emerald-600">
 												<span>95%</span>
 												<span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
-													Fit
+													{t("tag_fit")}
 												</span>
 											</div>
 										</td>
@@ -212,7 +208,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 												className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-transform active:scale-95"
 											>
 												<Phone className="w-3.5 h-3.5" aria-hidden="true" />
-												<span>Call Lead</span>
+												<span>{t("btn_call_lead")}</span>
 											</button>
 										</td>
 									</tr>
@@ -239,11 +235,9 @@ export const ProductShowcaseTabs: React.FC = () => {
 									1
 								</div>
 								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
-									Tier 1: Token Pool Rotation
+									{t("tier1_title")}
 								</h4>
-								<p className="text-xs text-slate-500 leading-relaxed">
-									Redis Mutex token pool rotating decryption across Batdongsan and Muaban listings.
-								</p>
+								<p className="text-xs text-slate-500 leading-relaxed">{t("tier1_desc")}</p>
 							</div>
 
 							<div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
@@ -251,11 +245,9 @@ export const ProductShowcaseTabs: React.FC = () => {
 									2
 								</div>
 								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
-									Tier 2: Mobile Gateway API
+									{t("tier2_title")}
 								</h4>
-								<p className="text-xs text-slate-500 leading-relaxed">
-									Emulated device UUID gateway resolution extracting full poster mobile contacts.
-								</p>
+								<p className="text-xs text-slate-500 leading-relaxed">{t("tier2_desc")}</p>
 							</div>
 
 							<div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
@@ -263,12 +255,9 @@ export const ProductShowcaseTabs: React.FC = () => {
 									3
 								</div>
 								<h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
-									Tier 3: Zalo OA & Carrier Verification
+									{t("tier3_title")}
 								</h4>
-								<p className="text-xs text-slate-500 leading-relaxed">
-									Validating telecom network active status and Zalo UID active endpoints with 99.2%
-									accuracy.
-								</p>
+								<p className="text-xs text-slate-500 leading-relaxed">{t("tier3_desc")}</p>
 							</div>
 						</div>
 					</div>
@@ -280,7 +269,7 @@ export const ProductShowcaseTabs: React.FC = () => {
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
 							<div>
 								<span className="px-2.5 py-1 rounded bg-amber-100 text-amber-800 font-semibold text-xs mb-2 inline-block">
-									Outlier Viral Signal Detection (5x Avg Engagement)
+									{t("viral_signal_tag")}
 								</span>
 								<h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
 									{t("viral_card_title")}
@@ -291,23 +280,18 @@ export const ProductShowcaseTabs: React.FC = () => {
 								<div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
 									<div className="flex items-center gap-2">
 										<CheckCircle className="w-4 h-4 text-emerald-500" aria-hidden="true" />
-										<span>Hook classification: Contrast, Story, Value List</span>
+										<span>{t("viral_feat1")}</span>
 									</div>
 									<div className="flex items-center gap-2">
 										<CheckCircle className="w-4 h-4 text-emerald-500" aria-hidden="true" />
-										<span>Human-in-the-loop verification & custom approval</span>
+										<span>{t("viral_feat2")}</span>
 									</div>
 								</div>
 							</div>
 
 							<div className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs border border-slate-800">
-								<div className="text-emerald-400 font-bold mb-2">
-									✨ AI Generated Hook (Voice: B2B Real Estate Specialist)
-								</div>
-								<div className="text-slate-300 leading-relaxed">
-									&quot;Why top investors are shifting capital to Thu Duc before the metro line
-									connects — 3 data-backed reasons you should know...&quot;
-								</div>
+								<div className="text-emerald-400 font-bold mb-2">{t("viral_demo_hook_title")}</div>
+								<div className="text-slate-300 leading-relaxed">{t("viral_demo_hook_content")}</div>
 							</div>
 						</div>
 					</div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyRound, Server } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
+	const t = useTranslations("assistant");
 	const authBasicId = useId();
 	const authApiKeyId = useId();
 
@@ -180,16 +182,14 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 			{/* Connector Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Connector Name</Label>
+					<Label className="text-xs sm:text-sm">{t("connector_name")}</Label>
 					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="My Elasticsearch Connector"
+						placeholder={t("my_elasticsearch_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
@@ -198,12 +198,12 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 				<div className="space-y-1 sm:space-y-2">
 					<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
 						<Server className="h-4 w-4" aria-hidden="true" />
-						Connection Details
+						{t("connection_details")}
 					</h3>
 				</div>
 
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Elasticsearch Endpoint URL</Label>
+					<Label className="text-xs sm:text-sm">{t("es_endpoint_url")}</Label>
 					<Input
 						type="url"
 						value={endpointUrl}
@@ -211,9 +211,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 						placeholder="https://your-cluster.es.region.aws.com:443"
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						Update the Elasticsearch endpoint URL if needed.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("update_es_url")}</p>
 				</div>
 			</div>
 
@@ -222,7 +220,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 				<div className="space-y-1 sm:space-y-2">
 					<h3 className="font-medium text-sm sm:text-base flex items-center gap-2">
 						<KeyRound className="h-4 w-4" aria-hidden="true" />
-						Authentication
+						{t("authentication")}
 					</h3>
 				</div>
 
@@ -235,14 +233,14 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 						<div className="flex items-center gap-2">
 							<RadioGroupItem value="api_key" id={authApiKeyId} />
 							<Label htmlFor={authApiKeyId} className="text-xs sm:text-sm">
-								API Key
+								{t("api_key")}
 							</Label>
 						</div>
 
 						<div className="flex items-center gap-2">
 							<RadioGroupItem value="basic" id={authBasicId} />
 							<Label htmlFor={authBasicId} className="text-xs sm:text-sm">
-								Username & Password
+								{t("username_password")}
 							</Label>
 						</div>
 					</RadioGroup>
@@ -250,7 +248,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 					{authMethod === "basic" && (
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<Label className="text-xs sm:text-sm">Username</Label>
+								<Label className="text-xs sm:text-sm">{t("username")}</Label>
 								<Input
 									value={username}
 									onChange={(e) => handleUsernameChange(e.target.value)}
@@ -259,12 +257,12 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label className="text-xs sm:text-sm">Password</Label>
+								<Label className="text-xs sm:text-sm">{t("password")}</Label>
 								<Input
 									type="password"
 									value={password}
 									onChange={(e) => handlePasswordChange(e.target.value)}
-									placeholder="Password"
+									placeholder={t("password")}
 									className="border-slate-400/20 focus-visible:border-slate-400/40"
 								/>
 							</div>
@@ -273,16 +271,16 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 
 					{authMethod === "api_key" && (
 						<div className="space-y-2">
-							<Label className="text-xs sm:text-sm">API Key</Label>
+							<Label className="text-xs sm:text-sm">{t("api_key")}</Label>
 							<Input
 								type="password"
 								value={apiKey}
 								onChange={(e) => handleApiKeyChange(e.target.value)}
-								placeholder="Your API Key Here"
+								placeholder={t("your_api_key_here")}
 								className="border-slate-400/20 focus-visible:border-slate-400/40"
 							/>
 							<p className="text-[10px] sm:text-xs text-muted-foreground">
-								Update the Elasticsearch API key if needed.
+								{t("update_es_api_key")}
 							</p>
 						</div>
 					)}
@@ -292,25 +290,23 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 			{/* Index Selection */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Index Selection</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("index_selection")}</h3>
 				</div>
 
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Indices</Label>
+					<Label className="text-xs sm:text-sm">{t("indices")}</Label>
 					<Input
 						value={indices}
 						onChange={(e) => handleIndicesChange(e.target.value)}
-						placeholder="logs-*, documents-*, app-logs"
+						placeholder={t("es_indices_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						Comma-separated indices to search (e.g., "logs-*, documents-*").
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("search_fields_desc")}</p>
 				</div>
 
 				{indices.trim() && (
 					<div className="rounded-lg border border-border bg-muted/50 p-3">
-						<h4 className="text-[10px] sm:text-xs font-medium mb-2">Selected Indices:</h4>
+						<h4 className="text-[10px] sm:text-xs font-medium mb-2">{t("selected_indices")}</h4>
 						<div className="flex flex-wrap gap-2">
 							{stringToArray(indices).map((index) => (
 								<Badge key={index} variant="secondary" className="text-[10px]">
@@ -325,13 +321,14 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 			{/* Advanced Configuration */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Advanced Configuration</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("advanced_configuration")}</h3>
 				</div>
 
 				<div className="space-y-4">
 					<div className="space-y-2">
 						<Label className="text-xs sm:text-sm">
-							Default Search Query <span className="text-muted-foreground">(Optional)</span>
+							{t("default_search_query")}{" "}
+							<span className="text-muted-foreground">({t("optional_label")})</span>
 						</Label>
 						<Input
 							value={query}
@@ -340,28 +337,29 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Default Elasticsearch query to use for searches. Use "*" to match all documents.
+							{t("default_es_query_desc")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label className="text-xs sm:text-sm">
-							Search Fields <span className="text-muted-foreground">(Optional)</span>
+							{t("search_fields")}{" "}
+							<span className="text-muted-foreground">({t("optional_label")})</span>
 						</Label>
 						<Input
 							value={searchFields}
 							onChange={(e) => handleSearchFieldsChange(e.target.value)}
-							placeholder="title, content, description"
+							placeholder={t("search_fields_placeholder")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Comma-separated list of specific fields to search in.
+							{t("search_fields_desc")}
 						</p>
 					</div>
 
 					{searchFields.trim() && (
 						<div className="rounded-lg border border-border bg-muted/50 p-3">
-							<h4 className="text-[10px] sm:text-xs font-medium mb-2">Search Fields:</h4>
+							<h4 className="text-[10px] sm:text-xs font-medium mb-2">{t("search_fields")}:</h4>
 							<div className="flex flex-wrap gap-2">
 								{stringToArray(searchFields).map((field) => (
 									<Badge key={field} variant="outline" className="text-[10px]">
@@ -374,7 +372,8 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 
 					<div className="space-y-2">
 						<Label className="text-xs sm:text-sm">
-							Maximum Documents <span className="text-muted-foreground">(Optional)</span>
+							{t("maximum_documents")}{" "}
+							<span className="text-muted-foreground">({t("optional_label")})</span>
 						</Label>
 						<Input
 							type="number"
@@ -386,7 +385,7 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Maximum number of documents to retrieve per search (1-10,000).
+							{t("max_documents_desc")}
 						</p>
 					</div>
 				</div>

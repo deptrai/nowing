@@ -2,6 +2,7 @@
 
 import { Download, FileQuestionMark, FileText, Pencil, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlateEditor } from "@/components/editor/plate-editor";
@@ -74,6 +75,7 @@ function parsePointerId(value: string): number {
 }
 
 export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContentProps) {
+	const t = useTranslations("layout");
 	const documentId = parsePointerId(entityId);
 	const workspaceIdNumber = parsePointerId(workspaceId);
 
@@ -127,8 +129,8 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 				if (!response.ok) {
 					const errorData = await response
 						.json()
-						.catch(() => ({ detail: "Failed to fetch document" }));
-					throw new Error(errorData.detail || "Failed to fetch document");
+						.catch(() => ({ detail: t("failed_to_fetch_document") }));
+					throw new Error(errorData.detail || t("failed_to_fetch_document"));
 				}
 
 				const data = await response.json();
@@ -145,7 +147,7 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 			} catch (err) {
 				if (controller.signal.aborted) return;
 				console.error("Error fetching document:", err);
-				setError(err instanceof Error ? err.message : "Failed to fetch document");
+				setError(err instanceof Error ? err.message : t("failed_to_fetch_document"));
 			} finally {
 				if (!controller.signal.aborted) setIsLoading(false);
 			}
@@ -178,8 +180,8 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 			if (!response.ok) {
 				const errorData = await response
 					.json()
-					.catch(() => ({ detail: "Failed to save document" }));
-				throw new Error(errorData.detail || "Failed to save document");
+					.catch(() => ({ detail: t("failed_to_save_document") }));
+				throw new Error(errorData.detail || t("failed_to_save_document"));
 			}
 
 			setDoc((prev) => (prev ? { ...prev, source_markdown: markdownRef.current } : prev));
@@ -192,7 +194,7 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 			}
 		} catch (err) {
 			console.error("Error saving document:", err);
-			toast.error(err instanceof Error ? err.message : "Failed to save document");
+			toast.error(err instanceof Error ? err.message : t("failed_to_save_document"));
 		} finally {
 			setSaving(false);
 		}
@@ -241,7 +243,7 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 					<div className="flex-1 min-w-0">
 						<h1 className="text-base font-semibold truncate">{doc.title || "Untitled"}</h1>
 						{editedMarkdown !== null && (
-							<p className="text-xs text-muted-foreground">Unsaved changes</p>
+							<p className="text-xs text-muted-foreground">{t("unsaved_changes")}</p>
 						)}
 					</div>
 					<Button
@@ -253,7 +255,7 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 							changeCountRef.current = 0;
 						}}
 					>
-						Done editing
+						{t("done_editing")}
 					</Button>
 				</div>
 				<div className="flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -262,8 +264,14 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 							<FileText className="size-4" />
 							<AlertDescription>
 								{isOverPlateLimit
-									? `This document is ${formatBytes(activeMarkdownSizeBytes)}, above the rich editor limit of ${formatBytes(plateMaxBytes)}. You can save, but it will reopen in raw markdown mode.`
-									: `This document is approaching the rich editor limit (${formatBytes(activeMarkdownSizeBytes)} of ${formatBytes(plateMaxBytes)}).`}
+									? t("editor.doc_too_large", {
+											size: formatBytes(activeMarkdownSizeBytes),
+											limit: formatBytes(plateMaxBytes),
+										})
+									: t("editor.doc_near_limit", {
+											size: formatBytes(activeMarkdownSizeBytes),
+											limit: formatBytes(plateMaxBytes),
+										})}
 							</AlertDescription>
 						</Alert>
 					)}
@@ -274,7 +282,7 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 							markdown={doc.source_markdown}
 							onMarkdownChange={handleMarkdownChange}
 							readOnly={false}
-							placeholder="Start writing..."
+							placeholder={t("start_writing")}
 							editorVariant="default"
 							onSave={handleSave}
 							hasUnsavedChanges={editedMarkdown !== null}
@@ -330,7 +338,7 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 												),
 												{ method: "GET" }
 											);
-											if (!response.ok) throw new Error("Download failed");
+											if (!response.ok) throw new Error(t("download_failed"));
 											const blob = await response.blob();
 											const url = URL.createObjectURL(blob);
 											const a = document.createElement("a");
@@ -342,9 +350,9 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 											a.click();
 											a.remove();
 											URL.revokeObjectURL(url);
-											toast.success("Download started");
+											toast.success(t("download_started"));
 										} catch {
-											toast.error("Failed to download document");
+											toast.error(t("failed_to_download_document"));
 										} finally {
 											setDownloading(false);
 										}
@@ -352,7 +360,7 @@ export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContent
 								>
 									<span className={`flex items-center gap-1.5 ${downloading ? "opacity-0" : ""}`}>
 										<Download className="size-3.5" />
-										Download .md
+										{t("download_md")}
 									</span>
 									{downloading && <Spinner size="sm" className="absolute" />}
 								</Button>

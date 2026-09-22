@@ -5,4 +5,3 @@ export {
 	QuestionChoiceApproval,
 	type QuestionOptionItem,
 } from "./question-choice-approval";
-

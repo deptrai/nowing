@@ -53,6 +53,7 @@ from app.config.chainlens import *  # noqa: E402, F403
 from app.config.connectors import *  # noqa: E402, F403
 from app.config.core import *  # noqa: E402, F403
 from app.config.database import *  # noqa: E402, F403
+from app.config.decision import *  # noqa: E402, F403
 from app.config.dsh import *  # noqa: E402, F403
 from app.config.entities import *  # noqa: E402, F403
 from app.config.etl import *  # noqa: E402, F403
@@ -67,6 +68,7 @@ from app.config.research import *  # noqa: E402, F403
 from app.config.scraper import *  # noqa: E402, F403
 from app.config.storage import *  # noqa: E402, F403
 from app.config.urls import *  # noqa: E402, F403
+from app.config.voice import *  # noqa: E402, F403
 from app.config.web_builder import *  # noqa: E402, F403
 
 
@@ -121,12 +123,46 @@ config = Config()
 HOSTING_BASE_DOMAIN = config.HOSTING_BASE_DOMAIN
 CNAME_INGRESS_HOST = config.CNAME_INGRESS_HOST
 FILE_STORAGE_LOCAL_PATH = config.FILE_STORAGE_LOCAL_PATH
+WEB_BUILDER_TXT_VERIFY_LABEL = config.WEB_BUILDER_TXT_VERIFY_LABEL
+WEB_BUILDER_TXT_VERIFY_PREFIX = config.WEB_BUILDER_TXT_VERIFY_PREFIX
+LIVEKIT_URL = config.LIVEKIT_URL
+LIVEKIT_API_KEY = config.LIVEKIT_API_KEY
+LIVEKIT_API_SECRET = config.LIVEKIT_API_SECRET
+SIP_OUTBOUND_GATEWAY_HOST = config.SIP_OUTBOUND_GATEWAY_HOST
+SIP_OUTBOUND_GATEWAY_PORT = config.SIP_OUTBOUND_GATEWAY_PORT
+SIP_GATEWAY_SIP_URI = config.SIP_GATEWAY_SIP_URI
+SIP_DEFAULT_TRUNK_ID = config.SIP_DEFAULT_TRUNK_ID
+SIP_ROOM_PREFIX = config.SIP_ROOM_PREFIX
+SIP_CALL_MAX_DURATION_SECONDS = config.SIP_CALL_MAX_DURATION_SECONDS
+SIP_RINGING_TIMEOUT_SECONDS = config.SIP_RINGING_TIMEOUT_SECONDS
+SEQUENCER_VOICE_ENABLED = config.SEQUENCER_VOICE_ENABLED
+VOICE_WORKER_PROCESSES = config.VOICE_WORKER_PROCESSES
+VOICE_MAX_CALLS_PER_WORKER = config.VOICE_MAX_CALLS_PER_WORKER
+VOICE_VAD_MIN_SILENCE_MS = config.VOICE_VAD_MIN_SILENCE_MS
+VOICE_VAD_SPEECH_THRESHOLD = config.VOICE_VAD_SPEECH_THRESHOLD
+VOICE_FILLER_DIR = config.VOICE_FILLER_DIR
+VOICE_LLM_PROVIDER = config.VOICE_LLM_PROVIDER
+VOICE_STT_PROVIDER = config.VOICE_STT_PROVIDER
+VOICE_TTS_PROVIDER = config.VOICE_TTS_PROVIDER
+DEEPGRAM_API_KEY = config.DEEPGRAM_API_KEY
+ANTHROPIC_API_KEY = config.ANTHROPIC_API_KEY
+OPENAI_API_KEY = config.OPENAI_API_KEY
+SIP_OUTBOUND_GATEWAY_PORT = config.SIP_OUTBOUND_GATEWAY_PORT
+SIP_GATEWAY_SIP_URI = config.SIP_GATEWAY_SIP_URI
 
 __all__ = [
     "BASE_DIR",
     "CNAME_INGRESS_HOST",
     "FILE_STORAGE_LOCAL_PATH",
     "HOSTING_BASE_DOMAIN",
+    "LIVEKIT_API_KEY",
+    "LIVEKIT_API_SECRET",
+    "LIVEKIT_URL",
+    "SIP_GATEWAY_SIP_URI",
+    "SIP_OUTBOUND_GATEWAY_HOST",
+    "SIP_OUTBOUND_GATEWAY_PORT",
+    "WEB_BUILDER_TXT_VERIFY_LABEL",
+    "WEB_BUILDER_TXT_VERIFY_PREFIX",
     "Config",
     "config",
     "initialize_image_gen_router",

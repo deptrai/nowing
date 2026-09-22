@@ -85,6 +85,12 @@ class AgentFeatureFlags:
     # misses are frequent enough to justify the extra global state.
     enable_agent_cache_share_gp_subagent: bool = False
 
+    # Jev pre-router — classify user intent via DecisionService before the
+    # LLM sees it, injecting a <jev_routing_hint> into the system prompt.
+    # Saves routing tokens + latency. Requires DECISION_ENABLED=true with a
+    # working decision backend. Default OFF.
+    enable_jev_router: bool = False
+
     @classmethod
     def from_env(cls) -> AgentFeatureFlags:
         """Read flags from environment.
@@ -121,6 +127,7 @@ class AgentFeatureFlags:
                 enable_agent_cache=False,
                 enable_cross_thread_agent_cache=False,
                 enable_agent_cache_share_gp_subagent=False,
+                enable_jev_router=False,
             )
 
         return cls(
@@ -158,6 +165,7 @@ class AgentFeatureFlags:
             enable_cross_thread_agent_cache=_env_bool(
                 "NOWING_ENABLE_CROSS_THREAD_AGENT_CACHE", True
             ),
+            enable_jev_router=_env_bool("NOWING_ENABLE_JEV_ROUTER", False),
             enable_agent_cache_share_gp_subagent=_env_bool(
                 "NOWING_ENABLE_AGENT_CACHE_SHARE_GP_SUBAGENT", False
             ),

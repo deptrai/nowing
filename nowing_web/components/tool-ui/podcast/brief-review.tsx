@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Loader2, Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ interface BriefReviewProps {
  * pushed status flips the card to its drafting state.
  */
 export function BriefReview({ podcast, spec }: BriefReviewProps) {
+	const t = useTranslations("toolUi");
 	const [draft, setDraft] = useState<PodcastSpec>(spec);
 	const [durationUnit, setDurationUnit] = useState<DurationUnit>(() =>
 		defaultDurationUnit(spec.duration.max_seconds)
@@ -191,10 +193,10 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 			return true;
 		} catch (error) {
 			if (error instanceof AppError && error.status === 409) {
-				toast.warning("The brief changed elsewhere — reloaded the latest version.");
+				toast.warning(t("brief_changed_reloaded"));
 				setDraft(spec);
 			} else {
-				toast.error(error instanceof Error ? error.message : "Failed to save the brief");
+				toast.error(error instanceof Error ? error.message : t("tu_failed_to_save_the"));
 			}
 			return false;
 		}
@@ -206,7 +208,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 			if (!(await saveIfDirty())) return;
 			await podcastsApiService.approveBrief(podcast.id);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to approve the brief");
+			toast.error(error instanceof Error ? error.message : t("tu_failed_to_approve_the"));
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -216,13 +218,13 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 		<div className="flex flex-col gap-6">
 			<div className="grid grid-cols-2 gap-4">
 				<div className="flex flex-col gap-2">
-					<Label htmlFor="podcast-language">Language</Label>
+					<Label htmlFor="podcast-language">{t("tu_language")}</Label>
 					{offering?.allows_custom ? (
 						<LanguageCombobox value={draft.language} languages={languages} onSelect={setLanguage} />
 					) : (
 						<Select value={draft.language} onValueChange={setLanguage}>
 							<SelectTrigger id="podcast-language">
-								<SelectValue placeholder="Language" />
+								<SelectValue placeholder={t("tu_language")} />
 							</SelectTrigger>
 							<SelectContent>
 								{languages.map((tag) => (
@@ -235,10 +237,10 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 					)}
 				</div>
 				<div className="flex flex-col gap-2">
-					<Label htmlFor="podcast-style">Style</Label>
+					<Label htmlFor="podcast-style">{t("tu_style")}</Label>
 					<Select value={draft.style} onValueChange={(value) => setStyle(value as PodcastStyle)}>
 						<SelectTrigger id="podcast-style">
-							<SelectValue placeholder="Style" />
+							<SelectValue placeholder={t("tu_style")} />
 						</SelectTrigger>
 						<SelectContent>
 							{podcastStyle.options.map((style) => (
@@ -253,7 +255,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 
 			<div className="flex flex-col gap-3">
 				<div className="flex items-center justify-between">
-					<Label>Speakers</Label>
+					<Label>{t("tu_speakers")}</Label>
 					<Button
 						type="button"
 						variant="ghost"
@@ -261,7 +263,8 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						onClick={addSpeaker}
 						disabled={draft.style === "monologue" || draft.speakers.length >= MAX_SPEAKERS}
 					>
-						<Plus className="size-4" aria-hidden="true" /> Add speaker
+						<Plus className="size-4" aria-hidden="true" />
+						{t("tu_add_speaker")}
 					</Button>
 				</div>
 				{draft.speakers.map((speaker) => (
@@ -278,7 +281,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 							/>
 						</div>
 						<div className="flex w-28 flex-col gap-1.5">
-							<Label className="text-xs">Role</Label>
+							<Label className="text-xs">{t("role")}</Label>
 							<Select
 								value={speaker.role}
 								onValueChange={(value) =>
@@ -298,7 +301,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 							</Select>
 						</div>
 						<div className="flex w-52 flex-col gap-1.5">
-							<Label className="text-xs">Voice</Label>
+							<Label className="text-xs">{t("voice")}</Label>
 							<div className="flex items-center gap-1">
 								<Select
 									value={speaker.voice_id}
@@ -334,24 +337,24 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 
 			<div className="flex flex-col gap-2">
 				<div className="flex items-center justify-between gap-3">
-					<Label>Target length</Label>
+					<Label>{t("tu_target_length")}</Label>
 					<Select
 						value={durationUnit}
 						onValueChange={(value) => setDurationUnit(value as DurationUnit)}
 					>
-						<SelectTrigger className="w-[7.5rem]" aria-label="Length unit">
+						<SelectTrigger className="w-[7.5rem]" aria-label={t("tu_length_unit")}>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="seconds">Seconds</SelectItem>
-							<SelectItem value="minutes">Minutes</SelectItem>
-							<SelectItem value="hours">Hours</SelectItem>
+							<SelectItem value="seconds">{t("tu_seconds")}</SelectItem>
+							<SelectItem value="minutes">{t("f_minutes")}</SelectItem>
+							<SelectItem value="hours">{t("hours")}</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
 				<div className="grid grid-cols-2 gap-4">
 					<div className="flex flex-col gap-2">
-						<Label htmlFor="podcast-min-length">Min</Label>
+						<Label htmlFor="podcast-min-length">{t("min")}</Label>
 						<Input
 							id="podcast-min-length"
 							type="number"
@@ -371,7 +374,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						/>
 					</div>
 					<div className="flex flex-col gap-2">
-						<Label htmlFor="podcast-max-length">Max</Label>
+						<Label htmlFor="podcast-max-length">{t("max")}</Label>
 						<Input
 							id="podcast-max-length"
 							type="number"
@@ -396,10 +399,10 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 			</div>
 
 			<div className="flex flex-col gap-2">
-				<Label htmlFor="podcast-focus">Focus (optional)</Label>
+				<Label htmlFor="podcast-focus">{t("f_focus_optional")}</Label>
 				<Textarea
 					id="podcast-focus"
-					placeholder="What should the episode emphasise?"
+					placeholder={t("f_what_should_the_episode")}
 					maxLength={2000}
 					value={draft.focus ?? ""}
 					onChange={(e) => setDraft((current) => ({ ...current, focus: e.target.value || null }))}
@@ -414,7 +417,7 @@ export function BriefReview({ podcast, spec }: BriefReviewProps) {
 						onClick={() => setDraft(spec)}
 						disabled={isSubmitting}
 					>
-						Discard
+						{t("f_discard")}
 					</Button>
 				) : null}
 				<Button
@@ -442,6 +445,7 @@ function LanguageCombobox({
 	languages: string[];
 	onSelect: (language: string) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 
@@ -472,12 +476,12 @@ function LanguageCombobox({
 			<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
 				<Command>
 					<CommandInput
-						placeholder="Search or type a language tag…"
+						placeholder={t("search_language_tag")}
 						value={query}
 						onValueChange={setQuery}
 					/>
 					<CommandList>
-						<CommandEmpty>No matching language.</CommandEmpty>
+						<CommandEmpty>{t("no_matching_language")}</CommandEmpty>
 						<CommandGroup>
 							{languages.map((tag) => (
 								<CommandItem

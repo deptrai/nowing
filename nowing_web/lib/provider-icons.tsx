@@ -1,4 +1,4 @@
-import { Cpu, Shuffle } from "lucide-react";
+import { Cpu, Globe, Shuffle } from "lucide-react";
 import {
 	Ai21Icon,
 	AnyscaleIcon,
@@ -71,6 +71,8 @@ export function getProviderIcon(
 			return <BedrockIcon className={cn(className)} aria-hidden="true" />;
 		case "CEREBRAS":
 			return <CerebrasIcon className={cn(className)} aria-hidden="true" />;
+		case "CHAINLENS":
+			return <Globe className={cn(className)} aria-hidden="true" />;
 		case "CLOUDFLARE":
 			return <CloudflareIcon className={cn(className)} aria-hidden="true" />;
 		case "COHERE":

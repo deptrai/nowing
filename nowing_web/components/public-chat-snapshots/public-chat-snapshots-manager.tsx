@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { AlertCircle, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { membersAtom, myAccessAtom } from "@/atoms/members/members-query.atoms";
@@ -20,6 +21,7 @@ interface PublicChatSnapshotsManagerProps {
 export function PublicChatSnapshotsManager({
 	workspaceId: _workspaceId,
 }: PublicChatSnapshotsManagerProps) {
+	const t = useTranslations("publicChat");
 	const [deletingId, setDeletingId] = useState<number | undefined>();
 
 	// Data fetching
@@ -69,7 +71,7 @@ export function PublicChatSnapshotsManager({
 				});
 			} catch (error) {
 				console.error("Failed to delete snapshot:", error);
-				toast.error("Failed to delete snapshot");
+				toast.error(t("delete_failed"));
 			} finally {
 				setDeletingId(undefined);
 			}
@@ -114,7 +116,7 @@ export function PublicChatSnapshotsManager({
 		return (
 			<Alert variant="destructive">
 				<AlertCircle className="h-4 w-4" />
-				<AlertDescription>Failed to load public chats. Please try again later.</AlertDescription>
+				<AlertDescription>{t("load_failed")}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -124,9 +126,7 @@ export function PublicChatSnapshotsManager({
 		return (
 			<Alert>
 				<Info />
-				<AlertDescription>
-					You don't have permission to view public chats in this workspace.
-				</AlertDescription>
+				<AlertDescription>{t("no_permission")}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -137,10 +137,7 @@ export function PublicChatSnapshotsManager({
 		<div className="space-y-4 md:space-y-5">
 			<Alert>
 				<Info />
-				<AlertDescription>
-					Public chats allow anyone with the URL to view a snapshot of a chat. They do not update
-					when the original chat changes.
-				</AlertDescription>
+				<AlertDescription>{t("explainer")}</AlertDescription>
 			</Alert>
 
 			<PublicChatSnapshotsList

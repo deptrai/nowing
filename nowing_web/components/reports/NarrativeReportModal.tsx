@@ -1,6 +1,7 @@
 "use client";
 
 import { Calendar, FileText, LineChart, Newspaper, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export default function NarrativeReportModal({
 	onOpenChange,
 	onGenerated,
 }: NarrativeReportModalProps) {
+	const t = useTranslations("reports");
 	const [templates, setTemplates] = useState<NarrativeTemplate[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [selectedTemplate, setSelectedTemplate] = useState<NarrativeTemplate | null>(null);
@@ -61,7 +63,7 @@ export default function NarrativeReportModal({
 				})
 				.catch((err) => {
 					console.error("Failed to fetch narrative templates:", err);
-					toast.error("Could not load narrative templates");
+					toast.error(t("templates_load_failed"));
 				})
 				.finally(() => setLoading(false));
 		}
@@ -81,7 +83,7 @@ export default function NarrativeReportModal({
 				title: customTitle.trim() || undefined,
 				parameters,
 			});
-			toast.success(`Narrative report "${report.title}" generated successfully!`);
+			toast.success(t("report_generated", { title: report.title }));
 			onGenerated?.(report);
 			onOpenChange(false);
 		} catch (err: unknown) {
@@ -89,7 +91,7 @@ export default function NarrativeReportModal({
 			const errorMsg =
 				err && typeof err === "object" && "message" in err
 					? String((err as { message: unknown }).message)
-					: "Could not generate narrative report";
+					: t("report_generate_failed");
 			toast.error(errorMsg);
 		} finally {
 			setSubmitting(false);
@@ -118,24 +120,21 @@ export default function NarrativeReportModal({
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Sparkles className="h-5 w-5 text-primary" />
-						Generate Narrative Report
+						{t("generate_narrative_report")}
 					</DialogTitle>
-					<DialogDescription>
-						Synthesize indexed news, financial trend data, or corporate timelines into grounded
-						executive reports.
-					</DialogDescription>
+					<DialogDescription>{t("generate_narrative_report_desc")}</DialogDescription>
 				</DialogHeader>
 
 				{loading ? (
 					<div className="py-12 text-center text-sm text-muted-foreground animate-pulse">
-						Loading narrative templates...
+						{t("loading_templates")}
 					</div>
 				) : (
 					<div className="grid grid-cols-1 md:grid-cols-5 gap-6 py-2 overflow-y-auto">
 						{/* Template picker */}
 						<div className="md:col-span-2 space-y-2 border-r pr-4">
 							<Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-								Narrative Styles
+								{t("narrative_styles")}
 							</Label>
 							<div className="space-y-1.5">
 								{templates.map((tmpl) => {
@@ -184,13 +183,13 @@ export default function NarrativeReportModal({
 								<div className="space-y-3">
 									<div className="space-y-1.5">
 										<Label htmlFor="report-title" className="text-xs">
-											Report Title
+											{t("report_title")}
 										</Label>
 										<Input
 											id="report-title"
 											value={customTitle}
 											onChange={(e) => setCustomTitle(e.target.value)}
-											placeholder="Custom title or leave default"
+											placeholder={t("custom_title_placeholder")}
 											className="h-8 text-xs"
 										/>
 									</div>
@@ -227,7 +226,7 @@ export default function NarrativeReportModal({
 						onClick={() => onOpenChange(false)}
 						disabled={submitting}
 					>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button
 						size="sm"
@@ -237,7 +236,7 @@ export default function NarrativeReportModal({
 						className="gap-1.5"
 					>
 						<Sparkles className="h-3.5 w-3.5" />
-						{submitting ? "Synthesizing..." : "Generate Report"}
+						{submitting ? t("synthesizing") : t("generate_report")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

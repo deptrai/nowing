@@ -1696,3 +1696,180 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: Return dispatched target telemetry instead of raw HTTP post count in _ingest_social_target when REDIS_STREAM_ENABLED
   evidence: Review finding from Story 36.1; when XActions returns data: [] over MCP and pushes to Redis stream, task logging reports 0 posts ingested
+
+## Deferred from: code review of spec-36-1-wire-x-crawl-post-fallback (2026-09-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Unsupported-platform targets stay is_active=True and are re-evaluated every scheduler tick
+  evidence: Review finding; _check_and_trigger_social_targets skips platform-not-in-SUPPORTED_PLATFORMS with debug log only, never marks unsupported (social_xactions_ingest.py:296)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: ingest_raw_post_to_stream pushes dict with None/list/dict values to xadd → redis DataError, silent failure
+  evidence: Review finding; post.to_dict() emits unencoded None/list/dict that aioredis xadd rejects (adapter_v2.py:335); pre-existing, AD-4 removes this writer in Phase 2
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: code_str in _is_tool_not_found_error/_is_permanent_fallback_error not case-folded; alt MCP codes (-32601, "unknown tool") unrecognized
+  evidence: Review finding (adapter_v2.py:112-131); extension for non-XActions MCP servers
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Facebook ID-based targets (target_url=None) not resolved via _facebook_page_url/_facebook_group_url in fallback_crawl_post → marked unsupported
+  evidence: Review finding (adapter_v2.py:162-167); scope expansion beyond spec AC which requires HTTP URL
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
+  summary: Fallback tests pass URL via target_id with target_url=None; no coverage for production layout where target_url holds the HTTP URL and target_id is a slug
+  evidence: Review finding (test_xactions_adapter_v2.py); production-realism gap in test fixtures
+
+## Deferred from: code review of story-36.3 (2026-09-14) — RESOLVED 2026-09-14
+
+- **Finding:** Successful ingest leaves paused target in `status="paused"` indefinitely (`social_xactions_ingest.py:322`). After a paused target cools down and successfully fetches, `target.status` is never reset to `"active"` — only `last_scraped_at` updates. Scheduler still picks up paused targets so functionally it keeps running, but the status lies about lifecycle.
+  - **Action:** Resolved 2026-09-14 — `_ingest_social_target` now sets `target.status = "active"` when prior status was `"paused"` after successful ingest. Test `test_ingest_social_target_resumes_paused_to_active_on_success` covers the transition.
+
+- **Finding:** Paused target waits `cooldown + scrape_interval` before becoming due again (`social_xactions_ingest.py:370-374`). `_pause_target` pushes `last_scraped_at` into the future by `cooldown`, then the scheduler also subtracts `scrape_interval_minutes` from `now` — so a paused target's effective resume is `cooldown + scrape_interval`, longer than the canonical `cooldown` alone.
+  - **Action:** Resolved 2026-09-14 — `_check_and_trigger_social_targets` due-check now branches by status. `paused` targets are due when `last_scraped_at <= now` (cooldown expired); `active` targets keep `last_scraped_at <= now - scrape_interval_minutes`. Tests `test_check_social_targets_paused_due_when_cooldown_expired` and `test_check_social_targets_paused_not_due_during_cooldown` cover both branches.
+
+## Deferred from: code review of story-36.5 (2026-09-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-5-stream-consumer-schema-contract-dlq.md`
+  summary: `_LAG_STATE` module-global throttle ineffective across multi-process Celery workers — each process probes independently
+  evidence: Review finding (social_stream_worker.py:64); trade-off accepted — probe cost is low at 30s intervals
+
+## Deferred from: code review of story-36.6b (2026-09-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `_facebook_group_url` / `_facebook_page_url` use case-sensitive `startswith("http")` — `" HTTPS://..."` or `"https..."` with leading whitespace produces malformed URL
+  evidence: Review finding (adapter_v2.py:94-101); pre-existing since 36.6a, inconsistent with `fallback_crawl_post` which uses `.strip().lower().startswith(("http://","https://"))`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `_unified_envelope` only reads `target.target_id`; `SocialMonitoredTarget.target_url` is never consulted as a fallback for URL-requiring actions
+  evidence: Review finding (adapter_v2.py:243); pre-existing — spec-36.6b scope only touches arg-shape, not target resolution precedence
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `context.targetId` falls back to `target.target_id` (string slug/URL) when `target.id` is None — stream consumers expect integer ids
+  evidence: Review finding (adapter_v2.py:255-258); pre-existing since 36.6a — surfaced only when target objects are unpersisted DTOs
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `XACTIONS_USE_UNIFIED_DISPATCH` and `XACTIONS_LEGACY_TOOL_DEPRECATION` are absent from `nowing_backend/.env.example` — operators have no env-doc reference for the two flags
+  evidence: Review finding; `XACTIONS_STREAM_SINGLE_WRITER_ENABLED` documented at .env.example:788 but the 36.6a/36.6b flags are not
+
+## Deferred from: code review of story-36.6b second-pass (2026-09-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `map_async(target)` with `client=None` not covered when both flags ON — only explicit client arg tested
+  evidence: Review finding (test_xactions_mapper.py); `client=None` fallback to `CanonicalActionMatrix.get(None)` exercised elsewhere
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: flag-alone no-op test covers only `facebook_group`/`twitter_user`; `facebook_page`/`twitter_keyword` sync+async no-op paths untested
+  evidence: Review finding (test_xactions_mapper.py:241-282); shared gate, no per-platform divergence
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `test_static_fallback_matrix_legacy_descriptors` does not assert `optionalArgs == ["limit"]` — regression in optionalArgs would silently skip limit injection
+  evidence: Review finding (test_canonical_action_matrix.py:141); caught indirectly by urlified-args assertions
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
+  summary: `_merge_with_static` does not emit "using static fallback" warning when live catalog partially lacks FB/Twitter platforms
+  evidence: Review finding (action_matrix.py:185-208); spec I/O matrix row 7 wording vs implementation — merge is correct, log verbosity trade-off accepted
+
+## Resolved from: code review of story-36.6b (2026-09-15) — commit 318b40113
+
+All 8 items from the two deferred blocks above (lines 1736-1774) are resolved:
+
+- `_facebook_group_url`/`_facebook_page_url` — now strip+lowercase scheme check (adapter_v2.py:98-106), matching `fallback_crawl_post` canonical form
+- `_unified_envelope` — prefers `target.target_url` when descriptor's required arg is `url` (adapter_v2.py:264-275)
+- `context.targetId` — explicit `is not None` check, `id=0` no longer falsy-fallback (adapter_v2.py:288-292)
+- `.env.example` — `XACTIONS_USE_UNIFIED_DISPATCH` + `XACTIONS_LEGACY_TOOL_DEPRECATION` documented at lines ~789-796
+- `map_async(client=None)` — covered by `test_map_async_default_client_none_uses_static_fallback` (test_xactions_mapper.py)
+- flag-alone no-op — parametrized to all 4 legacy kinds for sync + async (test_xactions_mapper.py)
+- `optionalArgs == ["limit"]` — asserted in `test_static_fallback_matrix_legacy_descriptors` (test_canonical_action_matrix.py:144-157)
+- `_merge_with_static` — emits INFO log naming platforms served from static fallback on partial catalog (action_matrix.py:185-215)
+
+Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_action_matrix.py + test_social_xactions_ingest.py + test_social_routes.py → 181/181 pass.
+
+## Resolved from: epic-31 leftover defers (2026-09-16)
+
+- Mark Tool static-eval widened: `spread_element`, `computed_property_name` keys, hoisted array/object in `_eval_node` (`cn(true && ["a","b"])`), `satisfies_expression`/`non_null_expression` unwrap. Tests in `TestStaticEvalEdgeCases`.
+- Self-hosted deployments skip the PPTX plan-tier paywall (`app_config.is_self_hosted()`); SaaS still hard-blocks free-tier PPTX.
+- `PresentationStudioService.generate` now raises domain `PlanLimitedError` (not FastAPI `HTTPException`); the REST route translates to HTTP 403 and the chat tool to `status="plan_limited"`.
+
+
+## Resolved: code review of spec-31-3 & spec-31-4 (2026-09-16)
+
+All items previously deferred from these reviews were resolved in a follow-up pass — none remain open.
+
+## Deferred from: code review of spec-38-2-voice-agent-worker-runtime-silero-vad-streaming.md (2026-09-18)
+- Implement `"voice"` channel dispatcher in Sequencer [app/services/sequencer/dispatch.py:508] — deferred: out-of-scope for Story 38.2 worker runtime; belongs to Story 38.7 outbound trigger campaign integration.
+
+## 2026-09-20 — ChainLens contents review deferrals (Story 20.5)
+
+**Resolved this session (không còn deferred):**
+- ✅ Billing edge all-failed-partial — **ĐÃ CHỐT: miễn phí khi 0 nội dung dùng được**. Patch `_charge_chainlens` (`nowing_backend/app/capabilities/core/billing.py`): `not has_content and status in ("engine_unavailable", "partial")` → return 0. Test `test_partial_no_usable_content_is_free` thêm vào `tests/unit/capabilities/test_billing.py` (87 passed).
+
+**Deferred (pattern-wide, không thuộc Story 20.5):**
+- [ ] Enum validation cho `sources` input (web/discussions/academic/crawl4ai) — sửa 1 lần ở tầng capability framework cho TẤT CẢ capabilities, không riêng contents. entity_search cũng bị.
+- [ ] `workspace_id` từ input vs CapabilityContext có thể diverge — cùng nhóm pattern-wide.
+- [ ] `has_failure` whitelist statuses — chỉ cần khi upstream ChainLens thêm status mới (hiện chỉ ok/error).
+- [ ] 429 rate-limit message riêng + backoff (enhancement).
+- [ ] ContentItem thêm publishedDate/author fields (enhancement).
+- [ ] Test gaps: 401 rotate path, payload passthrough (subpages/livecrawl/maxAgeHours), highlights-as-string.
+- [ ] system_prompt.md/description.md expose chainlens_contents — **theo kế hoạch**: apply batch sau khi đủ capabilities (20.6, 20.10, 20.11). Bản rewrite sẵn tại `_bmad-output/planning-artifacts/agent-prompts-chainlens-2026-09-20/`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
+  summary: LLMJsonBackend (litellm structured output) + jev→llm_json fallback chain for DecisionService
+  evidence: Spec 2949 tokens exceeded 1600 limit; user chose [S] split — LLM fallback carved into follow-up story (39.1b) including its AC (DECISION_BACKEND=llm_json works + auto-fallback on Jev 5xx/529/timeout)
+  resolved: 2026-09-22 — shipped as story 39.1b (commit `afd6d432b`); `LLMJsonBackend` + service-level fallback + `DECISION_FALLBACK_BACKEND`/`DECISION_LLM_MODEL` config.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
+  summary: `QuestionSet.required_state_keys` metadata + service-level pre-call state validation, so decide() with missing state keys fails before a paid backend call instead of letting the backend produce low-confidence guesses
+  evidence: Code review of story 39.1 (23 findings); no caller consumes a question set that declares required state yet, so the check would be dead code until stories 39.2–39.5 wire consumers
+  resolved: 2026-09-22 — `QuestionSet.required_state_keys` + `register()` param; 4 built-in sets declare keys (`user_message` / `entity_a,entity_b` / `query,passage`); `decide(required_state_keys=...)` raises `invalid_request` before backend resolution.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1-decision-service-port-jev-backend.md`
+  summary: Noul "confidently false" gating semantics — ConfidenceGate.passes() only rewards high values today; the first consumer that needs a high-confidence FALSE must document or derive the inversion (1 - value)
+  evidence: Code review of story 39.1 (23 findings); deferred until the first Noul consumer lands (39.2+) because the inversion direction is use-case-specific
+  resolved: 2026-09-22 — `ConfidenceGate.passes_negative()` implements the documented inversion (`1 - value >= threshold`, noul-only); `passes()` semantics unchanged.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
+  summary: Telemetry chỉ ghi leg thắng — latency tổng và paid spend của fallback-leg-thất-bại invisible.
+  evidence: `service.py` decide() chỉ persist `backend_result` của leg trả lời; leg fail không có BackendResult nên token spend không record được. Cần thiết kế telemetry cho failed legs (spec 39.7 dashboard nên quyết).
+  resolved: 2026-09-22 — `decide()` track `legs` per backend leg; winning fallback row carries `call_details.legs`; both-legs-fail persists an attempt row `failed:true` + `error_code` + legs (tokens 0, no fabricated spend).
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
+  summary: Validate probability-distribution prompt contract của LLMJsonBackend qua eval harness trước khi rely vào fallback production.
+  evidence: prompt yêu cầu full distribution (sum≈1, argmax=chosen, score=weighted mean) chặt hơn eval baseline; chưa có real-network test (không có API key). Non-conforming answer → InvalidDecisionAnswer propagate. Scope story 39.8 eval CI.
+  resolved: 2026-09-22 — `scripts/jev_eval/runner.py --backend decision_llm_json` runs cases through `LLMJsonBackend` + production `validate_answer`; live validation still requires provider API key (run with `--live`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
+  summary: `_env_choice` warn-and-default fail-open — typo DECISION_FALLBACK_BACKEND (vd "nonee") resolves về "llm_json" = bật paid fallback.
+  evidence: `app/config/_helpers.py` _env_choice trả default khi giá trị không hợp lệ, chỉ warning log; shared helper dùng bởi nhiều config domains nên không đổi semantics trong story này.
+  resolved: 2026-09-22 — `DECISION_FALLBACK_BACKEND` reads via `_env_fallback_backend()` (fail-closed): invalid value → `none` + warning; `_env_choice` untouched for other domains.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-1b-llm-json-backend-fallback.md`
+  summary: Import-guard test chỉ scan `app/services/decision/` — `jev_router.py` vẫn import `typesafe_sdk` trực tiếp (legacy path, rewire ở story 39.2).
+  evidence: `tests/unit/services/decision/test_import_guard.py` scan scope decision/; `app/agents/chat/multi_agent_chat/main_agent/middleware/jev_router.py:99,120` import typesafe_sdk ngoài scope — invariant "chỉ jev.py import SDK" chưa enforce repo-wide.
+  resolved: 2026-09-22 — guard extended to all `app/**/*.py` with explicit allowlist `{decision/backends/jev.py, jev_router.py}`; any NEW typesafe_sdk importer fails the test.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-2-subagent-routing-jev-choice.md`
+  summary: Thread `thread_id` through `DecisionService.decide()` → `record_token_usage` so decision TokenUsage rows link to the originating chat thread (stack.py:111 has it; record_token_usage supports it; decide() lacks the param).
+  evidence: review finding — routing telemetry rows are unlinked from chat threads; adding the param is a cross-story API surface change.
+  resolved: 2026-09-22 — `decide(thread_id: int|None)` forwarded through `_record_usage` → `record_token_usage(thread_id=)`; jev_router ctor + `build_jev_router_mw` + `stack.py:277` wire it; tests at service/middleware/stack levels.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-2-subagent-routing-jev-choice.md`
+  summary: Import guard only detects AST `import`/`from` nodes — misses `importlib.import_module("typesafe_sdk")` and `__import__` dynamic imports.
+  evidence: pre-existing test_import_guard.py limitation from story 39.1; repo-wide scan passed but dynamic-import bypass is unguarded.
+  resolved: 2026-09-22 — `test_import_guard.py` now flags `importlib.import_module`/`__import__` dynamic typesafe_sdk imports via `_is_dynamic_typesafe_import`; parametrized positive/negative helper tests added.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-2-subagent-routing-jev-choice.md`
+  summary: Sync stale docs — `docs/system-architecture-2026-09-21.md` + `architecture-jev-decision-service/INTEGRATION-POINTS.md` still describe direct typesafe_sdk integration; `.env.example` lacks `NOWING_ENABLE_JEV_ROUTER` flag.
+  evidence: story 39.2 rewired jev_router.py through DecisionService (no direct SDK, no TYPESAFE_API_KEY gate); docs predate the rewire.
+
+  resolved: 2026-09-22 — `docs/system-architecture-2026-09-21.md` + `INTEGRATION-POINTS.md` updated to DecisionService routing (no direct SDK, no TYPESAFE_API_KEY gate); `.env.example` gained `NOWING_ENABLE_JEV_ROUTER`.- source_spec: `_bmad-output/implementation-artifacts/spec-39-3-entity-resolution-confidence-scoring.md`
+  summary: Jev rescore verdict không persist vào Redis corp cache — company Jev-verified ở fresh-search call 1 vẫn trả `requires_manual_confirmation=True` ở cached call 2 (verified/manual flip-flop).
+  evidence: spec-39-3 boundary "cached paths không động vào" cố tình loại cached/tax_id/breaker khỏi rescore; persist `_jev_verdict` vào cached payload + áp mapping ở ~3 cached-return sites vượt boundary đã approve — cần human quyết định consistency vs paid-call scope.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-3-entity-resolution-confidence-scoring.md`
+  summary: `refine_entity_groups` chạy tối đa 50 sequential `decide()` không có overall deadline — worst case (mỗi call timeout 5s + fallback leg) aggregate() stall vài phút.
+  evidence: spec-39-3 cap MAX_DECISION_CALLS_PER_RUN=50 bound số calls nhưng không bound wall-clock; thêm param `max_seconds` (default None → no behavior change) + `stats.aborted` khi vượt deadline nếu production cần.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-4-content-guardrails-jev-noul-battery.md`
+  summary: Live-verify rag run showed Jev `is_relevant` over-drops VN text lacking literal geo terms — 6/18 real Quận 3 listings scored rel=0.04–0.09 and were hard-dropped despite being correct results. Fixed same-day via demote-to-tail for relevance-negative verdicts on rag surfaces.
+  evidence: `scripts/verify_content_guardrails_39_4.py --mode rag` (2026-09-22); threshold tuning could not help — Jev was already confident (rel≤0.09); issue is text-limited judgment, not gate calibration.
+  resolved: 2026-09-22 — commit `64eef5446`: `_filter_rag_results` + `private_provider.search` move `DROP+reasons=("irrelevant",)` results to tail instead of removing; injection/mask_failed still hard-drop. Residual watch item: demoted docs still consume agent context tokens — if tail-noise becomes a problem, add `DECISION_FILTER_DROP_IRRELEVANT` env to flip back to hard-drop.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-7-decision-telemetry-dashboard-cost-tracking.md`
+  summary: Cost alert evaluate on-read — `AdminHealthAlert` chỉ fire khi có admin mở dashboard sau khi breach; không có periodic check nên alert không fire khi zero page views.
+  evidence: spec Design Notes + review (no findings against it — accepted design); nếu ops cần alert proactive (fire khi không ai xem dashboard), thêm Celery beat entry gọi cùng `_maybe_insert_cost_alert` logic — phải dùng advisory lock sẵn có để tránh race với on-read path.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-7-decision-telemetry-dashboard-cost-tracking.md`
+  summary: Accuracy chỉ tính trên rows admin label thủ công qua POST /decisions/{id}/label — `scripts/jev_eval` bypass DecisionService+session nên eval runs không tự tạo labeled TokenUsage rows; label UI trong panel cũng chưa có (chỉ có API).
+  evidence: spec Design Notes "Ground truth via PATCH, not eval runner"; nếu muốn accuracy từ eval harness, thêm `--persist` flag ghi TokenUsage rows với call_details.correct — cân nhắc usage_type riêng (vd "decision_eval") để không lẫn prod traffic.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-7-decision-telemetry-dashboard-cost-tracking.md`
+  summary: Dashboard chỉ thấy tasks của consumers forward session — hiện chỉ `jev_router` (routing) mở async_session_maker riêng; filter/intent/entity calls log-only nên không xuất hiện trên dashboard.
+  evidence: spec Always "coverage honesty" + review pass (verified jev_router.py:190-205); mở rộng coverage = quyết định per-consumer (mỗi surface cần workspace_id/user_id context + session an toàn — 39.4 cố ý không forward shared session vì asyncpg single-connection).

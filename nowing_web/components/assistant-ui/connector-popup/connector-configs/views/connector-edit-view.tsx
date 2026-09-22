@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { ArrowLeft, Info, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms";
@@ -78,6 +79,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
+	const t = useTranslations("assistant");
 	const workspaceIdAtom = useAtomValue(activeWorkspaceIdAtom);
 	const isAuthExpired = connector.config?.auth_expired === true;
 	const reauthEndpoint = getReauthEndpoint(connector);
@@ -213,7 +215,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 					className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 				>
 					<ArrowLeft data-icon="inline-start" />
-					Back to connectors
+					{t("asst_back_to_connectors")}
 				</Button>
 
 				{/* Connector header */}
@@ -227,9 +229,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 								{getConnectorDisplayName(connector.name)}
 							</h2>
 							<p className="text-xs sm:text-base text-muted-foreground mt-1">
-								{isLive
-									? "Manage your connected account"
-									: "Manage your connector settings and sync configuration"}
+								{isLive ? t("conn_manage_account") : t("conn_manage_settings")}
 							</p>
 						</div>
 					</div>
@@ -245,12 +245,12 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 							{isQuickIndexing || isIndexing ? (
 								<>
 									<RefreshCw className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-									Syncing
+									{t("asst_syncing")}
 								</>
 							) : (
 								<>
 									<RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
-									Quick Index
+									{t("asst_quick_index")}
 								</>
 							)}
 						</Button>
@@ -331,11 +331,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 										onEnabledChange={onPeriodicEnabledChange}
 										onFrequencyChange={onFrequencyChange}
 										disabled={isDisabled}
-										disabledMessage={
-											isDisabled
-												? "Select at least one folder or file above to enable periodic sync"
-												: undefined
-										}
+										disabledMessage={isDisabled ? t("conn_select_folder_sync") : undefined}
 									/>
 								);
 							})()}
@@ -344,9 +340,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						{connector.is_indexable && !isLive && (
 							<Alert>
 								<Info />
-								<AlertDescription>
-									You can continue using Nowing while we sync your data. Check inbox for updates.
-								</AlertDescription>
+								<AlertDescription>{t("asst_you_can_continue_using")}</AlertDescription>
 							</Alert>
 						)}
 					</div>
@@ -366,9 +360,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 				{showDisconnectConfirm ? (
 					<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 sm:flex-initial">
 						<span className="text-xs sm:text-sm text-muted-foreground sm:whitespace-nowrap">
-							{isLive
-								? "Your agent will lose access to this service"
-								: "This will remove all indexed data"}
+							{isLive ? t("conn_lose_access") : t("conn_remove_data")}
 						</span>
 						<div className="flex items-center gap-2 sm:gap-3">
 							<Button
@@ -378,7 +370,9 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 								disabled={isDisconnecting}
 								className="relative text-xs sm:text-sm flex-1 sm:flex-initial h-10 sm:h-auto py-2 sm:py-2"
 							>
-								<span className={isDisconnecting ? "opacity-0" : ""}>Confirm Disconnect</span>
+								<span className={isDisconnecting ? "opacity-0" : ""}>
+									{t("asst_confirm_disconnect")}
+								</span>
 								{isDisconnecting && <Spinner size="sm" className="absolute" />}
 							</Button>
 							<Button
@@ -399,7 +393,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						disabled={isSaving || isDisconnecting}
 						className="text-xs sm:text-sm flex-1 sm:flex-initial h-12 sm:h-auto py-3 sm:py-2"
 					>
-						Disconnect
+						{t("asst_disconnect")}
 					</Button>
 				)}
 				{isAuthExpired && reauthEndpoint ? (
@@ -409,7 +403,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						className="text-xs sm:text-sm flex-1 sm:flex-initial h-12 sm:h-auto py-3 sm:py-2 bg-amber-600 hover:bg-amber-700 text-white"
 					>
 						<RefreshCw className={cn("size-3.5", reauthing && "animate-spin")} />
-						Re-authenticate
+						{t("asst_re_authenticate")}
 					</Button>
 				) : !isLive ? (
 					<Button
@@ -417,7 +411,7 @@ export const ConnectorEditView: FC<ConnectorEditViewProps> = ({
 						disabled={isSaving || isDisconnecting}
 						className="relative text-xs sm:text-sm flex-1 sm:flex-initial h-12 sm:h-auto py-3 sm:py-2"
 					>
-						<span className={isSaving ? "opacity-0" : ""}>Save Changes</span>
+						<span className={isSaving ? "opacity-0" : ""}>{t("asst_save_changes")}</span>
 						{isSaving && <Spinner size="sm" className="absolute" />}
 					</Button>
 				) : null}

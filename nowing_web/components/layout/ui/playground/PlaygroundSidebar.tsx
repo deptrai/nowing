@@ -3,6 +3,7 @@
 import { ChevronRight, History, KeyRound, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { PLAYGROUND_PLATFORMS } from "@/lib/playground/catalog";
@@ -14,23 +15,23 @@ interface PlaygroundSidebarProps {
 	className?: string;
 }
 
-export function getPlaygroundNavItems(base: string): RoutedSectionItem[] {
+export function getPlaygroundNavItems(base: string, t: (k: string) => string): RoutedSectionItem[] {
 	return [
 		{
 			value: "overview",
-			label: "Overview",
+			label: t("overview"),
 			href: base,
 			icon: <LayoutGrid className="h-3.5 w-3.5" />,
 		},
 		{
 			value: "runs",
-			label: "API Runs",
+			label: t("api_runs"),
 			href: `${base}/runs`,
 			icon: <History className="h-3.5 w-3.5" />,
 		},
 		{
 			value: "api-keys",
-			label: "API Keys",
+			label: t("api_keys"),
 			href: `${base}/api-keys`,
 			icon: <KeyRound className="h-3.5 w-3.5" />,
 		},
@@ -73,7 +74,8 @@ export function getPlaygroundActiveValue(
 export function getPlaygroundSelectedLabel(
 	activeValue: string,
 	items: RoutedSectionItem[],
-	groups: RoutedSectionGroup[]
+	groups: RoutedSectionGroup[],
+	t: (k: string) => string
 ): string {
 	const topLevelItem = items.find((item) => item.value === activeValue);
 	if (topLevelItem) return topLevelItem.label;
@@ -82,7 +84,7 @@ export function getPlaygroundSelectedLabel(
 	const child = group?.items.find((item) => item.value === activeValue);
 
 	if (group && child) return `${group.label}: ${child.label}`;
-	return "API Playground";
+	return t("api_playground");
 }
 
 function findActiveGroupValue(groups: RoutedSectionGroup[], activeValue: string): string | null {
@@ -178,9 +180,10 @@ function usePlaygroundBase(workspaceId: string, pathname: string | null) {
 }
 
 export function PlaygroundSidebar({ workspaceId, className }: PlaygroundSidebarProps) {
+	const t = useTranslations("layout");
 	const pathname = usePathname();
 	const base = usePlaygroundBase(workspaceId, pathname);
-	const items = useMemo(() => getPlaygroundNavItems(base), [base]);
+	const items = useMemo(() => getPlaygroundNavItems(base, t), [base, t]);
 	const groups = useMemo(() => getPlaygroundNavGroups(base), [base]);
 	const activeValue = getPlaygroundActiveValue(pathname, base, items);
 	const [expandedGroup, setExpandedGroup] = useState<string | null>(() =>
@@ -203,7 +206,7 @@ export function PlaygroundSidebar({ workspaceId, className }: PlaygroundSidebarP
 		>
 			<div className="flex h-10 shrink-0 items-center px-3 border-b border-border/40">
 				<h1 className="truncate text-xs font-semibold tracking-tight text-foreground">
-					API Playground
+					{t("api_playground")}
 				</h1>
 			</div>
 			<nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-1.5">

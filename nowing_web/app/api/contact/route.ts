@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { db } from "@/app/db";
 import { usersTable } from "@/app/db/schema";
@@ -12,6 +13,8 @@ const contactSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+	const t = await getTranslations("api");
+
 	try {
 		const body = await request.json();
 
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(
 			{
 				success: true,
-				message: "Contact form submitted successfully",
+				message: t("contact_success"),
 				data: result[0],
 			},
 			{ status: 201 }
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json(
 				{
 					success: false,
-					message: "Validation error",
+					message: t("validation_error"),
 					errors: error.issues,
 				},
 				{ status: 400 }
@@ -53,7 +56,7 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(
 			{
 				success: false,
-				message: "Failed to submit contact form",
+				message: t("contact_failed"),
 			},
 			{ status: 500 }
 		);

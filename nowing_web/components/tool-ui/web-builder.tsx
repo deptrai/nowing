@@ -14,6 +14,7 @@ import {
 	SparklesIcon,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -52,6 +53,7 @@ export type WebAppBuildArgs = z.infer<typeof WebAppBuildArgsSchema>;
 export type WebAppBuildResult = z.infer<typeof WebAppBuildResultSchema>;
 
 function parseToolResult(raw: unknown): Partial<WebAppBuildResult> {
+	const t = useTranslations("toolUi");
 	if (typeof raw === "object" && raw !== null) {
 		return raw as Partial<WebAppBuildResult>;
 	}
@@ -73,6 +75,7 @@ function parseToolResult(raw: unknown): Partial<WebAppBuildResult> {
 // ============================================================================
 
 function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-xl overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-sm select-none">
 			<div className="flex items-center justify-between gap-3">
@@ -82,14 +85,14 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 					</div>
 					<div className="min-w-0">
 						<h4 className="truncate text-sm font-semibold text-foreground">
-							{appName || "Generating Web App"}
+							{appName || t("generating_web_app")}
 						</h4>
-						<TextShimmerLoader text="Designing & scaffolding Next.js page..." size="sm" />
+						<TextShimmerLoader text={t("designing_scaffolding")} size="sm" />
 					</div>
 				</div>
 				<Badge variant="secondary" className="gap-1 px-2 py-0.5 text-xs">
 					<Loader2Icon className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
-					Building
+					{t("tu_building")}
 				</Badge>
 			</div>
 
@@ -151,6 +154,7 @@ export function GenerateWebAppToolUI({
 	result: rawResult,
 	status,
 }: ToolCallMessagePartProps<WebAppBuildArgs, WebAppBuildResult | string>) {
+	const t = useTranslations("toolUi");
 	const params = useParams();
 	const workspaceId = getWorkspaceIdNumber(params);
 	const setDockOpen = useSetAtom(dockOpenAtom);
@@ -173,7 +177,7 @@ export function GenerateWebAppToolUI({
 		Boolean(result.error) ||
 		Boolean(result.message && !result.app_id);
 
-	const appName = result.name || args.app_name || "Sales & Marketing Web App";
+	const appName = result.name || args.app_name || t("default_app_name");
 	const prompt = args.prompt;
 	const appId = result.app_id;
 	const slug = result.slug;
@@ -184,11 +188,11 @@ export function GenerateWebAppToolUI({
 
 	const handlePublish = async () => {
 		if (!appId) {
-			toast.error("Missing app ID for publishing");
+			toast.error(t("missing_app_id"));
 			return;
 		}
 		if (!workspaceId) {
-			toast.error("Missing workspace ID for publishing");
+			toast.error(t("missing_workspace_id"));
 			return;
 		}
 
@@ -200,14 +204,14 @@ export function GenerateWebAppToolUI({
 
 			if (deployRes.status === "published" && deployRes.public_url) {
 				setPublishedUrl(deployRes.public_url);
-				toast.success("Web app published successfully!", {
+				toast.success(t("published_success"), {
 					description: `Live at ${deployRes.public_url}`,
 				});
 			} else {
-				toast.error(deployRes.message || "Failed to publish web app");
+				toast.error(deployRes.message || t("publish_failed"));
 			}
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Publish request failed";
+			const msg = err instanceof Error ? err.message : t("tu_publish_request_failed");
 			toast.error(msg);
 		} finally {
 			setIsPublishing(false);
@@ -219,10 +223,10 @@ export function GenerateWebAppToolUI({
 		try {
 			await navigator.clipboard.writeText(effectivePublicUrl);
 			setCopied(true);
-			toast.success("Public URL copied to clipboard");
+			toast.success(t("public_url_copied"));
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
-			toast.error("Failed to copy public URL");
+			toast.error(t("copy_public_url_failed"));
 		}
 	};
 
@@ -246,8 +250,7 @@ export function GenerateWebAppToolUI({
 
 	// 2. Error State
 	if (isFailed) {
-		const errorMessage =
-			result.error || result.message || "Unable to generate the requested web application.";
+		const errorMessage = result.error || result.message || t("unable_to_generate");
 		return <WebAppErrorState title={appName} error={errorMessage} prompt={prompt} />;
 	}
 
@@ -290,7 +293,7 @@ export function GenerateWebAppToolUI({
 							: "border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300"
 					)}
 				>
-					{isPublished ? "Published" : "Generated"}
+					{isPublished ? t("published") : t("generated")}
 				</Badge>
 			</div>
 
@@ -299,7 +302,7 @@ export function GenerateWebAppToolUI({
 				<div className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3">
 					<div className="min-w-0 flex-1">
 						<p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-							Public URL
+							{t("tu_public_url")}
 						</p>
 						<a
 							href={effectivePublicUrl}
@@ -317,14 +320,14 @@ export function GenerateWebAppToolUI({
 							size="icon"
 							onClick={handleCopyPublicUrl}
 							className="size-7 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
-							title="Copy URL"
+							title={t("tu_copy_url")}
 						>
 							{copied ? (
 								<CheckIcon className="size-3.5" aria-hidden="true" />
 							) : (
 								<CopyIcon className="size-3.5" aria-hidden="true" />
 							)}
-							<span className="sr-only">Copy public URL</span>
+							<span className="sr-only">{t("tu_copy_public_url")}</span>
 						</Button>
 						<Button
 							type="button"
@@ -332,10 +335,10 @@ export function GenerateWebAppToolUI({
 							size="icon"
 							onClick={handleOpenLive}
 							className="size-7 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
-							title="Open site"
+							title={t("tu_open_site")}
 						>
 							<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-							<span className="sr-only">Open live website</span>
+							<span className="sr-only">{t("tu_open_live_website")}</span>
 						</Button>
 					</div>
 				</div>
@@ -345,9 +348,7 @@ export function GenerateWebAppToolUI({
 			{files.length > 0 && (
 				<div className="mt-3.5 flex items-center gap-2 text-xs text-muted-foreground">
 					<FileCode2Icon className="size-3.5 shrink-0" aria-hidden="true" />
-					<span className="truncate">
-						{files.length} project file{files.length === 1 ? "" : "s"} generated
-					</span>
+					<span className="truncate">{t("project_files_generated", { count: files.length })}</span>
 				</div>
 			)}
 
@@ -362,7 +363,7 @@ export function GenerateWebAppToolUI({
 						className="gap-1.5 text-xs font-semibold rounded-xl"
 					>
 						<SparklesIcon className="size-3.5" aria-hidden="true" />
-						Open Editor
+						{t("tu_open_editor")}
 					</Button>
 				)}
 
@@ -377,12 +378,12 @@ export function GenerateWebAppToolUI({
 						{isPublishing ? (
 							<>
 								<Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
-								Publishing...
+								{t("tu_publishing")}
 							</>
 						) : (
 							<>
 								<RocketIcon className="size-3.5" aria-hidden="true" />
-								Publish
+								{t("tu_publish")}
 							</>
 						)}
 					</Button>
@@ -396,7 +397,7 @@ export function GenerateWebAppToolUI({
 						className="gap-1.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-colors"
 					>
 						<ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-						Visit Live Site
+						{t("visit_live_site")}
 					</Button>
 				)}
 			</div>

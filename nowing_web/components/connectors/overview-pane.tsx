@@ -1,6 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ConnectorCard } from "@/components/assistant-ui/connector-popup/components/connector-card";
 import {
@@ -37,6 +38,7 @@ export function OverviewPane({
 	indexingConnectorIds,
 	onSelect,
 }: OverviewPaneProps) {
+	const t = useTranslations("connectors");
 	const [searchQuery, setSearchQuery] = useState("");
 	const selfHosted = useIsSelfHosted();
 	const { isDesktop } = usePlatform();
@@ -91,7 +93,7 @@ export function OverviewPane({
 					/>
 					<Input
 						type="text"
-						placeholder="Search integrations…"
+						placeholder={t("search_integrations")}
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 						className="w-full pl-9"
@@ -102,8 +104,8 @@ export function OverviewPane({
 				{visibleDefinitions.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-20 text-center">
 						<Search className="size-8 text-muted-foreground mb-3" aria-hidden="true" />
-						<p className="text-sm text-muted-foreground">No integrations found</p>
-						<p className="text-xs text-muted-foreground/60 mt-1">Try a different search term</p>
+						<p className="text-sm text-muted-foreground">{t("no_integrations")}</p>
+						<p className="text-xs text-muted-foreground/60 mt-1">{t("try_different")}</p>
 					</div>
 				) : (
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

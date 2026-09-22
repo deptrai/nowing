@@ -2,6 +2,7 @@
 
 import { ArrowUp, ChevronRightIcon, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ function DemoTimeline({
 	runningIndex: number;
 	settled: boolean;
 }) {
+	const t = useTranslations("homepage");
 	const [isOpen, setIsOpen] = useState(true);
 
 	// Mirror the real timeline: open while processing, auto-collapse once settled.
@@ -70,7 +72,9 @@ function DemoTimeline({
 	}, [settled]);
 
 	const visible = steps.slice(0, startedCount);
-	const headerText = settled ? "Reviewed" : (steps[runningIndex]?.title ?? "Processing");
+	const headerText = settled
+		? t("demo_reviewed")
+		: (steps[runningIndex]?.title ?? t("demo_processing"));
 
 	return (
 		<div className="w-full">
@@ -154,6 +158,7 @@ export function HeroChatDemo({
 	demo: HeroChatDemoScript;
 	reduceMotion: boolean;
 }) {
+	const t = useTranslations("homepage");
 	const router = useRouter();
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const [interrupted, setInterrupted] = useState(false);
@@ -254,8 +259,8 @@ export function HeroChatDemo({
 							handleSend();
 						}
 					}}
-					placeholder={interrupted ? PLACEHOLDER : undefined}
-					aria-label="Try Nowing: describe a task for your agent"
+					placeholder={interrupted ? t("chat_placeholder") : undefined}
+					aria-label={t("aria_try_nowing")}
 					className="w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
 				/>
 				{!interrupted && (
@@ -269,7 +274,7 @@ export function HeroChatDemo({
 								<Caret />
 							</span>
 						) : (
-							<span className="text-muted-foreground">{PLACEHOLDER}</span>
+							<span className="text-muted-foreground">{t("chat_placeholder")}</span>
 						)}
 					</div>
 				)}
@@ -286,7 +291,7 @@ export function HeroChatDemo({
 					type="button"
 					size="icon"
 					onClick={handleSend}
-					aria-label="Send message"
+					aria-label={t("aria_send_message")}
 					className="size-9 shrink-0 rounded-full"
 				>
 					<ArrowUp className="size-5" aria-hidden="true" />

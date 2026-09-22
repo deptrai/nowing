@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-09-11
+# last_updated: '09-22-2026 00:05'
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-11-2026 23:35'
+last_updated: '09-22-2026 00:05'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -224,11 +224,18 @@ development_status:
   18-8-rate-limiting-tenant-isolation: done
   epic-18-retrospective: done
 
-  epic-20: done
+  epic-20: in-progress
   20-4-service-to-service-auth-cost-ledger-sync: done
   20-1-nowing-scraper-to_chunks: done
   20-2-gap-fill-caller-cost-allocation: done
   20-3-nowingprivateprovider-for: done
+  20-5-chainlens-contents-url-extraction: done
+  20-6-chainlens-code_search-code-search: done
+  20-7-chainlens-openai-gateway-model-connections: done
+  20-8-chainlens-webhook-monitors-automations: ready-for-dev
+  20-9-async-research-jobs-resumption: ready-for-dev
+  20-10-chainlens-pulse_feed-curated-intelligence-feed: ready-for-dev
+  20-11-chainlens-pulse_research-angle-deep-research: ready-for-dev
   epic-20-retrospective: done
 
   epic-21: done
@@ -296,7 +303,7 @@ development_status:
   25-7-third-party-health-operations-dashboard: done
   epic-25-retrospective: done
 
-  epic-26: done
+  epic-26: in-progress
   26-25-customer-location-profile-selector-with-progressive-disclosu: done
   26-26-location-aware-adapter-routing-coverage-quality: done
   26-27-pre-flight-lead-plan-summary-plansummarycard: done
@@ -313,6 +320,7 @@ development_status:
   26-11-two-tier-phone-unlock-ux-refinement: done
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
+  26-9c-native-wide_research-matrix-upgrade: ready-for-dev
   epic-26-retrospective: done
 
   epic-27: done
@@ -342,39 +350,78 @@ development_status:
   29-6-data-governance-retention-policy-console: done
   epic-29-retrospective: done
 
-  epic-30: done
+  epic-30: in-progress
   30-2-redis-event-bus-subscribe-failure-state-leak: done
   30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
   30-8-epic-13-canonical-entity-cleanup: done
   30-9-technical-debt-retirement-system-hardening: done
+  30-10-frontend-navigation-performance-layout-modernization: done
   epic-30-retrospective: done
-  epic-31: in-progress
-  31-1-dokploy-container-cgroup-network-isolation: review
-  31-2-custom-cname-dns-txt-verification: backlog
-  31-3-ast-static-eval-dynamic-jsx-mark-tool: backlog
-  31-4-entitlement-presentation-format-selection: backlog
-  epic-32: backlog
-  32-1-human-live-takeover-popover-countdown-scheduler: backlog
-  32-2-chrome-extension-ondetach-reconnection: backlog
-  32-3-cryptographic-cdp-session-token-audit-log: backlog
-  epic-33: backlog
-  33-1-automated-secret-key-rotation-dual-key-fallback: backlog
-  33-2-superadmin-cross-workspace-dnc-purge-engine: backlog
-  33-3-two-phase-transactional-credit-locking-waterfall: backlog
-  epic-34: backlog
-  34-1-bidirectional-deal-stage-sync-hubspot-salesforce: backlog
-  34-2-web-admin-telegram-userbot-channels-console: backlog
-  34-3-dedicated-crm-deal-pipeline-activity-timeline-ui: backlog
-  epic-35: backlog
-  35-1-redis-consumer-group-xautoclaim-dlq-replay: backlog
-  35-2-sub-quadratic-windowed-deduplication: backlog
-  35-3-per-platform-scraper-failure-metrics-sse-heartbeat: backlog
-  36-1-wire-x-crawl-post-fallback-unsupported-marking: done
-  36-2-loop-scoped-mcp-client-cache: backlog
-  36-3-centralized-xact-error-map: backlog
-  36-4-single-writer-stream-cleanup: backlog
-  36-5-stream-consumer-schema-contract-dlq: backlog
-  36-6-canonical-action-matrix-legacy-deprecation: backlog
+
+  epic-31: done
+  31-1-dokploy-multi-tenant-container-resource-constraints-cgroup-c: done
+  31-2-strict-cname-dns-ingress-ownership-verification: done
+  31-3-ast-static-eval-policy-for-dynamic-jsx-expression-matching-i: done
+  31-4-entitlement-driven-presentation-studio-format-selection-from: done
+  epic-31-retrospective: optional
+
+  epic-32: done
+  32-1-humanlivetakeoverpopover-ui-with-countdown-timer-and-abort-s: done
+  32-2-chrome-extension-chrome-debugger-ondetach-recovery-reconnect: done
+  32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: done
+  epic-32-retrospective: optional
+
+  epic-33: done
+  33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
+  33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
+  33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
+  epic-33-retrospective: optional
+
+  epic-34: done
+  34-1-bi-directional-deal-stage-activity-synchronization-for-hubsp: done
+  34-2-web-admin-management-endpoints-for-telegram-userbots-monitor: done
+  34-3-dedicated-crm-deal-pipeline-customer-activity-timeline-ui-ta: done
+  epic-34-retrospective: optional
+
+  epic-35: done
+  35-1-redis-consumer-group-pending-message-auto-claim-xautoclaim-d: done
+  35-2-o-n-log-n-spatial-windowed-deduplication-for-mass-entity-dat: done
+  35-3-per-platform-scraper-failure-metrics-sse-streaming-idle-hear: done
+  epic-35-retrospective: optional
+
+  epic-36: done
+  36-1-wire-x_crawl_post-fallback-graceful-unsupported-marking-p0-u: done
+  36-2-loop-scoped-xactionsmcpclient-connection-cache: done
+  36-3-centralized-xact_-task-behavior-error-map: done
+  36-4-single-writer-stream-stop-nowing-publishing-to-stream-social: done
+  36-5-stream-consumer-schema-contract-dlq-routing: done
+  36-6-canonical-action-matrix-legacy-tool-deprecation: done
+  epic-36-retrospective: done
+
+  epic-37: in-progress
+  37-1-proactive-intent-signal-radar-background-ingestion-telegram: 
+    ready-for-dev
+  37-2-vietnam-cultural-honorific-relationship-tone-engine: ready-for-dev
+  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark-cale: 
+    ready-for-dev
+  37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper: ready-for-dev
+  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: 
+    ready-for-dev
+  37-6-realtime-prospect-engagement-tracker-telegram-alert-bot-ping: 
+    ready-for-dev
+  37-7-hybrid-pricing-packaging-ui-auto-refund-guarantee-sla: ready-for-dev
+  epic-37-retrospective: optional
+
+  epic-38: in-progress
+  38-1-livekit-sip-gateway-kamailio-media-infrastructure: done
+  38-2-voice-agent-worker-runtime-với-silero-vad-micro-clause-strea: done
+  38-3-anti-false-interruption-multi-tier-barge-in-engine-ducking-k: backlog
+  38-4-telephony-compliance-gate-national-dnc-5656-curfew-scheduler: backlog
+  38-5-telecom-signal-classifier-amd-dead-air-watchdog-engine: backlog
+  38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip-architectur: backlog
+  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: backlog
+  38-8-voice-billing-realtime-metering-qa-scorecard: backlog
+  epic-38-retrospective: optional
 validation_reports:
   - story: "3.18"
     type: "code-review"
@@ -597,7 +644,7 @@ validation_reports:
 waves:
   - wave: 0
     theme: P0 — Lead Intelligence & DSH Substrate Integration
-    status: in-progress
+    status: done
     evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker 
       active; FastMCP batch ingestion and Daytona Sandbox ready
     stories:
@@ -610,7 +657,7 @@ waves:
       Pro Formatter in Daytona sandbox without building new container.
   - wave: 1
     theme: P0 — Interactive Browser Operator & Projects Workspace
-    status: backlog
+    status: done
     evidence_gate: Plasmo extension CDP debugger enabled; 
       `browser_operator.execute` capability and `web_crawler` prompt-in-UI 
       working; Human Live Takeover UI partially wired in popup; mission 
@@ -627,7 +674,7 @@ waves:
       downstream agent turns.
   - wave: 2
     theme: P1 — Inbound Mail Gateway & Long-running Automations
-    status: backlog
+    status: done
     evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat 
       stateful delta snapshots comparing runs
     stories:
@@ -640,7 +687,7 @@ waves:
       analysis to existing Celery Beat scheduler.
   - wave: 3
     theme: P1/P2 — Creative Studio & Full-Stack Web Builder
-    status: backlog
+    status: done
     evidence_gate: PPTX export + Marp slides working; pyannote/whisper 
       diarization working; Next.js scaffolding + *.apps.nowing.net Traefik/Caddy
       routing working

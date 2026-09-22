@@ -125,6 +125,15 @@ class CustomDomainOutput(BaseModel):
     status: str  # active, pending_verification, failed
     cname_target: str
     message: str | None = None
+    verify_stage: str | None = None  # txt | cname | not_found
+
+
+class CustomDomainTokenOutput(BaseModel):
+    """Output payload for rotating the DNS verification token."""
+
+    app_id: str
+    workspace_id: int
+    custom_domain_verify_token: str
 
 
 class MarkToolRect(BaseModel):
@@ -204,6 +213,7 @@ class WorkspaceAppRead(BaseModel):
     public_url: str | None = None
     custom_domain: str | None = None
     custom_domain_status: str | None = None
+    custom_domain_verify_token: str | None = None
     error_message: str | None = None
     created_at: datetime
     updated_at: datetime

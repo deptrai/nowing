@@ -30,6 +30,8 @@ import {
 	updateWorkspaceMcpToolResponse,
 	updateWorkspaceRequest,
 	updateWorkspaceResponse,
+	type WorkspaceEntitlementResponse,
+	workspaceEntitlementResponse,
 	type WorkspaceSubscriptionResponse,
 	workspaceSubscriptionResponse,
 } from "@/contracts/types/workspace.types";
@@ -227,6 +229,13 @@ class WorkspacesApiService {
 		return baseApiService.get(
 			`/api/v1/workspaces/${workspaceId}/subscription`,
 			workspaceSubscriptionResponse
+		);
+	};
+
+	getWorkspaceEntitlement = async (workspaceId: number): Promise<WorkspaceEntitlementResponse> => {
+		return baseApiService.get(
+			`/api/v1/workspaces/${workspaceId}/entitlement`,
+			workspaceEntitlementResponse
 		);
 	};
 

@@ -6,9 +6,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.config import config as _cfg
 from app.db import Memory
 
 pytestmark = [pytest.mark.unit, pytest.mark.memory]
+
+# Embedding width follows the configured model — derive, don't hardcode.
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 
 class _FakeResult:
@@ -67,7 +71,7 @@ async def test_repository_dedup_updates_existing_memory():
         created = await repo.create_memory(
             workspace_id=1,
             content="Fact one",
-            embedding=[0.1] * 384,
+            embedding=[0.1] * _EMBEDDING_DIM,
             type="semantic",
         )
         assert isinstance(created, Memory)
@@ -75,7 +79,7 @@ async def test_repository_dedup_updates_existing_memory():
         updated = await repo.create_memory(
             workspace_id=1,
             content="Fact one",
-            embedding=[0.1] * 384,
+            embedding=[0.1] * _EMBEDDING_DIM,
             type="semantic",
         )
         assert updated.id == 1

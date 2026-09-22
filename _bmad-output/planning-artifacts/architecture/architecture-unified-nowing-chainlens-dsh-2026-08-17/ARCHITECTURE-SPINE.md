@@ -438,6 +438,24 @@ Các AD sau được bổ sung sau Implementation Readiness Assessment 2026-08-2
 
 ---
 
+## 12. Frontend Navigation & App Shell Invariants (AD-122)
+
+> Bổ sung 2026-09-17 theo Sprint Change Proposal (Story 30.10) để giải quyết dứt điểm nợ kỹ thuật điều hướng, UI freezing và layout thrashing trong `nowing_web`.
+
+### AD-122 — Semantic Client Navigation & Layout Boundary Invariants [ADOPTED 2026-09-17]
+- **Binds:** `nowing_web/components/layout/ui/sidebar/*`, `nowing_web/components/layout/ui/icon-rail/*`, `nowing_web/components/layout/ui/shell/*`, và toàn bộ `nowing_web/app/dashboard/[workspace_id]/*`.
+- **Prevents:**
+  1. UI freezing (đơ màn hình 500ms – 2s) khi click chuyển trang do thiếu prefetch và thiếu route loading boundaries.
+  2. Layout Thrashing (destroy và mount lại DOM tree cấp cao) khi chuyển đổi giữa Chat và Workspace tools.
+  3. Phình vendor bundle ở Critical Path do đặt shared providers sai phạm vi (Fumadocs ở Root Layout).
+- **Rule:**
+  1. **Rule 1 — Semantic Link Navigation:** Mọi thành phần điều hướng cố định trong App Shell (`SidebarButton`, `IconRail`, `AllChatsSidebar`, `TabBar`) BẮT BUỘC sử dụng Next.js `<Link href="..." prefetch={true}>`. Cấm sử dụng thẻ `<button onClick={() => router.push(...)}>` cho các liên kết điều hướng tĩnh nội bộ. Hover chuột (`onMouseEnter`) phải tự động kích hoạt prefetch tài nguyên RSC và query cache liên quan.
+  2. **Rule 2 — Mandatory Route Loading Boundaries:** TẤT CẢ các sub-routes trong `app/dashboard/[workspace_id]/*` BẮT BUỘC phải có file `loading.tsx` tương ứng kế thừa `DashboardPageSkeleton.tsx`. Next.js App Router yêu cầu boundary này để chuyển view sang skeleton lập tức (< 50ms) trong khi server/chunks đang nạp, triệt tiêu hoàn toàn trạng thái "frozen transition".
+  3. **Rule 3 — Persistent Shell Container (No Layout Thrashing):** `DesktopWorkspaceRegion` trong `LayoutShell.tsx` phải là một container DOM duy nhất và bất biến (persistent mount). Cấm rẽ nhánh ternary để thay đổi component cha (`MainContentPanel` ⇄ `WorkspacePanel`). Sự khác biệt về bố cục hiển thị (chiều rộng tối đa, margin, padding) giữa các view phải được xử lý qua CSS classes áp dụng cho `children` wrapper.
+  4. **Rule 4 — Provider Scoping Invariant:** Thư viện hoặc provider tài liệu tĩnh/marketing (cụ thể là `Fumadocs RootProvider` và CSS liên quan) CHỈ được đặt trong route group hoặc layout chuyên trách (`app/docs/layout.tsx`), TUYỆT ĐỐI KHÔNG được đặt tại `RootLayout` (`app/layout.tsx`) để tránh làm phình bundle size của Dashboard.
+
+---
+
 ## Amendments (2026-08-24)
 
 > Ratified during the `bmad-architecture` skill update for Epic 27.

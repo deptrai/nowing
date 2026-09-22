@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,39 +19,41 @@ interface ActionSelectorProps {
 	disabled?: boolean;
 }
 
-const ACTION_LABELS: Record<BulkAction, { label: string; desc: string }> = {
-	archive_inactive_workspaces: {
-		label: "Archive Inactive Workspaces",
-		desc: "Archive workspaces that have had no activity for a given duration.",
-	},
-	rotate_api_keys: {
-		label: "Rotate API Keys",
-		desc: "High-risk: Revoke/reset API keys for matching workspaces. Password or MFA required.",
-	},
-	assign_role: {
-		label: "Assign Role to Members",
-		desc: "Bulk assign a role to workspace members matching the filter.",
-	},
-	delete_source_type_memories: {
-		label: "Delete Memories by Source Type",
-		desc: "Purge automated memories (e.g. scraper runs, podcasts) matching criteria.",
-	},
-	apply_tier: {
-		label: "Apply Plan Tier to Workspaces",
-		desc: "Upgrade or downgrade the plan tier across matching workspaces.",
-	},
-	revoke_membership: {
-		label: "Revoke Member Access",
-		desc: "Remove members from workspaces based on inactivity or role.",
-	},
-};
-
 export function ActionSelector({
 	value,
 	onChange,
 	isSuperadmin = true,
 	disabled = false,
 }: ActionSelectorProps) {
+	const t = useTranslations("bulkOps");
+
+	const actionLabels: Record<BulkAction, { label: string; desc: string }> = {
+		archive_inactive_workspaces: {
+			label: t("action_archive_workspaces_label"),
+			desc: t("action_archive_workspaces_desc"),
+		},
+		rotate_api_keys: {
+			label: t("action_rotate_keys_label"),
+			desc: t("action_rotate_keys_desc"),
+		},
+		assign_role: {
+			label: t("action_assign_role_label"),
+			desc: t("action_assign_role_desc"),
+		},
+		delete_source_type_memories: {
+			label: t("action_delete_memories_label"),
+			desc: t("action_delete_memories_desc"),
+		},
+		apply_tier: {
+			label: t("action_apply_tier_label"),
+			desc: t("action_apply_tier_desc"),
+		},
+		revoke_membership: {
+			label: t("action_revoke_membership_label"),
+			desc: t("action_revoke_membership_desc"),
+		},
+	};
+
 	const actions = (Object.keys(ACTION_METADATA) as BulkAction[]).filter((action) => {
 		if (!isSuperadmin && ACTION_METADATA[action].superadminOnly) {
 			return false;
@@ -62,11 +65,11 @@ export function ActionSelector({
 		<div className="space-y-2">
 			<div className="flex items-center justify-between">
 				<Label htmlFor="bulk-action-select" className="text-sm font-medium">
-					Select Bulk Action
+					{t("select_action")}
 				</Label>
 				{value && ACTION_METADATA[value]?.isHighRisk && (
 					<Badge variant="destructive" className="text-xs">
-						High Risk Action
+						{t("high_risk_badge")}
 					</Badge>
 				)}
 			</div>
@@ -76,12 +79,12 @@ export function ActionSelector({
 				disabled={disabled}
 			>
 				<SelectTrigger id="bulk-action-select" className="w-full">
-					<SelectValue placeholder="Choose an action to perform..." />
+					<SelectValue placeholder={t("choose_action_placeholder")} />
 				</SelectTrigger>
 				<SelectContent>
 					{actions.map((action) => {
 						const meta = ACTION_METADATA[action];
-						const info = ACTION_LABELS[action];
+						const info = actionLabels[action];
 						return (
 							<SelectItem key={action} value={action}>
 								<div className="flex flex-col py-1 text-left">

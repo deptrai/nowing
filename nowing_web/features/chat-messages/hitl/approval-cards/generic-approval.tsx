@@ -1,6 +1,7 @@
 "use client";
 
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ function ParamEditor({
 	onChange: (updated: Record<string, unknown>) => void;
 	disabled: boolean;
 }) {
+	const t = useTranslations("chatMessages");
 	const entries = Object.entries(params);
 	if (entries.length === 0) return null;
 
@@ -71,6 +73,7 @@ function GenericApprovalCardView({
 	interruptData: InterruptResult;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("layout");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [editedParams, setEditedParams] = useState<Record<string, unknown>>(args);
 	const [isEditing, setIsEditing] = useState(false);
@@ -138,14 +141,14 @@ function GenericApprovalCardView({
 								: displayName}
 					</p>
 					{phase === "processing" ? (
-						<TextShimmerLoader text="Executing..." size="sm" />
+						<TextShimmerLoader text={t("x_executing")} size="sm" />
 					) : phase === "complete" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Action completed</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("x_action_completed")}</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Action was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("x_action_was_cancelled")}</p>
 					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("x_requires_your_approval_to")}
 						</p>
 					)}
 					{mcpServer && (
@@ -208,7 +211,7 @@ function GenericApprovalCardView({
 						)}
 						{canApproveAlways && (
 							<Button size="sm" className="rounded-lg" onClick={handleApproveAlways}>
-								Always Allow
+								{t("x_always_allow")}
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (
@@ -218,7 +221,7 @@ function GenericApprovalCardView({
 								className="rounded-lg text-muted-foreground"
 								onClick={() => {
 									setRejected();
-									onDecision({ type: "reject", message: "User rejected the action." });
+									onDecision({ type: "reject", message: t("x_user_rejected_the_action") });
 								}}
 							>
 								Reject

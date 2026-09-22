@@ -1,6 +1,7 @@
 "use client";
 
 import { ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ActionSelector } from "@/components/admin/bulk-ops/ActionSelector";
@@ -22,6 +23,7 @@ import {
 import { adminBulkOpsApiService } from "@/lib/apis/admin-bulk-ops-api.service";
 
 export default function AdminBulkOpsPage() {
+	const t = useTranslations("bulkOps");
 	const [action, setAction] = useState<BulkAction | "">("archive_inactive_workspaces");
 	const [filters, setFilters] = useState<FilterClause[]>([
 		{ field: "inactive_days", op: "gte", value: 60 },
@@ -115,10 +117,10 @@ export default function AdminBulkOpsPage() {
 			});
 			setDryRunResult(res);
 			toast.success(
-				`Simulation completed: ${res.affected_count ?? res.total_count} target(s) affected`
+				t("simulation_completed_toast", { count: res.affected_count ?? res.total_count })
 			);
 		} catch (error: unknown) {
-			const msg = error instanceof Error ? error.message : "Failed to execute dry-run simulation";
+			const msg = error instanceof Error ? error.message : t("simulation_failed_toast");
 			toast.error(msg);
 		} finally {
 			setIsDryRunning(false);
@@ -151,13 +153,13 @@ export default function AdminBulkOpsPage() {
 				idempotencyKey
 			);
 
-			toast.success(`Job queued: ${res.job_id}`);
+			toast.success(t("job_queued_toast", { id: res.job_id }));
 			setIsMfaOpen(false);
 
 			// Start tracking the job
 			await pollJob(res.job_id);
 		} catch (error: unknown) {
-			const msg = error instanceof Error ? error.message : "Execution failed to queue";
+			const msg = error instanceof Error ? error.message : t("execution_failed_toast");
 			toast.error(msg);
 		} finally {
 			setIsExecuting(false);
@@ -179,11 +181,13 @@ export default function AdminBulkOpsPage() {
 				}
 
 				if (job.status === "completed") {
-					toast.success(`Job ${jobId} completed successfully!`);
+					toast.success(t("job_completed_toast", { id: jobId }));
 				} else if (job.status === "partial") {
-					toast.warning(`Job ${jobId} completed with some errors.`);
+					toast.warning(t("job_partial_toast", { id: jobId }));
 				} else if (job.status === "failed") {
-					toast.error(`Job ${jobId} failed: ${job.error_message || "Unknown error"}`);
+					toast.error(
+						t("job_failed_toast", { id: jobId, error: job.error_message || "Unknown error" })
+					);
 				}
 
 				// Fetch errors if any
@@ -221,11 +225,11 @@ export default function AdminBulkOpsPage() {
 		setIsCancelling(true);
 		try {
 			await adminBulkOpsApiService.cancelJob(activeJob.job_id);
-			toast.success("Job cancellation requested");
+			toast.success(t("cancel_requested_toast"));
 			// Refresh job status
 			await pollJob(activeJob.job_id);
 		} catch (error: unknown) {
-			const msg = error instanceof Error ? error.message : "Failed to cancel job";
+			const msg = error instanceof Error ? error.message : t("cancel_failed_toast");
 			toast.error(msg);
 		} finally {
 			setIsCancelling(false);
@@ -238,16 +242,13 @@ export default function AdminBulkOpsPage() {
 			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
 				<div>
 					<div className="flex items-center gap-2">
-						<h1 className="text-2xl font-bold tracking-tight">Admin Bulk Operations</h1>
+						<h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
 						<Badge variant="outline" className="border-blue-500/30 text-blue-600 bg-blue-500/10">
 							<ShieldCheck className="h-3.5 w-3.5 mr-1" />
 							Superadmin
 						</Badge>
 					</div>
-					<p className="text-sm text-muted-foreground mt-1">
-						Safely execute cross-tenant batch updates, cleanups, role assignments, and key rotations
-						with dry-run simulation.
-					</p>
+					<p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
 				</div>
 			</div>
 
@@ -257,11 +258,9 @@ export default function AdminBulkOpsPage() {
 					<CardHeader className="pb-3">
 						<div className="flex items-center gap-2">
 							<SlidersHorizontal className="h-4 w-4 text-primary" />
-							<CardTitle className="text-base font-semibold">1. Operation Parameters</CardTitle>
+							<CardTitle className="text-base font-semibold">{t("step1_title")}</CardTitle>
 						</div>
-						<CardDescription className="text-xs">
-							Select the target action and configure parameterized filters.
-						</CardDescription>
+						<CardDescription className="text-xs">{t("step1_desc")}</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-6">
 						<ActionSelector

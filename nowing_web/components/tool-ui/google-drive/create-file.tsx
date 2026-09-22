@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, FileIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -108,6 +109,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<DriveCreateFileContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -138,7 +140,9 @@ function ApprovalCard({
 	}, []);
 
 	const fileTypeLabel =
-		FILE_TYPE_LABELS[selectedFileType] ?? FILE_TYPE_LABELS[args.file_type] ?? "Google Drive File";
+		selectedFileType === "google_sheet" || args.file_type === "google_sheet"
+			? t("gdrive_google_sheet")
+			: t("gdrive_google_doc");
 
 	const isNameValid = useMemo(() => {
 		const name = pendingEdits?.name ?? args.name;
@@ -209,18 +213,20 @@ function ApprovalCard({
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? "Creating file with your changes" : "Creating file"}
+							text={pendingEdits ? t("creating_file_edits") : t("creating_file")}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{pendingEdits ? "File created with your changes" : "File created"}
+							{pendingEdits ? t("file_created_edits") : t("file_created")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File creation was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_file_creation_was_cancelled")}
+						</p>
 					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("tu_requires_your_approval_to")}
 						</p>
 					)}
 				</div>
@@ -261,11 +267,12 @@ function ApprovalCard({
 								{accounts.length > 0 && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											Google Drive Account <span className="text-destructive">*</span>
+											{t("tu_google_drive_account")}
+											<span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedAccountId} onValueChange={handleAccountChange}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select an account" />
+												<SelectValue placeholder={t("tu_select_an_account")} />
 											</SelectTrigger>
 											<SelectContent>
 												{validAccounts.map((account) => (
@@ -288,28 +295,31 @@ function ApprovalCard({
 
 								<div className="space-y-2">
 									<p className="text-xs font-medium text-muted-foreground">
-										File Type <span className="text-destructive">*</span>
+										{t("tu_file_type")}
+										<span className="text-destructive">*</span>
 									</p>
 									<Select value={selectedFileType} onValueChange={setSelectedFileType}>
 										<SelectTrigger className="w-full">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="google_doc">Google Doc</SelectItem>
-											<SelectItem value="google_sheet">Google Sheet</SelectItem>
+											<SelectItem value="google_doc">{t("tu_google_doc")}</SelectItem>
+											<SelectItem value="google_sheet">{t("tu_google_sheet")}</SelectItem>
 										</SelectContent>
 									</Select>
 								</div>
 
 								{selectedAccountId && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Parent Folder</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_parent_folder")}
+										</p>
 										<Select value={parentFolderId} onValueChange={setParentFolderId}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Drive Root" />
+												<SelectValue placeholder={t("tu_drive_root")} />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="__root__">Drive Root</SelectItem>
+												<SelectItem value="__root__">{t("tu_drive_root")}</SelectItem>
 												{availableParentFolders.map((folder) => (
 													<SelectItem key={folder.folder_id} value={folder.folder_id}>
 														{folder.name}
@@ -319,7 +329,7 @@ function ApprovalCard({
 										</Select>
 										{availableParentFolders.length === 0 && (
 											<p className="text-xs text-muted-foreground">
-												No folders found. File will be created at Drive root.
+												{t("tu_no_folders_found_file_2")}
 											</p>
 										)}
 									</div>
@@ -369,7 +379,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
 							>
-								Approve
+								{t("tu_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -384,7 +394,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("tu_reject")}
 							</Button>
 						)}
 					</div>
@@ -395,12 +405,11 @@ function ApprovalCard({
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					Additional Google Drive permissions required
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gdrive_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -411,10 +420,11 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create Google Drive file</p>
+				<p className="text-sm font-semibold text-destructive">{t("gdrive_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -425,12 +435,11 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					Google Drive authentication expired
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gdrive_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -441,11 +450,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Google Drive file created successfully"}
+					{result.message || t("gdrive_create_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -462,7 +472,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Google Drive
+							{t("gdrive_open_in_drive")}
 						</a>
 					</div>
 				)}

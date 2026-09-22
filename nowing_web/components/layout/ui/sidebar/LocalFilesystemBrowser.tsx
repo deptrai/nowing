@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronRight, FileText, Folder, FolderOpen } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_EXCLUDE_PATTERNS } from "@/components/sources/FolderWatchDialog";
 import { Button } from "@/components/ui/button";
@@ -141,6 +142,7 @@ export function LocalFilesystemBrowser({
 	expandedFolderKeys,
 	onExpandedFolderKeysChange,
 }: LocalFilesystemBrowserProps) {
+	const t = useTranslations("layout");
 	const electronAPI = useElectronAPI();
 	const [rootStateMap, setRootStateMap] = useState<Record<string, RootLoadState>>({});
 	const [internalExpandedFolderKeys, setInternalExpandedFolderKeys] = useState<Set<string>>(
@@ -230,7 +232,7 @@ export function LocalFilesystemBrowser({
 						...prev,
 						[rootPath]: {
 							loading: false,
-							error: error instanceof Error ? error.message : "Failed to read folder",
+							error: error instanceof Error ? error.message : t("failed_to_read_folder"),
 							files: [],
 						},
 					}));
@@ -474,10 +476,8 @@ export function LocalFilesystemBrowser({
 	if (rootPaths.length === 0) {
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-10 text-center text-muted-foreground">
-				<p className="text-sm font-medium">No local folder selected</p>
-				<p className="text-xs text-muted-foreground/80">
-					Add a local folder above to browse files in desktop mode.
-				</p>
+				<p className="text-sm font-medium">{t("no_local_folder_selected")}</p>
+				<p className="text-xs text-muted-foreground/80">{t("add_local_folder_hint")}</p>
 			</div>
 		);
 	}
@@ -530,7 +530,7 @@ export function LocalFilesystemBrowser({
 						<div key={rootPath} className="mb-1 px-3 py-2 text-xs text-muted-foreground/80">
 							<div className="flex items-center gap-2">
 								<Spinner className="size-3.5" />
-								<span>Loading {getFolderDisplayName(rootPath)}...</span>
+								<span>{t("loading_folder", { name: getFolderDisplayName(rootPath) })}</span>
 							</div>
 						</div>
 					);
@@ -541,7 +541,9 @@ export function LocalFilesystemBrowser({
 							key={rootPath}
 							className="rounded-md border border-destructive/20 bg-destructive/5 p-3"
 						>
-							<p className="text-sm font-medium text-destructive">Failed to load local folder</p>
+							<p className="text-sm font-medium text-destructive">
+								{t("failed_to_load_local_folder")}
+							</p>
 							<p className="mt-1 text-xs text-muted-foreground">{state.error}</p>
 						</div>
 					);
@@ -554,28 +556,28 @@ export function LocalFilesystemBrowser({
 							<div className="px-3 pb-2 text-xs text-muted-foreground/80">
 								<div className="flex items-center gap-2">
 									<Spinner className="size-3.5" />
-									<span>Loading {getFolderDisplayName(rootPath)}...</span>
+									<span>{t("loading_folder", { name: getFolderDisplayName(rootPath) })}</span>
 								</div>
 							</div>
 						)}
 						{!mount && mountStatus === "complete" && !mountRefreshInFlight && (
 							<div className="px-3 pb-2 text-xs text-muted-foreground/80">
-								Unable to resolve mounted root for this folder.
+								{t("unable_to_resolve_mounted_root")}
 							</div>
 						)}
 						{!mount && mountStatus === "error" && (
 							<div className="px-3 pb-2 text-xs text-muted-foreground/80">
-								Failed to resolve local folder mounts.
+								{t("failed_to_resolve_mounts")}
 							</div>
 						)}
 						{isEmpty && (
 							<div className="px-3 pb-2 text-xs text-muted-foreground/80">
-								No supported files found in this folder.
+								{t("no_supported_files")}
 							</div>
 						)}
 						{!isEmpty && matchCount === 0 && searchQuery && (
 							<div className="px-3 pb-2 text-xs text-muted-foreground/80">
-								No matching files in this folder.
+								{t("no_matching_files")}
 							</div>
 						)}
 					</div>

@@ -105,3 +105,25 @@ return "x_crawl_post", {"platform": platform, "url": target_url}
 
 - Ingestion task unsupported state handling and skipping tests
   [`test_social_xactions_ingest.py:1`](../../nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py#L1)
+
+### Review Findings
+
+- [x] [Review][Patch] Missing `UTC` import + ms-epoch normalization [adapter_v2.py:14,287] — `tz=UTC` NameError on numeric `published_at`; ms-epoch overflows. Fixed: import `UTC`, normalize ms→s.
+- [x] [Review][Patch] `success=False` on `x_crawl_post` marks target unsupported regardless of error [adapter_v2.py:257-260] — gated to permanent keywords only.
+- [x] [Review][Patch] `SocialTargetStatus` Literal missing `"unsupported"` [social_routes.py:48] — 422 on serialize/update of unsupported targets. Added to Literal.
+- [x] [Review][Patch] `post_url`→`external_post_id` may exceed VARCHAR(255) [adapter_v2.py:293] — truncate to 255.
+- [x] [Review][Patch] `target_url` whitespace masks valid `target_id` [adapter_v2.py:162] — strip before `or` fallback.
+- [x] [Review][Patch] `id=0`/`externalId=0` falsy skip [adapter_v2.py:291] — use `is not None` selector.
+- [x] [Review][Patch] `target.platform=None` crashes `.split` [adapter_v2.py:302] — added `or ""` guard.
+- [x] [Review][Patch] `raw_entities` list crashes `.get` consumer [adapter_v2.py:313] — coerce list to dict.
+- [x] [Review][Patch] Stale return type `list[dict]` → `list[SocialPostData]` [adapter_v2.py:191].
+- [x] [Review][Defer] Unsupported-platform targets loop active forever [social_xactions_ingest.py:296] — pre-existing scheduler design; reason: out of story scope.
+- [x] [Review][Defer] `ingest_raw_post_to_stream` xAdd dict with None/list/dict → DataError [adapter_v2.py:335] — pre-existing; AD-4 removes it in Phase 2.
+- [x] [Review][Defer] `_mark_target_unsupported` reason not persisted (no column) [social_xactions_ingest.py:116] — needs schema change (Ask First); tracked in deferred-work.md.
+- [x] [Review][Defer] `code_str` case-fold / alt MCP codes (-32601) [adapter_v2.py:112-131] — spec extension for non-XActions servers.
+- [x] [Review][Defer] FB ID-based targets not mapped to canonical URL in fallback [adapter_v2.py:162-167] — scope expansion beyond spec AC.
+- [x] [Review][Defer] Tests use `target_id` for URL, not `target_url` [test_xactions_adapter_v2.py] — production-realism gap; add coverage later.
+
+**Rejected:**
+- `map()` `ValueError` unreachable — `SUPPORTED_PLATFORMS` ≡ `PLATFORM_TOOL_MAP` keys; scheduler pre-filters. (false)
+- `target_url` whitespace — covered above as low patch.

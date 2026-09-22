@@ -2,6 +2,7 @@
 
 import { IconBrandYoutube } from "@tabler/icons-react";
 import { FileText } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -31,15 +32,18 @@ interface ConnectorCardProps {
 /**
  * Format document count (e.g., "1.2k docs", "500 docs", "1.5M docs")
  */
-function formatDocumentCount(count: number | undefined): string {
-	if (count === undefined || count === 0) return "0 docs";
-	if (count < 1000) return `${count} docs`;
+function formatDocumentCount(
+	count: number | undefined,
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+): string {
+	if (count === undefined || count === 0) return t("docs_count", { count: 0 });
+	if (count < 1000) return t("docs_count", { count });
 	if (count < 1000000) {
 		const k = (count / 1000).toFixed(1);
-		return `${k.replace(/\.0$/, "")}k docs`;
+		return t("docs_count_k", { count: k.replace(/\.0$/, "") });
 	}
 	const m = (count / 1000000).toFixed(1);
-	return `${m.replace(/\.0$/, "")}M docs`;
+	return t("docs_count_m", { count: m.replace(/\.0$/, "") });
 }
 
 export const ConnectorCard: FC<ConnectorCardProps> = ({
@@ -57,6 +61,7 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 	onConnect,
 	onManage,
 }) => {
+	const t = useTranslations("assistant");
 	const isMCP = connectorType === EnumConnectorName.MCP_CONNECTOR;
 	const isLive = !!connectorType && LIVE_CONNECTOR_TYPES.has(connectorType);
 	// Deprecated connectors can no longer be connected, but existing rows stay
@@ -79,7 +84,7 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 		}
 
 		if (isDeprecatedForConnect) {
-			return "Deprecated. No longer available to connect.";
+			return t("deprecated_cannot_connect");
 		}
 
 		return description;
@@ -125,24 +130,20 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 				{isIndexing ? (
 					<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
 						<Spinner size="xs" />
-						Syncing
+						{t("syncing")}
 					</p>
 				) : isConnected ? (
 					<p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5">
 						{isMCP && connectorCount !== undefined ? (
-							<span>
-								{connectorCount} {connectorCount === 1 ? "server" : "servers"}
-							</span>
+							<span>{t("server_count", { count: connectorCount })}</span>
 						) : (
 							<>
-								{!isLive && <span>{formatDocumentCount(documentCount)}</span>}
+								{!isLive && <span>{formatDocumentCount(documentCount, t)}</span>}
 								{!isLive && accountCount !== undefined && accountCount > 0 && (
 									<span className="text-muted-foreground/50">•</span>
 								)}
 								{accountCount !== undefined && accountCount > 0 && (
-									<span>
-										{accountCount} {accountCount === 1 ? "Account" : "Accounts"}
-									</span>
+									<span>{t("account_count", { count: accountCount })}</span>
 								)}
 							</>
 						)}
@@ -165,15 +166,15 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 			>
 				<span className={isConnecting ? "opacity-0" : ""}>
 					{isDeprecatedForConnect
-						? "Deprecated"
+						? t("deprecated")
 						: !isEnabled
-							? "Unavailable"
+							? t("unavailable")
 							: isConnected
-								? "Manage"
+								? t("manage")
 								: id === "youtube-crawler"
-									? "Add"
+									? t("add")
 									: connectorType
-										? "Connect"
+										? t("connect")
 										: "Add"}
 				</span>
 				{isConnecting && <Spinner size="xs" className="absolute" />}

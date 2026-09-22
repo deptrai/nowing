@@ -2,6 +2,7 @@
 
 import { OctagonAlert, Orbit } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ interface QuotaBarProps {
 }
 
 export function QuotaBar({ used, limit, warningThreshold, className }: QuotaBarProps) {
+	const t = useTranslations("free");
 	const percentage = Math.min((used / limit) * 100, 100);
 	const remaining = Math.max(limit - used, 0);
 	const isWarning = used >= warningThreshold;
@@ -26,7 +28,7 @@ export function QuotaBar({ used, limit, warningThreshold, className }: QuotaBarP
 					{used.toLocaleString()} / {limit.toLocaleString()} tokens
 				</span>
 				{isExceeded ? (
-					<span className="font-medium text-destructive">Limit reached</span>
+					<span className="font-medium text-destructive">{t("limit_reached")}</span>
 				) : isWarning ? (
 					<span className="flex items-center gap-1 font-medium text-highlight">
 						<OctagonAlert className="size-3" />
@@ -41,7 +43,7 @@ export function QuotaBar({ used, limit, warningThreshold, className }: QuotaBarP
 				<Button asChild size="sm" className="mt-0.5 w-full">
 					<Link href="/register">
 						<Orbit data-icon="inline-start" />
-						Create free account for 5M more tokens
+						{t("upgrade_5m")}
 					</Link>
 				</Button>
 			)}
