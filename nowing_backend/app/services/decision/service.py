@@ -402,6 +402,12 @@ class DecisionService:
 
             input_tokens = backend_result.input_tokens or 0
             output_tokens = backend_result.output_tokens or 0
+            cost_micros = _decision_cost_micros(
+                backend_name,
+                backend_result.model,
+                input_tokens,
+                output_tokens,
+            )
             await record_token_usage(
                 session,
                 usage_type=UsageType.DECISION,
@@ -410,6 +416,7 @@ class DecisionService:
                 prompt_tokens=input_tokens,
                 completion_tokens=output_tokens,
                 total_tokens=input_tokens + output_tokens,
+                cost_micros=cost_micros,
                 e2e_ms=round(backend_result.latency_ms),
                 call_details={
                     "backend": backend_name,
@@ -438,6 +445,50 @@ class DecisionService:
 _FALLBACK_TRIGGER_CODES = frozenset(
     {"timeout", "backend_error", "backend_unavailable", "missing_api_key"}
 )
+
+
+def _decision_cost_micros(
+    backend_name: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> int:
+    """Cost in micro-USD for one decision leg (story 39.7).
+
+    Jev is priced per billion input tokens (output free — the same
+    formula as ``scripts/jev_eval/runner.py``); ``llm_json`` legs go
+    through ``litellm.cost_per_token``. Any pricing failure — unknown
+    model, litellm missing, bad config — degrades to 0 rather than
+    breaking telemetry. Other backends (``mock``, test stubs) are not
+    paid calls and record 0.
+    """
+    try:
+        if backend_name == "llm_json":
+            import litellm
+
+            prompt_cost, completion_cost = litellm.cost_per_token(
+                model=model,
+                prompt_tokens=input_tokens,
+                completion_tokens=output_tokens,
+            )
+            return round((float(prompt_cost) + float(completion_cost)) * 1e6)
+        if backend_name == "jev":
+            return round(
+                input_tokens
+                * decision_config.DECISION_JEV_COST_PER_BTOK_INPUT_USD
+                / 1e9
+                * 1e6
+            )
+        return 0
+    except Exception:
+        logger.warning(
+            "Decision cost computation failed for backend=%r model=%r; "
+            "recording cost_micros=0",
+            backend_name,
+            model,
+            exc_info=True,
+        )
+        return 0
 
 
 def _pinned_model(backend_name: str) -> str:

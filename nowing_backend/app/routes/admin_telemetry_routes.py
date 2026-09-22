@@ -28,6 +28,9 @@ from app.schemas.admin_health import (
 )
 from app.schemas.admin_telemetry import (
     CeleryQueueResponse,
+    DecisionLabelRequest,
+    DecisionLabelResponse,
+    DecisionTelemetryResponse,
     GrossMarginSummary,
     LlmCostBreakdown,
     ProxyHealthResponse,
@@ -117,6 +120,50 @@ async def purge_celery_queue(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+    return result
+
+
+@router.get("/decisions", response_model=DecisionTelemetryResponse)
+async def get_decision_telemetry(
+    # No ge/le bounds here — the service's _clamp_window clamps to
+    # [1, 720] (spec WINDOW row); non-int input still 422s via coercion.
+    window_hours: int = Query(default=24),
+    workspace_id: int | None = Query(default=None, ge=1),
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> dict[str, Any]:
+    """Decision-call telemetry: volume, latency, accuracy, cost, model drift.
+
+    Read-only except for the deduped ``AdminHealthAlert`` inserted when
+    today's UTC decision cost exceeds ``DECISION_DAILY_COST_ALERT_USD``.
+    """
+    service = AdminTelemetryService(session)
+    return await service.get_decision_telemetry(
+        window_hours=window_hours,
+        workspace_id=workspace_id,
+    )
+
+
+@router.post("/decisions/{usage_id}/label", response_model=DecisionLabelResponse)
+@limiter.limit("30/minute")
+async def label_decision(
+    request: Request,
+    usage_id: int,
+    payload: DecisionLabelRequest,
+    session: AsyncSession = Depends(get_async_session),
+    _auth: AuthContext = Depends(require_superuser),
+) -> dict[str, Any]:
+    """Attach ground truth (``correct``) to a decision usage row."""
+    service = AdminTelemetryService(session)
+    result = await service.label_decision(
+        usage_id=usage_id,
+        correct=payload.correct,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Decision usage row not found",
+        )
     return result
 
 

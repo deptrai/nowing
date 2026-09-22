@@ -97,6 +97,59 @@ export interface PurgeDeadQueueResponse {
 	idempotency_key: string;
 }
 
+export interface DecisionDailyBucket {
+	period: string;
+	task: string;
+	calls: number;
+	median_latency_ms: number | null;
+	cost_micros: number;
+}
+
+export interface DecisionTaskBucket {
+	task: string;
+	calls: number;
+	median_latency_ms: number | null;
+	cost_micros: number;
+	input_tokens: number;
+	output_tokens: number;
+}
+
+export interface DecisionModelBucket {
+	model: string;
+	backend: string;
+	calls: number;
+	first_seen: string | null;
+	last_seen: string | null;
+}
+
+export interface DecisionCostAlert {
+	threshold_usd: number;
+	today_cost_micros: number;
+	exceeded: boolean;
+}
+
+export interface DecisionTelemetry {
+	window_hours: number;
+	workspace_id: number | null;
+	total_calls: number;
+	total_cost_micros: number;
+	median_latency_ms: number | null;
+	labeled: number;
+	correct: number;
+	accuracy: number | null;
+	pinned_model: string;
+	drift_detected: boolean;
+	daily: DecisionDailyBucket[];
+	by_task: DecisionTaskBucket[];
+	models: DecisionModelBucket[];
+	cost_alert: DecisionCostAlert;
+}
+
+export interface DecisionLabelResponse {
+	usage_id: number;
+	correct: boolean;
+}
+
 type WindowHours = 1 | 6 | 24 | 168 | 720;
 
 class AdminTelemetryApiService {
@@ -144,6 +197,27 @@ class AdminTelemetryApiService {
 				body: {},
 			}
 		);
+	};
+
+	decisionTelemetry = async (
+		opts: { window_hours?: WindowHours; workspace_id?: number } = {}
+	): Promise<DecisionTelemetry> => {
+		const params = new URLSearchParams();
+		if (opts.window_hours !== undefined) {
+			params.set("window_hours", String(opts.window_hours));
+		}
+		if (opts.workspace_id !== undefined) {
+			params.set("workspace_id", String(opts.workspace_id));
+		}
+		const query = params.toString();
+		const url = `/api/v1/admin/telemetry/decisions${query ? `?${query}` : ""}`;
+		return baseApiService.get(url);
+	};
+
+	labelDecision = async (usageId: number, correct: boolean): Promise<DecisionLabelResponse> => {
+		return baseApiService.post(`/api/v1/admin/telemetry/decisions/${usageId}/label`, undefined, {
+			body: { correct },
+		});
 	};
 }
 

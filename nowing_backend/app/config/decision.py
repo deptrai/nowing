@@ -70,6 +70,23 @@ DECISION_LLM_MODEL = (
     or "claude-haiku-4-5-20251001"
 )
 
+# Jev pricing (story 39.7): USD per billion INPUT tokens; output is
+# free — matches ``scripts/jev_eval/runner.py`` JEV_PRICE_PER_BTOK_INPUT.
+# ``float("inf")``/``nan`` parse fine via _env_float but would poison the
+# cost formula — guard with isfinite, same as the timeout ceiling below.
+_DECISION_JEV_COST_RAW = _env_float("DECISION_JEV_COST_PER_BTOK_INPUT_USD", 42.0)
+DECISION_JEV_COST_PER_BTOK_INPUT_USD = (
+    _DECISION_JEV_COST_RAW if math.isfinite(_DECISION_JEV_COST_RAW) else 42.0
+)
+
+# Daily decision-cost alert (story 39.7): when today's UTC decision
+# spend exceeds this USD threshold, the telemetry endpoint fires one
+# deduped AdminHealthAlert (service_id "decision.jev_daily_cost").
+_DECISION_ALERT_RAW = _env_float("DECISION_DAILY_COST_ALERT_USD", 10.0)
+DECISION_DAILY_COST_ALERT_USD = (
+    _DECISION_ALERT_RAW if math.isfinite(_DECISION_ALERT_RAW) else 10.0
+)
+
 # Hard ceiling per decide() call; callers should never wait longer.
 # ``float("inf")``/``nan`` parse fine via _env_float but would disable the
 # ceiling — guard with isfinite.
@@ -116,11 +133,13 @@ def decision_task_enabled(task: str) -> bool:
 
 __all__ = [
     "DECISION_BACKEND",
+    "DECISION_DAILY_COST_ALERT_USD",
     "DECISION_ENABLED",
     "DECISION_ENTITY_ENABLED",
     "DECISION_FALLBACK_BACKEND",
     "DECISION_FILTER_ENABLED",
     "DECISION_INTENT_ENABLED",
+    "DECISION_JEV_COST_PER_BTOK_INPUT_USD",
     "DECISION_JEV_MODEL",
     "DECISION_LLM_MODEL",
     "DECISION_ROUTING_ENABLED",

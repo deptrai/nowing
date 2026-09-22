@@ -579,9 +579,126 @@ async def test_decide_no_fallback_when_configured_none(_enabled, monkeypatch):
     assert exc_info.value.code == "timeout"
 
 
+# ---------------------------------------------------------------------------
+# cost_micros at write time (story 39.7)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+async def test_decide_jev_records_cost_micros(_enabled, monkeypatch):
+    """Jev legs are priced $42/Btok input, output free (eval-runner parity)."""
+    monkeypatch.setattr(
+        decision_config, "DECISION_JEV_COST_PER_BTOK_INPUT_USD", 42.0
+    )
+    recorded = _patch_record(monkeypatch)
+    backend = _StubBackend(
+        _result(input_tokens=500, output_tokens=10), name="jev"
+    )
+    service = DecisionService(backend)
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    # 500 input tokens x $42/Btok = $0.000021 = 21 micros; output is free.
+    assert recorded["cost_micros"] == 21
+
+
+@pytest.mark.unit
+async def test_decide_jev_cost_honors_env_price(_enabled, monkeypatch):
+    """DECISION_JEV_COST_PER_BTOK_INPUT_USD drives the jev formula."""
+    monkeypatch.setattr(
+        decision_config, "DECISION_JEV_COST_PER_BTOK_INPUT_USD", 100.0
+    )
+    recorded = _patch_record(monkeypatch)
+    backend = _StubBackend(
+        _result(input_tokens=500, output_tokens=10), name="jev"
+    )
+    service = DecisionService(backend)
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    assert recorded["cost_micros"] == 50
+
+
+@pytest.mark.unit
+async def test_decide_llm_json_cost_via_litellm(_enabled, monkeypatch):
+    """llm_json legs price through litellm.cost_per_token, summed x1e6."""
+    import litellm
+
+    monkeypatch.setattr(
+        litellm,
+        "cost_per_token",
+        lambda model, prompt_tokens, completion_tokens, **kw: (0.0009, 0.0006),
+    )
+    recorded = _patch_record(monkeypatch)
+    backend = _StubBackend(_llm_result(), name="llm_json")
+    service = DecisionService(backend)
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    assert recorded["cost_micros"] == 1500
+
+
+@pytest.mark.unit
+async def test_decide_llm_json_unknown_model_cost_zero(_enabled, monkeypatch):
+    """An unpriced model records 0 — pricing failure must not abort telemetry."""
+    import litellm
+
+    def _boom(**kwargs):
+        raise Exception("model not in litellm pricing table")
+
+    monkeypatch.setattr(litellm, "cost_per_token", _boom)
+    recorded = _patch_record(monkeypatch)
+    backend = _StubBackend(_llm_result(), name="llm_json")
+    service = DecisionService(backend)
+    result = await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    assert recorded["cost_micros"] == 0
+    assert result.answers["q"].value == 0.6
+
+
+@pytest.mark.unit
+async def test_decide_unpaid_backend_cost_zero(_enabled, monkeypatch):
+    """Non-paid backends (stub/mock) record cost_micros=0, never a
+    fabricated price."""
+    recorded = _patch_record(monkeypatch)
+    service = DecisionService(_StubBackend(_result()))
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=object(),
+        workspace_id=1,
+        user_id=UUID(int=1),
+    )
+    assert recorded["cost_micros"] == 0
+
+
 @pytest.mark.unit
 async def test_decide_fallback_records_winning_leg(_enabled, monkeypatch):
     """Telemetry describes the leg that actually answered, not the primary."""
+    import litellm
+
+    # The winning leg is llm_json → _record_usage prices it via litellm;
+    # stub the pricing call so the test never depends on the pricing table.
+    monkeypatch.setattr(
+        litellm, "cost_per_token", lambda **kw: (0.0, 0.0)
+    )
     recorded = _patch_record(monkeypatch)
     primary = _StubBackend(exc=DecisionError("down", code="missing_api_key"))
     _patch_fallback(monkeypatch, _StubBackend(_llm_result(), name="llm_json"))
@@ -784,6 +901,13 @@ async def test_decide_fallback_win_records_legs(_enabled, monkeypatch):
 async def test_decide_both_legs_fail_records_failed_attempt(_enabled, monkeypatch):
     """When the fallback leg also fails, the attempt is still persisted —
     visible in telemetry without fabricated token spend."""
+    import litellm
+
+    # The failed fallback leg is llm_json → _record_usage prices it via
+    # litellm; stub the pricing call for determinism.
+    monkeypatch.setattr(
+        litellm, "cost_per_token", lambda **kw: (0.0, 0.0)
+    )
     recorded = _patch_record(monkeypatch)
     primary = _StubBackend(
         exc=DecisionError("primary down", code="timeout"), name="jev"

@@ -10,6 +10,7 @@ import HealthDrillDown from "@/components/admin/health/HealthDrillDown";
 import HealthOverviewGrid from "@/components/admin/health/HealthOverviewGrid";
 import HealthStatusCard from "@/components/admin/health/HealthStatusCard";
 import CeleryQueuePanel from "@/components/admin/telemetry/CeleryQueuePanel";
+import DecisionTelemetryPanel from "@/components/admin/telemetry/DecisionTelemetryPanel";
 import GrossMarginAlert from "@/components/admin/telemetry/GrossMarginAlert";
 import LlmCostPanel from "@/components/admin/telemetry/LlmCostPanel";
 import ProxyHealthPanel from "@/components/admin/telemetry/ProxyHealthPanel";
@@ -243,6 +244,7 @@ export default function AdminTelemetryPage() {
 
 				<TabsContent value="telemetry" className="space-y-6">
 					<GrossMarginAlert tick={tick} />
+					<DecisionTelemetryPanel tick={tick} />
 					<LlmCostPanel tick={tick} />
 					<ProxyHealthPanel tick={tick} />
 					<CeleryQueuePanel tick={tick} />

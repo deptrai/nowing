@@ -32,6 +32,35 @@
 		"shared": "साझा",
 		"settings": "सेटिंग्स"
 	},
+	"admin": {
+		"telemetry": {
+			"decision_title": "Decision calls",
+			"decision_desc": "Jev and llm_json decision telemetry — tasks appear as their callers opt into telemetry.",
+			"decision_window": "Window",
+			"decision_workspace_id": "Workspace ID",
+			"decision_all": "All",
+			"decision_refresh": "Refresh",
+			"decision_loading": "Loading...",
+			"decision_failed_load": "Failed to load decision telemetry",
+			"decision_calls": "Calls",
+			"decision_cost": "Cost",
+			"decision_median": "Median latency",
+			"decision_accuracy": "Accuracy",
+			"decision_accuracy_labeled": "{count} labeled",
+			"decision_na": "n/a",
+			"decision_by_task": "By task",
+			"decision_task": "Task",
+			"decision_chart_title": "Calls per bucket",
+			"decision_models": "Models",
+			"decision_model": "Model",
+			"decision_backend": "Backend",
+			"decision_last_seen": "Last seen",
+			"decision_pinned": "Pinned: {model}",
+			"decision_drift": "drift",
+			"decision_cost_alert": "Decision cost alert: {cost} spent today exceeds the {threshold} threshold.",
+			"decision_empty": "No decision calls in this window"
+		}
+	},
 	"auth": {
 		"login": "लॉगिन",
 		"register": "पंजीकरण",
