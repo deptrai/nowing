@@ -1860,3 +1860,7 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-3-entity-resolution-confidence-scoring.md`
   summary: `refine_entity_groups` chạy tối đa 50 sequential `decide()` không có overall deadline — worst case (mỗi call timeout 5s + fallback leg) aggregate() stall vài phút.
   evidence: spec-39-3 cap MAX_DECISION_CALLS_PER_RUN=50 bound số calls nhưng không bound wall-clock; thêm param `max_seconds` (default None → no behavior change) + `stats.aborted` khi vượt deadline nếu production cần.
+- source_spec: `_bmad-output/implementation-artifacts/spec-39-4-content-guardrails-jev-noul-battery.md`
+  summary: Live-verify rag run showed Jev `is_relevant` over-drops VN text lacking literal geo terms — 6/18 real Quận 3 listings scored rel=0.04–0.09 and were hard-dropped despite being correct results. Fixed same-day via demote-to-tail for relevance-negative verdicts on rag surfaces.
+  evidence: `scripts/verify_content_guardrails_39_4.py --mode rag` (2026-09-22); threshold tuning could not help — Jev was already confident (rel≤0.09); issue is text-limited judgment, not gate calibration.
+  resolved: 2026-09-22 — commit `64eef5446`: `_filter_rag_results` + `private_provider.search` move `DROP+reasons=("irrelevant",)` results to tail instead of removing; injection/mask_failed still hard-drop. Residual watch item: demoted docs still consume agent context tokens — if tail-noise becomes a problem, add `DECISION_FILTER_DROP_IRRELEVANT` env to flip back to hard-drop.
