@@ -49,6 +49,7 @@ Defensive contract
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import UTC, datetime
@@ -67,6 +68,7 @@ from app.db import (
     shielded_async_session,
 )
 from app.services.content_guardrails import check_passage
+from app.services.intent_classification import classify_intent
 from app.services.token_tracking_service import (
     TurnTokenAccumulator,
 )
@@ -197,6 +199,10 @@ async def persist_user_turn(
     Other constraint violations (FK, NOT NULL, etc.) still raise
     ``IntegrityError`` — only the ``(thread_id, turn_id, role)`` collision
     is silenced.
+
+    Advisory side effect: when Jev intent classification passes its
+    confidence gate, an ``"intent"`` key is injected into the row's
+    ``platform_metadata`` (a copy — the caller's dict is never mutated).
     """
     if not turn_id:
         # Defensive: turn_id is always populated by the streaming path
@@ -209,20 +215,57 @@ async def persist_user_turn(
         )
         return None
 
-    # Advisory content-guardrail flag (Story 39.4): the Jev verdict is
-    # logged via [content_filter] and nothing else — the user message is
-    # never blocked, dropped, or masked here. check_passage already
-    # fail-opens; the extra guard keeps a guardrail bug from ever
-    # breaking persistence.
-    try:
-        await check_passage(user_query, surface="user_input")
-    except Exception:
-        logger.warning(
-            "[content_filter] user_input check raised — continuing",
-            exc_info=True,
-        )
-
+    # Start the clock before the advisory block so its ~300ms of latency
+    # is visible in the [persist_user_turn] perf log.
     t0 = time.perf_counter()
+
+    # Advisory Jev checks (Stories 39.4 + 39.5), run concurrently so
+    # their latencies overlap (~max, not sum) — this helper is awaited
+    # before streaming starts. The content-guardrail verdict is log-only
+    # ([content_filter]); the intent label lands on this row's
+    # platform_metadata["intent"]. Both already fail-open; the extra
+    # guards keep an advisory bug from ever breaking persistence.
+
+    async def _run_guardrail() -> None:
+        try:
+            await check_passage(user_query, surface="user_input")
+        except Exception:
+            logger.warning(
+                "[content_filter] user_input check raised — continuing",
+                exc_info=True,
+            )
+
+    async def _run_intent() -> dict[str, Any] | None:
+        try:
+            return await classify_intent(user_query)
+        except Exception:
+            logger.warning(
+                "[intent_classify] classify raised — continuing",
+                exc_info=True,
+            )
+            return None
+
+    _, intent_payload = await asyncio.gather(_run_guardrail(), _run_intent())
+
+    # "intent" is classifier-owned: platform_metadata is client-controlled,
+    # so strip any caller-supplied key — only a gate-passing payload may
+    # occupy it. A non-dict metadata is left untouched (spread would raise
+    # TypeError) unless an intent payload needs a dict to merge into.
+    if isinstance(platform_metadata, dict):
+        platform_metadata = {
+            k: v for k, v in platform_metadata.items() if k != "intent"
+        }
+    if intent_payload is not None:
+        # Merge into a COPY: the same platform_metadata object is also
+        # handed to persist_assistant_shell by the orchestrator, so
+        # mutating it would stamp the user's intent onto the assistant
+        # row. On the conflict/race path the INSERT no-ops, so the
+        # existing row's metadata is never rewritten — correct.
+        platform_metadata = {
+            **(platform_metadata if isinstance(platform_metadata, dict) else {}),
+            "intent": intent_payload,
+        }
+
     outcome = "failed"
     resolved_id: int | None = None
     try:

@@ -47,6 +47,18 @@ def _fake_db(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _stub_intent(monkeypatch):
+    """Stub the 39.5 advisory leg — these tests cover the guardrail leg,
+    and the real classifier could make a paid call if the host env has
+    DECISION_ENABLED=true."""
+
+    async def _noop(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(persistence, "classify_intent", _noop)
+
+
 async def test_advisory_check_runs_and_message_persists(
     _fake_db, monkeypatch
 ):
@@ -94,14 +106,22 @@ async def test_advisory_drop_verdict_still_persists(
     assert message_id == 42
 
 
-async def test_advisory_skipped_when_turn_id_missing(
-    _fake_db, monkeypatch
-):
-    async def _spy(*_a, **_k):
-        raise AssertionError("check_passage must not run without turn_id")
+async def test_advisory_skipped_when_turn_id_missing(_fake_db, monkeypatch):
+    # Record-and-assert: a raising spy would be swallowed by the
+    # per-leg try/except in persist_user_turn, so it can't prove the
+    # advisory block was skipped.
+    calls = {"guardrail": 0, "intent": 0}
 
-    monkeypatch.setattr(persistence, "check_passage", _spy)
+    async def _guardrail_spy(*_a, **_k):
+        calls["guardrail"] += 1
+
+    async def _intent_spy(*_a, **_k):
+        calls["intent"] += 1
+
+    monkeypatch.setattr(persistence, "check_passage", _guardrail_spy)
+    monkeypatch.setattr(persistence, "classify_intent", _intent_spy)
     message_id = await persistence.persist_user_turn(
         chat_id=1, user_id=None, turn_id="", user_query="x"
     )
     assert message_id is None
+    assert calls == {"guardrail": 0, "intent": 0}
