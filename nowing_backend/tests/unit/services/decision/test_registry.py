@@ -1,4 +1,4 @@
-"""QuestionRegistry — loads the 4 ported question sets, versioned, KeyError."""
+"""QuestionRegistry — loads the built-in question sets, versioned, KeyError."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ def test_registry_loads_all_question_sets():
         "entity_match_fanout",
         "content_filter",
         "intent_classify",
+        "voice_turn",
     }
 
 
@@ -101,6 +102,7 @@ def test_registry_question_sets_expose_required_state_keys():
         "passage",
     )
     assert registry.get_set("intent_classify").required_state_keys == ("user_message",)
+    assert registry.get_set("voice_turn").required_state_keys == ("transcript",)
 
 
 @pytest.mark.unit

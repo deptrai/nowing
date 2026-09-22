@@ -64,6 +64,7 @@ class DecisionService:
         task: str | None = None,
         model: str | None = None,
         timeout: float | None = None,
+        use_fallback: bool = True,
         question_set: str | None = None,
         required_state_keys: Iterable[str] | None = None,
         session: AsyncSession | None = None,
@@ -111,6 +112,12 @@ class DecisionService:
         ``wait_for`` with the same clamped timeout, so worst-case
         latency is 2 x ``DECISION_TIMEOUT_SECONDS``; the result and
         telemetry always describe the leg that actually answered.
+
+        ``use_fallback=False`` (story 39.6 voice) disables the whole
+        fallback chain for this call — both the backend-resolution
+        fallback and the failed-primary retry leg — so latency-critical
+        callers bound worst case at one leg. A fallback-trigger failure
+        then just propagates its ``DecisionError``.
         """
         if not decision_config.decision_enabled():
             raise DecisionError(
@@ -143,7 +150,7 @@ class DecisionService:
             # fallback trigger set as a failed primary call — the
             # fallback leg then becomes THE backend for this call.
             backend = None
-            if exc.code in _FALLBACK_TRIGGER_CODES:
+            if use_fallback and exc.code in _FALLBACK_TRIGGER_CODES:
                 logger.warning(
                     "Decision backend resolution failed (code=%s) — "
                     "trying the fallback backend",
@@ -200,7 +207,7 @@ class DecisionService:
                     "outcome": exc.code,
                 }
             )
-            if exc.code not in _FALLBACK_TRIGGER_CODES:
+            if not use_fallback or exc.code not in _FALLBACK_TRIGGER_CODES:
                 raise
             fallback = _try_build_fallback(backend.name)
             if fallback is None:

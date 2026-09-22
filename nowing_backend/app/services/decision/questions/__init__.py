@@ -8,6 +8,7 @@ from app.services.decision.questions import (
     entity_match_fanout,
     intent_classify,
     subagent_routing,
+    voice_turn,
 )
 from app.services.decision.questions.registry import QuestionRegistry, QuestionSet
 
@@ -48,6 +49,12 @@ def get_question_registry() -> QuestionRegistry:
             intent_classify.QUESTIONS,
             version=intent_classify.VERSION,
             required_state_keys=intent_classify.REQUIRED_STATE_KEYS,
+        )
+        registry.register(
+            "voice_turn",
+            voice_turn.QUESTIONS,
+            version=voice_turn.VERSION,
+            required_state_keys=voice_turn.REQUIRED_STATE_KEYS,
         )
         _question_registry = registry
     return _question_registry

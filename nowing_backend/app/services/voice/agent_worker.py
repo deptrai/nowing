@@ -25,11 +25,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 import os
 import sys
 from collections.abc import AsyncIterable, AsyncIterator
 from typing import Any
+from uuid import UUID
 
 from livekit import rtc
 from livekit.agents import (
@@ -43,6 +45,7 @@ from livekit.agents import (
     tts,
     vad,
 )
+from livekit.agents.llm import StopResponse
 
 from app.config import (
     ANTHROPIC_API_KEY,
@@ -60,8 +63,29 @@ from app.config import (
 )
 from app.services.voice.filler_audio import FillerAudioBank, get_filler_bank
 from app.services.voice.micro_clause_streamer import MicroClauseStreamer
+from app.services.voice.semantic_gate import (
+    VoiceTurnAssessment,
+    evaluate_voice_turn,
+)
+from app.services.voice.telephony_client import LiveKitTelephonyClient
 
 logger = logging.getLogger(__name__)
+
+# Canned escalation line (Story 39.6) — no SIP transfer this story; the
+# WARNING log triggers human follow-up who calls the customer back.
+_VOICE_TRANSFER_LINE = (
+    "Dạ, em xin ghi nhận yêu cầu của mình ạ. Nhân viên Nowing sẽ liên hệ "
+    "lại với mình trong thời gian sớm nhất. Em cảm ơn ạ."
+)
+
+# Pause between the transfer line finishing playout and end_call so the
+# SIP leg actually delivers the tail of the audio before teardown.
+_ESCALATION_PLAYOUT_BUFFER_SECONDS = 0.3
+
+# Hard bounds on the escalation awaits — a stalled playout or hung
+# LiveKit API must fail open, never hang the turn hook.
+_ESCALATION_PLAYOUT_TIMEOUT_SECONDS = 5.0
+_ESCALATION_END_CALL_TIMEOUT_SECONDS = 3.0
 
 # ---------------------------------------------------------------------------
 # Provider factories
@@ -310,7 +334,14 @@ class VoiceSDRAgent(Agent):
     - STT/TTS pre-warmed when SIP 180 Ringing arrives.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        workspace_id: int | None = None,
+        user_id: UUID | None = None,
+        call_session_id: str | None = None,
+        room_name: str | None = None,
+    ) -> None:
         super().__init__(
             instructions=(
                 "Bạn là nhân viên telesales AI của Nowing, nói tiếng Việt tự nhiên. "
@@ -323,6 +354,12 @@ class VoiceSDRAgent(Agent):
         self._prewarmed: bool = False
         self._first_token_event: asyncio.Event = asyncio.Event()
         self._filler_task: asyncio.Task[None] | None = None
+        # Story 39.6 call context — plumbed from room metadata by the
+        # entrypoint; telemetry stays log-only while keys are absent.
+        self._workspace_id = workspace_id
+        self._user_id = user_id
+        self._call_session_id = call_session_id
+        self._room_name = room_name
 
     # ------------------------------------------------------------------
     # LiveKit Agent lifecycle hooks
@@ -354,9 +391,15 @@ class VoiceSDRAgent(Agent):
     ) -> None:
         """Called when VAD detects end-of-utterance and LLM is about to respond.
 
-        Kicks off filler watchdog concurrently with LLM generation.
+        Kicks off the filler watchdog (perceived-latency safety net),
+        then — Story 39.6 — runs one batched semantic decision over the
+        transcript: suppress confident backchannels via ``StopResponse``,
+        escalate explicit human-transfer requests, log frustration.
+        Fail-open absolute: any decision-layer error falls through to
+        the normal generation path.
         """
         self._first_token_event = asyncio.Event()
+        session: AgentSession | None = None
         try:
             session = self.session
             self._filler_task = asyncio.create_task(
@@ -364,6 +407,39 @@ class VoiceSDRAgent(Agent):
             )
         except Exception as exc:
             logger.debug("Failed to start filler watchdog: %s", exc)
+
+        assessment = await self._evaluate_turn(new_message)
+
+        if assessment.transfer:
+            # Transfer wins over suppression (spec 39.6 precedence) —
+            # when both fire, escalate and ignore the suppress flag.
+            # Log the INTENT before attempting — a played promise line
+            # followed by a failed end_call must still leave a record,
+            # and a session=None drop must not be silent.
+            logger.warning(
+                "voice_escalation: transfer intent — room=%s "
+                "call_session_id=%s workspace_id=%s user_id=%s",
+                self._room_name,
+                self._call_session_id,
+                self._workspace_id,
+                self._user_id,
+            )
+            if session is not None and await self._escalate_to_human(session):
+                raise StopResponse()
+            # Escalation unavailable/failed → fail-open to generation.
+        elif assessment.suppress_response:
+            self._cancel_filler_watchdog()
+            if session is not None:
+                # The watchdog's 80ms timer beats a ~300ms decide(), so
+                # a filler may already be playing — cut it rather than
+                # leave "Dạ vâng..." dangling into dead air.
+                with contextlib.suppress(Exception):
+                    session.interrupt()
+            logger.info(
+                "[voice_turn] suppressing response — confident "
+                "backchannel/noise transcript"
+            )
+            raise StopResponse()
 
         await super().on_user_turn_completed(turn_ctx, new_message)
 
@@ -395,6 +471,110 @@ class VoiceSDRAgent(Agent):
     # Internal helpers
     # ------------------------------------------------------------------
 
+    async def _evaluate_turn(
+        self, new_message: llm.ChatMessage
+    ) -> VoiceTurnAssessment:
+        """Run the Story 39.6 semantic gate over the turn's transcript.
+
+        Fail-open absolute: ``evaluate_voice_turn`` never raises by
+        contract, and this wrapper keeps the voice loop alive even if
+        that contract or ``text_content`` access ever breaks.
+        """
+        try:
+            transcript = new_message.text_content or ""
+        except Exception:
+            transcript = ""
+        try:
+            return await evaluate_voice_turn(
+                transcript,
+                workspace_id=self._workspace_id,
+                user_id=self._user_id,
+                client_id=self._call_session_id,
+            )
+        except Exception:
+            logger.warning(
+                "[voice_turn] evaluation raised — fail-open respond",
+                exc_info=True,
+            )
+            return VoiceTurnAssessment()
+
+    def _cancel_filler_watchdog(self) -> None:
+        """Stop the pending filler so no 'Dạ vâng...' dangles into dead air."""
+        self._first_token_event.set()
+        if self._filler_task and not self._filler_task.done():
+            self._filler_task.cancel()
+
+    def _rearm_filler_watchdog(self, session: AgentSession) -> None:
+        """Re-arm the filler watchdog after a failed escalation.
+
+        ``_cancel_filler_watchdog`` kills the 80ms safety net; when the
+        turn falls back to normal generation the watchdog must be alive
+        again or a slow LLM first token means dead air.
+        """
+        self._first_token_event = asyncio.Event()
+        if self._filler_task and not self._filler_task.done():
+            self._filler_task.cancel()
+        try:
+            self._filler_task = asyncio.create_task(
+                self._maybe_inject_filler(session, self._first_token_event)
+            )
+        except Exception as exc:
+            logger.debug("Failed to re-arm filler watchdog: %s", exc)
+
+    async def _escalate_to_human(self, session: AgentSession) -> bool:
+        """Play the canned transfer line, then end the call (Story 39.6).
+
+        Sequence is load-bearing: the filler watchdog is cancelled and
+        any in-flight speech interrupted first (no filler overlapping
+        the transfer line), and the transfer line must fully play out
+        before ``end_call`` — ``say()`` is fire-and-forget, so deleting
+        the room right after would leave the caller hearing nothing.
+        Both awaits are time-bounded so a stalled playout or hung
+        LiveKit API can't hang the turn hook forever.
+
+        Returns True when the escalation completed (the caller then
+        raises ``StopResponse`` to abort LLM generation); False on any
+        failure — fail-open, with the filler watchdog re-armed for the
+        generation path that now continues.
+        """
+        if not self._room_name:
+            logger.warning(
+                "[voice_turn] transfer requested but room_name unknown — "
+                "cannot end_call, fail-open"
+            )
+            return False
+        self._cancel_filler_watchdog()
+        try:
+            with contextlib.suppress(Exception):
+                session.interrupt()
+            handle = session.say(
+                _VOICE_TRANSFER_LINE,
+                allow_interruptions=False,
+                add_to_chat_ctx=False,
+            )
+            await asyncio.wait_for(
+                handle.wait_for_playout(),
+                timeout=_ESCALATION_PLAYOUT_TIMEOUT_SECONDS,
+            )
+            await asyncio.sleep(_ESCALATION_PLAYOUT_BUFFER_SECONDS)
+            async with LiveKitTelephonyClient() as telephony:
+                await asyncio.wait_for(
+                    telephony.end_call(room_name=self._room_name),
+                    timeout=_ESCALATION_END_CALL_TIMEOUT_SECONDS,
+                )
+        except Exception:
+            logger.warning(
+                "[voice_turn] human-transfer escalation failed — fail-open",
+                exc_info=True,
+            )
+            self._rearm_filler_watchdog(session)
+            return False
+        logger.warning(
+            "voice_escalation: call ended after transfer line — room=%s",
+            self._room_name,
+        )
+        return True
+
     async def _prewarm_stt_tts(self, session: AgentSession) -> None:
         """Open STT and TTS connections ahead of the callee answering.
 
@@ -423,6 +603,10 @@ class VoiceSDRAgent(Agent):
                 return  # token arrived on time — no filler needed
             if self._filler_bank and self._filler_bank.is_ready():
                 filler_wav = self._filler_bank.get_filler("ack")
+                # Re-check immediately before say() — a cancel/suppress
+                # landing during the sleep must not queue a filler.
+                if self._first_token_event.is_set():
+                    return
                 logger.debug("Injecting filler audio (%d bytes)", len(filler_wav))
                 session.say(
                     text="Dạ vâng...",
@@ -439,6 +623,40 @@ class VoiceSDRAgent(Agent):
 # ---------------------------------------------------------------------------
 # Worker entrypoint
 # ---------------------------------------------------------------------------
+
+
+def _parse_room_metadata(raw: Any) -> dict[str, Any]:
+    """Parse room metadata JSON into a dict; ``{}`` on any failure."""
+    if not isinstance(raw, str) or not raw.strip():
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        logger.debug("Room metadata is not valid JSON — context unavailable")
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _coerce_int(value: Any) -> int | None:
+    """Best-effort int coercion for room-metadata values."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: int(float("inf")) — malformed metadata must
+        # never crash entrypoint before session.start.
+        return None
+
+
+def _coerce_uuid(value: Any) -> UUID | None:
+    """Best-effort UUID coercion for room-metadata values."""
+    if not value:
+        return None
+    try:
+        return UUID(str(value))
+    except (TypeError, ValueError, AttributeError):
+        return None
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -467,7 +685,20 @@ async def entrypoint(ctx: JobContext) -> None:
         allow_interruptions=True,
     )
 
-    agent = VoiceSDRAgent()
+    # Story 39.6: room metadata carries call context — ``session_id``
+    # from create_call_room, ``workspace_id``/``user_id`` when the
+    # orchestrator attaches them. Missing/malformed keys degrade to
+    # log-only telemetry; they never block the call.
+    metadata = _parse_room_metadata(getattr(ctx.room, "metadata", None))
+    session_id_meta = metadata.get("session_id")
+    agent = VoiceSDRAgent(
+        workspace_id=_coerce_int(metadata.get("workspace_id")),
+        user_id=_coerce_uuid(metadata.get("user_id")),
+        call_session_id=(
+            session_id_meta if isinstance(session_id_meta, str) else None
+        ),
+        room_name=ctx.room.name,
+    )
     await session.start(agent=agent, room=ctx.room)
 
     # Keep session alive until room disconnects or job shuts down

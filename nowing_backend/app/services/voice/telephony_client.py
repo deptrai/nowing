@@ -578,57 +578,58 @@ class LiveKitTelephonyClient:
         participants and triggers room-cleanup workflows in LiveKit.
 
         Args:
-            room_name: LiveKit room name (``call_<uuid>``).
+            room_name: LiveKit room name (``call_<uuid>``). Used verbatim —
+                normalization belongs to ``session_id`` inputs at
+                :meth:`create_call_room`, not to a name already resolved.
             participant_identity: SIP participant identity to remove, or None
                 to delete the whole room.
 
         Raises:
-            TelephonyError: If the LiveKit API call fails unexpectedly.
+            TelephonyError: If the LiveKit API call fails — including
+                NOT_FOUND, so an escalation can't report success while
+                the room stays connected.
         """
         api = await self._get_api()
-        norm_room = self.normalize_room_name(room_name)
 
         if participant_identity:
             try:
                 logger.info(
                     "Removing SIP participant %s from room %s",
                     participant_identity,
-                    norm_room,
+                    room_name,
                 )
                 await api.room.remove_participant(
                     RoomParticipantIdentity(
-                        room=norm_room,
+                        room=room_name,
                         identity=participant_identity,
                     )
                 )
                 logger.info(
                     "Participant %s removed from room %s",
                     participant_identity,
-                    norm_room,
+                    room_name,
                 )
             except TwirpError as exc:
                 if exc.code == TwirpErrorCode.NOT_FOUND:
                     logger.warning(
-                        "Participant %s already absent from room %s",
+                        "Participant %s not found in room %s",
                         participant_identity,
-                        norm_room,
+                        room_name,
                     )
-                    return
                 raise TelephonyError(
                     f"Failed to remove participant {participant_identity} "
-                    f"from room {norm_room}: {exc.message}"
+                    f"from room {room_name}: {exc.message}"
                 ) from exc
         else:
             try:
-                logger.info("Deleting room %s (all participants will disconnect)", norm_room)
-                await api.room.delete_room(DeleteRoomRequest(room=norm_room))
-                logger.info("Room %s deleted", norm_room)
+                logger.info("Deleting room %s (all participants will disconnect)", room_name)
+                await api.room.delete_room(DeleteRoomRequest(room=room_name))
+                logger.info("Room %s deleted", room_name)
             except TwirpError as exc:
                 if exc.code == TwirpErrorCode.NOT_FOUND:
-                    logger.warning("Room %s already deleted or does not exist", norm_room)
-                    return
+                    logger.warning("Room %s not found — nothing deleted", room_name)
                 raise TelephonyError(
-                    f"Failed to delete room {norm_room}: {exc.message}"
+                    f"Failed to delete room {room_name}: {exc.message}"
                 ) from exc
 
     async def delete_room(self, room_name: str) -> None:

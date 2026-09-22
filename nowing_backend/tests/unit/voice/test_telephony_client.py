@@ -545,17 +545,28 @@ class TestCallLifecycle:
         assert req.room == "call_sess_2"
 
     @pytest.mark.asyncio
-    async def test_end_call_not_found_is_silent(
+    async def test_end_call_not_found_raises_telephony_error(
         self, telephony_client, mock_livekit_api
     ):
-        """end_call swallows NOT_FOUND — already-gone is not an error."""
+        """end_call surfaces NOT_FOUND — an escalation must not report
+        success while the room stays connected (story 39.6 review)."""
         mock_livekit_api.room.delete_room = AsyncMock(
             side_effect=TwirpError(
                 code=TwirpErrorCode.NOT_FOUND, msg="room not found", status=404
             )
         )
-        # Must not raise
-        await telephony_client.end_call(room_name="call_gone")
+        with pytest.raises(TelephonyError):
+            await telephony_client.end_call(room_name="call_gone")
+
+    @pytest.mark.asyncio
+    async def test_end_call_uses_room_name_verbatim(
+        self, telephony_client, mock_livekit_api
+    ):
+        """end_call does not re-normalize — room_name is already resolved."""
+        mock_livekit_api.room.delete_room = AsyncMock()
+        await telephony_client.end_call(room_name="verbatim_room_name")
+        req = mock_livekit_api.room.delete_room.call_args[0][0]
+        assert req.room == "verbatim_room_name"
 
     @pytest.mark.asyncio
     async def test_end_call_other_twirp_error_raises_telephony_error(
