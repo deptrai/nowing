@@ -23,6 +23,28 @@ def interpolate_template_variables(
     return re.sub(r"\{([a-zA-Z0-9_]+)\}", _replace, template_str)
 
 
+def interpolate_template_data(
+    data: Any, variables: dict[str, Any], fallback_blank: bool = True
+) -> Any:
+    """Recursively interpolate ``{var}`` tokens inside dicts/lists/strings.
+
+    Non-string scalars pass through unchanged; non-dict containers are
+    tolerated (ZNS ``template_data`` may arrive as a list or raw string).
+    """
+    if isinstance(data, str):
+        return interpolate_template_variables(data, variables, fallback_blank)
+    if isinstance(data, dict):
+        return {
+            k: interpolate_template_data(v, variables, fallback_blank)
+            for k, v in data.items()
+        }
+    if isinstance(data, (list, tuple)):
+        return [
+            interpolate_template_data(v, variables, fallback_blank) for v in data
+        ]
+    return data
+
+
 def evaluate_condition_step(
     condition_config: dict[str, Any], context: dict[str, Any]
 ) -> int | None:

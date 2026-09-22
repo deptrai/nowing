@@ -1888,3 +1888,9 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
   summary: RESOLVED local — env drift `EMBEDDING_MODEL` 768 vs cột 384 đã sửa bằng `scripts/fix_embedding_dim_drift.py` (alter 384→768, re-embed 1453 vectors qua ollama, recreate HNSW). Script idempotent — dùng lại cho dev DB khác bị drift. **Prod vẫn cần kiểm chứng**: check `pg_attribute.atttypmod` của memories/documents/chunks/social_posts khớp dim model đang pin.
   evidence: live verify 37.1 (2026-09-22) — trước fix `signal_events=0`; sau fix 17/17 pass, SignalEvents persist thật.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-2-vietnam-cultural-honorific-and-relationship-tone-engine.md`
+  summary: Sender demographics (`SEQUENCER_SENDER_BIRTH_YEAR`/`GENDER`) là global env — mọi workspace share 1 sender profile; đúng ra phải per-workspace/per-consultant.
+  evidence: review 37.2 (2026-09-22) — `honorifics.py` resolve() đọc config global; multi-tenant cần workspace-level sender profile (Lead.assigned_to → consultant record).
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-2-vietnam-cultural-honorific-and-relationship-tone-engine.md`
+  summary: Two-way auto-replies không bị Decree-91 curfew gate — hiện chỉ `_handle_send_step` halt 21:00-08:00; replies-to-inbound được miễn cố ý (response ≠ unsolicited) nhưng nếu compliance yêu cầu strict hơn cần deferral queue cho auto-reply.
+  evidence: review 37.2 — `is_dispatch_curfew` docstring ghi exemption; `auto_reply_agent.generate_reply` không check curfew.

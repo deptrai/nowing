@@ -7,6 +7,7 @@ Adheres to:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -19,7 +20,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
-from app.db import Chunk, Document, Lead, Workspace, async_session_maker
+from app.db import (
+    Chunk,
+    Document,
+    Lead,
+    VerifiedContact,
+    Workspace,
+    async_session_maker,
+)
 from app.redis_client import get_redis_client as _get_shared_redis_client
 from app.services.token_tracking_service import UsageType, record_token_usage
 
@@ -162,6 +170,150 @@ class AutoReplyAgent:
             logger.warning("RAG retrieval failed in auto-reply agent: %s", e)
             return []
 
+    @staticmethod
+    async def _first_scalar(result: Any) -> Any:
+        """result.scalars().first() that tolerates unspecced AsyncMock sessions."""
+        rows = result.scalars()
+        if asyncio.iscoroutine(rows) or hasattr(rows, "__await__"):
+            rows = await rows
+        first = rows.first()
+        if asyncio.iscoroutine(first) or hasattr(first, "__await__"):
+            first = await first
+        return first
+
+    async def _resolve_honorific(
+        self,
+        session: AsyncSession | None,
+        workspace_id: int,
+        channel: str,
+        sender_id: str,
+    ) -> Any | None:
+        """Best-effort AD-116 honorific resolution for the inbound sender.
+
+        Deterministic (0ms, $0 token) — resolves the prospect's Lead /
+        VerifiedContact and maps to a ``{salutation}`` pronoun pair so the
+        two-way auto-reply addresses them like a local sales rep.
+        """
+        if session is None:
+            return None
+        try:
+            from app.services.sequencer.honorifics import VietnamHonorificResolver
+
+            lead = await self._first_scalar(
+                await session.execute(
+                    select(Lead)
+                    .where(
+                        Lead.workspace_id == workspace_id,
+                        Lead.client_id == sender_id,
+                    )
+                    .order_by(Lead.created_at.desc())
+                    .limit(1)
+                )
+            )
+
+            contact = None
+            if lead is not None:
+                contact = await self._first_scalar(
+                    await session.execute(
+                        select(VerifiedContact)
+                        .where(
+                            VerifiedContact.lead_id == lead.id,
+                            VerifiedContact.workspace_id == workspace_id,
+                            VerifiedContact.consent.is_(True),
+                            VerifiedContact.is_valid.is_(True),
+                        )
+                        .order_by(VerifiedContact.confidence.desc())
+                        .limit(1)
+                    )
+                )
+
+            if contact is None:
+                chat_key = {
+                    "telegram": "telegram_chat_id",
+                    "zalo": "zalo_user_id",
+                    "zalo_oa": "zalo_user_id",
+                }.get(str(channel).lower())
+                if chat_key:
+                    contact = await self._first_scalar(
+                        await session.execute(
+                            select(VerifiedContact)
+                            .where(
+                                VerifiedContact.workspace_id == workspace_id,
+                                VerifiedContact.external_chat_ids.contains(
+                                    {chat_key: str(sender_id)}
+                                ),
+                                VerifiedContact.consent.is_(True),
+                                VerifiedContact.is_valid.is_(True),
+                            )
+                            .order_by(VerifiedContact.confidence.desc())
+                            .limit(1)
+                        )
+                    )
+
+            # email/sms channels: resolve by normalized email or E.164 phone.
+            if contact is None and sender_id:
+                from app.lead_intelligence.dnc.normalizer import (
+                    normalize_email,
+                    normalize_phone_e164,
+                )
+
+                sid = str(sender_id).strip()
+                value = None
+                field = None
+                if "@" in sid:
+                    value = normalize_email(sid)
+                    field = VerifiedContact.email
+                elif re.fullmatch(r"\+?[\d\s().\-]{6,}", sid):
+                    value = normalize_phone_e164(sid)
+                    field = VerifiedContact.phone
+                if value:
+                    contact = await self._first_scalar(
+                        await session.execute(
+                            select(VerifiedContact)
+                            .where(
+                                VerifiedContact.workspace_id == workspace_id,
+                                field == value,
+                                VerifiedContact.consent.is_(True),
+                                VerifiedContact.is_valid.is_(True),
+                            )
+                            .order_by(VerifiedContact.confidence.desc())
+                            .limit(1)
+                        )
+                    )
+
+            # PII is encrypted at rest (AD-42/49) — decrypt name/title so the
+            # resolver never sees ciphertext.
+            profile: dict[str, str] = {}
+            if contact is not None:
+                try:
+                    from app.services.pii.verified_contact_encryption import (
+                        VerifiedContactEncryption,
+                    )
+
+                    enc = VerifiedContactEncryption()
+                    for field_name in ("name", "title"):
+                        value = getattr(contact, field_name, None)
+                        if (
+                            isinstance(value, str)
+                            and value
+                            and enc.is_encrypted(value)
+                        ):
+                            try:
+                                value = enc.decrypt(value)
+                            except Exception:  # never propagate ciphertext
+                                value = None
+                        if isinstance(value, str) and value:
+                            profile[field_name] = value
+                except Exception:  # decryption best-effort
+                    logger.debug("Honorific PII decrypt failed", exc_info=True)
+
+            return VietnamHonorificResolver().resolve(
+                lead=lead, contact=contact, profile=profile
+            )
+        except Exception:  # honorific resolution must never block auto-reply
+            logger.debug("Honorific resolution failed for auto-reply", exc_info=True)
+            return None
+
     async def _generate_llm_response(
         self,
         prompt: str,
@@ -169,22 +321,33 @@ class AutoReplyAgent:
         session: AsyncSession | None = None,
         workspace_id: int | None = None,
         user_id: UUID | None = None,
+        honorific: Any | None = None,
     ) -> str:
         """Generates grounded answer using LLM router with temperature=0.0."""
         try:
             from app.services.llm_router_service import LLMRouterService
+            from app.services.sequencer.honorifics import HonorificQualityGate
 
             router = LLMRouterService.get_router()
             if not router:
                 logger.warning("LLM router not initialized for auto-reply; using fallback")
                 return self.SAFE_FALLBACK_TEXT
 
+            # Story 37.2 / AC-2: inject the resolved {salutation} honorific pair.
+            if honorific is not None:
+                pronoun_rule = f"2. {honorific.prompt_directive()}"
+            else:
+                pronoun_rule = (
+                    "2. Xưng hô lịch sự, thân thiện (Dạ/em chào anh/chị)."
+                )
             system_prompt = (
                 "Bạn là trợ lý tư vấn bán hàng chuyên nghiệp, tận tâm và ngắn gọn.\n"
                 "QUY TẮC BẮT BUỘC:\n"
                 "1. Chỉ trả lời dựa trên tài liệu sau đây. Không được tự bịa đặt giá cả, chiết khấu hay cam kết pháp lý.\n"
-                "2. Xưng hô lịch sự, thân thiện (Dạ/em chào anh/chị).\n"
-                "3. Trả lời tối đa trong 2-3 câu ngắn.\n\n"
+                f"{pronoun_rule}\n"
+                '3. Tuyệt đối không dùng đại từ "bạn" hay "tôi" để xưng hô '
+                "(văn phong dịch máy, thiếu chuyên nghiệp).\n"
+                "4. Trả lời tối đa trong 2-3 câu ngắn.\n\n"
                 f"--- TÀI LIỆU THAM CHIẾU ---\n{context}\n----------------------------"
             )
             messages = [
@@ -201,6 +364,9 @@ class AutoReplyAgent:
             content = (response.choices[0].message.content or "").strip()
 
             # Record token usage for cost visibility if we have a billing session.
+            # Billing runs BEFORE the robotic-pronoun gate — the provider call
+            # already consumed tokens, so usage must be recorded even when the
+            # generated content is rejected.
             if session is not None and workspace_id is not None and user_id is not None:
                 usage = getattr(response, "usage", None) or {}
                 prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
@@ -231,6 +397,14 @@ class AutoReplyAgent:
                     },
                     call_details={"auto_reply": True},
                 )
+
+            # Story 37.2 / AC-3: reject robotic direct translations (Bạn/Tôi).
+            # Empty return → caller substitutes the workspace fallback text.
+            if content and HonorificQualityGate.is_robotic(content):
+                logger.info(
+                    "Auto-reply rejected by honorific quality gate (robotic pronouns)"
+                )
+                return ""
 
             return content or self.SAFE_FALLBACK_TEXT
         except Exception as e:  # LLM failure → safe canned fallback so thread still gets a reply
@@ -441,12 +615,18 @@ class AutoReplyAgent:
 
         # 6. Generate Grounded Reply
         context_str = "\n\n".join([c["content"] for c in valid_chunks])
+        # Story 37.2 / AC-2: resolve the deterministic honorific pair and
+        # inject it into the LLM generation context ({salutation} token).
+        honorific = await self._resolve_honorific(
+            session, workspace_id, channel, sender_id
+        )
         reply = await self._generate_llm_response(
             text,
             context_str,
             session=session,
             workspace_id=workspace_id,
             user_id=user_id,
+            honorific=honorific,
         )
         is_fallback = not reply or not reply.strip()
         if is_fallback:

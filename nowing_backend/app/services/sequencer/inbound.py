@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import (
+    Lead,
     SequenceEnrollment,
     SequenceEvent,
     VerifiedContact,
@@ -25,6 +26,7 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.lead_intelligence.dnc.service import DncComplianceService
 from app.services.pii.redact import redact_pii
+from app.services.sequencer.honorifics import VietnamHonorificResolver
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +122,61 @@ class SequencerInboundMixin:
             return (await session.execute(stmt)).scalars().first()
 
         return None
+
+    async def resolve_honorific_context(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        *,
+        phone: str | None = None,
+        email: str | None = None,
+        telegram_chat_id: str | None = None,
+        zalo_user_id: str | None = None,
+        sender_birth_year: int | None = None,
+    ) -> dict[str, str]:
+        """Resolve the AD-116 honorific context for an inbound sender.
+
+        Returns the ``{salutation}`` variable plus pronoun pair for injection
+        into LLM generation context on two-way auto-replies (Story 37.2 / AC-2).
+        """
+        contact = await self._resolve_inbound_contact(
+            session,
+            workspace_id,
+            phone=phone,
+            email=email,
+            telegram_chat_id=telegram_chat_id,
+            zalo_user_id=zalo_user_id,
+        )
+        lead = None
+        if contact is not None and getattr(contact, "lead_id", None):
+            # Lead PK is composite (id, workspace_id) — tuple lookup required.
+            lead = await session.get(Lead, (contact.lead_id, workspace_id))
+
+        # PII is encrypted at rest (AD-42/49) — decrypt name/title before
+        # honorific resolution so ciphertext never leaks into a salutation.
+        profile: dict[str, str] = {}
+        if contact is not None:
+            for field_name in ("name", "title"):
+                value = getattr(contact, field_name, None)
+                if (
+                    isinstance(value, str)
+                    and value
+                    and self.encryption.is_encrypted(value)
+                ):
+                    try:
+                        value = self.encryption.decrypt(value)
+                    except Exception:  # never propagate ciphertext
+                        value = None
+                if isinstance(value, str) and value:
+                    profile[field_name] = value
+
+        resolution = VietnamHonorificResolver().resolve(
+            lead=lead,
+            contact=contact,
+            profile=profile,
+            sender_birth_year=sender_birth_year,
+        )
+        return resolution.to_context_vars()
 
     async def handle_inbound_interruption(
         self,
@@ -243,6 +300,22 @@ class SequencerInboundMixin:
                     email=email or contact.email,
                 )
 
+            # Story 37.2 / AC-2: resolve the honorific context so downstream
+            # auto-reply generation addresses the prospect correctly.
+            honorific_ctx: dict[str, str] = {}
+            if not is_opt_out:
+                try:
+                    honorific_ctx = await self.resolve_honorific_context(
+                        session,
+                        workspace_id,
+                        phone=phone,
+                        email=email,
+                        telegram_chat_id=telegram_chat_id,
+                        zalo_user_id=zalo_user_id,
+                    )
+                except Exception:  # best-effort; never break interruption flow
+                    logger.debug("Honorific context resolution failed", exc_info=True)
+
             event = SequenceEvent(
                 workspace_id=workspace_id,
                 client_id=enrollment.client_id,
@@ -252,7 +325,28 @@ class SequencerInboundMixin:
                 event_subtype="opt_out" if is_opt_out else None,
                 channel=channel or "email",
                 cost_micros=0,
-                event_metadata={"text": redact_pii(text or "").text},
+                event_metadata={
+                    "text": redact_pii(text or "").text,
+                    **(
+                        # Store only non-PII honorific fields — no salutation
+                        # (it embeds the contact name) and no contact_name.
+                        {
+                            "honorific": {
+                                k: v
+                                for k, v in honorific_ctx.items()
+                                if k
+                                in (
+                                    "prospect_pronoun",
+                                    "sender_pronoun",
+                                    "honorific_tone",
+                                    "honorific_reason",
+                                )
+                            }
+                        }
+                        if honorific_ctx
+                        else {}
+                    ),
+                },
             )
             session.add(event)
 
