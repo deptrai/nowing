@@ -27,3 +27,4 @@ wheels/
 htmlcov/
 
 tests/
+.env.local
