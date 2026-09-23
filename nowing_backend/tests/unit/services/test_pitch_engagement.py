@@ -15,13 +15,16 @@ import pytest
 from app.services.pitch_engagement import (
     MIN_DWELL_SECONDS,
     PITCH_BEACON_LOCK_TTL_SECONDS,
+    PreparedPitchAlert,
     _dispatch_telegram_alert,
     _format_alert_message,
     _resolve_alert_recipient_id,
     _resolve_zalo_deep_link,
     build_zalo_deep_link,
     classify_device_type,
+    dispatch_prepared_pitch_alert,
     is_crawler_user_agent,
+    mark_pitch_beacon_alerted,
     pitch_beacon_lock_key,
     record_pitch_beacon,
     resolve_pitch_workspace_id,
@@ -64,6 +67,12 @@ def _session(execute_scalar=None):
     result.scalar_one_or_none.return_value = execute_scalar
     session.execute = AsyncMock(return_value=result)
     return session
+
+
+def _prepared_alert() -> PreparedPitchAlert:
+    return PreparedPitchAlert(
+        token="tok", external_peer_id="peer-1", text="alert text"
+    )
 
 
 @pytest.mark.unit
@@ -160,7 +169,7 @@ class TestRecordPitchBeacon:
     async def test_crawler_filtered_before_any_writes(self):
         session = _session()
         redis = _redis()
-        outcome = await record_pitch_beacon(
+        result = await record_pitch_beacon(
             session,
             redis,
             lead=_lead(),
@@ -171,7 +180,7 @@ class TestRecordPitchBeacon:
             event="open",
             user_agent="facebookexternalhit/1.1",
         )
-        assert outcome == "filtered_crawler"
+        assert result.outcome == "filtered_crawler"
         session.add.assert_not_called()
         redis.set.assert_not_called()
 
@@ -179,7 +188,7 @@ class TestRecordPitchBeacon:
     async def test_short_dwell_filtered(self):
         session = _session()
         redis = _redis()
-        outcome = await record_pitch_beacon(
+        result = await record_pitch_beacon(
             session,
             redis,
             lead=_lead(),
@@ -190,19 +199,19 @@ class TestRecordPitchBeacon:
             event="close",
             user_agent=CHROME_UA,
         )
-        assert outcome == "filtered_short_dwell"
+        assert result.outcome == "filtered_short_dwell"
         session.add.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_first_view_alerts_and_logs(self):
+    async def test_first_view_prepares_alert_and_logs(self):
         session = _session()
         redis = _redis(set_result=True)
         lead = _lead()
         with patch(
-            "app.services.pitch_engagement._dispatch_telegram_alert",
-            new=AsyncMock(return_value=True),
-        ) as dispatch:
-            outcome = await record_pitch_beacon(
+            "app.services.pitch_engagement._prepare_telegram_alert",
+            new=AsyncMock(return_value=_prepared_alert()),
+        ) as prepare:
+            result = await record_pitch_beacon(
                 session,
                 redis,
                 lead=lead,
@@ -213,19 +222,23 @@ class TestRecordPitchBeacon:
                 event="open",
                 user_agent=CHROME_UA,
             )
-        assert outcome == "recorded_alerted"
+        # The send is deferred to post-commit dispatch — the service only
+        # prepares it and the flag flips via mark_pitch_beacon_alerted.
+        assert result.outcome == "recorded_pending_alert"
+        assert result.alert is not None
         redis.set.assert_awaited_once_with(
             pitch_beacon_lock_key(lead.id),
             "1",
             nx=True,
             ex=PITCH_BEACON_LOCK_TTL_SECONDS,
         )
-        dispatch.assert_awaited_once()
+        prepare.assert_awaited_once()
         session.add.assert_called_once()
         log = session.add.call_args.args[0]
+        assert result.activity_log is log
         assert log.activity_type == "pitch_portal_view"
         assert log.details["dwell_seconds"] == 12.0
-        assert log.details["telegram_alerted"] is True
+        assert log.details["telegram_alerted"] is False
         assert log.details["device_type"] == "desktop"  # UA fallback
 
     @pytest.mark.asyncio
@@ -233,10 +246,10 @@ class TestRecordPitchBeacon:
         session = _session()
         redis = _redis(set_result=None)  # lock already held
         with patch(
-            "app.services.pitch_engagement._dispatch_telegram_alert",
+            "app.services.pitch_engagement._prepare_telegram_alert",
             new=AsyncMock(),
-        ) as dispatch:
-            outcome = await record_pitch_beacon(
+        ) as prepare:
+            result = await record_pitch_beacon(
                 session,
                 redis,
                 lead=_lead(),
@@ -247,8 +260,9 @@ class TestRecordPitchBeacon:
                 event="heartbeat",
                 user_agent=CHROME_UA,
             )
-        assert outcome == "recorded_silent"
-        dispatch.assert_not_called()
+        assert result.outcome == "recorded_silent"
+        assert result.alert is None
+        prepare.assert_not_called()
         session.add.assert_called_once()
         assert session.add.call_args.args[0].details["telegram_alerted"] is False
 
@@ -258,10 +272,10 @@ class TestRecordPitchBeacon:
         redis = _redis()
         redis.set = AsyncMock(side_effect=ConnectionError("redis down"))
         with patch(
-            "app.services.pitch_engagement._dispatch_telegram_alert",
+            "app.services.pitch_engagement._prepare_telegram_alert",
             new=AsyncMock(),
-        ) as dispatch:
-            outcome = await record_pitch_beacon(
+        ) as prepare:
+            result = await record_pitch_beacon(
                 session,
                 redis,
                 lead=_lead(),
@@ -272,8 +286,8 @@ class TestRecordPitchBeacon:
                 event="open",
                 user_agent=CHROME_UA,
             )
-        assert outcome == "recorded_silent"
-        dispatch.assert_not_called()
+        assert result.outcome == "recorded_silent"
+        prepare.assert_not_called()
         session.add.assert_called_once()
 
 
@@ -285,37 +299,62 @@ class TestWorkspaceRefResolution:
         assert await resolve_pitch_workspace_id(session, "42") == 42
         session.execute.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_slug_resolves_via_published_app(self):
+    def _slug_session(self, rows):
         session = _session()
         result = MagicMock()
-        result.scalar_one_or_none.return_value = 9
-        session.execute.return_value = result
+        result.all.return_value = rows
+        session.execute = AsyncMock(return_value=result)
+        return session
+
+    def _row(self, workspace_id, status):
+        return SimpleNamespace(workspace_id=workspace_id, status=status)
+
+    @pytest.mark.asyncio
+    async def test_slug_resolves_via_published_app(self):
+        session = self._slug_session([self._row(9, "published")])
         assert await resolve_pitch_workspace_id(session, "acme-sales") == 9
 
     @pytest.mark.asyncio
     async def test_unknown_slug_returns_none(self):
-        session = _session()
-        result = MagicMock()
-        result.scalar_one_or_none.return_value = None
-        session.execute.return_value = result
+        session = self._slug_session([])
         assert await resolve_pitch_workspace_id(session, "nope") is None
+
+    @pytest.mark.asyncio
+    async def test_unpublished_slug_still_resolves_when_unambiguous(self):
+        # Link permanence: unpublishing the app must not 404 already-sent
+        # pitch links when the slug maps to exactly one workspace.
+        session = self._slug_session([self._row(9, "archived")])
+        assert await resolve_pitch_workspace_id(session, "acme-sales") == 9
+
+    @pytest.mark.asyncio
+    async def test_published_row_wins_over_ambiguous_duplicates(self):
+        session = self._slug_session(
+            [self._row(9, "archived"), self._row(11, "published")]
+        )
+        assert await resolve_pitch_workspace_id(session, "acme-sales") == 11
+
+    @pytest.mark.asyncio
+    async def test_ambiguous_unpublished_slug_returns_none(self):
+        session = self._slug_session(
+            [self._row(9, "draft"), self._row(11, "archived")]
+        )
+        assert await resolve_pitch_workspace_id(session, "acme-sales") is None
 
 
 @pytest.mark.unit
 class TestDispatchGuardAndLockRelease:
-    """record_pitch_beacon: dispatch failures stay silent + release the lock."""
+    """record_pitch_beacon: unsendable alerts stay silent + release the lock."""
 
     @pytest.mark.asyncio
-    async def test_dispatch_exception_still_logs_and_releases_lock(self):
+    async def test_prepare_exception_still_logs_and_releases_lock(self):
         session = _session()
         redis = _redis(set_result=True)
         lead = _lead()
         with patch(
-            "app.services.pitch_engagement._dispatch_telegram_alert",
+            "app.services.pitch_engagement._prepare_telegram_alert",
             new=AsyncMock(side_effect=RuntimeError("boom")),
         ):
-            outcome = await record_pitch_beacon(
+            result = await record_pitch_beacon(
                 session,
                 redis,
                 lead=lead,
@@ -326,20 +365,21 @@ class TestDispatchGuardAndLockRelease:
                 event="open",
                 user_agent=CHROME_UA,
             )
-        assert outcome == "recorded_silent"
+        assert result.outcome == "recorded_silent"
+        assert result.alert is None
         redis.delete.assert_awaited_once_with(pitch_beacon_lock_key(lead.id))
         session.add.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_unsent_alert_releases_lock(self):
+    async def test_unsendable_alert_releases_lock(self):
         session = _session()
         redis = _redis(set_result=True)
         lead = _lead()
         with patch(
-            "app.services.pitch_engagement._dispatch_telegram_alert",
-            new=AsyncMock(return_value=False),  # e.g. no Telegram binding
+            "app.services.pitch_engagement._prepare_telegram_alert",
+            new=AsyncMock(return_value=None),  # e.g. no Telegram binding
         ):
-            outcome = await record_pitch_beacon(
+            result = await record_pitch_beacon(
                 session,
                 redis,
                 lead=lead,
@@ -350,19 +390,19 @@ class TestDispatchGuardAndLockRelease:
                 event="open",
                 user_agent=CHROME_UA,
             )
-        assert outcome == "recorded_silent"
+        assert result.outcome == "recorded_silent"
         redis.delete.assert_awaited_once_with(pitch_beacon_lock_key(lead.id))
 
     @pytest.mark.asyncio
-    async def test_sent_alert_keeps_lock(self):
+    async def test_prepared_alert_keeps_lock(self):
         session = _session()
         redis = _redis(set_result=True)
         lead = _lead()
         with patch(
-            "app.services.pitch_engagement._dispatch_telegram_alert",
-            new=AsyncMock(return_value=True),
+            "app.services.pitch_engagement._prepare_telegram_alert",
+            new=AsyncMock(return_value=_prepared_alert()),
         ):
-            outcome = await record_pitch_beacon(
+            result = await record_pitch_beacon(
                 session,
                 redis,
                 lead=lead,
@@ -373,7 +413,7 @@ class TestDispatchGuardAndLockRelease:
                 event="open",
                 user_agent=CHROME_UA,
             )
-        assert outcome == "recorded_alerted"
+        assert result.outcome == "recorded_pending_alert"
         redis.delete.assert_not_called()
 
 
@@ -394,10 +434,10 @@ class TestSessionDedupe:
         session = _session(execute_scalar=existing)
         redis = _redis(set_result=None)  # inside cooldown
         with patch(
-            "app.services.pitch_engagement._dispatch_telegram_alert",
+            "app.services.pitch_engagement._prepare_telegram_alert",
             new=AsyncMock(),
         ):
-            outcome = await record_pitch_beacon(
+            result = await record_pitch_beacon(
                 session,
                 redis,
                 lead=_lead(),
@@ -408,19 +448,19 @@ class TestSessionDedupe:
                 event="heartbeat",
                 user_agent=CHROME_UA,
             )
-        assert outcome == "recorded_silent"
+        assert result.outcome == "recorded_silent"
         session.add.assert_not_called()
         assert existing.details["dwell_seconds"] == 34.0
         assert existing.details["sections_viewed"] == ["hero", "roi"]
         assert existing.details["event"] == "heartbeat"
-        assert existing.details["telegram_alerted"] is True  # OR-ed, not reset
+        assert existing.details["telegram_alerted"] is True  # preserved
         assert existing.title == "Xem mini-pitch portal (34s)"
 
     @pytest.mark.asyncio
     async def test_first_event_of_session_inserts(self):
         session = _session(execute_scalar=None)  # no prior row for session
         redis = _redis(set_result=None)
-        outcome = await record_pitch_beacon(
+        result = await record_pitch_beacon(
             session,
             redis,
             lead=_lead(),
@@ -431,8 +471,48 @@ class TestSessionDedupe:
             event="open",
             user_agent=CHROME_UA,
         )
-        assert outcome == "recorded_silent"
+        assert result.outcome == "recorded_silent"
         session.add.assert_called_once()
+
+
+@pytest.mark.unit
+class TestPostCommitDispatch:
+    """The send runs post-commit via dispatch_prepared_pitch_alert (review
+    37.6: the network call must not sit inside the open DB transaction)."""
+
+    @pytest.mark.asyncio
+    async def test_dispatch_sends_prepared_payload(self):
+        adapter_cls = MagicMock()
+        adapter_cls.return_value.send_message = AsyncMock()
+        alert = _prepared_alert()
+        with patch(
+            "app.gateway.telegram.adapter.TelegramAdapter", adapter_cls
+        ):
+            sent = await dispatch_prepared_pitch_alert(alert)
+        assert sent is True
+        adapter_cls.assert_called_once_with("tok")
+        kwargs = adapter_cls.return_value.send_message.await_args.kwargs
+        assert kwargs["external_peer_id"] == "peer-1"
+        assert kwargs["parse_mode"] == "MarkdownV2"
+
+    @pytest.mark.asyncio
+    async def test_dispatch_failure_returns_false(self):
+        adapter_cls = MagicMock()
+        adapter_cls.return_value.send_message = AsyncMock(
+            side_effect=RuntimeError("telegram down")
+        )
+        with patch(
+            "app.gateway.telegram.adapter.TelegramAdapter", adapter_cls
+        ):
+            sent = await dispatch_prepared_pitch_alert(_prepared_alert())
+        assert sent is False
+
+    @pytest.mark.asyncio
+    async def test_mark_alerted_flips_flag_on_row(self):
+        log = SimpleNamespace(details={"telegram_alerted": False, "x": 1})
+        await mark_pitch_beacon_alerted(AsyncMock(), log)
+        assert log.details["telegram_alerted"] is True
+        assert log.details["x"] == 1
 
 
 @pytest.mark.unit

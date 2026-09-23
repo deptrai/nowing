@@ -315,3 +315,74 @@ class TestPitchOptOutRoute:
             response = await self._call_opt_out(session=session)
         assert response == {"status": "ok"}
         session.rollback.assert_awaited_once()
+
+
+@pytest.mark.unit
+class TestPitchFavicon:
+    """Favicon proxy — validates domain, never open-proxies (review 37.5)."""
+
+    async def test_invalid_domain_404(self):
+        from app.routes.public_pitch_routes import pitch_favicon
+
+        response = await pitch_favicon.__wrapped__(
+            request=MagicMock(), domain="not a domain!!", redis_client=None
+        )
+        assert response.status_code == 404
+
+    async def test_upstream_error_404(self):
+        from app.routes.public_pitch_routes import pitch_favicon
+
+        upstream = MagicMock(status_code=500, content=b"")
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=upstream)
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        with patch("httpx.AsyncClient", return_value=client):
+            response = await pitch_favicon.__wrapped__(
+                request=MagicMock(), domain="acme.vn", redis_client=None
+            )
+        assert response.status_code == 404
+
+    async def test_success_proxies_image_and_caches(self):
+        from app.routes.public_pitch_routes import pitch_favicon
+
+        upstream = MagicMock(
+            status_code=200,
+            content=b"\x89PNG fake",
+            headers={"content-type": "image/png"},
+        )
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=upstream)
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        redis = _redis()
+        redis.get = AsyncMock(return_value=None)
+        with patch("httpx.AsyncClient", return_value=client):
+            response = await pitch_favicon.__wrapped__(
+                request=MagicMock(), domain="acme.vn", redis_client=redis
+            )
+        assert response.status_code == 200
+        assert response.body == b"\x89PNG fake"
+        # Upstream hit is Google only — the viewer's domain never becomes a URL.
+        call = client.get.await_args
+        assert call.args[0] == "https://www.google.com/s2/favicons"
+        assert call.kwargs["params"]["domain"] == "acme.vn"
+        redis.set.assert_awaited_once()
+
+    async def test_non_image_content_type_rejected(self):
+        from app.routes.public_pitch_routes import pitch_favicon
+
+        upstream = MagicMock(
+            status_code=200,
+            content=b"<html>nope</html>",
+            headers={"content-type": "text/html"},
+        )
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=upstream)
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        with patch("httpx.AsyncClient", return_value=client):
+            response = await pitch_favicon.__wrapped__(
+                request=MagicMock(), domain="acme.vn", redis_client=None
+            )
+        assert response.status_code == 404

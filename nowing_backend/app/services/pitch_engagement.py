@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -122,19 +123,34 @@ async def resolve_pitch_workspace_id(
     Numeric refs map to ``workspaces.id`` directly (same convention as the
     public booking links).  Non-numeric slugs resolve through a published
     ``WorkspaceApp.slug`` so branded portal URLs stay stable per AD-119.
+
+    Link permanence: an *unpublished* slug still resolves when it maps to
+    exactly one workspace — sent pitch links must not 404 just because the
+    workspace later unpublished its app.  Ambiguous slugs (the per-workspace
+    unique constraint allows the same slug in two unpublished apps) fall
+    back to the published row, or 404 when nothing is unambiguous — the
+    composite ``(lead_id, workspace_id)`` lookup downstream prevents any
+    cross-workspace leak either way.
     """
     if workspace_ref.isdigit():
         return int(workspace_ref)
 
     from app.db import WorkspaceApp
 
-    result = await session.execute(
-        select(WorkspaceApp.workspace_id).where(
-            WorkspaceApp.slug == workspace_ref,
-            WorkspaceApp.status == "published",
+    rows = (
+        await session.execute(
+            select(WorkspaceApp.workspace_id, WorkspaceApp.status).where(
+                WorkspaceApp.slug == workspace_ref
+            )
         )
-    )
-    return result.scalar_one_or_none()
+    ).all()
+    if not rows:
+        return None
+    published = [r.workspace_id for r in rows if r.status == "published"]
+    if published:
+        return published[0]
+    distinct = {r.workspace_id for r in rows}
+    return rows[0].workspace_id if len(distinct) == 1 else None
 
 
 async def _resolve_alert_recipient_id(
@@ -237,20 +253,46 @@ def _format_alert_message(
     return "\n".join(lines)
 
 
-async def _dispatch_telegram_alert(
+@dataclass
+class PreparedPitchAlert:
+    """Everything needed to send the Telegram alert AFTER the timeline row
+    commits — keeping the network call out of the open DB transaction."""
+
+    token: str
+    external_peer_id: str
+    text: str
+
+
+@dataclass
+class PitchBeaconResult:
+    """Return value of ``record_pitch_beacon``.
+
+    ``outcome``: ``filtered_crawler`` | ``filtered_short_dwell`` |
+    ``recorded_silent`` | ``recorded_pending_alert``.  ``alert`` carries a
+    prepared send for the caller to dispatch post-commit; ``activity_log`` is
+    the written/merged timeline row so the caller can flip
+    ``details.telegram_alerted`` once the send succeeds.
+    """
+
+    outcome: str
+    alert: PreparedPitchAlert | None = None
+    activity_log: Any = None
+
+
+async def _prepare_telegram_alert(
     session: AsyncSession,
     lead: Any,
     *,
     dwell_seconds: float,
     sections_viewed: list[str],
     device_type: str,
-) -> bool:
-    """Send the instant Telegram push to the assigned sales rep (AC-4)."""
+) -> PreparedPitchAlert | None:
+    """Resolve recipient/binding/token and render the alert text (DB reads
+    only — no network), so the send can run after the transaction commits."""
     from app.automations.services.telegram_notifications import (
         resolve_telegram_binding_for_run,
     )
     from app.gateway.accounts import account_token
-    from app.gateway.telegram.adapter import TelegramAdapter
 
     user_id = await _resolve_alert_recipient_id(session, lead)
     if user_id is None:
@@ -259,7 +301,7 @@ async def _dispatch_telegram_alert(
             lead.id,
             lead.workspace_id,
         )
-        return False
+        return None
 
     binding = await resolve_telegram_binding_for_run(
         session, user_id, lead.workspace_id
@@ -270,38 +312,72 @@ async def _dispatch_telegram_alert(
             user_id,
             lead.workspace_id,
         )
-        return False
+        return None
 
     token = account_token(binding.account)
     if not token:
         logger.warning(
             "pitch beacon: no token for Telegram account %s", binding.account_id
         )
-        return False
+        return None
 
     zalo_link = await _resolve_zalo_deep_link(session, lead)
-    text = _format_alert_message(
-        lead=lead,
-        dwell_seconds=dwell_seconds,
-        sections_viewed=sections_viewed,
-        device_type=device_type,
-        zalo_link=zalo_link,
+    return PreparedPitchAlert(
+        token=token,
+        external_peer_id=binding.external_peer_id,
+        text=_format_alert_message(
+            lead=lead,
+            dwell_seconds=dwell_seconds,
+            sections_viewed=sections_viewed,
+            device_type=device_type,
+            zalo_link=zalo_link,
+        ),
     )
+
+
+async def dispatch_prepared_pitch_alert(alert: PreparedPitchAlert) -> bool:
+    """Send a prepared Telegram alert — pure network, no DB session held."""
+    from app.gateway.telegram.adapter import TelegramAdapter
+
     try:
-        adapter = TelegramAdapter(token)
+        adapter = TelegramAdapter(alert.token)
         await adapter.send_message(
-            external_peer_id=binding.external_peer_id,
-            text=text,
+            external_peer_id=alert.external_peer_id,
+            text=alert.text,
             parse_mode="MarkdownV2",
         )
         record_gateway_outbound(platform="telegram", kind="send", status="sent")
         return True
     except Exception:  # delivery is best-effort; the timeline row still stands
-        logger.exception(
-            "pitch beacon: Telegram alert failed for lead %s", lead.id
+        logger.exception("pitch beacon: Telegram alert dispatch failed")
+        record_gateway_outbound(
+            platform="telegram", kind="send", status="failed"
         )
-        record_gateway_outbound(platform="telegram", kind="send", status="failed")
         return False
+
+
+async def _dispatch_telegram_alert(
+    session: AsyncSession,
+    lead: Any,
+    *,
+    dwell_seconds: float,
+    sections_viewed: list[str],
+    device_type: str,
+) -> bool:
+    """Legacy combined prepare+send — kept for callers/tests that do not need
+    the post-commit ordering. New code should use ``_prepare_telegram_alert``
+    + ``dispatch_prepared_pitch_alert``."""
+    prepared = await _prepare_telegram_alert(
+        session,
+        lead,
+        dwell_seconds=dwell_seconds,
+        sections_viewed=sections_viewed,
+        device_type=device_type,
+    )
+    if prepared is None:
+        return False
+    return await dispatch_prepared_pitch_alert(prepared)
+
 
 
 async def record_pitch_beacon(
@@ -315,16 +391,20 @@ async def record_pitch_beacon(
     session_id: str | None,
     event: str | None,
     user_agent: str | None,
-) -> str:
-    """Process one beacon. Returns the outcome for logging/tests.
+) -> PitchBeaconResult:
+    """Process one beacon. Returns a ``PitchBeaconResult`` for the caller.
 
-    Outcomes: ``filtered_crawler``, ``filtered_short_dwell``,
-    ``recorded_alerted``, ``recorded_silent``.
+    Ordering (review 37.6): the timeline row is written and left for the
+    caller to COMMIT FIRST; only then should ``result.alert`` be dispatched.
+    This keeps the Telegram network call out of the open DB transaction —
+    a slow Telegram API no longer holds a pooled connection mid-write.
+    On dispatch failure the caller must release ``pitch_beacon_lock_key`` so
+    a transient error doesn't suppress retries for the full cooldown.
     """
     if is_crawler_user_agent(user_agent):
-        return "filtered_crawler"
+        return PitchBeaconResult(outcome="filtered_crawler")
     if dwell_seconds < MIN_DWELL_SECONDS:
-        return "filtered_short_dwell"
+        return PitchBeaconResult(outcome="filtered_short_dwell")
 
     sections = sanitize_sections_viewed(sections_viewed)
     device = device_type or classify_device_type(user_agent)
@@ -349,23 +429,23 @@ async def record_pitch_beacon(
             exc_info=True,
         )
 
-    alerted = False
+    prepared: PreparedPitchAlert | None = None
     if alert_due:
         try:
-            alerted = await _dispatch_telegram_alert(
+            prepared = await _prepare_telegram_alert(
                 session,
                 lead,
                 dwell_seconds=dwell_seconds,
                 sections_viewed=sections,
                 device_type=device,
             )
-        except Exception:  # dispatch must never lose the timeline row
+        except Exception:  # prepare must never lose the timeline row
             logger.exception(
-                "pitch beacon: alert dispatch raised for lead %s", lead.id
+                "pitch beacon: alert prepare raised for lead %s", lead.id
             )
-        if not alerted:
-            # Release the cooldown so a transient failure doesn't suppress
-            # retries for the full 30 minutes.
+        if prepared is None:
+            # Nothing sendable (no recipient/binding/token) — release the
+            # cooldown so a later beacon in a configured workspace can alert.
             try:
                 await redis_client.delete(lock_key)
             except Exception:
@@ -377,7 +457,8 @@ async def record_pitch_beacon(
 
     title = f"Xem mini-pitch portal ({int(dwell_seconds)}s)"
     # Dedupe by session_id: heartbeats/close events update the session's
-    # existing row instead of stacking duplicates.
+    # existing row instead of stacking duplicates. telegram_alerted flips
+    # post-commit via mark_pitch_beacon_alerted once the send lands.
     existing = None
     if session_id:
         result = await session.execute(
@@ -405,30 +486,47 @@ async def record_pitch_beacon(
                 "device_type": device,
                 "session_id": session_id,
                 "event": event,
-                "telegram_alerted": bool(details.get("telegram_alerted"))
-                or alerted,
                 "user_agent": (user_agent or "")[:_UA_MAX_LEN],
             }
         )
         existing.details = details
         existing.title = title
+        activity_log = existing
     else:
-        session.add(
-            LeadActivityLog(
-                workspace_id=lead.workspace_id,
-                lead_id=lead.id,
-                actor_user_id=None,
-                activity_type="pitch_portal_view",
-                title=title,
-                details={
-                    "dwell_seconds": dwell_seconds,
-                    "sections_viewed": sections,
-                    "device_type": device,
-                    "session_id": session_id,
-                    "event": event,
-                    "telegram_alerted": alerted,
-                    "user_agent": (user_agent or "")[:_UA_MAX_LEN],
-                },
-            )
+        activity_log = LeadActivityLog(
+            workspace_id=lead.workspace_id,
+            lead_id=lead.id,
+            actor_user_id=None,
+            activity_type="pitch_portal_view",
+            title=title,
+            details={
+                "dwell_seconds": dwell_seconds,
+                "sections_viewed": sections,
+                "device_type": device,
+                "session_id": session_id,
+                "event": event,
+                "telegram_alerted": False,
+                "user_agent": (user_agent or "")[:_UA_MAX_LEN],
+            },
         )
-    return "recorded_alerted" if alerted else "recorded_silent"
+        session.add(activity_log)
+    return PitchBeaconResult(
+        outcome=(
+            "recorded_pending_alert" if prepared is not None
+            else "recorded_silent"
+        ),
+        alert=prepared,
+        activity_log=activity_log,
+    )
+
+
+async def mark_pitch_beacon_alerted(
+    session: AsyncSession, activity_log: Any
+) -> None:
+    """Flip ``details.telegram_alerted`` on a committed timeline row after the
+    Telegram send lands. Caller commits; a failure here only affects display
+    (the alert was already delivered)."""
+    details = dict(activity_log.details or {})
+    details["telegram_alerted"] = True
+    activity_log.details = details
+

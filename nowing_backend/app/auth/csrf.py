@@ -25,7 +25,11 @@ def _origin_from_url(url: str | None) -> str | None:
 
 def _allowed_origins() -> set[str]:
     origins = set(config.CSRF_ALLOWED_ORIGINS)
-    for url in (config.NEXT_FRONTEND_URL, config.NOWING_PUBLIC_URL):
+    for url in (
+        config.NEXT_FRONTEND_URL,
+        config.NOWING_PUBLIC_URL,
+        getattr(config, "PITCH_PORTAL_BASE_URL", None),
+    ):
         origin = _origin_from_url(url)
         if origin:
             origins.add(origin)

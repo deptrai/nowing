@@ -717,7 +717,7 @@ class TestScanWorkspaceHighIntent:
             {"company_name": f"CÔNG TY TNHH MỚI {i}", "tax_code": f"031234567{i}"}
             for i in range(5)
         ]
-        result = await radar.scan_workspace_high_intent(
+        await radar.scan_workspace_high_intent(
             session,
             _FakeRedis(),
             workspace_id=7,
@@ -893,3 +893,63 @@ class TestCeleryWiring:
 
         tg = celery_app.conf.beat_schedule["process-telegram-intent-stream"]
         assert tg["task"] == "process_telegram_intent_stream"
+
+
+# ---------------------------------------------------------------------------
+# lead_id soft-link on signal rows (review 37.4)
+# ---------------------------------------------------------------------------
+
+
+class TestPersistSignalLeadLink:
+    """Signals carry lead_id so a company rename doesn't orphan history."""
+
+    async def test_persist_signal_links_matching_lead(self):
+        from app.db import SignalEvent
+        from app.lead_intelligence.signals.service import SignalDetectionService
+
+        lead_id = uuid4()
+        session = _FakeSession(
+            execute_queue=[
+                _FakeResult(lead_id),  # lead lookup by company name
+                _FakeResult(None),  # idempotency check
+            ]
+        )
+        signal = await SignalDetectionService().persist_signal(
+            session,
+            workspace_id=7,
+            client_id=None,
+            company_name="Acme Corp",
+            signal_type="hiring",
+            raw={
+                "confidence": 80.0,
+                "detected_at": datetime.now(UTC),
+                "job_count": 4,
+            },
+        )
+        assert signal is not None
+        assert isinstance(signal, SignalEvent)
+        assert signal.lead_id == lead_id
+
+    async def test_persist_signal_no_lead_leaves_null(self):
+        from app.lead_intelligence.signals.service import SignalDetectionService
+
+        session = _FakeSession(
+            execute_queue=[
+                _FakeResult(None),  # no matching lead
+                _FakeResult(None),  # idempotency check
+            ]
+        )
+        signal = await SignalDetectionService().persist_signal(
+            session,
+            workspace_id=7,
+            client_id=None,
+            company_name="Unknown Co",
+            signal_type="news",
+            raw={
+                "confidence": 80.0,
+                "detected_at": datetime.now(UTC),
+                "summary": "Mentioned in press.",
+            },
+        )
+        assert signal is not None
+        assert signal.lead_id is None

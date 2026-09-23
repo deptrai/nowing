@@ -537,10 +537,18 @@ async def get_zalo_copilot_context(
         select(SignalEvent)
         .where(
             SignalEvent.workspace_id == workspace_id,
-            # Case-insensitive equality — ilike would treat %/_ in the
-            # company name as wildcards and leak other companies' signals.
-            func.lower(SignalEvent.company_name)
-            == func.lower(lead.company_name or "\x00"),
+            # Prefer the stable lead link (survives company renames); fall
+            # back to case-insensitive name equality for rows written before
+            # lead_id existed. Plain ==, not ilike, so %/_ in the company
+            # name can't act as wildcards and leak other companies' signals.
+            (SignalEvent.lead_id == lead.id)
+            | (
+                SignalEvent.lead_id.is_(None)
+                & (
+                    func.lower(SignalEvent.company_name)
+                    == func.lower(lead.company_name or "\x00")
+                )
+            ),
         )
         .order_by(desc(SignalEvent.detected_at))
         .limit(COPILOT_MAX_SIGNALS)

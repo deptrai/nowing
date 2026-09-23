@@ -101,11 +101,16 @@ async def resolve_workspace_portal_ref(
 
 
 def _prospect_logo_url(domain: Any) -> str | None:
-    """Prospect logo from its public domain favicon; None when no clean domain."""
+    """Prospect logo via the backend favicon proxy; None when no clean domain.
+
+    Same-origin relative URL — on the pitch host the Next rewrite forwards
+    ``/api/*`` to the backend, on the main host Caddy does. Proxying keeps the
+    viewer's IP off Google and is what the Decree-13 footer promises.
+    """
     d = sanitize_text(domain, 255).lower()
     if not d or not _DOMAIN_RE.match(d):
         return None
-    return f"https://www.google.com/s2/favicons?domain={d}&sz=128"
+    return f"/api/v1/public/pitch/favicon?domain={d}"
 
 
 def build_portal_content(lead: Any) -> dict[str, Any]:

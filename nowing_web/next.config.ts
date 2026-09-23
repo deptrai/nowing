@@ -23,7 +23,21 @@ const nextConfig: NextConfig = {
 		// the unified SSR mini-pitch portal. Only the two-segment portal path is
 		// rewritten so /api/* and other routes on the host are untouched.
 		const pitchHost = process.env.PITCH_PORTAL_HOST || "pitch.nowing.ai";
+		// Story 37.5: the portal's client-side calls (beacon, opt-out, favicon
+		// proxy) use same-origin /api/v1/* URLs, so on the pitch host those are
+		// proxied to the backend — no CORS preflight, no cross-origin fetch.
+		// Must be registered BEFORE the two-segment portal rewrite or /api/v1/*
+		// would match it (workspace_slug="api").
+		const backendUrl =
+			process.env.NOWING_BACKEND_INTERNAL_URL ||
+			process.env.FASTAPI_BACKEND_INTERNAL_URL ||
+			"http://backend:8000";
 		return [
+			{
+				source: "/api/:path*",
+				has: [{ type: "host" as const, value: pitchHost }],
+				destination: `${backendUrl}/api/:path*`,
+			},
 			{
 				source: "/:workspace_slug/:lead_id",
 				has: [{ type: "host" as const, value: pitchHost }],

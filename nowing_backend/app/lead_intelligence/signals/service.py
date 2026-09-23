@@ -9,11 +9,12 @@ from typing import Any
 from uuid import uuid4
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import (
+    Lead,
     Memory,
     MemorySourceType,
     MemoryType,
@@ -229,6 +230,21 @@ class SignalDetectionService:
 
         company_name = str(raw.get("company_name", input.company_name)).strip()
 
+        # Soft-link the owning lead so a later company rename doesn't orphan
+        # the signal from the CRM timeline (review 37.4). Earliest-created
+        # lead wins when the name is ambiguous; None when no lead exists yet.
+        lead_id = (
+            await session.execute(
+                select(Lead.id)
+                .where(
+                    Lead.workspace_id == workspace_id,
+                    func.lower(Lead.company_name) == company_name.lower(),
+                )
+                .order_by(Lead.created_at)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
         # Idempotency: if the exact same signal already exists, skip it.
         existing = (
             await session.execute(
@@ -251,6 +267,7 @@ class SignalDetectionService:
             workspace_id=workspace_id,
             client_id=client_id,
             company_name=company_name,
+            lead_id=lead_id,
             signal_type=signal_type,
             source_url=source_url,
             chunk_id=raw.get("chunk_id"),

@@ -155,8 +155,9 @@ class TestPortalBuild:
         assert "script" not in content["headline"].lower() or "<" not in content["headline"]
         assert "<" not in content["exec_summary"]
         assert len(content["exec_cards"]) == 3
+        # Proxied through the backend — no viewer IP/domain leak to Google.
         assert content["logo_url"] == (
-            "https://www.google.com/s2/favicons?domain=logitech.vn&sz=128"
+            "/api/v1/public/pitch/favicon?domain=logitech.vn"
         )
         assert content["roi"]["default_sales_reps"] == 3
 
