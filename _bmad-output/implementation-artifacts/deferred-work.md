@@ -1920,3 +1920,15 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-6-realtime-prospect-engagement-tracker-and-telegram-alert-bot.md`
   summary: Live Telegram delivery end-to-end chưa verify (cần bound rep account thật) và `pitch.nowing.ai` DNS/edge cutover chưa có — portal host rewrite trong `next.config.ts` chỉ có tác dụng khi domain trỏ tới.
   evidence: dispatch logic unit-covered (54 tests) nhưng `TelegramAdapter.send_message` tới bot thật chưa chạy; settle khi có Telegram binding thật + DNS `pitch.nowing.ai` → web.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal.md`
+  summary: Opt-out form trên `pitch.nowing.ai` sẽ fail client-side (CORS — host chưa nằm trong `allowed_origins`, hoặc same-origin `/api/v1` 404 vì host rewrite chỉ cover 2-segment). Hôm nay opt-out chạy qua `/pitch/...` trên main host bình thường.
+  evidence: `buildBackendUrl` POST cross-origin từ pitch host; settle khi DNS cutover — add `PITCH_PORTAL_HOST` vào backend `allowed_origins` hoặc proxy qua Next route handler.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal.md`
+  summary: `logo_url` dùng Google favicon service — mỗi portal view disclose viewer IP + lead domain cho third party, trên trang quảng bá Decree-13 compliance.
+  evidence: `_prospect_logo_url` render `google.com/s2/favicons` trực tiếp; settle bằng backend favicon proxy hoặc brand-fetch provider.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal.md`
+  summary: Branded-slug portal links đã gửi 404 vĩnh viễn khi workspace unpublish app (`resolve_pitch_workspace_id` chỉ resolve `status=="published"`). Ref pinning trong cache giữ URL ổn định nhưng resolution vẫn cần published slug.
+  evidence: link-permanence policy cần quyết định — resolve cả unpublished slug cho portal, hoặc luôn emit numeric ref.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal.md`
+  summary: Portal content là deterministic template (không qua Web Builder/LLM) — copy generic cho mọi lead cùng ngành. `ponytail:` comment trong `build_portal_content` ghi upgrade path.
+  evidence: settle nếu cần personalization thật — LLM/web-builder generation keyed on content hash, giữ idempotent cache.

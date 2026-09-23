@@ -380,6 +380,20 @@ class SequencerDispatchMixin:
             **honorific.to_context_vars(),
         }
 
+        # AC-5 (Story 37.5): inject the mini-pitch portal URL when the cadence
+        # copy references {pitch_portal_url}. The build is idempotent — the
+        # per-lead artifact is Redis-cached so repeat sends never rebuild.
+        try:
+            portal_url = await self._resolve_pitch_portal_url(
+                session, lead, template_data
+            )
+            if portal_url:
+                context_vars["pitch_portal_url"] = portal_url
+        except Exception:  # portal injection must never block dispatch
+            logger.exception(
+                "pitch portal injection failed for lead %s", lead.id
+            )
+
         # AC-4 (Story 37.2 / Decree 91/2020/NĐ-CP): hard halt 21:00-08:00 ICT.
         # Checked after consent/DNC/billing gates so those skip/fail outcomes
         # still take precedence; placed before any provider call so nothing is
@@ -640,6 +654,34 @@ class SequencerDispatchMixin:
             return msg_id, "telegram"
 
         raise ValueError(f"unsupported_channel:{channel}")
+
+    async def _resolve_pitch_portal_url(
+        self,
+        session: Any,
+        lead: Lead,
+        template_data: dict[str, Any],
+    ) -> str | None:
+        """Story 37.5 / AC-5: lazily build the lead's mini-pitch portal and
+        return its public URL — only when the template actually references
+        ``{pitch_portal_url}``.  None when the token is absent."""
+        from app.services.pitch_portal import (
+            ensure_pitch_portal,
+            template_requests_pitch_portal,
+        )
+
+        if not template_requests_pitch_portal(template_data):
+            return None
+        # _get_redis_async lives on SequencerInboundMixin (combined on
+        # SequencerService); fall back to the raw client for isolated use.
+        get_redis = getattr(self, "_get_redis_async", None)
+        if get_redis is not None:
+            redis_client = await get_redis()
+        else:
+            from app.redis_client import get_redis_client
+
+            redis_client = await get_redis_client()
+        portal = await ensure_pitch_portal(session, redis_client, lead)
+        return portal["url"]
 
     async def _send_email_async(self, to_email: str, subject: str, body: str) -> str:
         """Asynchronous wrapper around synchronous SMTP sender."""

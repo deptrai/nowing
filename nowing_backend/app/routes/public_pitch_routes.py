@@ -1,12 +1,16 @@
-"""Public (unauthenticated) pitch-portal endpoints (Story 37.6).
+"""Public (unauthenticated) pitch-portal endpoints (Story 37.5/37.6).
 
 These back ``pitch.nowing.ai/{workspace_slug}/{lead_id}``:
 
-- ``GET .../meta`` — sanitized portal metadata for the SSR page.
+- ``GET .../meta`` — sanitized portal metadata + generated content for the
+  SSR page (Story 37.5).
 - ``POST .../beacon`` — cookieless ``navigator.sendBeacon`` telemetry.  Per
   AD-120 the beacon always answers ``204`` for well-formed payloads (including
   filtered preview pings and unknown leads) so the endpoint never leaks whether
   a lead exists; the unguessable lead UUID in the URL is the capability.
+- ``POST .../opt-out`` — Decree 13 self-serve "xóa thông tin" (Story 37.5
+  AC-4).  Answers ``200`` for any well-formed request — including unknown
+  leads — so it cannot be probed for lead existence either.
 """
 
 from __future__ import annotations
@@ -60,28 +64,47 @@ async def get_pitch_meta(
     workspace_ref: str,
     lead_id: UUID,
     session: AsyncSession = Depends(get_async_session),
+    redis_client: Any = Depends(get_redis_client),
 ) -> PitchPortalMetaResponse:
     """Sanitized portal metadata; 404 hides existence (unguessable lead UUID)."""
+    from app.services.pitch_portal import get_portal_content, sanitize_text
+
     workspace_id = await _resolve_workspace_id(session, workspace_ref)
     if workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Pitch link invalid"
         )
     lead = await _get_public_lead(session, workspace_id, lead_id)
-    if lead is None:
+    if lead is None or lead.consent_status == "withdrawn":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Pitch link invalid"
         )
 
     workspace = await session.get(Workspace, workspace_id)
+    # Story 37.5: generated content is cached per lead; a cold cache rebuilds
+    # the deterministic artifact so the portal always renders complete.
+    try:
+        content = await get_portal_content(session, redis_client, lead)
+    except Exception:  # generation failure must not 500 the public page
+        logger.exception("pitch meta: content build failed lead=%s", lead_id)
+        content = {}
     return PitchPortalMetaResponse(
         lead_id=lead.id,
         workspace_id=workspace_id,
-        company_name=lead.company_name,
-        industry=lead.industry,
-        location=lead.location,
-        workspace_name=workspace.name if workspace is not None else "Nowing",
+        company_name=sanitize_text(lead.company_name, 200) or "Doanh nghiệp",
+        industry=sanitize_text(lead.industry, 100) or None,
+        location=sanitize_text(lead.location, 100) or None,
+        workspace_name=sanitize_text(
+            workspace.name if workspace is not None else "Nowing", 100
+        )
+        or "Nowing",
         booking_path=f"/book/{workspace_id}/{lead.id}",
+        opt_out_path=f"/pitch/{workspace_ref}/{lead.id}/opt-out",
+        headline=content.get("headline"),
+        exec_summary=content.get("exec_summary"),
+        exec_cards=content.get("exec_cards") or [],
+        logo_url=content.get("logo_url"),
+        roi=content.get("roi"),
     )
 
 
@@ -153,3 +176,57 @@ async def pitch_beacon(
         outcome,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{workspace_ref}/{lead_id}/opt-out")
+@limiter.limit("30/minute")
+async def pitch_opt_out(
+    request: Request,
+    workspace_ref: str,
+    lead_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    redis_client: Any = Depends(get_redis_client),
+) -> dict[str, Any]:
+    """Decree 13 self-serve opt-out behind the portal footer link (AC-4).
+
+    Always answers a generic ``{"status": "ok"}`` — including for unknown
+    workspaces/leads — so the endpoint cannot be probed for existence; the
+    unguessable lead UUID is the capability, same as ``/meta``.
+    """
+    from app.services.pitch_engagement import is_crawler_user_agent
+    from app.services.pitch_portal import process_pitch_opt_out
+
+    if is_crawler_user_agent(request.headers.get("user-agent")):
+        return {"status": "ok"}
+
+    workspace_id = await _resolve_workspace_id(session, workspace_ref)
+    if workspace_id is None:
+        return {"status": "ok"}
+    lead = await _get_public_lead(session, workspace_id, lead_id)
+    if lead is None:
+        return {"status": "ok"}
+
+    # The SSR host forwards the real prospect IP (same convention as the other
+    # public lead endpoints); fall back to the socket peer only when absent.
+    client_ip = (
+        request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or request.headers.get("x-real-ip", "").strip()
+        or (request.client.host if request.client else None)
+        or None
+    )
+    try:
+        purged = await process_pitch_opt_out(
+            session, redis_client, lead=lead, ip_address=client_ip
+        )
+        await session.commit()
+    except Exception:  # opt-out must not surface internals; log + generic ok
+        await session.rollback()
+        logger.exception(
+            "pitch opt-out failed lead=%s ws=%s", lead_id, workspace_id
+        )
+        return {"status": "ok"}
+
+    logger.info(
+        "pitch opt-out lead=%s ws=%s purged=%s", lead_id, workspace_id, purged
+    )
+    return {"status": "ok"}

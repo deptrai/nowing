@@ -15,6 +15,11 @@ BACKEND_URL = (
 # Falls back to the web frontend origin when unset.
 MEETING_BOOKING_BASE_URL = os.getenv("MEETING_BOOKING_BASE_URL")
 
+# Base URL for the multi-tenant mini-pitch portal host (Story 37.5 / AD-119).
+# Served by the unified Next.js SSR route /pitch/[workspace_slug]/[lead_id] —
+# per-lead Dokploy containers are prohibited, so this is only a URL prefix.
+PITCH_PORTAL_BASE_URL = os.getenv("PITCH_PORTAL_BASE_URL")
 
 
-__all__ = ['BACKEND_URL', 'MEETING_BOOKING_BASE_URL']
+
+__all__ = ['BACKEND_URL', 'MEETING_BOOKING_BASE_URL', 'PITCH_PORTAL_BASE_URL']

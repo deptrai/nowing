@@ -342,6 +342,10 @@ class SequencerEnrollmentMixin:
                 return await self._handle_send_step(
                     session, sequence, step, enrollment, lead
                 )
+            elif step.step_type == "generate_pitch_portal":
+                return await self._handle_generate_pitch_portal_step(
+                    session, sequence, step, enrollment, lead
+                )
             elif step.step_type == "wait":
                 return await self._handle_wait_step(session, sequence, step, enrollment)
             elif step.step_type == "condition":
@@ -355,6 +359,57 @@ class SequencerEnrollmentMixin:
                 await self._advance_to_next_step(session, sequence, step, enrollment)
                 await session.commit()
                 return None
+
+    async def _handle_generate_pitch_portal_step(
+        self,
+        session: AsyncSession,
+        sequence: Sequence,
+        step: SequenceStep,
+        enrollment: SequenceEnrollment,
+        lead: Lead,
+    ) -> Any:
+        """Story 37.5 / AC-1/AC-5: 1-click mini-pitch portal generation step.
+
+        Builds (or reuses from cache) the per-lead portal artifact so the URL
+        is live before later send steps interpolate ``{pitch_portal_url}``.
+        Idempotent: the Redis-cached build makes re-runs a no-op; the step
+        still advances so a transient failure never wedges the cadence.
+        """
+        from app.db import SequenceEvent
+        from app.redis_client import get_redis_client
+        from app.services.pitch_portal import ensure_pitch_portal
+
+        metadata: dict[str, Any] = {}
+        subtype = "pitch_portal_generated"
+        try:
+            redis_client = await get_redis_client()
+            portal = await ensure_pitch_portal(session, redis_client, lead)
+            metadata = {
+                "pitch_portal_url": portal["url"],
+                "cache_hit": portal["cache_hit"],
+            }
+        except Exception:  # generation failure → advance; send steps retry lazily
+            subtype = "pitch_portal_build_failed"
+            logger.exception(
+                "Pitch portal generation failed for lead %s", lead.id
+            )
+
+        event = SequenceEvent(
+            workspace_id=enrollment.workspace_id,
+            client_id=enrollment.client_id,
+            enrollment_id=enrollment.id,
+            sequence_id=sequence.id,
+            step_id=step.id,
+            event_type="delivered",
+            event_subtype=subtype,
+            channel=step.channel,
+            cost_micros=0,
+            event_metadata=metadata,
+        )
+        session.add(event)
+        await self._advance_to_next_step(session, sequence, step, enrollment)
+        await session.commit()
+        return event
 
     async def _handle_wait_step(
         self,

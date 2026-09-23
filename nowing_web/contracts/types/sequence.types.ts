@@ -17,6 +17,7 @@ export const sequenceStepSchema = z.object({
 		"update_lead_score",
 		"update_crm",
 		"tag",
+		"generate_pitch_portal",
 	]),
 	channel: channelEnum.default("email"),
 	template: z.record(z.string(), z.any()).default({}),

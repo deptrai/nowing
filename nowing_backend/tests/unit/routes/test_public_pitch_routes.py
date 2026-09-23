@@ -9,7 +9,7 @@ covered by deployment config, not unit tests).
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -50,6 +50,7 @@ def _session(lead=None):
 
 def _redis():
     redis = MagicMock()
+    redis.get = AsyncMock(return_value=None)
     redis.set = AsyncMock(return_value=None)
     redis.delete = AsyncMock()
     return redis
@@ -147,3 +148,170 @@ class TestBeaconPayloadShape:
         payload = PitchBeaconPayload.model_validate({})
         assert payload.dwell_seconds == 0.0
         assert payload.sections_viewed == []
+
+
+@pytest.mark.unit
+class TestPitchMetaRoute:
+    """Story 37.5: /meta returns generated portal content + opt-out path."""
+
+    async def test_meta_returns_generated_content(self):
+        from types import SimpleNamespace
+
+        from app.db import Lead
+        from app.routes.public_pitch_routes import get_pitch_meta
+
+        lead = SimpleNamespace(
+            id=uuid4(),
+            workspace_id=42,
+            company_name="Acme Corp",
+            industry="Logistics",
+            location="TP.HCM",
+            domain="acme.vn",
+            consent_status="opted_in",
+        )
+        workspace = SimpleNamespace(id=42, name="Nowing WS")
+        session = _session()
+        session.get = AsyncMock(
+            side_effect=lambda model, _ident: (
+                lead if model is Lead else workspace
+            )
+        )
+        content = {
+            "headline": "Headline for Acme",
+            "exec_summary": "Summary",
+            "exec_cards": [
+                {"tone": "red", "title": "Thực trạng", "body": "b1"},
+                {"tone": "yellow", "title": "Khoảng trống", "body": "b2"},
+                {"tone": "green", "title": "Giải pháp", "body": "b3"},
+            ],
+            "logo_url": None,
+            "roi": None,
+        }
+        with patch(
+            "app.services.pitch_portal.get_portal_content",
+            new=AsyncMock(return_value=content),
+        ):
+            response = await get_pitch_meta.__wrapped__(
+                request=MagicMock(),
+                workspace_ref="42",
+                lead_id=lead.id,
+                session=session,
+                redis_client=_redis(),
+            )
+
+        assert response.headline == "Headline for Acme"
+        assert len(response.exec_cards) == 3
+        assert response.exec_cards[0].title == "Thực trạng"
+        assert response.opt_out_path == f"/pitch/42/{lead.id}/opt-out"
+        assert response.company_name == "Acme Corp"
+
+    async def test_meta_404s_for_withdrawn_lead(self):
+        """A withdrawn lead's portal must stop serving even with warm cache."""
+        from types import SimpleNamespace
+
+        from fastapi import HTTPException
+
+        from app.routes.public_pitch_routes import get_pitch_meta
+
+        lead = SimpleNamespace(
+            id=uuid4(), workspace_id=42, consent_status="withdrawn"
+        )
+        session = _session()
+        session.get = AsyncMock(side_effect=lambda model, _ident: lead)
+        with patch(
+            "app.services.pitch_portal.get_portal_content", new=AsyncMock()
+        ) as mock_content, pytest.raises(HTTPException) as exc:
+            await get_pitch_meta.__wrapped__(
+                request=MagicMock(),
+                workspace_ref="42",
+                lead_id=lead.id,
+                session=session,
+                redis_client=_redis(),
+            )
+        assert exc.value.status_code == 404
+        mock_content.assert_not_awaited()
+
+
+@pytest.mark.unit
+class TestPitchOptOutRoute:
+    """Story 37.5 / AC-4: self-serve opt-out never leaks lead existence."""
+
+    async def _call_opt_out(self, session=None, ua=CHROME_UA, headers=None):
+        from app.routes.public_pitch_routes import pitch_opt_out
+
+        request = _request()
+        request.headers = {"user-agent": ua, **(headers or {})}
+        request.client = MagicMock()
+        request.client.host = "1.2.3.4"
+        return await pitch_opt_out.__wrapped__(
+            request=request,
+            workspace_ref="42",
+            lead_id=uuid4(),
+            session=session or _session(),
+            redis_client=_redis(),
+        )
+
+    @pytest.mark.asyncio
+    async def test_unknown_lead_still_200_ok(self):
+        response = await self._call_opt_out(session=_session(lead=None))
+        assert response == {"status": "ok"}
+
+    @pytest.mark.asyncio
+    async def test_crawler_ua_short_circuits(self):
+        session = _session()
+        response = await self._call_opt_out(
+            session=session, ua="facebookexternalhit/1.1"
+        )
+        assert response == {"status": "ok"}
+        session.get.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_valid_lead_processes_and_commits(self):
+        from types import SimpleNamespace
+
+        lead = SimpleNamespace(id=uuid4(), workspace_id=42)
+        session = _session(lead=lead)
+        redis = _redis()
+        request = _request()
+        request.headers = {
+            "user-agent": CHROME_UA,
+            "x-forwarded-for": "9.9.9.9, 10.0.0.1",
+        }
+        request.client = MagicMock()
+        request.client.host = "1.2.3.4"
+
+        from app.routes.public_pitch_routes import pitch_opt_out
+
+        with patch(
+            "app.services.pitch_portal.process_pitch_opt_out",
+            new=AsyncMock(return_value=2),
+        ) as mock_process:
+            response = await pitch_opt_out.__wrapped__(
+                request=request,
+                workspace_ref="42",
+                lead_id=uuid4(),
+                session=session,
+                redis_client=redis,
+            )
+        assert response == {"status": "ok"}
+        mock_process.assert_awaited_once()
+        args, kwargs = mock_process.await_args
+        assert args[0] is session
+        assert args[1] is redis
+        # First XFF hop wins — the prospect IP, not the ingress edge IP.
+        assert kwargs["ip_address"] == "9.9.9.9"
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_processing_error_still_generic_ok(self):
+        from types import SimpleNamespace
+
+        lead = SimpleNamespace(id=uuid4(), workspace_id=42)
+        session = _session(lead=lead)
+        with patch(
+            "app.services.pitch_portal.process_pitch_opt_out",
+            new=AsyncMock(side_effect=RuntimeError("boom")),
+        ):
+            response = await self._call_opt_out(session=session)
+        assert response == {"status": "ok"}
+        session.rollback.assert_awaited_once()

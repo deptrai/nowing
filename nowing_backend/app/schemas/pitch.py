@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class PitchBeaconPayload(BaseModel):
@@ -22,6 +22,36 @@ class PitchBeaconPayload(BaseModel):
     event: Literal["open", "heartbeat", "close"] | None = None
 
 
+class PitchExecCard(BaseModel):
+    """One card in the 30-second executive card stack (Story 37.5 / AC-2)."""
+
+    tone: Literal["red", "yellow", "green"]
+    title: str = Field(max_length=120)
+    body: str = Field(max_length=500)
+
+
+class PitchRoiDefaults(BaseModel):
+    """Seed values for the interactive ROI slider (Story 37.5 / AC-2)."""
+
+    default_sales_reps: int = Field(default=3, ge=1, le=100)
+    min_sales_reps: int = Field(default=1, ge=1, le=100)
+    max_sales_reps: int = Field(default=20, ge=1, le=500)
+    meetings_per_rep_per_month: float = Field(default=5.0, ge=0.0)
+    data_saving_per_rep_vnd: int = Field(default=8_000_000, ge=0)
+
+    @model_validator(mode="after")
+    def _check_range(self) -> PitchRoiDefaults:
+        if not (
+            self.min_sales_reps
+            <= self.default_sales_reps
+            <= self.max_sales_reps
+        ):
+            raise ValueError(
+                "roi defaults require min <= default <= max sales_reps"
+            )
+        return self
+
+
 class PitchPortalMetaResponse(BaseModel):
     """Public metadata the SSR pitch page needs to render (sanitized)."""
 
@@ -32,3 +62,11 @@ class PitchPortalMetaResponse(BaseModel):
     location: str | None = None
     workspace_name: str
     booking_path: str
+    opt_out_path: str | None = None
+    # Generated portal content (Story 37.5).  Optional so the SSR shell still
+    # renders when generation was skipped or the cache is cold.
+    headline: str | None = None
+    exec_summary: str | None = None
+    exec_cards: list[PitchExecCard] = Field(default_factory=list)
+    logo_url: str | None = None
+    roi: PitchRoiDefaults | None = None
