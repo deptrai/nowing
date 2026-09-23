@@ -175,8 +175,12 @@ router.include_router(outcome_pricing_router)
 router.include_router(promo_code_router)
 router.include_router(partner_router)
 router.include_router(lead_scoring_router)
-router.include_router(leads_router)
+# lead_clipper_router must precede leads_router: its GET
+# /workspaces/{id}/leads/copilot-context would otherwise be shadowed by
+# GET /workspaces/{id}/leads/{lead_id} (UUID parse → 422). Clipper routes
+# are POST-only otherwise, so no reverse collision exists.
 router.include_router(lead_clipper_router)
+router.include_router(leads_router)
 router.include_router(lead_pipeline_router)
 router.include_router(public_booking_router)  # Prospect-facing /book/{ws}/{lead} (Story 37.3)
 router.include_router(public_pitch_router)  # pitch.nowing.ai beacon + meta (Story 37.6)

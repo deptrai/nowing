@@ -8,9 +8,15 @@ import { extractFacebookLead } from './extractors/facebook';
 import { extractGenericLead } from './extractors/generic';
 import { extractTopcvLead } from './extractors/topcv';
 import { FloatingActionPill } from './floating_pill';
+import { initZaloCopilot } from './zalo';
 import { LeadClipPayload } from '../types';
 
 let pill: FloatingActionPill | null = null;
+
+// AC-1 scopes the co-pilot to chat.zalo.me only — other zalo.me subdomains
+// (id., oa., …) are not chat surfaces.
+const pageHost = window.location.hostname.toLowerCase();
+const isZalo = pageHost === 'chat.zalo.me';
 
 function detectLeadOnPage(): LeadClipPayload | null {
   const host = window.location.hostname.toLowerCase();
@@ -48,23 +54,32 @@ function initClipper() {
   }
 }
 
-// Initialize on page load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => initClipper());
+// Initialize on page load. On Zalo the clipper pill is replaced by the
+// co-pilot overlay (Story 37.4) — it manages its own MutationObserver.
+if (isZalo) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initZaloCopilot());
+  } else {
+    initZaloCopilot();
+  }
 } else {
-  initClipper();
-}
-
-// Observer for dynamic Single Page Applications (Facebook, TopCV)
-let mutationTimeout: any = null;
-const observer = new MutationObserver(() => {
-  clearTimeout(mutationTimeout);
-  mutationTimeout = setTimeout(() => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initClipper());
+  } else {
     initClipper();
-  }, 1000);
-});
+  }
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
+  // Observer for dynamic Single Page Applications (Facebook, TopCV)
+  let mutationTimeout: any = null;
+  const observer = new MutationObserver(() => {
+    clearTimeout(mutationTimeout);
+    mutationTimeout = setTimeout(() => {
+      initClipper();
+    }, 1000);
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}

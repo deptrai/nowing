@@ -1932,3 +1932,10 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal.md`
   summary: Portal content là deterministic template (không qua Web Builder/LLM) — copy generic cho mọi lead cùng ngành. `ponytail:` comment trong `build_portal_content` ghi upgrade path.
   evidence: settle nếu cần personalization thật — LLM/web-builder generation keyed on content hash, giữ idempotent cache.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper.md`
+  summary: signal_events has no lead_id/domain FK — copilot joins on company_name, so a company rename drops signal history and same-name leads share signals.
+  evidence: verified `app/models/leads/signals.py` — only workspace_id/client_id/company_name keys exist; adding a stable FK requires a schema migration beyond this story.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper.md`
+  summary: Zalo overlay not verified against real chat.zalo.me DOM — phone detection heuristics (URL/anchor/header), composer selectors, and insertText path untested live.
+  evidence: no Zalo web session available during dev+review; detection fails safe (no phone → no pill). Needs a manual pass on a real Zalo account before rollout.
