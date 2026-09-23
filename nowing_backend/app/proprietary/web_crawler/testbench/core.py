@@ -127,7 +127,7 @@ def make_page_action(
             try:
                 cell.value = page.evaluate(evaluate_js)
                 cell.captured = True
-            except Exception as exc:
+            except Exception as exc:  # page.evaluate JS failure; record error in cell
                 cell.error = f"{type(exc).__name__}: {exc}"
         if screenshot_path is not None:
             try:
@@ -136,7 +136,7 @@ def make_page_action(
                 # create it for us, so a missing dir silently drops every screenshot.
                 Path(screenshot_path).parent.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=screenshot_path, full_page=True)
-            except Exception as exc:
+            except Exception as exc:  # page.screenshot failure; record error in cell
                 if cell.error is None:
                     cell.error = f"screenshot: {type(exc).__name__}: {exc}"
         return page
@@ -156,7 +156,7 @@ def mask_proxy(url: str | None) -> str:
         host = p.hostname or "?"
         port = f":{p.port}" if p.port else ""
         return f"{p.scheme}://***@{host}{port}"
-    except Exception:
+    except Exception:  # urlsplit failure; return fallback indicator
         return "<set>"
 
 
@@ -170,7 +170,7 @@ def scrapling_version() -> str:
         import scrapling
 
         return getattr(scrapling, "__version__", "unknown")
-    except Exception:
+    except Exception:  # scrapling import failure; report unavailable
         return "unavailable"
 
 
@@ -209,7 +209,7 @@ def load_last_baseline() -> dict[str, Any] | None:
         return None
     try:
         return json.loads(snaps[-1].read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # baseline JSON load failure; return None
         return None
 
 

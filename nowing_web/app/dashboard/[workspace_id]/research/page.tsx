@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-	title: "Research",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("saved_searches");
+	return {
+		title: t("research_title"),
+	};
+}
 
 export default async function ResearchPage({
 	params,

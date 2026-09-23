@@ -1,6 +1,7 @@
 "use client";
 
-import { useSelectedLayoutSegments } from "next/navigation";
+import { usePathname, useSelectedLayoutSegments } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo } from "react";
 import {
@@ -15,11 +16,19 @@ interface PlaygroundLayoutShellProps {
 	children: React.ReactNode;
 }
 
-export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayoutShellProps) {
-	const segments = useSelectedLayoutSegments();
-	const base = `/dashboard/${workspaceId}/playground`;
+function usePlaygroundBase(workspaceId: string, pathname: string | null) {
+	const userSettingsBase = `/dashboard/${workspaceId}/user-settings/playground`;
+	if (pathname?.startsWith(userSettingsBase)) return userSettingsBase;
+	return `/dashboard/${workspaceId}/playground`;
+}
 
-	const topLevelItems = useMemo(() => getPlaygroundNavItems(base), [base]);
+export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayoutShellProps) {
+	const t = useTranslations("layout");
+	const pathname = usePathname();
+	const base = usePlaygroundBase(workspaceId, pathname);
+	const segments = useSelectedLayoutSegments();
+
+	const topLevelItems = useMemo(() => getPlaygroundNavItems(base, t), [base, t]);
 	const providerGroups = useMemo(() => getPlaygroundNavGroups(base), [base]);
 
 	const activeValue =
@@ -29,11 +38,11 @@ export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayou
 				? segments[0]
 				: "overview";
 
-	const selectedLabel = getPlaygroundSelectedLabel(activeValue, topLevelItems, providerGroups);
+	const selectedLabel = getPlaygroundSelectedLabel(activeValue, topLevelItems, providerGroups, t);
 
 	return (
 		<RoutedSectionShell
-			title="API Playground"
+			title={t("api_playground")}
 			items={topLevelItems}
 			groups={providerGroups}
 			activeValue={activeValue}

@@ -35,3 +35,23 @@ def test_memory_fallback_counts_within_window():
     rate_limit._memory.clear()
     assert rate_limit._incr_memory("k", window_seconds=60) == 1
     assert rate_limit._incr_memory("k", window_seconds=60) == 2
+
+
+def test_incr_redis_failure_falls_back_to_scaled_memory(monkeypatch):
+    """Item 2: When Redis is down, memory counter is scaled by CAPABILITY_RATE_LIMIT_FALLBACK_DIVISOR."""
+    rate_limit._memory.clear()
+    # Force Redis client failure
+    monkeypatch.setattr(
+        rate_limit,
+        "_redis_client",
+        lambda: (_ for _ in ()).throw(ConnectionError("Redis connection refused")),
+    )
+
+    # First hit returns 1 * DIVISOR = 4
+    count1 = rate_limit._incr("test-workspace", window_seconds=60)
+    assert count1 == 1 * rate_limit.CAPABILITY_RATE_LIMIT_FALLBACK_DIVISOR
+
+    # Second hit returns 2 * DIVISOR = 8
+    count2 = rate_limit._incr("test-workspace", window_seconds=60)
+    assert count2 == 2 * rate_limit.CAPABILITY_RATE_LIMIT_FALLBACK_DIVISOR
+

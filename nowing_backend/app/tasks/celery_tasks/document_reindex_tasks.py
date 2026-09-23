@@ -92,7 +92,7 @@ async def _reindex_document(document_id: int, user_id: str):
             )
             raise
 
-        except Exception as e:
+        except Exception as e:  # task-level guard: log + rollback + re-raise for celery retry
             await session.rollback()
             await task_logger.log_task_failure(
                 log_entry,

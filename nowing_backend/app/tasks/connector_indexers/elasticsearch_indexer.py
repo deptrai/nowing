@@ -330,7 +330,7 @@ async def index_elasticsearch_documents(
                     )
                     hits_collected += 1
 
-                except Exception as e:
+                except Exception as e:  # per-hit metadata extraction failure; log error, increment failed, and continue
                     logger.error(f"Error in Phase 1 for ES doc: {e!s}", exc_info=True)
                     documents_failed += 1
                     continue
@@ -400,7 +400,7 @@ async def index_elasticsearch_documents(
                         )
                         await session.commit()
 
-                except Exception as e:
+                except Exception as e:  # per-document processing failure; attempt marking document failed and continue
                     msg = f"Error processing Elasticsearch document {item.get('doc_id', 'unknown')}: {e}"
                     logger.error(msg)
                     # Mark document as failed with reason (visible in UI)
@@ -410,7 +410,7 @@ async def index_elasticsearch_documents(
                         # Commit now so the failed status survives a later rollback or
                         # crash; otherwise the doc stays stuck in pending/processing.
                         await session.commit()
-                    except Exception as status_error:
+                    except Exception as status_error:  # mark document failed commit failure; rollback and continue
                         logger.error(
                             f"Failed to update document status to failed: {status_error}"
                         )
@@ -435,7 +435,7 @@ async def index_elasticsearch_documents(
                 logger.info(
                     "Successfully committed all Elasticsearch document changes to database"
                 )
-            except Exception as e:
+            except Exception as e:  # final commit failure; rollback if duplicate hash, else re-raise
                 # Handle any remaining integrity errors gracefully (race conditions, etc.)
                 if (
                     "duplicate key value violates unique constraint" in str(e).lower()
@@ -479,7 +479,7 @@ async def index_elasticsearch_documents(
             if es_connector:
                 await es_connector.close()
 
-    except Exception as e:
+    except Exception as e:  # elasticsearch indexing failure; rollback, close connector, log failure, and return error
         error_msg = f"Error indexing Elasticsearch documents: {e}"
         logger.error(error_msg, exc_info=True)
         await task_logger.log_task_failure(

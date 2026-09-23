@@ -8,6 +8,7 @@ from sqlalchemy import (
     Enum as SQLAlchemyEnum,
     ForeignKey,
     Integer,
+    String,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -56,6 +57,10 @@ class AutomationRun(BaseModel, TimestampMixin):
         server_default=RunStatus.PENDING.value,
         index=True,
     )
+
+    # Caller-supplied idempotency key; survives Redis restarts and is used for
+    # permanent replay / deduplication of automation runs.
+    idempotency_key = Column(String(255), nullable=True, index=True)
 
     # locked at fire time so historical runs always show the exact code path
     definition_snapshot = Column(JSONB, nullable=False)

@@ -164,7 +164,7 @@ async def test_mcp_http_tool_registers_citations_for_web_search_exa(
     # Monkeypatch the inner _do_mcp_call closure to avoid real HTTP.
     # The closure is defined inside _create_mcp_tool_from_definition_http; we patch at the module
     # level by replacing the streamablehttp_client context manager.
-    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool as mcp_mod
+    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http as mcp_mod
 
     class _FakeStream:
         async def __aenter__(self):
@@ -254,7 +254,7 @@ async def test_mcp_http_tool_registers_citations_for_web_fetch_exa(
             resp.content = [content_item]
             return resp
 
-    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool as mcp_mod
+    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http as mcp_mod
 
     monkeypatch.setattr(
         mcp_mod, "streamablehttp_client", lambda *a, **kw: _FakeStream()
@@ -329,7 +329,7 @@ async def test_mcp_http_tool_no_citations_for_non_exa_tool(monkeypatch) -> None:
             resp.content = [content_item]
             return resp
 
-    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool as mcp_mod
+    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http as mcp_mod
 
     monkeypatch.setattr(
         mcp_mod, "streamablehttp_client", lambda *a, **kw: _FakeStream()
@@ -398,7 +398,7 @@ async def test_mcp_http_tool_no_runtime_returns_string(monkeypatch) -> None:
             resp.content = [content_item]
             return resp
 
-    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool as mcp_mod
+    import app.agents.chat.multi_agent_chat.shared.tools.mcp.tool.http as mcp_mod
 
     monkeypatch.setattr(
         mcp_mod, "streamablehttp_client", lambda *a, **kw: _FakeStream()

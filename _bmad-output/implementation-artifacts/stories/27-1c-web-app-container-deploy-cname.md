@@ -1,10 +1,10 @@
 ---
 baseline_commit: 4fe46956f
-story_key: 27-1c
+story_key: 27-1c-web-app-container-deploy-custom-cname
 epic: epic-27
 story: "27.1c"
 title: "Web App Container Deploy & Custom CNAME"
-status: "done"
+status: done
 ---
 
 # Story 27.1c: Web App Container Deploy & Custom CNAME

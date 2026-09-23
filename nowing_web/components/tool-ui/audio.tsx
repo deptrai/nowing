@@ -1,6 +1,7 @@
 "use client";
 
 import { DownloadIcon, PauseIcon, PlayIcon, Volume2Icon, VolumeXIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -23,6 +24,7 @@ function formatTime(seconds: number): string {
 }
 
 export function Audio({ id, src, title, durationMs, className }: AudioProps) {
+	const t = useTranslations("toolUi");
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const downloadControllerRef = useRef<AbortController | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
@@ -162,7 +164,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 				)}
 			>
 				<div className="px-5 pt-5 pb-4">
-					<p className="text-sm font-semibold text-destructive">Audio Error</p>
+					<p className="text-sm font-semibold text-destructive">{t("audio_error")}</p>
 				</div>
 				<div className="mx-5 h-px bg-border/50" />
 				<div className="px-5 py-4">
@@ -182,7 +184,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 			)}
 		>
 			<audio ref={audioRef} src={src} preload="metadata">
-				<track kind="captions" srcLang="en" label="English captions" default />
+				<track kind="captions" srcLang="en" label={t("audio_english_captions")} default />
 			</audio>
 
 			<div className="flex items-start gap-2 px-5 pt-5 pb-4">
@@ -192,7 +194,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 					size="icon"
 					onClick={handleDownload}
 					className="size-7 shrink-0 -mt-0.5 -mr-2 text-muted-foreground"
-					aria-label="Download audio"
+					aria-label={t("audio_download")}
 				>
 					<DownloadIcon className="size-4" aria-hidden="true" />
 				</Button>
@@ -223,7 +225,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 						onClick={togglePlayPause}
 						disabled={isLoading}
 						className="size-7 sm:size-8"
-						aria-label={isPlaying ? "Pause" : "Play"}
+						aria-label={isPlaying ? t("audio_pause") : t("audio_play")}
 					>
 						{isLoading ? (
 							<div className="size-3 sm:size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -240,7 +242,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 							size="icon"
 							onClick={toggleMute}
 							className="size-7 sm:size-8"
-							aria-label={isMuted ? "Unmute" : "Mute"}
+							aria-label={isMuted ? t("audio_unmute") : t("audio_mute")}
 						>
 							{isMuted ? (
 								<VolumeXIcon className="size-3.5 sm:size-4" aria-hidden="true" />
@@ -263,7 +265,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 								value={isMuted ? 0 : volume}
 								onChange={(e) => handleVolumeChange([Number.parseFloat(e.target.value)])}
 								className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-								aria-label="Volume"
+								aria-label={t("audio_volume")}
 							/>
 						</div>
 					</div>

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { AlertCircle, Coins, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { instantiatePlaybookMutationAtom } from "@/atoms/playbooks/playbooks-mutation.atoms";
 import { SchemaForm } from "@/components/schema-form/schema-form";
@@ -18,9 +19,14 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import type { PlaybookSummary } from "@/contracts/types/playbook.types";
+import type { PlaybookInstantiateRequest, PlaybookSummary } from "@/contracts/types/playbook.types";
+import { useAutomationEligibleModels } from "@/hooks/use-automation-eligible-models";
 import { playbooksApiService } from "@/lib/apis/playbooks-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
+import {
+	AutomationModelFields,
+	type AutomationModelSelection,
+} from "../automations/components/builder/automation-model-fields";
 
 interface PlaybookInstantiateDialogProps {
 	playbook: PlaybookSummary;
@@ -32,7 +38,10 @@ interface PlaybookInstantiateDialogProps {
 const DEFAULT_CREDIT_COST = 25;
 const DEFAULT_RUN_MAX = 200;
 
-function getRunLimitFromInputsSchema(inputsSchema: Record<string, unknown> | undefined): {
+function getRunLimitFromInputsSchema(
+	inputsSchema: Record<string, unknown> | undefined,
+	t: (key: any) => string
+): {
 	limit: number;
 	label: string;
 } {
@@ -45,7 +54,7 @@ function getRunLimitFromInputsSchema(inputsSchema: Record<string, unknown> | und
 			? (inputsSchema.properties as Record<string, unknown>)
 			: undefined;
 	if (!properties) {
-		return { limit: DEFAULT_RUN_MAX, label: "Leads" };
+		return { limit: DEFAULT_RUN_MAX, label: t("limit_leads") };
 	}
 
 	for (const key of ["max_leads", "max_leads_per_run", "max_skus"]) {
@@ -57,12 +66,12 @@ function getRunLimitFromInputsSchema(inputsSchema: Record<string, unknown> | und
 			typeof (prop as { maximum?: unknown }).maximum === "number"
 		) {
 			const limit = (prop as { maximum: number }).maximum;
-			const label = key === "max_skus" ? "SKUs" : "Leads";
+			const label = key === "max_skus" ? "SKUs" : t("limit_leads");
 			return { limit, label };
 		}
 	}
 
-	return { limit: DEFAULT_RUN_MAX, label: "Leads" };
+	return { limit: DEFAULT_RUN_MAX, label: t("limit_leads") };
 }
 
 /**
@@ -75,9 +84,12 @@ export function PlaybookInstantiateDialog({
 	open,
 	onOpenChange,
 }: PlaybookInstantiateDialogProps) {
+	const t = useTranslations("playbooks");
 	const router = useRouter();
 	const { mutateAsync: instantiate, isPending } = useAtomValue(instantiatePlaybookMutationAtom);
 	const [instantiateError, setInstantiateError] = useState<string | null>(null);
+	const eligibleModels = useAutomationEligibleModels({ mode: "playbook" });
+	const [modelSelection, setModelSelection] = useState<AutomationModelSelection | null>(null);
 
 	const {
 		data: detail,
@@ -90,10 +102,36 @@ export function PlaybookInstantiateDialog({
 	});
 
 	useEffect(() => {
-		if (open) {
+		if (open && modelSelection === null) {
 			setInstantiateError(null);
+			setModelSelection({
+				chatModelId: eligibleModels.llm.defaultId || 0,
+				imageConfigId: eligibleModels.image.defaultId || 0,
+				visionConfigId: eligibleModels.vision.defaultId || 0,
+			});
 		}
-	}, [open]);
+	}, [
+		open,
+		modelSelection,
+		eligibleModels.llm.defaultId,
+		eligibleModels.image.defaultId,
+		eligibleModels.vision.defaultId,
+	]);
+
+	const resolvedModels = useMemo<AutomationModelSelection>(
+		() =>
+			modelSelection ?? {
+				chatModelId: eligibleModels.llm.defaultId || 0,
+				imageConfigId: eligibleModels.image.defaultId || 0,
+				visionConfigId: eligibleModels.vision.defaultId || 0,
+			},
+		[
+			modelSelection,
+			eligibleModels.llm.defaultId,
+			eligibleModels.image.defaultId,
+			eligibleModels.vision.defaultId,
+		]
+	);
 
 	const inputsSchema = detail?.inputs_schema as Record<string, unknown> | undefined;
 	const hasInputs = !!(
@@ -105,8 +143,8 @@ export function PlaybookInstantiateDialog({
 	);
 
 	const { limit: maxLimit, label: limitLabel } = useMemo(
-		() => getRunLimitFromInputsSchema(inputsSchema),
-		[inputsSchema]
+		() => getRunLimitFromInputsSchema(inputsSchema, t),
+		[inputsSchema, t]
 	);
 
 	const estimatedCreditsCost =
@@ -115,18 +153,24 @@ export function PlaybookInstantiateDialog({
 	async function handleSubmit(values?: Record<string, unknown>) {
 		setInstantiateError(null);
 		try {
+			const requestPayload: PlaybookInstantiateRequest = {
+				workspace_id: workspaceId,
+				inputs: hasInputs ? (values ?? {}) : {},
+				models: {
+					chat_model_id: resolvedModels.chatModelId,
+					image_gen_model_id: resolvedModels.imageConfigId,
+					vision_model_id: resolvedModels.visionConfigId,
+				},
+			};
+
 			const automation = await instantiate({
 				playbookId: playbook.id,
-				request: {
-					workspace_id: workspaceId,
-					inputs: hasInputs ? (values ?? {}) : {},
-				},
+				request: requestPayload,
 			});
 			onOpenChange(false);
 			router.push(`/dashboard/${workspaceId}/automations/${automation.id}`);
 		} catch (err) {
-			const message =
-				err instanceof Error ? err.message : String(err ?? "Không thể khởi tạo playbook");
+			const message = err instanceof Error ? err.message : String(err ?? t("error_instantiate"));
 			setInstantiateError(message);
 		}
 	}
@@ -137,11 +181,12 @@ export function PlaybookInstantiateDialog({
 				<DialogHeader className="space-y-1.5 pb-2 border-b border-border/40">
 					<div className="flex items-center gap-2">
 						<Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
-						<DialogTitle className="text-lg font-bold">Khởi Tạo: {playbook.name}</DialogTitle>
+						<DialogTitle className="text-lg font-bold">
+							{t("dialog_title", { name: playbook.name })}
+						</DialogTitle>
 					</div>
 					<DialogDescription className="text-xs text-muted-foreground">
-						{playbook.description ??
-							"Điền các thông số đầu vào để tạo quy trình tự động hóa cho workspace của bạn."}
+						{playbook.description ?? t("dialog_desc")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -152,23 +197,40 @@ export function PlaybookInstantiateDialog({
 						Ước tính Chi Phí & Giới Hạn
 					</AlertTitle>
 					<AlertDescription className="text-[11px] text-muted-foreground">
-						Ước tính{" "}
+						{t("cost_limit_desc_est")}{" "}
 						<span className="font-semibold text-foreground">~{estimatedCreditsCost} Credits</span>{" "}
-						cho mỗi lần chạy toàn bộ quy trình. Tối đa{" "}
+						{t("cost_limit_desc_per_run")}{" "}
 						<span className="font-semibold text-foreground">
-							{maxLimit} {limitLabel}/lần
+							{maxLimit} {limitLabel}
+							{t("cost_limit_desc_per_run_suffix")}
 						</span>{" "}
 						(INV-24.6).
 					</AlertDescription>
 				</Alert>
 
+				{!detailError && !isLoading && (
+					<div className="space-y-2 pt-1 border-t border-border/40">
+						<AutomationModelFields
+							mode="playbook"
+							workspaceId={workspaceId}
+							value={resolvedModels}
+							onChange={(patch) =>
+								setModelSelection((prev) => ({
+									...(prev ?? resolvedModels),
+									...patch,
+								}))
+							}
+						/>
+					</div>
+				)}
+
 				{detailError ? (
 					<div className="space-y-4 pt-2">
 						<Alert variant="destructive">
 							<AlertCircle className="h-4 w-4" aria-hidden="true" />
-							<AlertTitle className="text-xs font-semibold">Lỗi tải chi tiết playbook</AlertTitle>
+							<AlertTitle className="text-xs font-semibold">{t("error_detail_title")}</AlertTitle>
 							<AlertDescription className="text-[11px]">
-								{detailError.message || "Không thể tải chi tiết kịch bản. Vui lòng thử lại."}
+								{detailError.message || t("error_detail_desc")}
 							</AlertDescription>
 						</Alert>
 						<DialogFooter>
@@ -187,7 +249,7 @@ export function PlaybookInstantiateDialog({
 							// biome-ignore lint/suspicious/noExplicitAny: JSON Schema is dynamic.
 							schema={inputsSchema as any}
 							onSubmit={handleSubmit}
-							submitLabel={isPending ? "Đang khởi tạo..." : "Khởi Tạo & Kích Hoạt Playbook"}
+							submitLabel={isPending ? t("instantiating") : t("submit_btn")}
 							disabled={isPending}
 						/>
 
@@ -203,7 +265,7 @@ export function PlaybookInstantiateDialog({
 								Hủy bỏ
 							</Button>
 							<Button type="button" size="sm" onClick={() => handleSubmit()} disabled={isPending}>
-								{isPending ? "Đang khởi tạo..." : "Chạy Kịch Bản Ngay"}
+								{isPending ? t("instantiating") : t("run_now_btn")}
 							</Button>
 						</DialogFooter>
 					</div>

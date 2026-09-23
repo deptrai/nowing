@@ -6,6 +6,8 @@ import logging
 
 import pytest
 
+import app.observability.metrics.base as base_metrics
+import app.observability.metrics.memory as memory_metrics
 from app.observability import metrics as ot_metrics
 
 pytestmark = pytest.mark.unit
@@ -22,16 +24,16 @@ class _FakeCounter:
 @pytest.fixture
 def fake_counter(monkeypatch: pytest.MonkeyPatch) -> _FakeCounter:
     counter = _FakeCounter()
-    monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: True)
-    monkeypatch.setattr(ot_metrics, "_memory_injection_failures", lambda: counter)
+    monkeypatch.setattr(base_metrics, "_is_enabled", lambda: True)
+    monkeypatch.setattr(memory_metrics, "_memory_injection_failures", lambda: counter)
     return counter
 
 
 @pytest.fixture
 def fake_truncated_counter(monkeypatch: pytest.MonkeyPatch) -> _FakeCounter:
     counter = _FakeCounter()
-    monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: True)
-    monkeypatch.setattr(ot_metrics, "_memory_injection_truncated", lambda: counter)
+    monkeypatch.setattr(base_metrics, "_is_enabled", lambda: True)
+    monkeypatch.setattr(memory_metrics, "_memory_injection_truncated", lambda: counter)
     return counter
 
 
@@ -112,9 +114,9 @@ def test_record_memory_injection_failure_swallows_counter_backend_error(
         def add(self, *_args, **_kwargs):
             raise RuntimeError("otel backend exploded")
 
-    monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: True)
+    monkeypatch.setattr(base_metrics, "_is_enabled", lambda: True)
     monkeypatch.setattr(
-        ot_metrics, "_memory_injection_failures", lambda: _ExplodingCounter()
+        memory_metrics, "_memory_injection_failures", lambda: _ExplodingCounter()
     )
 
     ot_metrics.record_memory_injection_failure(
@@ -126,8 +128,8 @@ def test_record_memory_injection_failure_is_noop_when_otel_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     counter = _FakeCounter()
-    monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: False)
-    monkeypatch.setattr(ot_metrics, "_memory_injection_failures", lambda: counter)
+    monkeypatch.setattr(base_metrics, "_is_enabled", lambda: False)
+    monkeypatch.setattr(memory_metrics, "_memory_injection_failures", lambda: counter)
 
     ot_metrics.record_memory_injection_failure(
         scope="user", stage="display_name", reason="lookup_error"
@@ -140,8 +142,8 @@ def test_record_memory_injection_truncated_is_noop_when_otel_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     counter = _FakeCounter()
-    monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: False)
-    monkeypatch.setattr(ot_metrics, "_memory_injection_truncated", lambda: counter)
+    monkeypatch.setattr(base_metrics, "_is_enabled", lambda: False)
+    monkeypatch.setattr(memory_metrics, "_memory_injection_truncated", lambda: counter)
 
     ot_metrics.record_memory_injection_truncated(scope="user")
 

@@ -38,6 +38,8 @@ pytestmark = pytest.mark.integration
 
 _COMPOSIO_ACCOUNT_ID = "composio-test-account-123"
 _INDEXER_MODULE = "app.tasks.connector_indexers.google_drive_indexer"
+_CLIENT_MODULE = "app.tasks.connector_indexers.google_drive.client"
+_ENTRYPOINTS_MODULE = "app.tasks.connector_indexers.google_drive.entrypoints"
 _GET_ACCESS_TOKEN = "app.services.composio_service.ComposioService.get_access_token"
 
 
@@ -96,9 +98,9 @@ async def committed_composio_no_account_id(async_engine):
 
 
 @patch(_GET_ACCESS_TOKEN)
-@patch(f"{_INDEXER_MODULE}.TaskLoggingService")
-@patch(f"{_INDEXER_MODULE}.GoogleDriveClient")
-@patch(f"{_INDEXER_MODULE}.ComposioDriveClient")
+@patch(f"{_ENTRYPOINTS_MODULE}.TaskLoggingService")
+@patch(f"{_CLIENT_MODULE}.GoogleDriveClient")
+@patch(f"{_CLIENT_MODULE}.ComposioDriveClient")
 async def test_composio_drive_indexer_uses_composio_drive_client(
     mock_composio_client_cls,
     mock_native_client_cls,
@@ -143,9 +145,9 @@ async def test_composio_drive_indexer_uses_composio_drive_client(
 
 
 @patch(_GET_ACCESS_TOKEN)
-@patch(f"{_INDEXER_MODULE}.TaskLoggingService")
-@patch(f"{_INDEXER_MODULE}.GoogleDriveClient")
-@patch(f"{_INDEXER_MODULE}.ComposioDriveClient")
+@patch(f"{_ENTRYPOINTS_MODULE}.TaskLoggingService")
+@patch(f"{_CLIENT_MODULE}.GoogleDriveClient")
+@patch(f"{_CLIENT_MODULE}.ComposioDriveClient")
 async def test_composio_connector_without_account_id_returns_error(
     mock_composio_client_cls,
     mock_native_client_cls,
@@ -182,9 +184,9 @@ async def test_composio_connector_without_account_id_returns_error(
 
 
 @patch(_GET_ACCESS_TOKEN)
-@patch(f"{_INDEXER_MODULE}.TaskLoggingService")
-@patch(f"{_INDEXER_MODULE}.ComposioDriveClient")
-@patch(f"{_INDEXER_MODULE}.GoogleDriveClient")
+@patch(f"{_ENTRYPOINTS_MODULE}.TaskLoggingService")
+@patch(f"{_CLIENT_MODULE}.ComposioDriveClient")
+@patch(f"{_CLIENT_MODULE}.GoogleDriveClient")
 async def test_native_connector_uses_google_drive_client(
     mock_native_client_cls,
     mock_composio_client_cls,

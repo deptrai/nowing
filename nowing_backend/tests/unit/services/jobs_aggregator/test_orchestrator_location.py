@@ -74,3 +74,30 @@ async def test_aggregate_jobs_keeps_all_items_when_no_location(monkeypatch):
     result = await aggregate_jobs(VnJobAggregateInput(keyword="dev"), ctx)
 
     assert len(result.items) == 2
+
+
+async def test_aggregate_jobs_filters_by_unknown_location_substring(monkeypatch):
+    """Unknown locations fall back to intelligent substring matching."""
+
+    async def fake_call_source(
+        source: str, payload: dict[str, Any], ctx: CapabilityContext
+    ) -> dict[str, Any]:
+        return {
+            "items": [
+                _make_item("Thị xã Bến Cát, Bình Dương"),
+                _make_item("Thành phố Pleiku"),
+            ],
+            "degraded": False,
+        }
+
+    monkeypatch.setattr(
+        "app.services.jobs_aggregator.orchestrator._call_source", fake_call_source
+    )
+    ctx = CapabilityContext(session=None, workspace_id=None)
+
+    result = await aggregate_jobs(
+        VnJobAggregateInput(keyword="dev", location="Bến Cát"), ctx
+    )
+
+    assert len(result.items) == 1
+    assert "Bến Cát" in (result.items[0].location or "")

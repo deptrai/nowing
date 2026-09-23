@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { Image, ImageLoading } from "@/components/tool-ui/image";
 import { imageGenerationsApiService } from "@/lib/apis/image-generations-api.service";
 
@@ -14,18 +15,19 @@ function extractImageSrc(responseData: Record<string, unknown> | null | undefine
 }
 
 export function LibraryImageViewer({ imageId, prompt }: { imageId: number; prompt: string }) {
+	const t = useTranslations("artifacts");
 	const { data, isLoading, error } = useQuery({
 		queryKey: ["image-generation-detail", imageId],
 		queryFn: () => imageGenerationsApiService.getDetail(imageId),
 	});
 
-	if (isLoading) return <ImageLoading title="Loading image" maxWidth="640px" />;
+	if (isLoading) return <ImageLoading title={t("loading_image")} maxWidth="640px" />;
 
 	const src = extractImageSrc(data?.response_data);
 	if (error || !src) {
 		return (
 			<p className="px-6 py-10 text-center text-sm text-muted-foreground">
-				{data?.error_message || "Image not available"}
+				{data?.error_message || t("image_not_available")}
 			</p>
 		);
 	}

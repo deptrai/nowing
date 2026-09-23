@@ -359,7 +359,7 @@ async def index_airtable_records(
                                 }
                             )
 
-                        except Exception as e:
+                        except Exception as e:  # per-record metadata preparation failure; log error, increment failed, and continue
                             logger.error(
                                 f"Error in Phase 1 for record: {e!s}", exc_info=True
                             )
@@ -425,7 +425,7 @@ async def index_airtable_records(
                         )
                         await session.commit()
 
-                except Exception as e:
+                except Exception as e:  # per-record processing failure; attempt marking document failed and continue
                     logger.error(
                         f"Error processing Airtable record: {e!s}", exc_info=True
                     )
@@ -436,7 +436,7 @@ async def index_airtable_records(
                         # Commit now so the failed status survives a later rollback or
                         # crash; otherwise the doc stays stuck in pending/processing.
                         await session.commit()
-                    except Exception as status_error:
+                    except Exception as status_error:  # mark document failed commit failure; rollback and continue
                         logger.error(
                             f"Failed to update document status to failed: {status_error}"
                         )
@@ -459,7 +459,7 @@ async def index_airtable_records(
                 logger.info(
                     "Successfully committed all Airtable document changes to database"
                 )
-            except Exception as e:
+            except Exception as e:  # final commit failure; rollback if duplicate hash, else re-raise
                 # Handle any remaining integrity errors gracefully (race conditions, etc.)
                 if (
                     "duplicate key value violates unique constraint" in str(e).lower()
@@ -505,7 +505,7 @@ async def index_airtable_records(
                 warning_message,
             )
 
-        except Exception as e:
+        except Exception as e:  # upstream API call failure (Airtable API); log error and return failure
             logger.error(
                 f"Fetching Airtable bases for connector {connector_id} failed: {e!s}",
                 exc_info=True,
@@ -530,7 +530,7 @@ async def index_airtable_records(
             f"Database error during Airtable indexing: {db_error!s}", exc_info=True
         )
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # airtable indexing failure; rollback, log failure, and return error tuple
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

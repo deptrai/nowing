@@ -43,7 +43,12 @@ class AutomationService:
         self.auth = auth
         self.user = auth.user
 
-    async def create(self, payload: AutomationCreate) -> Automation:
+    async def create(
+        self,
+        payload: AutomationCreate,
+        *,
+        allow_global_model_selection: bool = False,
+    ) -> Automation:
         """Create an automation and its initial triggers in one transaction."""
         await self._authorize(payload.workspace_id, Permission.AUTOMATIONS_CREATE.value)
 
@@ -64,7 +69,10 @@ class AutomationService:
         # Either way the captured ids are guaranteed billable (premium/BYOK).
         selected_models = payload.definition.models
         if selected_models is not None:
-            self._assert_selected_models_billable(selected_models)
+            self._assert_selected_models_billable(
+                selected_models,
+                allow_global_model_selection=allow_global_model_selection,
+            )
         else:
             workspace = await self._assert_models_billable(payload.workspace_id)
             payload.definition.models = AutomationModels(
@@ -165,11 +173,19 @@ class AutomationService:
             #     non-billable pick), then accept it.
             existing_models = (automation.definition or {}).get("models")
             provided_models = new_def.get("models")
+            # Playbook-derived automations were created with an explicit model
+            # selection that may include non-premium global models. Preserve
+            # that permission on edit so users can tweak other definition fields
+            # without the model snapshot being rejected.
+            allow_global = automation.derived_from_playbook_id is not None
             if provided_models is None:
                 if existing_models is not None:
                     new_def["models"] = existing_models
             elif provided_models != existing_models:
-                self._assert_selected_models_billable(patch.definition.models)
+                self._assert_selected_models_billable(
+                    patch.definition.models,
+                    allow_global_model_selection=allow_global,
+                )
             automation.definition = new_def
             automation.version += 1
 
@@ -240,18 +256,25 @@ class AutomationService:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         return workspace
 
-    def _assert_selected_models_billable(self, models: AutomationModels) -> None:
+    def _assert_selected_models_billable(
+        self,
+        models: AutomationModels,
+        *,
+        allow_global_model_selection: bool = False,
+    ) -> None:
         """Reject creation when an explicitly selected model isn't billable.
 
         Used when the client supplies ``definition.models`` (per-automation
         selection from the builder or chat approval card). Same policy as the
-        workspace path: premium global or BYOK only, no free/Auto.
+        workspace path: premium global or BYOK only, no free/Auto, unless
+        allow_global_model_selection=True (e.g. playbook explicit selection).
         """
         try:
             assert_models_billable(
                 chat_model_id=models.chat_model_id,
                 image_gen_model_id=models.image_gen_model_id,
                 vision_model_id=models.vision_model_id,
+                allow_global_model_selection=allow_global_model_selection,
             )
         except AutomationModelPolicyError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc

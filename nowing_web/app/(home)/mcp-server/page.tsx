@@ -2,6 +2,7 @@ import { IconBrandGithub } from "@tabler/icons-react";
 import { ArrowRight, Check, Database, KeyRound, Server, TerminalSquare } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { ConnectorFaq } from "@/components/connectors-marketing/connector-faq";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
@@ -15,40 +16,40 @@ import type { FaqItem } from "@/lib/connectors-marketing/types";
 
 const canonicalUrl = "https://www.nowing.com/mcp-server";
 
-const metaDescription =
-	"The Nowing MCP server gives Claude, Cursor, and any MCP client native tools for your workspace: scrape Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, Vietnamese real estate, and the web, plus full knowledge base access. One API key.";
-
-export const metadata: Metadata = {
-	title: "Nowing MCP Server: Scraper APIs and Knowledge Base as Agent Tools",
-	description: metaDescription,
-	keywords: [
-		"nowing mcp server",
-		"mcp server",
-		"mcp server for web scraping",
-		"reddit mcp server",
-		"youtube mcp server",
-		"google maps mcp server",
-		"serp mcp server",
-		"mcp server for claude",
-		"mcp server for cursor",
-		"knowledge base mcp server",
-	],
-	alternates: { canonical: canonicalUrl },
-	openGraph: {
-		title: "Nowing MCP Server: Scraper APIs and Knowledge Base as Agent Tools",
-		description: metaDescription,
-		url: canonicalUrl,
-		siteName: "Nowing",
-		type: "website",
-		images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing MCP server" }],
-	},
-	twitter: {
-		card: "summary_large_image",
-		title: "Nowing MCP Server: Scraper APIs and Knowledge Base as Agent Tools",
-		description: metaDescription,
-		images: ["/og-image.png"],
-	},
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("mcpServer");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		keywords: [
+			"nowing mcp server",
+			"mcp server",
+			"mcp server for web scraping",
+			"reddit mcp server",
+			"youtube mcp server",
+			"google maps mcp server",
+			"serp mcp server",
+			"mcp server for claude",
+			"mcp server for cursor",
+			"knowledge base mcp server",
+		],
+		alternates: { canonical: canonicalUrl },
+		openGraph: {
+			title: t("meta_title"),
+			description: t("meta_description"),
+			url: canonicalUrl,
+			siteName: "Nowing",
+			type: "website",
+			images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing MCP server" }],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: t("meta_title"),
+			description: t("meta_description"),
+			images: ["/og-image.png"],
+		},
+	};
+}
 
 /* The hosted Cursor config; mirrors lib/mcp/clients.ts. */
 const CURSOR_CONFIG = `{
@@ -62,107 +63,75 @@ const CURSOR_CONFIG = `{
   }
 }`;
 
-const STEPS = [
-	{
-		icon: KeyRound,
-		title: "Create an API key",
-		description:
-			"In Nowing, go to Settings, then API, and create a key. Enable API access on the workspaces you want your agents to reach. That key is all the server needs.",
-	},
-	{
-		icon: TerminalSquare,
-		title: "Add the server to your client",
-		description:
-			"Point your client at https://mcp.nowing.com/mcp with your key in an Authorization header — the hosted config for Cursor, Claude Code, and others is one paste. Prefer stdio? Switch to Self-host and run it against your own backend.",
-	},
-	{
-		icon: Server,
-		title: "Your agent has the tools",
-		description:
-			"Every scraper and knowledge base operation shows up as a native, typed MCP tool. Your agent picks a workspace once and the server carries the context between calls.",
-	},
-] as const;
+function useSteps(t: (k: string) => string) {
+	return [
+		{ icon: KeyRound, title: t("step1_title"), description: t("step1_desc") },
+		{ icon: TerminalSquare, title: t("step2_title"), description: t("step2_desc") },
+		{ icon: Server, title: t("step3_title"), description: t("step3_desc") },
+	];
+}
 
 /** Mirrors the tool registry in nowing_mcp (see its README). */
-const TOOL_GROUPS = [
-	{
-		icon: Server,
-		title: "Live scrapers",
-		description: "Structured, current platform data. One returned item is one billable unit.",
-		tools: [
-			"nowing_reddit_scrape",
-			"nowing_youtube_scrape",
-			"nowing_youtube_comments",
-			"nowing_instagram_scrape",
-			"nowing_instagram_details",
-			"nowing_tiktok_scrape",
-			"nowing_tiktok_comments",
-			"nowing_tiktok_user_search",
-			"nowing_tiktok_trending",
-			"nowing_google_maps_scrape",
-			"nowing_google_maps_reviews",
-			"nowing_google_search",
-			"nowing_amazon_scrape",
-			"nowing_batdongsan_scrape",
-			"nowing_chotot_bds_scrape",
-			"nowing_muaban_bds_scrape",
-			"nowing_vn_bds_aggregate",
-			"nowing_web_crawl",
-			"nowing_list_scraper_runs",
-			"nowing_get_scraper_run",
-		],
-	},
-	{
-		icon: Database,
-		title: "Knowledge base",
-		description: "Read and write the same knowledge base your Nowing agents use.",
-		tools: [
-			"nowing_search_knowledge_base",
-			"nowing_list_documents",
-			"nowing_get_document",
-			"nowing_add_document",
-			"nowing_upload_file",
-			"nowing_update_document",
-			"nowing_delete_document",
-		],
-	},
-	{
-		icon: KeyRound,
-		title: "Workspace selector",
-		description: "Pick a workspace once; every later call defaults to it.",
-		tools: ["nowing_list_workspaces", "nowing_select_workspace"],
-	},
-] as const;
+function useToolGroups(t: (k: string) => string) {
+	return [
+		{
+			icon: Server,
+			title: t("tg_scrapers"),
+			description: t("tg_scrapers_desc"),
+			tools: [
+				"nowing_reddit_scrape",
+				"nowing_youtube_scrape",
+				"nowing_youtube_comments",
+				"nowing_instagram_scrape",
+				"nowing_instagram_details",
+				"nowing_tiktok_scrape",
+				"nowing_tiktok_comments",
+				"nowing_tiktok_user_search",
+				"nowing_tiktok_trending",
+				"nowing_google_maps_scrape",
+				"nowing_google_maps_reviews",
+				"nowing_google_search",
+				"nowing_amazon_scrape",
+				"nowing_batdongsan_scrape",
+				"nowing_chotot_bds_scrape",
+				"nowing_muaban_bds_scrape",
+				"nowing_vn_bds_aggregate",
+				"nowing_web_crawl",
+				"nowing_list_scraper_runs",
+				"nowing_get_scraper_run",
+			],
+		},
+		{
+			icon: Database,
+			title: t("tg_kb"),
+			description: t("tg_kb_desc"),
+			tools: [
+				"nowing_search_knowledge_base",
+				"nowing_list_documents",
+				"nowing_get_document",
+				"nowing_add_document",
+				"nowing_upload_file",
+				"nowing_update_document",
+				"nowing_delete_document",
+			],
+		},
+		{
+			icon: KeyRound,
+			title: t("tg_ws"),
+			description: t("tg_ws_desc"),
+			tools: ["nowing_list_workspaces", "nowing_select_workspace"],
+		},
+	];
+}
 
-const FAQ: FaqItem[] = [
-	{
-		question: "What is the Nowing MCP server?",
-		answer:
-			"It is a Model Context Protocol server that exposes your Nowing workspace to MCP clients like Claude Code, Cursor, and Claude Desktop. Your agents get native tools for every scraper API (Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, web crawl) and for searching, reading, and writing your knowledge base.",
-	},
-	{
-		question: "Which MCP clients does it work with?",
-		answer:
-			"Any MCP client that speaks remote (streamable HTTP) or stdio. Claude Code, Codex, OpenCode, Cursor, Claude Desktop, VS Code, Windsurf, and Gemini CLI all have copy-paste configs on this page — Hosted for the one-paste https://mcp.nowing.com/mcp endpoint, or Self-host for stdio against your own backend.",
-	},
-	{
-		question: "How is usage billed?",
-		answer:
-			"Exactly like the REST API, because the server is a thin layer over it. Scraper tools consume the same pay-as-you-go credits, priced per returned item, and knowledge base operations work within your plan. New accounts start with $5 of free credit.",
-	},
-	{
-		question: "Does it work with a self-hosted Nowing?",
-		answer:
-			"Yes. The server talks to Nowing purely over its REST API and imports no backend code, so pointing NOWING_BASE_URL at your own instance is all it takes. It works with the cloud at api.nowing.com the same way.",
-	},
-	{
-		question: "How does the agent know which workspace to use?",
-		answer:
-			"The server ships a workspace selector: the agent lists the workspaces your API key can access, selects one by name, and every later call defaults to it. Any tool also accepts a workspace override for a single call, and ids never need to be typed by hand.",
-	},
-];
+function useFaq(t: (k: string) => string): FaqItem[] {
+	return [1, 2, 3, 4, 5].map((n) => ({
+		question: t(`faq${n}_q`),
+		answer: t(`faq${n}_a`),
+	}));
+}
 
-function ConfigCard() {
+function ConfigCard({ t }: { t: (k: string) => string }) {
 	return (
 		<div className="rounded-xl border bg-card p-5 shadow-sm">
 			<p className="font-mono text-xs text-muted-foreground">.cursor/mcp.json</p>
@@ -171,13 +140,20 @@ function ConfigCard() {
 			</pre>
 			<p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
 				<Check className="size-3.5 text-brand" aria-hidden />
-				Works with Claude Code, Cursor, Claude Desktop, and any MCP client
+				{t("cfg_works")}
 			</p>
 		</div>
 	);
 }
 
-export default function McpServerPage() {
+// Rendered per-request so the NEXT_LOCALE cookie can switch the language.
+export const dynamic = "force-dynamic";
+
+export default async function McpServerPage() {
+	const t = await getTranslations("mcpServer");
+	const STEPS = useSteps(t);
+	const TOOL_GROUPS = useToolGroups(t);
+	const FAQ = useFaq(t);
 	return (
 		<>
 			<JsonLd
@@ -187,7 +163,7 @@ export default function McpServerPage() {
 					name: "Nowing MCP Server",
 					applicationCategory: "DeveloperApplication",
 					operatingSystem: "Web",
-					description: metaDescription,
+					description: t("meta_description"),
 					url: canonicalUrl,
 					offers: {
 						"@type": "Offer",
@@ -213,32 +189,29 @@ export default function McpServerPage() {
 							<BreadcrumbNav
 								className="mb-6"
 								items={[
-									{ name: "Connectors", href: "/connectors" },
-									{ name: "Nowing MCP Server", href: "/mcp-server" },
+									{ name: t("bc_connectors"), href: "/connectors" },
+									{ name: t("bc_mcp"), href: "/mcp-server" },
 								]}
 							/>
 							<Badge variant="outline" className="mb-5 gap-1.5 py-1">
 								<Server className="size-3.5" aria-hidden="true" />
-								Nowing MCP server
+								{t("badge")}
 							</Badge>
 							<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
-								Give your agents Nowing as native tools
+								{t("hero_title")}
 							</h1>
 							<p className="mt-4 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground font-sans">
-								The Nowing MCP server hands Claude, Cursor, or any MCP client the whole platform:
-								scrape Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, and
-								the open web, and search, read, and write your knowledge base. One API key, typed
-								tools, pay as you go.
+								{t("hero_desc")}
 							</p>
 							<div className="mt-8 flex flex-wrap items-center gap-3">
 								<Button asChild size="lg">
 									<Link href="/register">
-										Get your API key
+										{t("get_key")}
 										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">
-									<Link href="/docs">Read the docs</Link>
+									<Link href="/docs">{t("read_docs")}</Link>
 								</Button>
 								<Button asChild variant="ghost" size="lg">
 									<Link
@@ -252,16 +225,14 @@ export default function McpServerPage() {
 								</Button>
 							</div>
 						</div>
-						<ConfigCard />
+						<ConfigCard t={t} />
 					</div>
 				</MarketingSection>
 
 				{/* How it works */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							From API key to agent tools in three steps
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("how_title")}</h2>
 					</Reveal>
 					<div className="mt-8 grid gap-4 sm:grid-cols-3">
 						{STEPS.map((step) => (
@@ -283,13 +254,9 @@ export default function McpServerPage() {
 				{/* Per-agent setup */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							Step-by-step setup for every agent
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("setup_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-							Pick your client, choose <strong>Hosted</strong> or <strong>Self-host</strong>, and
-							paste the config. Replace the key with one from API Playground → API Keys — or grab a
-							pre-filled config from the playground itself.
+							{t("setup_desc")}
 						</p>
 					</Reveal>
 					<Reveal>
@@ -302,12 +269,9 @@ export default function McpServerPage() {
 				{/* Tools */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							Every tool the server exposes
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("tools_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-							The server is a thin layer over the Nowing REST API: the same endpoints, the same
-							billing, no backend code imported. Whatever ships in the API shows up here.
+							{t("tools_desc")}
 						</p>
 					</Reveal>
 					<div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -337,20 +301,16 @@ export default function McpServerPage() {
 				{/* Server vs external connectors */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							The Nowing MCP server vs external MCP connectors
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("vs_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-							They are two sides of the same protocol. The MCP <em>server</em> on this page pushes
-							Nowing tools out to agents you already run in Claude, Cursor, or your own harness.{" "}
+							{t("vs_desc_1")} <em>{t("vs_server")}</em> {t("vs_desc_2")}{" "}
 							<Link
 								href="/external-mcp-connectors"
 								className="font-medium text-foreground underline underline-offset-4"
 							>
-								External MCP connectors
+								{t("vs_external")}
 							</Link>{" "}
-							do the reverse: they pull outside tools like Notion, Slack, and Jira into your Nowing
-							agents. Use both and data flows in either direction.
+							{t("vs_desc_3")}
 						</p>
 					</Reveal>
 				</MarketingSection>
@@ -358,9 +318,7 @@ export default function McpServerPage() {
 				{/* FAQ */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							Nowing MCP server: frequently asked questions
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("faq_title")}</h2>
 					</Reveal>
 					<Reveal>
 						<div className="mt-6 max-w-3xl">
@@ -373,36 +331,34 @@ export default function McpServerPage() {
 				<MarketingSection>
 					<Reveal>
 						<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
-							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-								Put live web data inside your agents
-							</h2>
+							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("cta_title")}</h2>
 							<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
-								The MCP server is part of the Nowing{" "}
+								{t("cta_desc_1")}{" "}
 								<Link href="/" className="font-medium text-foreground underline underline-offset-4">
-									open web research platform
+									{t("cta_platform")}
 								</Link>
-								. Start with $5 of free credit, no credit card required.
+								. {t("cta_desc_2")}
 							</p>
 							<div className="mt-7 flex flex-wrap justify-center gap-3">
 								<Button asChild size="lg">
 									<Link href="/register">
-										Start for free
+										{t("start_free")}
 										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">
-									<Link href="/pricing">See pricing</Link>
+									<Link href="/pricing">{t("see_pricing")}</Link>
 								</Button>
 							</div>
 
 							<Separator className="my-8" />
 
-							<nav aria-label="Other connectors" className="flex flex-wrap justify-center gap-2">
+							<nav aria-label={t("nav_other")} className="flex flex-wrap justify-center gap-2">
 								<Button asChild variant="ghost" size="sm">
-									<Link href="/connectors">All connectors</Link>
+									<Link href="/connectors">{t("nav_all")}</Link>
 								</Button>
 								<Button asChild variant="ghost" size="sm">
-									<Link href="/external-mcp-connectors">External MCP Connectors</Link>
+									<Link href="/external-mcp-connectors">{t("nav_ext")}</Link>
 								</Button>
 								<Button asChild variant="ghost" size="sm">
 									<Link href="/reddit">Reddit API</Link>

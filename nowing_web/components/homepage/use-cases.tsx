@@ -1,64 +1,64 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { UseCaseArt, type UseCaseArtVariant } from "@/components/homepage/use-case-art";
 import { MarketingSection } from "@/components/marketing/section";
 
 /** Buyer language from the high-CPC keyword clusters; each anchors to the connector that fulfills it. */
-const USE_CASES: {
+function getUseCases(t: (k: string) => string): {
 	title: string;
 	description: string;
 	href: string;
 	anchor: string;
 	art: UseCaseArtVariant;
-}[] = [
-	{
-		title: "Search & AI answer research",
-		description:
-			"Watch the rankings, ads, and AI Overviews people actually see for the queries you care about, and know the moment they change.",
-		href: "/google-search",
-		anchor: "SERP API",
-		art: "serp",
-	},
-	{
-		title: "Community & brand listening",
-		description:
-			"Track every mention of your brand, your competitors, and your category across the communities where people speak candidly.",
-		href: "/reddit",
-		anchor: "Reddit API",
-		art: "brand",
-	},
-	{
-		title: "Social sentiment mining",
-		description:
-			"Pull public posts, reels, and full comment threads from any creator or brand, then score how audiences actually react to launches and campaigns.",
-		href: "/instagram",
-		anchor: "Instagram API",
-		art: "chat",
-	},
-	{
-		title: "B2B lead generation",
-		description:
-			"Turn a category and a territory into a clean lead list with phones, websites, and ratings, ready for your CRM.",
-		href: "/google-maps",
-		anchor: "Google Maps API",
-		art: "leads",
-	},
-	{
-		title: "Competitor price monitoring",
-		description:
-			"Crawl competitor pricing and product pages on a schedule and get an alert the day something changes, not the quarter after.",
-		href: "/web-crawl",
-		anchor: "Web Crawl API",
-		art: "price",
-	},
-];
+}[] {
+	return [
+		{
+			title: t("uc1_title"),
+			description: t("uc1_desc"),
+			href: "/google-search",
+			anchor: "SERP API",
+			art: "serp",
+		},
+		{
+			title: t("uc2_title"),
+			description: t("uc2_desc"),
+			href: "/reddit",
+			anchor: "Reddit API",
+			art: "brand",
+		},
+		{
+			title: t("uc3_title"),
+			description: t("uc3_desc"),
+			href: "/instagram",
+			anchor: "Instagram API",
+			art: "chat",
+		},
+		{
+			title: t("uc4_title"),
+			description: t("uc4_desc"),
+			href: "/google-maps",
+			anchor: "Google Maps API",
+			art: "leads",
+		},
+		{
+			title: t("uc5_title"),
+			description: t("uc5_desc"),
+			href: "/web-crawl",
+			anchor: "Web Crawl API",
+			art: "price",
+		},
+	];
+}
 
 export function UseCasesRow() {
+	const t = useTranslations("homepage");
+	const USE_CASES = getUseCases(t);
 	return (
 		<MarketingSection>
 			<Reveal>
-				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">What teams use Nowing for</h2>
+				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("what_teams_use")}</h2>
 			</Reveal>
 			<div className="mt-8 grid gap-6 sm:grid-cols-2">
 				{USE_CASES.map((useCase) => (

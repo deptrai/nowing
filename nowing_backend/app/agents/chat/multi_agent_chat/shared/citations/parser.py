@@ -19,8 +19,11 @@ unterminated ``[citation:`` or an unparseable payload) is simply not yielded.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 # The ZWSP must be spliced in as the literal code point: Python's ``re`` does not
 # interpret the ``\u`` escape inside a raw pattern the way the TS regex literal
@@ -87,7 +90,8 @@ def parse_citation_markers(text: str) -> list[CitationMarker]:
             number_part = raw_id[4:] if is_docs_chunk else raw_id
             try:
                 chunk_id = int(number_part)
-            except ValueError:
+            except ValueError as exc:
+                logger.debug("Suppressed %r", exc)
                 continue
             if chunk_id < 0:
                 continue

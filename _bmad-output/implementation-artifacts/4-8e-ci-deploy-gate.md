@@ -82,13 +82,13 @@ So that production chat quality/latency/cost regressions block the rollout.
 
 - [x] Update `nowing_evals/.env.example` with `CHAT_EVAL_*` + notification variables.
 - [x] Update `nowing_evals/README.md` with the CI gate and `chat/regression` usage.
-- [ ] Create `docs/ops/deploy-gate.md` with the full CI step.
+- [x] Create `docs/ops/deploy-gate.md` with the full CI step.
 
 ### Tests
 
 - [x] Existing unit tests for `gate.yaml` parsing and threshold comparison via `tests/suites/chat/test_regression.py`.
-- [ ] Unit test for cost-cap early-exit.
-- [ ] Respx-mocked test for Slack/Telegram notification payload.
+- [x] Unit test for cost-cap early-exit.
+- [x] Respx-mocked test for Slack/Telegram notification payload.
 
 ## Verification
 
@@ -101,9 +101,33 @@ ruff format src/nowing_evals/suites/chat/regression/ src/nowing_evals/core/notif
 python -m pytest tests/suites/chat/test_regression.py -q
 ```
 
+### Review Findings
+
+- [x] [Review][Patch] Workflow references non-existent GitHub Action versions `[.github/workflows/chat-regression-gate.yml:44,47,52]` — high
+- [x] [Review][Patch] Missing dataset ingestion step before running benchmark `[.github/workflows/chat-regression-gate.yml:68-74]` — medium
+- [x] [Review][Patch] Missing --n / max-cases input in GitHub Action `[.github/workflows/chat-regression-gate.yml, runner.py:648]` — high
+- [x] [Review][Patch] Missing --backend-build-id in workflow inputs/run step `[.github/workflows/chat-regression-gate.yml]` — medium
+- [x] [Review][Patch] Missing --fail-on-unratified in workflow inputs/run step `[.github/workflows/chat-regression-gate.yml, runner.py:1169]` — medium
+- [x] [Review][Patch] actions/upload-artifact only uploads run_artifact.json, omits raw.jsonl `[.github/workflows/chat-regression-gate.yml:81]` — medium
+- [x] [Review][Patch] cancel-in-progress: true may abort running evaluations `[.github/workflows/chat-regression-gate.yml:34-36]` — low
+- [x] [Review][Patch] Missing NOWING_JWT support in workflow env `[.github/workflows/chat-regression-gate.yml:60-67]` — low
+- [x] [Review][Patch] CHAT_EVAL_* env vars not parsed by config/runner `[.env.example:100-102, core/config.py]` — medium
+- [x] [Review][Patch] Telegram/Slack Markdown escaping edge cases remain `[notifications.py:29-39]` — low
+- [x] [Review][Patch] Artifact URL concatenation missing slash normalization `[notifications.py:19-26]` — medium
+- [x] [Review][Patch] notifications.py reads os.environ directly instead of Config `[notifications.py:207-209]` — low
+- [x] [Review][Patch] Cost cap raises before artifact write and notification `[runner.py:1106-1110,1133,1148]` — high
+- [x] [Review][Patch] max_total_cost_micros truthiness treats 0 as falsy `[runner.py:1107]` — medium
+- [x] [Review][Patch] gate_violations not stored in run_artifact.json `[runner.py:1134-1143]` — low
+- [x] [Review][Patch] Notification only sent on gate_violations, not cost cap/unratified `[runner.py:1107-1173]` — medium
+- [x] [Review][Patch] run_artifact_str is absolute local path when URL prefix unset `[runner.py:1146]` — low
+- [x] [Review][Patch] Missing docs/ops/deploy-gate.md and README updates `[README.md:89-135]` — medium
+- [x] [Review][Patch] Missing unit test for cost-cap early-exit `[tests/suites/chat/test_regression.py]` — medium
+- [x] [Review][Patch] Missing respx-mocked test for Slack/Telegram notification payload `[tests/core/]` — medium
+- [x] [Review][Patch] Missing test coverage for gate failure notifications and unratified handling `[tests/suites/chat/test_regression.py]` — high
+
 ## Code status note
 
-Implemented and merged. The `chat-regression-gate.yml` GitHub Action triggers by `workflow_dispatch`, runs the benchmark with cost cap and notification env vars, and uploads the run artifact. `ChatRegressionBenchmark` evaluates `gate.yaml` thresholds (including the new operational metrics), logs a warning when `baseline_ratified: false`, and raises `RuntimeError` on violations only when ratified or when `--fail-on-unratified` is passed. `nowing_evals/src/nowing_evals/core/notifications.py` sends Slack/Telegram with the failing thresholds and a link to `run_artifact.json`. `nowing_evals/.env.example` and `README.md` document the variables. Gaps: `docs/ops/deploy-gate.md` is not created; dedicated unit tests for the cost-cap early-exit and notification payload are missing.
+Implemented and merged. The `chat-regression-gate.yml` GitHub Action triggers by `workflow_dispatch`, runs the benchmark with cost cap and notification env vars, and uploads the run artifact plus raw trace. `ChatRegressionBenchmark` evaluates `gate.yaml` thresholds (including the new operational metrics), logs a warning when `baseline_ratified: false`, raises `RuntimeError` on violations only when ratified or when `--fail-on-unratified` is passed, and notifies on cost-cap failures too. `nowing_evals/src/nowing_evals/core/notifications.py` sends Slack/Telegram with the failing thresholds and a link to `run_artifact.json`; `Config` now exposes `CHAT_EVAL_*` and notification settings. `nowing_evals/.env.example`, `README.md`, and `docs/ops/deploy-gate.md` document the gate. Unit tests cover cost-cap early-exit, notification payload, and unratified handling.
 
 ## References
 

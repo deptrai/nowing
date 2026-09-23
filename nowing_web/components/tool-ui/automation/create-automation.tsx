@@ -4,6 +4,7 @@ import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useAtomValue } from "jotai";
 import { AlarmClock, AlertCircle, CornerDownLeftIcon, ExternalLink, Pencil } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	AutomationModelFields,
@@ -93,6 +94,7 @@ interface ApprovalCardProps {
 }
 
 function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 
 	const reviewConfig = interruptData.review_configs[0];
@@ -215,33 +217,27 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 					<div className="min-w-0">
 						<p className="text-sm font-semibold text-foreground">
 							{phase === "rejected"
-								? "Automation cancelled"
+								? t("automation_cancelled")
 								: phase === "processing"
-									? "Saving automation"
+									? t("saving_automation")
 									: phase === "complete"
-										? "Automation saved"
-										: "Create automation"}
+										? t("automation_saved")
+										: t("create_automation")}
 						</p>
 						{phase === "processing" ? (
 							<TextShimmerLoader
-								text={pendingEdits ? "Saving with your edits" : "Saving automation"}
+								text={pendingEdits ? t("saving_with_edits") : t("saving_automation")}
 								size="sm"
 							/>
 						) : phase === "complete" ? (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								{pendingEdits
-									? "Automation saved with your edits"
-									: "Automation created from this draft"}
+								{pendingEdits ? t("automation_saved_edits") : t("automation_created")}
 							</p>
 						) : phase === "rejected" ? (
-							<p className="text-xs text-muted-foreground mt-0.5">
-								No automation was saved — ask in chat to refine and try again.
-							</p>
+							<p className="text-xs text-muted-foreground mt-0.5">{t("no_automation_saved")}</p>
 						) : (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								{pendingEdits
-									? "Showing your edits. Approve to save, or edit again."
-									: "Review and approve to save. Edit for fine-tuning, or reply in chat for a redraft."}
+								{pendingEdits ? t("showing_your_edits") : t("review_and_approve")}
 							</p>
 						)}
 					</div>
@@ -254,7 +250,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 						onClick={() => setIsEditing(true)}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("tu_edit")}
 					</Button>
 				)}
 			</div>
@@ -282,7 +278,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 				<>
 					<div className="mx-5 h-px bg-border/50" />
 					<div className="px-5 py-4">
-						<p className="mb-3 text-xs font-medium text-foreground">Models</p>
+						<p className="mb-3 text-xs font-medium text-foreground">{t("models")}</p>
 						<AutomationModelFields
 							workspaceId={Number(workspaceId)}
 							value={resolvedModels}
@@ -298,7 +294,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 								disabled={!modelsResolved}
 								onClick={handleApprove}
 							>
-								Approve
+								{t("tu_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -309,7 +305,7 @@ function ApprovalCard({ args, interruptData, onDecision }: ApprovalCardProps) {
 								className="rounded-lg text-muted-foreground"
 								onClick={handleReject}
 							>
-								Reject
+								{t("tu_reject")}
 							</Button>
 						)}
 					</div>
@@ -326,6 +322,7 @@ interface JsonEditorProps {
 }
 
 function JsonEditor({ initialValue, onSave, onCancel }: JsonEditorProps) {
+	const t = useTranslations("toolUi");
 	const [value, setValue] = useState<Record<string, unknown>>(initialValue);
 	const [issues, setIssues] = useState<string[]>([]);
 
@@ -373,7 +370,7 @@ function JsonEditor({ initialValue, onSave, onCancel }: JsonEditorProps) {
 					Cancel
 				</Button>
 				<Button type="button" size="sm" onClick={handleSave}>
-					Save edits
+					{t("tu_save_edits")}
 				</Button>
 			</div>
 		</div>
@@ -385,6 +382,7 @@ function JsonEditor({ initialValue, onSave, onCancel }: JsonEditorProps) {
 // ----------------------------------------------------------------------------
 
 function SavedCard({ result }: { result: SavedResult }) {
+	const t = useTranslations("toolUi");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const tracked = useRef(false);
 	useEffect(() => {
@@ -406,7 +404,7 @@ function SavedCard({ result }: { result: SavedResult }) {
 			<div className="flex items-start gap-3 px-5 pt-5 pb-4">
 				<AlarmClock className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
 				<div className="min-w-0">
-					<p className="text-sm font-semibold text-foreground">Automation saved</p>
+					<p className="text-sm font-semibold text-foreground">{t("tu_automation_saved")}</p>
 					<p className="text-xs text-muted-foreground mt-0.5">{result.name}</p>
 				</div>
 			</div>
@@ -429,6 +427,7 @@ function SavedCard({ result }: { result: SavedResult }) {
 }
 
 function InvalidCard({ result }: { result: InvalidResult }) {
+	const t = useTranslations("toolUi");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const tracked = useRef(false);
 	useEffect(() => {
@@ -444,9 +443,9 @@ function InvalidCard({ result }: { result: InvalidResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Couldn't draft this automation</p>
+				<p className="text-sm font-semibold text-destructive">{t("tu_couldn_t_draft_this")}</p>
 				<p className="text-xs text-muted-foreground mt-0.5">
-					The drafter produced output that didn't validate. I'll refine and retry.
+					{t("tu_the_drafter_produced_output")}
 				</p>
 			</div>
 			{result.issues.length > 0 && (
@@ -464,6 +463,7 @@ function InvalidCard({ result }: { result: InvalidResult }) {
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const tracked = useRef(false);
 	useEffect(() => {
@@ -479,7 +479,9 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create automation</p>
+				<p className="text-sm font-semibold text-destructive">
+					{t("tu_failed_to_create_automation")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">

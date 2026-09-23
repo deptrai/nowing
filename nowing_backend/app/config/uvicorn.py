@@ -18,7 +18,7 @@ def _parse_headers(value):
     """Parse headers from comma-separated string."""
     try:
         return [tuple(h.split(":", 1)) for h in value.split(",") if ":" in h]
-    except Exception:
+    except Exception:  # header string parsing failure; re-raise as ValueError
         raise ValueError(f"Invalid headers format: {value}") from None
 
 

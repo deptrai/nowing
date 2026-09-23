@@ -56,11 +56,11 @@ async def execute_in_sandbox(
         )
         try:
             await delete_sandbox(mw._thread_id)
-        except Exception:
+        except Exception:  # sandbox cleanup failure; fall back to cache eviction
             _evict_sandbox_cache(mw._thread_id)
         try:
             return await _try_sandbox_execute(mw, command, runtime, timeout)
-        except Exception:
+        except Exception:  # sandbox retry execution failure; return error message
             logger.exception("Sandbox retry also failed for thread %s", mw._thread_id)
             return "Error: Code execution is temporarily unavailable. Please try again."
 

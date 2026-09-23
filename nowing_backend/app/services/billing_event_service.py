@@ -835,7 +835,7 @@ async def _record_business_event(
             ) from exc
         try:
             await wallet_credit.apply_debit(session, user_id, cost_micros)
-        except Exception:
+        except Exception:  # undo member_spend increment on any debit failure, then re-raise
             # Undo the monthly-spent increment if the wallet debit failed.
             await credit_svc.refund_member_spend(
                 workspace_id=workspace_id,

@@ -42,7 +42,7 @@ def build_aggregate_executor(
                 )
             else:
                 output = await aggregate_fn(payload)
-        except Exception:
+        except Exception:  # aggregate executor error → structured degraded failure response
             logger.exception("vn_bds.aggregate executor failed")
             return VnBdsAggregateOutput(
                 items=[],

@@ -9,9 +9,11 @@ import pytest
 import pytest_asyncio
 from pydantic import BaseModel, ConfigDict
 
+from app.config import config as _cfg
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
-_EMBEDDING_DIM = 384
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 
 class _FakeInput(BaseModel):
@@ -511,3 +513,4 @@ async def test_revalidate_capability_failure_returns_failed_not_500(
     assert result.memory_id == memory.id
     assert result.reason is not None
     assert "upstream blew up" in result.reason
+    cap.executor.assert_called_once()

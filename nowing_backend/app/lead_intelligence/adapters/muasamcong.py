@@ -88,7 +88,7 @@ class MuaSamCongLeadAdapter(LeadSourceAdapter):
                 )
                 for idx, item in enumerate(items)
             ]
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.error("Muasamcong search failed: %s", exc)
             self.last_execution_status = "degraded"
             return []

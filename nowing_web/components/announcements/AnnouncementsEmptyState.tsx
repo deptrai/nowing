@@ -1,15 +1,17 @@
+"use client";
+
 import { BellOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function AnnouncementsEmptyState() {
+	const t = useTranslations("announcements");
 	return (
 		<div className="flex flex-col items-center justify-center py-12 text-center">
 			<div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
 				<BellOff className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 			</div>
-			<h3 className="text-sm font-semibold">Nothing new yet</h3>
-			<p className="mt-1 max-w-xs text-xs text-muted-foreground">
-				You're all caught up! New updates will appear here.
-			</p>
+			<h3 className="text-sm font-semibold">{t("empty_title")}</h3>
+			<p className="mt-1 max-w-xs text-xs text-muted-foreground">{t("empty_desc")}</p>
 		</div>
 	);
 }

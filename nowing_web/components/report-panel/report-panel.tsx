@@ -3,6 +3,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { Check, ChevronDownIcon, Copy, Download, Pencil, XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -117,6 +118,7 @@ export function ReportPanelContent({
 	const [exporting, setExporting] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const copyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const t = useTranslations("layout");
 	const changeCountRef = useRef(0);
 
 	useEffect(() => {
@@ -333,7 +335,7 @@ export function ReportPanelContent({
 				) : (
 					<Download className="size-3.5" aria-hidden="true" />
 				)}
-				<span className="sr-only">Download report</span>
+				<span className="sr-only">{t("download_report")}</span>
 			</Button>
 		) : (
 			<DropdownMenu modal={insideDrawer ? false : undefined}>
@@ -345,7 +347,7 @@ export function ReportPanelContent({
 						disabled={isLoading || !reportContent?.content}
 					>
 						<Download className="size-3.5" aria-hidden="true" />
-						<span className="sr-only">Export report</span>
+						<span className="sr-only">{t("export_report")}</span>
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent
@@ -445,7 +447,7 @@ export function ReportPanelContent({
 				}}
 			>
 				<Pencil className="size-3.5" aria-hidden="true" />
-				<span className="sr-only">Edit report</span>
+				<span className="sr-only">{t("edit_report")}</span>
 			</Button>
 		));
 
@@ -466,7 +468,7 @@ export function ReportPanelContent({
 								className="h-7 w-7 rounded-md shrink-0 text-muted-foreground hover:text-accent-foreground"
 							>
 								<XIcon className="h-3.5 w-3.5" aria-hidden="true" />
-								<span className="sr-only">Close report panel</span>
+								<span className="sr-only">{t("close_report_panel")}</span>
 							</Button>
 						)}
 					</div>
@@ -512,7 +514,7 @@ export function ReportPanelContent({
 				) : error || !reportContent ? (
 					<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center select-none">
 						<div>
-							<p className="font-medium text-foreground">Failed to load report</p>
+							<p className="font-medium text-foreground">{t("failed_to_load_report")}</p>
 							<p className="text-sm text-red-500 mt-1">{error || "An unknown error occurred"}</p>
 						</div>
 					</div>
@@ -543,7 +545,7 @@ export function ReportPanelContent({
 							markdown={reportContent.content}
 							onMarkdownChange={handleReportMarkdownChange}
 							readOnly={!isEditing}
-							placeholder="Report content..."
+							placeholder={t("report_content_placeholder")}
 							editorVariant="default"
 							allowModeToggle={false}
 							reserveToolbarSpace={isEditing}
@@ -556,7 +558,7 @@ export function ReportPanelContent({
 					)
 				) : (
 					<div className="px-5 py-5">
-						<p className="text-muted-foreground italic">No content available.</p>
+						<p className="text-muted-foreground italic">{t("no_content_available")}</p>
 					</div>
 				)}
 			</div>

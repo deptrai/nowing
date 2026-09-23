@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { translateToast } from "@/lib/i18n-toast";
 import { AbortedError, AppError, AuthenticationError, NOWING_ISSUES_URL } from "./error";
 
 /**
@@ -52,7 +53,7 @@ export function showErrorToast(error: unknown, fallbackMessage?: string) {
 			? error.message
 			: error instanceof Error
 				? error.message
-				: (fallbackMessage ?? "An unexpected error occurred.");
+				: (fallbackMessage ?? translateToast("errors.unexpected_generic"));
 
 	const code = error instanceof AppError ? error.code : undefined;
 	const requestId = error instanceof AppError ? error.requestId : undefined;

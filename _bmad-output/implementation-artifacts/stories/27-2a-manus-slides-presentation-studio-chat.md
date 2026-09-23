@@ -1,10 +1,10 @@
 ---
 baseline_commit: 4fe46956f
-story_key: "27-2a"
+story_key: 27-2a-manus-slides-presentation-studio-from-chat
 epic: "epic-27"
 story: "27.2a"
 title: "Manus Slides Presentation Studio from Chat (PPTX/Marp)"
-status: "done"
+status: done
 ---
 
 # Story 27.2a: Manus Slides Presentation Studio from Chat (PPTX/Marp)

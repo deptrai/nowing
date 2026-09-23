@@ -8,6 +8,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+import pytest_asyncio
 import respx
 
 from nowing_evals.core.config import Config, SuiteState
@@ -27,9 +28,10 @@ from nowing_evals.suites.chat.regression.runner import (
 _BASE = "http://test"
 
 
-@pytest.fixture
-def http() -> httpx.AsyncClient:
-    return httpx.AsyncClient(base_url=_BASE)
+@pytest_asyncio.fixture
+async def http() -> httpx.AsyncClient:
+    async with httpx.AsyncClient(base_url=_BASE) as client:
+        yield client
 
 
 def _sse_body(events: list[dict]) -> bytes:
@@ -161,6 +163,28 @@ def isolated_config(tmp_path: Path) -> Config:
         nowing_user_password=None,
         data_dir=tmp_path / "data",
         reports_dir=tmp_path / "reports",
+    )
+
+
+@pytest.fixture
+def isolated_config_with_chat_env(tmp_path: Path) -> Config:
+    return Config(
+        nowing_api_base="https://api.nowing.net",
+        openrouter_api_key=None,
+        openrouter_base_url="https://openrouter.ai/api/v1",
+        nowing_jwt=None,
+        nowing_refresh_token=None,
+        nowing_user_email=None,
+        nowing_user_password=None,
+        data_dir=tmp_path / "data",
+        reports_dir=tmp_path / "reports",
+        slack_webhook_url=None,
+        telegram_bot_token=None,
+        telegram_chat_id=None,
+        artifact_url_prefix=None,
+        chat_eval_search_space_id=42,
+        chat_eval_workspace_id=99,
+        chat_eval_max_cases=5,
     )
 
 
@@ -813,5 +837,248 @@ async def test_run_rejects_invalid_modes(
             dataset=dataset_path,
             search_space_id=1,
             modes="fast",
+            concurrency=1,
+        )
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_run_uses_chat_eval_env_defaults(
+    respx_mock, http, isolated_config_with_chat_env: Config, tmp_path: Path
+) -> None:
+    """CHAT_EVAL_* env vars are used as defaults when CLI flags are omitted."""
+    bench = ChatRegressionBenchmark()
+    config = replace(isolated_config_with_chat_env, nowing_api_base=_BASE)
+
+    respx_mock.post("/api/v1/threads").mock(return_value=httpx.Response(200, json={"id": 7}))
+    respx_mock.delete(url__regex=r"/api/v1/threads/.*").mock(
+        return_value=httpx.Response(404, json={"detail": "not found"})
+    )
+
+    rows = [
+        {"case_id": f"c{i}", "query": f"q{i}", "tags": ["a"], "tier": "short"} for i in range(10)
+    ]
+    dataset_path = tmp_path / "cases.jsonl"
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row) + "\n")
+
+    body = _sse_body(
+        [
+            {"type": "start", "messageId": "m1"},
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "Answer"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=http,
+    )
+
+    artifact = await bench.run(ctx, dataset=dataset_path)
+
+    assert artifact.extra["search_space_id"] == 42
+    assert artifact.extra["workspace_id"] == 99
+    assert artifact.extra["n_cases"] == 5
+    assert artifact.notifications_sent is False
+
+
+@pytest.mark.asyncio
+async def test_run_rejects_negative_max_total_cost_micros(
+    isolated_config: Config, tmp_path: Path
+) -> None:
+    bench = ChatRegressionBenchmark()
+    config = replace(isolated_config, nowing_api_base=_BASE)
+
+    dataset_path = tmp_path / "cases.jsonl"
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        fh.write(
+            json.dumps({"case_id": "c1", "query": "q1", "tags": ["a"], "tier": "short"}) + "\n"
+        )
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=httpx.AsyncClient(base_url=_BASE),
+    )
+
+    with pytest.raises(RuntimeError, match="--max-total-cost-micros must be >= 0"):
+        await bench.run(
+            ctx,
+            dataset=dataset_path,
+            search_space_id=1,
+            max_total_cost_micros=-1,
+        )
+
+
+async def _expensive_answer(_self, request):
+    from nowing_evals.core.arms.base import ArmResult
+
+    return ArmResult(
+        arm="nowing",
+        question_id=request.question_id,
+        raw_text="Answer",
+        error=None,
+        citations=[],
+        input_tokens=100,
+        output_tokens=100,
+        cost_micros=100,
+        latency_ms=100,
+        extra={"ttfb_ms": 10},
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_raises_when_total_cost_exceeds_cap(
+    http, isolated_config: Config, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bench = ChatRegressionBenchmark()
+    config = replace(isolated_config, nowing_api_base=_BASE)
+
+    rows = [
+        {"case_id": "c1", "query": "q1", "tags": ["a"], "tier": "short"},
+        {"case_id": "c2", "query": "q2", "tags": ["a"], "tier": "short"},
+    ]
+    dataset_path = tmp_path / "cases.jsonl"
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row) + "\n")
+
+    # Force every arm answer to cost 100 micros so 2 cases exceed a 50 cap.
+    import nowing_evals.core.arms.nowing
+
+    monkeypatch.setattr(
+        nowing_evals.core.arms.nowing.NowingArm,
+        "answer",
+        _expensive_answer,
+    )
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=http,
+    )
+
+    with pytest.raises(RuntimeError, match="Run cost 100 micros exceeds cap 50"):
+        await bench.run(
+            ctx,
+            dataset=dataset_path,
+            search_space_id=1,
+            max_total_cost_micros=50,
+            concurrency=1,
+        )
+
+    artifact_path = list(config.data_dir.glob("chat/runs/*/regression/run_artifact.json"))[0]
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    assert any("exceeds cap" in v for v in artifact["metrics"]["gate_violations"])
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_run_fail_on_unratified_raises_when_baseline_not_ratified(
+    respx_mock, http, monkeypatch, tmp_path: Path
+) -> None:
+    bench = ChatRegressionBenchmark()
+    config = Config(
+        nowing_api_base=_BASE,
+        openrouter_api_key=None,
+        openrouter_base_url="https://openrouter.ai/api/v1",
+        nowing_jwt=None,
+        nowing_refresh_token=None,
+        nowing_user_email=None,
+        nowing_user_password=None,
+        data_dir=tmp_path / "data",
+        reports_dir=tmp_path / "reports",
+    )
+
+    monkeypatch.setattr(
+        "nowing_evals.suites.chat.regression.runner._load_chat_gate",
+        lambda: ({"baseline_ratified": False}, {}),
+    )
+
+    rows = [
+        {"case_id": "c1", "query": "q1", "tags": ["a"], "tier": "short"},
+    ]
+    dataset_path = tmp_path / "cases.jsonl"
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row) + "\n")
+
+    respx_mock.post("/api/v1/threads").mock(return_value=httpx.Response(200, json={"id": 7}))
+    respx_mock.delete(url__regex=r"/api/v1/threads/.*").mock(
+        return_value=httpx.Response(404, json={"detail": "not found"})
+    )
+    body = _sse_body(
+        [
+            {"type": "start", "messageId": "m1"},
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "Answer"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=http,
+    )
+
+    with pytest.raises(RuntimeError, match="baseline_ratified=false"):
+        await bench.run(
+            ctx,
+            dataset=dataset_path,
+            search_space_id=1,
+            fail_on_unratified=True,
             concurrency=1,
         )

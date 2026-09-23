@@ -34,7 +34,8 @@ async def _apply_retention() -> None:
                 continue
             cutoff = now - timedelta(days=ws.document_retention_days)
             result = await session.execute(
-                select(Document).filter(
+                select(Document)
+                .filter(
                     Document.workspace_id == ws.id,
                     Document.created_at < cutoff,
                     Document.archived_at.is_(None),
@@ -42,6 +43,7 @@ async def _apply_retention() -> None:
                         ["pending", "processing", "deleting"]
                     ),
                 )
+                .with_for_update(skip_locked=True)
             )
             for doc in result.scalars():
                 doc.archived_at = now
@@ -49,7 +51,7 @@ async def _apply_retention() -> None:
                     doc.status = {"state": "deleting"}
                     try:
                         delete_document_task.delay(doc.id)
-                    except Exception:
+                    except Exception:  # task dispatch failure → revert status to ready and continue
                         logger.exception(
                             "Failed to dispatch delete_document_task for doc %s; "
                             "reverting status to ready",

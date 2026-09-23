@@ -165,25 +165,25 @@ def _patch_session_maker(
 
 def _patch_tenant_and_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch tenant context and LLM bundle helpers."""
+    import app.tasks.chat.streaming.flows.new_chat._stages as _stages
     import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
     monkeypatch.setattr(_orchestrator, "set_request_tenant_context", AsyncMock())
+    # Block-1 stage helpers live in ``_stages`` after the orchestrator split.
     monkeypatch.setattr(
-        _orchestrator,
+        _stages,
         "resolve_initial_auto_pin",
         AsyncMock(return_value=SimpleNamespace(error=None, llm_config_id=1)),
     )
     monkeypatch.setattr(
-        _orchestrator,
+        _stages,
         "load_llm_bundle",
         AsyncMock(
             return_value=(MagicMock(name="llm"), _default_runtime_config(), None)
         ),
     )
-    monkeypatch.setattr(
-        _orchestrator, "check_image_input_capability", lambda **_kw: None
-    )
-    monkeypatch.setattr(_orchestrator, "needs_credit_quota", lambda _cfg, _user: False)
+    monkeypatch.setattr(_stages, "check_image_input_capability", lambda **_kw: None)
+    monkeypatch.setattr(_stages, "needs_credit_quota", lambda _cfg, _user: False)
     monkeypatch.setattr(
         _orchestrator, "setup_connector_service", AsyncMock(return_value=MagicMock())
     )
@@ -210,10 +210,12 @@ def _patch_agent_build_and_input(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _patch_streaming_and_logging(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch streaming frame and background task helpers."""
+    import app.tasks.chat.streaming.flows.new_chat._stages as _stages
     import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
+    # ``iter_initial_frames`` lookup moved to ``_stages`` (Blocks 4-6 helper).
     monkeypatch.setattr(
-        _orchestrator,
+        _stages,
         "iter_initial_frames",
         lambda *_a, **_k: [b'data: {"type":"start"}\n\n'],
     )
@@ -222,19 +224,21 @@ def _patch_streaming_and_logging(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_orchestrator, "log_file_contract", MagicMock())
     monkeypatch.setattr(_orchestrator, "log_system_snapshot", MagicMock())
     monkeypatch.setattr(_orchestrator, "set_agent_mode", MagicMock())
-    monkeypatch.setattr(_orchestrator, "end_turn", MagicMock())
+    # Finally-cleanup helpers look these names up in ``_stages``.
+    monkeypatch.setattr(_stages, "end_turn", MagicMock())
     monkeypatch.setattr(_orchestrator, "close_chat_request_span", MagicMock())
-    monkeypatch.setattr(
-        _orchestrator, "close_session_and_clear_ai_responding", AsyncMock()
-    )
-    monkeypatch.setattr(_orchestrator, "finalize_assistant_message", AsyncMock())
+    monkeypatch.setattr(_stages, "close_session_and_clear_ai_responding", AsyncMock())
+    monkeypatch.setattr(_stages, "finalize_assistant_message", AsyncMock())
     monkeypatch.setattr(
         _orchestrator,
         "open_chat_request_span",
         MagicMock(return_value=(contextlib.nullcontext(), MagicMock())),
     )
+    # Both modules carry their own perf/otel handles.
     monkeypatch.setattr(_orchestrator, "_perf_log", MagicMock())
+    monkeypatch.setattr(_stages, "_perf_log", MagicMock())
     monkeypatch.setattr(_orchestrator, "ot", MagicMock())
+    monkeypatch.setattr(_stages, "ot", MagicMock())
 
 
 def _patch_token_tracking(monkeypatch: pytest.MonkeyPatch) -> None:

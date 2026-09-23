@@ -817,7 +817,7 @@ async def index_onedrive_files(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, 0, f"Database error: {db_error!s}", 0
-    except Exception as e:
+    except Exception as e:  # onedrive indexing failure; rollback, log failure, and return error tuple
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, Check, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 	onStartIndexing,
 	onSkip,
 }) => {
+	const t = useTranslations("assistant");
 	const isLive = LIVE_CONNECTOR_TYPES.has(config.connectorType);
 
 	// Get connector-specific config component
@@ -133,7 +135,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						className="mb-6 h-auto w-fit justify-start gap-2 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-accent-foreground sm:text-sm"
 					>
 						<ArrowLeft data-icon="inline-start" />
-						Back to connectors
+						{t("asst_back_to_connectors")}
 					</Button>
 				)}
 
@@ -154,9 +156,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 							)}
 						</div>
 						<p className="text-xs sm:text-base text-muted-foreground mt-1">
-							{isLive
-								? "Your account is ready to use"
-								: "Configure when to start syncing your data"}
+							{isLive ? t("conn_account_ready") : t("conn_configure_sync")}
 						</p>
 					</div>
 				</div>
@@ -222,9 +222,7 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						{connector?.is_indexable && !isLive && (
 							<Alert>
 								<Info />
-								<AlertDescription>
-									You can continue using Nowing while we sync your data. Check inbox for updates.
-								</AlertDescription>
+								<AlertDescription>{t("asst_you_can_continue_using")}</AlertDescription>
 							</Alert>
 						)}
 					</div>
@@ -251,7 +249,9 @@ export const IndexingConfigurationView: FC<IndexingConfigurationViewProps> = ({
 						disabled={isStartingIndexing}
 						className="text-xs sm:text-sm relative"
 					>
-						<span className={isStartingIndexing ? "opacity-0" : ""}>Start Indexing</span>
+						<span className={isStartingIndexing ? "opacity-0" : ""}>
+							{t("asst_start_indexing")}
+						</span>
 						{isStartingIndexing && <Spinner size="sm" className="absolute" />}
 					</Button>
 				)}

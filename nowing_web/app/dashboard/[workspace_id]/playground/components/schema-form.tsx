@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ function FieldControl({
 	invalid?: boolean;
 	options?: FieldOption[];
 }) {
+	const t = useTranslations("playground");
 	const id = `field-${field.name}`;
 
 	if (field.kind === "boolean") {
@@ -67,7 +69,7 @@ function FieldControl({
 				disabled={disabled}
 			>
 				<SelectTrigger id={id} className={cn("w-full", invalid && "border-destructive")}>
-					<SelectValue placeholder="Select…" />
+					<SelectValue placeholder={t("select")} />
 				</SelectTrigger>
 				<SelectContent>
 					{field.enumValues.map((option) => (
@@ -88,7 +90,7 @@ function FieldControl({
 				disabled={disabled}
 			>
 				<SelectTrigger id={id} className={cn("w-full", invalid && "border-destructive")}>
-					<SelectValue placeholder="Select…" />
+					<SelectValue placeholder={t("select")} />
 				</SelectTrigger>
 				<SelectContent>
 					{options.map((option) => (
@@ -107,7 +109,7 @@ function FieldControl({
 				id={id}
 				value={String(value ?? "")}
 				onChange={(e) => onChange(e.target.value)}
-				placeholder="One value per line"
+				placeholder={t("one_value_per_line")}
 				disabled={disabled}
 				rows={4}
 				className={cn("font-mono text-xs", invalid && "border-destructive")}

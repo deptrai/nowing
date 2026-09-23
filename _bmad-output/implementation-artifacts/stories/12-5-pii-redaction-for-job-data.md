@@ -1,4 +1,9 @@
 ---
+story_key: 12-5-pii-redaction-for-job-data
+status: done
+---
+
+---
 title: Story 12.5 — PII Redaction for Job Data
 epic: 12
 story: 5

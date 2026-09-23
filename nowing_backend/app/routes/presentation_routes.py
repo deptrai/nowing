@@ -7,7 +7,7 @@ import mimetypes
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,15 +18,22 @@ from app.db import (
     Permission,
     SlidePresentation,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
-from app.routes.rbac_routes import check_permission
+from app.dependencies.auth import (
+    RequirePermission,
+    RequirePermissionFromBody,
+)
 from app.services.presentation.schemas import (
     GeneratePresentationInput,
     GeneratePresentationOutput,
     SlidePresentationRead,
 )
-from app.services.presentation.service import PresentationStudioService
+from app.services.presentation.service import (
+    PlanLimitedError,
+    PresentationStudioService,
+)
 from app.users import get_auth_context
 
 logger = logging.getLogger(__name__)
@@ -61,15 +68,7 @@ async def require_workspace_member(
     auth: AuthContext,
     workspace_id: int,
 ) -> AuthContext:
-    """Ensure the caller is a member and that Presentation Studio is enabled."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.WEB_BUILDER_CREATE.value,
-        error_message="You don't have access to this workspace",
-    )
-
+    """Ensure that Presentation Studio is enabled for the workspace."""
     ws = (
         (await session.execute(select(Workspace).where(Workspace.id == workspace_id)))
         .scalars()
@@ -152,16 +151,25 @@ async def generate_presentation(
     payload: GeneratePresentationInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> GeneratePresentationOutput:
     """Generate a new PPTX or Marp slide deck for the workspace."""
     await require_workspace_member(session, auth, payload.workspace_id)
     payload.user_id = auth.user.id
 
     service = PresentationStudioService()
-    return await service.generate(
-        session=session,
-        build_input=payload,
-    )
+    try:
+        return await service.generate(
+            session=session,
+            build_input=payload,
+        )
+    except PlanLimitedError as exc:
+        raise HTTPException(status_code=403, detail=exc.detail) from exc
 
 
 @router.get("", response_model=list[SlidePresentationRead])
@@ -169,13 +177,23 @@ async def list_presentations(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> list[SlidePresentationRead]:
-    """List all slide decks for a workspace."""
+    """List all slide decks for a workspace with pagination."""
     await require_workspace_member(session, auth, workspace_id)
     stmt = (
         select(SlidePresentation)
         .where(SlidePresentation.workspace_id == workspace_id)
         .order_by(SlidePresentation.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
@@ -187,6 +205,12 @@ async def get_presentation(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> SlidePresentationRead:
     """Get a single slide deck."""
     await require_workspace_member(session, auth, workspace_id)
@@ -210,6 +234,12 @@ async def download_presentation(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> FileResponse:
     """Download the PPTX or Marp file for a presentation."""
     await require_workspace_member(session, auth, workspace_id)
@@ -246,6 +276,12 @@ async def preview_presentation(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> HTMLResponse:
     """Return the HTML preview for a Marp presentation, if available."""
     await require_workspace_member(session, auth, workspace_id)
@@ -298,6 +334,12 @@ async def delete_presentation(
     workspace_id: int,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.WEB_BUILDER_CREATE.value,
+            "You don't have access to this workspace",
+        )
+    ),
 ) -> None:
     """Delete a slide deck and its files after member check."""
     await require_workspace_member(session, auth, workspace_id)

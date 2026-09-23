@@ -157,7 +157,7 @@ def parse_guest_job_cards(html_content: str) -> list[LinkedInJobPosting]:
                 try:
                     dt = datetime.fromisoformat(dt_attr)
                     posted_at = dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
-                except Exception:
+                except Exception:  # datetime ISO parse failure; fallback to relative age parsing
                     posted_at = _parse_relative_age(time_node.text())
             else:
                 posted_at = _parse_relative_age(time_node.text())
@@ -304,7 +304,7 @@ class LinkedInGuestJobScraper:
         except httpx.RequestError as exc:
             logger.error(f"HTTP request error querying LinkedIn jobs: {exc}")
             return None
-        except Exception as exc:
+        except Exception as exc:  # unexpected error querying LinkedIn jobs; return None
             logger.exception(f"Unexpected error querying LinkedIn jobs: {exc}")
             return None
         finally:

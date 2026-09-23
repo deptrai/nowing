@@ -11,7 +11,12 @@ export const dshMissionStatusSchema = z.enum([
 
 export type DshMissionStatus = z.infer<typeof dshMissionStatusSchema>;
 
-export const dshMissionTypeSchema = z.enum(["deep_lead_research", "cdp_browser_operator", "noop"]);
+export const dshMissionTypeSchema = z.enum([
+	"deep_lead_research",
+	"cdp_browser_operator",
+	"noop",
+	"recurring_report",
+]);
 
 export type DshMissionType = z.infer<typeof dshMissionTypeSchema>;
 

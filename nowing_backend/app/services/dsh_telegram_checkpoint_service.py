@@ -66,7 +66,7 @@ class DshTelegramCheckpointService:
         if self.enc.is_encrypted(value):
             try:
                 return self.enc.decrypt(value)
-            except Exception:
+            except Exception:  # decrypt failure → None so caller treats value as absent
                 return None
         return value
 
@@ -348,7 +348,7 @@ class DshTelegramCheckpointService:
                 "contact_id": contact.id,
                 "message_id": checkpoint_msg.external_message_id,
             }
-        except Exception as exc:
+        except Exception as exc:  # best-effort checkpoint card send; checkpoint state already persisted
             logger.warning(
                 "Failed to send Telegram checkpoint card: %s", exc, exc_info=True
             )
@@ -679,7 +679,7 @@ class DshTelegramCheckpointService:
             result = await waterfall._resolve_tier_3_carrier_hlr(None, phone)
             if result.phone:
                 return False
-        except Exception:
+        except Exception:  # verification failure → conservative False (no auto-refund decision)
             logger.warning(
                 "Could not run phone verification for refund of contact %s",
                 contact_id,

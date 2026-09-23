@@ -2,11 +2,13 @@
 
 import { IconCalculator, IconCheck, IconSparkles, IconTrendingUp } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
 export function PricingLeadCalculator() {
+	const t = useTranslations("pricing");
 	const [phoneUnlocks, setPhoneUnlocks] = useState<number>(300);
 	const [researchQueries, setResearchQueries] = useState<number>(100);
 	const [scrapedItems, setScrapedItems] = useState<number>(2000);
@@ -39,19 +41,19 @@ export function PricingLeadCalculator() {
 						<div>
 							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
 								<IconCalculator className="size-3.5" />
-								<span>Interactive Cost Estimator</span>
+								<span>{t("calc_badge")}</span>
 							</div>
 							<h3 className="font-serif text-2xl md:text-3xl font-normal tracking-tight text-neutral-900 dark:text-white">
-								Pay Only For What You Actually Extract
+								{t("calc_title")}
 							</h3>
 							<p className="text-sm md:text-base text-neutral-600 dark:text-neutral-400 mt-1">
-								Slide below to see how much you save vs. locked enterprise subscriptions.
+								{t("calc_desc")}
 							</p>
 						</div>
 
 						<div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-4 py-2 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
 							<IconSparkles className="size-4 shrink-0" />
-							<span>$5.00 Starter Credit Included Free</span>
+							<span>{t("calc_starter_credit")}</span>
 						</div>
 					</div>
 
@@ -63,14 +65,14 @@ export function PricingLeadCalculator() {
 								<div className="flex justify-between items-center mb-3">
 									<div>
 										<span className="font-semibold text-neutral-800 dark:text-neutral-200 text-sm md:text-base">
-											Phone Unlocks (Batdongsan / Chotot / MuaBan)
+											{t("calc_phone_title")}
 										</span>
 										<div className="text-xs text-neutral-500 dark:text-neutral-400">
-											5 credits = $0.05 per verified phone number
+											{t("calc_phone_rate")}
 										</div>
 									</div>
 									<span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-lg">
-										{phoneUnlocks.toLocaleString()} /mo
+										{t("calc_phone_unit", { count: phoneUnlocks.toLocaleString() })}
 									</span>
 								</div>
 								<Slider
@@ -88,14 +90,14 @@ export function PricingLeadCalculator() {
 								<div className="flex justify-between items-center mb-3">
 									<div>
 										<span className="font-semibold text-neutral-800 dark:text-neutral-200 text-sm md:text-base">
-											Autonomous Deep Research & Outreach Briefs
+											{t("calc_research_title")}
 										</span>
 										<div className="text-xs text-neutral-500 dark:text-neutral-400">
-											2-5 credits = ~$0.03 per multi-step web investigation
+											{t("calc_research_rate")}
 										</div>
 									</div>
 									<span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-lg">
-										{researchQueries.toLocaleString()} /mo
+										{t("calc_phone_unit", { count: researchQueries.toLocaleString() })}
 									</span>
 								</div>
 								<Slider
@@ -113,14 +115,14 @@ export function PricingLeadCalculator() {
 								<div className="flex justify-between items-center mb-3">
 									<div>
 										<span className="font-semibold text-neutral-800 dark:text-neutral-200 text-sm md:text-base">
-											Social & B2B Scraped Records (Maps, FB, TopCV)
+											{t("calc_scraping_title")}
 										</span>
 										<div className="text-xs text-neutral-500 dark:text-neutral-400">
-											0.2 credits = $0.002 per returned entity record
+											{t("calc_scraping_rate")}
 										</div>
 									</div>
 									<span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-lg">
-										{scrapedItems.toLocaleString()} /mo
+										{t("calc_phone_unit", { count: scrapedItems.toLocaleString() })}
 									</span>
 								</div>
 								<Slider
@@ -139,10 +141,11 @@ export function PricingLeadCalculator() {
 							<div className="space-y-6">
 								<div className="flex items-center justify-between">
 									<span className="text-xs font-semibold tracking-wider text-emerald-400 uppercase">
-										Estimated Monthly Bill
+										{t("calc_est_bill")}
 									</span>
 									<span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-medium">
-										<IconTrendingUp className="size-3.5" /> {savingsPercent}% Savings
+										<IconTrendingUp className="size-3.5" />{" "}
+										{t("calc_savings_pct", { percent: savingsPercent })}
 									</span>
 								</div>
 
@@ -151,22 +154,26 @@ export function PricingLeadCalculator() {
 										<span className="text-4xl md:text-5xl font-black font-mono tracking-tight text-emerald-400">
 											${totalNowingCost.toFixed(2)}
 										</span>
-										<span className="text-neutral-400 text-sm font-medium">/ month</span>
+										<span className="text-neutral-400 text-sm font-medium">
+											{t("calc_per_month")}
+										</span>
 									</div>
 									<div className="text-xs text-neutral-400 mt-1">
-										≈ {(totalNowingCost * 25400).toLocaleString("vi-VN")} VND (Pay-as-you-go)
+										{t("calc_approx_vnd", {
+											amount: (totalNowingCost * 25400).toLocaleString("vi-VN"),
+										})}
 									</div>
 								</div>
 
 								<div className="p-4 rounded-2xl bg-neutral-800/70 border border-neutral-700/60 space-y-2 text-xs">
 									<div className="flex justify-between text-neutral-400">
-										<span>Legacy SaaS Subscriptions:</span>
+										<span>{t("calc_legacy_sub")}</span>
 										<span className="line-through font-mono text-neutral-500">
 											${legacyProviderCost.toFixed(0)}/mo
 										</span>
 									</div>
 									<div className="flex justify-between font-semibold text-emerald-300">
-										<span>Your Monthly Cash Savings:</span>
+										<span>{t("calc_monthly_savings")}</span>
 										<span className="font-mono text-sm">+${monthlySavings.toFixed(2)}</span>
 									</div>
 								</div>
@@ -174,15 +181,15 @@ export function PricingLeadCalculator() {
 								<ul className="space-y-2 text-xs text-neutral-300">
 									<li className="flex items-center gap-2">
 										<IconCheck className="size-4 text-emerald-400 shrink-0" />
-										<span>No monthly subscription lock-in</span>
+										<span>{t("calc_benefit_no_lockin")}</span>
 									</li>
 									<li className="flex items-center gap-2">
 										<IconCheck className="size-4 text-emerald-400 shrink-0" />
-										<span>Failed calls & empty results are never billed</span>
+										<span>{t("calc_benefit_no_fail_charge")}</span>
 									</li>
 									<li className="flex items-center gap-2">
 										<IconCheck className="size-4 text-emerald-400 shrink-0" />
-										<span>Credits never expire</span>
+										<span>{t("calc_benefit_no_expiry")}</span>
 									</li>
 								</ul>
 							</div>
@@ -190,7 +197,7 @@ export function PricingLeadCalculator() {
 							<div className="mt-6 pt-4 border-t border-neutral-800">
 								<Link href="/login" className="w-full block">
 									<Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold py-5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
-										Start Free with $5 Credit
+										{t("calc_start_free")}
 									</Button>
 								</Link>
 							</div>

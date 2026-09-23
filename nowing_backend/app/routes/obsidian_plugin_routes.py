@@ -465,7 +465,7 @@ async def obsidian_sync(
         notification = await _start_obsidian_sync_notification(
             session, user=user, connector=connector, total_count=len(payload.notes)
         )
-    except Exception:
+    except Exception:  # best-effort sync notification start; failure doesn't fail primary op
         logger.warning(
             "obsidian sync notification start failed connector=%s user=%s",
             connector.id,
@@ -521,7 +521,7 @@ async def obsidian_sync(
             items.append(SyncAckItem(path=note.path, status="ok", document_id=doc.id))
         except HTTPException:
             raise
-        except Exception as exc:
+        except Exception as exc:  # per-item failure; continue remaining
             failed += 1
             logger.exception(
                 "obsidian /sync failed for path=%s vault=%s",
@@ -540,7 +540,7 @@ async def obsidian_sync(
                 indexed=indexed,
                 failed=failed,
             )
-        except Exception:
+        except Exception:  # best-effort sync notification finish; failure doesn't fail primary op
             logger.warning(
                 "obsidian sync notification finish failed connector=%s user=%s",
                 connector.id,
@@ -599,7 +599,7 @@ async def obsidian_rename(
                         document_id=doc.id,
                     )
                 )
-        except Exception as exc:
+        except Exception as exc:  # per-item failure; continue remaining
             logger.exception(
                 "obsidian /rename failed for old=%s new=%s vault=%s",
                 item.old_path,
@@ -651,7 +651,7 @@ async def obsidian_delete_notes(
             else:
                 missing += 1
                 items.append(DeleteAckItem(path=path, status="missing"))
-        except Exception as exc:
+        except Exception as exc:  # per-item failure; continue remaining
             logger.exception(
                 "obsidian DELETE /notes failed for path=%s vault=%s",
                 path,

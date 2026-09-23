@@ -197,7 +197,7 @@ async def index_notion_pages(
                     f"Connector {connector_id} is using legacy integration token. "
                     "Recommend reconnecting with OAuth."
                 )
-        except Exception as e:
+        except Exception as e:  # notion pages retrieval failure; log error and return failure tuple
             error_str = str(e)
             unsupported_block_errors = [
                 "transcription is not supported",
@@ -327,7 +327,7 @@ async def index_notion_pages(
 
                 connector_docs.append(doc)
 
-            except Exception as e:
+            except Exception as e:  # per-page document build failure; log error, increment skipped, and continue
                 logger.error(
                     f"Error building ConnectorDocument for page: {e!s}",
                     exc_info=True,
@@ -370,7 +370,7 @@ async def index_notion_pages(
             logger.info(
                 "Successfully committed all Notion document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # final commit failure; rollback if duplicate hash, else re-raise
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
                 or "uniqueviolationerror" in str(e).lower()
@@ -445,7 +445,7 @@ async def index_notion_pages(
         if "notion_client" in locals():
             await notion_client.close()
         return 0, 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # notion indexing failure; rollback, close client, log failure, and return error tuple
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

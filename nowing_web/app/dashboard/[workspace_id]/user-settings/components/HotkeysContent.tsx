@@ -1,6 +1,7 @@
 "use client";
 
 import { Crop, Rocket, RotateCcw, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DEFAULT_SHORTCUTS, keyEventToAccelerator } from "@/components/desktop/shortcut-recorder";
@@ -13,11 +14,13 @@ import { useElectronAPI } from "@/hooks/use-platform";
 type ShortcutKey = "generalAssist" | "quickAsk" | "screenshotAssist";
 type ShortcutMap = typeof DEFAULT_SHORTCUTS;
 
-const HOTKEY_ROWS: Array<{ key: ShortcutKey; label: string; icon: React.ElementType }> = [
-	{ key: "generalAssist", label: "General Assist", icon: Rocket },
-	{ key: "screenshotAssist", label: "Screenshot Assist", icon: Crop },
-	{ key: "quickAsk", label: "Quick Assist", icon: Zap },
-];
+function useHotkeyRows(t: (k: string) => string) {
+	return [
+		{ key: "generalAssist" as ShortcutKey, label: t("hotkey_general"), icon: Rocket },
+		{ key: "screenshotAssist" as ShortcutKey, label: t("hotkey_screenshot"), icon: Crop },
+		{ key: "quickAsk" as ShortcutKey, label: t("hotkey_quick"), icon: Zap },
+	];
+}
 
 function acceleratorToKeys(accel: string, isMac: boolean): string[] {
 	if (!accel) return [];
@@ -53,6 +56,7 @@ function HotkeyRow({
 	onChange: (accelerator: string) => void;
 	onReset: () => void;
 }) {
+	const t = useTranslations("userSettings");
 	const [recording, setRecording] = useState(false);
 	const inputRef = useRef<HTMLButtonElement>(null);
 	const isDefault = value === defaultValue;
@@ -93,7 +97,7 @@ function HotkeyRow({
 						size="icon"
 						className="size-7 text-muted-foreground hover:text-accent-foreground"
 						onClick={onReset}
-						title="Reset to default"
+						title={t("reset_default")}
 					>
 						<RotateCcw className="size-3" aria-hidden="true" />
 					</Button>
@@ -102,7 +106,7 @@ function HotkeyRow({
 					ref={inputRef}
 					type="button"
 					variant="ghost"
-					title={recording ? "Press shortcut keys" : "Click to edit shortcut"}
+					title={recording ? t("press_keys") : t("click_edit")}
 					onClick={() => setRecording(true)}
 					onKeyDown={handleKeyDown}
 					onBlur={() => setRecording(false)}
@@ -113,7 +117,9 @@ function HotkeyRow({
 					}
 				>
 					{recording ? (
-						<span className="px-2 text-[9px] text-primary whitespace-nowrap">Press hotkeys</span>
+						<span className="px-2 text-[9px] text-primary whitespace-nowrap">
+							{t("press_hotkeys")}
+						</span>
 					) : (
 						<ShortcutKbd keys={displayKeys} className="ml-0 px-1.5 text-foreground/85" />
 					)}
@@ -124,6 +130,8 @@ function HotkeyRow({
 }
 
 export function HotkeysContent() {
+	const t = useTranslations("userSettings");
+	const HOTKEY_ROWS = useHotkeyRows(t);
 	const api = useElectronAPI();
 	const [shortcuts, setShortcuts] = useState(DEFAULT_SHORTCUTS);
 	const [shortcutsLoaded, setShortcutsLoaded] = useState(false);
@@ -155,9 +163,7 @@ export function HotkeysContent() {
 	if (!api) {
 		return (
 			<div className="flex flex-col items-center justify-center py-12 text-center">
-				<p className="text-sm text-muted-foreground">
-					Hotkeys are only available in the Nowing desktop app.
-				</p>
+				<p className="text-sm text-muted-foreground">{t("hotkeys_desktop_only")}</p>
 			</div>
 		);
 	}
@@ -166,11 +172,11 @@ export function HotkeysContent() {
 		setShortcuts((prev) => {
 			const updated = { ...prev, [key]: accelerator };
 			api.setShortcuts?.({ [key]: accelerator }).catch(() => {
-				toast.error("Failed to update shortcut");
+				toast.error(t("shortcut_failed"));
 			});
 			return updated;
 		});
-		toast.success("Shortcut updated");
+		toast.success(t("shortcut_updated"));
 	};
 
 	const resetShortcut = (key: ShortcutKey) => {

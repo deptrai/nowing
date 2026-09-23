@@ -244,3 +244,89 @@ async def test_cancelled_creates_notification_no_deliverable(
         f"/api/v1/workspaces/{db_workspace.id}/scrapers/runs/run_{run.id}/deliverable"
     )
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_notification_idempotency(client, db_session, db_user, db_workspace):
+    """Calling _notify_terminal multiple times creates only one Notification."""
+    run = await _seed_run(
+        db_session,
+        workspace_id=db_workspace.id,
+        user_id=db_user.id,
+        status="success",
+    )
+
+    # Call _notify_terminal multiple times for the same run
+    await _notify_terminal(str(run.id), "success")
+    await _notify_terminal(str(run.id), "success")
+    await _notify_terminal(str(run.id), "success")
+
+    notifs = (
+        (
+            await db_session.execute(
+                select(Notification).where(
+                    Notification.user_id == db_user.id,
+                    Notification.type == "deep_research_complete",
+                    Notification.notification_metadata["run_id"].as_string()
+                    == f"run_{run.id}",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(notifs) == 1
+    assert notifs[0].notification_metadata["run_id"] == f"run_{run.id}"
+    assert notifs[0].notification_metadata["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_deliverable_duplicate_call_returns_409(
+    client, db_session, db_user, db_workspace
+):
+    """Calling POST /deliverable twice for the same run returns 409 on second call."""
+    output = ResearchOutput(
+        status="complete",
+        answer="Synthesized answer.",
+        sources=[Source(url="https://example.com", title="Example")],
+        resolved_mode="balanced",
+        cost_micros=12_300,
+    )
+    run = await _seed_run(
+        db_session,
+        workspace_id=db_workspace.id,
+        user_id=db_user.id,
+        status="success",
+        output=output,
+    )
+
+    # First call: should succeed (200)
+    resp1 = await client.post(
+        f"/api/v1/workspaces/{db_workspace.id}/scrapers/runs/run_{run.id}/deliverable"
+    )
+    assert resp1.status_code == 200, resp1.text
+    body1 = resp1.json()
+    assert "report_id" in body1
+
+    # Second call: duplicate should be blocked with 409 Conflict
+    resp2 = await client.post(
+        f"/api/v1/workspaces/{db_workspace.id}/scrapers/runs/run_{run.id}/deliverable"
+    )
+    assert resp2.status_code == 409
+    assert "already exists" in resp2.json()["detail"]
+
+    # Verify only 1 report exists in DB
+    reports = (
+        (
+            await db_session.execute(
+                select(Report).where(
+                    Report.workspace_id == db_workspace.id,
+                    Report.report_metadata["run_id"].as_string() == f"run_{run.id}",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(reports) == 1
+

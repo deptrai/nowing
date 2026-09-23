@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -49,6 +50,7 @@ export function ToolCardRevertButton({
 	toolName: string;
 	langchainToolCallId?: string;
 }) {
+	const t = useTranslations("chatMessages");
 	const queryClient = useQueryClient();
 	const { threadId, action } = useToolAction({
 		toolCallId,
@@ -82,7 +84,7 @@ export function ToolCardRevertButton({
 					? err.message
 					: err instanceof Error
 						? err.message
-						: "Failed to revert action.";
+						: t("x_failed_to_revert_action");
 			toast.error(message);
 		} finally {
 			setIsReverting(false);
@@ -109,7 +111,7 @@ export function ToolCardRevertButton({
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Revert this action?</AlertDialogTitle>
+					<AlertDialogTitle>{t("x_revert_this_action")}</AlertDialogTitle>
 					<AlertDialogDescription>
 						This will undo{" "}
 						<span className="font-medium">{getToolDisplayName(action.tool_name)}</span> and add a
@@ -118,7 +120,7 @@ export function ToolCardRevertButton({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={isReverting}>Cancel</AlertDialogCancel>
+					<AlertDialogCancel disabled={isReverting}>{t("cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						onClick={(e) => {
 							e.preventDefault();

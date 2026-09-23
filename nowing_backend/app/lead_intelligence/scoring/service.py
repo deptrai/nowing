@@ -24,6 +24,7 @@ from app.db import (
 from app.lead_intelligence.scoring.rubric import (
     DEFAULT_FIT_WEIGHTS,
     DEFAULT_INTENT_WEIGHTS,
+    blend_location_fit_score,
     clamp_score,
     classify,
     compute_trend,
@@ -328,6 +329,12 @@ class LeadScoringService:
             factors["icp"] = 10.0
             score += 10.0 * normalized.get("icp", 0.0)
 
+        # Blend location match score from pre-filter if available (AC-4)
+        location_match_score = getattr(lead, "location_match_score", None)
+        if location_match_score is not None:
+            score = blend_location_fit_score(score, float(location_match_score))
+            factors["location_match"] = float(location_match_score)
+
         return clamp_score(score), factors
 
     def _normalize_weights(self, weights: dict[str, float]) -> dict[str, float]:
@@ -428,7 +435,7 @@ class LeadScoringService:
                 user_id=user_id,
                 cost_micros=cost_micros,
             )
-        except Exception:
+        except Exception:  # lead processing failure; continue batch
             logger.exception(
                 "failed to record lead scoring billing for %s", lead_score_id
             )

@@ -1,6 +1,7 @@
 "use client";
 
 import { Ban, FileSpreadsheet, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type {
 	DncRecordType,
@@ -10,6 +11,7 @@ import type {
 import { adminDncApiService } from "@/lib/apis/admin-dnc-api.service";
 
 export default function AdminDncPage() {
+	const t = useTranslations("admin");
 	const [items, setItems] = useState<GlobalDncRecordRead[]>([]);
 	const [total, setTotal] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +46,7 @@ export default function AdminDncPage() {
 			setItems(res.items);
 			setTotal(res.total);
 		} catch (err) {
-			console.error("Failed to load global DNC entries:", err);
+			console.error(t("dnc_load_failed"), err);
 		} finally {
 			setIsLoading(false);
 		}
@@ -70,7 +72,7 @@ export default function AdminDncPage() {
 			setNewReason("Opt-out requested");
 			await loadDncRecords();
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Failed to add DNC entry. Check format.";
+			const msg = err instanceof Error ? err.message : t("dnc_add_failed");
 			setAddError(msg);
 		} finally {
 			setIsSubmitting(false);
@@ -87,23 +89,23 @@ export default function AdminDncPage() {
 			setCsvFile(null);
 			await loadDncRecords();
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Unknown error";
-			alert(`CSV import failed: ${msg}`);
+			const msg = err instanceof Error ? err.message : t("dnc_unknown_error");
+			alert(t("dnc_import_failed", { msg }));
 		} finally {
 			setIsImporting(false);
 		}
 	};
 
 	const handleDelete = async (id: string) => {
-		if (!confirm("Are you sure you want to remove this entry from the global blacklist?")) {
+		if (!confirm(t("dnc_confirm_delete"))) {
 			return;
 		}
 		try {
 			await adminDncApiService.delete(id);
 			await loadDncRecords();
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Unknown error";
-			alert(`Failed to delete entry: ${msg}`);
+			const msg = err instanceof Error ? err.message : t("dnc_unknown_error");
+			alert(t("dnc_delete_failed", { msg }));
 		}
 	};
 
@@ -114,12 +116,9 @@ export default function AdminDncPage() {
 				<div>
 					<div className="flex items-center gap-2">
 						<Ban className="h-6 w-6 text-rose-500" />
-						<h1 className="text-2xl font-bold tracking-tight">Global DNC Blacklist Registry</h1>
+						<h1 className="text-2xl font-bold tracking-tight">{t("dnc_title")}</h1>
 					</div>
-					<p className="text-sm text-muted-foreground">
-						Platform-wide exclusion registry (Decree 91 & Decree 13 PDPD). Contacts matching these
-						entries are blocked fail-closed across all workspaces.
-					</p>
+					<p className="text-sm text-muted-foreground">{t("dnc_subtitle")}</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<button
@@ -129,7 +128,7 @@ export default function AdminDncPage() {
 						className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
 					>
 						<RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-						Refresh
+						{t("dnc_refresh")}
 					</button>
 					<button
 						type="button"
@@ -140,7 +139,7 @@ export default function AdminDncPage() {
 						className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
 					>
 						<FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-						Import CSV
+						{t("dnc_import_csv")}
 					</button>
 					<button
 						type="button"
@@ -151,7 +150,7 @@ export default function AdminDncPage() {
 						className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
 					>
 						<Plus className="h-4 w-4" />
-						Add Entry
+						{t("dnc_add_entry")}
 					</button>
 				</div>
 			</div>
@@ -160,7 +159,7 @@ export default function AdminDncPage() {
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				<div>
 					<label htmlFor="dnc-type-filter" className="text-xs font-medium text-muted-foreground">
-						Filter by Type
+						{t("dnc_filter_type")}
 					</label>
 					<select
 						id="dnc-type-filter"
@@ -171,24 +170,24 @@ export default function AdminDncPage() {
 						}}
 						className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
 					>
-						<option value="">All Types (Phone, Domain, Email, Tax ID)</option>
-						<option value="phone">Phone (+84...)</option>
-						<option value="domain">Domain (e.g. spammer.com)</option>
-						<option value="email">Email</option>
-						<option value="tax_id">Tax ID (Mã số thuế)</option>
+						<option value="">{t("dnc_all_types")}</option>
+						<option value="phone">{t("dnc_type_phone")}</option>
+						<option value="domain">{t("dnc_type_domain")}</option>
+						<option value="email">{t("dnc_type_email")}</option>
+						<option value="tax_id">{t("dnc_type_tax_id")}</option>
 					</select>
 				</div>
 
 				<div>
 					<label htmlFor="dnc-search" className="text-xs font-medium text-muted-foreground">
-						Search Masked / Reason
+						{t("dnc_search_label")}
 					</label>
 					<div className="relative mt-1">
 						<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 						<input
 							id="dnc-search"
 							type="text"
-							placeholder="Search value or reason..."
+							placeholder={t("dnc_search_placeholder")}
 							value={searchQuery}
 							onChange={(e) => {
 								setSearchQuery(e.target.value);
@@ -206,26 +205,26 @@ export default function AdminDncPage() {
 					<table className="w-full text-left text-sm">
 						<thead className="border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground uppercase">
 							<tr>
-								<th className="px-4 py-3">Type</th>
-								<th className="px-4 py-3">Masked Value</th>
-								<th className="px-4 py-3">HMAC-SHA256 Blind Hash</th>
-								<th className="px-4 py-3">Reason</th>
-								<th className="px-4 py-3">Source</th>
-								<th className="px-4 py-3">Added</th>
-								<th className="px-4 py-3 text-right">Action</th>
+								<th className="px-4 py-3">{t("dnc_col_type")}</th>
+								<th className="px-4 py-3">{t("dnc_col_masked_value")}</th>
+								<th className="px-4 py-3">{t("dnc_col_hmac")}</th>
+								<th className="px-4 py-3">{t("dnc_col_reason")}</th>
+								<th className="px-4 py-3">{t("dnc_col_source")}</th>
+								<th className="px-4 py-3">{t("dnc_col_added")}</th>
+								<th className="px-4 py-3 text-right">{t("dnc_col_action")}</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
 							{isLoading ? (
 								<tr>
 									<td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-										Loading DNC records...
+										{t("dnc_loading")}
 									</td>
 								</tr>
 							) : items.length === 0 ? (
 								<tr>
 									<td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-										No global DNC entries registered.
+										{t("dnc_empty")}
 									</td>
 								</tr>
 							) : (
@@ -246,7 +245,7 @@ export default function AdminDncPage() {
 											</span>
 										</td>
 										<td className="px-4 py-3 text-xs text-muted-foreground">
-											{r.reason || "Opt-out requested"}
+											{r.reason || t("dnc_optout_requested")}
 										</td>
 										<td className="px-4 py-3">
 											<span className="inline-flex rounded bg-muted/60 px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground">
@@ -261,7 +260,7 @@ export default function AdminDncPage() {
 												type="button"
 												onClick={() => handleDelete(r.id)}
 												className="inline-flex items-center gap-1 rounded-md p-1.5 text-xs text-rose-500 hover:bg-rose-500/10"
-												title="Delete from global blacklist"
+												title={t("dnc_delete_title")}
 											>
 												<Trash2 className="h-4 w-4" />
 											</button>
@@ -276,7 +275,7 @@ export default function AdminDncPage() {
 				{/* Pagination */}
 				<div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
 					<div className="text-xs text-muted-foreground">
-						Showing {items.length} of {total} entries
+						{t("dnc_showing", { count: items.length, total })}
 					</div>
 					<div className="flex gap-2">
 						<button
@@ -285,7 +284,7 @@ export default function AdminDncPage() {
 							disabled={offset === 0 || isLoading}
 							className="rounded-md border border-border px-3 py-1 text-xs font-medium hover:bg-muted disabled:opacity-40"
 						>
-							Previous
+							{t("dnc_previous")}
 						</button>
 						<button
 							type="button"
@@ -293,7 +292,7 @@ export default function AdminDncPage() {
 							disabled={offset + limit >= total || isLoading}
 							className="rounded-md border border-border px-3 py-1 text-xs font-medium hover:bg-muted disabled:opacity-40"
 						>
-							Next
+							{t("dnc_next")}
 						</button>
 					</div>
 				</div>
@@ -304,7 +303,7 @@ export default function AdminDncPage() {
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
 					<div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
 						<div className="flex items-center justify-between">
-							<h3 className="text-lg font-bold">Add to Global DNC Blacklist</h3>
+							<h3 className="text-lg font-bold">{t("dnc_modal_add_title")}</h3>
 							<button
 								type="button"
 								onClick={() => setIsAddModalOpen(false)}
@@ -319,7 +318,7 @@ export default function AdminDncPage() {
 						<form onSubmit={handleAddSubmit} className="space-y-4">
 							<div>
 								<label htmlFor="new-dnc-type" className="text-xs font-medium text-muted-foreground">
-									Record Type
+									{t("dnc_record_type")}
 								</label>
 								<select
 									id="new-dnc-type"
@@ -327,16 +326,16 @@ export default function AdminDncPage() {
 									onChange={(e) => setNewType(e.target.value as DncRecordType)}
 									className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
 								>
-									<option value="phone">Phone Number (+84...)</option>
-									<option value="domain">Domain / Host</option>
-									<option value="email">Email Address</option>
-									<option value="tax_id">Corporate Tax ID</option>
+									<option value="phone">{t("dnc_type_phone_num")}</option>
+									<option value="domain">{t("dnc_type_domain_host")}</option>
+									<option value="email">{t("dnc_type_email_addr")}</option>
+									<option value="tax_id">{t("dnc_type_tax_corp")}</option>
 								</select>
 							</div>
 
 							<div>
 								<label htmlFor="new-dnc-val" className="text-xs font-medium text-muted-foreground">
-									Value
+									{t("dnc_value")}
 								</label>
 								<input
 									id="new-dnc-val"
@@ -362,7 +361,7 @@ export default function AdminDncPage() {
 									htmlFor="new-dnc-reason"
 									className="text-xs font-medium text-muted-foreground"
 								>
-									Reason / Reference
+									{t("dnc_reason_ref")}
 								</label>
 								<input
 									id="new-dnc-reason"
@@ -379,14 +378,14 @@ export default function AdminDncPage() {
 									onClick={() => setIsAddModalOpen(false)}
 									className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
 								>
-									Cancel
+									{t("dnc_cancel")}
 								</button>
 								<button
 									type="submit"
 									disabled={isSubmitting || !newValue.trim()}
 									className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 								>
-									{isSubmitting ? "Adding..." : "Add to Blacklist"}
+									{isSubmitting ? t("dnc_adding") : t("dnc_add_to_blacklist")}
 								</button>
 							</div>
 						</form>
@@ -399,7 +398,7 @@ export default function AdminDncPage() {
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
 					<div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
 						<div className="flex items-center justify-between">
-							<h3 className="text-lg font-bold">Bulk CSV Blacklist Import</h3>
+							<h3 className="text-lg font-bold">{t("dnc_csv_title")}</h3>
 							<button
 								type="button"
 								onClick={() => setIsCsvModalOpen(false)}
@@ -410,9 +409,9 @@ export default function AdminDncPage() {
 						</div>
 
 						<p className="text-xs text-muted-foreground">
-							Upload a CSV file containing columns:{" "}
-							<code className="rounded bg-muted px-1">record_type,value,reason</code>. Valid record
-							types: <code className="rounded bg-muted px-1">phone</code>,{" "}
+							{t("dnc_csv_desc")}{" "}
+							<code className="rounded bg-muted px-1">record_type,value,reason</code>.{" "}
+							{t("dnc_csv_valid_types")} <code className="rounded bg-muted px-1">phone</code>,{" "}
 							<code className="rounded bg-muted px-1">domain</code>,{" "}
 							<code className="rounded bg-muted px-1">email</code>,{" "}
 							<code className="rounded bg-muted px-1">tax_id</code>.
@@ -420,16 +419,16 @@ export default function AdminDncPage() {
 
 						{importSummary ? (
 							<div className="space-y-3 rounded-lg bg-muted/50 p-4 text-xs">
-								<div className="font-semibold text-sm">Import Results:</div>
+								<div className="font-semibold text-sm">{t("dnc_import_results")}</div>
 								<div className="grid grid-cols-3 gap-2 text-center">
 									<div className="rounded bg-emerald-500/10 p-2 text-emerald-500 font-bold">
-										{importSummary.imported_count} Imported
+										{importSummary.imported_count} {t("dnc_imported")}
 									</div>
 									<div className="rounded bg-amber-500/10 p-2 text-amber-500 font-bold">
-										{importSummary.skipped_count} Skipped
+										{importSummary.skipped_count} {t("dnc_skipped")}
 									</div>
 									<div className="rounded bg-rose-500/10 p-2 text-rose-500 font-bold">
-										{importSummary.failed_count} Failed
+										{importSummary.failed_count} {t("dnc_failed")}
 									</div>
 								</div>
 								{importSummary.errors.length > 0 && (
@@ -445,7 +444,7 @@ export default function AdminDncPage() {
 										onClick={() => setIsCsvModalOpen(false)}
 										className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
 									>
-										Done
+										{t("dnc_done")}
 									</button>
 								</div>
 							</div>
@@ -474,7 +473,7 @@ export default function AdminDncPage() {
 										disabled={isImporting || !csvFile}
 										className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 									>
-										{isImporting ? "Importing..." : "Process Import"}
+										{isImporting ? t("dnc_importing") : t("dnc_process_import")}
 									</button>
 								</div>
 							</form>

@@ -21,7 +21,12 @@ DshMissionStatus = Literal[
     "cancelled",
     "dlq",
 ]
-DshMissionType = Literal["deep_lead_research", "cdp_browser_operator", "noop"]
+DshMissionType = Literal[
+    "deep_lead_research",
+    "cdp_browser_operator",
+    "recurring_report",
+    "noop",
+]
 
 
 class DshMissionPayload(BaseModel):
@@ -105,6 +110,11 @@ class DshMissionResponse(BaseModel):
     progress_percent: int | None
     current_subtask_id: str | None
     retry_count: int
+    schedule: dict | None = None
+    source: str | None = None
+    request_text: str | None = None
+    next_fire_at: datetime | None = None
+    last_fired_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -204,10 +214,12 @@ class CdpResultPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mission_id: UUID
+    command_id: str | None = None
     result: dict | None = None
     error: str | None = None
     requires_human: bool = False
     challenge: str | None = None
+    session_token: str = Field(..., description="Cryptographic session token for CDP command authentication (required).")
 
     @field_validator("result", mode="before")
     @classmethod

@@ -10,6 +10,7 @@ import {
 	RotateCcw,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import React, { useCallback, useRef, useState } from "react";
 import { useDrag } from "react-dnd";
 import { getDocumentTypeIcon } from "@/components/documents/DocumentTypeIcon";
@@ -86,6 +87,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 	contextMenuOpen,
 	onContextMenuOpenChange,
 }: DocumentNodeProps) {
+	const t = useTranslations("documents");
 	const statusState = doc.status?.state ?? "ready";
 	const isFailed = statusState === "failed";
 	const isProcessing = statusState === "pending" || statusState === "processing";
@@ -185,7 +187,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 											<Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
 										</span>
 									</TooltipTrigger>
-									<TooltipContent side="top">Pending: waiting to be synced</TooltipContent>
+									<TooltipContent side="top">{t("pending_sync")}</TooltipContent>
 								</Tooltip>
 							);
 						}
@@ -197,7 +199,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 											<Spinner size="xs" className="text-primary" />
 										</span>
 									</TooltipTrigger>
-									<TooltipContent side="top">Syncing</TooltipContent>
+									<TooltipContent side="top">{t("syncing")}</TooltipContent>
 								</Tooltip>
 							);
 						}
@@ -210,7 +212,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 										</span>
 									</TooltipTrigger>
 									<TooltipContent side="top">
-										{doc.status?.reason || "Processing failed"}
+										{doc.status?.reason || t("processing_failed")}
 									</TooltipContent>
 								</Tooltip>
 							);
@@ -300,13 +302,13 @@ export const DocumentNode = React.memo(function DocumentNode({
 								{canMove && (
 									<DropdownMenuItem onClick={() => onMove(doc)}>
 										<Move className="mr-2 h-4 w-4" />
-										Move to...
+										{t("move_to")}
 									</DropdownMenuItem>
 								)}
 								{onExport && isMemoryDocument ? (
 									<DropdownMenuItem disabled={isUnavailable} onClick={() => handleExport("md")}>
 										<Download className="mr-2 h-4 w-4" />
-										Export as MD
+										{t("export_md")}
 									</DropdownMenuItem>
 								) : onExport ? (
 									<DropdownMenuSub>
@@ -322,7 +324,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 								{onVersionHistory && isVersionableType(doc.document_type) && (
 									<DropdownMenuItem disabled={isUnavailable} onClick={() => onVersionHistory(doc)}>
 										<History className="mr-2 h-4 w-4" />
-										Versions
+										{t("versions")}
 									</DropdownMenuItem>
 								)}
 								{isMemoryDocument && onReset && (
@@ -348,13 +350,13 @@ export const DocumentNode = React.memo(function DocumentNode({
 					{canMove && (
 						<ContextMenuItem onClick={() => onMove(doc)}>
 							<Move className="mr-2 h-4 w-4" />
-							Move to...
+							{t("move_to")}
 						</ContextMenuItem>
 					)}
 					{onExport && isMemoryDocument ? (
 						<ContextMenuItem disabled={isUnavailable} onClick={() => handleExport("md")}>
 							<Download className="mr-2 h-4 w-4" />
-							Export as MD
+							{t("export_md")}
 						</ContextMenuItem>
 					) : onExport ? (
 						<ContextMenuSub>
@@ -370,7 +372,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 					{onVersionHistory && isVersionableType(doc.document_type) && (
 						<ContextMenuItem disabled={isUnavailable} onClick={() => onVersionHistory(doc)}>
 							<History className="mr-2 h-4 w-4" />
-							Versions
+							{t("versions")}
 						</ContextMenuItem>
 					)}
 					{isMemoryDocument && onReset && (

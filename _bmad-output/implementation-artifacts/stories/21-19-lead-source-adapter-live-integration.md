@@ -1,6 +1,11 @@
+---
+story_key: 21-19-lead-source-adapter-live-data-integration-persistence
+status: done
+---
+
 # Story 21.19: Lead Source Adapter Live Data Integration & Persistence
 
-Status: review
+Status: done
 
 Story ID: 21.19
 Epic: Epic 21 — Lead Gen Intelligence & Social Graph

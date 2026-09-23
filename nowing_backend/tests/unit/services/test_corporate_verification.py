@@ -19,6 +19,7 @@ import pytest
 
 from app.db import Lead
 from app.services.corporate_verification_service import (
+    AUTO_LINK_CONFIDENCE_THRESHOLD,
     CIRCUIT_BREAKER_COOLDOWN_SECONDS,
     CIRCUIT_BREAKER_KEY,
     CIRCUIT_BREAKER_THRESHOLD,
@@ -29,7 +30,9 @@ from app.services.corporate_verification_service import (
     compute_multi_attribute_match_score,
     parse_charter_capital_vnd,
 )
+from app.services.entity_resolution import EntityMatchResult, EntityVerdict
 from tests.fixtures.masothue_mock import (
+    MOCK_MASOTHUE_AMBIGUOUS_COMPANY,
     MOCK_MASOTHUE_FPT,
     MockMasothueClient,
 )
@@ -235,6 +238,50 @@ class TestCorporateVerificationRedisCaching:
         assert client_mock.call_count == 1  # Bypassed cache due to force_refresh=True
         fake_redis.set.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_cached_jev_verdict_stays_verified_on_fuzzy_mismatch(self):
+        """Story 39.3 deferred fix: a name-cache payload Jev promoted must
+        stay verified — re-running fuzzy on the cached read must not flip
+        it back to manual confirmation."""
+        session = AsyncMock()
+        fake_redis = AsyncMock()
+        fake_redis.mget.return_value = [None, "0"]  # breaker closed
+        # Fuzzy score between the query name and the cached company is far
+        # below the auto-link threshold; only the Jev marker keeps it verified.
+        payload = {
+            **MOCK_MASOTHUE_AMBIGUOUS_COMPANY,
+            "_jev_verdict": True,
+        }
+        fake_redis.get.return_value = json.dumps(payload)
+
+        service = CorporateVerificationService(
+            session, masothue_client=MockMasothueClient(), redis_client=fake_redis
+        )
+        result = await service.verify_company(company_name="Công ty Á Châu")
+
+        assert result.is_cached is True
+        assert result.is_verified is True
+        assert result.requires_manual_confirmation is False
+        assert result.confidence < AUTO_LINK_CONFIDENCE_THRESHOLD
+
+    @pytest.mark.asyncio
+    async def test_cached_payload_without_jev_marker_uses_fuzzy_verdict(self):
+        """Without the marker the cached read keeps the original fuzzy
+        semantics — low score still requires manual confirmation."""
+        session = AsyncMock()
+        fake_redis = AsyncMock()
+        fake_redis.mget.return_value = [None, "0"]
+        fake_redis.get.return_value = json.dumps(MOCK_MASOTHUE_AMBIGUOUS_COMPANY)
+
+        service = CorporateVerificationService(
+            session, masothue_client=MockMasothueClient(), redis_client=fake_redis
+        )
+        result = await service.verify_company(company_name="Công ty Á Châu")
+
+        assert result.is_cached is True
+        assert result.is_verified is False
+        assert result.requires_manual_confirmation is True
+
 
 # ─────────────────────────────────────────────────────────────
 # 4. Circuit Breaker & Resilience Tests (INV-24.3 / AC-3)
@@ -420,3 +467,178 @@ class TestCorporateVerificationServiceExecution:
         assert match_res.is_verified is False
         assert match_res.degraded is True
         assert match_res.degradation_reason == "lead_not_found_or_tenant_mismatch"
+
+
+# ─────────────────────────────────────────────────────────────
+# 6. Jev Advisory Rescore on Uncertain Fuzzy Band (Story 39.3)
+# Only fresh searches with 0 < best_score < 0.85 pay a decide() call;
+# exact-ID, cached, and breaker-degraded paths never reach it.
+# ─────────────────────────────────────────────────────────────
+
+@pytest.mark.unit
+class TestJevEntityRescore:
+    """Advisory entity_match rescore layered over fuzzy verification."""
+
+    def setup_method(self):
+        CorporateVerificationService.consecutive_failures = 0
+
+    def _enable_flags(self, monkeypatch):
+        monkeypatch.setenv("DECISION_ENABLED", "true")
+        for task in ("ROUTING", "FILTER", "ENTITY", "INTENT", "VOICE"):
+            monkeypatch.setenv(f"DECISION_{task}_ENABLED", "true")
+
+    def _spy_score(self, monkeypatch, result=None, exc=None):
+        """Patch the lazy-imported score_entity_pair; record calls."""
+        import app.services.entity_resolution as er_pkg
+
+        calls: list[dict] = []
+
+        async def _fake(entity_a, entity_b, **kwargs):
+            calls.append({"a": entity_a, "b": entity_b, **kwargs})
+            if exc is not None:
+                raise exc
+            return result
+
+        monkeypatch.setattr(er_pkg, "score_entity_pair", _fake)
+        return calls
+
+    def _service(self, client=None, redis=None):
+        client = client or MockMasothueClient()
+        return CorporateVerificationService(
+            AsyncMock(), masothue_client=client, redis_client=redis
+        )
+
+    def _cache_miss_redis(self):
+        redis = AsyncMock()
+        redis.mget.return_value = (None, None)  # breaker closed
+        redis.get.return_value = None  # name cache miss
+        return redis
+
+    @pytest.mark.asyncio
+    async def test_uncertain_band_auto_merge_verifies(self, monkeypatch):
+        self._enable_flags(monkeypatch)
+        calls = self._spy_score(
+            monkeypatch,
+            EntityMatchResult(verdict=EntityVerdict.AUTO_MERGE, answer=None),
+        )
+        service = self._service(redis=self._cache_miss_redis())
+
+        res = await service.verify_company(
+            company_name="CÔNG TY Á CHÂU", workspace_id=7
+        )
+
+        assert len(calls) == 1
+        # Query entity carries lead fields; candidate entity carries the
+        # rich Masothue fields the verdict is decided on.
+        assert calls[0]["a"]["company_name"] == "CÔNG TY Á CHÂU"
+        assert calls[0]["b"]["tax_id"] == "0319999999"
+        assert calls[0]["b"]["company_name"].endswith("Á CHÂU GROUP")
+        assert calls[0]["b"]["address"]
+        assert calls[0]["workspace_id"] == 7
+        assert res.is_verified is True
+        assert res.requires_manual_confirmation is False
+        # confidence stays the fuzzy score — Jev is advisory, not a scorer
+        assert 0 < res.confidence < AUTO_LINK_CONFIDENCE_THRESHOLD
+
+    @pytest.mark.asyncio
+    async def test_uncertain_band_review_keeps_manual_flag(self, monkeypatch):
+        self._enable_flags(monkeypatch)
+        self._spy_score(
+            monkeypatch,
+            EntityMatchResult(verdict=EntityVerdict.REVIEW, answer=None),
+        )
+        service = self._service(redis=self._cache_miss_redis())
+
+        res = await service.verify_company(company_name="CÔNG TY Á CHÂU")
+
+        assert res.is_verified is False
+        assert res.requires_manual_confirmation is True
+
+    @pytest.mark.asyncio
+    async def test_uncertain_band_separate_keeps_manual_flag(self, monkeypatch):
+        """Jev can only promote — a SEPARATE verdict stays in the manual
+        queue exactly like the fuzzy-only outcome (spec CORP_REJECT)."""
+        self._enable_flags(monkeypatch)
+        self._spy_score(
+            monkeypatch,
+            EntityMatchResult(verdict=EntityVerdict.SEPARATE, answer=None),
+        )
+        service = self._service(redis=self._cache_miss_redis())
+
+        res = await service.verify_company(company_name="CÔNG TY Á CHÂU")
+
+        assert res.is_verified is False
+        assert res.requires_manual_confirmation is True
+
+    @pytest.mark.asyncio
+    async def test_jev_failure_keeps_fuzzy_outcome(self, monkeypatch):
+        self._enable_flags(monkeypatch)
+        self._spy_score(monkeypatch, exc=RuntimeError("decision down"))
+        service = self._service(redis=self._cache_miss_redis())
+
+        res = await service.verify_company(company_name="CÔNG TY Á CHÂU")
+
+        # Same as no-Jev: uncertain fuzzy → manual confirmation.
+        assert res.is_verified is False
+        assert res.requires_manual_confirmation is True
+
+    @pytest.mark.asyncio
+    async def test_high_score_skips_jev(self, monkeypatch):
+        self._enable_flags(monkeypatch)
+        calls = self._spy_score(
+            monkeypatch,
+            EntityMatchResult(verdict=EntityVerdict.SEPARATE, answer=None),
+        )
+        service = self._service(redis=self._cache_miss_redis())
+
+        res = await service.verify_company(
+            company_name="CÔNG TY CỔ PHẦN FPT",
+            city="Hà Nội",
+            district="Cầu Giấy",
+        )
+
+        assert res.is_verified is True  # fuzzy alone decides
+        assert calls == []
+
+    @pytest.mark.asyncio
+    async def test_exact_tax_id_skips_jev(self, monkeypatch):
+        self._enable_flags(monkeypatch)
+        calls = self._spy_score(monkeypatch)
+        service = self._service(redis=self._cache_miss_redis())
+
+        res = await service.verify_company(
+            company_name="CÔNG TY CỔ PHẦN FPT", tax_id="0101248141"
+        )
+
+        assert res.is_verified is True
+        assert calls == []
+
+    @pytest.mark.asyncio
+    async def test_cached_result_skips_jev(self, monkeypatch):
+        self._enable_flags(monkeypatch)
+        calls = self._spy_score(monkeypatch)
+        redis = AsyncMock()
+        redis.mget.return_value = (None, None)
+        redis.get.side_effect = lambda key: (
+            json.dumps(MOCK_MASOTHUE_AMBIGUOUS_COMPANY)
+            if key.startswith("enrich:corp:name:")
+            else None
+        )
+        service = self._service(redis=redis)
+
+        res = await service.verify_company(company_name="CÔNG TY Á CHÂU")
+
+        assert res.is_cached is True
+        assert calls == []
+
+    @pytest.mark.asyncio
+    async def test_flags_off_never_calls_jev(self, monkeypatch):
+        monkeypatch.setenv("DECISION_ENABLED", "false")
+        calls = self._spy_score(monkeypatch)
+        service = self._service(redis=self._cache_miss_redis())
+
+        res = await service.verify_company(company_name="CÔNG TY Á CHÂU")
+
+        assert res.is_verified is False
+        assert res.requires_manual_confirmation is True  # pure fuzzy
+        assert calls == []

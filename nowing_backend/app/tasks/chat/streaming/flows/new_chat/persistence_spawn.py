@@ -45,7 +45,7 @@ def spawn_set_ai_responding_bg(
         try:
             async with shielded_async_session() as s:
                 await set_ai_responding(s, chat_id, UUID(user_id))
-        except Exception:
+        except Exception:  # background ai_responding state update failure; log warning
             logger.warning(
                 "set_ai_responding failed (chat_id=%s)",
                 chat_id,
@@ -67,6 +67,7 @@ def spawn_persist_user_task(
     mentioned_documents: list[dict[str, Any]] | None,
     background_tasks: set[asyncio.Task[Any]],
     platform_metadata: dict[str, Any] | None = None,
+    workspace_id: int | None = None,
 ) -> asyncio.Task[int | None]:
     """Spawn the user-row INSERT; await at the user-message-id yield site."""
     task = asyncio.create_task(
@@ -78,6 +79,7 @@ def spawn_persist_user_task(
             user_image_data_urls=user_image_data_urls,
             mentioned_documents=mentioned_documents,
             platform_metadata=platform_metadata,
+            workspace_id=workspace_id,
         )
     )
     background_tasks.add(task)
@@ -126,7 +128,7 @@ async def await_persist_task(
         return await asyncio.shield(task)
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception:  # shielded persistence task join failure; log and return None sentinel
         logger.exception(
             "%s failed (chat_id=%s, turn_id=%s)", log_label, chat_id, turn_id
         )

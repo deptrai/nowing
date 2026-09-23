@@ -1,0 +1,397 @@
+"use client";
+
+import {
+	AlertTriangle,
+	Bell,
+	Building2,
+	Clock,
+	Layers,
+	LineChart,
+	Mail,
+	Newspaper,
+	Send,
+	ShoppingBag,
+	Tag,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import type { AlertRule, AlertTemplateRead } from "@/contracts/types/alert-rules.types";
+import { alertRulesApiService } from "@/lib/apis/alert-rules-api.service";
+
+interface CreateFromTemplateModalProps {
+	workspaceId: number;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onCreated?: (rule: AlertRule) => void;
+}
+
+export default function CreateFromTemplateModal({
+	workspaceId,
+	open,
+	onOpenChange,
+	onCreated,
+}: CreateFromTemplateModalProps) {
+	const t = useTranslations("alerts");
+	const [templates, setTemplates] = useState<AlertTemplateRead[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [selectedTemplate, setSelectedTemplate] = useState<AlertTemplateRead | null>(null);
+	const [ruleName, setRuleName] = useState("");
+	const [parameters, setParameters] = useState<Record<string, unknown>>({});
+	const [schedule, setSchedule] = useState<"daily" | "weekly" | "none">("daily");
+	const [channels, setChannels] = useState<("in_app" | "telegram" | "email")[]>(["in_app"]);
+	const [submitting, setSubmitting] = useState(false);
+
+	const toggleChannel = (channelId: "in_app" | "telegram" | "email") => {
+		setChannels((prev) => {
+			if (prev.includes(channelId)) {
+				if (prev.length === 1) return prev;
+				return prev.filter((c) => c !== channelId);
+			}
+			return [...prev, channelId];
+		});
+	};
+
+	const handleSelectTemplate = useCallback((template: AlertTemplateRead) => {
+		setSelectedTemplate(template);
+		setRuleName(template.name);
+		setSchedule((template.default_schedule as "daily" | "weekly" | "none") || "daily");
+		const defaults: Record<string, unknown> = {};
+		for (const p of template.parameters) {
+			defaults[p.name] = p.default !== undefined ? p.default : "";
+		}
+		setParameters(defaults);
+	}, []);
+
+	useEffect(() => {
+		if (open) {
+			setLoading(true);
+			alertRulesApiService
+				.listTemplates(workspaceId)
+				.then((items) => {
+					setTemplates(items);
+					if (items.length > 0 && !selectedTemplate) {
+						handleSelectTemplate(items[0]);
+					}
+				})
+				.catch((err) => {
+					console.error("Failed to fetch alert templates:", err);
+					toast.error(t("load_templates_failed"));
+				})
+				.finally(() => setLoading(false));
+		}
+	}, [open, workspaceId, handleSelectTemplate, selectedTemplate]);
+
+	const handleParamChange = (name: string, value: unknown) => {
+		setParameters((prev) => ({ ...prev, [name]: value }));
+	};
+
+	const handleCreate = async () => {
+		if (!selectedTemplate) return;
+		if (!ruleName.trim()) {
+			toast.error(t("enter_name_error"));
+			return;
+		}
+
+		setSubmitting(true);
+		try {
+			const rule = await alertRulesApiService.createFromTemplate(workspaceId, {
+				template_id: selectedTemplate.template_id,
+				name: ruleName.trim(),
+				parameters,
+				schedule,
+				notification_channels: channels,
+			});
+			toast.success(t("alert_created", { name: rule.name }));
+			onCreated?.(rule);
+			onOpenChange(false);
+		} catch (err: unknown) {
+			console.error("Failed to create alert from template:", err);
+			const errorMsg =
+				err && typeof err === "object" && "message" in err
+					? String((err as { message: unknown }).message)
+					: t("create_failed");
+			toast.error(errorMsg);
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	const getCategoryIcon = (category: string) => {
+		switch (category) {
+			case "finance":
+				return <LineChart className="h-4 w-4 text-emerald-500" />;
+			case "news":
+				return <Newspaper className="h-4 w-4 text-sky-500" />;
+			case "company":
+				return <Building2 className="h-4 w-4 text-amber-500" />;
+			case "ecommerce":
+				return <ShoppingBag className="h-4 w-4 text-rose-500" />;
+			default:
+				return <Layers className="h-4 w-4 text-indigo-500" />;
+		}
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent
+				className="max-w-2xl max-h-[85vh] flex flex-col p-6"
+				data-testid="create-alert-template-modal"
+			>
+				<DialogHeader>
+					<DialogTitle className="flex items-center gap-2">
+						<Tag className="h-5 w-5 text-primary" />
+						{t("modal_title")}
+					</DialogTitle>
+					<DialogDescription>{t("modal_desc")}</DialogDescription>
+				</DialogHeader>
+
+				{loading ? (
+					<div className="py-12 text-center text-sm text-muted-foreground animate-pulse">
+						{t("loading_templates")}
+					</div>
+				) : (
+					<div className="grid grid-cols-1 md:grid-cols-5 gap-6 py-2 overflow-y-auto">
+						{/* Template selector list */}
+						<div className="md:col-span-2 space-y-2 border-r pr-4">
+							<Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+								{t("available_templates")}
+							</Label>
+							<div className="space-y-1.5">
+								{templates.map((tmpl) => {
+									const isSelected = selectedTemplate?.template_id === tmpl.template_id;
+									return (
+										<button
+											key={tmpl.template_id}
+											type="button"
+											disabled={!tmpl.is_available}
+											onClick={() => handleSelectTemplate(tmpl)}
+											className={`w-full text-left p-2.5 rounded-lg border transition-all flex items-start gap-2.5 ${
+												isSelected
+													? "border-primary bg-primary/5 shadow-xs"
+													: tmpl.is_available
+														? "border-border hover:border-primary/50 hover:bg-muted/50"
+														: "border-border/40 opacity-60 bg-muted/20 cursor-not-allowed"
+											}`}
+											data-testid={`template-card-${tmpl.template_id}`}
+										>
+											<div className="mt-0.5 shrink-0">{getCategoryIcon(tmpl.category)}</div>
+											<div className="min-w-0 flex-1">
+												<div className="flex items-center justify-between gap-1">
+													<p className="text-xs font-semibold truncate">{tmpl.name}</p>
+													{!tmpl.is_available && (
+														<Badge
+															variant="outline"
+															className="text-[10px] h-3.5 px-1 text-rose-500 border-rose-200"
+														>
+															{t("unavailable")}
+														</Badge>
+													)}
+												</div>
+												<p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+													{tmpl.description}
+												</p>
+											</div>
+										</button>
+									);
+								})}
+							</div>
+						</div>
+
+						{/* Form for selected template */}
+						{selectedTemplate && (
+							<div className="md:col-span-3 space-y-4">
+								<div className="space-y-1 border-b pb-3">
+									<div className="flex items-center gap-2">
+										{getCategoryIcon(selectedTemplate.category)}
+										<h4 className="font-semibold text-sm">{selectedTemplate.name}</h4>
+									</div>
+									<p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
+									<div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground">
+										<span>
+											{t("strategy")}:{" "}
+											<code className="text-foreground">{selectedTemplate.diff_strategy}</code>
+										</span>
+										<span>•</span>
+										<span>
+											{t("capability")}:{" "}
+											<code className="text-foreground">
+												{selectedTemplate.required_capability}
+											</code>
+										</span>
+									</div>
+								</div>
+
+								{!selectedTemplate.is_available && (
+									<div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-md text-xs text-rose-600 dark:text-rose-400 flex items-start gap-2">
+										<AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+										<span>
+											{selectedTemplate.unavailable_reason || t("capability_unavailable")}
+										</span>
+									</div>
+								)}
+
+								<div className="space-y-3">
+									<div className="space-y-1.5">
+										<Label htmlFor="alert-name" className="text-xs">
+											{t("alert_name")} <span className="text-destructive">*</span>
+										</Label>
+										<Input
+											id="alert-name"
+											value={ruleName}
+											onChange={(e) => setRuleName(e.target.value)}
+											placeholder={t("alert_name_placeholder")}
+											className="h-8 text-xs"
+											data-testid="input-alert-name"
+										/>
+									</div>
+
+									{selectedTemplate.parameters.map((param) => (
+										<div key={param.name} className="space-y-1.5">
+											<Label
+												htmlFor={`param-${param.name}`}
+												className="text-xs flex items-center justify-between"
+											>
+												<span>
+													{param.label}{" "}
+													{param.required && <span className="text-destructive">*</span>}
+												</span>
+											</Label>
+
+											{param.type === "select" && param.options ? (
+												<Select
+													value={String(parameters[param.name] ?? "")}
+													onValueChange={(val) => handleParamChange(param.name, val)}
+												>
+													<SelectTrigger id={`param-${param.name}`} className="h-8 text-xs">
+														<SelectValue placeholder={t("select_option")} />
+													</SelectTrigger>
+													<SelectContent>
+														{param.options.map((opt) => (
+															<SelectItem key={opt.value} value={opt.value} className="text-xs">
+																{opt.label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											) : (
+												<Input
+													id={`param-${param.name}`}
+													type={
+														param.type === "number" || param.type === "integer" ? "number" : "text"
+													}
+													value={String(parameters[param.name] ?? "")}
+													onChange={(e) => handleParamChange(param.name, e.target.value)}
+													placeholder={param.description || ""}
+													className="h-8 text-xs"
+													data-testid={`input-param-${param.name}`}
+												/>
+											)}
+										</div>
+									))}
+
+									<div className="space-y-1.5 pt-1">
+										<Label htmlFor="alert-schedule" className="text-xs flex items-center gap-1">
+											<Clock className="h-3 w-3 text-muted-foreground" />
+											{t("monitoring_schedule")}
+										</Label>
+										<Select
+											value={schedule}
+											onValueChange={(val: "daily" | "weekly" | "none") => setSchedule(val)}
+										>
+											<SelectTrigger id="alert-schedule" className="h-8 text-xs">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="daily" className="text-xs">
+													{t("schedule_daily")}
+												</SelectItem>
+												<SelectItem value="weekly" className="text-xs">
+													{t("schedule_weekly")}
+												</SelectItem>
+												<SelectItem value="none" className="text-xs">
+													{t("schedule_manual")}
+												</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="space-y-1.5 pt-1">
+										<Label className="text-xs flex items-center gap-1">
+											<Bell className="h-3 w-3 text-muted-foreground" />
+											{t("notification_channels")}
+										</Label>
+										<div className="flex items-center gap-2 pt-0.5">
+											{[
+												{ id: "in_app" as const, label: t("channel_in_app"), icon: Bell },
+												{ id: "telegram" as const, label: "Telegram", icon: Send },
+												{ id: "email" as const, label: "Email", icon: Mail },
+											].map((ch) => {
+												const active = channels.includes(ch.id);
+												const Icon = ch.icon;
+												return (
+													<button
+														key={ch.id}
+														type="button"
+														onClick={() => toggleChannel(ch.id)}
+														className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-all ${
+															active
+																? "border-primary bg-primary/10 text-primary"
+																: "border-border text-muted-foreground hover:border-border/80 hover:bg-muted/40"
+														}`}
+														data-testid={`channel-toggle-${ch.id}`}
+													>
+														<Icon className="h-3.5 w-3.5" />
+														<span>{ch.label}</span>
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
+					</div>
+				)}
+
+				<DialogFooter className="border-t pt-4">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => onOpenChange(false)}
+						disabled={submitting}
+					>
+						{t("cancel")}
+					</Button>
+					<Button
+						size="sm"
+						onClick={handleCreate}
+						disabled={submitting || !selectedTemplate || !selectedTemplate.is_available}
+						data-testid="btn-create-alert-from-template"
+					>
+						{submitting ? t("creating") : t("create_alert")}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}

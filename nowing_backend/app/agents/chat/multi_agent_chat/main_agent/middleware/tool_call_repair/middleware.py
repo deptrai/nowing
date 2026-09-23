@@ -1,7 +1,13 @@
 """
-ToolCallNameRepairMiddleware — two-stage tool-name repair.
+ToolCallNameRepairMiddleware — three-stage tool-call repair.
 
 Operation:
+0. **Stage 0 — markup recovery:** if the model emitted tool calls as
+   ``<|open|>call tool="name" ...<|close|>call`` markup inside the message
+   text (instead of the provider's structured ``tool_calls`` field), parse
+   them out, attach them to ``message.tool_calls``, and strip the markup
+   from the visible content. Some upstream models intermittently produce
+   this wire format when their tool-call channel degrades.
 1. **Stage 1 — lowercase repair:** if a tool call's ``name`` is not in
    the registry but ``name.lower()`` is, rewrite in place. Catches
    models that emit ``Search`` instead of ``search``.
@@ -22,7 +28,9 @@ fallback.
 from __future__ import annotations
 
 import difflib
+import json
 import logging
+import re
 from typing import Any
 
 from langchain.agents.middleware.types import (
@@ -35,6 +43,63 @@ from langchain_core.messages import AIMessage
 from langgraph.runtime import Runtime
 
 logger = logging.getLogger(__name__)
+
+# Some models occasionally emit tool calls as plain text using this
+# wire markup instead of the provider's structured tool_calls field.
+# Example: <|open|>call tool="task" index="1"<|sep|><|open|>argument
+# key="subagent_type"<|sep|>chainlens<|close|>argument<|sep|><|close|>call
+_TOOL_MARKUP_CALL_RE = re.compile(
+    r'<\|open\|>call\s+tool="(?P<name>[^"]+)"'
+    r'(?:\s+index="(?P<index>\d+)")?<\|sep\|>'
+    r"(?P<body>.*?)"
+    r"<\|close\|>call",
+    re.DOTALL,
+)
+_TOOL_MARKUP_ARG_RE = re.compile(
+    r'<\|open\|>argument\s+key="(?P<key>[^"]+)"'
+    r'(?:\s+type="[^"]*")?<\|sep\|>'
+    r"(?P<value>.*?)"
+    r"<\|close\|>argument",
+    re.DOTALL,
+)
+# The full markup block (including the wrapping tools/message envelopes) is
+# stripped from the visible text once its calls have been recovered.
+_TOOL_MARKUP_BLOCK_RE = re.compile(
+    r"<\|open\|>tools<\|sep\|>.*?<\|close\|>tools"
+    r"(?:<\|sep\|><\|close\|>message)?(?:<\|sep\|>)?",
+    re.DOTALL,
+)
+
+
+def _parse_tool_markup_calls(text: str) -> list[dict[str, Any]]:
+    """Extract structured tool calls from ``<|open|>call`` text markup."""
+    calls: list[dict[str, Any]] = []
+    for match in _TOOL_MARKUP_CALL_RE.finditer(text):
+        args: dict[str, Any] = {}
+        for arg_match in _TOOL_MARKUP_ARG_RE.finditer(match.group("body")):
+            key = arg_match.group("key")
+            raw_value = arg_match.group("value").strip()
+            try:
+                args[key] = json.loads(raw_value)
+            except (json.JSONDecodeError, ValueError):
+                args[key] = raw_value
+        calls.append(
+            {
+                "name": match.group("name"),
+                "args": args,
+                "id": f"call_markup_{len(calls)}",
+                "type": "tool_call",
+            }
+        )
+    return calls
+
+
+def _strip_tool_markup(text: str) -> str:
+    """Remove the tool markup block (and any dangling markup tokens)."""
+    cleaned = _TOOL_MARKUP_BLOCK_RE.sub("", text)
+    # Dangling tokens outside a complete block (partial/truncated emissions).
+    cleaned = re.sub(r"<\|(?:open|close|sep)\|>", "", cleaned)
+    return cleaned
 
 
 def _coerce_existing_tool_call(call: Any) -> dict[str, Any]:
@@ -52,7 +117,7 @@ def _coerce_existing_tool_call(call: Any) -> dict[str, Any]:
 class ToolCallNameRepairMiddleware(
     AgentMiddleware[AgentState[ResponseT], ContextT, ResponseT]
 ):
-    """Two-stage tool-name repair on the most recent ``AIMessage``.
+    """Three-stage tool-call repair on the most recent ``AIMessage``.
 
     Args:
         registered_tool_names: Set of canonically-registered tool names.
@@ -147,12 +212,49 @@ class ToolCallNameRepairMiddleware(
         message: AIMessage,
         registered: set[str],
     ) -> AIMessage | None:
-        if not message.tool_calls:
+        content = message.content
+        if isinstance(content, list):
+            # LangChain allows the message body to be a list of blocks; keep the
+            # textual parts for markup recovery while preserving the rest.
+            text_blocks = [
+                block.get("text", "")
+                for block in content
+                if isinstance(block, dict) and block.get("type") == "text"
+            ]
+            markup_source = "\n".join(text_blocks)
+        else:
+            markup_source = str(content or "")
+
+        markup_calls = (
+            _parse_tool_markup_calls(markup_source)
+            if "<|open|>" in markup_source
+            else []
+        )
+
+        calls = list(message.tool_calls)
+        if markup_calls:
+            # Merge the recovered calls with any structured ones the model
+            # already emitted so we don't double-dispatch.
+            def _call_key(c: dict[str, Any]) -> tuple[str, str]:
+                return (
+                    str(c.get("name")),
+                    json.dumps(c.get("args") or {}, sort_keys=True, default=str),
+                )
+
+            existing_pairs = {_call_key(c) for c in calls}
+            for recovered in markup_calls:
+                pair = _call_key(recovered)
+                if pair in existing_pairs:
+                    continue
+                calls.append(recovered)
+                existing_pairs.add(pair)
+
+        if not calls:
             return None
 
         new_calls: list[dict[str, Any]] = []
-        any_changed = False
-        for raw in message.tool_calls:
+        any_changed = bool(markup_calls)
+        for raw in calls:
             call = _coerce_existing_tool_call(raw)
             before = (call.get("name"), call.get("args"))
             repaired = self._repair_one(call, registered)
@@ -161,10 +263,28 @@ class ToolCallNameRepairMiddleware(
                 any_changed = True
             new_calls.append(repaired)
 
+        update: dict[str, Any] = {"tool_calls": new_calls}
+        if markup_calls:
+            cleaned = _strip_tool_markup(markup_source)
+            if isinstance(content, list):
+                new_blocks = []
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        block_text = block.get("text", "")
+                        cleaned_block = _strip_tool_markup(block_text)
+                        if cleaned_block:
+                            new_blocks.append({**block, "text": cleaned_block})
+                    else:
+                        new_blocks.append(block)
+                update["content"] = new_blocks
+            else:
+                update["content"] = cleaned
+            any_changed = True
+
         if not any_changed:
             return None
 
-        return message.model_copy(update={"tool_calls": new_calls})
+        return message.model_copy(update=update)
 
     def after_model(  # type: ignore[override]
         self,

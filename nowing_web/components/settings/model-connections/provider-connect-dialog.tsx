@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import {
 	Dialog,
@@ -57,6 +58,7 @@ export function ProviderConnectDialog({
 	onTogglePreviewModel,
 	onBulkTogglePreviewModels,
 }: ProviderConnectDialogProps) {
+	const t = useTranslations("settings");
 	const meta = providerDisplay(provider);
 	const isAzure = provider === "azure";
 	const isBedrock = provider === "bedrock";
@@ -83,15 +85,15 @@ export function ProviderConnectDialog({
 
 	const modelDescription = (() => {
 		if (isAzure) {
-			return "Select the models to enable for Azure OpenAI";
+			return t("mc_sel_azure");
 		}
 		if (isBedrock) {
-			return "Select the models to enable for Amazon Bedrock";
+			return t("mc_sel_bedrock");
 		}
 		if (isVertex) {
-			return "Select the models to enable for Gemini";
+			return t("mc_sel_gemini");
 		}
-		return "Select the models to enable for this provider";
+		return t("mc_sel_provider");
 	})();
 
 	const canRefreshModels = !isAzure && !isVertex && (!isBedrock || canSubmit);
@@ -113,7 +115,7 @@ export function ProviderConnectDialog({
 						{providerIcon(provider, "size-5")}
 						<div>
 							<DialogTitle ref={titleRef} tabIndex={-1}>
-								Connect {meta.name}
+								{t("mc_connect_provider", { name: meta.name })}
 							</DialogTitle>
 							<DialogDescription>{meta.subtitle}</DialogDescription>
 						</div>
@@ -136,7 +138,7 @@ export function ProviderConnectDialog({
 						models={previewModels}
 						description={modelDescription}
 						isRefreshing={isPreviewingModels}
-						refreshLabel={`Refresh ${meta.name} models`}
+						refreshLabel={t("mc_refresh_provider", { provider: meta.name })}
 						onRefresh={canRefreshModels ? () => onPreviewModels?.(currentDraft) : undefined}
 						onAddManual={onAddPreviewModel}
 						onToggleModel={onTogglePreviewModel}

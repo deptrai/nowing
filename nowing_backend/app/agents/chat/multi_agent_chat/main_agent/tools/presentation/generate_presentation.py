@@ -37,12 +37,15 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         """Generate a PPTX or Marp Markdown slide deck from a description.
 
         Use this tool when the user wants a slide deck, pitch deck, or presentation.
+        Note: PPTX output requires a paid workspace plan (team/growth/enterprise).
+        On a free plan, request output_format="marp".
 
         Args:
             prompt: Natural language description of the desired slide deck.
             output_format: Either "pptx" (default) or "marp".
             language: Target UI language (e.g. "en" or "vi").
         """
+        from fastapi import HTTPException
         from pydantic import ValidationError
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
@@ -50,10 +53,9 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
         from app.config import config as app_config
         from app.db import Permission, Workspace, WorkspaceMembership
         from app.services.presentation.schemas import (
-            GeneratePresentationInput,
             GeneratePresentationOutput,
         )
-        from app.services.presentation.service import PresentationStudioService
+        from app.services.presentation.service import PlanLimitedError
 
         def _failed(error: str, *, status: str = "validation_failed") -> dict[str, Any]:
             return GeneratePresentationOutput(
@@ -136,22 +138,39 @@ def create_generate_presentation_tool(deps: dict[str, Any]):
                         "You don't have permission to generate presentations in this workspace"
                     )
 
-                service = PresentationStudioService()
-                result = await service.generate(
-                    session=session,
-                    build_input=GeneratePresentationInput(
-                        prompt=prompt,
-                        output_format=normalized_format,
-                        workspace_id=workspace_id,
-                        user_id=user_id,
-                        language=language,
-                    ),
+                from app.capabilities.presentation.generate import (
+                    PresentationCapabilityInput,
+                    execute_generate_presentation,
                 )
+
+                cap_input = PresentationCapabilityInput(
+                    prompt=prompt,
+                    output_format=normalized_format,
+                    workspace_id=workspace_id,
+                    user_id=user_id,
+                    language=language,
+                )
+                result = await execute_generate_presentation(session, cap_input)
                 return result.model_dump(mode="json")
         except ValidationError:
             logger.exception("generate_presentation input failed validation")
             return _failed("Invalid presentation input.")
-        except Exception as exc:
+        except PlanLimitedError as exc:  # domain-layer entitlement (story 31.4)
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    await session.rollback()
+            logger.info("generate_presentation blocked by plan: %s", exc.detail)
+            return _failed(str(exc.detail), status="plan_limited")
+        except HTTPException as exc:  # only a 403 is a plan-entitlement paywall
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    await session.rollback()
+            if exc.status_code == 403:
+                logger.info("generate_presentation blocked by plan: %s", exc.detail)
+                return _failed(str(exc.detail), status="plan_limited")
+            logger.exception("generate_presentation HTTP error: %s", exc)
+            return _failed("Error generating presentation.", status="error")
+        except Exception as exc:  # presentation generation failure; rollback and return failure output
             if session is not None:
                 with contextlib.suppress(Exception):
                     await session.rollback()

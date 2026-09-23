@@ -91,7 +91,7 @@ async def _index_cafef_news(
 
     try:
         await pipeline.index_batch(connector_docs)
-    except Exception:
+    except Exception:  # best-effort news indexing; log and continue
         logger.exception("cafef news indexing failed")
 
 

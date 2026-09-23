@@ -2,6 +2,7 @@
 
 import { useSetAtom } from "jotai";
 import { FileText } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useId, useState } from "react";
 import { openCitationPanelAtom } from "@/atoms/citation/citation-panel.atom";
@@ -39,6 +40,7 @@ interface InlineCitationProps {
  * survive in old persisted messages.
  */
 export const InlineCitation: FC<InlineCitationProps> = ({ chunkId, isDocsChunk = false }) => {
+	const t = useTranslations("assistant");
 	if (chunkId < 0 || isDocsChunk) {
 		return (
 			<Tooltip>
@@ -62,6 +64,7 @@ export const InlineCitation: FC<InlineCitationProps> = ({ chunkId, isDocsChunk =
 };
 
 const NumericChunkCitation: FC<{ chunkId: number }> = ({ chunkId }) => {
+	const t = useTranslations("assistant");
 	const isTouchLike = useMediaQuery("(hover: none), (pointer: coarse)");
 	const openCitationPanel = useSetAtom(openCitationPanelAtom);
 	const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
@@ -81,8 +84,8 @@ const NumericChunkCitation: FC<{ chunkId: number }> = ({ chunkId }) => {
 				variant="ghost"
 				onClick={handleClick}
 				className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-md bg-popover px-1.5 text-[11px] font-medium text-popover-foreground/80 align-baseline"
-				title={`View source chunk #${chunkId}`}
-				aria-label={`View cited chunk ${chunkId}`}
+				title={t("view_chunk", { id: chunkId })}
+				aria-label={t("view_cited_chunk", { id: chunkId })}
 			>
 				{chunkId}
 			</Button>
@@ -97,7 +100,7 @@ const NumericChunkCitation: FC<{ chunkId: number }> = ({ chunkId }) => {
 				>
 					<DrawerHandle />
 					<DrawerHeader className="pb-0">
-						<DrawerTitle>Citation</DrawerTitle>
+						<DrawerTitle>{t("asst_citation")}</DrawerTitle>
 					</DrawerHeader>
 					<div className="min-h-0 flex-1 flex flex-col overflow-hidden">
 						<CitationPanelContent chunkId={chunkId} showHeader={false} />

@@ -10,14 +10,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Workspace, WorkspaceTable, get_async_session
+from app.db import Workspace, WorkspaceMembership, WorkspaceTable, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.schemas.workspace_table import (
     WorkspaceTableCreate,
     WorkspaceTableRead,
     WorkspaceTableUpdate,
 )
 from app.users import get_auth_context
-from app.utils.rbac import Permission, check_permission
+from app.utils.rbac import Permission
 
 router = APIRouter(tags=["workspace-tables"])
 
@@ -31,15 +32,14 @@ async def list_workspace_tables(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view tables in this workspace",
+        )
+    ),
 ) -> list[WorkspaceTableRead]:
     """List all spreadsheet table tabs configured for the workspace (AC-1, AC-3)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view tables in this workspace",
-    )
 
     stmt = (
         select(WorkspaceTable)
@@ -61,15 +61,14 @@ async def create_workspace_table(
     payload: WorkspaceTableCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to create tables in this workspace",
+        )
+    ),
 ) -> WorkspaceTableRead:
     """Create a new spreadsheet table tab in the workspace (AC-3)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to create tables in this workspace",
-    )
 
     workspace = await session.get(Workspace, workspace_id)
     if not workspace:
@@ -102,15 +101,14 @@ async def get_workspace_table(
     table_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view tables in this workspace",
+        )
+    ),
 ) -> WorkspaceTableRead:
     """Get details of a specific workspace table (AC-1)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view tables in this workspace",
-    )
 
     table = await session.get(WorkspaceTable, table_id)
     if not table or table.workspace_id != workspace_id:
@@ -133,15 +131,14 @@ async def update_workspace_table(
     payload: WorkspaceTableUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to update tables in this workspace",
+        )
+    ),
 ) -> WorkspaceTableRead:
     """Update table configuration, name, icon or filter presets (AC-3)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to update tables in this workspace",
-    )
 
     table = await session.get(WorkspaceTable, table_id)
     if not table or table.workspace_id != workspace_id:
@@ -175,15 +172,14 @@ async def delete_workspace_table(
     table_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to delete tables in this workspace",
+        )
+    ),
 ) -> Response:
     """Delete a workspace table tab (AC-3). Leads assigned to it remain intact with null table_id."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to delete tables in this workspace",
-    )
 
     table = await session.get(WorkspaceTable, table_id)
     if not table or table.workspace_id != workspace_id:

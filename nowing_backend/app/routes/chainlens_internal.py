@@ -49,22 +49,22 @@ def _resolve_scraper_id(scraper_id: str) -> str:
     try:
         get_capability(scraper_id)
         return scraper_id
-    except KeyError:
-        pass
+    except KeyError as exc:
+        logger.debug("Suppressed %r", exc)
     if scraper_id in _DOMAIN_CAPABILITY_MAP:
         mapped = _DOMAIN_CAPABILITY_MAP[scraper_id]
         try:
             get_capability(mapped)
             return mapped
-        except KeyError:
-            pass
+        except KeyError as exc:
+            logger.debug("Suppressed %r", exc)
     # Also try the domain with a ``.scrape`` suffix as a fallback.
     candidate = f"{scraper_id}.scrape"
     try:
         get_capability(candidate)
         return candidate
-    except KeyError:
-        pass
+    except KeyError as exc:
+        logger.debug("Suppressed %r", exc)
     return scraper_id
 
 
@@ -158,7 +158,7 @@ async def run_scraper_for_chainlens(
 
     try:
         payload = capability.input_schema(**input_data)
-    except Exception as exc:
+    except Exception as exc:  # schema validation failure → surface as 422 HTTP error
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid scraper parameters for {scraper_id}: {exc}",
@@ -218,7 +218,7 @@ async def run_scraper_for_chainlens(
                     category=None,
                 )
             )
-        except Exception:
+        except Exception:  # per-item normalization failure; skip unserializable listing
             # Skip records that cannot be normalized; the ingestion still
             # proceeds with the rest.
             logger.exception(

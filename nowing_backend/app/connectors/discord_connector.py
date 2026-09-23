@@ -143,7 +143,7 @@ class DiscordConnector(commands.Bot):
                     logger.info(
                         f"Decrypted Discord credentials for connector {self._connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # credential decryption failure; raise ValueError
                     logger.error(
                         f"Failed to decrypt Discord credentials for connector {self._connector_id}: {e!s}"
                     )
@@ -153,7 +153,7 @@ class DiscordConnector(commands.Bot):
 
             try:
                 self._credentials = DiscordAuthCredentialsBase.from_dict(config_data)
-            except Exception as e:
+            except Exception as e:  # credentials parsing failure; raise ValueError
                 raise ValueError(f"Invalid Discord credentials: {e!s}") from e
 
         # Check if token is expired and refreshable
@@ -198,7 +198,7 @@ class DiscordConnector(commands.Bot):
                 logger.info(
                     f"Successfully refreshed Discord token for connector {self._connector_id}"
                 )
-            except Exception as e:
+            except Exception as e:  # token refresh failure; log error
                 logger.error(
                     f"Failed to refresh Discord token for connector {self._connector_id}: {e!s}"
                 )
@@ -250,7 +250,7 @@ class DiscordConnector(commands.Bot):
             logger.error(f"Discord connection closed unexpectedly: {e}")
             self._is_running = False
             raise
-        except Exception as e:
+        except Exception as e:  # bot start unexpected failure; reset running state and raise
             logger.error(f"An unexpected error occurred while starting the bot: {e}")
             self._is_running = False
             raise
@@ -305,7 +305,7 @@ class DiscordConnector(commands.Bot):
                 "Bot did not become ready within 60 seconds. Connection may have failed."
             )
             raise
-        except Exception as e:
+        except Exception as e:  # bot readiness check failure; raise
             logger.error(
                 f"An unexpected error occurred while waiting for the bot to be ready: {e}"
             )

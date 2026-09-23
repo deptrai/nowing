@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export const ConnectorWarningBanner: FC<ConnectorWarningBannerProps> = ({
 	onDismiss,
 	className,
 }) => {
+	const t = useTranslations("assistant");
 	const [isDismissed, setIsDismissed] = useState(false);
 
 	if (isDismissed) return null;
@@ -52,7 +54,7 @@ export const ConnectorWarningBanner: FC<ConnectorWarningBannerProps> = ({
 					type="button"
 					onClick={handleDismiss}
 					className="size-6 shrink-0 rounded p-0 transition-colors hover:bg-yellow-500/20"
-					aria-label="Dismiss warning"
+					aria-label={t("dismiss_warning")}
 				>
 					<X data-icon="inline-start" className="text-yellow-700 dark:text-yellow-300" />
 				</Button>

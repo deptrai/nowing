@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 from urllib.parse import urljoin
@@ -9,6 +10,8 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from .schemas import MasothueCompany
+
+logger = logging.getLogger(__name__)
 
 _ORIGIN = "https://masothue.com"
 
@@ -194,7 +197,8 @@ def parse_pagination(html: str) -> tuple[int, int | None]:
         text = a.get_text(strip=True)
         try:
             page = int(text)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if "current" in (a.get("class") or []):
             current = page

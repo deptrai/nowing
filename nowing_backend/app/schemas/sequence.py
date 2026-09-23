@@ -9,7 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 SequenceStatus = Literal["active", "paused", "archived"]
-SequenceStepType = Literal["send_email", "send_zalo", "send_telegram", "wait", "condition", "update_lead_score", "update_crm", "tag"]
+SequenceStepType = Literal["send_email", "send_zalo", "send_telegram", "wait", "condition", "update_lead_score", "update_crm", "tag", "generate_pitch_portal"]
 SequenceChannel = Literal["email", "zalo", "telegram"]
 SequenceEventType = Literal["sent", "delivered", "opened", "replied", "bounced", "meeting_booked", "failed", "skipped"]
 SequenceEnrollmentStatus = Literal["scheduled", "executing", "paused", "responded", "unsubscribed", "failed", "completed"]
@@ -17,7 +17,7 @@ SequenceEnrollmentStatus = Literal["scheduled", "executing", "paused", "responde
 
 class SequenceStepBase(BaseModel):
     step_order: int = Field(..., ge=1, description="1-indexed step order in sequence")
-    step_type: SequenceStepType = Field(..., description="send_email, send_zalo, send_telegram, wait, condition, update_lead_score, update_crm, tag")
+    step_type: SequenceStepType = Field(..., description="send_email, send_zalo, send_telegram, wait, condition, update_lead_score, update_crm, tag, generate_pitch_portal")
     channel: SequenceChannel = Field("email", description="Outbound channel (email / zalo / telegram)")
     fallback_channels: list[SequenceChannel] | None = Field(default_factory=list, description="Fallback channel order if primary fails")
     template: dict[str, Any] = Field(default_factory=dict, description="Template config, subject, body, variables")

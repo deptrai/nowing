@@ -7,12 +7,15 @@ to avoid rewriting common validation logic.
 """
 
 import ipaddress
+import logging
 import re
 from typing import Any
 from urllib.parse import urlparse
 
 import validators
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 # Connectors retired during the MCP migration: no viable official MCP server
 # exists yet, so new connections are refused. Existing rows keep working until
@@ -486,9 +489,9 @@ def validate_rss_feed_url(url: str) -> str:
 
     try:
         ip = ipaddress.ip_address(hostname)
-    except ValueError:
+    except ValueError as exc:
         # hostname is not an IP address; public DNS name accepted
-        pass
+        logger.debug("Suppressed %r", exc)
     else:
         if not ip.is_global:
             raise ValueError(

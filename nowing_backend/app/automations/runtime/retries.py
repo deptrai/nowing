@@ -21,7 +21,7 @@ async def with_retries[T](
             if timeout is not None and timeout > 0:
                 return await asyncio.wait_for(coro, timeout=timeout), attempt
             return await coro, attempt
-        except Exception:
+        except Exception:  # retryable execution error; backoff and retry or re-raise
             if attempt >= total:
                 raise
             await asyncio.sleep(_backoff_seconds(backoff, attempt))

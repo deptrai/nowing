@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { ConnectorPage } from "@/components/connectors-marketing/connector-page";
 import { FAQJsonLd, JsonLd } from "@/components/seo/json-ld";
 import { getAllConnectorSlugs, getConnector } from "@/lib/connectors-marketing";
@@ -18,7 +19,10 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
 	const { slug } = await params;
 	const content = getConnector(slug);
-	if (!content) return { title: "Connector Not Found | Nowing" };
+	if (!content) {
+		const t = await getTranslations("home");
+		return { title: t("connector_not_found_meta_title") };
+	}
 
 	const canonicalUrl = `https://www.nowing.com/${content.slug}`;
 
@@ -54,6 +58,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ConnectorMarketingPage({ params }: PageProps) {
 	const { slug } = await params;
 	const content = getConnector(slug);
+	const t = await getTranslations("home");
 	if (!content) notFound();
 
 	const canonicalUrl = `https://www.nowing.com/${content.slug}`;
@@ -73,7 +78,7 @@ export default async function ConnectorMarketingPage({ params }: PageProps) {
 						"@type": "Offer",
 						price: "0",
 						priceCurrency: "USD",
-						description: "Free tier included",
+						description: t("connector_free_tier_included"),
 					},
 					provider: {
 						"@type": "Organization",

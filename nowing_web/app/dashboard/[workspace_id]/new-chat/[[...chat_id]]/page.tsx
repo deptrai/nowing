@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -51,6 +52,11 @@ import { TimelineDataUI } from "@/features/chat-messages/timeline";
 import { useAgentActionsQuery } from "@/hooks/use-agent-actions-query";
 import { useChatSessionStateSync } from "@/hooks/use-chat-session-state";
 import { useMessagesSync } from "@/hooks/use-messages-sync";
+import {
+	computeStudioDowngrade,
+	rewritePresentationPromptToMarp,
+	usePresentationStudioEntitlement,
+} from "@/hooks/use-presentation-studio-entitlement";
 import { useThreadDetail, useThreadMessages } from "@/hooks/use-thread-queries";
 import { documentsApiService } from "@/lib/apis/documents-api.service";
 import {
@@ -172,13 +178,26 @@ function ThreadMessagesSkeleton() {
 }
 
 export default function NewChatPage() {
+	const t = useTranslations("newChat");
 	const router = useRouter();
 	const params = useParams();
 	const searchParams = useSearchParams();
-	const initialPrompt = searchParams.get("q") ?? undefined;
+	const formatParam = (searchParams.get("format") ?? "").toLowerCase();
 	const isLeadsMode = searchParams.get("mode") === "leads";
 	const isWebBuilderMode = searchParams.get("mode") === "web_builder";
-	const isPresentationStudioMode = searchParams.get("mode") === "presentation_studio";
+	const isPresentationStudioMode =
+		searchParams.get("mode") === "presentation_studio" ||
+		formatParam === "pptx" ||
+		formatParam === "marp";
+	const { isResolvedFreeTier } = usePresentationStudioEntitlement();
+	const rawInitialPrompt = searchParams.get("q") ?? undefined;
+	const initialPrompt = useMemo(() => {
+		if (!rawInitialPrompt) return undefined;
+		if (isPresentationStudioMode && isResolvedFreeTier) {
+			return rewritePresentationPromptToMarp(rawInitialPrompt);
+		}
+		return rawInitialPrompt;
+	}, [rawInitialPrompt, isPresentationStudioMode, isResolvedFreeTier]);
 	const isMeetingMinutesMode = searchParams.get("mode") === "meeting_minutes";
 	const isPresentationStudioEnabled = searchParams.get("presentation_studio_enabled") !== "false";
 	const isMeetingMinutesEnabled = searchParams.get("meeting_minutes_enabled") !== "false";
@@ -203,6 +222,23 @@ export default function NewChatPage() {
 	// is streaming, the live overlay in ``chatStreamStore`` takes precedence
 	// (see ``displayMessages``) so it survives this page unmounting on nav.
 	const [messages, setMessages] = useState<ThreadMessageLike[]>([]);
+
+	// Downgrade ?format=pptx and PPTX prompts to Marp on a resolved free tier (Story 31.4).
+	// Per spec: only rewrite when subscription has resolved and workspace is in presentation_studio mode.
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+		const currentUrl = new URL(window.location.href);
+		const downgrade = computeStudioDowngrade(
+			isPresentationStudioMode,
+			isResolvedFreeTier,
+			currentUrl.searchParams.get("format"),
+			currentUrl.searchParams.get("q")
+		);
+		if (!downgrade) return;
+		if (downgrade.format) currentUrl.searchParams.set("format", downgrade.format);
+		if (downgrade.prompt) currentUrl.searchParams.set("q", downgrade.prompt);
+		window.history.replaceState(null, "", currentUrl.pathname + currentUrl.search);
+	}, [isPresentationStudioMode, isResolvedFreeTier, formatParam, rawInitialPrompt]);
 
 	// Durable, cross-navigation streaming state for the viewed thread.
 	const streamState = useChatStream(activeThreadId);
@@ -452,11 +488,11 @@ export default function NewChatPage() {
 			setThreadId(null);
 			setCurrentThread(null);
 			setMessages([]);
-			toast.error("This chat was deleted.");
+			toast.error(t("chat_deleted"));
 			return;
 		}
 
-		toast.error("Failed to load chat. Please try again.");
+		toast.error(t("load_failed_toast"));
 	}, [
 		activeThreadId,
 		removeChatTab,
@@ -566,7 +602,7 @@ export default function NewChatPage() {
 			const { userQuery, userImages } = extractUserTurnForNewChatApi(message, []);
 			const queryForApi = userQuery.trim();
 			if (!queryForApi && userImages.length === 0) {
-				toast.error("Cannot edit with empty message");
+				toast.error(t("cannot_edit_empty_message"));
 				return;
 			}
 
@@ -708,9 +744,7 @@ export default function NewChatPage() {
 			const N = tcIds.length;
 
 			if (incoming.length !== N) {
-				toast.error(
-					`Cannot resume: ${incoming.length} decision(s) submitted for ${N} pending actions.`
-				);
+				toast.error(t("errors.cannot_resume_decisions", { count: incoming.length, total: N }));
 				return;
 			}
 
@@ -720,9 +754,7 @@ export default function NewChatPage() {
 				const tcId = tcIds[i];
 				const decision = incoming[i];
 				if (tcId === undefined || decision === undefined) {
-					toast.error(
-						`Cannot resume: ${incoming.length} decision(s) submitted for ${N} pending actions.`
-					);
+					toast.error(t("errors.cannot_resume_decisions", { count: incoming.length, total: N }));
 					return;
 				}
 				byTcId.set(tcId, decision);
@@ -772,6 +804,33 @@ export default function NewChatPage() {
 	}, [buildCtx, pendingInterrupts, activeThreadId]);
 
 	// Surface the thread's deliverables to the layout-level artifacts sidebar.
+	// Standalone / Hydrated interactive choice dispatcher (e.g. question card)
+	useEffect(() => {
+		const handleChoice = (e: Event) => {
+			if (pendingInterrupts.length > 0) return;
+			const detail = (e as CustomEvent).detail as {
+				decisions?: Array<{
+					type: string;
+					message?: string;
+					edited_action?: { name: string; args: Record<string, unknown> };
+				}>;
+			};
+			const targetDecision = detail?.decisions?.[0];
+			const answerText =
+				targetDecision?.message ||
+				(targetDecision?.edited_action?.args?.selected_answer as string) ||
+				"";
+			if (answerText && activeThreadId != null) {
+				void onNew({
+					content: [{ type: "text", text: answerText }],
+				} as unknown as AppendMessage);
+			}
+		};
+		window.addEventListener("hitl-decision", handleChoice);
+		return () => window.removeEventListener("hitl-decision", handleChoice);
+	}, [pendingInterrupts.length, activeThreadId, onNew]);
+
+	// Surface the thread's deliverables to the layout-level artifacts sidebar.
 	useSyncChatArtifacts(displayMessages);
 
 	// Create external store runtime
@@ -798,20 +857,21 @@ export default function NewChatPage() {
 
 	const disabledChatMode =
 		isPresentationStudioMode && !isPresentationStudioEnabled
-			? { label: "Presentation Studio", name: "Presentation Studio" }
+			? { label: t("mode_presentation"), name: t("mode_presentation") }
 			: isMeetingMinutesMode && !isMeetingMinutesEnabled
-				? { label: "Meeting Minutes", name: "Meeting Minutes" }
+				? { label: t("mode_meeting"), name: t("mode_meeting") }
 				: isWebBuilderMode && !isWebBuilderEnabled
-					? { label: "Web Builder", name: "Web App Builder" }
+					? { label: t("mode_web"), name: t("mode_web_name") }
 					: null;
 
 	if (disabledChatMode) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center p-8 text-center space-y-4">
-				<h2 className="text-xl font-bold text-foreground">{disabledChatMode.label} is disabled</h2>
+				<h2 className="text-xl font-bold text-foreground">
+					{t("mode_disabled", { name: disabledChatMode.label })}
+				</h2>
 				<p className="text-sm text-muted-foreground max-w-md">
-					{disabledChatMode.label} is not enabled on this workspace plan. Please upgrade your
-					workspace plan to access the AI {disabledChatMode.name}.
+					{t("mode_disabled_desc", { label: disabledChatMode.label, name: disabledChatMode.name })}
 				</p>
 			</div>
 		);
@@ -820,14 +880,14 @@ export default function NewChatPage() {
 	if (shouldShowThreadLoadError) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4">
-				<div className="text-destructive">Failed to load chat</div>
+				<div className="text-destructive">{t("load_failed")}</div>
 				<Button
 					type="button"
 					onClick={() => {
 						void Promise.all([threadDetailQuery.refetch(), threadMessagesQuery.refetch()]);
 					}}
 				>
-					Try Again
+					{t("try_again")}
 				</Button>
 			</div>
 		);

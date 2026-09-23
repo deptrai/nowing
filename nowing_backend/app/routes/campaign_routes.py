@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, get_async_session
+from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.campaign.planner import LeadGenPlanner
 from app.lead_intelligence.campaign.presets import (
     VerticalPreset,
@@ -18,7 +18,11 @@ from app.lead_intelligence.campaign.presets import (
     get_vertical_preset,
     list_vertical_presets,
 )
-from app.lead_intelligence.campaign.schemas import CampaignSpec, SubTaskPlan
+from app.lead_intelligence.campaign.schemas import (
+    CampaignPlanResponse,
+    CampaignSpec,
+    SourcePlanAllocation,
+)
 from app.lead_intelligence.services.lead_gen_orchestrator import (
     LeadGenOrchestrator,
     LeadGenOrchestratorResult,
@@ -38,14 +42,7 @@ class ReverseIcpRequest(BaseModel):
     )
 
 
-class CampaignPlanResponse(BaseModel):
-    """Execution plan breakdown for a campaign spec."""
 
-    campaign_name: str
-    workspace_id: int
-    total_planned_sources: int
-    expected_sources: list[str]
-    subtasks: list[SubTaskPlan]
 
 
 @router.get("/{workspace_id}/campaigns/presets", response_model=list[VerticalPreset])
@@ -53,9 +50,11 @@ async def get_campaign_presets(
     workspace_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> list[VerticalPreset]:
     """List all available vertical presets for Campaign Builder."""
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
     return list_vertical_presets()
 
 
@@ -65,9 +64,11 @@ async def get_single_campaign_preset(
     preset_id: str,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> VerticalPreset:
     """Retrieve a specific vertical preset by identifier."""
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
     return get_vertical_preset(preset_id)
 
 
@@ -77,43 +78,46 @@ async def analyze_reverse_icp(
     request: ReverseIcpRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> dict[str, Any]:
     """
     Reverse-ICP Analyzer: Infer target vertical, ICP criteria, keywords, and recommended
     sources based on a customer website URL or business profile prompt.
     """
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
     return generate_reverse_icp(request.url, request.description)
 
 
 @router.post("/{workspace_id}/campaigns/plan", response_model=CampaignPlanResponse)
 async def plan_campaign(
     workspace_id: int,
-    spec: CampaignSpec,
+    payload: dict[str, Any],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
 ) -> CampaignPlanResponse:
-    """Preview subtasks, budget splits, and source adapter allocations for a CampaignSpec."""
-    await check_permission(session, auth, workspace_id, Permission.LEADS_READ)
-    if spec.workspace_id != workspace_id:
-        spec.workspace_id = workspace_id
+    """Preview subtasks, budget splits, source adapter allocations, and cost estimates."""
+    if payload.get("workspace_id") != workspace_id:
+        payload["workspace_id"] = workspace_id
 
+    try:
+        spec = CampaignSpec.from_payload(payload)
+    except (ValidationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
+        ) from exc
     planner = LeadGenPlanner()
-    subtasks, expected_sources = planner.plan_from_campaign(spec)
-
-    return CampaignPlanResponse(
-        campaign_name=spec.name,
-        workspace_id=workspace_id,
-        total_planned_sources=len(expected_sources),
-        expected_sources=expected_sources,
-        subtasks=subtasks,
-    )
+    return planner.create_preflight_plan(spec)
 
 
 @router.post("/{workspace_id}/campaigns/execute", response_model=LeadGenOrchestratorResult)
 async def execute_campaign(
     workspace_id: int,
-    spec: CampaignSpec,
+    payload: dict[str, Any],
     persist: bool = Query(
         default=True, description="Whether to atomically persist results into database"
     ),
@@ -127,9 +131,16 @@ async def execute_campaign(
     perm = Permission.LEADS_WRITE if persist else Permission.LEADS_READ
     await check_permission(session, auth, workspace_id, perm)
 
-    if spec.workspace_id != workspace_id:
-        spec.workspace_id = workspace_id
+    if payload.get("workspace_id") != workspace_id:
+        payload["workspace_id"] = workspace_id
 
+    try:
+        spec = CampaignSpec.from_payload(payload)
+    except (ValidationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
+        ) from exc
     orchestrator = LeadGenOrchestrator()
 
     if persist:
@@ -147,3 +158,29 @@ async def execute_campaign(
         )
 
     return result
+
+
+@router.get("/{workspace_id}/campaigns/sources/status", response_model=list[SourcePlanAllocation])
+async def get_campaign_sources_status(
+    workspace_id: int,
+    province_code: str | None = None,
+    district_codes: list[str] = Query(default=[]),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
+) -> list[SourcePlanAllocation]:
+    """Retrieve operational status, latency, and location coverage across all registered scraper adapters."""
+    location_profile = None
+    if province_code:
+        from app.lead_intelligence.schemas import LocationProfilePayload
+        location_profile = LocationProfilePayload(
+            province_code=province_code,
+            province_name=province_code,
+            district_codes=district_codes,
+        )
+
+    from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+    registry = LeadSourceAdapterRegistry.get_default()
+    return registry.get_all_source_statuses(location_profile=location_profile)

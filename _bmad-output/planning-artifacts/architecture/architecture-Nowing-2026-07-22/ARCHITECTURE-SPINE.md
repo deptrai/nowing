@@ -7,7 +7,7 @@ paradigm: 'layered modular monolith + stateless MCP server + client-server with 
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
 status: active
 created: '2026-07-22'
-updated: '2026-08-11'
+updated: '2026-08-29'
 binds: []
 sources:
   - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
@@ -914,6 +914,7 @@ Pin actual versions from `pyproject.toml` / `package.json`; do not use "latest".
 | MCP server | `nowing_mcp/mcp_server/` | AD-7 |
 | Token usage tracking | `nowing_backend/app/services/token_tracking_service.py`, `app/db.py` (TokenUsage) | AD-2, AD-10 |
 | Credit wallet | `nowing_backend/app/services/wallet_credit.py`, `app/db.py` (User.credit_micros_balance, CreditPurchase) | AD-2, AD-8 |
+| Admin third-party health dashboard | `nowing_backend/app/services/health/`, `app/routes/admin_telemetry_routes.py` (extended), `nowing_web/app/admin/telemetry/page.tsx` (extended) | **AD-25.7**, AD-1, AD-2, AD-8, AD-33 |
 | VietnamWorks scraper | `nowing_backend/app/proprietary/platforms/vietnamworks/`, `app/capabilities/vietnamworks/scrape/` | AD-22, AD-3, AD-16, AD-25, AD-26 |
 | TopCV scraper | `nowing_backend/app/proprietary/platforms/topcv/`, `app/capabilities/topcv/scrape/` | AD-23, AD-3, AD-16, AD-19, AD-25, AD-26 |
 | ITviec scraper | `nowing_backend/app/proprietary/platforms/itviec/`, `app/capabilities/itviec/scrape/` | AD-23, AD-3, AD-16, AD-25, AD-26 |
@@ -1387,6 +1388,90 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 - **Enforcement:**
   - Unit tests cover mapping, `st` resolution, detail URL per origin, and parser dispatch for BĐS + vehicles + jobs + electronics.
   - Integration tests (gated) run live `ad-listing` calls for at least one non-BĐS vertical.
+
+### AD-51 — Custom Workspace Roles: Bind to AD-9, Never Reintroduce Admin
+- **Binds:** FR-100, Story 29.1, Epic 29
+- **Prevents:** recreating an `Admin` system role; custom roles exceeding `Owner` permission ceiling; role templates masquerading as system roles
+- **Rule:**
+  - `WorkspaceRole` table is the single source of truth for all workspace roles. Only `Owner`, `Editor`, `Viewer` have `is_system_role=True` (`get_default_roles_config()` in `app/db.py`).
+  - Custom role templates (`Analyst`, `Billing`, etc.) are named `WorkspaceRole` rows with `is_system_role=False`. They are **not** system roles and are deletable/cloneable by the workspace Owner.
+  - The string `"Admin"` is reserved in the `workspace_roles` unique `(workspace_id, name)` constraint plus an explicit API deny-list. Legacy UI references to "Admin" are mapped to `Editor` + `billing_read` template, not to a role named `Admin`.
+  - The maximum permission set for any custom role is the union of `WorkspaceRole.permissions` on the `Owner` role for that workspace. The API must validate the permission subset before `INSERT`/`UPDATE`.
+  - Permission resolution is membership-scoped: `WorkspaceMembership.role_id` → one `WorkspaceRole` row → `permissions` ARRAY. No stacking of multiple roles per membership in v1.
+  - `audit_events` is written on role create/update/archive/restore and on membership role assignment. `actor_id` is the workspace Owner or superuser.
+  - Platform admin access (`User.is_superuser`) is governed by `require_superuser()` and is **not** reachable through workspace role permissions.
+- **Consequence:** Story 29.1 does not need a new `roles` table; it adds APIs/UI on top of `WorkspaceRole` with `is_system_role` guards.
+
+### AD-52 — Workspace Health Dashboard: Pre-Aggregated `workspace_health_daily`
+- **Binds:** FR-101, Story 29.2, Epic 29
+- **Prevents:** live `COUNT(*)` over large tables per dashboard load; dashboard leaking cross-workspace data
+- **Rule:**
+  - `workspace_health_daily` (or materialized view `mv_workspace_health_daily`) holds pre-aggregated rows keyed by `(workspace_id, date)` with columns: `active_members_dau`, `active_members_wau`, `total_memories`, `memory_growth_count`, `recall_queries`, `remember_queries`, `research_queries`, `credits_consumed_micros`, `cost_per_turn_micros`, `top_sources` (JSONB ranked list), `source_coverage_gap_count`.
+  - A Celery task (`refresh_workspace_health_daily`) computes previous-day rollups from `TokenUsage`, `Memory`, `ChatThread`, and `BillingEvent` once per day; dashboard queries read this table only.
+  - Drill-down from a metric navigates to the underlying `Memory`/`TokenUsage` rows filtered by `workspace_id` and `memory_read` / `analytics_read` permission.
+  - Quota comparison uses the workspace's current `WorkspaceLimit` row looked up by `Workspace.plan_tier`.
+- **Consequence:** Dashboard < 500ms target is achievable because the heavy aggregation is done asynchronously; real-time "today" can be a short time-window supplement over small tables.
+
+### AD-53 — Subscription Tier & Quota Management: Plan Rows Are `WorkspaceLimit`, Money Is `micros`
+- **Binds:** FR-102, Story 29.3, Epic 29
+- **Prevents:** plan definitions diverging from existing `WorkspaceLimit`; currency/VND-only pricing; uncontrolled tier changes
+- **Rule:**
+  - Plan definitions (Free/Team/Growth/Enterprise) are rows in `WorkspaceLimit` where `plan_tier` is set and `workspace_id` is `NULL`. Per-workspace overrides are rows where `workspace_id` is set and `plan_tier` is `NULL` (existing XOR constraint on `WorkspaceLimit`).
+  - `WorkspaceLimit.price_micros` and `currency` (default `USD`) are stored in micros per AD-8. No `price_vnd` column. Display can convert at render time.
+  - `subscription_change` table records every tier change with fields: `id`, `workspace_id`, `from_plan`, `to_plan`, `status` (`pending`/`active`/`reversed`/`cancelled`), `initiated_by` (user id), `payment_method_id`, `effective_at`, `reversible_until`, `immediate` (boolean), `diff_payload` (JSONB).
+  - Default `effective_at = now() + 7 days` unless `immediate=true` and the workspace Owner confirms. Downgrade is rejected with `409 Conflict` and a checklist if current `Memory` count, member count, or credit usage exceeds the new `WorkspaceLimit`.
+  - Grandfathering: updating a `WorkspaceLimit` plan row does **not** retroactively change `Workspace.plan_tier` for existing workspaces. Existing workspaces keep their old limits until they explicitly select a new plan.
+  - Quota enforcement is consulted at memory create, member invite, and source enable. Enforcement checks `WorkspaceLimit.max_memory_count`, `max_members`, `max_memory_bytes`, `max_monthly_credits`.
+  - Reversal within the 7-day window restores `Workspace.plan_tier` to the previous value and writes an `audit_events` row.
+- **Consequence:** Subscription management reuses `WorkspaceLimit`/`Workspace.plan_tier` and `User.credit_micros_balance`/`Workspace.credit_micros_balance` (AD-8). No parallel billing tables are needed.
+
+### AD-54 — Admin Bulk Operations: Async Jobs, Idempotency, Structured Filters
+- **Binds:** FR-103, Story 29.4, Epic 29, AR-18
+- **Prevents:** free-form admin queries (NLP/DSL) mutating data without dry-run; duplicate bulk ops; cross-workspace actions without superuser gating
+- **Rule:**
+  - The bulk-ops UI exposes a structured filter builder against an allow-list of fields and operators per target table. Free-form text queries are not accepted as filters.
+  - `BulkAction` is an allow-list enum (`archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`, `apply_tier`, `revoke_membership`). New actions require an architecture decision.
+  - `bulk_op_job` table stores: `id`, `actor_id`, `action`, `filter` (JSONB), `status`, `affected_count`, `processed_count`, `error_count`, `started_at`, `finished_at`, `idempotency_key`, `created_at`.
+  - Every bulk op request must include an `Idempotency-Key` header. The backend stores the key in `idempotency_keys` table with `request_hash` (SHA-256 of body), `response` (JSONB), `expires_at` (24h). Reuse is allowed only if the request body hash matches. A periodic task deletes expired keys every 6 hours.
+  - `rotate_api_keys` is marked high-risk and requires password/MFA confirmation before scheduling.
+  - Dry-run returns exact `COUNT(*)` and a conflict preview; no data is changed. Execution returns `202 Accepted` and a `job_id` for polling.
+  - Cross-workspace actions are gated by `require_superuser()`. Within-workspace actions require the actor to be the workspace Owner or hold `settings_write` + `member_remove`.
+  - Per-subject audit: one `audit_events` row per affected subject plus a summary row. Failed rows are written to `bulk_op_errors` (`job_id`, `subject_type`, `subject_id`, `error_message`, `retryable`).
+- **Consequence:** Bulk ops are safe, observable, and idempotent. They build on the existing Celery/background task infrastructure.
+
+### AD-55 — Memory Browser & Research Timeline: Workspace-Isolated, AD-11-Bound
+- **Binds:** FR-104, Story 29.5, Epic 29, PRFAQ Q9
+- **Prevents:** analysts seeing cross-workspace memories; research timeline requiring a new thread model; premature approval-edit workflow
+- **Rule:**
+  - The memory browser lives at `/dashboard/[workspace_id]/memory-browser`. All queries begin with `WHERE workspace_id = :workspace_id` and then apply permission and filter predicates.
+  - Required composite indexes: `(workspace_id, source_type, confidence)`, `(workspace_id, created_at DESC)`, `(workspace_id, user_id)`. A full-text index on `content` (or `to_tsvector`) is added if keyword search is required.
+  - The detail panel renders `Memory.content`, `MemoryVersion` history, source citations via `Memory.source_type`/`source_id`, and linked `ResearchThread` via `Memory.research_thread_id` (AD-11).
+  - "Research timeline" view groups `Memory` rows by `ResearchThread` (or unthreaded) and renders `MemoryRelation` branch/merge markers when a memory appears in multiple threads.
+  - "Flag for review" creates a `memory_review_queue` row (`id`, `memory_id`, `flag_reason`, `flagged_by`, `status`, `created_at`) with `status = open` and notifies Owner/Editor. v1 does **not** include an approval-edit workflow; editing memory still requires `memory_write`/`memory_delete` and follows existing `MemoryVersion` semantics.
+  - The page is keyboard-navigable and screen-reader friendly; it does not expose `source_input` (raw recipe) from AD-11.1.
+- **Consequence:** PRFAQ Q9 (analyst memory browser / research timeline UI) is now implementable within the existing `Memory`/`ResearchThread` model without new storage primitives.
+
+### AD-25.7 — Admin Third-Party Health & Operations Dashboard `[NEW 2026-09-03]`
+- **Binds:** FR-41b, Story 25.7, Epic 25, Story 25.4, Story 6.8, Story 8.11, Story 26.3
+- **Prevents:** a second ad-hoc telemetry stack; alert rules scattered outside `app/alerts/`; probes mutating state or auto-disabling services; credential leakage in probe metadata
+- **Rule:**
+  - Health monitoring is a **platform-superadmin** concern only. All endpoints are under `/api/v1/admin/health/*` or co-located with existing `/api/v1/admin/telemetry/*` and gated by `require_superuser()` (INV-25.8).
+  - Probe logic lives in a single module: `app/services/health/`. The public facade is `ThirdPartyHealthService`; scheduling is `HealthProbeScheduler`; registration is `HealthProbeRegistry`; persistence is `HealthResultStore`; alert evaluation is `AdminHealthAlertEngine`.
+  - Probes are **read-only by default** and never auto-disable a model, scraper, or connector in v1. The dashboard may show a `suggested_action`, but any disable/enable is a manual admin action.
+  - The system reuses existing subsystems:
+    - `CapabilityRegistry` to enumerate scraper/connector/messaging targets.
+    - `model_connection_service.verify_connection()` / `test_model()` for LLM/connection health.
+    - `admin_telemetry_service` proxy/Celery probes for proxy pool and queue health.
+    - `hybrid_llm_router._vllm_health()` for local vLLM health.
+    - `app/alerts/` Generic Alert Engine for rule scheduling, diff, and notification dispatch (`in_app`, `email`, `telegram`, `slack`).
+  - Data store is **two-tier**: Redis holds the latest snapshot and publishes `nowing:health:updates`; PostgreSQL holds `admin_health_status` (current) and `admin_health_history` (time-series) with a 30-day retention default.
+  - Probe intervals are category-specific and must not hammer third-party APIs: infrastructure 30s, LLM/AI 2m, scrapers 5m, connectors 15m, messaging/payments/storage/ChainLens 5m.
+  - Concurrency is bounded: `asyncio.gather` with `asyncio.Semaphore(20)` inside `HealthProbeScheduler`.
+  - Alert rules are seeded with 5 defaults (infra unavailable, model dead, scraper degraded, proxy dead, ChainLens degraded). Rules are scoped to admin/health and reuse `AlertRule`/`AlertSnapshot`/`AlertSubscription` tables.
+  - DB migrations must create `admin_health_status`, `admin_health_history`, `admin_health_alert_rules`, `admin_health_alerts`.
+  - The UI extends `/admin/telemetry` with tabbed sections (Overview, Infrastructure, LLM/AI, Scrapers, Connectors, Messaging, Payments, Storage), an Active Alerts banner, and a drill-down panel with 24h charts and recent error logs.
+- **Consequence:** A unified Admin Operations Center for all third-party health without duplicating the alert/notification stack or inventing a new microservice. Probes are safe, throttled, and auditable.
+
 
 ---
 

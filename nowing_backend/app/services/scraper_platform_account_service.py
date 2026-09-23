@@ -45,7 +45,7 @@ def decrypt_credentials(encrypted: str | None) -> dict[str, Any] | None:
     raw = enc.decrypt_token(encrypted)
     try:
         return json.loads(raw)
-    except Exception as exc:
+    except Exception as exc:  # json.loads failure → typed ValueError so caller surfaces credential corruption
         raise ValueError("Stored scraper credentials are not valid JSON") from exc
 
 
@@ -62,8 +62,8 @@ def _parse_cookie_input(
             parsed = json.loads(text)
             if isinstance(parsed, list):
                 return parsed
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.debug("Suppressed %r", exc)
     jar = SimpleCookie(text)
     return [
         {"name": key, "value": morsel.value, "domain": domain or "", "path": "/"}

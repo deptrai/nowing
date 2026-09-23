@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class LeadPipelineStageBase(BaseModel):
@@ -100,3 +100,49 @@ class MemberSpendCapUpdateRequest(BaseModel):
 class MemberLeadCapacityUpdateRequest(BaseModel):
     is_accepting_leads: bool
     lead_capacity: int = Field(50, ge=1, le=1000)
+
+
+class MeetingSlotProposal(BaseModel):
+    """One proposed meeting slot (Story 37.3 / AC-3)."""
+
+    start: datetime
+    end: datetime
+    label: str  # ICT rendering, e.g. "14:00 Thứ Ba"
+
+
+class MeetingSlotsResponse(BaseModel):
+    slots: list[MeetingSlotProposal]
+    provider: str | None = None
+
+
+class MeetingBookRequest(BaseModel):
+    """Manual/CRM booking of a concrete slot for a lead (Story 37.3 / AC-4)."""
+
+    start: datetime
+    duration_minutes: int = Field(30, ge=15, le=240)
+    summary: str | None = Field(None, max_length=200)
+    attendee_email: EmailStr | None = None
+
+    @field_validator("start", mode="after")
+    @classmethod
+    def _start_must_be_aware_and_future(cls, v: datetime) -> datetime:
+        """Backend stores tz-aware UTC; naive values are rejected (422)."""
+        if v.tzinfo is None:
+            raise ValueError("start must be timezone-aware (ISO-8601)")
+        # Same minimum notice as the auto-reply proposal flow.
+        from app.services.meeting_booking import MIN_NOTICE_MINUTES
+
+        if v <= datetime.now(UTC) + timedelta(minutes=MIN_NOTICE_MINUTES):
+            raise ValueError(
+                f"start must be at least {MIN_NOTICE_MINUTES} minutes "
+                "in the future"
+            )
+        return v
+
+
+class MeetingBookResponse(BaseModel):
+    booked: bool
+    event_id: str | None = None
+    meeting_link: str | None = None
+    lead_status: str | None = None
+    reason: str | None = None

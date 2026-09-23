@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { USER_QUERY_KEY } from "@/atoms/user/user-query.atoms";
@@ -25,12 +26,14 @@ import { cn } from "@/lib/utils";
 
 // Compact dollar label for a task's reward (e.g. "+$0.03").
 const formatRewardUsd = (micros: number) => {
+	const t = useTranslations("settings");
 	const dollars = micros / 1_000_000;
 	if (dollars >= 1) return `+$${dollars.toFixed(2)}`;
 	return `+$${dollars.toFixed(2)}`;
 };
 
 export function EarnCreditsContent() {
+	const t = useTranslations("layout");
 	const params = useParams();
 	const queryClient = useQueryClient();
 	const workspaceId = getWorkspaceIdParam(params) ?? "";
@@ -63,7 +66,7 @@ export function EarnCreditsContent() {
 			}
 		},
 		onError: () => {
-			toast.error("Failed to complete task. Please try again.");
+			toast.error(t("task_complete_failed"));
 		},
 	});
 
@@ -77,14 +80,16 @@ export function EarnCreditsContent() {
 	return (
 		<div className="w-full space-y-5">
 			<div className="text-center">
-				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">Earn Credits</h2>
+				<h2 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight">
+					{t("x_earn_credits")}
+				</h2>
 				<p className="mt-1 text-xs sm:text-sm text-muted-foreground font-sans">
-					Earn bonus credits by completing tasks
+					{t("x_earn_bonus_credits_by")}
 				</p>
 			</div>
 
 			<div className="space-y-2">
-				<h3 className="text-sm font-semibold">Earn Bonus Credits</h3>
+				<h3 className="text-sm font-semibold">{t("x_earn_bonus_credits")}</h3>
 				{isLoading ? (
 					<div className="space-y-1.5">
 						{["github", "reddit", "discord"].map((task) => (
@@ -162,15 +167,13 @@ export function EarnCreditsContent() {
 			<Separator />
 
 			<div className="text-center">
-				<p className="text-sm text-muted-foreground">Need more?</p>
+				<p className="text-sm text-muted-foreground">{t("x_need_more")}</p>
 				{creditBuyingEnabled ? (
 					<Button asChild variant="link" className="text-emerald-600 dark:text-emerald-400">
-						<Link href={`/dashboard/${workspaceId}/buy-more`}>Buy credits at $1 per $1</Link>
+						<Link href={`/dashboard/${workspaceId}/buy-more`}>{t("x_buy_credits_at_1")}</Link>
 					</Button>
 				) : (
-					<p className="text-xs text-muted-foreground">
-						Credit purchases are temporarily unavailable.
-					</p>
+					<p className="text-xs text-muted-foreground">{t("x_credit_purchases_are_temporarily")}</p>
 				)}
 			</div>
 		</div>

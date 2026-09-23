@@ -121,6 +121,8 @@ export interface ParsedDockTab {
 
 export interface ParseDockContentOptions {
 	hasLeads?: boolean;
+	/** Translation function from useTranslations("dock") for tab labels */
+	t?: (key: string) => string;
 }
 
 export function parseDockContent(
@@ -182,13 +184,17 @@ export function parseDockContent(
 	// Push tabs in the same order as DockHeader's TAB_ORDER so the default
 	// active tab and the rendered tab order are consistent.
 	if (options.hasLeads) {
-		tabs.push({ id: "leads", label: "Leads", payload: { kind: "leads" } });
+		tabs.push({
+			id: "leads",
+			label: options.t ? options.t("leads_label") : "Leads",
+			payload: { kind: "leads" },
+		});
 	}
 
 	if (webAppResult?.app_id) {
 		tabs.push({
 			id: "web-builder",
-			label: "Web Builder",
+			label: options.t ? options.t("web_builder_label") : "Web Builder",
 			payload: { kind: "web-builder", result: webAppResult },
 		});
 	}
@@ -196,7 +202,7 @@ export function parseDockContent(
 	if (researchPart) {
 		tabs.push({
 			id: "research",
-			label: "Research",
+			label: options.t ? options.t("research_label") : "Research",
 			payload: { kind: "research", report: parseResearchReport(researchPart.result) },
 		});
 		if (researchPart.result) {
@@ -204,7 +210,7 @@ export function parseDockContent(
 			if (report && report.citations.length > 0) {
 				tabs.push({
 					id: "sources",
-					label: "Sources",
+					label: options.t ? options.t("sources_label") : "Sources",
 					payload: { kind: "sources", citations: report.citations },
 				});
 			}
@@ -212,33 +218,54 @@ export function parseDockContent(
 	}
 
 	if (reportPart) {
-		tabs.push({ id: "reports", label: "Report", payload: { kind: "reports", part: reportPart } });
+		tabs.push({
+			id: "reports",
+			label: options.t ? options.t("report_label") : "Report",
+			payload: { kind: "reports", part: reportPart },
+		});
 	}
 
 	if (images.length > 0) {
 		tabs.push({
 			id: "images",
-			label: images.length > 1 ? `Images (${images.length})` : "Image",
+			label:
+				images.length > 1
+					? `${options.t ? options.t("images_label") : "Images"} (${images.length})`
+					: options.t
+						? options.t("image_label")
+						: "Image",
 			payload: { kind: "images", parts: images },
 		});
 	}
 
 	if (media.length > 0) {
-		tabs.push({ id: "media", label: "Media", payload: { kind: "media", parts: media } });
+		tabs.push({
+			id: "media",
+			label: options.t ? options.t("media_label") : "Media",
+			payload: { kind: "media", parts: media },
+		});
 	}
 
 	if (chartSpecs.length > 0) {
-		tabs.push({ id: "charts", label: "Charts", payload: { kind: "charts", specs: chartSpecs } });
+		tabs.push({
+			id: "charts",
+			label: options.t ? options.t("charts_label") : "Charts",
+			payload: { kind: "charts", specs: chartSpecs },
+		});
 	}
 
 	if (codeBlocks.length > 0) {
-		tabs.push({ id: "code", label: "Code", payload: { kind: "code", blocks: codeBlocks } });
+		tabs.push({
+			id: "code",
+			label: options.t ? options.t("code_label") : "Code",
+			payload: { kind: "code", blocks: codeBlocks },
+		});
 	}
 
 	if (artifacts.length > 0) {
 		tabs.push({
 			id: "artifacts",
-			label: "Artifacts",
+			label: options.t ? options.t("artifacts_label") : "Artifacts",
 			payload: { kind: "artifacts", parts: artifacts },
 		});
 	}
@@ -246,7 +273,7 @@ export function parseDockContent(
 	if (slidesPart) {
 		tabs.push({
 			id: "slides",
-			label: "Slides",
+			label: options.t ? options.t("slides_label") : "Slides",
 			payload: { kind: "slides", result: slidesPart.result },
 		});
 	}

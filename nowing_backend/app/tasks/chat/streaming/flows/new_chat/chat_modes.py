@@ -40,7 +40,11 @@ _PRESENTATION_STUDIO_SYSTEM_PROMPT = (
     "You are in Presentation Studio mode. The user wants to generate a slide deck. "
     "Ask a concise clarifying question only if the request is unclear, then call "
     "generate_presentation with the user's description, output "
-    "format (pptx or marp), and language."
+    "format (pptx or marp), and language. PPTX output requires a paid "
+    "workspace plan (team/growth/enterprise); on a free plan request "
+    "output_format=\"marp\". If the tool returns status=\"plan_limited\", "
+    "the workspace is not entitled to PPTX — do NOT retry with pptx; explain "
+    "that PPTX is a paid feature and offer to generate Marp Markdown instead."
 )
 
 _MEETING_MINUTES_SYSTEM_PROMPT = (

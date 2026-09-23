@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Play, Square } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ let activeAudio: HTMLAudioElement | null = null;
 let stopActive: (() => void) | null = null;
 
 function getSampleUrl(voiceId: string): Promise<string> {
+	const t = useTranslations("toolUi");
 	let url = sampleUrls.get(voiceId);
 	if (!url) {
 		url = podcastsApiService.previewVoice(voiceId).then((blob) => URL.createObjectURL(blob));

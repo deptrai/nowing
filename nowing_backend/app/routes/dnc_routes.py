@@ -13,7 +13,13 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, WorkspaceDncRecord, get_async_session
+from app.db import (
+    Permission,
+    WorkspaceDncRecord,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.dnc.normalizer import (
     hash_phone_hmac,
     normalize_domain,
@@ -29,7 +35,6 @@ from app.schemas.dnc import (
     DncRecordRead,
 )
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -201,15 +206,14 @@ async def list_dnc_records(
     page_size: int = Query(50, ge=1, le=200),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view compliance records in this workspace",
+        )
+    ),
 ) -> DncListResponse:
     """List and search workspace DNC entries with pagination."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_READ.value,
-        error_message="You don't have permission to view compliance records in this workspace",
-    )
 
     query = select(WorkspaceDncRecord).where(
         WorkspaceDncRecord.workspace_id == workspace_id
@@ -258,15 +262,14 @@ async def create_dnc_record(
     body: DncRecordCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to modify compliance records in this workspace",
+        )
+    ),
 ) -> DncRecordRead:
     """Add a single phone, email, domain or tax ID to the workspace DNC blacklist."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to modify compliance records in this workspace",
-    )
 
     try:
         data = await create_dnc_record_service(
@@ -289,15 +292,14 @@ async def delete_dnc_record(
     record_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to modify compliance records in this workspace",
+        )
+    ),
 ) -> None:
     """Remove an entry from the workspace DNC blacklist."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to modify compliance records in this workspace",
-    )
 
     stmt = select(WorkspaceDncRecord).where(
         WorkspaceDncRecord.id == record_id,
@@ -328,15 +330,14 @@ async def import_dnc_csv(
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to import compliance records in this workspace",
+        )
+    ),
 ) -> DncCsvImportResponse:
     """Bulk import DNC entries from CSV file (up to 5,000 rows)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        error_message="You don't have permission to import compliance records in this workspace",
-    )
 
     content = await file.read()
     if not content:

@@ -1,4 +1,9 @@
 ---
+story_key: 6-8-generic-alert-engine
+status: done
+---
+
+---
 title: Story 6.8 — Generic Alert Engine
 epic: 6
 story: 8

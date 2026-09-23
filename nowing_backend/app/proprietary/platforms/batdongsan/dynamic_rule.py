@@ -43,7 +43,7 @@ async def get_batdongsan_rule() -> dict[str, Any]:
     try:
         async with async_session_maker() as session:
             rule_schema = await get_active_rule_schema(session, "batdongsan")
-    except Exception:
+    except Exception:  # DB error loading dynamic rule; fall back to static default rule
         logger.exception("Failed to load batdongsan rule from database")
         return _DEFAULT_RULE
 

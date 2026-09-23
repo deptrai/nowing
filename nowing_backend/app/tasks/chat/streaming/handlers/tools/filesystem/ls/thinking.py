@@ -35,6 +35,9 @@ def resolve_completed_thinking(
     if ls_output:
         paths: list[str] = []
         try:
+            # ``ast.literal_eval`` only parses Python literals (strings, lists,
+            # tuples, etc.) and never executes code. The value comes from a
+            # sandboxed filesystem tool, not raw user input.
             parsed = ast.literal_eval(ls_output)
             if isinstance(parsed, list):
                 paths = [str(p) for p in parsed]

@@ -186,7 +186,7 @@ def create_build_web_app_tool(deps: dict[str, Any]):
                     message=cap_result.message,
                     error=cap_result.error,
                 ).model_dump(mode="json")
-        except Exception as exc:
+        except Exception as exc:  # web app build execution failure; rollback and return error output
             if session is not None:
                 with contextlib.suppress(Exception):
                     await session.rollback()

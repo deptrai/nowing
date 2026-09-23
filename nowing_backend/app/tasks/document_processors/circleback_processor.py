@@ -233,12 +233,12 @@ async def add_circleback_meeting_document(
                 document.status = DocumentStatus.failed(str(db_error))
                 document.updated_at = get_current_timestamp()
                 await session.commit()
-            except Exception as status_error:
+            except Exception as status_error:  # best-effort document status update to failed; log error
                 logger.error(
                     f"Failed to update document status to failed: {status_error}"
                 )
         raise db_error
-    except Exception as e:
+    except Exception as e:  # meeting processing failure; rollback, mark doc failed, and wrap in RuntimeError
         await session.rollback()
         logger.error(f"Failed to process Circleback meeting {meeting_id}: {e!s}")
         # Mark document as failed if it was created
@@ -247,7 +247,7 @@ async def add_circleback_meeting_document(
                 document.status = DocumentStatus.failed(str(e))
                 document.updated_at = get_current_timestamp()
                 await session.commit()
-            except Exception as status_error:
+            except Exception as status_error:  # best-effort document status update to failed; log error
                 logger.error(
                     f"Failed to update document status to failed: {status_error}"
                 )

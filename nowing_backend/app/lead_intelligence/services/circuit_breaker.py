@@ -54,7 +54,7 @@ class PlatformCircuitBreaker:
             if isinstance(val, bytes):
                 val = val.decode("utf-8")
             return val != "OPEN"
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.warning(
                 "Circuit breaker check failed for %s: %s (failing open)",
                 platform,
@@ -100,7 +100,7 @@ class PlatformCircuitBreaker:
                 return True
 
             return False
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.error(
                 "Failed to record circuit breaker failure for %s: %s", platform, exc
             )
@@ -112,7 +112,7 @@ class PlatformCircuitBreaker:
             redis = await self._get_redis()
             normalized_platform = platform.strip().lower()
             await redis.delete(self._failure_counter_key(normalized_platform))
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.warning("Failed to reset circuit breaker for %s: %s", platform, exc)
 
     async def trip(self, platform: str) -> None:
@@ -131,7 +131,7 @@ class PlatformCircuitBreaker:
                 normalized_platform,
                 self.cooldown_seconds,
             )
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.error("Failed to trip circuit breaker for %s: %s", platform, exc)
             raise
 
@@ -145,6 +145,6 @@ class PlatformCircuitBreaker:
                 self._failure_counter_key(normalized_platform),
             )
             logger.info("CIRCUIT BREAKER RESET for %s", normalized_platform)
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.error("Failed to reset circuit breaker for %s: %s", platform, exc)
             raise

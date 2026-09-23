@@ -100,7 +100,7 @@ def _current_thread_id() -> str | None:
         cfg = get_config()
         tid = (cfg.get("configurable") or {}).get("thread_id")
         return str(tid) if tid is not None else None
-    except Exception:
+    except Exception:  # context extraction error; return None thread_id
         return None
 
 
@@ -122,7 +122,7 @@ def _current_research_mode() -> str | None:
 
         cfg = get_config()
         return (cfg.get("configurable") or {}).get("research_mode")
-    except Exception:
+    except Exception:  # context extraction error; return None research_mode
         return None
 
 
@@ -236,6 +236,13 @@ def _build_cached_anti_bot_command(
 # quality, deep-research, deep-reasoning, and auto (which may resolve to those)
 # are async-only until cost/latency targets are ratified.
 _SYNC_CHAT_ALLOWED_MODES: frozenset[str] = frozenset({"speed", "balanced"})
+
+# chainlens.code_search modes allowed to run synchronously inside a chat
+# turn. ``balanced``/``auto`` can stall a turn for the full upstream 120s
+# timeout, so they go through the async-run door instead.
+_CODE_SEARCH_SYNC_ALLOWED_MODES: frozenset[str] = frozenset(
+    {"instant", "fast"}
+)
 
 
 def _is_sync_chat_mode_allowed(mode: str | None) -> bool:
@@ -390,9 +397,13 @@ def _capability_tool(
         # State B (opt-in): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is True AND the
         # requested mode is in the allow-list (speed/balanced). quality,
         # deep-research, deep-reasoning, and auto remain async-only in chat.
-        if name == "chainlens.research" and not (
+        if (name == "chainlens.research" and not (
             config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
             and _is_sync_chat_mode_allowed(research_mode)
+        )) or (
+            name == "chainlens.code_search"
+            and getattr(payload, "mode", None)
+            not in _CODE_SEARCH_SYNC_ALLOWED_MODES
         ):
             async with async_session_maker() as session:
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
@@ -415,7 +426,7 @@ def _capability_tool(
                     )
                     if run_id is None:
                         raise ExternalServiceError(
-                            "Could not start deep research run.",
+                            f"Could not start {name} run.",
                             code="CAPABILITY_START_ERROR",
                         )
                 except ForbiddenError:
@@ -427,7 +438,10 @@ def _capability_tool(
             return {
                 "run_id": f"run_{run_id}",
                 "status": "running",
-                "message": "Deep research started. The result will stream via the run events endpoint.",
+                "message": (
+                    f"{name} started. The result will stream via the run "
+                    "events endpoint."
+                ),
             }
 
         # A buffer-only reporter: coarse progress lands in ``runs.progress`` and,
@@ -464,7 +478,7 @@ def _capability_tool(
                     output = await execute_with_context(
                         executor, payload=payload, ctx=ctx
                     )
-                except Exception as exc:
+                except Exception as exc:  # capability executor error → record run error and raise tool error
                     duration_ms = int((time.perf_counter() - started) * 1000)
                     async with async_session_maker() as rec_session:
                         await record_run(
@@ -495,7 +509,7 @@ def _capability_tool(
                             cost_micros=cost_micros,
                             call_kind=name,
                         )
-                except Exception:
+                except Exception:  # billing debit failure; best-effort usage telemetry
                     logger.exception("charge failed for agent run %s", name)
 
             # Story 20.2: if the research engine requested on-demand gap-fill
@@ -509,7 +523,7 @@ def _capability_tool(
                         query=payload.query,
                         correlation_id=sync_run_id,
                     )
-                except Exception:
+                except Exception:  # gap-fill trigger error; best-effort background indexing
                     logger.exception("gap-fill trigger failed for agent run")
 
             serialized = serialize_output(output)

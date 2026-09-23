@@ -261,7 +261,7 @@ async def index_discord_messages(
                     logger.info(
                         f"Decrypted legacy Discord token for connector {connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # legacy token decryption failure; fallback to raw token
                     logger.warning(
                         f"Failed to decrypt legacy Discord token for connector {connector_id}: {e!s}. "
                         "Trying to use token as-is (might be unencrypted)."
@@ -385,7 +385,7 @@ async def index_discord_messages(
                 f"Processing configured guild only: {configured_guild_name} ({configured_guild_id})"
             )
 
-        except Exception as e:
+        except Exception as e:  # Discord bot startup failure; log task failure, close bot, and return error
             await task_logger.log_task_failure(
                 log_entry,
                 f"Failed to start Discord bot for connector {connector_id}",
@@ -445,7 +445,7 @@ async def index_discord_messages(
                                 start_date=start_date_iso,
                                 end_date=end_date_iso,
                             )
-                        except Exception as e:
+                        except Exception as e:  # per-channel message fetch failure; log error, record skipped, and continue
                             logger.error(
                                 f"Failed to get messages for channel {channel_name}: {e!s}"
                             )
@@ -632,7 +632,7 @@ async def index_discord_messages(
                             f"grouped into {(len(formatted_messages) + DISCORD_BATCH_SIZE - 1) // DISCORD_BATCH_SIZE} batch(es)"
                         )
 
-            except Exception as e:
+            except Exception as e:  # per-guild message processing failure; log error, record skipped, and continue
                 logger.error(
                     f"Error processing guild {guild_name}: {e!s}", exc_info=True
                 )
@@ -706,7 +706,7 @@ async def index_discord_messages(
                     )
                     await session.commit()
 
-            except Exception as e:
+            except Exception as e:  # per-batch document indexing failure; mark failed, increment count, and continue
                 logger.error(
                     f"Error processing Discord batch document: {e!s}", exc_info=True
                 )
@@ -717,7 +717,7 @@ async def index_discord_messages(
                     # Commit now so the failed status survives a later rollback or
                     # crash; otherwise the doc stays stuck in pending/processing.
                     await session.commit()
-                except Exception as status_error:
+                except Exception as status_error:  # failure updating document status; rollback and continue
                     logger.error(
                         f"Failed to update document status to failed: {status_error}"
                     )
@@ -739,7 +739,7 @@ async def index_discord_messages(
             logger.info(
                 "Successfully committed all Discord document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             # Handle any remaining integrity errors gracefully (race conditions, etc.)
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
@@ -798,7 +798,7 @@ async def index_discord_messages(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

@@ -10,6 +10,7 @@ import {
 	Pencil,
 	UsersIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -133,6 +134,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<CalendarCreateEventContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const [wasEdited, setWasEdited] = useState(false);
@@ -258,25 +260,25 @@ function ApprovalCard({
 					<div>
 						<p className="text-sm font-semibold text-foreground">
 							{phase === "rejected"
-								? "Calendar Event Rejected"
+								? t("gcal_event_creation_rejected")
 								: phase === "processing" || phase === "complete"
-									? "Calendar Event Approved"
-									: "Create Calendar Event"}
+									? t("gcal_event_creation_approved")
+									: t("gcal_create_event_title")}
 						</p>
 						{phase === "processing" ? (
 							<TextShimmerLoader
-								text={wasEdited ? "Creating event with your changes" : "Creating event"}
+								text={wasEdited ? t("gcal_creating_event_with_changes") : t("gcal_creating_event")}
 								size="sm"
 							/>
 						) : phase === "complete" ? (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								{wasEdited ? "Event created with your changes" : "Event created"}
+								{wasEdited ? t("gcal_event_created_with_changes") : t("gcal_event_created")}
 							</p>
 						) : phase === "rejected" ? (
-							<p className="text-xs text-muted-foreground mt-0.5">Event creation was cancelled</p>
+							<p className="text-xs text-muted-foreground mt-0.5">{t("gcal_create_cancelled")}</p>
 						) : (
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Requires your approval to proceed
+								{t("common_requires_approval")}
 							</p>
 						)}
 					</div>
@@ -291,7 +293,7 @@ function ApprovalCard({
 							const extraFields: ExtraField[] = [
 								{
 									key: "start_datetime",
-									label: "Start",
+									label: t("gcal_start"),
 									type: "datetime-local",
 									value: pendingEdits?.start_datetime ?? args.start_datetime ?? "",
 								},
@@ -303,13 +305,13 @@ function ApprovalCard({
 								},
 								{
 									key: "location",
-									label: "Location",
+									label: t("gcal_location"),
 									type: "text",
 									value: pendingEdits?.location ?? args.location ?? "",
 								},
 								{
 									key: "attendees",
-									label: "Attendees",
+									label: t("gcal_attendees"),
 									type: "emails",
 									value: pendingEdits?.attendees ?? attendeesList.join(", "),
 								},
@@ -342,7 +344,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -359,11 +361,11 @@ function ApprovalCard({
 								{accounts.length > 0 && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											Google Calendar Account <span className="text-destructive">*</span>
+											{t("gcal_account_label")} <span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select an account" />
+												<SelectValue placeholder={t("gcal_select_account")} />
 											</SelectTrigger>
 											<SelectContent>
 												{validAccounts.map((account) => (
@@ -376,7 +378,7 @@ function ApprovalCard({
 														key={a.id}
 														className="relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 px-2 text-sm select-none opacity-50 pointer-events-none"
 													>
-														{a.name} (expired, retry after re-auth)
+														{a.name} ({t("common_expired_retry")})
 													</div>
 												))}
 											</SelectContent>
@@ -387,17 +389,17 @@ function ApprovalCard({
 								{calendars.length > 0 && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											Calendar <span className="text-destructive">*</span>
+											{t("gcal_calendar")} <span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select a calendar" />
+												<SelectValue placeholder={t("gcal_select_calendar")} />
 											</SelectTrigger>
 											<SelectContent>
 												{calendars.map((cal) => (
 													<SelectItem key={cal.id} value={cal.id}>
 														{cal.summary}
-														{cal.primary ? " (primary)" : ""}
+														{cal.primary ? ` (${t("gcal_primary")})` : ""}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -407,7 +409,9 @@ function ApprovalCard({
 
 								{timezone && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Timezone</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("gcal_timezone")}
+										</p>
 										<div className="flex items-center gap-2 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											<GlobeIcon
 												className="size-3.5 text-muted-foreground shrink-0"
@@ -496,7 +500,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -508,10 +512,10 @@ function ApprovalCard({
 								disabled={isPanelOpen}
 								onClick={() => {
 									setRejected();
-									onDecision({ type: "reject", message: "User rejected the action." });
+									onDecision({ type: "reject", message: t("common_user_rejected_action") });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -522,10 +526,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create calendar event</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -536,12 +541,11 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					Google Calendar authentication expired
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -552,12 +556,11 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					Additional Google Calendar permissions required
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("gcal_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -568,11 +571,12 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Calendar event created successfully"}
+					{result.message || t("gcal_created_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -585,7 +589,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Google Calendar
+							{t("gcal_open_in_gcal")}
 						</a>
 					</div>
 				)}

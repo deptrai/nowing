@@ -14,6 +14,7 @@ backs the Scraper-API logs UI.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -23,7 +24,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -295,7 +297,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 if run_id is not None:
                     response.headers["X-Run-Id"] = f"run_{run_id}"
                 raise
-            except Exception as exc:
+            except Exception as exc:  # capability executor error → record sync error and raise
                 run_id = await record_and_publish_sync_run_error(
                     session=session,
                     workspace_id=workspace_id,
@@ -320,7 +322,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             cost_micros = None
             try:
                 cost_micros = await charge_capability(output, unit, ctx)
-            except Exception:
+            except Exception:  # billing debit failure; log error and continue
                 logger.exception("charge failed for sync run")
 
             # Story 20.2: trigger on-demand gap-fill indexing for research results.
@@ -337,7 +339,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                             correlation_id=sync_run_id,
                         )
                     )
-                except Exception:
+                except Exception:  # gap-fill trigger error; log and continue
                     logger.exception("gap-fill trigger failed for sync research run")
 
             run_id = await record_and_publish_sync_run(
@@ -379,17 +381,20 @@ def _parse_run_uuid(run_id: str) -> uuid.UUID:
 
 
 async def _load_run(
-    session: AsyncSession, workspace_id: int, parsed_id: uuid.UUID
+    session: AsyncSession,
+    workspace_id: int,
+    parsed_id: uuid.UUID,
+    *,
+    for_update: bool = False,
 ) -> Run:
     # AC-18.8: set workspace/run GUCs before the RLS-protected Run lookup.
     await set_request_tenant_context(
         session, workspace_id=workspace_id, run_id=str(parsed_id)
     )
-    row = (
-        await session.execute(
-            select(Run).where(Run.id == parsed_id, Run.workspace_id == workspace_id)
-        )
-    ).scalar_one_or_none()
+    stmt = select(Run).where(Run.id == parsed_id, Run.workspace_id == workspace_id)
+    if for_update:
+        stmt = stmt.with_for_update()
+    row = (await session.execute(stmt)).scalar_one_or_none()
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Run not found."
@@ -564,7 +569,15 @@ def _register_run_history(router: APIRouter) -> None:
         """Materialize a finished deep-research run as a Report deliverable."""
         await check_workspace_access(session, auth, workspace_id)
         parsed_id = _parse_run_uuid(run_id)
-        row = await _load_run(session, workspace_id, parsed_id)
+        # Lock the parent Run row with FOR UPDATE to serialize concurrent deliverable creations
+        row = await _load_run(session, workspace_id, parsed_id, for_update=True)
+        # Optional transaction advisory lock for PostgreSQL to prevent concurrent inserts
+        with contextlib.suppress(Exception):
+            await session.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+                {"lock_key": f"create_deliverable:{workspace_id}:{row.id}"},
+            )
+
         if row.capability != "chainlens.research":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -589,7 +602,7 @@ def _register_run_history(router: APIRouter) -> None:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Run output is not valid deliverable JSON.",
             ) from exc
-        except Exception:
+        except Exception:  # deliverable JSON parse error; return 500 error response
             logger.exception("Failed to parse run %s output as ResearchOutput", run_id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -602,7 +615,6 @@ def _register_run_history(router: APIRouter) -> None:
         existing = (
             await session.execute(
                 select(Report)
-                .with_for_update(of=Report)
                 .where(
                     Report.report_metadata["run_id"].as_string() == f"run_{row.id}",
                     Report.workspace_id == workspace_id,
@@ -640,12 +652,20 @@ def _register_run_history(router: APIRouter) -> None:
             },
         )
         session.add(report)
-        await session.commit()
-        await session.refresh(report)
-        if report.report_group_id is None:
-            report.report_group_id = report.id
+        try:
             await session.commit()
             await session.refresh(report)
+        except IntegrityError:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Deliverable already exists for this run.",
+            ) from None
+        if report.report_group_id is None:
+            report.report_group_id = report.id
+            with contextlib.suppress(IntegrityError):
+                await session.commit()
+                await session.refresh(report)
         return JSONResponse(
             content={
                 "report_id": report.id,

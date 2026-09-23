@@ -288,7 +288,7 @@ async def _record_failure(
                 payment_intent_id=payment_intent_id,
                 reason=reason,
             )
-        except Exception:
+        except Exception:  # best-effort notification; doesn't fail user status update
             logger.warning(
                 "Failed to create auto_reload_failed notification for user %s",
                 user_id,

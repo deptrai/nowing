@@ -666,3 +666,17 @@ async def test_degradation_source_ids_count(monkeypatch):
     ctx = CapabilityContext(session=SimpleNamespace(), workspace_id=1)
     result = await aggregate_jobs(VnJobAggregateInput(keyword="dev"), ctx)
     assert len(result.degraded_source_ids) == 2
+
+
+def test_map_degradation_reason_comprehensive():
+    """Verify mapping for extended degradation reasons (timeout, network, circuit, 503, auth, legal)."""
+    from app.services.jobs_aggregator.orchestrator import _map_degradation_reason
+
+    assert _map_degradation_reason("topcv: timeout") == "TIMEOUT"
+    assert _map_degradation_reason("vietnamworks: connection error") == "NETWORK_ERROR"
+    assert _map_degradation_reason("itviec: circuit open") == "CIRCUIT_OPEN"
+    assert _map_degradation_reason("service unavailable 503") == "SERVICE_UNAVAILABLE"
+    assert _map_degradation_reason("401 unauthorized") == "AUTH_FAILED"
+    assert _map_degradation_reason("legal_blocked") == "LEGAL_BLOCKED"
+    assert _map_degradation_reason("bot_detected") == "ANTI_BOT"
+    assert _map_degradation_reason("something completely unknown") == "SOURCE_FAILED"

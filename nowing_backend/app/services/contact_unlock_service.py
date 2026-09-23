@@ -58,14 +58,14 @@ class ContactUnlockService:
         if self.enc.is_encrypted(value):
             try:
                 return self.enc.decrypt(value)
-            except Exception:
+            except Exception:  # best-effort decryption of contact field; return None on failure
                 return None
         try:
             decrypted = self.enc.decrypt(value)
             if decrypted is not None:
                 return decrypted
-        except Exception:
-            pass
+        except Exception as exc:  # best-effort decryption fallback; return raw value on failure
+            logger.debug("Suppressed %r", exc)
         return value
 
     async def unlock_contact(
@@ -151,7 +151,7 @@ class ContactUnlockService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Billing validation failed.",
             ) from exc
-        except Exception as exc:
+        except Exception as exc:  # unhandled billing failure → HTTP 500 so client sees typed error
             logger.exception(
                 "Failed to bill unlock for contact %s: %s", contact.id, exc
             )

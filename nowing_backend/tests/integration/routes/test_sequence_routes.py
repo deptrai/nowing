@@ -9,7 +9,13 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.auth.context import AuthContext
-from app.db import Sequence, SequenceEnrollment, SequenceEvent, SequenceStep, get_async_session
+from app.db import (
+    Sequence,
+    SequenceEnrollment,
+    SequenceEvent,
+    SequenceStep,
+    get_async_session,
+)
 from app.routes.sequence_routes import router as sequence_router
 from app.schemas.sequence import SequenceAnalyticsResponse
 from app.users import get_auth_context
@@ -92,7 +98,7 @@ async def test_create_sequence_endpoint(
     workspace_id = 1
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.dependencies.auth.check_workspace_access", AsyncMock()) as mock_check,
         patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
         patch("app.routes.sequence_routes.SequencerService") as mock_seq_cls,
     ):
@@ -154,7 +160,7 @@ async def test_enroll_leads_endpoint(
     )
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.dependencies.auth.check_workspace_access", AsyncMock()) as mock_check,
         patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
         patch("app.routes.sequence_routes.SequencerService") as mock_seq_cls,
     ):
@@ -201,7 +207,7 @@ async def test_get_sequence_analytics_endpoint(
     )
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.dependencies.auth.check_workspace_access", AsyncMock()) as mock_check,
         patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
         patch("app.routes.sequence_routes.SequencerService") as mock_seq_cls,
     ):
@@ -253,7 +259,7 @@ async def test_list_sequence_events_endpoint(
     )
 
     with (
-        patch("app.routes.sequence_routes.check_workspace_access", AsyncMock()) as mock_check,
+        patch("app.dependencies.auth.check_workspace_access", AsyncMock()) as mock_check,
         patch("app.routes.sequence_routes.set_request_tenant_context", AsyncMock()) as mock_tenant,
     ):
         async with AsyncClient(

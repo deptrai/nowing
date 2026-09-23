@@ -121,7 +121,7 @@ class SlackHistory:
                     logger.info(
                         f"Decrypted Slack credentials for connector {self._connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # credential decryption failure; raise ValueError
                     logger.error(
                         f"Failed to decrypt Slack credentials for connector {self._connector_id}: {e!s}"
                     )
@@ -131,7 +131,7 @@ class SlackHistory:
 
             try:
                 self._credentials = SlackAuthCredentialsBase.from_dict(config_data)
-            except Exception as e:
+            except Exception as e:  # credentials parsing failure; raise ValueError
                 raise ValueError(f"Invalid Slack credentials: {e!s}") from e
 
         # Check if token is expired and refreshable
@@ -179,7 +179,7 @@ class SlackHistory:
                 logger.info(
                     f"Successfully refreshed Slack token for connector {self._connector_id}"
                 )
-            except Exception as e:
+            except Exception as e:  # token refresh failure; log and raise
                 logger.error(
                     f"Failed to refresh Slack token for connector {self._connector_id}: {e!s}"
                 )
@@ -299,7 +299,7 @@ class SlackHistory:
                     raise SlackApiError(
                         f"Error retrieving channels: {e}", e.response
                     ) from e
-            except Exception as general_error:
+            except Exception as general_error:  # unexpected channel fetching error; raise RuntimeError
                 # Handle other potential errors like network issues if necessary, or re-raise
                 logger.error(
                     f"An unexpected error occurred during channel fetching: {general_error}"
@@ -406,7 +406,7 @@ class SlackHistory:
                     f"Error retrieving history for channel {channel_id}: {e}",
                     e.response,
                 ) from e
-            except Exception as general_error:  # Catch any other unexpected errors
+            except Exception as general_error:  # conversation history unexpected error; log and raise
                 logger.error(
                     f"Unexpected error in get_conversation_history for channel {channel_id}: {general_error}"
                 )
@@ -516,7 +516,7 @@ class SlackHistory:
                         f"Error retrieving user info for {user_id}: {e_user_info}",
                         e_user_info.response,
                     ) from e_user_info
-            except Exception as general_error:  # Catch any other unexpected errors
+            except Exception as general_error:  # user info fetch unexpected error; log and raise
                 logger.error(
                     f"Unexpected error in get_user_info for user {user_id}: {general_error}"
                 )
@@ -553,7 +553,7 @@ class SlackHistory:
                 user_info = await self.get_user_info(msg["user"])
                 formatted["user_name"] = user_info.get("real_name", "Unknown")
                 formatted["user_email"] = user_info.get("profile", {}).get("email", "")
-            except Exception:
+            except Exception:  # user profile fetch failure; continue with unknown user
                 # If we can't get user info, just continue without it
                 formatted["user_name"] = "Unknown"
 

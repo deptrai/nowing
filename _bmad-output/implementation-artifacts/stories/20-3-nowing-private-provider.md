@@ -1,7 +1,7 @@
 ---
 baseline_commit: de0a8d951
 baseline_branch: develop
-story_key: 20.3
+story_key: 20-4-service-to-service-auth-cost-ledger-sync.3
 status: done
 priority: P1
 epic: Epic 20 — Nowing Ecosystem Integration

@@ -21,7 +21,7 @@ export const NowingFooter: React.FC = () => {
 						</p>
 						<div className="flex items-center gap-2 text-xs text-emerald-400">
 							<ShieldCheck className="w-4 h-4" aria-hidden="true" />
-							<span>Enterprise-grade Compliance & Security</span>
+							<span>{t("badge_compliance_security")}</span>
 						</div>
 					</div>
 
@@ -109,7 +109,7 @@ export const NowingFooter: React.FC = () => {
 							</li>
 							<li>
 								<Link href="/contact" className="hover:text-emerald-400 transition-colors">
-									Contact Support
+									{t("link_contact_support")}
 								</Link>
 							</li>
 						</ul>
@@ -119,9 +119,9 @@ export const NowingFooter: React.FC = () => {
 				<div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
 					<div>{t("copyright")}</div>
 					<div className="flex items-center gap-1">
-						<span>Built with</span>
+						<span>{t("built_with")}</span>
 						<Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" aria-hidden="true" />
-						<span>for modern revenue teams</span>
+						<span>{t("for_modern_revenue_teams")}</span>
 					</div>
 				</div>
 			</div>

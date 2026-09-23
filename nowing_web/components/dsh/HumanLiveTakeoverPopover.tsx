@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertTriangle, Clock, Hand, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Hand, XCircle, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
 import { isAllowedUrl } from "@/lib/utils";
 
@@ -11,9 +12,11 @@ export interface HumanLiveTakeoverPopoverProps {
 	missionControl: DshMissionControl;
 	resuming?: boolean;
 	releasing?: boolean;
+	aborting?: boolean;
 	error?: string | null;
 	onResume: () => void;
 	onRelease: () => void;
+	onAbort?: () => void;
 }
 
 const TAKEOVER_TTL_SECONDS = 15 * 60;
@@ -41,11 +44,15 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 	missionControl,
 	resuming,
 	releasing,
+	aborting,
 	error,
 	onResume,
 	onRelease,
+	onAbort,
 }) => {
+	const t = useTranslations("common");
 	const [remainingSeconds, setRemainingSeconds] = useState(TAKEOVER_TTL_SECONDS);
+	const hasTimedOutRef = useRef(false);
 
 	const expiresAt = useMemo(() => {
 		const iso = missionControl?.takeover_expires_at;
@@ -65,14 +72,23 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 	const challenge = getChallengeLabel(missionControl?.challenge);
 
 	useEffect(() => {
+		// Reset timeout flag when the countdown is still positive so a remount
+		// or a new mission does not immediately trigger the abort handler.
+		if (remainingSeconds > 0) {
+			hasTimedOutRef.current = false;
+		}
 		const tick = () => {
 			const remaining = Math.max(0, (expiresAt.getTime() - Date.now()) / 1000);
 			setRemainingSeconds(remaining);
+			if (remaining <= 0 && !hasTimedOutRef.current) {
+				hasTimedOutRef.current = true;
+				onAbort?.();
+			}
 		};
 		tick();
 		const id = setInterval(tick, 1000);
 		return () => clearInterval(id);
-	}, [expiresAt]);
+	}, [expiresAt, onAbort, remainingSeconds]);
 
 	const isExpired = remainingSeconds <= 0;
 
@@ -84,7 +100,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 				</div>
 				<div className="flex-1 min-w-0">
 					<h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
-						<span>Human Live Takeover</span>
+						<span>{t("human_takeover")}</span>
 						<span className="relative flex h-2 w-2">
 							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
 							<span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600" />
@@ -124,7 +140,7 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 					<div className="mt-3 flex flex-wrap items-center gap-2">
 						<button
 							type="button"
-							disabled={resuming || isExpired}
+							disabled={resuming || isExpired || aborting}
 							onClick={onResume}
 							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-xs font-medium transition-colors"
 						>
@@ -133,17 +149,27 @@ export const HumanLiveTakeoverPopover: React.FC<HumanLiveTakeoverPopoverProps> =
 						</button>
 						<button
 							type="button"
-							disabled={releasing}
+							disabled={releasing || isExpired || aborting}
 							onClick={onRelease}
 							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-600/50 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 disabled:opacity-50 text-xs font-medium transition-colors"
 						>
 							<Hand className="w-3.5 h-3.5" aria-hidden="true" />
 							{releasing ? "Đang giữ quyền..." : "Giữ quyền điều khiển"}
 						</button>
+						<button
+							type="button"
+							data-testid="takeover-abort-btn"
+							disabled={aborting || resuming || releasing}
+							onClick={onAbort}
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-600/50 text-red-700 dark:text-red-400 hover:bg-red-500/20 disabled:opacity-50 text-xs font-medium transition-colors"
+						>
+							<XCircle className="w-3.5 h-3.5" aria-hidden="true" />
+							{aborting ? "Đang hủy..." : "Hủy nhiệm vụ (Abort)"}
+						</button>
 					</div>
 					{isExpired && (
-						<p className="text-[10px] text-amber-700/70 dark:text-amber-400/70 mt-2">
-							Phiên takeover đã hết hạn. Agent sẽ tự động hủy nhiệm vụ nếu không có hành động.
+						<p className="text-[10px] text-red-600 dark:text-red-400 mt-2 font-medium">
+							Phiên takeover đã hết hạn (aborted_timeout). Đang hủy nhiệm vụ...
 						</p>
 					)}
 				</div>

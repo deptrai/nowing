@@ -15,9 +15,8 @@ import type { Announcement } from "@/contracts/types/announcement.types";
 export const announcements: Announcement[] = [
 	{
 		id: "2026-07-05-competitive-intelligence-direction",
-		title: "Nowing's Next Chapter: Open Web Research for AI Agents",
-		description:
-			"Happy Independence Day to everyone celebrating in the United States! We picked this week to share some big news: Nowing is now the open-core open web research platform for AI agents. Your agents research the live web with structured data from Reddit, YouTube, Google Maps, Google Search, and any page on the open web, through one REST API or MCP server. Everything you rely on today keeps working, and self-hosting stays free.",
+		title: "announce_1_title",
+		description: "announce_1_desc",
 		category: "update",
 		date: "2026-07-05T00:00:00Z",
 		startTime: "2026-07-05T00:00:00Z",
@@ -27,18 +26,17 @@ export const announcements: Announcement[] = [
 		spotlight: true,
 		image: {
 			src: "/announcements/competitive-intelligence.png",
-			alt: "Platform data tiles for social, video, maps, search, and the web flowing into a central AI core that outputs research briefs and alerts.",
+			alt: "announce_1_alt",
 		},
 		link: {
-			label: "Read the full announcement",
+			label: "announce_1_link",
 			url: "/changelog",
 		},
 	},
 	{
 		id: "2026-05-31-ai-automations",
-		title: "Introducing AI Automations",
-		description:
-			"Turn prompts into hands-off AI agent workflows. Describe an automation in plain English and Nowing builds it, run it on a schedule, or trigger it the moment a document lands in a folder. Automations work across Notion, Slack, Google Drive, Gmail, GitHub, Linear, Jira and more.",
+		title: "announce_2_title",
+		description: "announce_2_desc",
 		category: "feature",
 		date: "2026-05-31T00:00:00Z",
 		startTime: "2026-05-31T00:00:00Z",
@@ -47,10 +45,10 @@ export const announcements: Announcement[] = [
 		isImportant: false,
 		image: {
 			src: "/announcements/automations.png",
-			alt: "Connector tiles flowing into a central AI core that triggers scheduled and event-driven automations.",
+			alt: "announce_2_alt",
 		},
 		link: {
-			label: "See what's new",
+			label: "announce_2_link",
 			url: "/changelog",
 		},
 	},

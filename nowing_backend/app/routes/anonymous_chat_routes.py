@@ -463,7 +463,7 @@ async def stream_anonymous_chat(
             yield streaming_service.format_finish()
             yield streaming_service.format_done()
 
-        except Exception as e:
+        except Exception as e:  # chat stream error; release quota and format error SSE event
             logger.exception("Anonymous chat stream error")
             await TokenQuotaService.anon_release(session_key, ip_key, request_id)
             _, error_code, _, _, user_message, extra = classify_stream_exception(

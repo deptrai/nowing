@@ -67,7 +67,7 @@ def enqueue_run_memory_extraction_after_commit(
         extract_memory_after_run.delay(_normalize_run_id(run_id))
         record_run_memory_enqueued()
         return True
-    except Exception:
+    except Exception:  # best-effort Celery enqueue; broker failure must not affect capability result
         # Broker unreachable, serialization failure, import-time error: all
         # non-events for the caller. Logged at exception level because a
         # persistently unreachable broker means first-run value is silently not

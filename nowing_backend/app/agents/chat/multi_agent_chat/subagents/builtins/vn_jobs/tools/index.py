@@ -29,8 +29,18 @@ def load_tools(
     *, dependencies: dict[str, Any] | None = None, **kwargs: Any
 ) -> list[BaseTool]:
     d = {**(dependencies or {}), **kwargs}
+    raw_ws = d.get("workspace_id")
+    if raw_ws is None:
+        return []
+    try:
+        ws_id = int(raw_ws)
+        if ws_id <= 0:
+            return []
+    except (ValueError, TypeError):
+        return []
+
     return build_capability_tools(
-        workspace_id=d.get("workspace_id"),
+        workspace_id=ws_id,
         capabilities=_CI_VERBS,
         user_id=d.get("user_id"),
     )

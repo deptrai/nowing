@@ -149,12 +149,12 @@ def mock_leads():
 
 @pytest.fixture
 def client(monkeypatch, mock_leads):
-    import app.routes.leads_routes as leads_routes
+    import app.dependencies.auth as auth_deps
 
     async def _mock_check_perm(*args: Any, **kwargs: Any) -> None:
         return None
 
-    monkeypatch.setattr(leads_routes, "check_permission", _mock_check_perm)
+    monkeypatch.setattr(auth_deps, "check_permission", _mock_check_perm)
 
     from app.routes.leads_routes import router
 
@@ -238,14 +238,14 @@ def test_company_graph_empty_name_returns_400(client):
 
 
 def test_update_lead_status_permission_denied(monkeypatch, mock_leads):
-    import app.routes.leads_routes as leads_routes
+    import app.dependencies.auth as auth_deps
 
     async def _deny(*args, **kwargs):
         from fastapi import HTTPException
 
         raise HTTPException(status_code=403, detail="denied")
 
-    monkeypatch.setattr(leads_routes, "check_permission", _deny)
+    monkeypatch.setattr(auth_deps, "check_permission", _deny)
 
     from app.routes.leads_routes import router
 
@@ -261,5 +261,32 @@ def test_update_lead_status_permission_denied(monkeypatch, mock_leads):
     response = client.patch(
         f"/workspaces/1/leads/{lead_id}/status",
         json={"status": "qualified"},
+    )
+    assert response.status_code == 403
+
+
+def test_phone_verification_result_requires_superuser():
+    """AD-121 verification endpoint is programmatic-only (Story 37.7).
+
+    Ordinary workspace members must not self-assert invalid-contact codes to
+    trigger refunds — the route is gated by ``require_superuser``.
+    """
+    from app.routes.leads_routes import router
+    from app.users import require_superuser
+
+    async def _deny() -> AuthContext:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=403, detail="platform admin only")
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_async_session] = lambda: _FakeSession()
+    app.dependency_overrides[require_superuser] = _deny
+
+    client = TestClient(app)
+    response = client.post(
+        f"/workspaces/1/leads/{uuid4()}/phone-verification-result",
+        json={"error_code": "ZALO_USER_NOT_FOUND"},
     )
     assert response.status_code == 403

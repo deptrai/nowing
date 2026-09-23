@@ -161,7 +161,7 @@ async def _execute_streaming_upload(
             "media_id": media_id,
             "message_id": message_id,
         }
-    except Exception as exc:
+    except Exception as exc:  # telegram media upload failure; abort multipart upload, mark failed, and re-raise
         if upload_id and hasattr(s3_client, "abort_multipart_upload"):
             try:
                 await s3_client.abort_multipart_upload(
@@ -170,7 +170,7 @@ async def _execute_streaming_upload(
                     UploadId=upload_id,
                 )
                 logger.info("Aborted orphaned multipart upload %s on %s", upload_id, target_key)
-            except Exception:
+            except Exception:  # best-effort abort multipart upload failure; log exception
                 logger.exception("Failed to abort multipart upload %s", upload_id)
         logger.error("Failed to stream Telegram media %s to S3: %s", media_id, exc)
         await update_media_record(media_id=media_id, status="failed", error=str(exc))

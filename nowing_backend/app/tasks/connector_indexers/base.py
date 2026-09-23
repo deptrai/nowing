@@ -80,7 +80,8 @@ def parse_date_flexible(date_str: str) -> datetime:
     for fmt in formats:
         try:
             return datetime.strptime(date_str.rstrip("Z"), fmt)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     # Try ISO format as fallback
@@ -172,7 +173,7 @@ async def mark_connector_documents_failed(
 
         if marked:
             await session.commit()
-    except Exception:
+    except Exception:  # DB error marking connector documents failed; rollback and return 0
         with contextlib.suppress(Exception):
             await session.rollback()
         logger.warning(

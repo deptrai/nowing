@@ -1,9 +1,9 @@
 ---
-story_key: "24-4"
+story_key: 24-4-nowing-lead-clipper
 epic: "epic-24"
 story: "24.4"
 title: "Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing"
-status: "done"
+status: done
 baseline_commit: "6ac305274"
 ---
 

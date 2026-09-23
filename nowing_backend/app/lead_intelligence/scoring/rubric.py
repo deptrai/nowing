@@ -87,3 +87,18 @@ def default_icp_criteria() -> dict[str, Any]:
         "target_tech_stack": [],
         "weights": dict(DEFAULT_FIT_WEIGHTS),
     }
+
+
+def blend_location_fit_score(
+    base_fit_score: float,
+    location_match_score: float,
+    location_weight: float = 0.3,
+) -> float:
+    """Blend location match score (0-100) with existing fit score (AC-4).
+
+    Formula: final_fit_score = round(base_fit_score * (1 - location_weight) + location_match_score * location_weight, 1)
+    """
+    w = max(0.0, min(1.0, float(location_weight)))
+    blended = (base_fit_score * (1.0 - w)) + (location_match_score * w)
+    return round(clamp_score(blended), 1)
+

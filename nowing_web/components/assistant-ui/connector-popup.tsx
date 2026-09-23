@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
+import { useTranslations } from "next-intl";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { statusInboxItemsAtom } from "@/atoms/inbox/status-inbox.atom";
@@ -36,6 +37,7 @@ interface ConnectorIndicatorProps {
 
 export const ConnectorIndicator = forwardRef<ConnectorIndicatorHandle, ConnectorIndicatorProps>(
 	(_props, ref) => {
+		const t = useTranslations("assistant");
 		const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 
 		// Real-time document type counts via Zero (updates instantly as docs are indexed)
@@ -189,7 +191,7 @@ export const ConnectorIndicator = forwardRef<ConnectorIndicatorHandle, Connector
 					}}
 					className="max-w-3xl w-[95vw] sm:w-full h-[75vh] sm:h-[85vh] flex flex-col p-0 gap-0 overflow-hidden ring-0 dark:ring-0 [&>button]:right-4 sm:[&>button]:right-12 [&>button]:top-6 sm:[&>button]:top-10 [&>button]:opacity-80 [&>button]:hover:opacity-100 [&>button]:hover:bg-accent [&>button]:hover:text-accent-foreground [&>button>svg]:size-5 select-none"
 				>
-					<DialogTitle className="sr-only">MCP Connectors</DialogTitle>
+					<DialogTitle className="sr-only">{t("mcp_connectors")}</DialogTitle>
 					{/* YouTube Crawler View - shown when adding YouTube videos */}
 					{isYouTubeView && workspaceId ? (
 						<YouTubeCrawlerView workspaceId={workspaceId} onBack={handleBackFromYouTube} />

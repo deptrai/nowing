@@ -125,6 +125,6 @@ async def test_generate_title_all_retries_fail_gracefully():
                 agent_config=None,
             )
 
-            assert title is None
+            assert title == "Cuộc trò chuyện"
             assert usage is None
             assert mock_acompletion.call_count == 2

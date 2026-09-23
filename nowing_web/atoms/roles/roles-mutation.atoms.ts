@@ -1,4 +1,5 @@
 import { atomWithMutation } from "jotai-tanstack-query";
+import { translateToast } from "@/lib/i18n-toast";
 import { toast } from "sonner";
 import type {
 	CreateRoleRequest,
@@ -19,13 +20,21 @@ export const createRoleMutationAtom = atomWithMutation(() => {
 			return rolesApiService.createRole(request);
 		},
 		onSuccess: (_: CreateRoleResponse, request: CreateRoleRequest) => {
-			toast.success("Role created successfully");
+			toast.success(translateToast("toast.role_created"));
+			if (!request?.workspace_id) return;
+			const wsId = request.workspace_id.toString();
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.all(request.workspace_id.toString()),
+				queryKey: cacheKeys.roles.all(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.myAccess(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.all(wsId),
 			});
 		},
 		onError: () => {
-			toast.error("Failed to create role");
+			toast.error(translateToast("toast.role_create_failed"));
 		},
 	};
 });
@@ -37,16 +46,24 @@ export const updateRoleMutationAtom = atomWithMutation(() => {
 			return rolesApiService.updateRole(request);
 		},
 		onSuccess: (_: UpdateRoleResponse, request: UpdateRoleRequest) => {
-			toast.success("Role updated successfully");
+			toast.success(translateToast("toast.role_updated"));
+			if (!request?.workspace_id) return;
+			const wsId = request.workspace_id.toString();
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.all(request.workspace_id.toString()),
+				queryKey: cacheKeys.roles.all(wsId),
 			});
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.byId(request.workspace_id.toString(), request.role_id.toString()),
+				queryKey: cacheKeys.roles.byId(wsId, request.role_id.toString()),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.myAccess(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.all(wsId),
 			});
 		},
 		onError: () => {
-			toast.error("Failed to update role");
+			toast.error(translateToast("toast.role_update_failed"));
 		},
 	};
 });
@@ -58,13 +75,21 @@ export const deleteRoleMutationAtom = atomWithMutation(() => {
 			return rolesApiService.deleteRole(request);
 		},
 		onSuccess: (_: DeleteRoleResponse, request: DeleteRoleRequest) => {
-			toast.success("Role deleted successfully");
+			toast.success(translateToast("toast.role_deleted"));
+			if (!request?.workspace_id) return;
+			const wsId = request.workspace_id.toString();
 			queryClient.invalidateQueries({
-				queryKey: cacheKeys.roles.all(request.workspace_id.toString()),
+				queryKey: cacheKeys.roles.all(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.myAccess(wsId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.members.all(wsId),
 			});
 		},
 		onError: () => {
-			toast.error("Failed to delete role");
+			toast.error(translateToast("toast.role_delete_failed"));
 		},
 	};
 });

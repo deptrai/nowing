@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type {
 	Sequence,
@@ -26,6 +27,7 @@ import type {
 import { sequenceApiService } from "@/lib/apis/sequence-api.service";
 
 export default function CampaignAnalyticsPage() {
+	const t = useTranslations("automations");
 	const params = useParams();
 	const workspaceId = Number(params?.workspace_id);
 	const sequenceId = String(params?.sequence_id || "");
@@ -85,8 +87,7 @@ export default function CampaignAnalyticsPage() {
 							{sequence?.name || "Chi tiết & Báo cáo Chiến dịch"}
 						</h1>
 						<p className="text-xs text-muted-foreground">
-							{sequence?.description ||
-								"Theo dõi chuyển đổi, phản hồi và ngân sách gửi email theo thời gian thực"}
+							{sequence?.description || t("campaigns_track_desc")}
 						</p>
 					</div>
 				</div>
@@ -96,7 +97,7 @@ export default function CampaignAnalyticsPage() {
 						type="button"
 						onClick={loadData}
 						className="p-2 border rounded-lg hover:bg-accent text-muted-foreground transition-colors"
-						title="Làm mới"
+						title={t("auto_l_m_m_i")}
 					>
 						<RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
 					</button>

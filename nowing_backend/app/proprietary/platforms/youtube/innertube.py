@@ -227,7 +227,7 @@ async def post_innertube(
                 holder and page.status in _BLOCK_STATUSES and attempt < _MAX_ROTATIONS
             ):
                 return None
-        except Exception as e:
+        except Exception as e:  # request/proxy error; rotate session and retry
             logger.warning("InnerTube POST %s failed: %s", base_url, e)
             if not (holder and attempt < _MAX_ROTATIONS):
                 return None
@@ -275,7 +275,7 @@ async def fetch_html(url: str, *, cookies: dict[str, str] | None = None) -> str 
                 holder and page.status in _BLOCK_STATUSES and attempt < _MAX_ROTATIONS
             ):
                 break
-        except Exception as e:
+        except Exception as e:  # request/proxy error; rotate session and retry
             logger.warning("HTML GET %s failed: %s", url, e)
             if not (holder and attempt < _MAX_ROTATIONS):
                 break
@@ -313,6 +313,6 @@ async def _fetch_html_stealthy(url: str) -> str | None:
         if page.status == 200:
             return page.html_content
         logger.warning("HTML GET %s tier=stealthy returned %s", url, page.status)
-    except Exception as e:
+    except Exception as e:  # stealthy browser fetch failure; return None
         logger.warning("HTML GET %s tier=stealthy failed: %s", url, e)
     return None

@@ -366,7 +366,7 @@ class OptOutService:
                 await dnc_service.invalidate_global_cache()
             else:
                 await dnc_service.invalidate_workspace_cache(workspace_id)
-        except Exception as exc:
+        except Exception as exc:  # best-effort DNC cache invalidation; opt-out rows already persisted
             logger.warning("DNC cache invalidation failed for opt-out: %s", exc)
 
         return OptOutResult(

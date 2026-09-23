@@ -114,7 +114,7 @@ async def _reconcile_pending_credit_purchases() -> None:
                         db_session, str(checkout_session.id)
                     )
                     failed_count += 1
-            except Exception:
+            except Exception:  # per-item failure; rollback and continue reconciliation batch
                 logger.exception(
                     "Stripe credit reconciliation failed while processing checkout session %s",
                     checkout_session_id,

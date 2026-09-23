@@ -376,3 +376,65 @@ async def test_get_admin_credits_ledger_reason_underscore_escaped(
     data = res.json()
     assert len(data) == 1
     assert data[0]["reason"] == "supp_ort case"
+
+
+@pytest.mark.asyncio
+async def test_post_admin_credits_adjust_rejected_for_non_superuser(
+    client_as_regular_user: AsyncClient,
+    db_workspace: Workspace,
+) -> None:
+    """Only superusers can call POST /admin/credits/adjust."""
+    res = await client_as_regular_user.post(
+        "/api/v1/admin/credits/adjust",
+        headers={"Idempotency-Key": f"idem-{uuid.uuid4()}"},
+        json={
+            "workspace_id": db_workspace.id,
+            "amount_credits": 100,
+            "direction": "CREDIT",
+            "reason": "Should be rejected",
+            "ticket_ref": "TICKET-403",
+        },
+    )
+    assert res.status_code == 403, res.text
+
+
+@pytest.mark.asyncio
+async def test_post_admin_credits_adjust_debit_not_consuming_quota(
+    admin_client: AsyncClient,
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+) -> None:
+    """AC-2: DEBIT adjustments are not counted against the daily credit quota."""
+    db_workspace.credit_micros_balance = 2_000 * 10_000
+    await db_session.flush()
+
+    # First credit uses most of the quota.
+    res = await admin_client.post(
+        "/api/v1/admin/credits/adjust",
+        headers={"Idempotency-Key": f"idem-{uuid.uuid4()}"},
+        json={
+            "workspace_id": db_workspace.id,
+            "amount_credits": 900,
+            "direction": "CREDIT",
+            "reason": "First credit near quota",
+            "ticket_ref": "TICKET-900",
+        },
+    )
+    assert res.status_code == 201, res.text
+
+    # A large debit should still be allowed even though the quota is almost exhausted.
+    res = await admin_client.post(
+        "/api/v1/admin/credits/adjust",
+        headers={"Idempotency-Key": f"idem-{uuid.uuid4()}"},
+        json={
+            "workspace_id": db_workspace.id,
+            "amount_credits": 500,
+            "direction": "DEBIT",
+            "reason": "Debit does not consume quota",
+            "ticket_ref": "TICKET-DEBIT",
+        },
+    )
+    assert res.status_code == 201, res.text
+    data = res.json()
+    assert data["direction"] == "DEBIT"
+    assert data["new_balance_credits"] == 2400

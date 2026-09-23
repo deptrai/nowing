@@ -312,7 +312,7 @@ async def index_github_repos(
                     }
                 )
 
-            except Exception as repo_err:
+            except Exception as repo_err:  # per-repo phase 1 collection failure; log error, increment failed, and continue
                 logger.error(
                     f"Error in Phase 1 for repository {repo_full_name}: {repo_err}",
                     exc_info=True,
@@ -362,7 +362,7 @@ async def index_github_repos(
                 # Chunk the full digest content for granular search
                 try:
                     chunks_data = await create_document_chunks(digest.content)
-                except Exception as chunk_err:
+                except Exception as chunk_err:  # repository chunking failure; fallback to simple chunking
                     logger.error(
                         f"Failed to chunk repository {repo_full_name}: {chunk_err}"
                     )
@@ -405,7 +405,7 @@ async def index_github_repos(
                     )
                     await session.commit()
 
-            except Exception as repo_err:
+            except Exception as repo_err:  # per-repo processing failure; attempt marking document failed and continue
                 logger.error(
                     f"Error processing repository {repo_full_name}: {repo_err}",
                     exc_info=True,
@@ -417,7 +417,7 @@ async def index_github_repos(
                     # Commit now so the failed status survives a later rollback or
                     # crash; otherwise the doc stays stuck in pending/processing.
                     await session.commit()
-                except Exception as status_error:
+                except Exception as status_error:  # mark document failed commit failure; rollback and continue
                     logger.error(
                         f"Failed to update document status to failed: {status_error}"
                     )
@@ -439,7 +439,7 @@ async def index_github_repos(
             logger.info(
                 "Successfully committed all GitHub document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # final commit failure; rollback if duplicate hash, else re-raise
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
                 or "uniqueviolationerror" in str(e).lower()
@@ -485,7 +485,7 @@ async def index_github_repos(
         errors.append(f"Database error: {db_err}")
         return documents_processed, "; ".join(errors) if errors else str(db_err)
 
-    except Exception as e:
+    except Exception as e:  # github indexing failure; rollback, log failure, and return error tuple
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

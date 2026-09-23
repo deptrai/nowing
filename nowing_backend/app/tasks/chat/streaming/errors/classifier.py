@@ -14,6 +14,8 @@ from app.agents.chat.multi_agent_chat.main_agent.middleware.busy_mutex import (
 from app.agents.chat.runtime.errors import BusyError
 from app.services.llm_error_adapter import LLMErrorCategory, adapt_llm_exception
 
+logger = logging.getLogger(__name__)
+
 TURN_CANCELLING_INITIAL_DELAY_MS = 200
 TURN_CANCELLING_BACKOFF_FACTOR = 2
 TURN_CANCELLING_MAX_DELAY_MS = 1500
@@ -79,7 +81,8 @@ def _parse_error_payload(message: str) -> dict[str, Any] | None:
             parsed = json.loads(candidate)
             if isinstance(parsed, dict):
                 return parsed
-        except Exception:
+        except Exception as exc:  # candidate JSON decode failure; suppress and try next candidate
+            logger.debug("Suppressed %r", exc)
             continue
     return None
 
@@ -96,7 +99,8 @@ def _extract_provider_error_code(parsed: dict[str, Any] | None) -> int | None:
             if value is None:
                 continue
             return int(value)
-        except Exception:
+        except Exception as exc:  # invalid int conversion for error code; suppress and try next candidate
+            logger.debug("Suppressed %r", exc)
             continue
     return None
 

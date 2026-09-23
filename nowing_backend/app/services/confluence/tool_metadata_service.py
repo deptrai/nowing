@@ -93,7 +93,7 @@ class ConfluenceToolMetadataService:
             await client._get_valid_token()
             await client.close()
             return False
-        except Exception as e:
+        except Exception as e:  # catch connector health check failure, log and proceed to flag expired
             logger.warning(
                 "Confluence connector %s health check failed: %s", connector.id, e
             )
@@ -102,7 +102,7 @@ class ConfluenceToolMetadataService:
                 flag_modified(connector, "config")
                 await self._db_session.commit()
                 await self._db_session.refresh(connector)
-            except Exception:
+            except Exception:  # best-effort persistence of auth_expired flag to DB
                 logger.warning(
                     "Failed to persist auth_expired for connector %s",
                     connector.id,
@@ -145,7 +145,7 @@ class ConfluenceToolMetadataService:
                     ]
                     await client.close()
                     fetched_context = True
-                except Exception as e:
+                except Exception as e:  # best-effort upstream spaces fetch; continue with partial metadata
                     logger.warning(
                         "Failed to fetch Confluence spaces for connector %s: %s",
                         connector.id,
@@ -192,7 +192,7 @@ class ConfluenceToolMetadataService:
             )
             page_data = await client.get_page(page.page_id)
             await client.close()
-        except Exception as e:
+        except Exception as e:  # check for auth expiry in error string or log failure
             error_str = str(e).lower()
             if (
                 "401" in error_str

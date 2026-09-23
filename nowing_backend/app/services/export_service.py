@@ -560,7 +560,7 @@ async def build_export_zip(
             skipped_docs=skipped_docs,
         )
 
-    except Exception:
+    except Exception:  # export failure → cleanup temp file then re-raise for caller
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
         raise
@@ -568,7 +568,9 @@ async def build_export_zip(
 
 def _memory_title(memory: Memory) -> str:
     """Stable memory title for index/log entries."""
-    content = (memory.content or "").replace("\n", " ").strip()
+    from app.services.okf.serializer import _memory_plaintext
+
+    content = _memory_plaintext(memory).replace("\n", " ").strip()
     if not content:
         return "Memory"
     if len(content) <= 80:
@@ -588,7 +590,7 @@ def _maybe_decrypt_pii(value: str | None) -> str | None:
     if enc.is_encrypted(value):
         try:
             return enc.decrypt(value)
-        except Exception:
+        except Exception:  # decrypt failure → None so caller treats value as absent
             return None
     return value
 

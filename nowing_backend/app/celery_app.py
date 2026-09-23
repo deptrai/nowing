@@ -20,7 +20,11 @@ try:
 except ImportError:  # pragma: no cover - optional OTel dependency
     trace = None  # type: ignore[assignment]
 
+import logging
+
 from app.config import config
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -73,8 +77,8 @@ def _record_queue_latency(task=None, **_kwargs):
             scheduled=scheduled,
             operation=operation,
         )
-    except Exception:
-        pass
+    except Exception as exc:  # queue latency metric recording failure; suppress exception
+        logger.debug("Suppressed %r", exc)
 
 
 @task_postrun.connect
@@ -97,8 +101,8 @@ def _set_celery_span_attributes(task=None, **_kwargs):
         latency_ms = getattr(request, "nowing_queue_latency_ms", None)
         if latency_ms is not None:
             span.set_attribute("celery.queue.latency_ms", latency_ms)
-    except Exception:
-        pass
+    except Exception as exc:  # span attribute attachment failure; suppress exception
+        logger.debug("Suppressed %r", exc)
 
 
 async def _run_scraper_rule_subscriber() -> None:
@@ -109,9 +113,9 @@ async def _run_scraper_rule_subscriber() -> None:
     try:
         redis = await get_redis_client()
         await scraper_rule_pubsub.start_rule_subscriber(redis)
-    except Exception:
+    except Exception as exc:  # scraper rule pubsub subscriber start failure; fallback to TTL cache
         # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
-        pass
+        logger.debug("Suppressed %r", exc)
 
 
 def _start_scraper_rule_subscriber_thread() -> None:
@@ -211,6 +215,9 @@ celery_app = Celery(
         "app.tasks.celery_tasks.obsidian_tasks",
         "app.tasks.celery_tasks.schedule_checker_task",
         "app.tasks.celery_tasks.social_xactions_ingest",
+        "app.tasks.celery_tasks.social_stream_worker",
+        "app.tasks.celery_tasks.signal_radar_tasks",
+        "app.tasks.celery_tasks.decision_telemetry_task",
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
         "app.tasks.celery_tasks.stale_meeting_minutes_cleanup_task",
@@ -223,6 +230,8 @@ celery_app = Celery(
         "app.tasks.celery_tasks.run_memory_extraction_task",
         "app.tasks.celery_tasks.gateway_tasks",
         "app.tasks.celery_tasks.enrichment_tasks",
+        "app.tasks.celery_tasks.schedule_mission_tick",
+        "app.tasks.celery_tasks.takeover_sweep_task",
         "app.tasks.phone_waterfall_worker",
         "app.etl_pipeline.cache.eviction.task",
         "app.indexing_pipeline.cache.eviction.task",
@@ -236,6 +245,10 @@ celery_app = Celery(
         "app.tasks.celery_tasks.partner_payout_reconciliation_task",
         "app.tasks.lead_scrapers",
         "app.tasks.celery_tasks.broadcast_tasks",
+        "app.tasks.celery_tasks.health_probe_task",
+        "app.tasks.celery_tasks.health_retention_task",
+        "app.tasks.celery_tasks.workspace_health_tasks",
+        "app.tasks.celery_tasks.bulk_op_tasks",
     ],
 )
 
@@ -244,6 +257,7 @@ celery_app = Celery(
 # Connectors queue: slow, long-running indexing tasks (Notion, Gmail, web crawl, …)
 CONNECTORS_QUEUE = f"{CELERY_TASK_DEFAULT_QUEUE}.connectors"
 LEAD_SCRAPERS_QUEUE = "nowing.lead_scrapers"
+HEALTH_QUEUE = "nowing.health"
 
 # Celery configuration
 celery_app.conf.update(
@@ -295,6 +309,18 @@ celery_app.conf.update(
             "queue": LEAD_SCRAPERS_QUEUE
         },
         "run_platform_scrape_task": {"queue": LEAD_SCRAPERS_QUEUE},
+        # Health probes → dedicated queue so frequent 30s probes do not starve
+        # user-facing tasks (Story 25.7).
+        "health_probe_infra": {"queue": HEALTH_QUEUE},
+        "health_probe_model": {"queue": HEALTH_QUEUE},
+        "health_probe_scraper": {"queue": HEALTH_QUEUE},
+        "health_probe_connector": {"queue": HEALTH_QUEUE},
+        "health_probe_proxy": {"queue": HEALTH_QUEUE},
+        "health_probe_research": {"queue": HEALTH_QUEUE},
+        "health_probe_messaging": {"queue": HEALTH_QUEUE},
+        "health_probe_payment": {"queue": HEALTH_QUEUE},
+        "health_probe_storage": {"queue": HEALTH_QUEUE},
+        "health_probe_xactions": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
@@ -327,6 +353,35 @@ celery_app.conf.beat_schedule = {
         "task": "check_social_monitored_targets",
         "schedule": crontab(minute="*"),
         "options": {"expires": 50},
+    },
+    # Consume `stream:social:raw_posts` into `social_posts` + `Lead` records.
+    # Each beat enqueues a short-lived consumer task that reads a batch and
+    # ACKs messages; actual throughput is bounded by the Celery worker pool.
+    "process-social-stream": {
+        "task": "process_social_stream",
+        "schedule": 30.0,
+        "options": {"expires": 25},
+    },
+    # Consume `stream:telegram:raw_events` for purchase intent via the
+    # Aho-Corasick pre-filter (Story 37.1 / AD-115, AC-2/AC-3).
+    "process-telegram-intent-stream": {
+        "task": "process_telegram_intent_stream",
+        "schedule": 30.0,
+        "options": {"expires": 25},
+    },
+    # Every-six-hours high-intent company scan: hiring surges + newly
+    # incorporated tax codes -> SignalEvent at intent_score >= 0.75 (AC-1).
+    "scan-high-intent-companies": {
+        "task": "scan_high_intent_companies_periodic",
+        "schedule": crontab(hour="*/6", minute="23"),
+        "options": {"expires": 3600},
+    },
+    # Decision daily-cost alert check (Story 39.7) — fires the deduped
+    # AdminHealthAlert even when nobody is viewing the admin dashboard.
+    "evaluate-decision-daily-cost-alert": {
+        "task": "evaluate_decision_daily_cost_alert",
+        "schedule": crontab(minute="*/15"),
+        "options": {"expires": 300},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup
@@ -403,6 +458,18 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour="3", minute="41"),
         "options": {"expires": 600},
     },
+    # Clean up expired bulk ops idempotency keys (Story 29.4 / AD-54)
+    "cleanup-bulk-op-idempotency-keys": {
+        "task": "cleanup_expired_idempotency_keys",
+        "schedule": crontab(hour="3", minute="50"),
+        "options": {"expires": 600},
+    },
+    # Roll up workspace health & adoption daily metrics (Story 29.2 / AD-52)
+    "aggregate-workspace-health-daily": {
+        "task": "aggregate_workspace_health_daily",
+        "schedule": crontab(hour="0", minute="5"),  # Daily at 00:05 UTC
+        "options": {"expires": 3600},
+    },
     # Prune the ETL parse cache (TTL + size budget) once daily, off-peak.
     "evict-etl-cache": {
         "task": "evict_etl_cache",
@@ -427,6 +494,79 @@ celery_app.conf.beat_schedule = {
     # Evaluate and dispatch due drip outreach sequences (Story 24.1 / AD-39).
     "evaluate-sequences": {
         "task": "evaluate_sequences",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
+    },
+    # Fire due scheduled DSH missions (Story 6.10).
+    "scheduled-dsh-mission-tick": {
+        "task": "schedule_mission_tick",
+        "schedule": crontab(
+            minute=f"*/{max(1, getattr(config, 'SCHEDULED_DSH_MISSION_TICK_SECONDS', 60) // 60)}"
+        ),
+        "options": {"expires": 50},
+    },
+    # Third-Party Health Probes (Story 25.7)
+    "health-probe-infra": {
+        "task": "health_probe_infra",
+        "schedule": 30.0,  # Every 30 seconds
+        "options": {"expires": 30},
+    },
+    "health-probe-model": {
+        "task": "health_probe_model",
+        "schedule": crontab(minute="*/2"),  # Every 2 minutes
+        "options": {"expires": 60},
+    },
+    "health-probe-scraper": {
+        "task": "health_probe_scraper",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-connector": {
+        "task": "health_probe_connector",
+        "schedule": crontab(minute="*/15"),  # Every 15 minutes
+        "options": {"expires": 300},
+    },
+    "health-probe-proxy": {
+        "task": "health_probe_proxy",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-research": {
+        "task": "health_probe_research",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-messaging": {
+        "task": "health_probe_messaging",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-payment": {
+        "task": "health_probe_payment",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-storage": {
+        "task": "health_probe_storage",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    "health-probe-xactions": {
+        "task": "health_probe_xactions",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "options": {"expires": 120},
+    },
+    # Purge stale admin health history daily (30-day retention by default).
+    "cleanup-admin-health-history": {
+        "task": "cleanup_admin_health_history",
+        "schedule": crontab(hour="2", minute="0"),
+        "options": {"expires": 600},
+    },
+    # Sweep expired human takeover missions every minute (Story 32.1).
+    # Transitions waiting_for_human missions past their 15-minute TTL to
+    # cancelled/aborted_timeout and releases Redis takeover locks.
+    "dsh-sweep-expired-takeovers": {
+        "task": "dsh_sweep_expired_takeovers",
         "schedule": crontab(minute="*"),
         "options": {"expires": 50},
     },

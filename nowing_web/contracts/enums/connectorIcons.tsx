@@ -76,6 +76,8 @@ export const getConnectorIcon = (connectorType: EnumConnectorName | string, clas
 		case EnumConnectorName.CIRCLEBACK_CONNECTOR:
 			return <Image src="/connectors/circleback.svg" alt="Circleback" {...imgProps} />;
 		case EnumConnectorName.MCP_CONNECTOR:
+		case EnumConnectorName.EXA_MCP_CONNECTOR:
+		case EnumConnectorName.XACTIONS_MCP_CONNECTOR:
 			return (
 				<span
 					aria-hidden="true"

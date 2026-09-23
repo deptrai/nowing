@@ -81,7 +81,7 @@ def get_google_flow():
             scopes=SCOPES,
             redirect_uri=REDIRECT_URI,
         )
-    except Exception as e:
+    except Exception as e:  # OAuth flow init failure → surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to create Google flow: {e!s}"
         ) from e
@@ -120,7 +120,7 @@ async def connect_calendar(
             state=state_encoded,
         )
         return {"auth_url": auth_url}
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Google OAuth: {e!s}"
         ) from e
@@ -183,7 +183,7 @@ async def reauth_calendar(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # upstream failure → surface as typed HTTP error
         logger.error(f"Failed to initiate Calendar re-auth: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to initiate Calendar re-auth: {e!s}"
@@ -209,7 +209,7 @@ async def calendar_callback(
                     state_manager = get_state_manager()
                     data = state_manager.validate_state(state)
                     space_id = data.get("space_id")
-                except Exception:
+                except Exception:  # best-effort state decode in error handler
                     # If state is invalid, we'll redirect without space_id
                     logger.warning("Failed to validate state in error handler")
 
@@ -235,7 +235,7 @@ async def calendar_callback(
             data = state_manager.validate_state(state)
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as e:  # malformed input → typed error / sentinel
             raise HTTPException(
                 status_code=400, detail=f"Invalid state parameter: {e!s}"
             ) from e
@@ -369,7 +369,7 @@ async def calendar_callback(
         except HTTPException:
             await session.rollback()
             raise
-        except Exception as e:
+        except Exception as e:  # rollback + re-raise as typed HTTP error
             logger.error(f"Failed to create search source connector: {e!s}")
             await session.rollback()
             raise HTTPException(
@@ -377,7 +377,7 @@ async def calendar_callback(
                 detail=f"Failed to create search source connector: {e!s}",
             ) from e
 
-    except Exception as e:
+    except Exception as e:  # OAuth callback completion failure → surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to complete Google OAuth: {e!s}"
         ) from e

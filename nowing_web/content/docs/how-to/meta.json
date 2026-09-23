@@ -1,6 +1,17 @@
 {
 	"title": "How to",
-	"pages": ["mcp-server", "zero-sync", "realtime-collaboration", "web-search"],
+	"pages": [
+		"mcp-server",
+		"zero-sync",
+		"realtime-collaboration",
+		"web-search",
+		"projects-and-skills",
+		"web-builder",
+		"presentation-studio",
+		"lead-intelligence",
+		"automations",
+		"usage-credits"
+	],
 	"icon": "Compass",
 	"defaultOpen": false
 }

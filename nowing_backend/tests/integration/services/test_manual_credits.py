@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy import delete, select
@@ -301,3 +302,47 @@ async def test_adjust_credits_concurrent_quota_guard(
             if user is not None:
                 await session.delete(user)
             await session.commit()
+
+
+async def test_adjust_credits_locks_and_timeout_are_applied(
+    db_session: AsyncSession, db_user: User, db_workspace: Workspace
+) -> None:
+    """Redis Redlock, Postgres FOR UPDATE, and lock timeout are exercised."""
+    fake_redis = AsyncMock()
+    fake_redis.set = AsyncMock(return_value=True)
+    fake_redis.eval = AsyncMock(return_value=1)
+
+    captured_calls: list[str] = []
+    original_execute = db_session.execute
+
+    async def _capture_execute(stmt, *args, **kwargs):
+        sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        captured_calls.append(sql)
+        return await original_execute(stmt, *args, **kwargs)
+
+    db_session.execute = _capture_execute
+
+    with patch("app.services.manual_credit_service.get_redis_client", AsyncMock(return_value=fake_redis)):
+        svc = ManualCreditAdjustmentService(db_session)
+        await svc.adjust_credits(
+            workspace_id=db_workspace.id,
+            amount_credits=10,
+            direction="CREDIT",
+            reason="Lock verification test",
+            ticket_ref="TICKET-LOCK",
+            actor_admin_id=db_user.id,
+            idempotency_key=f"test-lock-{uuid.uuid4()}",
+        )
+
+    # Redis lock acquired and released
+    assert fake_redis.set.called
+    call_kwargs = fake_redis.set.call_args.kwargs
+    assert call_kwargs.get("nx") is True
+    assert fake_redis.eval.called
+
+    # Postgres lock timeout and advisory lock observed
+    assert any("SET LOCAL lock_timeout" in sql for sql in captured_calls)
+    assert any("pg_advisory_xact_lock" in sql for sql in captured_calls)
+
+    # FOR UPDATE is present on the workspace select
+    assert any("FOR UPDATE" in sql for sql in captured_calls)

@@ -37,7 +37,7 @@ async def _cleanup_stale_meeting_minutes() -> None:
     """Mark PENDING/PROCESSING meeting-minutes rows with no heartbeat as FAILED."""
     try:
         redis_client = get_redis_client()
-    except Exception as exc:
+    except Exception as exc:  # redis client init failure → abort stale check early
         logger.warning("Cannot reach Redis for meeting-minutes stale check: %s", exc)
         return
 
@@ -60,7 +60,7 @@ async def _cleanup_stale_meeting_minutes() -> None:
             try:
                 if not redis_client.exists(_get_heartbeat_key(mm_id)):
                     stale_ids.append(mm_id)
-            except Exception as exc:
+            except Exception as exc:  # redis heartbeat query failure → abort batch to prevent false positives
                 logger.warning(
                     "Redis heartbeat check failed for meeting minutes %s: %s",
                     mm_id,

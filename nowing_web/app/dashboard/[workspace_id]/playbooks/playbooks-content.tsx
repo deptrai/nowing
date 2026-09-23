@@ -15,6 +15,7 @@ import {
 	TrendingUp,
 	Users,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { playbooksListAtom } from "@/atoms/playbooks/playbooks-query.atoms";
 import { Badge } from "@/components/ui/badge";
@@ -32,13 +33,13 @@ interface PlaybooksContentProps {
 	workspaceId: number;
 }
 
-const CATEGORIES = [
-	{ id: "all", label: "Tất cả Playbooks", icon: Sparkles },
-	{ id: "realestate", label: "Bất Động Sản", icon: Building2 },
-	{ id: "recruitment", label: "Tuyển Dụng Nhân Sự", icon: Users },
-	{ id: "b2b", label: "B2B Sales", icon: TrendingUp },
-	{ id: "ecommerce", label: "E-Commerce & Bán Lẻ", icon: ShoppingBag },
-];
+const CATEGORIES_CONFIG = [
+	{ id: "all", labelKey: "cat_all", icon: Sparkles },
+	{ id: "realestate", labelKey: "cat_realestate", icon: Building2 },
+	{ id: "recruitment", labelKey: "cat_recruitment", icon: Users },
+	{ id: "b2b", labelKey: "cat_b2b", icon: TrendingUp },
+	{ id: "ecommerce", labelKey: "cat_ecommerce", icon: ShoppingBag },
+] as const;
 
 const DEFAULT_CREDIT_COST = 25;
 
@@ -65,15 +66,18 @@ function formatCompactNumber(value: number): string {
 	return String(value);
 }
 
-function formatRunCount(count: number | null | undefined): string {
+function formatRunCount(
+	count: number | null | undefined,
+	t: (key: any, options?: any) => string
+): string {
 	const safeCount = count ?? 0;
 	if (safeCount === 0) {
-		return "0 lượt chạy";
+		return t("run_count_zero");
 	}
 	if (safeCount < 1000) {
-		return `${safeCount} lượt chạy`;
+		return t("run_count_under_1k", { count: safeCount });
 	}
-	return `${formatCompactNumber(safeCount)}+ lượt chạy`;
+	return t("run_count_over_1k", { count: formatCompactNumber(safeCount) });
 }
 
 // ponytail: naive diacritic fold for Vietnamese client-side search.
@@ -88,6 +92,7 @@ function normalizeVietnamese(input: string): string {
 }
 
 export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
+	const t = useTranslations("playbooks");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const { data, isLoading, error } = useAtomValue(playbooksListAtom(selectedCategory));
 	const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookSummary | null>(null);
@@ -131,9 +136,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 	if (error) {
 		return (
 			<div className="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center">
-				<h2 className="text-base font-semibold text-destructive">
-					Không thể tải danh sách Playbooks
-				</h2>
+				<h2 className="text-base font-semibold text-destructive">{t("error_load_title")}</h2>
 				<p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
 			</div>
 		);
@@ -146,29 +149,26 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 				<div>
 					<div className="flex items-center gap-2">
 						<h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-							Chợ Kịch Bản Tự Động (Playbook Marketplace)
+							{t("marketplace_title")}
 						</h1>
 						<Badge
 							variant="outline"
 							className="border-primary/40 bg-primary/10 text-primary text-xs font-semibold"
 						>
-							Official & Verified
+							{t("badge_official_verified")}
 						</Badge>
 					</div>
-					<p className="mt-1 text-sm text-muted-foreground">
-						Khám phá các quy trình cào dữ liệu, lọc khách hàng tiềm năng và tiếp cận đa kênh đã được
-						tối ưu hóa cho thị trường Việt Nam.
-					</p>
+					<p className="mt-1 text-sm text-muted-foreground">{t("marketplace_desc")}</p>
 				</div>
 				<Badge variant="secondary" className="self-start md:self-auto font-mono text-xs px-3 py-1">
-					{playbooks.length} templates
+					{t("templates_count", { count: playbooks.length })}
 				</Badge>
 			</div>
 
 			{/* Search & Category Tabs */}
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex flex-wrap items-center gap-2">
-					{CATEGORIES.map((cat) => {
+					{CATEGORIES_CONFIG.map((cat) => {
 						const Icon = cat.icon;
 						const isSelected = selectedCategory === cat.id;
 						return (
@@ -184,7 +184,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 								}`}
 							>
 								<Icon className="h-3.5 w-3.5" aria-hidden="true" />
-								{cat.label}
+								{t(cat.labelKey)}
 							</Button>
 						);
 					})}
@@ -197,7 +197,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 					/>
 					<Input
 						type="search"
-						placeholder="Tìm kiếm kịch bản..."
+						placeholder={t("search_placeholder")}
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 						className="h-9 pl-9 text-xs"
@@ -209,21 +209,15 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 			{playbooks.length === 0 ? (
 				<div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-12 text-center">
 					<BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" aria-hidden />
-					<h3 className="mt-4 text-base font-semibold text-foreground">
-						Chưa có Playbook nào trong workspace này
-					</h3>
-					<p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
-						Lưu một Automation thành Playbook để tái sử dụng kịch bản cho cả team.
-					</p>
+					<h3 className="mt-4 text-base font-semibold text-foreground">{t("empty_title")}</h3>
+					<p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">{t("empty_desc")}</p>
 				</div>
 			) : filteredPlaybooks.length === 0 ? (
 				<div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-12 text-center">
 					<BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" aria-hidden />
-					<h3 className="mt-4 text-base font-semibold text-foreground">
-						Không tìm thấy Playbook phù hợp
-					</h3>
+					<h3 className="mt-4 text-base font-semibold text-foreground">{t("no_results_title")}</h3>
 					<p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
-						Thử thay đổi bộ lọc ngành hoặc từ khóa tìm kiếm để khám phá các kịch bản khác.
+						{t("no_results_desc")}
 					</p>
 				</div>
 			) : (
@@ -278,11 +272,11 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 											<span className="font-semibold text-foreground">
 												~{playbook.estimated_credits_cost ?? DEFAULT_CREDIT_COST}
 											</span>{" "}
-											credits/lần
+											{t("credits_per_run")}
 										</div>
 										<div className="flex items-center gap-1">
 											<Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden="true" />
-											<span>{formatRunCount(playbook.run_count)}</span>
+											<span>{formatRunCount(playbook.run_count, t)}</span>
 										</div>
 									</div>
 
@@ -292,7 +286,7 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 										onClick={() => setSelectedPlaybook(playbook)}
 									>
 										<Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
-										Khởi Tạo Kịch Bản
+										{t("instantiate_btn")}
 									</Button>
 								</CardFooter>
 							</Card>

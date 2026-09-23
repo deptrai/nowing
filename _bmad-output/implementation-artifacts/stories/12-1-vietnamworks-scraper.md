@@ -1,4 +1,9 @@
 ---
+story_key: 12-1-vietnamworks-scraper
+status: done
+---
+
+---
 title: Story 12.1 — VietnamWorks Scraper
 epic: 12
 story: 1

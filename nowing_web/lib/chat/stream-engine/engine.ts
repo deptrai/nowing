@@ -2,6 +2,7 @@ import type { AppendMessage, ThreadMessageLike } from "@assistant-ui/react";
 import { getDefaultStore } from "jotai";
 import type { Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
+import { translateToast } from "@/lib/i18n-toast";
 import { agentFlagsAtom } from "@/atoms/agent/agent-flags-query.atom";
 import { disabledToolsAtom } from "@/atoms/agent-tools/agent-tools.atoms";
 import {
@@ -189,7 +190,7 @@ async function handleChatFailure({
 			const currentUser = jotaiStore.get(currentUserAtom).data;
 			jotaiStore.set(setPremiumAlertForThreadAtom, {
 				threadId,
-				message: normalized.userMessage,
+				message: translateToast(normalized.userMessage),
 				userId: currentUser?.id ?? null,
 			});
 		}
@@ -211,11 +212,11 @@ async function handleChatFailure({
 				text: normalized.assistantMessage,
 			});
 		}
-		toast.error(normalized.userMessage);
+		toast.error(translateToast(normalized.userMessage));
 		return;
 	}
 
-	toast.error(normalized.userMessage);
+	toast.error(translateToast(normalized.userMessage));
 }
 
 async function handleStreamTerminalError({
@@ -368,7 +369,7 @@ export async function startNewChat(ctx: EngineContext, message: AppendMessage): 
 		selection.filesystem_mode === "desktop_local_folder" &&
 		(!selection.local_filesystem_mounts || selection.local_filesystem_mounts.length === 0)
 	) {
-		toast.error("Select a local folder before using Local Folder mode.");
+		toast.error(translateToast("chat.select_local_folder"));
 		return;
 	}
 
@@ -1117,7 +1118,7 @@ export async function regenerateChat(
 ): Promise<void> {
 	const { workspaceId, threadId, priorMessages } = ctx;
 	if (!threadId) {
-		toast.error("Cannot regenerate: no active chat thread");
+		toast.error(translateToast("chat.cannot_regenerate"));
 		return;
 	}
 	const streamThreadId = threadId;

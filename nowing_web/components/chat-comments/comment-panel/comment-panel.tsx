@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { CommentComposer } from "../comment-composer/comment-composer";
@@ -19,6 +20,7 @@ export function CommentPanel({
 	maxHeight,
 	variant = "desktop",
 }: CommentPanelProps) {
+	const t = useTranslations("chatMessages");
 	const handleCommentSubmit = (content: string) => {
 		onCreateComment(content);
 	};
@@ -40,7 +42,7 @@ export function CommentPanel({
 			>
 				<div className="flex items-center gap-2 text-sm text-muted-foreground">
 					<div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-					Loading comments...
+					{t("loading_comments")}
 				</div>
 			</div>
 		);
@@ -92,8 +94,8 @@ export function CommentPanel({
 				<CommentComposer
 					members={members}
 					membersLoading={membersLoading}
-					placeholder="Comment or @mention"
-					submitLabel="Comment"
+					placeholder={t("comment_mention_placeholder")}
+					submitLabel={t("comment_submit")}
 					isSubmitting={isSubmitting}
 					onSubmit={handleCommentSubmit}
 					autoFocus={!hasThreads}

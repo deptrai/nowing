@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { MoveLeftIcon, Plus, Search, Trash2 } from "lucide-react";
 import { motion, type Variants } from "motion/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -35,13 +36,14 @@ import { Tilt } from "@/components/ui/tilt";
 import { cn } from "@/lib/utils";
 
 // Define the form schema with Zod
-const workspaceFormSchema = z.object({
-	name: z.string().min(1, "Name is required"),
-	description: z.string().optional(),
-});
+const makeWorkspaceFormSchema = (t: (k: string) => string) =>
+	z.object({
+		name: z.string().min(1, t("name_required")),
+		description: z.string().optional(),
+	});
 
 // Define the type for the form values
-type WorkspaceFormValues = z.infer<typeof workspaceFormSchema>;
+type WorkspaceFormValues = z.infer<ReturnType<typeof makeWorkspaceFormSchema>>;
 
 interface WorkspaceFormProps {
 	onSubmit?: (data: { name: string; description?: string }) => void;
@@ -60,6 +62,8 @@ export function WorkspaceForm({
 }: WorkspaceFormProps) {
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 	const router = useRouter();
+	const t = useTranslations("common");
+	const workspaceFormSchema = makeWorkspaceFormSchema(t);
 
 	// Initialize the form with React Hook Form and Zod validation
 	const form = useForm<WorkspaceFormValues>({
@@ -119,7 +123,7 @@ export function WorkspaceForm({
 			<motion.div className="flex items-center justify-between" variants={itemVariants}>
 				<div className="flex flex-col space-y-2">
 					<h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-						{isEditing ? "Edit Workspace" : "Create Workspace"}
+						{isEditing ? t("workspace_edit_title") : t("workspace_create_title")}
 					</h2>
 				</div>
 				<Button
@@ -163,7 +167,7 @@ export function WorkspaceForm({
 								<span className="p-3 rounded-full bg-blue-100 dark:bg-blue-950/50">
 									<Search className="size-6 text-blue-500" aria-hidden="true" />
 								</span>
-								<h3 className="text-xl font-semibold">Workspace</h3>
+								<h3 className="text-xl font-semibold">{t("workspace_label")}</h3>
 							</div>
 							{isEditing && onDelete && (
 								<AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -178,24 +182,18 @@ export function WorkspaceForm({
 									</AlertDialogTrigger>
 									<AlertDialogContent>
 										<AlertDialogHeader>
-											<AlertDialogTitle>Are you sure?</AlertDialogTitle>
-											<AlertDialogDescription>
-												This action cannot be undone. This will permanently delete your search
-												space.
-											</AlertDialogDescription>
+											<AlertDialogTitle>{t("workspace_are_you_sure")}</AlertDialogTitle>
+											<AlertDialogDescription>{t("workspace_delete_desc")}</AlertDialogDescription>
 										</AlertDialogHeader>
 										<AlertDialogFooter>
-											<AlertDialogCancel>Cancel</AlertDialogCancel>
-											<AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+											<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+											<AlertDialogAction onClick={handleDelete}>{t("delete")}</AlertDialogAction>
 										</AlertDialogFooter>
 									</AlertDialogContent>
 								</AlertDialog>
 							)}
 						</div>
-						<p className="text-muted-foreground">
-							A workspace is your personal workspace. Connect external sources, upload documents,
-							take notes, and get work done with AI agents.
-						</p>
+						<p className="text-muted-foreground">{t("workspace_info_desc")}</p>
 					</div>
 				</Tilt>
 			</motion.div>
@@ -209,11 +207,11 @@ export function WorkspaceForm({
 						name="name"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Name</FormLabel>
+								<FormLabel>{t("workspace_name_label")}</FormLabel>
 								<FormControl>
-									<Input placeholder="Enter workspace name" {...field} />
+									<Input placeholder={t("workspace_name_placeholder")} {...field} />
 								</FormControl>
-								<FormDescription>A unique name for your workspace.</FormDescription>
+								<FormDescription>{t("workspace_name_desc")}</FormDescription>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -225,14 +223,15 @@ export function WorkspaceForm({
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>
-									Description <span className="text-muted-foreground font-normal">(optional)</span>
+									{t("workspace_desc_label")}{" "}
+									<span className="text-muted-foreground font-normal">
+										{t("workspace_desc_optional")}
+									</span>
 								</FormLabel>
 								<FormControl>
-									<Input placeholder="Enter workspace description" {...field} />
+									<Input placeholder={t("workspace_desc_placeholder")} {...field} />
 								</FormControl>
-								<FormDescription>
-									A brief description of what this workspace will be used for.
-								</FormDescription>
+								<FormDescription>{t("workspace_desc_desc")}</FormDescription>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -241,7 +240,7 @@ export function WorkspaceForm({
 					<div className="flex justify-end pt-2">
 						<Button type="submit" className="w-full sm:w-auto">
 							<Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-							{isEditing ? "Update" : "Create"}
+							{isEditing ? t("workspace_update_btn") : t("workspace_create_btn")}
 						</Button>
 					</div>
 				</form>

@@ -188,7 +188,7 @@ def check_domain_mx(domain: str, timeout: float = 3.0) -> bool:
         resolver.timeout = timeout
         answers = resolver.resolve(clean_domain, "MX")
         return bool(answers and len(answers) > 0)
-    except Exception as e:
+    except Exception as e:  # DNS MX lookup failure → False so pattern generation skips MX-verified guesses
         logger.debug(f"DNS MX resolution failed for domain '{clean_domain}': {e}")
         return False
 

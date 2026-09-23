@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 
@@ -11,7 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.config import config
-from app.db import Memory, MemorySourceType, MemoryType, get_async_session
+from app.db import (
+    Memory,
+    MemorySourceType,
+    MemoryType,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequireWorkspaceAccess
 from app.schemas.voice_profile import (
     GenerateDraftsRequest,
     GenerateDraftsResponse,
@@ -23,6 +31,7 @@ from app.schemas.voice_profile import (
     VoiceProfileListItem,
     VoiceProfileListResponse,
 )
+from app.services.memory.encryption import MemoryEncryptionService
 from app.services.social_copilot.draft_generator import ViralDraftGenerator
 from app.services.social_copilot.mechanics_deconstructor import (
     ViralMechanicsDeconstructor,
@@ -30,7 +39,6 @@ from app.services.social_copilot.mechanics_deconstructor import (
 from app.services.social_copilot.outlier_detector import OutlierDetector
 from app.services.social_copilot.voice_learner import VoiceProfileLearner
 from app.users import get_auth_context
-from app.utils.rbac import check_workspace_access
 
 router = APIRouter(prefix="/api/workspaces/{workspace_id}")
 logger = logging.getLogger(__name__)
@@ -46,10 +54,9 @@ async def create_voice_profile(
     request: VoiceAnalysisRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> VoiceProfile:
     """Analyze writing sample (>= 100 words) and persist learned VoiceProfile in memories table."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     learner = VoiceProfileLearner()
     try:
@@ -80,9 +87,19 @@ async def create_voice_profile(
         },
         tags=["voice_profile", "social_copilot"],
     )
+    # Encrypt Tier-1 fields before the insert so the row is never persisted
+    # as plaintext; refresh() reloads ciphertext, so decrypt it back for the
+    # response serialization below.
+    encryption = MemoryEncryptionService.from_env()
+    if encryption.is_enabled():
+        encryption.encrypt_memory(memory)
+
     session.add(memory)
     await session.commit()
     await session.refresh(memory)
+
+    if encryption.is_enabled():
+        encryption.decrypt_memory(memory)
 
     profile.id = memory.id
     profile.created_at = memory.created_at
@@ -94,10 +111,9 @@ async def list_voice_profiles(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> VoiceProfileListResponse:
     """List stored voice profiles for the workspace with tenant isolation (AD-31)."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     stmt = (
         select(Memory)
@@ -112,6 +128,14 @@ async def list_voice_profiles(
     result = await session.execute(stmt)
     memories = result.scalars().all()
 
+    encryption = MemoryEncryptionService.from_env()
+    if encryption.is_enabled():
+        for m in memories:
+            # Corrupt/rotated rows silently fall back to the default persona
+            # rather than aborting the listing.
+            with contextlib.suppress(Exception):
+                encryption.decrypt_memory(m)
+
     items: list[VoiceProfileListItem] = []
     for m in memories:
         try:
@@ -125,7 +149,7 @@ async def list_voice_profiles(
                     created_at=m.created_at,
                 )
             )
-        except Exception:
+        except Exception:  # fallback to raw content item on parsing error
             items.append(
                 VoiceProfileListItem(
                     id=m.id,
@@ -145,10 +169,9 @@ async def activate_voice_profile(
     profile_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> VoiceProfile:
     """Set the specified voice profile as active exclusively across workspace & client."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     # First, deactivate all other profiles in this workspace/client
     all_profiles_stmt = select(Memory).where(
@@ -157,13 +180,18 @@ async def activate_voice_profile(
         any_(Memory.tags) == "voice_profile",
     )
     all_res = await session.execute(all_profiles_stmt)
+    encryption = MemoryEncryptionService.from_env()
     for mem in all_res.scalars().all():
         try:
+            if encryption.is_enabled():
+                encryption.decrypt_memory(mem)
             d = json.loads(mem.content)
             d["is_active"] = mem.id == profile_id
             mem.content = json.dumps(d)
-        except Exception:
-            pass
+            if encryption.is_enabled():
+                encryption.encrypt_memory(mem)
+        except Exception as exc:  # best-effort memory encryption; continue unencrypted on failure
+            logger.debug("Suppressed %r", exc)
 
     stmt = select(Memory).where(
         Memory.id == profile_id,
@@ -178,15 +206,19 @@ async def activate_voice_profile(
         )
 
     try:
+        if encryption.is_enabled():
+            encryption.decrypt_memory(memory)
         data = json.loads(memory.content)
         data["is_active"] = True
         memory.content = json.dumps(data)
+        if encryption.is_enabled():
+            encryption.encrypt_memory(memory)
         await session.commit()
         await session.refresh(memory)
         profile = VoiceProfile(**data)
         profile.id = memory.id
         return profile
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update profile: {e}",
@@ -200,10 +232,9 @@ async def get_outlier_posts(
     min_multiplier: float = Query(default=3.0, ge=1.0),
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> OutlierPostsResponse:
     """Find viral outlier posts (>= 3x author baseline) with Redis caching and graceful fallback."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     try:
         detector = OutlierDetector(session=session)
@@ -219,7 +250,7 @@ async def get_outlier_posts(
             total=len(outliers),
             degraded=False,
         )
-    except Exception as e:
+    except Exception as e:  # fallback degraded response on outlier detection error
         logger.warning(f"Outlier detection degraded for workspace {workspace_id}: {e}")
         return OutlierPostsResponse(
             items=[],
@@ -237,10 +268,9 @@ async def manual_post_ingest(
     request: ManualIngestRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> ManualIngestResponse:
     """Manual URL/Text ingestion endpoint for degraded scrapers or unsupported platforms (AC 5)."""
-    await check_workspace_access(session, auth, workspace_id)
-
     deconstructor = ViralMechanicsDeconstructor()
     sanitized_text = await deconstructor.sanitize_and_redact(request.raw_text)
     elements = await deconstructor.deconstruct(sanitized_text)
@@ -262,10 +292,9 @@ async def generate_viral_drafts(
     request: GenerateDraftsRequest,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> GenerateDraftsResponse:
     """Generate 3 platform-constrained, voice-matched viral post drafts."""
-    await check_workspace_access(session, auth, workspace_id)
-
     client_id = getattr(auth.user, "client_id", None) or "default"
     # Resolve voice profile
     voice: VoiceProfile
@@ -281,9 +310,12 @@ async def generate_viral_drafts(
         mem = res.scalar_one_or_none()
         if mem:
             try:
+                encryption = MemoryEncryptionService.from_env()
+                if encryption.is_enabled():
+                    encryption.decrypt_memory(mem)
                 voice = VoiceProfile(**json.loads(mem.content))
                 voice.id = mem.id
-            except Exception:
+            except Exception:  # fallback default persona on json parse failure
                 voice = VoiceProfile(
                     profile_name="Default Persona", tone="authoritative, pragmatic"
                 )
@@ -307,20 +339,26 @@ async def generate_viral_drafts(
         selected_mem = None
         for m in all_mems:
             try:
+                encryption = MemoryEncryptionService.from_env()
+                if encryption.is_enabled():
+                    encryption.decrypt_memory(m)
                 d = json.loads(m.content)
                 if d.get("is_active"):
                     selected_mem = m
                     break
-            except Exception:
-                pass
+            except Exception as exc:  # best-effort candidate memory parsing
+                logger.debug("Suppressed %r", exc)
         if not selected_mem and all_mems:
             selected_mem = all_mems[0]
 
         if selected_mem:
             try:
+                encryption = MemoryEncryptionService.from_env()
+                if encryption.is_enabled():
+                    encryption.decrypt_memory(selected_mem)
                 voice = VoiceProfile(**json.loads(selected_mem.content))
                 voice.id = selected_mem.id
-            except Exception:
+            except Exception:  # fallback default persona on json parse failure
                 voice = VoiceProfile(
                     profile_name="Default Persona", tone="authoritative, pragmatic"
                 )

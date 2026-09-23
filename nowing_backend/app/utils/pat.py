@@ -61,7 +61,7 @@ async def _touch_last_used(token_id: int) -> None:
                 .values(last_used_at=datetime.now(UTC))
             )
             await session.commit()
-    except Exception:
+    except Exception:  # best-effort touch last_used_at; doesn't fail caller auth flow
         logger.exception("Failed to update PAT last_used_at for token %s", token_id)
 
 

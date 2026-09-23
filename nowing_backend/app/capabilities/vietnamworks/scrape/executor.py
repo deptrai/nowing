@@ -94,7 +94,7 @@ def build_scrape_executor(scrape_fn: Optional[ScrapeFn] = None) -> Executor:  # 
                 degradation_reason="timeout",
                 next_action=_next_action("timeout"),
             )
-        except Exception:
+        except Exception:  # unexpected fetch/parse error → structured degraded failure response
             return ScrapeOutput(
                 items=items,
                 cost_micros=0,

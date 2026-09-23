@@ -15,6 +15,11 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import (
+    RequirePermission,
+    RequirePermissionFromBody,
+    RequirePermissionFromEntity,
+)
 from app.schemas import LogCreate, LogRead, LogUpdate
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
@@ -27,21 +32,18 @@ async def create_log(
     log: LogCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromBody(
+            Permission.LOGS_READ.value,
+            "You don't have permission to access logs in this workspace",
+        )
+    ),
 ):
     """
     Create a new log entry.
     Note: This is typically called internally. Requires LOGS_READ permission (since logs are usually system-generated).
     """
     try:
-        # Check if the user has access to the workspace
-        await check_permission(
-            session,
-            auth,
-            log.workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to access logs in this workspace",
-        )
-
         db_log = Log(**log.model_dump())
         session.add(db_log)
         await session.commit()
@@ -49,7 +51,7 @@ async def create_log(
         return db_log
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to create log: {e!s}"
@@ -127,7 +129,7 @@ async def read_logs(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch logs: {e!s}"
         ) from e
@@ -138,6 +140,14 @@ async def read_log(
     log_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Log",
+            "log_id",
+            Permission.LOGS_READ.value,
+            "You don't have permission to read logs in this workspace",
+        )
+    ),
 ):
     """
     Get a specific log by ID.
@@ -150,19 +160,10 @@ async def read_log(
         if not log:
             raise HTTPException(status_code=404, detail="Log not found")
 
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            log.workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to read logs in this workspace",
-        )
-
         return log
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch log: {e!s}"
         ) from e
@@ -174,6 +175,14 @@ async def update_log(
     log_update: LogUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Log",
+            "log_id",
+            Permission.LOGS_READ.value,
+            "You don't have permission to access logs in this workspace",
+        )
+    ),
 ):
     """
     Update a log entry.
@@ -186,15 +195,6 @@ async def update_log(
         if not db_log:
             raise HTTPException(status_code=404, detail="Log not found")
 
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            db_log.workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to access logs in this workspace",
-        )
-
         # Update only provided fields
         update_data = log_update.model_dump(exclude_unset=True)
         for field, value in update_data.items():
@@ -205,7 +205,7 @@ async def update_log(
         return db_log
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to update log: {e!s}"
@@ -217,6 +217,14 @@ async def delete_log(
     log_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "Log",
+            "log_id",
+            Permission.LOGS_DELETE.value,
+            "You don't have permission to delete logs in this workspace",
+        )
+    ),
 ):
     """
     Delete a log entry.
@@ -229,21 +237,12 @@ async def delete_log(
         if not db_log:
             raise HTTPException(status_code=404, detail="Log not found")
 
-        # Check permission for the workspace
-        await check_permission(
-            session,
-            auth,
-            db_log.workspace_id,
-            Permission.LOGS_DELETE.value,
-            "You don't have permission to delete logs in this workspace",
-        )
-
         await session.delete(db_log)
         await session.commit()
         return {"message": "Log deleted successfully"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # rollback + re-raise as typed HTTP error
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to delete log: {e!s}"
@@ -256,21 +255,18 @@ async def get_logs_summary(
     hours: int = 24,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LOGS_READ.value,
+            "You don't have permission to read logs in this workspace",
+        )
+    ),
 ):
     """
     Get a summary of logs for a workspace in the last X hours.
     Requires LOGS_READ permission for the workspace.
     """
     try:
-        # Check permission
-        await check_permission(
-            session,
-            auth,
-            workspace_id,
-            Permission.LOGS_READ.value,
-            "You don't have permission to read logs in this workspace",
-        )
-
         # Calculate time window
         since = datetime.utcnow().replace(microsecond=0) - timedelta(hours=hours)
 
@@ -360,7 +356,7 @@ async def get_logs_summary(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # surface as typed HTTP error
         raise HTTPException(
             status_code=500, detail=f"Failed to generate logs summary: {e!s}"
         ) from e

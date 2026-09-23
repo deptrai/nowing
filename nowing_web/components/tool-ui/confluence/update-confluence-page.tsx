@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -121,6 +122,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<UpdateConfluencePageInterruptContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 
 	const actionArgs = interruptData.action_requests[0]?.args ?? {};
@@ -198,26 +200,30 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-							? "Confluence Page Update Rejected"
+							? t("confluence_update_rejected")
 							: phase === "processing" || phase === "complete"
-								? "Confluence Page Update Approved"
-								: "Update Confluence Page"}
+								? t("confluence_update_approved")
+								: t("confluence_update_title")}
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={hasPanelEdits ? "Updating page with your changes" : "Updating page"}
+							text={
+								hasPanelEdits
+									? t("confluence_updating_page_with_changes")
+									: t("confluence_updating_page")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{hasPanelEdits ? "Page updated with your changes" : "Page updated"}
+							{hasPanelEdits ? t("common_page_updated_with_changes") : t("common_page_updated")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Page update was cancelled</p>
-					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("confluence_update_cancelled")}
 						</p>
+					) : (
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -245,7 +251,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -261,7 +267,9 @@ function ApprovalCard({
 							<>
 								{context?.account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Confluence Account</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("confluence_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{context.account.name}
 										</div>
@@ -270,7 +278,9 @@ function ApprovalCard({
 
 								{page && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Current Page</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("confluence_current_page")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 											<div className="font-medium">{page.page_title}</div>
 											{page.body && (
@@ -340,7 +350,9 @@ function ApprovalCard({
 						)}
 					</>
 				) : (
-					<p className="text-sm text-muted-foreground italic pb-3">No changes proposed</p>
+					<p className="text-sm text-muted-foreground italic pb-3">
+						{t("common_no_changes_proposed")}
+					</p>
 				)}
 			</div>
 
@@ -356,7 +368,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -371,7 +383,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -382,10 +394,11 @@ function ApprovalCard({
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Confluence authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("confluence_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -396,11 +409,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-destructive">
-					Additional Confluence permissions required
+					{t("confluence_insufficient_perms")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -412,10 +426,11 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to update Confluence page</p>
+				<p className="text-sm font-semibold text-destructive">{t("confluence_update_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -426,10 +441,13 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function NotFoundCard({ result }: { result: NotFoundResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Page not found</p>
+				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+					{t("confluence_page_not_found")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -440,11 +458,12 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Confluence page updated successfully"}
+					{result.message || t("confluence_updated_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -456,11 +475,13 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 						rel="noopener noreferrer"
 						className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
 					>
-						Open in Confluence
+						{t("confluence_open_in_confluence")}
 					</a>
 				) : (
 					<div>
-						<span className="font-medium text-muted-foreground">Page ID: </span>
+						<span className="font-medium text-muted-foreground">
+							{t("confluence_page_id_label")}{" "}
+						</span>
 						<span>{result.page_id}</span>
 					</div>
 				)}

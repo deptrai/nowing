@@ -33,8 +33,10 @@ from app.db import (
 from app.lead_intelligence.dnc.service import DncCheckResult
 from app.services.billing_service import BillingService
 from app.services.phone_waterfall_service import (
+    PHONE_CACHE_TTL_SECONDS,
     PHONE_RESOLUTION_COST_MICROS,
     PhoneWaterfallService,
+    WaterfallTierResult,
     get_carrier_name,
     hash_phone,
     mask_phone,
@@ -235,6 +237,18 @@ class TestWaterfallTierExecution:
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
             patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
                 new_callable=AsyncMock,
             ),
@@ -291,6 +305,18 @@ class TestWaterfallTierExecution:
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
             patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
                 new_callable=AsyncMock,
             ),
@@ -343,6 +369,18 @@ class TestWaterfallTierExecution:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
             patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
                 new_callable=AsyncMock,
@@ -412,6 +450,18 @@ class TestWaterfallTierExecution:
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
             patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
                 new_callable=AsyncMock,
             ),
@@ -470,6 +520,18 @@ class TestWaterfallDncCompliance:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
             patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
                 new_callable=AsyncMock,
@@ -536,6 +598,18 @@ class TestWaterfallDncCompliance:
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
             patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
                 new_callable=AsyncMock,
             ),
@@ -598,6 +672,18 @@ class TestWaterfallDncCompliance:
 
         with (
             patch("app.services.phone_waterfall_service.get_redis", return_value=None),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
             patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
                 new_callable=AsyncMock,
@@ -690,6 +776,18 @@ class TestAutoRefundAndCaching:
             patch(
                 "app.services.phone_waterfall_service.get_redis",
                 return_value=fake_redis,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
             ),
             patch(
                 "app.services.phone_waterfall_service.wallet_credit.check_balance",
@@ -934,3 +1032,233 @@ class TestPhoneWaterfall60sTimeout:
         assert result.phone is None
         assert result.raw_response.get("reason") == "no_text_for_carrier_hlr"
         assert elapsed < 2.0
+
+
+# ─────────────────────────────────────────────────────────────
+# 8. AD-121 Invalid-Contact Refund Hook (Story 37.7)
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+class TestInvalidContactRefundHook:
+    """resolve_lead_phone → AD-121 auto-refund wiring (Story 37.7)."""
+
+    @staticmethod
+    def _lead(workspace_id: int = 1) -> Lead:
+        return Lead(
+            id=uuid4(),
+            workspace_id=workspace_id,
+            client_id="bds",
+            source="batdongsan",
+            company_name="Refund Test Co",
+            source_url="https://batdongsan.com.vn/ban-nha-pr777",
+        )
+
+    @staticmethod
+    def _dead_number_tier_result() -> WaterfallTierResult:
+        return WaterfallTierResult(
+            phone="0908123456",
+            provider="batdongsan",
+            tier=1,
+            confidence=0.98,
+            carrier="MobiFone",
+            raw_response={
+                "phone": "0908***456",
+                "hlr_status": "TELCO_NUMBER_UNALLOCATED",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_invalid_code_refunds_marks_log_and_skips_cache(self):
+        session = AsyncMock()
+        session.add = MagicMock()
+        lead = self._lead()
+        session.get.return_value = lead
+        user_id = uuid4()
+        fake_redis = AsyncMock()
+        fake_redis.get.return_value = None  # cache miss → live waterfall
+
+        refund_calls: list[dict] = []
+
+        async def _fake_auto_refund(self, **kwargs):
+            refund_calls.append(kwargs)
+            # Emulate the real side-effect: mark the flushed log row refunded
+            for call in session.add.call_args_list:
+                obj = call.args[0]
+                if isinstance(obj, PhoneWaterfallLog) and (obj.cost_micros or 0) > 0:
+                    obj.status = "refunded"
+                    obj.refunded_at = datetime.now(UTC)
+            return {"refunded": True, "status": "refunded"}
+
+        service = PhoneWaterfallService(session)
+        with (
+            patch(
+                "app.services.phone_waterfall_service.get_redis",
+                return_value=fake_redis,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
+            patch.object(
+                service,
+                "_resolve_tier_1_batdongsan",
+                new_callable=AsyncMock,
+                return_value=self._dead_number_tier_result(),
+            ),
+            patch.object(
+                BillingService, "auto_refund_invalid_contact", _fake_auto_refund
+            ),
+        ):
+            result = await service.resolve_lead_phone(
+                workspace_id=1,
+                client_id="bds",
+                lead_id=lead.id,
+                user_id=user_id,
+            )
+
+        # status stays "success" — refund outcome lives on refund_status
+        assert result.status == "success"
+        assert result.refund_status == "refunded"
+        # Refund invoked with the just-flushed log id + whitelisted code
+        assert len(refund_calls) == 1
+        assert "waterfall_log_id" in refund_calls[0]
+        assert refund_calls[0]["error_code"] == "TELCO_NUMBER_UNALLOCATED"
+        # Log row marked refunded (via emulated side-effect)
+        log = next(
+            c.args[0]
+            for c in session.add.call_args_list
+            if isinstance(c.args[0], PhoneWaterfallLog)
+        )
+        assert log.status == "refunded"
+        # Dead number must never enter the 30-day Redis cache (redis.set is
+        # also used for the resolution lock — filter on the cache TTL).
+        cache_writes = [
+            c
+            for c in fake_redis.set.await_args_list
+            if c.kwargs.get("ex") == PHONE_CACHE_TTL_SECONDS
+        ]
+        assert cache_writes == []
+
+    @pytest.mark.asyncio
+    async def test_refund_review_result_skips_cache(self):
+        session = AsyncMock()
+        session.add = MagicMock()
+        lead = self._lead()
+        session.get.return_value = lead
+        fake_redis = AsyncMock()
+        fake_redis.get.return_value = None
+
+        async def _fake_auto_refund(self, **kwargs):
+            return {
+                "refunded": False,
+                "status": "refund_review",
+                "routed_to_admin_desk": True,
+            }
+
+        service = PhoneWaterfallService(session)
+        with (
+            patch(
+                "app.services.phone_waterfall_service.get_redis",
+                return_value=fake_redis,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
+            patch.object(
+                service,
+                "_resolve_tier_1_batdongsan",
+                new_callable=AsyncMock,
+                return_value=self._dead_number_tier_result(),
+            ),
+            patch.object(
+                BillingService, "auto_refund_invalid_contact", _fake_auto_refund
+            ),
+        ):
+            result = await service.resolve_lead_phone(
+                workspace_id=1,
+                client_id="bds",
+                lead_id=lead.id,
+                user_id=uuid4(),
+            )
+
+        assert result.status == "success"
+        assert result.refund_status == "refund_review"
+        # Review-routed dead number must not be cached either
+        cache_writes = [
+            c
+            for c in fake_redis.set.await_args_list
+            if c.kwargs.get("ex") == PHONE_CACHE_TTL_SECONDS
+        ]
+        assert cache_writes == []
+
+    @pytest.mark.asyncio
+    async def test_charge_commit_failure_skips_refund(self):
+        session = AsyncMock()
+        session.add = MagicMock()
+        lead = self._lead()
+        session.get.return_value = lead
+
+        refund_calls: list[dict] = []
+
+        async def _fake_auto_refund(self, **kwargs):
+            refund_calls.append(kwargs)
+            return {"refunded": True, "status": "refunded"}
+
+        service = PhoneWaterfallService(session)
+        with (
+            patch(
+                "app.services.phone_waterfall_service.get_redis",
+                return_value=None,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.reserve_credit",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.commit_reserved_credit",
+                new_callable=AsyncMock,
+                side_effect=Exception("commit failed"),
+            ),
+            patch(
+                "app.services.phone_waterfall_service.wallet_credit.release_credit",
+                new_callable=AsyncMock,
+            ),
+            patch.object(
+                service,
+                "_resolve_tier_1_batdongsan",
+                new_callable=AsyncMock,
+                return_value=self._dead_number_tier_result(),
+            ),
+            patch.object(
+                BillingService, "auto_refund_invalid_contact", _fake_auto_refund
+            ),
+        ):
+            result = await service.resolve_lead_phone(
+                workspace_id=1,
+                client_id="bds",
+                lead_id=lead.id,
+                user_id=uuid4(),
+            )
+
+        # No committed charge → no refund attempt at all
+        assert refund_calls == []
+        assert result.status == "success"
+        assert result.refund_status is None

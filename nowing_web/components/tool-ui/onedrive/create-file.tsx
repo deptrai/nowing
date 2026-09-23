@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, FileIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -87,6 +88,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<OneDriveCreateFileContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -178,18 +180,20 @@ function ApprovalCard({
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? "Creating file with your changes" : "Creating file"}
+							text={pendingEdits ? t("creating_file_edits") : t("creating_file")}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{pendingEdits ? "File created with your changes" : "File created"}
+							{pendingEdits ? t("file_created_edits") : t("file_created")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">File creation was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("tu_file_creation_was_cancelled")}
+						</p>
 					) : (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
+							{t("tu_requires_your_approval_to")}
 						</p>
 					)}
 				</div>
@@ -230,11 +234,12 @@ function ApprovalCard({
 								{accounts.length > 0 && (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">
-											OneDrive Account <span className="text-destructive">*</span>
+											{t("tu_onedrive_account")}
+											<span className="text-destructive">*</span>
 										</p>
 										<Select value={selectedAccountId} onValueChange={handleAccountChange}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select an account" />
+												<SelectValue placeholder={t("tu_select_an_account")} />
 											</SelectTrigger>
 											<SelectContent>
 												{validAccounts.map((account) => (
@@ -256,26 +261,28 @@ function ApprovalCard({
 								)}
 
 								<div className="space-y-2">
-									<p className="text-xs font-medium text-muted-foreground">File Type</p>
+									<p className="text-xs font-medium text-muted-foreground">{t("tu_file_type")}</p>
 									<Select value="docx" disabled>
 										<SelectTrigger className="w-full">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="docx">Word Document (.docx)</SelectItem>
+											<SelectItem value="docx">{t("tu_word_document_docx")}</SelectItem>
 										</SelectContent>
 									</Select>
 								</div>
 
 								{selectedAccountId && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Parent Folder</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("tu_parent_folder")}
+										</p>
 										<Select value={parentFolderId} onValueChange={setParentFolderId}>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="OneDrive Root" />
+												<SelectValue placeholder={t("tu_onedrive_root")} />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="__root__">OneDrive Root</SelectItem>
+												<SelectItem value="__root__">{t("tu_onedrive_root")}</SelectItem>
 												{availableParentFolders.map((folder) => (
 													<SelectItem key={folder.folder_id} value={folder.folder_id}>
 														{folder.name}
@@ -285,7 +292,7 @@ function ApprovalCard({
 										</Select>
 										{availableParentFolders.length === 0 && (
 											<p className="text-xs text-muted-foreground">
-												No folders found. File will be created at OneDrive root.
+												{t("tu_no_folders_found_file_3")}
 											</p>
 										)}
 									</div>
@@ -333,7 +340,8 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={!canApprove || isPanelOpen}
 							>
-								Approve <CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
+								{t("tu_approve")}
+								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
 						{allowedDecisions.includes("reject") && (
@@ -347,7 +355,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("tu_reject")}
 							</Button>
 						)}
 					</div>
@@ -358,10 +366,11 @@ function ApprovalCard({
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to create OneDrive file</p>
+				<p className="text-sm font-semibold text-destructive">{t("onedrive_create_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -372,10 +381,11 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">OneDrive authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("onedrive_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -386,11 +396,12 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "OneDrive file created successfully"}
+					{result.message || t("onedrive_create_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -407,7 +418,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in OneDrive
+							{t("onedrive_open_in_onedrive")}
 						</a>
 					</div>
 				)}

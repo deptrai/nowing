@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, CreditCard, DollarSign, Wallet } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -13,12 +14,33 @@ import { type UsageDateRange, usageApiService } from "@/lib/apis/usage-api.servi
 import { AutoExtractBudgetCard } from "./auto-extract-budget-card";
 import { UsageDateRangePicker } from "./date-range-picker";
 import { OutcomeRoiMetricsCards } from "./outcome-roi-metrics-cards";
-import { PerTurnUsageSection } from "./per-turn-usage-section";
 import { PromoCodeClaimCard } from "./promo-code-claim-card";
 import { UsageBreakdown } from "./usage-breakdown";
-import { UsageChart } from "./usage-chart";
 import { UsageServiceDonutChart } from "./usage-service-donut-chart";
 import { UsageTransactions } from "./usage-transactions";
+
+const UsageChart = dynamic(() => import("./usage-chart").then((m) => ({ default: m.UsageChart })), {
+	ssr: false,
+	loading: () => <Skeleton className="h-[240px] w-full" />,
+});
+
+const PerTurnUsageSection = dynamic(
+	() => import("./per-turn-usage-section").then((m) => ({ default: m.PerTurnUsageSection })),
+	{
+		ssr: false,
+		loading: () => (
+			<Card>
+				<CardHeader>
+					<Skeleton className="h-6 w-40" />
+					<Skeleton className="h-4 w-64" />
+				</CardHeader>
+				<CardContent>
+					<Skeleton className="h-[260px] w-full" />
+				</CardContent>
+			</Card>
+		),
+	}
+);
 
 function formatUsd(micros: number): string {
 	const dollars = micros / 1_000_000;

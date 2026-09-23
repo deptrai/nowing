@@ -70,7 +70,7 @@ async def is_spawn_paused(workspace_id: int | None) -> bool:
                 with contextlib.suppress(Exception):
                     await close()  # type: ignore[misc]
         return bool(raw)
-    except Exception:
+    except Exception:  # Redis spawn_paused flag check failure; fail open
         logger.warning(
             "spawn_paused check failed for workspace_id=%s; failing open.",
             workspace_id,

@@ -1,18 +1,14 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import {
 	type DockTabId,
 	dockActiveTabAtom,
-	dockExpandedAtom,
 	dockOpenAtom,
 	dockTabUpdatesAtom,
 	dockVerboseModeAtom,
-	dockWidthAtom,
 } from "@/atoms/layout/dock.atom";
-import { canvasLeftWidthAtom } from "@/atoms/leads/leads-canvas.atoms";
-import { useSidebarContextSafe } from "@/components/layout/hooks";
 import type { ThreadParsedContext } from "@/components/leads/thread-intent-detector";
 import type { DshMission, DshMissionControl } from "@/contracts/types/dsh.types";
 import type { Lead } from "@/contracts/types/leads.types";
@@ -21,7 +17,6 @@ import { cn } from "@/lib/utils";
 import { type ThreadMessageLike, useDockTabs } from "../hooks/useDockTabs";
 import { DockBody } from "./DockBody";
 import { DockHeader } from "./DockHeader";
-import { DockResizer } from "./DockResizer";
 import { FloatingReopenPill } from "./FloatingReopenPill";
 import { MobileDockSheet } from "./MobileDockSheet";
 
@@ -81,12 +76,8 @@ export function ContextualDock({
 	const isMobile = useIsMobile();
 	const [isOpen] = useAtom(dockOpenAtom);
 	const [activeTab, setActiveTab] = useAtom(dockActiveTabAtom);
-	const [storedWidth] = useAtom(dockWidthAtom);
-	const [isExpanded] = useAtom(dockExpandedAtom);
-	const [leftWidth] = useAtom(canvasLeftWidthAtom);
 	const [verbose] = useAtom(dockVerboseModeAtom);
 	const [updates, setUpdates] = useAtom(dockTabUpdatesAtom);
-	const sidebarContext = useSidebarContextSafe();
 	const {
 		tabs,
 		activeTab: effectiveActiveTab,
@@ -115,21 +106,6 @@ export function ContextualDock({
 			}));
 		}
 	}, [effectiveActiveTab, updates, setUpdates]);
-
-	const expandedWidth = useMemo(() => {
-		if (typeof window === "undefined") return storedWidth;
-		const iconRailWidth = 56;
-		const sidebarExpandedWidth = 240;
-		const sidebarCollapsedWidth = 51;
-		const resizerWidth = 6;
-		const sidebarWidth = sidebarContext?.isCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth;
-		return Math.max(
-			840,
-			window.innerWidth - iconRailWidth - sidebarWidth - leftWidth - resizerWidth
-		);
-	}, [leftWidth, storedWidth, sidebarContext?.isCollapsed]);
-
-	const effectiveWidth = isExpanded ? expandedWidth : storedWidth;
 
 	if (tabs.length === 0) return null;
 
@@ -172,13 +148,11 @@ export function ContextualDock({
 	return (
 		<aside
 			className={cn(
-				"relative flex h-full shrink-0 flex-col overflow-hidden border-l bg-panel text-sidebar-foreground",
+				"relative flex h-full flex-1 min-w-0 flex-col overflow-hidden border-l bg-panel text-sidebar-foreground",
 				className
 			)}
-			style={{ width: effectiveWidth }}
 		>
 			<DockHeader tabs={tabs} />
-			<DockResizer />
 			<div
 				id="dock-tabpanel"
 				role="tabpanel"

@@ -489,7 +489,7 @@ async def test_model(conn: Connection, model: Model) -> VerifyResult:
             num_retries=0,
             **kwargs,
         )
-    except Exception as exc:
+    except Exception as exc:  # map upstream model verification error to VerifyResult error
         return _model_test_error(conn, model.model_id, exc)
 
     model.supports_chat = True

@@ -92,7 +92,7 @@ class WhatsAppBaileysStreamTranslator(BaseStreamTranslator):
                 external_peer_id=self.external_peer_id
             )
             record_gateway_outbound(platform="whatsapp", kind="typing", status="sent")
-        except Exception:
+        except Exception:  # best-effort typing indicator failure; log and continue
             logger.debug("WhatsApp Baileys typing indicator failed", exc_info=True)
 
     async def _send_text(self, text: str) -> PlatformSendResult:
@@ -101,7 +101,7 @@ class WhatsAppBaileysStreamTranslator(BaseStreamTranslator):
                 external_peer_id=self.external_peer_id,
                 text=text,
             )
-        except Exception:
+        except Exception:  # channel adapter failure; record failure metric and re-raise
             record_gateway_outbound(platform="whatsapp", kind="send", status="failed")
             raise
         record_gateway_outbound(platform="whatsapp", kind="send", status="sent")
@@ -114,7 +114,7 @@ class WhatsAppBaileysStreamTranslator(BaseStreamTranslator):
                 external_message_id=message_id,
                 text=text,
             )
-        except Exception:
+        except Exception:  # channel adapter message edit failure; record metric and re-raise
             record_gateway_outbound(platform="whatsapp", kind="edit", status="failed")
             raise
         record_gateway_outbound(platform="whatsapp", kind="edit", status="edited")

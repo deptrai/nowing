@@ -304,7 +304,7 @@ async def receive_circleback_webhook(
             "workspace_id": workspace_id,
         }
 
-    except Exception as e:
+    except Exception as e:  # webhook processing failure → surface as typed HTTP error
         logger.error(f"Error processing Circleback webhook: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=500,

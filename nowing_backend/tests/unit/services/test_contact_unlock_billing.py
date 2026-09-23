@@ -157,7 +157,7 @@ def unlock_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, Any, Any
         "record_contact_unlock",
         AsyncMock(return_value=SimpleNamespace(id=uuid4())),
     )
-    monkeypatch.setattr(rmod, "check_permission", AsyncMock(return_value=None))
+    monkeypatch.setattr("app.dependencies.auth.check_permission", AsyncMock(return_value=None))
 
     user = SimpleNamespace(id=uuid4(), is_active=True)
     contact = SimpleNamespace(

@@ -25,6 +25,7 @@ from app.capabilities.core.runs import record_run, serialize_output
 from app.capabilities.core.store import get_capability
 from app.capabilities.core.types import CapabilityContext
 from app.db import Memory, MemorySourceType
+from app.services.memory.encryption import MemoryEncryptionService
 from app.services.memory.repository import MemoryRepository
 from app.tenant_context import set_request_tenant_context
 
@@ -95,8 +96,8 @@ def _extract_text(output: Any, capability_name: str) -> str:
                     for item in dump["items"]
                 )
             return json.dumps(dump, default=str, ensure_ascii=False)
-        except Exception:
-            pass
+        except Exception as exc:  # best-effort output serialization for text extraction; non-serializable → skip
+            logger.debug("Suppressed %r", exc)
 
     if isinstance(output, dict):
         if "answer" in output:
@@ -150,6 +151,10 @@ class RevalidationService:
         if memory is None:
             raise RevalidationError("memory_not_found", "Memory not found.")
 
+        # AC-28.2: decrypt in-place so source_input validation and content
+        # comparison operate on plaintext when encryption is enabled.
+        MemoryEncryptionService.from_env().decrypt_memory(memory)
+
         if workspace_id is not None and memory.workspace_id != workspace_id:
             raise RevalidationError(
                 "workspace_mismatch",
@@ -192,7 +197,7 @@ class RevalidationService:
         ctx = CapabilityContext(session=self.session, workspace_id=memory.workspace_id)
         try:
             await gate_capability(payload, capability.billing_unit, ctx)
-        except Exception as exc:
+        except Exception as exc:  # billing gate errors become typed RevalidationError (fail-closed for quota)
             raise RevalidationError(
                 "gate_failed",
                 f"Re-validation was blocked by the billing gate: {exc}",
@@ -203,7 +208,7 @@ class RevalidationService:
             output = await execute_with_context(
                 capability.executor, payload=payload, ctx=ctx
             )
-        except Exception as exc:
+        except Exception as exc:  # capability execution failure → failed result, not HTTP 500
             # Upstream errors become failed revalidations, not 500s.
             logger.exception("re-validation capability %s failed", capability.name)
             return RevalidationResult(
@@ -218,7 +223,7 @@ class RevalidationService:
         cost_micros: int | None = None
         try:
             cost_micros = await charge_capability(output, capability.billing_unit, ctx)
-        except Exception:
+        except Exception:  # charge failure after execution → typed error so caller can surface billing issue
             logger.exception("charge failed for re-validation %s", memory_id)
             raise RevalidationError(
                 "charge_failed",
@@ -241,7 +246,7 @@ class RevalidationService:
                     duration_ms=duration_ms,
                     cost_micros=cost_micros,
                 )
-            except Exception:
+            except Exception:  # best-effort usage recording; never fail a completed re-validation
                 logger.exception("record_run failed for re-validation %s", memory_id)
 
         extracted_text = _extract_text(output, capability.name)

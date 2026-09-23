@@ -13,7 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 
-from app.db import BaseModel, TimestampMixin
+from app.db.base import BaseModel, TimestampMixin
 
 
 class SpatialPlanningZone(BaseModel, TimestampMixin):

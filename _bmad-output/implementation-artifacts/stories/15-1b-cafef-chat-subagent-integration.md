@@ -1,3 +1,8 @@
+---
+story_key: 15-1-cafef-financial-data-integration
+status: done
+---
+
 # Story 15.1b: CafeF Chat Subagent Integration
 
 **Status:** done

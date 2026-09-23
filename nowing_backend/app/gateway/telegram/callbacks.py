@@ -111,7 +111,7 @@ async def _handle_view_run(
                     text="Access denied: you can't view runs in this workspace.",
                     show_alert=True,
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -127,7 +127,7 @@ async def _handle_view_run(
                     await adapter.answer_callback_query(
                         callback_query_id=callback_query_id, text="Run not found."
                     )
-                except Exception:
+                except Exception:  # webhook event processing failure; log and ack
                     logger.warning(
                         "Failed to answer callback query %s",
                         callback_query_id,
@@ -139,7 +139,7 @@ async def _handle_view_run(
                         external_peer_id=event.external_peer_id or "",
                         text=f"Run {run_id} not found.",
                     )
-                except Exception:
+                except Exception:  # webhook event processing failure; log and ack
                     logger.exception("Failed to send run-not-found message")
             return
 
@@ -149,7 +149,7 @@ async def _handle_view_run(
                 await adapter.answer_callback_query(
                     callback_query_id=callback_query_id, text=""
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -164,7 +164,7 @@ async def _handle_view_run(
                     external_message_id=event.external_message_id,
                     text=summary,
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.exception("Failed to edit run summary")
                 if _is_inline(event):
                     return
@@ -173,7 +173,7 @@ async def _handle_view_run(
                         external_peer_id=event.external_peer_id or "",
                         text=summary,
                     )
-                except Exception:
+                except Exception:  # webhook event processing failure; log and ack
                     logger.exception("Failed to send run summary")
         elif not _is_inline(event):
             try:
@@ -181,9 +181,9 @@ async def _handle_view_run(
                     external_peer_id=event.external_peer_id or "",
                     text=summary,
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.exception("Failed to send run summary")
-    except Exception:
+    except Exception:  # webhook event processing failure; log and ack
         logger.exception("Error handling view_run:%s", run_id)
         if callback_query_id:
             try:
@@ -191,7 +191,7 @@ async def _handle_view_run(
                     callback_query_id=callback_query_id,
                     text="Could not load run.",
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -225,7 +225,7 @@ async def _handle_rerun(
                     text="Access denied: you can't run automations in this workspace.",
                     show_alert=True,
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -242,7 +242,7 @@ async def _handle_rerun(
                         callback_query_id=callback_query_id,
                         text="Automation not found.",
                     )
-                except Exception:
+                except Exception:  # webhook event processing failure; log and ack
                     logger.warning(
                         "Failed to answer callback query %s",
                         callback_query_id,
@@ -258,7 +258,7 @@ async def _handle_rerun(
                         text=f"Automation is {automation.status.value}, not active.",
                         show_alert=True,
                     )
-                except Exception:
+                except Exception:  # webhook event processing failure; log and ack
                     logger.warning(
                         "Failed to answer callback query %s",
                         callback_query_id,
@@ -284,7 +284,7 @@ async def _handle_rerun(
                     callback_query_id=callback_query_id,
                     text="Run started. You will be notified when it completes.",
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -298,7 +298,7 @@ async def _handle_rerun(
                     external_message_id=event.external_message_id,
                     text=f"Started run for automation '{automation.name}'.",
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.exception("Failed to edit rerun confirmation")
         else:
             try:
@@ -306,7 +306,7 @@ async def _handle_rerun(
                     external_peer_id=event.external_peer_id or "",
                     text=f"Started run for automation '{automation.name}'.",
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.exception("Failed to send rerun confirmation")
     except DispatchError:
         logger.exception("DispatchError rerunning automation %s", automation_id)
@@ -316,13 +316,13 @@ async def _handle_rerun(
                     callback_query_id=callback_query_id,
                     text="Could not start run. Please try again later.",
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
                     exc_info=True,
                 )
-    except Exception:
+    except Exception:  # webhook event processing failure; log and ack
         logger.exception("Unexpected error rerunning automation %s", automation_id)
         if callback_query_id:
             try:
@@ -330,7 +330,7 @@ async def _handle_rerun(
                     callback_query_id=callback_query_id,
                     text="Could not start run. Please try again later.",
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -391,7 +391,7 @@ async def _handle_dsh_callback(
                     text="Thao tác quá nhanh, vui lòng thử lại sau.",
                     show_alert=True,
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer rate-limited callback query", exc_info=True
                 )
@@ -419,7 +419,7 @@ async def _handle_dsh_callback(
                     text="Access denied: you don't have permission to perform this action.",
                     show_alert=True,
                 )
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning("Failed to answer denied callback query", exc_info=True)
         return
 
@@ -467,7 +467,7 @@ async def _handle_dsh_callback(
                     await adapter.answer_callback_query(
                         callback_query_id=callback_query_id
                     )
-    except Exception:
+    except Exception:  # webhook event processing failure; log and ack
         logger.exception("Unexpected error handling dsh:%s callback", action)
         if callback_query_id:
             with contextlib.suppress(Exception):
@@ -493,7 +493,7 @@ async def handle_callback_query(
         if callback_query_id:
             try:
                 await adapter.answer_callback_query(callback_query_id=callback_query_id)
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -505,7 +505,7 @@ async def handle_callback_query(
         if callback_query_id:
             try:
                 await adapter.answer_callback_query(callback_query_id=callback_query_id)
-            except Exception:
+            except Exception:  # webhook event processing failure; log and ack
                 logger.warning(
                     "Failed to answer callback query %s",
                     callback_query_id,
@@ -612,7 +612,7 @@ async def handle_callback_query(
     if callback_query_id:
         try:
             await adapter.answer_callback_query(callback_query_id=callback_query_id)
-        except Exception:
+        except Exception:  # webhook event processing failure; log and ack
             logger.warning(
                 "Failed to answer callback query %s", callback_query_id, exc_info=True
             )
@@ -692,7 +692,7 @@ async def handle_telegram_callback_nhan_tu_van(
             "lead_id": clean_lead_id,
             "assigned_to": clean_user_id,
         }
-    except Exception as e:
+    except Exception as e:  # webhook event processing failure; log and ack
         logger.error("Error handling nhan_tu_van callback for lead %s: %s", clean_lead_id, e)
         return {
             "status": "error",

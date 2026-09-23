@@ -1,12 +1,12 @@
 ---
 baseline_commit: d3c10413812e5a801a22c2ec05043fe0dd24e7ef
-status: in-progress
+status: done
 story_key: 14-2a-news-entity-extraction
 ---
 
 # Story 14.2a: News Entity Extraction
 
-**Status:** `in-progress`
+**Status:** `done`
 **Epic:** Epic 14 — News Aggregation (Vietnam)
 **Priority:** P1
 **Blocked by:** None. This is the Nowing-only portion of the original Story 14.2.

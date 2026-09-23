@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { Earth, User, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -24,29 +25,33 @@ interface ChatShareButtonProps {
 	className?: string;
 }
 
-const visibilityOptions: {
+function visibilityOptions(t: (k: string) => string): {
 	value: ChatVisibility;
 	label: string;
 	description: string;
 	icon: typeof User;
-}[] = [
-	{
-		value: "PRIVATE",
-		label: "Private",
-		description: "Only you can access this chat",
-		icon: User,
-	},
-	{
-		value: "SEARCH_SPACE",
-		label: "Workspace",
-		description: "All members of this workspace can access",
-		icon: Users,
-	},
-];
+}[] {
+	return [
+		{
+			value: "PRIVATE",
+			label: t("vis_private"),
+			description: t("vis_private_desc"),
+			icon: User,
+		},
+		{
+			value: "SEARCH_SPACE",
+			label: t("vis_workspace"),
+			description: t("vis_workspace_desc"),
+			icon: Users,
+		},
+	];
+}
 
 export function ChatShareButton({ thread, onVisibilityChange, className }: ChatShareButtonProps) {
+	const t = useTranslations("newChat");
 	const queryClient = useQueryClient();
 	const router = useRouter();
+	const VISIBILITY_OPTIONS = visibilityOptions(t);
 	const [open, setOpen] = useState(false);
 
 	// Use Jotai atom for visibility (single source of truth)
@@ -95,13 +100,11 @@ export function ChatShareButton({ thread, onVisibilityChange, className }: ChatS
 				});
 
 				onVisibilityChange?.(updatedThread.visibility);
-				toast.success(
-					newVisibility === "SEARCH_SPACE" ? "Chat shared with workspace" : "Chat is now private"
-				);
+				toast.success(newVisibility === "SEARCH_SPACE" ? t("toast_shared") : t("toast_private"));
 				setOpen(false);
 			} catch (error) {
 				console.error("Failed to update visibility:", error);
-				toast.error("Failed to update sharing settings");
+				toast.error(t("toast_share_failed"));
 			}
 		},
 		[thread, currentVisibility, onVisibilityChange, updateVisibility]
@@ -126,7 +129,7 @@ export function ChatShareButton({ thread, onVisibilityChange, className }: ChatS
 	}
 
 	const CurrentIcon = currentVisibility === "PRIVATE" ? User : Users;
-	const buttonLabel = currentVisibility === "PRIVATE" ? "Private" : "Shared";
+	const buttonLabel = currentVisibility === "PRIVATE" ? t("vis_private") : t("vis_shared");
 
 	return (
 		<div className={cn("flex items-center gap-1", className)}>
@@ -146,7 +149,7 @@ export function ChatShareButton({ thread, onVisibilityChange, className }: ChatS
 							<Earth data-icon="inline-start" className="text-muted-foreground" />
 						</Button>
 					</TooltipTrigger>
-					<TooltipContent>Manage public links</TooltipContent>
+					<TooltipContent>{t("manage_links")}</TooltipContent>
 				</Tooltip>
 			)}
 
@@ -170,7 +173,7 @@ export function ChatShareButton({ thread, onVisibilityChange, className }: ChatS
 				>
 					<div className="p-1.5 space-y-1">
 						{/* Visibility Options */}
-						{visibilityOptions.map((option) => {
+						{VISIBILITY_OPTIONS.map((option) => {
 							const isSelected = currentVisibility === option.value;
 							const Icon = option.icon;
 
@@ -239,11 +242,11 @@ export function ChatShareButton({ thread, onVisibilityChange, className }: ChatS
 									<div className="flex-1 text-left min-w-0">
 										<div className="flex items-center gap-1.5">
 											<span className="text-sm font-medium">
-												{isCreatingSnapshot ? "Creating link..." : "Create public link"}
+												{isCreatingSnapshot ? t("creating_link") : t("create_link")}
 											</span>
 										</div>
 										<p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-											Creates a shareable snapshot of this chat
+											{t("create_link_desc")}
 										</p>
 									</div>
 								</Button>

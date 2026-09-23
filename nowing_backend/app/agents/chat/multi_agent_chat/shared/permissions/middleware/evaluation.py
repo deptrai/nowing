@@ -37,7 +37,7 @@ def resolve_patterns(
     resolver = pattern_resolvers.get(tool_name, default_pattern_resolver(tool_name))
     try:
         patterns = resolver(args or {})
-    except Exception:
+    except Exception:  # pattern resolver execution failure; fall back to bare tool name
         logger.exception("Pattern resolver for %s raised; using bare name", tool_name)
         patterns = [tool_name]
     if not patterns:

@@ -39,8 +39,8 @@ async def invoke_json[T: BaseModel](
 
     try:
         return model.model_validate_json(content)
-    except (ValidationError, ValueError):
-        pass
+    except (ValidationError, ValueError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     start = content.find("{")
     end = content.rfind("}") + 1

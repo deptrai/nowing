@@ -2,6 +2,7 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, History, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const CAPABILITY_OPTIONS = PLAYGROUND_PLATFORMS.flatMap((platform) =>
 );
 
 export function RunsTable({ workspaceId }: { workspaceId: number }) {
+	const t = useTranslations("playground");
 	const [capability, setCapability] = useState<string>(ALL);
 	const [status, setStatus] = useState<string>(ALL);
 	const [expanded, setExpanded] = useState<string | null>(null);
@@ -70,19 +72,16 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 		<div className="space-y-4">
 			<Alert>
 				<Info />
-				<AlertDescription>
-					View all API runs for this workspace, including runs from the playground, API keys, and
-					agents.
-				</AlertDescription>
+				<AlertDescription>{t("runs_description")}</AlertDescription>
 			</Alert>
 
 			<div className="flex flex-wrap items-center gap-2">
 				<Select value={capability} onValueChange={setCapability}>
 					<SelectTrigger className="w-48">
-						<SelectValue placeholder="All APIs" />
+						<SelectValue placeholder={t("all_apis")} />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value={ALL}>All APIs</SelectItem>
+						<SelectItem value={ALL}>{t("all_apis")}</SelectItem>
 						{CAPABILITY_OPTIONS.map((name) => (
 							<SelectItem key={name} value={name}>
 								{name}
@@ -92,14 +91,14 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 				</Select>
 				<Select value={status} onValueChange={setStatus}>
 					<SelectTrigger className="w-40">
-						<SelectValue placeholder="All statuses" />
+						<SelectValue placeholder={t("all_statuses")} />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value={ALL}>All statuses</SelectItem>
-						<SelectItem value="running">Running</SelectItem>
-						<SelectItem value="success">Success</SelectItem>
-						<SelectItem value="error">Error</SelectItem>
-						<SelectItem value="cancelled">Cancelled</SelectItem>
+						<SelectItem value={ALL}>{t("all_statuses")}</SelectItem>
+						<SelectItem value="running">{t("status_running")}</SelectItem>
+						<SelectItem value="success">{t("status_success")}</SelectItem>
+						<SelectItem value="error">{t("status_error")}</SelectItem>
+						<SelectItem value="cancelled">{t("status_cancelled")}</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
@@ -110,15 +109,14 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 				</div>
 			) : query.isError ? (
 				<p className="text-sm text-destructive">
-					Couldn't load runs{query.error.message ? `: ${query.error.message}` : "."}
+					{t("load_runs_error")}
+					{query.error.message ? `: ${query.error.message}` : "."}
 				</p>
 			) : runs.length === 0 ? (
 				<div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-4 py-12 text-center">
 					<History className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
-					<p className="mt-2 text-sm font-medium">No runs yet</p>
-					<p className="mt-1 text-xs text-muted-foreground">
-						Run an API from the playground and it will show up here.
-					</p>
+					<p className="mt-2 text-sm font-medium">{t("no_runs")}</p>
+					<p className="mt-1 text-xs text-muted-foreground">{t("no_runs_description")}</p>
 				</div>
 			) : (
 				<div className="overflow-hidden rounded-md border border-border/60">
@@ -126,13 +124,13 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 						<TableHeader>
 							<TableRow>
 								<TableHead className="w-8" />
-								<TableHead>API</TableHead>
-								<TableHead>Origin</TableHead>
-								<TableHead>Status</TableHead>
-								<TableHead className="text-right">Items</TableHead>
-								<TableHead className="text-right">Duration</TableHead>
-								<TableHead className="text-right">Cost</TableHead>
-								<TableHead className="text-right">When</TableHead>
+								<TableHead>{t("col_api")}</TableHead>
+								<TableHead>{t("col_origin")}</TableHead>
+								<TableHead>{t("col_status")}</TableHead>
+								<TableHead className="text-right">{t("col_items")}</TableHead>
+								<TableHead className="text-right">{t("col_duration")}</TableHead>
+								<TableHead className="text-right">{t("col_cost")}</TableHead>
+								<TableHead className="text-right">{t("col_when")}</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -197,7 +195,7 @@ export function RunsTable({ workspaceId }: { workspaceId: number }) {
 						disabled={query.isFetchingNextPage}
 						className={cn(query.isFetchingNextPage && "opacity-70")}
 					>
-						{query.isFetchingNextPage ? "Loading…" : "Load more"}
+						{query.isFetchingNextPage ? t("loading") : t("load_more")}
 					</Button>
 				</div>
 			)}

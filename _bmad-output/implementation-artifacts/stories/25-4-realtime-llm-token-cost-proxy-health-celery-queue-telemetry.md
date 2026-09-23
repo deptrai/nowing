@@ -1,5 +1,10 @@
+---
 story_key: 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry
-status: completed
+status: done
+---
+
+story_key: 25-4-realtime-llm-token-cost-proxy-health-celery-queue-telemetry
+status: done
 baseline_commit: be2efe015
 epic: 25
 story: 4
@@ -7,7 +12,7 @@ story: 4
 
 # Story 25.4: Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
 
-**Status:** `completed`
+**Status:** `done`
 
 **Governed by:** `INV-25.5` (Realtime Telemetry & Gross Margin Monitoring), `INV-25.6` (Dynamic Scraper Rule Invalidation via Redis Pub/Sub), `INV-25.8` (Fail-Closed Superadmin Guard), Epic 25 in [`_bmad-output/planning-artifacts/epics.md`](../planning-artifacts/epics.md) lines 3531–3603.
 

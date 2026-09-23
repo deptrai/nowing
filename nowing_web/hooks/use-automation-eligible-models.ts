@@ -18,8 +18,9 @@ export interface EligibleModelOption {
 	/** Underlying model identifier (e.g. `gpt-4o`); shown as secondary text. */
 	modelName: string;
 	provider: string;
-	/** `true` for user BYOK configs (positive ids), `false` for premium globals. */
+	/** `true` for user BYOK configs (positive ids), `false` for global models. */
 	isBYOK: boolean;
+	tier?: "free" | "premium" | "byok";
 }
 
 export interface EligibleModelKind {
@@ -37,37 +38,55 @@ export interface AutomationEligibleModels {
 	isLoading: boolean;
 }
 
+export interface UseAutomationEligibleModelsOptions {
+	allowFreeGlobals?: boolean;
+	mode?: "automation" | "playbook";
+}
+
 /**
- * Build the eligible option list for one model kind: premium globals
+ * Build the eligible option list for one model kind: premium/all globals
  * followed by all BYOK/workspace models.
  */
 function buildKind(
 	globals: ConnectionRead[] | undefined,
 	byok: ConnectionRead[] | undefined,
 	capability: "chat" | "image_gen" | "vision",
-	prefId: number | null | undefined
+	prefId: number | null | undefined,
+	allowFreeGlobals = false
 ): EligibleModelKind {
 	const supportsCapability = (model: ModelRead) => {
 		if (capability === "chat") return Boolean(model.supports_chat);
 		if (capability === "vision") return Boolean(model.supports_image_input);
 		return Boolean(model.supports_image_generation);
 	};
-	const toOption = (connection: ConnectionRead, model: ModelRead, isBYOK: boolean) => ({
-		id: model.id,
-		name: model.display_name || model.model_id,
-		modelName: model.model_id,
-		provider: connection.provider,
-		isBYOK,
-	});
+	const toOption = (
+		connection: ConnectionRead,
+		model: ModelRead,
+		isBYOK: boolean
+	): EligibleModelOption => {
+		const billingTier = String(model.billing_tier ?? "").toLowerCase();
+		const tier: "free" | "premium" | "byok" = isBYOK
+			? "byok"
+			: billingTier === "premium"
+				? "premium"
+				: "free";
+		return {
+			id: model.id,
+			name: model.display_name || model.model_id,
+			modelName: model.model_id,
+			provider: connection.provider,
+			isBYOK,
+			tier,
+		};
+	};
 
-	const premiumGlobals: EligibleModelOption[] = (globals ?? []).flatMap((connection) =>
+	const globalOptions: EligibleModelOption[] = (globals ?? []).flatMap((connection) =>
 		connection.models
-			.filter(
-				(model) =>
-					model.enabled &&
-					supportsCapability(model) &&
-					String(model.billing_tier ?? "").toLowerCase() === "premium"
-			)
+			.filter((model) => {
+				if (!model.enabled || !supportsCapability(model)) return false;
+				if (allowFreeGlobals) return true;
+				return String(model.billing_tier ?? "").toLowerCase() === "premium";
+			})
 			.map((model) => toOption(connection, model, false))
 	);
 
@@ -77,7 +96,7 @@ function buildKind(
 			.map((model) => toOption(connection, model, true))
 	);
 
-	const options = [...premiumGlobals, ...byokOptions];
+	const options = [...globalOptions, ...byokOptions];
 	const byId = new Map<number, EligibleModelOption>(options.map((o) => [o.id, o]));
 
 	let defaultId: number | null = null;
@@ -92,32 +111,51 @@ function buildKind(
 
 /**
  * Lists the LLM / image / vision models that are eligible for automations
- * (premium globals + user BYOK — never free globals or Auto mode), with a
- * default selection seeded from the workspace's role preferences.
+ * (premium globals + user BYOK by default, or all globals when allowFreeGlobals / playbook mode),
+ * with a default selection seeded from the workspace's role preferences.
  *
  * Everything is derived during render from the connection/model query atoms;
  * there are no effects, so option lists/maps keep stable references.
  */
-export function useAutomationEligibleModels(): AutomationEligibleModels {
+export function useAutomationEligibleModels(
+	options?: UseAutomationEligibleModelsOptions
+): AutomationEligibleModels {
 	const { data: byokConnections, isLoading: byokLoading } = useAtomValue(modelConnectionsAtom);
 	const { data: globalConnections, isLoading: globalLoading } = useAtomValue(
 		globalModelConnectionsAtom
 	);
 	const { data: roles, isLoading: rolesLoading } = useAtomValue(modelRolesAtom);
 
+	const allowFreeGlobals = Boolean(options?.allowFreeGlobals || options?.mode === "playbook");
+
 	const llm = useMemo(
-		() => buildKind(globalConnections, byokConnections, "chat", roles?.chat_model_id),
-		[globalConnections, byokConnections, roles?.chat_model_id]
+		() =>
+			buildKind(globalConnections, byokConnections, "chat", roles?.chat_model_id, allowFreeGlobals),
+		[globalConnections, byokConnections, roles?.chat_model_id, allowFreeGlobals]
 	);
 
 	const image = useMemo(
-		() => buildKind(globalConnections, byokConnections, "image_gen", roles?.image_gen_model_id),
-		[globalConnections, byokConnections, roles?.image_gen_model_id]
+		() =>
+			buildKind(
+				globalConnections,
+				byokConnections,
+				"image_gen",
+				roles?.image_gen_model_id,
+				allowFreeGlobals
+			),
+		[globalConnections, byokConnections, roles?.image_gen_model_id, allowFreeGlobals]
 	);
 
 	const vision = useMemo(
-		() => buildKind(globalConnections, byokConnections, "vision", roles?.vision_model_id),
-		[globalConnections, byokConnections, roles?.vision_model_id]
+		() =>
+			buildKind(
+				globalConnections,
+				byokConnections,
+				"vision",
+				roles?.vision_model_id,
+				allowFreeGlobals
+			),
+		[globalConnections, byokConnections, roles?.vision_model_id, allowFreeGlobals]
 	);
 
 	const isLoading = byokLoading || globalLoading || rolesLoading;

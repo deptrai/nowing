@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+	type CreateSubscriptionChangeRequest,
 	type CreateWorkspaceRequest,
 	createWorkspaceRequest,
 	createWorkspaceResponse,
@@ -16,6 +17,8 @@ import {
 	getWorkspacesRequest,
 	getWorkspacesResponse,
 	leaveWorkspaceResponse,
+	type SubscriptionChange,
+	subscriptionChange,
 	type UpdateWorkspaceApiAccessRequest,
 	type UpdateWorkspaceLimitsRequest,
 	type UpdateWorkspaceMcpToolRequest,
@@ -27,6 +30,10 @@ import {
 	updateWorkspaceMcpToolResponse,
 	updateWorkspaceRequest,
 	updateWorkspaceResponse,
+	type WorkspaceEntitlementResponse,
+	workspaceEntitlementResponse,
+	type WorkspaceSubscriptionResponse,
+	workspaceSubscriptionResponse,
 } from "@/contracts/types/workspace.types";
 import { ValidationError } from "../error";
 import { baseApiService } from "./base-api.service";
@@ -214,6 +221,64 @@ class WorkspacesApiService {
 		return baseApiService.put(`/api/v1/workspaces/${id}/limits`, getWorkspaceLimitsResponse, {
 			body,
 		});
+	};
+
+	getWorkspaceSubscription = async (
+		workspaceId: number
+	): Promise<WorkspaceSubscriptionResponse> => {
+		return baseApiService.get(
+			`/api/v1/workspaces/${workspaceId}/subscription`,
+			workspaceSubscriptionResponse
+		);
+	};
+
+	getWorkspaceEntitlement = async (workspaceId: number): Promise<WorkspaceEntitlementResponse> => {
+		return baseApiService.get(
+			`/api/v1/workspaces/${workspaceId}/entitlement`,
+			workspaceEntitlementResponse
+		);
+	};
+
+	createSubscriptionChange = async (
+		workspaceId: number,
+		request: CreateSubscriptionChangeRequest
+	): Promise<SubscriptionChange> => {
+		return baseApiService.post(
+			`/api/v1/workspaces/${workspaceId}/subscription-changes`,
+			subscriptionChange,
+			{
+				body: request,
+			}
+		);
+	};
+
+	listSubscriptionChanges = async (workspaceId: number): Promise<SubscriptionChange[]> => {
+		return baseApiService.get(
+			`/api/v1/workspaces/${workspaceId}/subscription-changes`,
+			z.array(subscriptionChange)
+		);
+	};
+
+	revertSubscriptionChange = async (
+		workspaceId: number,
+		changeId: string
+	): Promise<SubscriptionChange> => {
+		return baseApiService.post(
+			`/api/v1/workspaces/${workspaceId}/subscription-changes/${changeId}/revert`,
+			subscriptionChange,
+			{}
+		);
+	};
+
+	cancelSubscriptionChange = async (
+		workspaceId: number,
+		changeId: string
+	): Promise<SubscriptionChange> => {
+		return baseApiService.post(
+			`/api/v1/workspaces/${workspaceId}/subscription-changes/${changeId}/cancel`,
+			subscriptionChange,
+			{}
+		);
 	};
 }
 

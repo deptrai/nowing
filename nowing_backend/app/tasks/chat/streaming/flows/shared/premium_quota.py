@@ -102,7 +102,7 @@ async def finalize_credit(
                 actual_micros=accumulator.total_cost_micros,
                 reserved_micros=reservation.reserved_micros,
             )
-    except Exception:
+    except Exception:  # credit finalize failure; best-effort quota settlement log warning
         logging.getLogger(__name__).warning(
             "Failed to finalize credit quota for user %s",
             user_id,
@@ -125,7 +125,7 @@ async def release_credit(
                 user_id=UUID(user_id),
                 reserved_micros=reservation.reserved_micros,
             )
-    except Exception:
+    except Exception:  # credit release failure; best-effort reservation release log warning
         logging.getLogger(__name__).warning(
             "Failed to release credit quota for user %s", user_id
         )

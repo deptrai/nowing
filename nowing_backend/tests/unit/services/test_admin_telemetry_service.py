@@ -203,9 +203,9 @@ async def test_gross_margin_computes_per_workspace_and_model(
 
 
 @pytest.mark.asyncio
-@patch("app.services.admin_telemetry_service.get_active_provider")
+@patch("app.services.admin_telemetry.health.get_active_provider")
 @patch(
-    "app.services.admin_telemetry_service.get_proxy_health_snapshot", return_value=None
+    "app.services.admin_telemetry.health.get_proxy_health_snapshot", return_value=None
 )
 async def test_proxy_health_not_configured(
     _cache: MagicMock,
@@ -224,11 +224,11 @@ async def test_proxy_health_not_configured(
 
 
 @pytest.mark.asyncio
-@patch("app.services.admin_telemetry_service.get_active_provider")
+@patch("app.services.admin_telemetry.health.get_active_provider")
 @patch(
-    "app.services.admin_telemetry_service.get_proxy_health_snapshot", return_value=None
+    "app.services.admin_telemetry.health.get_proxy_health_snapshot", return_value=None
 )
-@patch("app.services.admin_telemetry_service.httpx.AsyncClient")
+@patch("app.services.admin_telemetry.health.httpx.AsyncClient")
 async def test_proxy_health_probe_dead_on_timeout(
     client_cls: MagicMock,
     _cache: MagicMock,
@@ -257,11 +257,11 @@ async def test_proxy_health_probe_dead_on_timeout(
 
 
 @pytest.mark.asyncio
-@patch("app.services.admin_telemetry_service.get_active_provider")
+@patch("app.services.admin_telemetry.health.get_active_provider")
 @patch(
-    "app.services.admin_telemetry_service.get_proxy_health_snapshot", return_value=None
+    "app.services.admin_telemetry.health.get_proxy_health_snapshot", return_value=None
 )
-@patch("app.services.admin_telemetry_service.httpx.AsyncClient")
+@patch("app.services.admin_telemetry.health.httpx.AsyncClient")
 async def test_proxy_health_probe_success(
     client_cls: MagicMock,
     _cache: MagicMock,
@@ -297,7 +297,7 @@ async def test_proxy_health_probe_success(
 
 
 @pytest.mark.asyncio
-@patch("app.services.admin_telemetry_service.celery_app")
+@patch("app.services.admin_telemetry.queues.celery_app")
 async def test_celery_queue_stats_unavailable_when_broker_down(
     celery_app: MagicMock,
     service: AdminTelemetryService,
@@ -312,8 +312,8 @@ async def test_celery_queue_stats_unavailable_when_broker_down(
 
 
 @pytest.mark.asyncio
-@patch("app.services.admin_telemetry_service._redis_queue_lengths")
-@patch("app.services.admin_telemetry_service.celery_app")
+@patch("app.services.admin_telemetry.queues._redis_queue_lengths")
+@patch("app.services.admin_telemetry.queues.celery_app")
 async def test_celery_queue_stats_success(
     celery_app: MagicMock,
     queue_lengths: MagicMock,
@@ -423,7 +423,7 @@ async def test_purge_dead_letter_queue_removes_stalled_messages(
     from_url.return_value = fake_client
 
     with patch(
-        "app.services.admin_telemetry_service.config.CELERY_BROKER_URL",
+        "app.services.admin_telemetry.queues.config.CELERY_BROKER_URL",
         "redis://localhost:6379/0",
     ):
         result = await service.purge_dead_letter_queue("nowing")
@@ -440,7 +440,7 @@ async def test_purge_uses_rediss_url(
 ) -> None:
     """rediss:// broker URLs are accepted and used."""
     with patch(
-        "app.services.admin_telemetry_service.config.CELERY_BROKER_URL",
+        "app.services.admin_telemetry.queues.config.CELERY_BROKER_URL",
         "rediss://localhost:6379/0",
     ):
         fake_client = _FakeRedis([])

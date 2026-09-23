@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,8 @@ const MAX_POLL_ATTEMPTS = 15; // ~30s total before falling back to the still_pen
 export default function PurchaseSuccessPage() {
 	const params = useParams();
 	const searchParams = useSearchParams();
+	const t = useTranslations("purchase");
+	const locale = useLocale();
 	const workspaceId = String(params.workspace_id ?? "");
 	const sessionId = searchParams.get("session_id");
 
@@ -73,7 +76,7 @@ export default function PurchaseSuccessPage() {
 				}
 			} catch (err) {
 				if (cancelledRef.current) return;
-				const message = err instanceof Error ? err.message : "Unable to finalize checkout.";
+				const message = err instanceof Error ? err.message : t("finalize_error");
 				setState({ kind: "error", message });
 			}
 		};
@@ -83,7 +86,27 @@ export default function PurchaseSuccessPage() {
 		return () => {
 			cancelledRef.current = true;
 		};
-	}, [sessionId]);
+	}, [sessionId, t]);
+
+	const titleKey = {
+		loading: "title_confirming",
+		pending: "title_processing",
+		still_pending: "title_still_pending",
+		completed: "title_complete",
+		failed: "title_failed",
+		error: "title_error",
+		no_session: "title_complete",
+	}[state.kind];
+
+	const descKey = {
+		loading: "desc_confirming",
+		pending: "desc_processing",
+		still_pending: "desc_still_pending",
+		completed: null,
+		failed: "desc_failed",
+		error: "desc_error",
+		no_session: "desc_no_session",
+	}[state.kind];
 
 	return (
 		<div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-8">
@@ -96,34 +119,23 @@ export default function PurchaseSuccessPage() {
 					) : (
 						<AlertCircle className="mx-auto h-10 w-10 text-amber-500" aria-hidden="true" />
 					)}
-					<CardTitle className="text-2xl">
-						{state.kind === "loading" && "Confirming payment…"}
-						{state.kind === "pending" && "Processing your payment…"}
-						{state.kind === "still_pending" && "Payment still processing"}
-						{state.kind === "completed" && "Purchase complete"}
-						{state.kind === "failed" && "Purchase failed"}
-						{state.kind === "error" && "Couldn't confirm payment"}
-						{state.kind === "no_session" && "Purchase complete"}
-					</CardTitle>
+					<CardTitle className="text-2xl">{t(titleKey)}</CardTitle>
 					<CardDescription>
-						{state.kind === "loading" && "We're verifying your payment with Stripe."}
-						{state.kind === "pending" &&
-							"Your bank is taking a moment to confirm. This usually takes 5–30 seconds."}
-						{state.kind === "still_pending" &&
-							"Your payment is still being processed by your bank. We'll apply your purchase as soon as it clears — usually within a few minutes. You can safely close this page."}
-						{state.kind === "completed" &&
-							`Added ${formatCredit(state.data.credit_micros_granted ?? 0)} of credit to your account.`}
-						{state.kind === "failed" &&
-							"Stripe reported the checkout as failed or expired. Your card was not charged."}
-						{state.kind === "error" &&
-							"Don't worry — if your card was charged, your purchase will still apply within a minute or two."}
-						{state.kind === "no_session" && "Your purchase is being applied to your account."}
+						{state.kind === "completed"
+							? t("desc_completed", {
+									credit: formatCredit(state.data.credit_micros_granted ?? 0, locale),
+								})
+							: descKey
+								? t(descKey)
+								: null}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-3 text-center">
 					{state.kind === "completed" && (
 						<p className="text-sm text-muted-foreground">
-							New credit balance: {formatCredit(state.data.credit_micros_balance ?? 0)}
+							{t("new_balance", {
+								balance: formatCredit(state.data.credit_micros_balance ?? 0, locale),
+							})}
 						</p>
 					)}
 					{state.kind === "error" && (
@@ -132,10 +144,10 @@ export default function PurchaseSuccessPage() {
 				</CardContent>
 				<CardFooter className="flex flex-col gap-2">
 					<Button asChild className="w-full">
-						<Link href={`/dashboard/${workspaceId}/new-chat`}>Back to Dashboard</Link>
+						<Link href={`/dashboard/${workspaceId}/new-chat`}>{t("back_to_dashboard")}</Link>
 					</Button>
 					<Button asChild variant="outline" className="w-full">
-						<Link href={`/dashboard/${workspaceId}/buy-more`}>Buy credits</Link>
+						<Link href={`/dashboard/${workspaceId}/buy-more`}>{t("buy_credits")}</Link>
 					</Button>
 				</CardFooter>
 			</Card>
@@ -143,9 +155,9 @@ export default function PurchaseSuccessPage() {
 	);
 }
 
-function formatCredit(micros: number): string {
+function formatCredit(micros: number, locale: string): string {
 	const dollars = micros / 1_000_000;
-	return new Intl.NumberFormat("en-US", {
+	return new Intl.NumberFormat(locale, {
 		style: "currency",
 		currency: "USD",
 		maximumFractionDigits: 2,

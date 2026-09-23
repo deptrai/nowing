@@ -341,7 +341,7 @@ async def handle_zalo_webhook_event(
                 message_content=text_content,
                 intent=intent_reason,
             )
-        except Exception as alert_err:
+        except Exception as alert_err:  # Telegram lead alert dispatch failure; non-blocking fallback
             logger.error("Failed to dispatch Telegram lead alert: %s", alert_err)
 
     return {

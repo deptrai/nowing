@@ -107,7 +107,7 @@ def create_generate_meeting_minutes_tool(deps: dict[str, Any]):
                         await session.commit()
 
                 return result.model_dump(mode="json")
-        except Exception as exc:
+        except Exception as exc:  # meeting minutes execution failure; rollback and return failure output
             if session is not None:
                 with contextlib.suppress(Exception):
                     await session.rollback()

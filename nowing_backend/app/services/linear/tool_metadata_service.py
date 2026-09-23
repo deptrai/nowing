@@ -112,7 +112,7 @@ class LinearToolMetadataService:
             try:
                 priorities = await self._fetch_priority_values(linear_client)
                 teams = await self._fetch_teams_context(linear_client)
-            except Exception as e:
+            except Exception as e:  # catch Linear auth failure, log and flag as expired
                 logger.warning(
                     "Linear connector %s (%s) auth failed, flagging as expired: %s",
                     connector.id,
@@ -124,7 +124,7 @@ class LinearToolMetadataService:
                     flag_modified(connector, "config")
                     await self._db_session.commit()
                     await self._db_session.refresh(connector)
-                except Exception:
+                except Exception:  # best-effort persistence of auth_expired flag to DB
                     logger.warning(
                         "Failed to persist auth_expired for connector %s",
                         connector.id,
@@ -188,7 +188,7 @@ class LinearToolMetadataService:
         try:
             priorities = await self._fetch_priority_values(linear_client)
             issue_api = await self._fetch_issue_context(linear_client, issue.id)
-        except Exception as e:
+        except Exception as e:  # check for auth expiry in error string or log failure
             error_str = str(e).lower()
             if (
                 "401" in error_str

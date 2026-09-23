@@ -2,60 +2,60 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ExpandedMediaOverlay, useExpandedMedia } from "@/components/ui/expanded-gif-overlay";
 
-const carouselItems = [
+const getCarouselItems = (t: (k: string) => string) => [
 	{
-		title: "Connect & Sync",
-		description:
-			"Connect data sources like Notion, Drive and Gmail. Automatically sync to keep them updated.",
+		title: t("ui_connect_sync"),
+		description: t("ui_connect_data_sources_like"),
 		src: "/homepage/hero_tutorial/ConnectorFlowGif.mp4",
 	},
 	{
-		title: "Upload Documents",
-		description: "Upload documents directly, from images to massive PDFs.",
+		title: t("ui_upload_documents"),
+		description: t("ui_upload_documents_directly_from"),
 		src: "/homepage/hero_tutorial/DocUploadGif.mp4",
 	},
 	{
-		title: "Video Generation",
-		description: "Create short videos with AI-generated visuals and narration from your sources.",
+		title: t("ui_video_generation"),
+		description: t("ui_create_short_videos_with"),
 		src: "/homepage/hero_tutorial/video_gen_surf.mp4",
 	},
 	{
-		title: "Search & Citation",
-		description: "Ask questions and get cited responses from your knowledge base.",
+		title: t("ui_search_citation"),
+		description: t("ui_ask_questions_and_get"),
 		src: "/homepage/hero_tutorial/BSNCGif.mp4",
 	},
 	{
-		title: "Targeted Document Q&A",
-		description: "Mention specific documents in chat for targeted answers.",
+		title: t("ui_targeted_document_q_a"),
+		description: t("ui_mention_specific_documents_in"),
 		src: "/homepage/hero_tutorial/BQnaGif_compressed.mp4",
 	},
 	{
-		title: "Produce Reports Instantly",
-		description: "Generate reports from your sources in many formats.",
+		title: t("ui_produce_reports_instantly"),
+		description: t("ui_generate_reports_from_your"),
 		src: "/homepage/hero_tutorial/ReportGenGif_compressed.mp4",
 	},
 	{
-		title: "Create Podcasts",
-		description: "Turn anything into a podcast in under 20 seconds.",
+		title: t("ui_create_podcasts"),
+		description: t("ui_turn_anything_into_a"),
 		src: "/homepage/hero_tutorial/PodcastGenGif.mp4",
 	},
 	{
-		title: "Image Generation",
-		description: "Generate high-quality images easily from your conversations.",
+		title: t("ui_image_generation"),
+		description: t("ui_generate_high_quality_images"),
 		src: "/homepage/hero_tutorial/ImageGenGif.mp4",
 	},
 	{
-		title: "Collaborative AI Chat",
-		description: "Collaborate on AI-powered conversations in realtime with your team.",
+		title: t("f_collaborative_ai_chat"),
+		description: t("f_collaborate_on_ai_powered"),
 		src: "/homepage/hero_realtime/RealTimeChatGif.mp4",
 	},
 	{
-		title: "Realtime Comments",
-		description: "Add comments and tag teammates on any message.",
+		title: t("f_realtime_comments"),
+		description: t("f_add_comments_and_tag"),
 		src: "/homepage/hero_realtime/RealTimeCommentsFlow.mp4",
 	},
 ];
@@ -155,6 +155,8 @@ function HeroCarouselCard({
 }
 
 function HeroCarousel() {
+	const t = useTranslations("ui");
+	const tCarousel = useTranslations("carousel");
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [isGifExpanded, setIsGifExpanded] = useState(false);
 	const directionRef = useRef<"forward" | "backward">("forward");
@@ -169,18 +171,18 @@ function HeroCarousel() {
 	const goToPrev = useCallback(() => {
 		setActiveIndex((prev) => {
 			directionRef.current = "backward";
-			return prev <= 0 ? carouselItems.length - 1 : prev - 1;
+			return prev <= 0 ? getCarouselItems(t).length - 1 : prev - 1;
 		});
 	}, []);
 
 	const goToNext = useCallback(() => {
 		setActiveIndex((prev) => {
 			directionRef.current = "forward";
-			return prev >= carouselItems.length - 1 ? 0 : prev + 1;
+			return prev >= getCarouselItems(t).length - 1 ? 0 : prev + 1;
 		});
 	}, []);
 
-	const item = carouselItems[activeIndex];
+	const item = getCarouselItems(t)[activeIndex];
 	const isForward = directionRef.current === "forward";
 
 	return (
@@ -211,13 +213,13 @@ function HeroCarousel() {
 					size="icon"
 					onClick={() => !isGifExpanded && goToPrev()}
 					className="size-11 rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm hover:bg-neutral-100 touch-manipulation dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-					aria-label="Previous slide"
+					aria-label={t("f_previous_slide")}
 				>
 					<ChevronLeft className="size-5" aria-hidden="true" />
 				</Button>
 
 				<div className="flex items-center">
-					{carouselItems.map((carouselItem, i) => (
+					{getCarouselItems(t).map((carouselItem, i) => (
 						<Button
 							key={carouselItem.src}
 							type="button"
@@ -225,7 +227,7 @@ function HeroCarousel() {
 							size="icon"
 							onClick={() => !isGifExpanded && goTo(i)}
 							className="h-11 min-w-[28px] bg-transparent p-0 hover:bg-transparent touch-manipulation"
-							aria-label={`Go to slide ${i + 1}`}
+							aria-label={tCarousel("go_to_slide", { n: i + 1 })}
 						>
 							<span
 								className={`block h-2.5 rounded-full transition-all duration-300 ${
@@ -244,7 +246,7 @@ function HeroCarousel() {
 					size="icon"
 					onClick={() => !isGifExpanded && goToNext()}
 					className="size-11 rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm hover:bg-neutral-100 touch-manipulation dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-					aria-label="Next slide"
+					aria-label={t("f_next_slide")}
 				>
 					<ChevronRight className="size-5" aria-hidden="true" />
 				</Button>

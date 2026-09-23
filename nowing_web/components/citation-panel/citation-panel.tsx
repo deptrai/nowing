@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
 import { XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { openEditorPanelAtom } from "@/atoms/editor/editor-panel.atom";
@@ -30,6 +31,7 @@ export const CitationPanelContent: FC<CitationPanelContentProps> = ({
 	onClose,
 	showHeader = true,
 }) => {
+	const t = useTranslations("common");
 	const openEditorPanel = useSetAtom(openEditorPanelAtom);
 
 	const chunkWindow = DEFAULT_CHUNK_WINDOW;
@@ -88,7 +90,7 @@ export const CitationPanelContent: FC<CitationPanelContentProps> = ({
 			<div className="shrink-0">
 				{showHeader && (
 					<div className="shrink-0 flex h-12 items-center justify-between px-3 border-b">
-						<h2 className="select-none text-lg font-semibold">Citation</h2>
+						<h2 className="select-none text-lg font-semibold">{t("citation")}</h2>
 						<div className="flex items-center gap-1 shrink-0">
 							{onClose && (
 								<Button
@@ -98,7 +100,7 @@ export const CitationPanelContent: FC<CitationPanelContentProps> = ({
 									className="h-8 w-8 rounded-full shrink-0 text-muted-foreground hover:text-accent-foreground"
 								>
 									<XIcon className="h-4 w-4" />
-									<span className="sr-only">Close citation panel</span>
+									<span className="sr-only">{t("close_citation")}</span>
 								</Button>
 							)}
 						</div>
@@ -136,7 +138,7 @@ export const CitationPanelContent: FC<CitationPanelContentProps> = ({
 				{error && (
 					<div className="flex min-h-full items-center justify-center text-center">
 						<p className="text-sm text-destructive">
-							{error instanceof Error ? error.message : "Failed to load citation"}
+							{error instanceof Error ? error.message : t("citation_load_failed")}
 						</p>
 					</div>
 				)}
@@ -173,7 +175,9 @@ export const CitationPanelContent: FC<CitationPanelContentProps> = ({
 												Chunk #{chunk.id}
 											</span>
 											{isCited && (
-												<span className="text-[11px] font-semibold text-primary">Cited chunk</span>
+												<span className="text-[11px] font-semibold text-primary">
+													{t("cited_chunk")}
+												</span>
 											)}
 										</div>
 										<div className="text-sm">

@@ -1,4 +1,9 @@
 ---
+story_key: 12-9-job-market-alerts
+status: done
+---
+
+---
 title: Story 12.9 — Job Market Alerts
 epic: 12
 story: 9

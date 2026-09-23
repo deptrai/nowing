@@ -68,7 +68,7 @@ class SlackStreamTranslator(BaseStreamTranslator):
                 text=text,
                 reply_to_message_id=self.thread_ts,
             )
-        except Exception:
+        except Exception:  # channel adapter failure; record failure metric and re-raise
             record_gateway_outbound(platform="slack", kind="send", status="failed")
             raise
         record_gateway_outbound(platform="slack", kind="send", status="sent")

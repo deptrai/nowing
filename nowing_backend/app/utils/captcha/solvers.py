@@ -70,7 +70,7 @@ def proxy_login_form(proxy_url: str | None) -> str | None:
         if p.username and p.password:
             return f"{p.username}:{p.password}@{p.hostname}:{p.port}"
         return f"{p.hostname}:{p.port}"
-    except Exception:
+    except Exception:  # unparseable proxy URL → fallback to None (proxyless solve)
         return None
 
 
@@ -143,7 +143,8 @@ def _twocaptcha(
                 f"{_2CAP_RES}?key={cfg.api_key}&action=get&id={task_id}&json=1",
                 timeout=30,
             ).json()
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if got.get("status") == 1:
             return got["request"] or None
@@ -178,7 +179,7 @@ def capsolver_proxy(proxy_url: str | None) -> str | None:
         if p.username and p.password:
             return f"{scheme}:{p.hostname}:{p.port}:{p.username}:{p.password}"
         return f"{scheme}:{p.hostname}:{p.port}"
-    except Exception:
+    except Exception:  # unparseable proxy URL → fallback to None (proxyless task)
         return None
 
 
@@ -257,7 +258,8 @@ def _capsolver(
                 json={"clientKey": cfg.api_key, "taskId": task_id},
                 timeout=30,
             ).json()
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if got.get("errorId"):
             _raise_capsolver(

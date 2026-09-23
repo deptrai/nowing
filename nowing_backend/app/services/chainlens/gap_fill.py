@@ -199,7 +199,7 @@ class GapFillService:
 
         try:
             data = response.json() if response.content else {}
-        except Exception:
+        except Exception:  # fallback to empty dict on malformed JSON response
             data = {}
         parsed = self._parse_response(data, response.status_code)
         await self._record_gap_fill_cost(payload, parsed, run_id)
@@ -318,7 +318,7 @@ class GapFillService:
                 final_status = "cancelled"
                 final_error = "Gap-fill run was cancelled"
                 raise
-            except Exception as exc:  # pragma: no cover - worker safety net
+            except Exception as exc:  # pragma: no cover - worker safety net: catch unexpected worker failure
                 logger.exception("Async gap-fill worker failed for run %s", run_id)
                 final_status = "error"
                 final_error = str(exc)
@@ -401,7 +401,7 @@ class GapFillService:
             try:
                 await check_balance(session, owner_user_id, total_micros)
                 await apply_debit(session, owner_user_id, total_micros)
-            except Exception:
+            except Exception:  # debit failure for async gap-fill run; log and return early
                 logger.exception("Failed to debit gap-fill cost for run %s", run_id)
                 return
 

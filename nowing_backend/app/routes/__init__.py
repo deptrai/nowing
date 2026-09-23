@@ -46,18 +46,24 @@ from .admin_anti_bot_escalation_routes import (
 )
 from .admin_audit_logs_routes import router as admin_audit_logs_router
 from .admin_broadcasts_routes import router as admin_broadcasts_router
+from .admin_bulk_ops_routes import router as admin_bulk_ops_router
 from .admin_credits_routes import router as admin_credits_router
 from .admin_dnc_routes import router as admin_dnc_router
 from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
 from .admin_latency_routes import router as admin_latency_router
+from .admin_refund_desk_routes import router as admin_refund_desk_router
+from .admin_saas_routes import router as admin_saas_router
 from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
     scraper_accounts_alias_router,
 )
 from .admin_scraper_rules_routes import router as admin_scraper_rules_router
-from .admin_telemetry_routes import router as admin_telemetry_router
+from .admin_telemetry_routes import (
+    health_router as admin_health_router,
+    router as admin_telemetry_router,
+)
 from .admin_users_routes import router as admin_users_router
 from .agent_action_log_route import router as agent_action_log_router
 from .agent_chat_routes import router as agent_chat_router
@@ -74,17 +80,19 @@ from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
 from .composio_routes import router as composio_router
 from .confluence_add_connector_route import router as confluence_add_connector_router
+from .connectors import router as search_source_connectors_router
 from .crm_oauth_routes import router as crm_oauth_router
 from .crm_routes import router as crm_router
 from .discord_add_connector_route import router as discord_add_connector_router
 from .dnc_routes import router as dnc_router
-from .documents_routes import router as documents_router
+from .documents import router as documents_router
 from .dropbox_add_connector_route import router as dropbox_add_connector_router
 from .editor_routes import router as editor_router
 from .enrichment_routes import router as enrichment_router
 from .export_routes import router as export_router
 from .extract_entities_routes import router as extract_entities_router
 from .folders_routes import router as folders_router
+from .gateway_email_routes import router as gateway_email_router
 from .gateway_webhook_routes import (
     config_router as gateway_config_router,
     router as gateway_router,
@@ -100,6 +108,7 @@ from .google_drive_add_connector_route import (
 from .google_gmail_add_connector_route import (
     router as google_gmail_add_connector_router,
 )
+from .governance_routes import router as governance_router
 from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
@@ -113,6 +122,7 @@ from .luma_add_connector_route import router as luma_add_connector_router
 from .mcp_oauth_route import router as mcp_oauth_router
 from .meeting_minutes_routes import router as meeting_minutes_router
 from .memories_routes import router as memories_router
+from .memory_browser_routes import router as memory_browser_router
 from .memory_routes import router as memory_router
 from .model_connections_routes import router as model_connections_router
 from .model_list_routes import router as model_list_router
@@ -126,25 +136,30 @@ from .outcome_pricing_routes import router as outcome_pricing_router
 from .partner_routes import router as partner_router
 from .personal_access_tokens_routes import router as personal_access_tokens_router
 from .presentation_routes import router as presentation_router
+from .projects_routes import router as projects_router
 from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
+from .public_booking_routes import router as public_booking_router
 from .public_chat_routes import router as public_chat_router
+from .public_pitch_routes import router as public_pitch_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
 from .sandbox_routes import router as sandbox_router
-from .search_source_connectors_routes import router as search_source_connectors_router
 from .sequence_routes import router as sequence_router
 from .signals_routes import router as signals_router
+from .skills_routes import router as skills_router
 from .slack_add_connector_route import router as slack_add_connector_router
 from .social_copilot_routes import router as social_copilot_router
 from .social_routes import router as social_routes
 from .stripe_routes import router as stripe_router
 from .team_memory_routes import router as team_memory_router
 from .teams_add_connector_route import router as teams_add_connector_router
-from .usage_routes import router as usage_router
+from .usage_routes import router as usage_router, workspace_usage_router
 from .video_presentations_routes import router as video_presentations_router
+from .vietqr_routes import router as vietqr_router
 from .web_builder_routes import router as web_builder_router
+from .workspace_health_routes import router as workspace_health_router
 from .workspace_tables_routes import router as workspace_tables_router
 from .workspaces_routes import router as workspaces_router
 from .youtube_routes import router as youtube_router
@@ -152,16 +167,25 @@ from .zns_routes import router as zns_router
 
 router = APIRouter()
 
+router.include_router(workspace_health_router)  # Workspace Health & Adoption Analytics (Story 29.2)
 router.include_router(workspaces_router)
+router.include_router(projects_router)
+router.include_router(skills_router)
 router.include_router(workspace_tables_router)
 router.include_router(sequence_router)
 router.include_router(outcome_pricing_router)
 router.include_router(promo_code_router)
 router.include_router(partner_router)
 router.include_router(lead_scoring_router)
-router.include_router(leads_router)
+# lead_clipper_router must precede leads_router: its GET
+# /workspaces/{id}/leads/copilot-context would otherwise be shadowed by
+# GET /workspaces/{id}/leads/{lead_id} (UUID parse → 422). Clipper routes
+# are POST-only otherwise, so no reverse collision exists.
 router.include_router(lead_clipper_router)
+router.include_router(leads_router)
 router.include_router(lead_pipeline_router)
+router.include_router(public_booking_router)  # Prospect-facing /book/{ws}/{lead} (Story 37.3)
+router.include_router(public_pitch_router)  # pitch.nowing.ai beacon + meta (Story 37.6)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(zns_router)
@@ -182,6 +206,9 @@ router.include_router(
 )
 router.include_router(
     gateway_whatsapp_baileys_router, dependencies=_gateway_enabled_dep
+)
+router.include_router(
+    gateway_email_router, dependencies=_gateway_enabled_dep
 )
 router.include_router(notes_router)
 router.include_router(new_chat_router)  # Chat with assistant-ui persistence
@@ -229,6 +256,7 @@ router.include_router(
     admin_latency_router
 )  # Platform admin ChainLens latency percentiles
 router.include_router(admin_telemetry_router)  # Platform admin real-time telemetry
+router.include_router(admin_health_router)  # /api/v1/admin/health aliases
 router.include_router(
     admin_scraper_platform_accounts_router
 )  # Admin scraper platform credentials
@@ -243,6 +271,9 @@ router.include_router(admin_users_router)  # Admin users and impersonation
 router.include_router(admin_affiliates_router)  # Admin affiliate partner payout desk
 router.include_router(admin_credits_router)  # Manual credit adjustments
 router.include_router(
+    admin_refund_desk_router
+)  # Admin Desk for cap-exceeded invalid-contact refunds (Story 37.7)
+router.include_router(
     admin_audit_logs_router
 )  # Platform admin audit trail logs (Story 25.6)
 router.include_router(
@@ -251,6 +282,15 @@ router.include_router(
 router.include_router(
     admin_broadcasts_router
 )  # Platform admin broadcast management (Story 25.6)
+router.include_router(
+    admin_saas_router
+)  # Platform admin SaaS plan catalog (Story 29.3)
+router.include_router(
+    admin_bulk_ops_router
+)  # Platform admin bulk operations console (Story 29.4)
+router.include_router(
+    governance_router
+)  # Workspace governance console (Story 29.6)
 router.include_router(
     broadcasts_router
 )  # In-app active broadcast announcements (Story 25.6)
@@ -266,7 +306,9 @@ router.include_router(composio_router)  # Composio OAuth and toolkit management
 router.include_router(public_chat_router)  # Public chat sharing and cloning
 router.include_router(incentive_tasks_router)  # Incentive tasks for earning free pages
 router.include_router(stripe_router)  # Stripe checkout for additional page packs
+router.include_router(vietqr_router)  # VietQR/Napas dynamic top-up checkout (Story 37.7)
 router.include_router(usage_router)  # Usage and credit dashboard
+router.include_router(workspace_usage_router)
 router.include_router(youtube_router)  # YouTube playlist resolution
 router.include_router(prompts_router)
 router.include_router(memories_router)  # Structured memory CRUD/search
@@ -275,6 +317,7 @@ router.include_router(
 )  # Research-thread continuity context (4.6)
 router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(team_memory_router)  # Workspace team memory
+router.include_router(memory_browser_router)  # Memory browser & review flag
 router.include_router(automations_router)  # Automations CRUD + run history
 router.include_router(file_storage_router)  # Original file metadata + download
 router.include_router(extract_entities_router)  # Test entity extraction (AC-1 / AD-107)

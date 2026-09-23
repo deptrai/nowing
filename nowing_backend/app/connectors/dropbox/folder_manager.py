@@ -35,7 +35,7 @@ async def list_folder_contents(
         )
         return items, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return empty items and error
         logger.error(f"Error listing folder contents: {e!s}", exc_info=True)
         return [], f"Error listing folder contents: {e!s}"
 
@@ -71,7 +71,7 @@ async def get_files_in_folder(
 
         return files, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return empty files and error
         logger.error(f"Error getting files in folder: {e!s}", exc_info=True)
         return [], f"Error getting files in folder: {e!s}"
 
@@ -89,6 +89,6 @@ async def get_file_by_path(
             return None, f"File not found: {path}"
         return item, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return None and error
         logger.error(f"Error getting file by path: {e!s}", exc_info=True)
         return None, f"Error getting file by path: {e!s}"

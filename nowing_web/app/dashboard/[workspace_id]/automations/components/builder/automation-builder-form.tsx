@@ -2,6 +2,7 @@
 import { useAtomValue } from "jotai";
 import { AlertCircle, Code2, LayoutList } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type { z } from "zod";
@@ -63,7 +64,7 @@ interface AutomationBuilderFormProps {
 
 type Mode = "form" | "json";
 
-function mapFormErrors(error: z.ZodError): Record<string, string> {
+function mapFormErrors(error: z.ZodError, t: (key: string) => string): Record<string, string> {
 	const out: Record<string, string> = {};
 	for (const issue of error.issues) {
 		const path = issue.path;
@@ -73,7 +74,7 @@ function mapFormErrors(error: z.ZodError): Record<string, string> {
 			key = `tasks.${path[1]}.${field}`;
 		} else if (path[0] === "schedule") key = "schedule";
 		else key = String(path[0] ?? "_root");
-		if (!out[key]) out[key] = issue.message;
+		if (!out[key]) out[key] = issue.message.includes(".") ? t(issue.message) : issue.message;
 	}
 	return out;
 }
@@ -85,6 +86,7 @@ export function AutomationBuilderForm({
 	submitDisabledReason,
 	renderModeSwitcher,
 }: AutomationBuilderFormProps) {
+	const t = useTranslations("automations");
 	const router = useRouter();
 	const { mutateAsync: createAutomation } = useAtomValue(createAutomationMutationAtom);
 	const { mutateAsync: updateAutomation } = useAtomValue(updateAutomationMutationAtom);
@@ -103,7 +105,7 @@ export function AutomationBuilderForm({
 			return {
 				mode: "json" as Mode,
 				form: createEmptyForm(),
-				notice: `This automation ${result.reason}, which the form can't show. Edit it as JSON below`,
+				notice: t("builder_json_notice", { reason: result.reason }),
 			};
 		}
 		return { mode: "form" as Mode, form: createEmptyForm(), notice: undefined };
@@ -190,7 +192,7 @@ export function AutomationBuilderForm({
 		// form's own validation enforces completeness on submit.
 		const definition = jsonValue.definition;
 		if (!definition || typeof definition !== "object") {
-			return { ok: false, issues: [], notice: "Add a definition before switching to the form" };
+			return { ok: false, issues: [], notice: t("add_definition_notice") };
 		}
 
 		const name =
@@ -213,16 +215,16 @@ export function AutomationBuilderForm({
 
 	function validateForm(): Record<string, string> | null {
 		const result = builderFormSchema.safeParse(form);
-		const next = result.success ? {} : mapFormErrors(result.error);
+		const next = result.success ? {} : mapFormErrors(result.error, t);
 
 		// The schedule model fields aren't deeply validated by the schema.
 		if (form.schedule?.mode === "preset") {
 			const m = form.schedule.model;
 			if (m.frequency === "weekly" && m.daysOfWeek.length === 0) {
-				next.schedule = "Pick at least one day for the weekly schedule";
+				next.schedule = t("pick_day_weekly");
 			}
 		} else if (form.schedule?.mode === "cron" && !form.schedule.cron.trim()) {
-			next.schedule = "Enter a schedule expression";
+			next.schedule = t("auto_enter_schedule_expr");
 		}
 
 		return Object.keys(next).length > 0 ? next : null;
@@ -276,7 +278,7 @@ export function AutomationBuilderForm({
 				router.push(`/dashboard/${workspaceId}/automations/${created.id}`);
 			}
 		} catch (err) {
-			setRootError((err as Error).message ?? "Submit failed");
+			setRootError((err as Error).message ?? t("auto_submit_failed"));
 		} finally {
 			setSubmitting(false);
 		}
@@ -307,7 +309,7 @@ export function AutomationBuilderForm({
 				router.push(`/dashboard/${workspaceId}/automations/${created.id}`);
 			}
 		} catch (err) {
-			setJsonIssues([(err as Error).message ?? "Submit failed"]);
+			setJsonIssues([(err as Error).message ?? t("auto_submit_failed")]);
 		} finally {
 			setSubmitting(false);
 		}
@@ -320,10 +322,7 @@ export function AutomationBuilderForm({
 	const modelsUnresolved =
 		mode === "create" && !eligibleModels.isLoading && !hasResolvedModels(resolvedModels);
 	const effectiveDisabledReason =
-		submitDisabledReason ??
-		(modelsUnresolved
-			? "Set up a premium or your own (BYOK) agent, image, and vision model in role settings before creating an automation."
-			: undefined);
+		submitDisabledReason ?? (modelsUnresolved ? t("setup_models_first") : undefined);
 	// Only gate creation; editing an existing automation isn't blocked here.
 	const submitBlocked = mode === "create" && !!effectiveDisabledReason;
 	const modeSwitcher = (
@@ -348,7 +347,7 @@ export function AutomationBuilderForm({
 					className="h-5 gap-1 px-1.5 text-[11px] select-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=active]:bg-muted-foreground/25 data-[state=active]:text-foreground data-[state=active]:shadow-none"
 				>
 					<Code2 className="size-3 shrink-0" aria-hidden="true" />
-					<span className="leading-none">Edit as JSON</span>
+					<span className="leading-none">{t("auto_edit_as_json")}</span>
 				</TabsTrigger>
 			</TabsList>
 		</Tabs>
@@ -375,7 +374,7 @@ export function AutomationBuilderForm({
 						<Card className="rounded-md border-accent bg-accent/20">
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Basics</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("basics")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<BasicsSection
@@ -407,7 +406,7 @@ export function AutomationBuilderForm({
 							<Separator className="mx-auto data-[orientation=horizontal]:w-[calc(100%-6rem)]" />
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Schedule</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("auto_schedule")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<ScheduleSection
@@ -422,7 +421,7 @@ export function AutomationBuilderForm({
 							<Separator className="mx-auto data-[orientation=horizontal]:w-[calc(100%-6rem)]" />
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Models</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("models")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<AutomationModelFields
@@ -435,7 +434,7 @@ export function AutomationBuilderForm({
 							<Separator className="mx-auto data-[orientation=horizontal]:w-[calc(100%-6rem)]" />
 							<section>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-semibold">Settings</CardTitle>
+									<CardTitle className="text-sm font-semibold">{t("auto_settings")}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<AdvancedSection
@@ -454,7 +453,7 @@ export function AutomationBuilderForm({
 					<div className="lg:col-span-1">
 						<Card className="rounded-md border-accent bg-accent/20 lg:sticky lg:top-4">
 							<CardHeader className="pb-3">
-								<CardTitle className="text-sm font-semibold">Summary</CardTitle>
+								<CardTitle className="text-sm font-semibold">{t("auto_summary")}</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<BuilderSummary form={form} />

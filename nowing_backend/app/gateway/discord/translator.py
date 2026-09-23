@@ -68,7 +68,7 @@ class DiscordStreamTranslator(BaseStreamTranslator):
                 text=text,
                 reply_to_message_id=self.reply_to_message_id,
             )
-        except Exception:
+        except Exception:  # channel adapter failure; record failure metric and re-raise
             record_gateway_outbound(platform="discord", kind="send", status="failed")
             raise
         record_gateway_outbound(platform="discord", kind="send", status="sent")

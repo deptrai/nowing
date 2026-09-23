@@ -112,7 +112,7 @@ def create_create_automation_tool(
                 [HumanMessage(content=prompt)],
                 config={"tags": ["nowing:internal", "automation-draft"]},
             )
-        except Exception as exc:
+        except Exception as exc:  # automation drafting LLM invocation failure; return error payload
             logger.exception("create_automation drafting LLM call failed")
             return {"status": "error", "message": f"drafting failed: {exc}"}
 
@@ -186,7 +186,7 @@ def create_create_automation_tool(
 
         except HTTPException as exc:
             return {"status": "error", "message": exc.detail}
-        except Exception as exc:
+        except Exception as exc:  # automation creation failure; surface error payload
             from langgraph.errors import GraphInterrupt
 
             if isinstance(exc, GraphInterrupt):

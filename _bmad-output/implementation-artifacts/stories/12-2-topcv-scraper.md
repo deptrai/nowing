@@ -1,4 +1,9 @@
 ---
+story_key: 12-2-topcv-scraper
+status: done
+---
+
+---
 title: Story 12.2 — TopCV Scraper
 epic: 12
 story: 2

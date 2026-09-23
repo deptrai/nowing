@@ -430,7 +430,7 @@ class PartnerService:
                 credit_purchase.id,
             )
             return commission
-        except Exception as e:
+        except Exception as e:  # best-effort partner commission disbursement; return None on failure
             logger.error("Failed to credit partner commission: %s", e, exc_info=True)
             return None
 

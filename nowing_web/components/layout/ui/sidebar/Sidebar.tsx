@@ -52,8 +52,6 @@ interface SidebarProps {
 	onToggleCollapse?: () => void;
 	navItems: NavItem[];
 	onNavItemClick?: (item: NavItem) => void;
-	onPlaygroundItemClick?: (item: NavItem) => void;
-	isPlaygroundSidebarOpen?: boolean;
 	chats: ChatItem[];
 	activeChatId?: number | null;
 	onNewChat: () => void;
@@ -91,8 +89,6 @@ export function Sidebar({
 	onToggleCollapse,
 	navItems,
 	onNavItemClick,
-	onPlaygroundItemClick,
-	isPlaygroundSidebarOpen,
 	chats,
 	activeChatId,
 	onNewChat,
@@ -142,10 +138,6 @@ export function Sidebar({
 		() => navItems.find((item) => item.url.endsWith("/artifacts")),
 		[navItems]
 	);
-	const playgroundItem = useMemo(
-		() => navItems.find((item) => item.url.endsWith("/playground")),
-		[navItems]
-	);
 	const footerNavItems = useMemo(
 		() =>
 			navItems.filter(
@@ -158,6 +150,7 @@ export function Sidebar({
 		[navItems]
 	);
 
+	const newChatHref = workspace?.id ? `/dashboard/${workspace.id}/new-chat` : undefined;
 	const collapsedWidth = 51;
 
 	return (
@@ -217,7 +210,8 @@ export function Sidebar({
 				<SidebarButton
 					icon={SquarePen}
 					label={t("new_chat")}
-					onClick={onNewChat}
+					href={newChatHref}
+					onClick={newChatHref ? undefined : onNewChat}
 					isCollapsed={isCollapsed}
 				/>
 			</div>
@@ -231,6 +225,7 @@ export function Sidebar({
 						<SidebarButton
 							icon={automationsItem.icon}
 							label={automationsItem.title}
+							href={automationsItem.url}
 							onClick={() => onNavItemClick?.(automationsItem)}
 							isCollapsed={isCollapsed}
 							isActive={automationsItem.isActive}
@@ -241,6 +236,7 @@ export function Sidebar({
 						<SidebarButton
 							icon={playbooksItem.icon}
 							label={playbooksItem.title}
+							href={playbooksItem.url}
 							onClick={() => onNavItemClick?.(playbooksItem)}
 							isCollapsed={isCollapsed}
 							isActive={playbooksItem.isActive}
@@ -251,21 +247,11 @@ export function Sidebar({
 						<SidebarButton
 							icon={artifactsItem.icon}
 							label={artifactsItem.title}
+							href={artifactsItem.url}
 							onClick={() => onNavItemClick?.(artifactsItem)}
 							isCollapsed={isCollapsed}
 							isActive={artifactsItem.isActive}
 							tooltipContent={isCollapsed ? artifactsItem.title : undefined}
-						/>
-					)}
-					{playgroundItem && (
-						<SidebarButton
-							icon={playgroundItem.icon}
-							label={playgroundItem.title}
-							onClick={() => (onPlaygroundItemClick ?? onNavItemClick)?.(playgroundItem)}
-							isCollapsed={isCollapsed}
-							isActive={isPlaygroundSidebarOpen ?? playgroundItem.isActive}
-							badge={<SidebarButtonBadge>New</SidebarButtonBadge>}
-							tooltipContent={isCollapsed ? playgroundItem.title : undefined}
 						/>
 					)}
 				</div>
@@ -301,6 +287,7 @@ export function Sidebar({
 											<ChatListItem
 												key={chat.id}
 												name={chat.name}
+												href={chat.url}
 												isActive={chat.id === activeChatId}
 												archived={chat.archived}
 												dropdownOpen={openDropdownChatId === chat.id}
@@ -383,6 +370,7 @@ function SidebarUsageFooter({
 	hasNavSectionAbove?: boolean;
 	onNavigate?: () => void;
 }) {
+	const t = useTranslations("layout");
 	const params = useParams();
 	const workspaceId = getWorkspaceIdParam(params) ?? "";
 	const isAnonymous = useIsAnonymous();
@@ -419,7 +407,7 @@ function SidebarUsageFooter({
 					href="/register"
 					className="flex items-center justify-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
 				>
-					Create Free Account
+					{t("x_create_free_account")}
 				</Link>
 			</div>
 		);
@@ -435,9 +423,9 @@ function SidebarUsageFooter({
 					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					<Zap className="h-3 w-3 shrink-0 text-amber-500" aria-hidden="true" />
-					<span className="truncate">Earn</span>
+					<span className="truncate">{t("earn_short")}</span>
 					<SidebarButtonBadge className="h-3.5 px-1 text-[9px] bg-emerald-600 text-white hover:bg-emerald-600">
-						FREE
+						{t("free_badge")}
 					</SidebarButtonBadge>
 				</Link>
 				<Link
@@ -446,7 +434,7 @@ function SidebarUsageFooter({
 					className="group relative z-10 mx-0.5 flex min-w-0 items-center justify-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					<CreditCard className="h-3 w-3 shrink-0" aria-hidden="true" />
-					<span className="truncate">Buy</span>
+					<span className="truncate">{t("buy_short")}</span>
 				</Link>
 			</div>
 		</div>

@@ -1,5 +1,6 @@
 "use client";
 import { CalendarClock, ChevronDown, ChevronRight, ListOrdered, Target } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { describeCron } from "@/lib/automations/describe-cron";
 
@@ -46,6 +47,7 @@ interface AutomationDraftPreviewProps {
  * stays scannable for the common case.
  */
 export function AutomationDraftPreview({ draft, raw }: AutomationDraftPreviewProps) {
+	const t = useTranslations("toolUi");
 	const [showRaw, setShowRaw] = useState(false);
 
 	return (
@@ -56,16 +58,17 @@ export function AutomationDraftPreview({ draft, raw }: AutomationDraftPreviewPro
 			</div>
 
 			{draft.definition.goal && (
-				<Section icon={Target} label="Goal">
+				<Section icon={Target} label={t("automation_goal")}>
 					<p className="text-xs text-foreground">{draft.definition.goal}</p>
 				</Section>
 			)}
 
-			<Section icon={CalendarClock} label={`Triggers · ${draft.triggers.length}`}>
+			<Section
+				icon={CalendarClock}
+				label={t("automation_triggers_count", { count: draft.triggers.length })}
+			>
 				{draft.triggers.length === 0 ? (
-					<p className="text-xs text-muted-foreground">
-						No triggers — automation will need one before it can run.
-					</p>
+					<p className="text-xs text-muted-foreground">{t("automation_no_triggers")}</p>
 				) : (
 					<ul className="space-y-1.5">
 						{draft.triggers.map((trigger) => (
@@ -82,7 +85,7 @@ export function AutomationDraftPreview({ draft, raw }: AutomationDraftPreviewPro
 
 			<Section
 				icon={ListOrdered}
-				label={`Plan · ${draft.definition.plan.length} step${draft.definition.plan.length === 1 ? "" : "s"}`}
+				label={t("automation_plan_count", { count: draft.definition.plan.length })}
 			>
 				<ol className="space-y-1 text-xs">
 					{draft.definition.plan.map((step, idx) => (
@@ -94,7 +97,11 @@ export function AutomationDraftPreview({ draft, raw }: AutomationDraftPreviewPro
 								<span className="font-medium text-foreground">{step.step_id}</span>
 								<span className="text-muted-foreground"> → </span>
 								<code className="font-mono text-muted-foreground">{step.action}</code>
-								{step.when && <span className="ml-2 text-muted-foreground">when {step.when}</span>}
+								{step.when && (
+									<span className="ml-2 text-muted-foreground">
+										{t("automation_when", { when: step.when })}
+									</span>
+								)}
 							</div>
 						</li>
 					))}
@@ -111,7 +118,7 @@ export function AutomationDraftPreview({ draft, raw }: AutomationDraftPreviewPro
 				) : (
 					<ChevronRight className="h-3 w-3" aria-hidden />
 				)}
-				{showRaw ? "Hide raw JSON" : "View raw JSON"}
+				{showRaw ? t("automation_hide_raw_json") : t("automation_view_raw_json")}
 			</button>
 			{showRaw && (
 				<pre className="rounded-md bg-muted/40 px-3 py-2 text-[11px] font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-words max-h-72">
@@ -134,10 +141,11 @@ function triggerKey(trigger: DraftTrigger): string {
 }
 
 function TriggerLine({ trigger }: { trigger: DraftTrigger }) {
+	const t = useTranslations("toolUi");
 	if (trigger.type === "schedule") {
 		const cron = typeof trigger.params.cron === "string" ? trigger.params.cron : undefined;
 		const tz = typeof trigger.params.timezone === "string" ? trigger.params.timezone : "UTC";
-		const human = cron ? describeCron(cron) : "Schedule";
+		const human = cron ? describeCron(cron) : t("automation_schedule");
 		const staticKeys = Object.keys(trigger.static_inputs ?? {});
 		return (
 			<div className="space-y-1">
@@ -146,14 +154,15 @@ function TriggerLine({ trigger }: { trigger: DraftTrigger }) {
 					<span className="text-muted-foreground">· {tz}</span>
 					{!trigger.enabled && (
 						<span className="rounded-md border border-border/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-							Disabled
+							{t("automation_disabled")}
 						</span>
 					)}
 				</div>
 				{cron && <code className="font-mono text-muted-foreground">{cron}</code>}
 				{staticKeys.length > 0 && (
 					<p className="text-muted-foreground">
-						Static inputs: <span className="text-foreground">{staticKeys.join(", ")}</span>
+						{t("automation_static_inputs")}{" "}
+						<span className="text-foreground">{staticKeys.join(", ")}</span>
 					</p>
 				)}
 			</div>

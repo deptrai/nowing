@@ -78,7 +78,7 @@ def raise_for_status(
 
     try:
         body = response.json()
-    except Exception:
+    except Exception:  # malformed response body JSON → fallback to truncated raw text
         body = response.text[:500] if response.text else None
 
     if status == 429:

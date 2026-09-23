@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any
 
 from .schemas import MuabanBdsListing
+
+logger = logging.getLogger(__name__)
 
 
 def _to_int(value: Any) -> int | None:
@@ -110,7 +113,8 @@ def _extract_locations_display(raw: dict[str, Any]) -> dict[str, str]:
     for idx, label in mapping.items():
         try:
             item = items[idx]
-        except IndexError:
+        except IndexError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         name = _normalize_whitespace(item.get("name"))
         if name:

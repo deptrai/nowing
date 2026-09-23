@@ -120,7 +120,7 @@ async def process_inbound_event(
             raise
         await _mark_failed(inbox_id, str(exc), session_maker)
         raise
-    except Exception as exc:
+    except Exception as exc:  # webhook delivery/processing error; mark event failed and re-raise
         await _mark_failed(inbox_id, str(exc), session_maker)
         raise
 
@@ -366,7 +366,7 @@ async def _dispatch_inbound_event(
                             text="This chat is suspended.",
                             show_alert=True,
                         )
-                    except Exception:
+                    except Exception:  # best-effort callback query ack on suspended binding
                         logger.warning(
                             "Failed to answer callback query %s",
                             callback_query_id,
@@ -378,7 +378,7 @@ async def _dispatch_inbound_event(
                         external_peer_id=parsed.external_peer_id,
                         text="This chat is suspended.",
                     )
-                except Exception:
+                except Exception:  # channel adapter failure sending suspended notice; log and drop
                     logger.exception(
                         "Failed to send suspended notice to %s",
                         parsed.external_peer_id,
@@ -405,7 +405,7 @@ async def _dispatch_inbound_event(
                         await adapter.answer_callback_query(
                             callback_query_id=callback_query_id
                         )
-                    except Exception:
+                    except Exception:  # best-effort callback query ack on unbound callback
                         logger.warning(
                             "Failed to answer callback query %s",
                             callback_query_id,
@@ -472,7 +472,7 @@ async def _dispatch_inbound_event(
                         event=parsed,
                         binding=binding,
                     )
-                except Exception:
+                except Exception:  # callback query handler execution error; re-raise to fail event
                     handler_failed = True
                     raise
                 finally:
@@ -485,7 +485,7 @@ async def _dispatch_inbound_event(
                             await adapter.answer_callback_query(
                                 callback_query_id=callback_query_id
                             )
-                        except Exception:
+                        except Exception:  # best-effort callback query ack after handler failure
                             logger.warning(
                                 "Failed to answer callback query %s",
                                 callback_query_id,
@@ -498,7 +498,7 @@ async def _dispatch_inbound_event(
                         await adapter.answer_callback_query(
                             callback_query_id=callback_query_id
                         )
-                    except Exception:
+                    except Exception:  # best-effort callback query ack for unhandled callback
                         logger.warning(
                             "Failed to answer callback query %s",
                             callback_query_id,
@@ -583,7 +583,7 @@ async def _dispatch_inbound_event(
                 event.last_error = "auto_reply_buffered"
                 await session.commit()
                 return
-            except Exception as e:
+            except Exception as e:  # auto-reply buffer failure; fall through to normal agent dispatch
                 logger.error("Failed to buffer inbound message for auto-reply: %s", e)
                 # Fall through to the normal chat-agent path on buffer failure.
 

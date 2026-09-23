@@ -140,7 +140,7 @@ class ActionLogMiddleware(AgentMiddleware):
         error_payload: dict[str, Any] | None = None
         try:
             result = await handler(request)
-        except Exception as exc:
+        except Exception as exc:  # tool execution failure; record failure payload and re-raise
             # Persist the failure too so revert/audit can see it, then
             # re-raise so downstream middleware (RetryAfter, etc.) handles it.
             error_payload = {"type": type(exc).__name__, "message": str(exc)}
@@ -207,7 +207,7 @@ class ActionLogMiddleware(AgentMiddleware):
                 await session.commit()
                 row_id = int(row.id) if row.id is not None else None
                 row_created_at = row.created_at
-        except Exception:
+        except Exception:  # best-effort action log persistence; abort recording
             logger.warning(
                 "ActionLogMiddleware failed to persist action log row",
                 exc_info=True,
@@ -233,7 +233,7 @@ class ActionLogMiddleware(AgentMiddleware):
                     "error": error_payload is not None,
                 },
             )
-        except Exception:
+        except Exception:  # best-effort telemetry event dispatch; continue execution
             logger.debug(
                 "ActionLogMiddleware failed to dispatch action_log event",
                 exc_info=True,
@@ -262,7 +262,7 @@ class ActionLogMiddleware(AgentMiddleware):
         try:
             parsed_result = _parse_tool_result_content(result)
             descriptor = tool_def.reverse(args, parsed_result)
-        except Exception:
+        except Exception:  # reverse descriptor render failure; fall back to non-reversible
             logger.warning(
                 "Reverse descriptor render failed for tool %s",
                 tool_name,
@@ -291,8 +291,8 @@ def _resolve_tool_name(request: Any) -> str:
             name = call.get("name")
             if isinstance(name, str) and name:
                 return name
-    except Exception:  # pragma: no cover - defensive
-        pass
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug("Suppressed %r", exc)
     return "unknown"
 
 
@@ -316,7 +316,7 @@ def _resolve_args_payload(request: Any) -> dict[str, Any] | None:
         return None
     try:
         encoded = json.dumps(args, default=str)
-    except Exception:
+    except Exception:  # JSON encoding failure for arguments; fall back to repr truncation
         return {"_repr": repr(args)[:_MAX_ARGS_PERSIST_BYTES]}
     if len(encoded) <= _MAX_ARGS_PERSIST_BYTES:
         return args
@@ -335,8 +335,8 @@ def _resolve_tool_call_id(request: Any) -> str | None:
             tid = call.get("id")
             if isinstance(tid, str):
                 return tid
-    except Exception:  # pragma: no cover
-        pass
+    except Exception as exc:  # pragma: no cover
+        logger.debug("Suppressed %r", exc)
     return None
 
 
@@ -366,8 +366,8 @@ def _resolve_chat_turn_id(request: Any) -> str | None:
         value = configurable.get("turn_id")
         if isinstance(value, str) and value:
             return value
-    except Exception:  # pragma: no cover - defensive
-        pass
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug("Suppressed %r", exc)
     return None
 
 

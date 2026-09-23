@@ -1,9 +1,6 @@
 ---
-title: Story 12.4 — Vietnam Job Aggregator (UMBRELLA)
-epic: 12
-story: 4
-status: split
-priority: P0
+story_key: 12-4a-vietnam-job-listing-normalization
+status: done
 ---
 
 # Story 12.4 — Vietnam Job Aggregator (UMBRELLA)

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ const DEFAULT_RULE: RuleSchema = {
 };
 
 export default function ScraperRulesPage() {
+	const t = useTranslations("admin");
 	const [rules, setRules] = useState<ScraperRuleListItem[]>([]);
 	const [active, setActive] = useState<ScraperRuleRead | null>(null);
 	const [platform, setPlatform] = useState("batdongsan");
@@ -74,7 +76,7 @@ export default function ScraperRulesPage() {
 				setActive(rule);
 			}
 		} catch (_e) {
-			toast.error("Failed to load scraper rules");
+			toast.error(t("scrapers_load_failed"));
 		} finally {
 			setLoading(false);
 		}
@@ -91,9 +93,9 @@ export default function ScraperRulesPage() {
 		try {
 			const saved = await scraperRulesApi.save(platform, active.rule_schema);
 			setActive(saved);
-			toast.success("Rule saved");
+			toast.success(t("scrapers_rule_saved"));
 		} catch (e) {
-			toast.error(getApiErrorDetail(e, "Failed to save rule"));
+			toast.error(getApiErrorDetail(e, t("scrapers_save_failed")));
 		}
 	};
 
@@ -118,9 +120,9 @@ export default function ScraperRulesPage() {
 		try {
 			const rule = await scraperRulesApi.trip(platform);
 			setActive(rule);
-			toast.success("Circuit breaker tripped");
+			toast.success(t("scrapers_breaker_tripped"));
 		} catch (e) {
-			toast.error(getApiErrorDetail(e, "Trip failed"));
+			toast.error(getApiErrorDetail(e, t("scrapers_trip_failed")));
 		}
 	};
 
@@ -128,59 +130,63 @@ export default function ScraperRulesPage() {
 		try {
 			const rule = await scraperRulesApi.reset(platform);
 			setActive(rule);
-			toast.success("Circuit breaker reset");
+			toast.success(t("scrapers_breaker_reset"));
 		} catch (e) {
-			toast.error(getApiErrorDetail(e, "Reset failed"));
+			toast.error(getApiErrorDetail(e, t("scrapers_reset_failed")));
 		}
 	};
 
 	const schema = active?.rule_schema ?? DEFAULT_RULE;
-	const status = schema.circuit_breaker.tripped ? "tripped" : "healthy";
+	const status = schema.circuit_breaker.tripped
+		? t("scrapers_status_tripped")
+		: t("scrapers_status_healthy");
 
 	return (
 		<div className="p-6 max-w-4xl mx-auto space-y-6">
-			<h1 className="text-2xl font-bold">Scraper Rules</h1>
+			<h1 className="text-2xl font-bold">{t("scrapers_title")}</h1>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Active rule: {platform}</CardTitle>
+					<CardTitle>
+						{t("scrapers_active_rule")}: {platform}
+					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="text-sm text-muted-foreground">
-						version {active?.version ?? "-"} · status: {status}
+						{t("scrapers_version")} {active?.version ?? "-"} · {t("scrapers_status")}: {status}
 					</div>
 
 					<div>
-						<Label>Selectors</Label>
+						<Label>{t("scrapers_selectors")}</Label>
 						<div className="grid grid-cols-1 gap-2 mt-2">
 							<Input
 								data-testid="rule-editor-selectors-title"
 								value={schema.selectors.title}
 								onChange={(e) => updateField("selectors", "title", e.target.value)}
-								placeholder="CSS selector for title"
+								placeholder={t("scrapers_selector_title")}
 							/>
 							<Input
 								data-testid="rule-editor-selectors-listing_card"
 								value={schema.selectors.listing_card}
 								onChange={(e) => updateField("selectors", "listing_card", e.target.value)}
-								placeholder="CSS selector for listing card"
+								placeholder={t("scrapers_selector_card")}
 							/>
 							<Input
 								data-testid="rule-editor-selectors-next_page_link"
 								value={schema.selectors.next_page_link}
 								onChange={(e) => updateField("selectors", "next_page_link", e.target.value)}
-								placeholder="CSS selector for next page link"
+								placeholder={t("scrapers_selector_next")}
 							/>
 						</div>
 					</div>
 
 					<div>
-						<Label>Regexes</Label>
+						<Label>{t("scrapers_regexes")}</Label>
 						<Input
 							data-testid="rule-editor-regexes-phone_in_title"
 							value={schema.regexes.phone_in_title}
 							onChange={(e) => updateField("regexes", "phone_in_title", e.target.value)}
-							placeholder="Regex for phone in title"
+							placeholder={t("scrapers_regex_phone")}
 						/>
 					</div>
 
@@ -189,10 +195,10 @@ export default function ScraperRulesPage() {
 							Save
 						</Button>
 						<Button variant="secondary" onClick={handleTrip} disabled={loading}>
-							Trip Circuit Breaker
+							{t("scrapers_trip")}
 						</Button>
 						<Button variant="outline" onClick={handleReset} disabled={loading}>
-							Reset Circuit Breaker
+							{t("scrapers_reset")}
 						</Button>
 					</div>
 				</CardContent>
@@ -200,13 +206,14 @@ export default function ScraperRulesPage() {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>All rules</CardTitle>
+					<CardTitle>{t("scrapers_all_rules")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ul className="space-y-1">
 						{rules.map((r) => (
 							<li key={`${r.platform}-${r.version}`} className="text-sm">
-								{r.platform} — version {r.version} — {r.is_active ? "active" : "inactive"}
+								{r.platform} — version {r.version} —{" "}
+								{r.is_active ? t("scrapers_active") : t("scrapers_inactive")}
 							</li>
 						))}
 					</ul>

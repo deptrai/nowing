@@ -35,7 +35,7 @@ def _validate_http_url(value: str) -> str:
         raise _ERROR
     try:
         is_valid = validators.url(url)
-    except Exception:
+    except Exception:  # capability executor failure; return structured error
         is_valid = False
     if not is_valid:
         raise _ERROR

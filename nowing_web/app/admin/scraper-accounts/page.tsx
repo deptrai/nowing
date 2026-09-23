@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
@@ -299,6 +300,7 @@ const INITIAL_TELEGRAM_ACCOUNTS: TelegramAccountItem[] = [
 ];
 
 export default function ScraperAccountsPage() {
+	const t = useTranslations("admin");
 	const [{ data: user, isLoading: userLoading }] = useAtom(currentUserAtom);
 	const isSuperuser = !!user?.is_superuser;
 
@@ -354,7 +356,7 @@ export default function ScraperAccountsPage() {
 			const data = await scraperPlatformAccountsApiService.list();
 			setAccounts(data);
 		} catch {
-			toast.error("Failed to load scraper accounts");
+			toast.error(t("scrapers_acc_load_failed"));
 		} finally {
 			setListLoading(false);
 		}
@@ -379,10 +381,10 @@ export default function ScraperAccountsPage() {
 		try {
 			await scraperPlatformAccountsApiService.create(fromForm(draft));
 			setCreateOpen(false);
-			toast.success("Account created");
+			toast.success(t("scrapers_acc_created"));
 			await load();
 		} catch {
-			toast.error("Failed to create account");
+			toast.error(t("scrapers_acc_create_failed"));
 		}
 	}
 
@@ -394,10 +396,10 @@ export default function ScraperAccountsPage() {
 				fromForm(editDialog.draft)
 			);
 			setEditDialog({ open: false, account: null, draft: emptyForm });
-			toast.success("Account updated");
+			toast.success(t("scrapers_acc_updated"));
 			await load();
 		} catch {
-			toast.error("Failed to update account");
+			toast.error(t("scrapers_acc_update_failed"));
 		}
 	}
 
@@ -405,10 +407,10 @@ export default function ScraperAccountsPage() {
 		if (!deleteDialog) return;
 		try {
 			await scraperPlatformAccountsApiService.delete(deleteDialog.id);
-			toast.success("Account deleted");
+			toast.success(t("scrapers_acc_deleted"));
 			await load();
 		} catch {
-			toast.error("Failed to delete account");
+			toast.error(t("scrapers_acc_delete_failed"));
 		} finally {
 			setDeleteDialog(null);
 		}
@@ -419,10 +421,10 @@ export default function ScraperAccountsPage() {
 			await scraperPlatformAccountsApiService.update(account.id, {
 				is_enabled: !account.is_enabled,
 			});
-			toast.success("Account updated");
+			toast.success(t("scrapers_acc_updated"));
 			await load();
 		} catch {
-			toast.error("Failed to update account");
+			toast.error(t("scrapers_acc_update_failed"));
 		}
 	}
 
@@ -431,18 +433,14 @@ export default function ScraperAccountsPage() {
 			setCapturing(platform);
 			const res = await scraperPlatformAccountsApiService.capture(platform);
 			toast.success(res.message, {
-				description:
-					"A browser window has opened. Log in and the cookies will be saved automatically.",
+				description: t("scrapers_acc_capture_desc"),
 			});
 			for (let i = 0; i < 30; i++) {
 				await new Promise((resolve) => setTimeout(resolve, 5_000));
 				await load();
 			}
 		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: "Failed to start capture. Make sure the backend can open a browser.";
+			const message = error instanceof Error ? error.message : t("scrapers_acc_capture_failed");
 			toast.error(message);
 		} finally {
 			setCapturing(null);
@@ -463,25 +461,25 @@ export default function ScraperAccountsPage() {
 				return c;
 			})
 		);
-		toast.success("Channel stream setting updated");
+		toast.success(t("scrapers_acc_stream_updated"));
 	}
 
 	function handleSendTgCode() {
 		if (!tgPhone || !tgApiId || !tgApiHash) {
-			toast.error("Please fill in Phone Number, API ID, and API Hash");
+			toast.error(t("scrapers_acc_tg_required"));
 			return;
 		}
 		setTelegramStep(2);
-		toast.success("Verification code sent to your Telegram App / SMS");
+		toast.success(t("scrapers_acc_code_sent"));
 	}
 
 	function handleVerifyTgSave() {
 		if (!tgCode) {
-			toast.error("Please enter the verification code");
+			toast.error(t("scrapers_acc_enter_code"));
 			return;
 		}
 		if (tg2FAEnabled && !tgCloudPassword.trim()) {
-			toast.error("Please enter your 2FA Cloud Password");
+			toast.error(t("scrapers_acc_enter_2fa"));
 			return;
 		}
 
@@ -504,7 +502,7 @@ export default function ScraperAccountsPage() {
 		setTgProxy("");
 		setTgCode("");
 		setTgCloudPassword("");
-		toast.success("Telegram MTProto account connected successfully");
+		toast.success(t("scrapers_acc_tg_connected"));
 	}
 
 	function openEdit(account: ScraperPlatformAccount) {
@@ -522,8 +520,8 @@ export default function ScraperAccountsPage() {
 	if (!isSuperuser) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-				<h1 className="text-2xl font-semibold">Access denied</h1>
-				<p className="text-muted-foreground">You must be a superuser to view this page.</p>
+				<h1 className="text-2xl font-semibold">{t("scrapers_acc_access_denied")}</h1>
+				<p className="text-muted-foreground">{t("scrapers_acc_access_denied_desc")}</p>
 			</div>
 		);
 	}
@@ -532,24 +530,24 @@ export default function ScraperAccountsPage() {
 		<div className="container mx-auto max-w-5xl p-6">
 			<div className="mb-6 flex items-center justify-between">
 				<div>
-					<h1 className="font-serif text-2xl sm:text-3xl font-normal">Scraper platform accounts</h1>
+					<h1 className="font-serif text-2xl sm:text-3xl font-normal">{t("scrapers_acc_title")}</h1>
 					<p className="text-xs sm:text-sm text-muted-foreground font-sans">
-						Manage cookies, tokens, Telegram MTProto userbots and channel monitoring streams.
+						{t("scrapers_acc_subtitle")}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Button onClick={() => setTelegramModalOpen(true)} variant="outline">
-						Add Telegram Account
+						{t("scrapers_acc_add_tg")}
 					</Button>
-					<Button onClick={() => setCreateOpen(true)}>Add account</Button>
+					<Button onClick={() => setCreateOpen(true)}>{t("scrapers_acc_add")}</Button>
 				</div>
 			</div>
 
 			<Tabs defaultValue="all" className="space-y-6">
 				<TabsList className="grid w-full grid-cols-3 max-w-md">
-					<TabsTrigger value="all">All Accounts</TabsTrigger>
-					<TabsTrigger value="telegram">Telegram</TabsTrigger>
-					<TabsTrigger value="channels">Channels</TabsTrigger>
+					<TabsTrigger value="all">{t("scrapers_acc_tab_all")}</TabsTrigger>
+					<TabsTrigger value="telegram">{t("scrapers_acc_tab_tg")}</TabsTrigger>
+					<TabsTrigger value="channels">{t("scrapers_acc_tab_channels")}</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="all" className="space-y-4">
@@ -560,7 +558,7 @@ export default function ScraperAccountsPage() {
 					) : accounts.length === 0 ? (
 						<Card>
 							<CardContent className="flex h-40 items-center justify-center text-muted-foreground">
-								No scraper platform accounts found.
+								{t("scrapers_acc_empty")}
 							</CardContent>
 						</Card>
 					) : (
@@ -574,7 +572,7 @@ export default function ScraperAccountsPage() {
 													{account.label || account.platform}
 													{account.is_default && (
 														<span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-															Default
+															{t("scrapers_acc_default")}
 														</span>
 													)}
 												</CardTitle>
@@ -582,7 +580,9 @@ export default function ScraperAccountsPage() {
 											</div>
 											<div className="flex items-center gap-2">
 												<span className="text-sm text-muted-foreground">
-													{account.is_enabled ? "Enabled" : "Disabled"}
+													{account.is_enabled
+														? t("scrapers_acc_enabled")
+														: t("scrapers_acc_disabled")}
 												</span>
 												<Switch
 													checked={account.is_enabled}
@@ -595,25 +595,28 @@ export default function ScraperAccountsPage() {
 														disabled={capturing === account.platform}
 														onClick={() => handleCapture(account.platform)}
 													>
-														{capturing === account.platform ? "Capturing..." : "Capture session"}
+														{capturing === account.platform
+															? t("scrapers_acc_capturing")
+															: t("scrapers_acc_capture")}
 													</Button>
 												)}
 												<Button variant="outline" size="sm" onClick={() => openEdit(account)}>
-													Edit
+													{t("scrapers_acc_edit")}
 												</Button>
 												<Button
 													variant="outline"
 													size="sm"
 													onClick={() => setDeleteDialog(account)}
 												>
-													Delete
+													{t("scrapers_acc_delete")}
 												</Button>
 											</div>
 										</div>
 									</CardHeader>
 									<CardContent className="space-y-2 text-sm">
 										<p className="text-muted-foreground">
-											Created: {new Date(account.created_at).toLocaleString()}
+											{t("scrapers_acc_created_at")}:{" "}
+											{new Date(account.created_at).toLocaleString()}
 										</p>
 									</CardContent>
 								</Card>
@@ -626,14 +629,14 @@ export default function ScraperAccountsPage() {
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between pb-2">
 							<div>
-								<CardTitle>Telegram MTProto Accounts</CardTitle>
+								<CardTitle>{t("scrapers_acc_tg_accounts")}</CardTitle>
 								<CardDescription>
 									Userbot sessions with rate limit rotation, flood-wait cooldown handling, and proxy
 									support.
 								</CardDescription>
 							</div>
 							<Button onClick={() => setTelegramModalOpen(true)} size="sm">
-								Connect Telegram
+								{t("scrapers_acc_connect_tg")}
 							</Button>
 						</CardHeader>
 						<CardContent>
@@ -642,25 +645,25 @@ export default function ScraperAccountsPage() {
 									<thead>
 										<tr className="border-b text-muted-foreground">
 											<th className="py-3 px-2 font-medium" scope="col">
-												Phone Number
+												{t("scrapers_acc_col_phone")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Platform
+												{t("scrapers_acc_col_platform")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Status
+												{t("scrapers_acc_col_status")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Token Quota
+												{t("scrapers_acc_col_token_quota")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Proxy
+												{t("scrapers_acc_col_proxy")}
 											</th>
 											<th className="py-3 px-2 font-medium" scope="col">
-												Last Used
+												{t("scrapers_acc_col_last_used")}
 											</th>
 											<th className="py-3 px-2 font-medium text-right" scope="col">
-												Actions
+												{t("scrapers_acc_col_actions")}
 											</th>
 										</tr>
 									</thead>
@@ -676,7 +679,7 @@ export default function ScraperAccountsPage() {
 															data-testid="account-status-badge"
 															className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
 														>
-															🟢 Active
+															🟢 {t("scrapers_acc_status_active")}
 														</Badge>
 													)}
 													{acc.status === "rate_limited" && (
@@ -684,12 +687,12 @@ export default function ScraperAccountsPage() {
 															data-testid="account-status-badge"
 															className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
 														>
-															🟡 Rate-Limited
+															🟡 {t("scrapers_acc_status_ratelimited")}
 														</Badge>
 													)}
 													{acc.status === "cooldown" && (
 														<Badge data-testid="cooldown-timer-badge" variant="destructive">
-															🔴 Cooldown ({acc.cooldown_seconds}s)
+															🔴 {t("scrapers_acc_status_cooldown", { sec: acc.cooldown_seconds })}
 														</Badge>
 													)}
 												</td>
@@ -704,7 +707,7 @@ export default function ScraperAccountsPage() {
 														size="sm"
 														onClick={() => toast.info(`Testing ${acc.phone_number}`)}
 													>
-														Test
+														{t("scrapers_acc_test")}
 													</Button>
 												</td>
 											</tr>
@@ -720,14 +723,14 @@ export default function ScraperAccountsPage() {
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between pb-2">
 							<div>
-								<CardTitle>Monitored Telegram Channels</CardTitle>
+								<CardTitle>{t("scrapers_acc_monitored_channels")}</CardTitle>
 								<CardDescription>
 									Public web preview channels and MTProto stream listeners triggering real-time
 									alerts.
 								</CardDescription>
 							</div>
-							<Button size="sm" onClick={() => toast.info("Add channel modal")}>
-								Monitor New Channel
+							<Button size="sm" onClick={() => toast.info(t("scrapers_acc_monitor_new"))}>
+								{t("scrapers_acc_monitor_new")}
 							</Button>
 						</CardHeader>
 						<CardContent>
@@ -735,13 +738,15 @@ export default function ScraperAccountsPage() {
 								<table className="w-full text-left text-sm">
 									<thead>
 										<tr className="border-b text-muted-foreground">
-											<th className="py-3 px-2 font-medium">Channel Name</th>
-											<th className="py-3 px-2 font-medium">Type</th>
-											<th className="py-3 px-2 font-medium">Mode</th>
-											<th className="py-3 px-2 font-medium">Messages</th>
-											<th className="py-3 px-2 font-medium">Realtime Stream</th>
-											<th className="py-3 px-2 font-medium">Status</th>
-											<th className="py-3 px-2 font-medium text-right">Actions</th>
+											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_ch_name")}</th>
+											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_ch_type")}</th>
+											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_ch_mode")}</th>
+											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_ch_messages")}</th>
+											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_ch_stream")}</th>
+											<th className="py-3 px-2 font-medium">{t("scrapers_acc_col_status")}</th>
+											<th className="py-3 px-2 font-medium text-right">
+												{t("scrapers_acc_col_actions")}
+											</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -766,12 +771,12 @@ export default function ScraperAccountsPage() {
 												<td className="py-3 px-2">
 													{ch.status === "live" && (
 														<span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-															⚡ Live
+															⚡ {t("scrapers_acc_status_live")}
 														</span>
 													)}
 													{ch.status === "idle" && (
 														<span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-															🟢 Idle
+															🟢 {t("scrapers_acc_status_idle")}
 														</span>
 													)}
 												</td>
@@ -779,9 +784,11 @@ export default function ScraperAccountsPage() {
 													<Button
 														variant="ghost"
 														size="sm"
-														onClick={() => toast.success(`Triggered scrape for ${ch.name}`)}
+														onClick={() =>
+															toast.success(t("toast.scrape_triggered", { name: ch.name }))
+														}
 													>
-														Scrape
+														{t("scrapers_acc_scrape")}
 													</Button>
 												</td>
 											</tr>
@@ -798,18 +805,16 @@ export default function ScraperAccountsPage() {
 			<Dialog open={telegramModalOpen} onOpenChange={setTelegramModalOpen}>
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
-						<DialogTitle>Connect Telegram MTProto Account</DialogTitle>
+						<DialogTitle>{t("scrapers_acc_connect_tg_title")}</DialogTitle>
 						<DialogDescription>
-							{telegramStep === 1
-								? "Step 1: Enter your Telegram API credentials and phone number."
-								: "Step 2: Enter the verification code sent to your Telegram App / SMS."}
+							{telegramStep === 1 ? t("scrapers_acc_step_1_desc") : t("scrapers_acc_step_2_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
 					{telegramStep === 1 ? (
 						<div className="space-y-4 py-4">
 							<div className="space-y-2">
-								<Label htmlFor="tg-phone">Phone Number</Label>
+								<Label htmlFor="tg-phone">{t("scrapers_acc_col_phone")}</Label>
 								<Input
 									id="tg-phone"
 									value={tgPhone}
@@ -818,7 +823,7 @@ export default function ScraperAccountsPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="tg-api-id">Telegram API ID</Label>
+								<Label htmlFor="tg-api-id">{t("scrapers_acc_tg_api_id")}</Label>
 								<Input
 									id="tg-api-id"
 									value={tgApiId}
@@ -827,7 +832,7 @@ export default function ScraperAccountsPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="tg-api-hash">API Hash</Label>
+								<Label htmlFor="tg-api-hash">{t("scrapers_acc_tg_api_hash")}</Label>
 								<Input
 									id="tg-api-hash"
 									value={tgApiHash}
@@ -836,7 +841,7 @@ export default function ScraperAccountsPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="tg-proxy">Proxy (Optional)</Label>
+								<Label htmlFor="tg-proxy">{t("scrapers_acc_tg_proxy")}</Label>
 								<Input
 									id="tg-proxy"
 									value={tgProxy}
@@ -848,7 +853,7 @@ export default function ScraperAccountsPage() {
 					) : (
 						<div className="space-y-4 py-4">
 							<div className="space-y-2">
-								<Label htmlFor="tg-code">Verification Code</Label>
+								<Label htmlFor="tg-code">{t("scrapers_acc_verification_code")}</Label>
 								<Input
 									id="tg-code"
 									value={tgCode}
@@ -859,17 +864,17 @@ export default function ScraperAccountsPage() {
 							</div>
 							<div className="flex items-center gap-2 pt-2">
 								<Switch id="tg-2fa" checked={tg2FAEnabled} onCheckedChange={setTg2FAEnabled} />
-								<Label htmlFor="tg-2fa">Two-Step Verification (2FA Cloud Password enabled)</Label>
+								<Label htmlFor="tg-2fa">{t("scrapers_acc_2fa_label")}</Label>
 							</div>
 							{tg2FAEnabled && (
 								<div className="space-y-2 pt-2">
-									<Label htmlFor="tg-cloud-pw">Cloud Password</Label>
+									<Label htmlFor="tg-cloud-pw">{t("scrapers_acc_cloud_pw")}</Label>
 									<Input
 										id="tg-cloud-pw"
 										type="password"
 										value={tgCloudPassword}
 										onChange={(e) => setTgCloudPassword(e.target.value)}
-										placeholder="Enter your 2FA Cloud Password"
+										placeholder={t("scrapers_acc_cloud_pw_placeholder")}
 									/>
 								</div>
 							)}
@@ -879,17 +884,17 @@ export default function ScraperAccountsPage() {
 					<DialogFooter className="flex justify-between sm:justify-between">
 						{telegramStep === 2 ? (
 							<Button variant="outline" onClick={() => setTelegramStep(1)}>
-								Back
+								{t("scrapers_acc_back")}
 							</Button>
 						) : (
 							<Button variant="outline" onClick={() => setTelegramModalOpen(false)}>
-								Cancel
+								{t("scrapers_acc_cancel")}
 							</Button>
 						)}
 						{telegramStep === 1 ? (
-							<Button onClick={handleSendTgCode}>Send Auth Code</Button>
+							<Button onClick={handleSendTgCode}>{t("scrapers_acc_send_code")}</Button>
 						) : (
-							<Button onClick={handleVerifyTgSave}>Verify & Save</Button>
+							<Button onClick={handleVerifyTgSave}>{t("scrapers_acc_verify_save")}</Button>
 						)}
 					</DialogFooter>
 				</DialogContent>
@@ -899,18 +904,16 @@ export default function ScraperAccountsPage() {
 			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 				<DialogContent className="max-w-xl">
 					<DialogHeader>
-						<DialogTitle>Add scraper account</DialogTitle>
-						<DialogDescription>
-							Paste the browser cookie string or token the scraper should use.
-						</DialogDescription>
+						<DialogTitle>{t("scrapers_acc_add_title")}</DialogTitle>
+						<DialogDescription>{t("scrapers_acc_add_desc")}</DialogDescription>
 					</DialogHeader>
 					<AccountFormFields form={draft} setForm={(next) => setDraft(next(draft))} />
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setCreateOpen(false)}>
-							Cancel
+							{t("scrapers_acc_cancel")}
 						</Button>
 						<Button onClick={handleCreate} disabled={!isCreateValid}>
-							Save
+							{t("scrapers_acc_save")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -924,8 +927,8 @@ export default function ScraperAccountsPage() {
 			>
 				<DialogContent className="max-w-xl">
 					<DialogHeader>
-						<DialogTitle>Edit scraper account</DialogTitle>
-						<DialogDescription>Update credentials for this platform.</DialogDescription>
+						<DialogTitle>{t("scrapers_acc_edit_title")}</DialogTitle>
+						<DialogDescription>{t("scrapers_acc_edit_desc")}</DialogDescription>
 					</DialogHeader>
 					<AccountFormFields
 						form={editDialog.draft}
@@ -936,9 +939,9 @@ export default function ScraperAccountsPage() {
 							variant="outline"
 							onClick={() => setEditDialog({ open: false, account: null, draft: emptyForm })}
 						>
-							Cancel
+							{t("scrapers_acc_cancel")}
 						</Button>
-						<Button onClick={handleUpdate}>Save</Button>
+						<Button onClick={handleUpdate}>{t("scrapers_acc_save")}</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
@@ -946,17 +949,15 @@ export default function ScraperAccountsPage() {
 			<Dialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
 				<DialogContent className="max-w-md">
 					<DialogHeader>
-						<DialogTitle>Delete account</DialogTitle>
-						<DialogDescription>
-							Are you sure you want to delete this account? This action cannot be undone.
-						</DialogDescription>
+						<DialogTitle>{t("scrapers_acc_delete_title")}</DialogTitle>
+						<DialogDescription>{t("scrapers_acc_delete_confirm")}</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setDeleteDialog(null)}>
-							Cancel
+							{t("scrapers_acc_cancel")}
 						</Button>
 						<Button variant="destructive" onClick={handleDelete}>
-							Delete
+							{t("scrapers_acc_delete")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -972,6 +973,7 @@ function AccountFormFields({
 	form: AccountForm;
 	setForm: (fn: (prev: AccountForm) => AccountForm) => void;
 }) {
+	const t = useTranslations("admin");
 	function update<K extends keyof AccountForm>(key: K, value: AccountForm[K]) {
 		setForm((prev) => ({ ...prev, [key]: value }));
 	}
@@ -979,10 +981,10 @@ function AccountFormFields({
 	return (
 		<div className="space-y-4 py-4">
 			<div className="space-y-2">
-				<Label>Platform</Label>
+				<Label>{t("scrapers_acc_col_platform")}</Label>
 				<Select value={form.platform} onValueChange={(v) => update("platform", v)}>
 					<SelectTrigger>
-						<SelectValue placeholder="Select a platform" />
+						<SelectValue placeholder={t("scrapers_acc_select_platform")} />
 					</SelectTrigger>
 					<SelectContent>
 						{PLATFORM_OPTIONS.map((opt) => (
@@ -995,11 +997,11 @@ function AccountFormFields({
 			</div>
 
 			<div className="space-y-2">
-				<Label>Label</Label>
+				<Label>{t("scrapers_acc_field_label")}</Label>
 				<Input
 					value={form.label}
 					onChange={(e) => update("label", e.target.value)}
-					placeholder="e.g. Production muaban account"
+					placeholder={t("scrapers_acc_label_placeholder")}
 				/>
 			</div>
 
@@ -1010,7 +1012,7 @@ function AccountFormFields({
 						onCheckedChange={(v) => update("is_enabled", v)}
 						id="edit-enabled"
 					/>
-					<Label htmlFor="edit-enabled">Enabled</Label>
+					<Label htmlFor="edit-enabled">{t("scrapers_acc_enabled")}</Label>
 				</div>
 				<div className="flex items-center gap-2">
 					<Switch
@@ -1018,13 +1020,13 @@ function AccountFormFields({
 						onCheckedChange={(v) => update("is_default", v)}
 						id="edit-default"
 					/>
-					<Label htmlFor="edit-default">Default</Label>
+					<Label htmlFor="edit-default">{t("scrapers_acc_default")}</Label>
 				</div>
 			</div>
 
 			<div className="space-y-2">
 				<div className="flex items-center justify-between">
-					<Label>Browser cookie string</Label>
+					<Label>{t("scrapers_acc_cookie_string")}</Label>
 					{form.platform === "batdongsan" && form.cookies.trim() && (
 						<Button
 							type="button"
@@ -1032,7 +1034,7 @@ function AccountFormFields({
 							size="sm"
 							onClick={() => update("cookies", filterBatdongsanCookies(form.cookies))}
 						>
-							Auto-filter for Batdongsan
+							{t("scrapers_acc_autofilter_bds")}
 						</Button>
 					)}
 				</div>
@@ -1041,27 +1043,23 @@ function AccountFormFields({
 					onChange={(e) => update("cookies", e.target.value)}
 					placeholder={
 						form.platform === "batdongsan"
-							? "Paste a Playwright JSON cookie array or document.cookie string from batdongsan.com.vn"
-							: "Paste document.cookie here"
+							? t("scrapers_acc_placeholder_bds")
+							: t("scrapers_acc_placeholder_generic")
 					}
 					className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				/>
 				{form.platform === "batdongsan" && (
-					<p className="text-xs text-muted-foreground">
-						Tip: DevTools → Console → document.cookie only shows non-HttpOnly cookies. For the auth
-						cookies (accessToken, refreshToken) use a cookie editor extension (e.g. Cookie-Editor)
-						to export all cookies as JSON, then paste here.
-					</p>
+					<p className="text-xs text-muted-foreground">{t("scrapers_acc_tip_cookie")}</p>
 				)}
 			</div>
 
 			<div className="space-y-2">
-				<Label>Token</Label>
+				<Label>{t("scrapers_acc_field_token")}</Label>
 				<Input
 					type="password"
 					value={form.token}
 					onChange={(e) => update("token", e.target.value)}
-					placeholder="API token if the platform supports one"
+					placeholder={t("scrapers_acc_token_placeholder")}
 				/>
 			</div>
 		</div>

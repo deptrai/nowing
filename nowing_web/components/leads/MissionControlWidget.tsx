@@ -16,8 +16,9 @@ import {
 	Search,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HumanLiveTakeoverPopover } from "@/components/dsh/HumanLiveTakeoverPopover";
 import type {
@@ -64,6 +65,7 @@ const PHASE_LABELS: Record<string, string> = {
 	running: "Đang chạy",
 	cancelled: "Đã hủy",
 	dlq: "DLQ",
+	aborted_timeout: "Hủy (timeout)",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -73,6 +75,7 @@ const STATUS_LABELS: Record<string, string> = {
 	error: "Lỗi",
 	cancelled: "Đã hủy",
 	dlq: "DLQ",
+	aborted_timeout: "Hủy (timeout)",
 };
 
 const SUBTASK_STATUS_LABELS: Record<string, string> = {
@@ -168,6 +171,7 @@ const getDeliverableMetadata = (d: DshMissionDeliverable) => {
 // ponytail: naive sparkline from subtask tokens_used, not a real time-series.
 // Upgrade path: feed checkpoint timestamps from the worker when available.
 function TokenSparkline({ subtasks }: { subtasks: DshMissionSubtask[] }) {
+	const t = useTranslations("leads");
 	const { path, viewBox } = useMemo(() => {
 		const values = subtasks.map((s) => s.tokens_used);
 		const width = 120;
@@ -201,7 +205,7 @@ function TokenSparkline({ subtasks }: { subtasks: DshMissionSubtask[] }) {
 			viewBox={viewBox}
 			preserveAspectRatio="none"
 			role="img"
-			aria-label="Token usage sparkline"
+			aria-label={t("token_usage_sparkline")}
 			className="h-8 w-full overflow-visible"
 		>
 			<path
@@ -225,6 +229,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 	error,
 	totalBudgetMicros,
 }) => {
+	const t = useTranslations("leads");
 	const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(() => {
 		const initial = new Set<string>();
 		if (missionControl?.current_subtask_id) {
@@ -235,6 +240,8 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 	const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set());
 	const [resumingTakeover, setResumingTakeover] = useState(false);
 	const [releasingTakeover, setReleasingTakeover] = useState(false);
+	const [abortingTakeover, setAbortingTakeover] = useState(false);
+	const [abortedMissionId, setAbortedMissionId] = useState<string | null>(null);
 	const [takeoverError, setTakeoverError] = useState<string | null>(null);
 
 	// Re-expand the current subtask when it changes.
@@ -251,12 +258,15 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 		}
 	}, [missionControl?.current_subtask_id]);
 
-	const phase = missionControl?.phase ?? latestMission?.phase ?? "idle";
+	const isAborted = Boolean(latestMission?.id && abortedMissionId === latestMission.id);
+	const phase = isAborted
+		? "aborted_timeout"
+		: (missionControl?.phase ?? latestMission?.phase ?? "idle");
 	const rawProgress = missionControl?.progress_percent ?? latestMission?.progress_percent ?? 0;
 	const progressPercent = Number.isFinite(rawProgress)
 		? Math.min(100, Math.max(0, rawProgress))
 		: 0;
-	const status = latestMission?.status ?? "idle";
+	const status = isAborted ? "cancelled" : (latestMission?.status ?? "idle");
 	const tokenVelocity = missionControl?.token_velocity;
 	const deliverables = missionControl?.deliverables ?? [];
 	const query = missionControl?.query;
@@ -330,7 +340,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 			await dshApiService.resumeMission(latestMission.id);
 			toast.success("Đã trả quyền điều khiển cho agent");
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : "Không thể resume";
+			const msg = err instanceof Error ? err.message : t("cannot_resume");
 			setTakeoverError(msg);
 			toast.error(msg);
 		} finally {
@@ -346,13 +356,30 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 			await dshApiService.pauseMission(latestMission.id);
 			toast.success("Đã gia hạn quyền điều khiển thêm 15 phút");
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : "Không thể gia hạn";
+			const msg = err instanceof Error ? err.message : t("cannot_extend");
 			setTakeoverError(msg);
 			toast.error(msg);
 		} finally {
 			setReleasingTakeover(false);
 		}
 	};
+
+	const handleAbortTakeover = useCallback(async () => {
+		if (!latestMission?.id || abortingTakeover) return;
+		setTakeoverError(null);
+		setAbortingTakeover(true);
+		try {
+			await dshApiService.abortMission(latestMission.id, workspaceId ?? latestMission.workspace_id);
+			setAbortedMissionId(latestMission.id);
+			toast.success("Đã hủy nhiệm vụ takeover");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : t("cannot_cancel_mission");
+			setTakeoverError(msg);
+			toast.error(msg);
+		} finally {
+			setAbortingTakeover(false);
+		}
+	}, [latestMission?.id, latestMission?.workspace_id, abortingTakeover, workspaceId]);
 
 	if (!loading && status === "idle" && !latestMission) {
 		return null;
@@ -401,7 +428,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 					<button
 						type="button"
 						disabled
-						title="Hủy nhiệm vụ (chưa hỗ trợ)"
+						title={t("cancel_mission_unsupported")}
 						className="p-1 rounded-md hover:bg-muted text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed"
 					>
 						<X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -415,8 +442,10 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 					missionControl={missionControl}
 					onResume={handleResumeTakeover}
 					onRelease={handleReleaseTakeover}
+					onAbort={handleAbortTakeover}
 					resuming={resumingTakeover}
 					releasing={releasingTakeover}
+					aborting={abortingTakeover}
 					error={takeoverError}
 				/>
 			)}
@@ -563,7 +592,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 									{d.include_pii && (
 										<span
 											className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded shrink-0"
-											title="Dữ liệu chứa PII — tải xuống có trách nhiệm"
+											title={t("pii_download_warning")}
 										>
 											PII
 										</span>

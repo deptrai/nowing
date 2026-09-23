@@ -1,5 +1,6 @@
 "use client";
 import { AlertCircle, TriangleAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { JsonView } from "@/components/json-view";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -17,6 +18,7 @@ interface JsonModePanelProps {
  * features the form can't represent.
  */
 export function JsonModePanel({ value, issues, notice, onChange }: JsonModePanelProps) {
+	const t = useTranslations("automations");
 	return (
 		<div className="space-y-4">
 			{notice && (

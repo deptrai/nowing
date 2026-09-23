@@ -171,7 +171,7 @@ async def index_confluence_pages(
 
             logger.info(f"Retrieved {len(pages)} pages from Confluence API")
 
-        except Exception as e:
+        except Exception as e:  # upstream API call failure (Confluence API); log error and return failure
             logger.error(f"Error fetching Confluence pages: {e!s}", exc_info=True)
             if confluence_client:
                 with contextlib.suppress(Exception):
@@ -280,7 +280,7 @@ async def index_confluence_pages(
 
                 connector_docs.append(doc)
 
-            except Exception as e:
+            except Exception as e:  # per-item building ConnectorDocument error; skip page and continue
                 logger.error(
                     f"Error building ConnectorDocument for page: {e!s}", exc_info=True
                 )
@@ -323,7 +323,7 @@ async def index_confluence_pages(
             logger.info(
                 "Successfully committed all Confluence document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
                 or "uniqueviolationerror" in str(e).lower()
@@ -378,7 +378,7 @@ async def index_confluence_pages(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         if confluence_client:
             with contextlib.suppress(Exception):

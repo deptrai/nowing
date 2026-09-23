@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import io
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from pptx import Presentation
@@ -28,14 +31,14 @@ def _set_shape_text(shape: Any, text: str) -> None:
         return
     try:
         shape.text = text
-    except Exception:
+    except Exception:  # non-text shape → skip; pptx generation continues
         return
 
 
 def _set_notes(slide: Any, notes: str) -> None:
     try:
         slide.notes_slide.notes_text_frame.text = notes
-    except Exception:
+    except Exception:  # notes frame absent on layout → skip notes, keep slide
         return
 
 
@@ -93,7 +96,8 @@ def build_pptx(deck_spec: dict[str, Any]) -> Any:
                     continue
                 try:
                     values.append(float(v))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as exc:
+                    logger.debug("Suppressed %r", exc)
                     continue
             n = min(len(categories), len(values))
             categories, values = categories[:n], values[:n]

@@ -21,7 +21,6 @@ pytestmark = [pytest.mark.unit]
 class _FakeSession:
     """Placeholder session for unit tests that only exercise validation."""
 
-
 def test_credit_micros_conversion() -> None:
     """1 credit = 10_000 micro-USD (i.e. $0.01)."""
     svc = ManualCreditAdjustmentService(_FakeSession())
@@ -49,14 +48,17 @@ def test_validate_payload_rejects_invalid_values() -> None:
     """AC-1: Invalid amount, direction, reason, or ticket_ref are rejected."""
     svc = ManualCreditAdjustmentService(_FakeSession())
 
-    with pytest.raises(ManualCreditValidationError):
-        svc._validate_payload(
-            amount_credits=-10,
-            direction="CREDIT",
-            reason="Valid reason here",
-            ticket_ref="TICKET-1",
-        )
+    # Negative and zero amounts
+    for invalid_amount in (-10, 0):
+        with pytest.raises(ManualCreditValidationError):
+            svc._validate_payload(
+                amount_credits=invalid_amount,
+                direction="CREDIT",
+                reason="Valid reason here",
+                ticket_ref="TICKET-1",
+            )
 
+    # Invalid direction
     with pytest.raises(ManualCreditValidationError):
         svc._validate_payload(
             amount_credits=100,
@@ -65,6 +67,7 @@ def test_validate_payload_rejects_invalid_values() -> None:
             ticket_ref="TICKET-1",
         )
 
+    # Reason too short
     with pytest.raises(ManualCreditValidationError):
         svc._validate_payload(
             amount_credits=100,
@@ -73,10 +76,12 @@ def test_validate_payload_rejects_invalid_values() -> None:
             ticket_ref="TICKET-1",
         )
 
-    with pytest.raises(ManualCreditValidationError):
-        svc._validate_payload(
-            amount_credits=100,
-            direction="CREDIT",
-            reason="Valid reason here",
-            ticket_ref="",
-        )
+    # Missing or whitespace-only ticket_ref
+    for invalid_ticket in ("", "   "):
+        with pytest.raises(ManualCreditValidationError):
+            svc._validate_payload(
+                amount_credits=100,
+                direction="CREDIT",
+                reason="Valid reason here",
+                ticket_ref=invalid_ticket,
+            )

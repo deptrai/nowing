@@ -209,3 +209,32 @@ def test_clear_suite_state_on_unknown_suite_returns_false(tmp_env):  # noqa: ARG
     """Clearing a suite that was never set up is a no-op, not an error."""
     config = load_config()
     assert clear_suite_state(config, "never-configured") is False
+
+
+def test_load_config_parses_chat_eval_env(tmp_env, monkeypatch):  # noqa: ARG001
+    """CHAT_EVAL_* env vars are parsed into Config as positive ints."""
+    monkeypatch.setenv("CHAT_EVAL_SEARCH_SPACE_ID", "42")
+    monkeypatch.setenv("CHAT_EVAL_WORKSPACE_ID", "99")
+    monkeypatch.setenv("CHAT_EVAL_MAX_CASES", "5")
+    config = load_config()
+    assert config.chat_eval_search_space_id == 42
+    assert config.chat_eval_workspace_id == 99
+    assert config.chat_eval_max_cases == 5
+
+
+def test_load_config_ignores_invalid_chat_eval_env(
+    tmp_env, monkeypatch, caplog
+):  # noqa: ARG001
+    """Malformed, negative, or zero CHAT_EVAL_* values are ignored with a warning."""
+    import logging
+
+    monkeypatch.setenv("CHAT_EVAL_SEARCH_SPACE_ID", "not-a-number")
+    monkeypatch.setenv("CHAT_EVAL_WORKSPACE_ID", "-1")
+    monkeypatch.setenv("CHAT_EVAL_MAX_CASES", "0")
+    with caplog.at_level(logging.WARNING):
+        config = load_config()
+    assert config.chat_eval_search_space_id is None
+    assert config.chat_eval_workspace_id is None
+    assert config.chat_eval_max_cases is None
+    assert any("not an integer" in record.getMessage() for record in caplog.records)
+    assert any("must be > 0" in record.getMessage() for record in caplog.records)

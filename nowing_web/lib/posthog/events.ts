@@ -304,6 +304,31 @@ export function trackConnectorEvent(
 	});
 }
 
+export type ZeroLeadsReason = "NO_DATA_IN_LOCATION" | "SOURCE_DEGRADED" | "FILTER_TOO_NARROW";
+
+export interface TrackZeroLeadsOptions {
+	workspaceId: number;
+	reason: ZeroLeadsReason;
+	provinceCode?: string;
+	provinceName?: string;
+	sourceTypes?: string[];
+}
+
+/**
+ * Track the frequency of zero-leads diagnostic codes surfaced to users.
+ * Used by the Epic 26 retrospective to monitor `NO_DATA_IN_LOCATION` and
+ * `SOURCE_DEGRADED` rates across campaigns.
+ */
+export function trackZeroLeadsDiagnosis(options: TrackZeroLeadsOptions) {
+	safeCapture("zero_leads_diagnosis", {
+		workspace_id: options.workspaceId,
+		zero_leads_reason: options.reason,
+		province_code: options.provinceCode,
+		province_name: options.provinceName,
+		source_types: options.sourceTypes,
+	});
+}
+
 // ---- Convenience wrappers kept for backward compatibility ----
 
 export function trackConnectorSetupStarted(

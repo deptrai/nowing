@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Info, Sparkles, Wrench, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { BannerType } from "@/contracts/types/broadcasts.types";
 import { useBroadcastAnnouncements } from "@/lib/hooks/use-broadcast-announcements";
 
@@ -42,6 +43,7 @@ function getBannerConfig(type: BannerType) {
 }
 
 export function BroadcastBanner({ workspaceId }: BroadcastBannerProps) {
+	const t = useTranslations("broadcasts");
 	const { broadcasts, dismiss } = useBroadcastAnnouncements(workspaceId);
 
 	if (!broadcasts || broadcasts.length === 0) {
@@ -71,8 +73,8 @@ export function BroadcastBanner({ workspaceId }: BroadcastBannerProps) {
 								type="button"
 								onClick={() => dismiss(banner.id)}
 								className={`ml-3 rounded p-1 transition ${config.closeClass}`}
-								title="Dismiss"
-								aria-label="Dismiss banner"
+								title={t("dismiss")}
+								aria-label={t("dismiss_banner")}
 							>
 								<X className="h-4 w-4" />
 							</button>

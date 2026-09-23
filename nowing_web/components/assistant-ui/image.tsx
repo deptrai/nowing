@@ -4,6 +4,7 @@ import type { ImageMessagePartComponent } from "@assistant-ui/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ImageIcon, ImageOffIcon } from "lucide-react";
 import NextImage from "next/image";
+import { useTranslations } from "next-intl";
 import { memo, type PropsWithChildren, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -139,6 +140,7 @@ function isDataOrBlobUrl(src: string | undefined): boolean {
 	return src.startsWith("data:") || src.startsWith("blob:");
 }
 function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
+	const t = useTranslations("assistantUi");
 	const [isMounted, setIsMounted] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
 
@@ -174,7 +176,7 @@ function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
 				variant="ghost"
 				onClick={handleOpen}
 				className="aui-image-zoom-trigger h-auto cursor-zoom-in border-0 bg-transparent p-0 text-left hover:bg-transparent"
-				aria-label="Click to zoom image"
+				aria-label={t("click_to_zoom_image")}
 			>
 				{children}
 			</Button>
@@ -187,7 +189,7 @@ function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
 						data-slot="image-zoom-overlay"
 						className="aui-image-zoom-overlay fade-in fixed inset-0 z-50 h-auto w-auto animate-in cursor-zoom-out items-center justify-center rounded-none border-0 bg-black/80 p-0 duration-200 hover:bg-black/80 focus-visible:ring-0"
 						onClick={handleClose}
-						aria-label="Close zoomed image"
+						aria-label={t("close_zoomed_image")}
 					>
 						<NextImage
 							data-slot="image-zoom-content"

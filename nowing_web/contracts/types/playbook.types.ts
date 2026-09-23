@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { automation, automationDefinition } from "./automation.types";
+import { automation, automationDefinition, automationModels } from "./automation.types";
 
 export const playbookScope = z.enum(["workspace", "system"]);
 export type PlaybookScope = z.infer<typeof playbookScope>;
@@ -27,6 +27,7 @@ export const playbookInstantiateRequest = z.object({
 	inputs: z.record(z.string(), z.any()).default({}),
 	name: z.string().min(1).max(200).nullable().optional(),
 	description: z.string().nullable().optional(),
+	models: automationModels.nullable().optional(),
 });
 export type PlaybookInstantiateRequest = z.infer<typeof playbookInstantiateRequest>;
 

@@ -24,6 +24,7 @@ import redis.asyncio as aioredis
 from rapidfuzz import fuzz
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.config.decision as decision_config
 from app.config import config
 from app.db import Lead
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
@@ -52,7 +53,7 @@ def get_redis() -> aioredis.Redis | None:
             _redis_client = aioredis.from_url(
                 config.REDIS_APP_URL, decode_responses=True
             )
-        except Exception as exc:
+        except Exception as exc:  # Redis init is best-effort; fallback to in-memory/None
             logger.warning(
                 "[CorporateVerification] Failed to init Redis client: %s", exc
             )
@@ -229,8 +230,8 @@ def parse_charter_capital_vnd(val: Any) -> int | None:
             else:
                 mult = 1
             return int(val_f * mult)
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
 
     # Extract digits from formatted numbers (e.g. "13.000.000.000.000 VNĐ", "287,360,000,000 VND")
     digits = re.sub(r"[^\d]", "", s)
@@ -390,7 +391,7 @@ class CorporateVerificationService:
         try:
             if self.encryption.is_encrypted(cached):
                 return self.encryption.decrypt(cached)
-        except Exception as exc:
+        except Exception as exc:  # best-effort cache decrypt; returns unencrypted raw payload on failure
             logger.debug("[CorporateVerification] Cache decrypt failed: %s", exc)
         return cached
 
@@ -457,7 +458,7 @@ class CorporateVerificationService:
             except (TypeError, ValueError):
                 failures = self.__class__.consecutive_failures
             return val == "open" or failures >= CIRCUIT_BREAKER_THRESHOLD
-        except Exception as exc:
+        except Exception as exc:  # fail-closed: treat breaker as open if Redis error to protect upstream
             logger.debug("[CorporateVerification] Breaker check failed: %s", exc)
             # ponytail: fail-closed — when Redis is unavailable we cannot confirm the
             # breaker is closed, so treat it as open to protect upstream.
@@ -477,7 +478,7 @@ class CorporateVerificationService:
                 await redis.expire(
                     CIRCUIT_BREAKER_FAILURES_KEY, CIRCUIT_BREAKER_COOLDOWN_SECONDS
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort breaker metric increment; circuit state remains safe
                 logger.debug(
                     "[CorporateVerification] Failed incrementing breaker counter: %s",
                     exc,
@@ -492,7 +493,7 @@ class CorporateVerificationService:
                     CIRCUIT_BREAKER_COOLDOWN_SECONDS,
                     failure_count,
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort breaker state persistence in Redis
                 logger.debug(
                     "[CorporateVerification] Failed setting breaker key: %s", exc
                 )
@@ -504,7 +505,7 @@ class CorporateVerificationService:
         if redis is not None:
             try:
                 await redis.delete(CIRCUIT_BREAKER_FAILURES_KEY)
-            except Exception as exc:
+            except Exception as exc:  # best-effort breaker counter cleanup
                 logger.debug(
                     "[CorporateVerification] Failed resetting breaker counter: %s", exc
                 )
@@ -532,14 +533,14 @@ class CorporateVerificationService:
                     if decrypted is None:
                         decrypted = cached
                     return self._dict_to_profile(json.loads(decrypted))
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache read; falls through to upstream registry
                 logger.debug("[CorporateVerification] Redis cache read failed: %s", exc)
 
         # 2. Query Upstream Registry with Failure & Circuit Breaker Tracking
         try:
             raw_data = await self.masothue_client.get_company_by_tax_id(clean_tax)
             await self._record_success()
-        except Exception as exc:
+        except Exception as exc:  # track circuit breaker failure on upstream error, then re-raise
             await self._record_failure_and_trip_if_needed()
             raise exc
 
@@ -556,7 +557,7 @@ class CorporateVerificationService:
                     self.encryption.encrypt(json.dumps(raw_data)),
                     ex=CORPORATE_CACHE_TTL_SECONDS,
                 )
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache write; profile already resolved
                 logger.debug(
                     "[CorporateVerification] Redis cache write failed: %s", exc
                 )
@@ -570,6 +571,7 @@ class CorporateVerificationService:
         district: str | None = None,
         tax_id: str | None = None,
         force_refresh: bool = False,
+        workspace_id: int | None = None,
     ) -> CorporateMatchResult:
         """Run multi-attribute fuzzy verification against official company registries."""
         redis = self._get_redis()
@@ -598,8 +600,8 @@ class CorporateVerificationService:
                             profile=prof,
                             is_cached=True,
                         )
-                except Exception:
-                    pass
+                except Exception as exc:  # best-effort cached profile fallback while circuit breaker is tripped
+                    logger.debug("Suppressed %r", exc)
                 return CorporateMatchResult(
                     is_verified=False,
                     degraded=True,
@@ -634,7 +636,7 @@ class CorporateVerificationService:
                         profile=profile,
                         is_cached=False,
                     )
-            except Exception as exc:
+            except Exception as exc:  # return degraded match result on upstream/internal verification failure
                 logger.warning(
                     "[CorporateVerification] Error verifying by tax_id %s: %s",
                     tax_id,
@@ -662,7 +664,9 @@ class CorporateVerificationService:
                             prof.city,
                             prof.district,
                         )
-                        is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+                        is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD or bool(
+                            data.get("_jev_verdict")
+                        )
                         return CorporateMatchResult(
                             tax_id=prof.tax_id,
                             is_verified=is_ver,
@@ -674,8 +678,8 @@ class CorporateVerificationService:
                             profile=prof,
                             is_cached=True,
                         )
-                except Exception:
-                    pass
+                except Exception as exc:  # best-effort cached profile search fallback while breaker is open
+                    logger.debug("Suppressed %r", exc)
             return CorporateMatchResult(
                 is_verified=False,
                 degraded=True,
@@ -697,7 +701,11 @@ class CorporateVerificationService:
                         prof.city,
                         prof.district,
                     )
-                    is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+                    # Story 39.3: a cached payload Jev already promoted must
+                    # stay verified — re-fuzzying would flip the verdict back.
+                    is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD or bool(
+                        data.get("_jev_verdict")
+                    )
                     return CorporateMatchResult(
                         tax_id=prof.tax_id,
                         is_verified=is_ver,
@@ -709,7 +717,7 @@ class CorporateVerificationService:
                         profile=prof,
                         is_cached=True,
                     )
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache read for search candidates; falls through to upstream
                 logger.debug(
                     "[CorporateVerification] Redis cache lookup failed: %s", exc
                 )
@@ -719,7 +727,7 @@ class CorporateVerificationService:
             candidates = await self.masothue_client.search_company(
                 query=company_name, city=city, district=district
             )
-        except Exception as exc:
+        except Exception as exc:  # record breaker failure on upstream search error, return degraded match result
             await self._record_failure_and_trip_if_needed()
             logger.warning("[CorporateVerification] Upstream query failed: %s", exc)
             return CorporateMatchResult(
@@ -761,6 +769,25 @@ class CorporateVerificationService:
 
         prof = self._dict_to_profile(best_cand)
 
+        is_verified = best_score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+        requires_manual = not is_verified
+        # Advisory Jev rescore (Story 39.3): only the uncertain fuzzy band
+        # pays a decide() call, and Jev can only PROMOTE a match to
+        # verified — a reject/review verdict keeps the fuzzy outcome
+        # (manual queue). Exact-ID, cached, and breaker-degraded paths
+        # above return earlier and never reach this point. Runs BEFORE the
+        # cache write so the verdict persists with the payload — a later
+        # cached read must not flip a Jev-verified company back to manual.
+        if (
+            0 < best_score < AUTO_LINK_CONFIDENCE_THRESHOLD
+            and await self._jev_rescore_match(
+                company_name, city, district, tax_id, best_cand, workspace_id
+            )
+        ):
+            is_verified = True
+            requires_manual = False
+            best_cand = {**best_cand, "_jev_verdict": True}
+
         # Cache best candidate (encrypted at rest in Redis, INV-21.3)
         if redis is not None:
             try:
@@ -776,23 +803,80 @@ class CorporateVerificationService:
                         encrypted_payload,
                         ex=CORPORATE_CACHE_TTL_SECONDS,
                     )
-            except Exception as exc:
+            except Exception as exc:  # best-effort cache write; profile already resolved
                 logger.debug(
                     "[CorporateVerification] Redis cache write failed: %s", exc
                 )
 
-        is_verified = best_score >= AUTO_LINK_CONFIDENCE_THRESHOLD
         return CorporateMatchResult(
             tax_id=prof.tax_id,
             is_verified=is_verified,
             confidence=best_score,
-            requires_manual_confirmation=not is_verified,
+            requires_manual_confirmation=requires_manual,
             legal_representative=prof.legal_representative,
             charter_capital_vnd=prof.charter_capital_vnd,
             company_status=prof.company_status,
             profile=prof,
             is_cached=False,
         )
+
+    async def _jev_rescore_match(
+        self,
+        company_name: str,
+        city: str | None,
+        district: str | None,
+        tax_id: str | None,
+        best_cand: dict[str, Any],
+        workspace_id: int | None,
+    ) -> bool:
+        """Advisory Jev rescore of an uncertain fuzzy match (Story 39.3).
+
+        ``True`` means Jev confirmed the match (AUTO_MERGE verdict) and
+        the caller may auto-verify; ``False`` covers every other outcome —
+        review, separate, flags off, or any decision error — and the
+        caller keeps the fuzzy outcome. Fail-open by construction.
+        """
+        if not (
+            decision_config.decision_enabled()
+            and decision_config.decision_task_enabled("entity")
+        ):
+            return False
+        try:
+            from app.services.entity_resolution import (
+                EntityVerdict,
+                score_entity_pair,
+            )
+
+            query_entity = {
+                "company_name": company_name,
+                "city": city,
+                "district": district,
+                "tax_id": tax_id,
+            }
+            candidate_entity = {
+                "company_name": best_cand.get("company_name")
+                or best_cand.get("name"),
+                "international_name": best_cand.get("international_name"),
+                "short_name": best_cand.get("short_name"),
+                "tax_id": best_cand.get("tax_id"),
+                "address": best_cand.get("address"),
+                "city": best_cand.get("city"),
+                "district": best_cand.get("district"),
+            }
+            result = await score_entity_pair(
+                query_entity,
+                candidate_entity,
+                session=self.session,
+                workspace_id=workspace_id,
+                anchor_id=company_name,
+            )
+            return result.verdict is EntityVerdict.AUTO_MERGE
+        except Exception:
+            logger.warning(
+                "[entity_match] corp rescore failed — keeping fuzzy result",
+                exc_info=True,
+            )
+            return False
 
     async def verify_lead_corporate_info(
         self,
@@ -818,6 +902,7 @@ class CorporateVerificationService:
             district=district,
             tax_id=getattr(lead, "tax_id", None),
             force_refresh=force_refresh,
+            workspace_id=workspace_id,
         )
 
         if match_res.is_verified and match_res.profile:

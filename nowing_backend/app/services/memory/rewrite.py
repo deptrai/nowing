@@ -30,6 +30,6 @@ async def forced_rewrite(content: str, llm: Any) -> str | None:
             logger.warning("Forced memory rewrite returned empty text")
             return None
         return text
-    except Exception:
+    except Exception:  # best-effort rewrite; failure returns None so caller keeps original content
         logger.exception("Forced memory rewrite LLM call failed")
         return None

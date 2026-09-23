@@ -122,3 +122,80 @@ async def test_concurrent_retention_updates_use_row_lock(
         app.dependency_overrides.clear()
         app.dependency_overrides.update(previous_overrides)
         await _cleanup_concurrency_workspace(async_engine, workspace, user)
+
+
+async def test_retention_update_proves_with_for_update_locks_row(
+    async_engine: AsyncEngine,
+):
+    """Proves SELECT FOR UPDATE is strictly enforced on retention updates.
+
+    When another transaction holds a row lock on the workspace:
+    1. A retention update (e.g. document_retention_days) is blocked.
+    2. Once the holding transaction commits/rolls back, the update proceeds.
+    3. A non-retention update does not use with_for_update and proceeds without lock contention.
+    """
+    from sqlalchemy import select
+
+    workspace, user = await _setup_concurrency_workspace(async_engine)
+    session_factory = async_sessionmaker(
+        async_engine, expire_on_commit=False, class_=AsyncSession
+    )
+
+    async def get_test_session() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as session:
+            yield session
+
+    previous_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[get_auth_context] = lambda: AuthContext.session(user)
+    app.dependency_overrides[get_async_session] = get_test_session
+
+    try:
+        transport = ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
+            # Transaction 1: acquire and hold exclusive row lock on the workspace
+            async with session_factory() as lock_session:
+                await lock_session.begin()
+                stmt = (
+                    select(Workspace)
+                    .where(Workspace.id == workspace.id)
+                    .with_for_update()
+                )
+                locked_ws = (await lock_session.execute(stmt)).scalar_one()
+                assert locked_ws.id == workspace.id
+
+                # Send retention update while row lock is held
+                update_task = asyncio.create_task(
+                    client.put(
+                        f"{BASE}/{workspace.id}",
+                        json={"document_retention_days": 90, "auto_archive_enabled": True},
+                    )
+                )
+
+                # Give event loop time to process the HTTP request up to the DB lock wait
+                await asyncio.sleep(0.3)
+                # Task MUST still be blocked waiting for row lock
+                assert not update_task.done(), "Retention update was not blocked by FOR UPDATE lock!"
+
+                # Release the row lock by rolling back
+                await lock_session.rollback()
+
+                # Now the blocked update completes cleanly
+                res = await asyncio.wait_for(update_task, timeout=5.0)
+                assert res.status_code == 200
+                data = res.json()
+                assert data["document_retention_days"] == 90
+
+            # Verify that non-retention update does not take the retention lock path
+            res_non_retention = await client.put(
+                f"{BASE}/{workspace.id}",
+                json={"name": "Updated Concurrency Name"},
+            )
+            assert res_non_retention.status_code == 200
+            assert res_non_retention.json()["name"] == "Updated Concurrency Name"
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous_overrides)
+        await _cleanup_concurrency_workspace(async_engine, workspace, user)
+

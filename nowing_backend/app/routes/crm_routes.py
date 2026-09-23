@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import CrmSyncLog, get_async_session
+from app.config import config
+from app.db import CrmSyncLog, Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.crm.schemas import (
     CrmConnectionCreate,
     CrmConversionLogInput,
@@ -174,14 +178,11 @@ async def list_crm_sync_logs(
     connection_id: UUID,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.CRM_READ.value)
+    ),
 ):
     """List sync logs for a CRM connection."""
-    from sqlalchemy import select
-
-    from app.db import Permission
-    from app.utils.rbac import check_permission
-
-    await check_permission(session, auth, workspace_id, Permission.CRM_READ)
 
     result = await session.execute(
         select(CrmSyncLog)
@@ -263,3 +264,118 @@ async def list_crm_conversions(
         for e in events
     ]
 
+
+
+from fastapi import Header, Request
+
+
+@router.post("/webhooks/hubspot", tags=["crm"])
+async def hubspot_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    x_hubspot_signature_v3: str | None = Header(None),
+):
+    """Ingest HubSpot webhook events (e.g. deal stage changes) (Story 34.1)."""
+    body = await request.body()
+    from app.services.crm_webhook_service import (
+        CrmWebhookService,
+        verify_hubspot_signature,
+    )
+
+    if not verify_hubspot_signature(body, x_hubspot_signature_v3):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid HubSpot signature",
+        )
+
+    try:
+        events = json.loads(body.decode("utf-8"))
+        if not isinstance(events, list):
+            events = [events]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Malformed JSON payload: {exc}",
+        ) from exc
+
+    service = CrmWebhookService(session)
+    results = await service.handle_hubspot_deal_change(events)
+    await session.commit()
+    return {"status": "ok", "processed": len(results), "results": results}
+
+
+@router.post("/webhooks/salesforce", tags=["crm"])
+async def salesforce_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    x_salesforce_webhook_secret: str | None = Header(None),
+):
+    """Ingest Salesforce outbound message / webhook event (Story 34.1).
+
+    Authenticated via a shared secret header (X-Salesforce-Webhook-Secret)
+    configured in Salesforce outbound message settings.
+    """
+    expected_secret = getattr(config, "SALESFORCE_WEBHOOK_SECRET", "")
+    if expected_secret and x_salesforce_webhook_secret != expected_secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Salesforce webhook secret",
+        )
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Malformed JSON payload: {exc}",
+        ) from exc
+
+    from app.services.crm_webhook_service import CrmWebhookService
+
+    service = CrmWebhookService(session)
+    result = await service.handle_salesforce_deal_change(payload)
+    await session.commit()
+    return {"status": "ok", "result": result}
+
+
+@router.get("/{workspace_id}/crm/activity-timeline", tags=["crm"])
+async def get_workspace_activity_timeline(
+    workspace_id: int,
+    limit: int = 50,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value, "Permission denied")
+    ),
+):
+    """Retrieve chronological CRM activity timeline for a workspace (Story 34.3)."""
+    stmt = (
+        select(CrmSyncLog)
+        .where(CrmSyncLog.workspace_id == workspace_id)
+        .order_by(CrmSyncLog.synced_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(stmt)
+    logs = list(result.scalars().all())
+
+    items = [
+        {
+            "id": str(log.id),
+            "workspace_id": log.workspace_id,
+            "direction": log.direction,
+            "entity_type": log.entity_type,
+            "entity_id": str(log.entity_id),
+            "status": log.status,
+            "error_message": log.error_message,
+            "synced_at": log.synced_at.isoformat() if log.synced_at else None,
+        }
+        for log in logs
+    ]
+
+    return {
+        "items": items,
+        "total": len(items),
+        "limit": limit,
+        "offset": offset,
+    }

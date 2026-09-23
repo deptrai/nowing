@@ -84,7 +84,7 @@ class TelegramStreamDaemon:
                     REDIS_LEADER_KEY, self.daemon_id, ex=LEADER_LOCK_TTL_SECONDS
                 )
                 return True
-        except Exception:
+        except Exception:  # Redis network/eval error during lease renewal -> return False
             logger.exception("Failed to renew leader lock for %s", self.daemon_id)
         return False
 
@@ -108,7 +108,7 @@ class TelegramStreamDaemon:
             if val == self.daemon_id:
                 await self.redis_client.delete(REDIS_LEADER_KEY)
                 return True
-        except Exception:
+        except Exception:  # Redis release error during shutdown -> return False
             logger.exception("Failed to release leader lock for %s", self.daemon_id)
         return False
 
@@ -126,7 +126,7 @@ class TelegramStreamDaemon:
                     break
             except asyncio.CancelledError:
                 break
-            except Exception:
+            except Exception:  # heartbeat loop transient error -> log and continue loop
                 logger.exception("Error in leader heartbeat loop")
 
     async def handle_incoming_message(

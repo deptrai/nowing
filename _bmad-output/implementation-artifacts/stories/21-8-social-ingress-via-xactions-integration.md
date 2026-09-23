@@ -1,3 +1,8 @@
+---
+story_key: 21-8-social-ingress-via-xactions-integration-foundation
+status: done
+---
+
 # Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed)
 
 Status: done

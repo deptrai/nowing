@@ -186,7 +186,7 @@ async def add_extension_received_document(
             {"error_type": "SQLAlchemyError"},
         )
         raise db_error
-    except Exception as e:
+    except Exception as e:  # extension document processing failure; rollback, log task failure, and wrap in RuntimeError
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

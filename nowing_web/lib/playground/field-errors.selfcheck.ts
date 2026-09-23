@@ -15,7 +15,7 @@ type LocError = { loc: (string | number)[]; msg: string };
 function errWithFields(fields: LocError[] | undefined): AppError {
 	return {
 		name: "ValidationError",
-		message: "Validation failed.",
+		message: "playground.validation_failed",
 		status: 422,
 		statusText: "Unprocessable Entity",
 		code: "VALIDATION_ERROR",

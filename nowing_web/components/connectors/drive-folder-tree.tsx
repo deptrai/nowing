@@ -12,6 +12,7 @@ import {
 	Image,
 	Presentation,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -79,6 +80,7 @@ export function DriveFolderTree({
 	rootLabel = "My Drive",
 	providerName = "Drive",
 }: DriveFolderTreeProps) {
+	const t = useTranslations();
 	const [itemStates, setItemStates] = useState<Map<string, ItemTreeNode>>(new Map());
 	const [rootItems, setRootItems] = useState<DriveItem[]>([]);
 	const [isLoadingRoot, setIsLoadingRoot] = useState(true);
@@ -345,7 +347,7 @@ export function DriveFolderTree({
 
 						{children.length === 0 && (
 							<div className="text-[10px] sm:text-xs text-muted-foreground py-1 sm:py-2 pl-1 sm:pl-2">
-								Empty folder
+								{t("connectors.empty_folder")}
 							</div>
 						)}
 					</div>
@@ -393,14 +395,14 @@ export function DriveFolderTree({
 					{!isLoadingRoot && rootError && (
 						<div className="text-center text-xs sm:text-sm text-amber-600 dark:text-amber-500 py-4 sm:py-8">
 							{rootError.message.includes("authentication expired")
-								? `${providerName} authentication has expired. Please re-authenticate above.`
-								: `Failed to load ${providerName} contents.`}
+								? t("connectors.auth_expired", { provider: providerName })
+								: t("connectors.load_failed", { provider: providerName })}
 						</div>
 					)}
 
 					{!isLoadingRoot && !rootError && rootItems.length === 0 && (
 						<div className="text-center text-xs sm:text-sm text-muted-foreground py-4 sm:py-8">
-							No files or folders found in your {providerName}
+							{t("connectors.no_files_or_folders", { provider: providerName })}
 						</div>
 					)}
 				</div>

@@ -5,6 +5,7 @@ import confetti from "canvas-confetti";
 import { Check, Star } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,11 +32,10 @@ interface PricingProps {
 	description?: string;
 }
 
-export function Pricing({
-	plans,
-	title = "Simple, Transparent Pricing",
-	description = "Choose the plan that works for you\nAll plans include access to our Nowing AI workspace and community support.",
-}: PricingProps) {
+export function Pricing({ plans, title, description }: PricingProps) {
+	const t = useTranslations("pricing");
+	const resolvedTitle = title ?? t("default_title");
+	const resolvedDescription = description ?? t("default_description");
 	const [isMonthly, setIsMonthly] = useState(false);
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const switchRef = useRef<HTMLButtonElement>(null);
@@ -72,8 +72,8 @@ export function Pricing({
 	return (
 		<div className="container mx-auto py-20">
 			<div className="text-center space-y-4 mb-12">
-				<h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{title}</h1>
-				<p className="text-muted-foreground text-lg whitespace-pre-line">{description}</p>
+				<h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{resolvedTitle}</h1>
+				<p className="text-muted-foreground text-lg whitespace-pre-line">{resolvedDescription}</p>
 			</div>
 
 			{/* <div className="flex justify-center mb-10">
@@ -91,7 +91,7 @@ export function Pricing({
 					</Label>
 				</label>
 				<span className="ml-2 font-semibold">
-					Annual billing <span className="text-primary">(Save 20%)</span>
+					{t("annual_billing")} <span className="text-primary">{t("save_20")}</span>
 				</span>
 			</div> */}
 
@@ -148,7 +148,7 @@ export function Pricing({
 							<div className="absolute top-0 right-0 bg-primary py-0.5 px-2 rounded-bl-xl rounded-tr-xl flex items-center">
 								<Star className="text-primary-foreground h-4 w-4 fill-current" aria-hidden="true" />
 								<span className="text-primary-foreground ml-1 font-sans font-semibold">
-									Popular
+									{t("popular")}
 								</span>
 							</div>
 						)}
@@ -188,8 +188,8 @@ export function Pricing({
 									(isNaN(Number(plan.price))
 										? ""
 										: isMonthly
-											? "billed monthly"
-											: "billed annually")}
+											? t("billed_monthly")
+											: t("billed_annually"))}
 							</p>
 
 							<ul className="mt-5 gap-2 flex flex-col">

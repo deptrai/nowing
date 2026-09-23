@@ -19,6 +19,7 @@ import {
 	UserX,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -108,6 +109,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 	initialLeads = [],
 	onOpenCompanyGraph,
 }) => {
+	const t = useTranslations("leads");
 	// Leads list state
 	const [leads, setLeads] = useState<WorkbenchLead[]>(() =>
 		initialLeads.map((l, index) => {
@@ -161,15 +163,15 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 		try {
 			await leadsApiService.qualifyLead(workspaceId, leadId, status, note);
 			const labelMap: Record<SdrQualificationStatus, string> = {
-				qualified: "Đã đánh dấu: Tiềm năng cao (Qualified)",
-				not_icp: "Đã đánh dấu: Không đúng ICP (Not ICP)",
-				bad_contact: "Đã đánh dấu: SĐT/Email sai (Bad Contact)",
-				already_customer: "Đã đánh dấu: Đã là khách hàng",
-				unqualified: "Đã đặt lại trạng thái",
+				qualified: t("marked_qualified"),
+				not_icp: t("marked_not_icp"),
+				bad_contact: t("marked_bad_contact"),
+				already_customer: t("marked_customer"),
+				unqualified: t("marked_reset"),
 			};
 			toast.success(labelMap[status]);
 		} catch (_err) {
-			toast.error("Không thể cập nhật trạng thái phân loại SDR");
+			toast.error(t("sdr_update_failed"));
 		}
 	};
 
@@ -313,17 +315,15 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 						</div>
 						<div>
 							<h2 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-								<span>SDR Lead Workbench</span>
+								<span>{t("workbench_title")}</span>
 								<Badge
 									variant="outline"
 									className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
 								>
-									High-Density Matrix
+									{t("high_density")}
 								</Badge>
 							</h2>
-							<p className="text-[11px] text-zinc-400">
-								Bảng điều khiển thẩm định nhanh, minh bạch điểm Fit Score và kích hoạt kênh liên hệ
-							</p>
+							<p className="text-[11px] text-zinc-400">{t("workbench_desc")}</p>
 						</div>
 					</div>
 
@@ -334,7 +334,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 							type="text"
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							placeholder="Lọc tên công ty, SĐT, ngành, địa chỉ..."
+							placeholder={t("filter_placeholder")}
 							className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-zinc-950/70 border border-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
 						/>
 					</div>
@@ -368,12 +368,12 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 								onChange={(e) => setSdrStatusFilter(e.target.value)}
 								className="px-2 py-1 text-xs rounded-md bg-zinc-950/70 border border-zinc-800 text-zinc-300 focus:ring-1 focus:ring-emerald-500"
 							>
-								<option value="all">Tất cả đánh giá</option>
-								<option value="unreviewed">Chưa đánh giá (Pending SDR)</option>
-								<option value="qualified">✅ Tiềm năng cao (Qualified)</option>
-								<option value="not_icp">❌ Không đúng ICP (Not ICP)</option>
-								<option value="bad_contact">🚫 Sai liên hệ (Bad Contact)</option>
-								<option value="already_customer">🤝 Đã là khách hàng</option>
+								<option value="all">{t("all_reviews")}</option>
+								<option value="unreviewed">{t("unreviewed")}</option>
+								<option value="qualified">{t("opt_qualified")}</option>
+								<option value="not_icp">{t("opt_not_icp")}</option>
+								<option value="bad_contact">{t("opt_bad_contact")}</option>
+								<option value="already_customer">{t("opt_customer")}</option>
 							</select>
 						</div>
 					</div>
@@ -396,7 +396,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 									: "bg-zinc-800 text-zinc-400 border-zinc-700"
 							}`}
 						>
-							<span>Fit Score</span>
+							<span>{t("fit_score")}</span>
 							<ArrowUpDown className="w-3 h-3" />
 						</button>
 
@@ -415,7 +415,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 									: "bg-zinc-800 text-zinc-400 border-zinc-700"
 							}`}
 						>
-							<span>Intent Score</span>
+							<span>{t("intent_score")}</span>
 							<ArrowUpDown className="w-3 h-3" />
 						</button>
 					</div>
@@ -438,12 +438,12 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 										className="rounded border-zinc-700 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
 									/>
 								</th>
-								<th className="p-3 min-w-[220px]">Doanh Nghiệp & Tín Hiệu</th>
-								<th className="p-3 min-w-[130px]">Tiến Trình (Stage)</th>
-								<th className="p-3 min-w-[120px] text-center">Fit Score / AI</th>
-								<th className="p-3 min-w-[160px]">Thông Tin Liên Hệ</th>
-								<th className="p-3 min-w-[200px]">Thẩm Định Nhanh (SDR Actions)</th>
-								<th className="p-3 w-16 text-center">Chi Tiết</th>
+								<th className="p-3 min-w-[220px]">{t("col_company")}</th>
+								<th className="p-3 min-w-[130px]">{t("col_stage")}</th>
+								<th className="p-3 min-w-[120px] text-center">{t("col_fit")}</th>
+								<th className="p-3 min-w-[160px]">{t("col_contact")}</th>
+								<th className="p-3 min-w-[200px]">{t("col_sdr")}</th>
+								<th className="p-3 w-16 text-center">{t("col_detail")}</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-zinc-800/60">
@@ -524,7 +524,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 													</div>
 													<span className="text-[10px] text-emerald-400 group-hover:underline flex items-center gap-0.5">
 														<Bot className="w-2.5 h-2.5" />
-														AI Rationale
+														{t("ai_rationale")}
 													</span>
 												</button>
 											</td>
@@ -547,7 +547,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 														variant="outline"
 														className="bg-blue-950/40 text-blue-400 border-blue-800/40 text-[9px]"
 													>
-														Zalo Active
+														{t("zalo_active")}
 													</Badge>
 												)}
 											</td>
@@ -557,7 +557,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 												<div className="flex flex-wrap items-center gap-1">
 													<button
 														type="button"
-														title="Khớp ICP & Tiềm năng cao"
+														title={t("tip_qualified")}
 														onClick={() => handleQualifyLead(lead.id, "qualified")}
 														className={`p-1.5 rounded text-xs border transition-all ${
 															lead.sdr_status === "qualified"
@@ -570,7 +570,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 
 													<button
 														type="button"
-														title="Không đúng tiêu chuẩn ICP"
+														title={t("tip_not_icp")}
 														onClick={() => handleQualifyLead(lead.id, "not_icp")}
 														className={`p-1.5 rounded text-xs border transition-all ${
 															lead.sdr_status === "not_icp"
@@ -583,7 +583,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 
 													<button
 														type="button"
-														title="SĐT sai / không liên lạc được"
+														title={t("tip_bad_contact")}
 														onClick={() => handleQualifyLead(lead.id, "bad_contact")}
 														className={`p-1.5 rounded text-xs border transition-all ${
 															lead.sdr_status === "bad_contact"
@@ -596,7 +596,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 
 													<button
 														type="button"
-														title="Đã là khách hàng của công ty"
+														title={t("tip_customer")}
 														onClick={() => handleQualifyLead(lead.id, "already_customer")}
 														className={`p-1.5 rounded text-xs border transition-all ${
 															lead.sdr_status === "already_customer"
@@ -627,7 +627,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 													type="button"
 													onClick={() => onOpenCompanyGraph?.(lead.company_name)}
 													className="p-1.5 rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
-													title="Xem Company Graph & Mạng lưới quan hệ"
+													title={t("tip_company_graph")}
 												>
 													<Share2 className="w-3.5 h-3.5" />
 												</button>
@@ -706,7 +706,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 									<Bot className="w-5 h-5" />
 								</div>
 								<div>
-									<h3 className="text-base font-bold text-zinc-100">AI Lead Fit Rationale</h3>
+									<h3 className="text-base font-bold text-zinc-100">{t("drawer_title")}</h3>
 									<p className="text-xs text-zinc-400">{selectedLeadForRationale.company_name}</p>
 								</div>
 							</div>
@@ -725,7 +725,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 							<div className="flex items-center justify-between">
 								<span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
 									<Sparkles className="w-3.5 h-3.5" />
-									<span>Đánh Giá Khớp ICP</span>
+									<span>{t("icp_assessment")}</span>
 								</span>
 								<span className="font-mono font-bold text-emerald-300 text-sm">
 									{selectedLeadForRationale.fit_score ?? 75}/100
@@ -808,10 +808,10 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 											copyToClipboard(
 												selectedLeadForRationale.ai_rationale?.suggested_icebreaker || ""
 											);
-											toast.success("Đã sao chép kịch bản mở đầu!");
+											toast.success(t("script_copied"));
 										}}
 										className="p-1 rounded hover:bg-blue-900/50 text-blue-300"
-										title="Sao chép kịch bản"
+										title={t("copy_script")}
 									>
 										<Copy className="w-3.5 h-3.5" />
 									</button>

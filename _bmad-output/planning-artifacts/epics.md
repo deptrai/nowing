@@ -26,6 +26,9 @@ inputDocuments:
   - "_bmad-output/planning-artifacts/pilot-plan-c-memo-2026-08-05.md (context)"
   - "_bmad-output/planning-artifacts/research/technical-spike-vietnamworks-api-2026-08-05.md (context)"
   - "_bmad-output/planning-artifacts/research/technical-spike-topcv-itviec-2026-08-05.md (context)"
+  - "_bmad-output/specs/spec-xactions-connection/SPEC.md (Epic 36 source)"
+  - "_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md (Epic 36 ADs)"
+  - "_bmad-output/planning-artifacts/ux-spec-epic37-revenue-engine-mobile-responsive-2026-09-17.md (Epic 37 UX spec)"
 ---
 
 # Nowing - Epic Breakdown
@@ -67,6 +70,11 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
 `[DONE]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
 `[DONE]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
+`[NEW]` **FR-69.2 Customer Location Profile** → **E26.25** (progressive province/district/ward selector, GSO/TCTK codes, smart search & quick chips).
+`[NEW]` **FR-69.3 Location-Aware Adapter Routing** → **E26.26** (coverage quality, location-weighted fit scoring, adapter re-ranking).
+`[NEW]` **FR-69.4 Pre-Flight Lead Plan Summary** → **E26.27** (PlanSummaryCard, estimated leads/cost, source coverage badges).
+`[NEW]` **FR-69.5 Source Coverage in Right-Canvas** → **E26.28** (source status panel, contextual coverage badges, enable/disable per source).
+`[NEW]` **FR-69.6 Smoke Test Feedback Loop** → **E26.29** (5-lead preview, location refinement, re-run diff).
 `[DONE]` **FR-86 Nowing Split-View Canvas & Workspace Modernization** → **E21.16 P0** (Unified New Chat, 340px Chat + Dynamic Multi-Mode Matrix, Real Credits & APIs, Sọc Caro, Emerald Green).
 `[DONE]` **FR-87 Complete Origami Landing Page & Public Site Transformation** → **E21.17 P0** (10 sections, Origami Mint Logo, 12 verticals).
 `[DONE]` **FR-88 Partners Affiliate Portal & $0 Pricing Page Deployment** → **E21.18 P1** ($0 Free tier, 15% recurring affiliate ledger).
@@ -113,6 +121,29 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[BACKLOG]` **FR-98 Self-host OSS onboarding <10 min** → README + `docker compose` + local LLM/embedding config để dev tự host trong 10 phút (PRFAQ Q6, IQ6, RS-13).
 `[BACKLOG]` **FR-99 Recall precision/noise gate before scale** → chốt ngưỡng precision và top-k noise trên `nowing_evals` trước khi mở rộng auto-extract (PRFAQ IQ1, Q8, RS-7).
 
+`[NEW — BACKLOG]` **FR-100 Custom Workspace Roles & Permissions Builder** → workspace owner hoặc superuser có thể tạo/custom role ngoài 3 system roles mặc định, gán permissions chi tiết theo resource/action (PRD FR-10, PRFAQ Q9 context, admin nâng cấp cho SaaS operations).
+`[NEW — BACKLOG]` **FR-101 Workspace Health & Adoption Analytics Dashboard** → owner/admin/analyst xem tổng quan workspace (active members, memory growth, query volume, credit burn, source coverage, recall quality) để quản lý adoption và cost.
+`[NEW — BACKLOG]` **FR-102 Tenant Subscription Tier & Quota Management** → superadmin quản lý plan/trial/upgrade/downgrade cho workspace, gán quota memory/credits/users theo tier, ghi ledger thay đổi.
+`[NEW — BACKLOG]` **FR-103 Admin Bulk Operations Console** → superadmin thực hiện bulk credit, suspend, export, delete, broadcast trên nhiều workspace/user từ một màn hình với dry-run và audit log.
+`[NEW — BACKLOG]` **FR-104 Memory Browser & Research Timeline for Analyst** → analyst/owner duyệt memory theo thread, source type, confidence, time; click-to-source citation; filter và flag noisy/corrupted facts (PRFAQ Q9, UX-DR-PRFAQ-1).
+
+`[NEW — READY-FOR-DEV]` **FR-105 Proactive Buying Intent Radar (Background Ingestion & Telegram Stream Matcher)** → **E37.1 P0** (Periodic Celery scan on TopCV/VietnamWorks/MST + Redis stream telegram regex keyword matcher).
+`[NEW — READY-FOR-DEV]` **FR-106 Vietnam Cultural Honorific & Relationship Tone Engine** → **E37.2 P0** (Hierarchy/age resolution from MST/LinkedIn, native Anh/Chị/Em/Quý đối tác phrasing for sequencer & auto-reply).
+`[NEW — READY-FOR-DEV]` **FR-107 Smart Meeting Booking Engine for Auto-Reply** → **E37.3 P1** (Google & Lark Calendar free/busy slot extraction, auto meeting invite on positive response).
+`[NEW — READY-FOR-DEV]` **FR-108 Zalo Web Co-pilot in Nowing Lead Clipper** → **E37.4 P0** (Human-in-the-loop contextual drawer on chat.zalo.me, 1-click prefilled message, zero-ban risk).
+`[NEW — READY-FOR-DEV]` **FR-109 Sequencer-to-Artifact Generator (1-Click Mini-Pitch Portal)** → **E37.5 P1** (Automatic static landing page `pitch.nowing.ai/{lead}` with prospect branding & audit from Web Builder).
+`[NEW — READY-FOR-DEV]` **FR-110 Realtime Prospect Engagement Tracker & Telegram Alert Bot Ping** → **E37.6 P1** (Live telemetry on pitch portal views, instant Telegram push alert to sales rep).
+`[NEW — READY-FOR-DEV]` **FR-111 Hybrid Pricing Tiers UI & Auto-Refund Guarantee SLA** → **E37.7 P0** (Starter 990k / Pro 2.490k / Business 5.990k VietQR checkout + 100% credit refund for invalid phones).
+
+`[NEW — READY-FOR-DEV]` **FR-112 LiveKit SIP Gateway & Kamailio SBC Low-Latency Telephony Bridge** → **E38.1 P0** (SIP Trunk G.711a to WebRTC Opus bridge, sub-5ms internal routing).
+`[NEW — READY-FOR-DEV]` **FR-113 Voice Agent Worker Runtime với Silero VAD & Micro-clause Streaming** → **E38.2 P0** (Silero VAD v5 ONNX, FPT/Deepgram STT, Cartesia/Vbee TTS streaming, Local Filler < 80ms).
+`[NEW — READY-FOR-DEV]` **FR-114 Anti-False-Interruption & Multi-tier Barge-in Engine** → **E38.3 P1** (Audio ducking -14dB, keyword spotting for backchannels, 400ms echo lockout).
+`[NEW — READY-FOR-DEV]` **FR-115 Telephony Compliance Gate, National DNC 5656 & Curfew Scheduler** → **E38.4 P0** (Decree 91 curfew, 1 call/24h frequency cap, 5656 DNC check, DTMF 9/0 opt-out).
+`[NEW — READY-FOR-DEV]` **FR-116 Telecom Signal Classifier, AMD & Dead-air Watchdog Engine** → **E38.5 P1** (AMD sub-4s hangup, dead-air re-prompt and drop before 8s, 180s hard max duration).
+`[NEW — READY-FOR-DEV]` **FR-117 Dynamic DID & Voice Brandname Multi-tenant BYO-SIP Architecture** → **E38.6 P1** (Day-1 instant DID 024/028 provisioning, encrypted BYO-SIP credentials, Brandname portal).
+`[NEW — READY-FOR-DEV]` **FR-118 Outbound Trigger Engine: Speed-to-Lead & Hiring Radar Integration** → **E38.7 P0** (Auto call within 5m of pitch view > 45s, hiring signal trigger, post-call Zalo handoff).
+`[NEW — READY-FOR-DEV]` **FR-119 Voice Billing, Realtime Metering & QA Scorecard** → **E38.8 P0** (2.500đ/min block 6s+1s, 10s hang-up protection cap 15%, automated BANT QA scoring).
+
 ### NonFunctional Requirements
 `[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*.  **NFR-11 Scraping compliance & anti-bot resilience (Vietnam job market)** *(mới 2026-08-05 — ToS review, legal counsel, anti-bot POC, PII pipeline)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
 
@@ -134,6 +165,8 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 - **AR-14** Self-host onboarding <10 phút (`docker compose up`, local LLM/embedding, README mới) (PRFAQ Q6/IQ6 — OSS motion / aha moment).
 - **AR-15** Refine recall precision gate: xác định ngưỡng precision/noise trên `nowing_evals` trước khi scale (PRFAQ IQ1 — rủi ro sản phẩm #1; NFR-8 đã có, cần chốt số).
 - **AR-16** Epic 13 canonical entity cleanup — `CanonicalEntity` / `app/canonical/` / `canonical_entities_routes.py` và migration/schema liên quan đã dropped khỏi kiến trúc, migration `d33c362fa627` drop tables shipped (commit `542b84d61`, 2026-08-22). [DONE 2026-08-22 — fast-track approved; deprecation skipped because zero live callers verified].
+- **AR-17** Admin console nâng cấp cho SaaS operations: custom workspace roles, tenant subscription tier, bulk operations, workspace health analytics, memory browser/research timeline (PRFAQ Q9, PRD FR-10, admin/SaaS/analyst upgrade — **Epic 29**).
+- **AR-18** Auditability & traceability cho mọi admin bulk op và tier change: append-only `audit_events` với `actor_id`, `subject_type`, `subject_id`, `diff_payload`, `idempotency_key`.
 
 **Requirements signals:** RS-1 auto-extract budget (item-cap + spend-cap + wallet pre-check + rate-limit done) · RS-2 recall top_k≤5 (verify) · RS-3 beachhead agent-builder→team · RS-4 "MCP trước UI sau"/"semantic facts first" · RS-5 docs-sync bắt buộc · RS-6 right-to-delete + self-host/cloud split · RS-7 eval-gated launch + chốt số SM · RS-8 data export · RS-9 "project memory"=`ResearchThread`? · RS-10 cost/turn beta trước pricing · **RS-11 legal/ToS + retention policy trước GA cloud (PRFAQ)** · **RS-12 encryption-at-rest + key management cho cloud (PRFAQ)** · **RS-13 self-host onboarding <10 phút / aha recall (PRFAQ)**.
 
@@ -167,6 +200,14 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 **UX-DR-PRFAQ-4: Cost control / per-workspace auto-extract budget**
 - Dashboard hiển thị chi phí extract + embedding + recall per turn, cấu hình ngân sách và toggle auto-extract.
 - *Priority:* fast-follow (PRFAQ Q7/IQ5).
+
+**UX-DR-PRFAQ-5: SaaS Admin Operations Console (post-MVP / Epic 29)**
+- Admin console `/admin/saas` hiển thị workspace directory với plan/tier, quota usage, health score, search, filter, bulk action bar; consistent với design system `/admin/*` hiện có.
+- *Priority:* fast-follow cho SaaS positioning và analyst workspace (PRFAQ Q9 context, Epic 29).
+
+**UX-DR-PRFAQ-6: Analyst Memory Browser / Research Timeline (post-MVP / Epic 29)**
+- Analyst dùng web UI xem danh sách memory theo research thread, filter theo source type / confidence / time / workspace, click-to-source citation, flag/update fact, xem version history.
+- *Priority:* fast-follow sau 4 MCP tools và Memory correction/version (PRFAQ Q9/IQ7, Epic 29).
 
 #### UX Design Requirements — Epic 26 Mission Control & Two-Tier Phone Unlock Refinement
 
@@ -239,6 +280,48 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - `mission_control.deliverable.download` (filename, size, include_pii, mission_type).
 - `phone_unlock.popover.open`, `phone_unlock.confirm`, `phone_unlock.fast.unlock`, `phone_unlock.undo`, `phone_unlock.error`.
 
+#### UX Design Requirements — Epic 37 Revenue Engine & Mobile-First Outbound Experience
+
+*Nguồn:* `_bmad-output/planning-artifacts/ux-spec-epic37-revenue-engine-mobile-responsive-2026-09-17.md` (produced 2026-09-17 by Sally).
+
+**UX-DR-E37-1: Mobile VietQR Checkout Adaptor (The "Cannot Scan Own Screen" Fix)**
+- Trên Desktop: Hiển thị mã QR to rõ (240px) ở trung tâm để quét bằng điện thoại.
+- Trên Mobile (< 640px): Không bắt buộc người dùng quét QR trên màn hình đang cầm; tự động hiển thị bảng 3 nút sao chép 1-chạm (STK, Số tiền, Nội dung chuyển khoản duy nhất) + Nút CTA chính `[📲 Mở App Ngân Hàng]` hỗ trợ deep-link mở trực tiếp app Mobile Banking / MoMo / ZaloPay.
+- Hiển thị countdown timer 10 phút, trạng thái loading xoay tự động chuyển tick xanh `Thanh toán thành công!` trong 3–5 giây khi nhận webhook Napas.
+
+**UX-DR-E37-2: Zalo Co-pilot Floating Pill & Collapsible Context Drawer**
+- Trạng thái nghỉ: Hiển thị dạng viên thuốc tròn nhỏ ($36 \times 36$px) màu xanh bạc hà Nowing (`bg-emerald-500`) ghim ở góc trên bên phải khung nhập liệu `chat.zalo.me` (`bottom: 80px, right: 24px`), không chiếm diện tích chat ngang của Zalo.
+- Khi click/hover: Trượt ra Flyout Drawer (320px) hiển thị tên khách hàng, chức vụ, badge tín hiệu mua hàng (`🔥 Hiring 5 Sales`), và 2 tab kịch bản mở đầu (`[Ngắn gọn]` / `[Kèm link Pitch]`).
+- Zero-Occlusion: Bấm `[Chèn vào chat]` thì văn bản được populate vào ô chat của Zalo và Drawer tự động thu gọn về Pill sau 150ms để nhường tầm nhìn cho sales rep kiểm tra lại trước khi gửi.
+- DNC Warning Guard: Nếu số điện thoại thuộc danh sách DNC, card hiển thị viền đỏ cảnh báo `⚠️ Thuộc danh sách DNC (NĐ 91/2020)` và khóa nút chèn tin nhắn.
+
+**UX-DR-E37-3: Mobile-First Mini-Pitch Portal (The 3-Second Trust Hook)**
+- Trang `pitch.nowing.ai/[workspace]/[lead]` tải dưới 100ms trên mạng di động 4G (Single Multi-Tenant SSR, Cloudflare edge cache).
+- 3 giây đầu hiển thị Dual-Branding: Logo khách hàng đặt cạnh Logo sender với tag `🔒 Báo cáo nội bộ dành riêng cho [Tên Công Ty]`.
+- Executive Card Stack 30 giây: 3 thẻ card xếp dọc tóm tắt Thực trạng (đỏ) - Khoảng trống (vàng) - Giải pháp (xanh).
+- Interactive ROI Calculator: Thanh trượt chọn quy mô sales team có vùng bắt chạm $\ge 48 \times 48$px, số nhảy real-time không xung đột với thao tác cuộn trang (scroll gesture).
+- Inline Meeting Booking Accordion: Bấm CTA mở rộng 3 khung giờ trống trực tiếp trên trang (chiều cao nút 52px), không dùng modal popup che màn hình điện thoại. Link Opt-out / Xóa dữ liệu (Nghị định 13) ở chân trang.
+
+**UX-DR-E37-4: 1-Tap Native Zalo Deep-Link on Telegram Push**
+- Bot Telegram gửi alert cho Sales Rep khi prospect đang đọc Mini-Pitch kèm thời gian đọc và section đang dừng.
+- Nút CTA trong tin nhắn Telegram gọi universal deep-link `zalo.me/{phone}`, tự động kích hoạt hệ điều hành iOS/Android mở thẳng ứng dụng Zalo native và nhảy vào cuộc hội thoại với khách hàng trong 1 lần chạm.
+- Cooldown rule: Tối đa 1 tin nhắn Telegram push trong 30 phút cho cùng 1 lead ID để tránh bão thông báo (Notification Fatigue).
+
+**UX-DR-E37-5: Responsive Pricing Grid & Priority Ordering on Mobile**
+- Trên Desktop ($\ge 1024$px): 3 cột ngang Starter (990k) | **Professional (2.490k - Highlight)** | Business (5.990k).
+- Trên Mobile (< 768px): Xếp chồng 1 cột, trong đó **thẻ Professional tự động đảo lên vị trí đầu tiên (Order-1)** kèm badge `ĐƯỢC CHỌN NHIỀU NHẤT`.
+- Thanh trượt quy đổi tín dụng (Interactive Credit Calculator): Mô phỏng trực quan giá trị thật (ví dụ: *"3.500 credits = Mở khóa 350 số điện thoại đã xác minh Zalo"*).
+- Trust Seal: Banner khiên bảo vệ xanh ngọc cam kết hoàn 100% credit nếu số điện thoại không có Zalo hoặc không liên lạc được.
+
+**UX-DR-E37-6: Nowing Split Canvas Mobile Adaptive Tab Bar**
+- Trên màn hình nhỏ (< 768px), `NowingSplitCanvas` chuyển từ chia đôi cột sang thanh điều hướng 2 tab ở đáy màn hình: `[💬 Trợ Lý Chat]` và `[📋 Bảng Lead & Radar]`.
+- Khi có lead mới từ Radar (Story 37.1), tab Bảng Lead hiển thị chấm đỏ notification `🔴` kèm số lượng lead mới. Hỗ trợ vuốt ngang (swipe gesture) để chuyển tab mượt mà.
+
+**UX-DR-E37-7: Touch Target & Ergonomics Acceptance Criteria**
+- Toàn bộ các interactive elements (buttons, slider thumbs, links, tabs) trên mobile viewports đạt kích thước tối thiểu $44 \times 44$px (chuẩn Apple HIG).
+- Tuân thủ `env(safe-area-inset-bottom)` trên iPhone để thanh CTA không bị che bởi Home bar.
+- Typography tương phản cao $\ge 4.5:1$ (WCAG AA), font size tối thiểu 15px cho body text trên di động. Zero layout shift (CLS < 0.05) với skeleton loader khớp wireframe.
+
 
 ### FR Coverage Map
 - FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10.1** [DONE] (batdongsan scraper) · FR-9/11/12/13 → **E3** [DONE] · **FR-14/15/16/17/42 → E4** [DONE] (4.8a–4.8g chat benchmark & regression gate) · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [DONE]
@@ -259,7 +342,8 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 - **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
-- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E21.1** `[DONE]` · FR-64 (Lead Scoring) → **E21.2** `[DONE]` · FR-65 (Contact Enrichment) → **E21.3** `[DONE]` · FR-66 (Outbound Automation) → **E21.4** `[DONE]` (Email/Zalo/Telegram outbound done) · FR-67 (CRM Integration) → **E21.5** `[DONE]` · FR-68 (Zalo Integration) → **E21.6** `[DONE]` · FR-69 (Outcome Pricing) → **E21.7** `[DONE]` · FR-85 (Lead Gen Orchestration & Micro-Extraction) → **E21.15, E21.19, E21.20, E21.21** `[ready-for-dev]`.
+- **Mới 2026-08-10 (Market Research → Lead Intelligence) — đã hoàn thành 2026-08-16:** FR-63 (Intent Signals) → **E26.1** `[DONE]` · FR-64 (Lead Scoring) → **E26.2** `[DONE]` · FR-65 (Contact Enrichment / Phone Waterfall) → **E23.2** `[DONE]` · FR-66 (Outbound Automation) → **E23.3** `[DONE]` · FR-67 (CRM Integration) → **E24.3** `[DONE]` · FR-68 (Zalo Integration) → **E24.7** `[backlog]` · FR-69 (Outcome Pricing) → **E23.4** `[DONE]` · FR-80 (Reverse-ICP) → **E26.x** `[DONE]` · FR-81/82/83 (Actionable dispatches / Viral copilot / Social) → **E24.6 / E23.x** · FR-84 (DNC) → **E25.x** · FR-85 (Lead Orchestration) → **E26.x** `[ready-for-dev]` · FR-86 (Split Canvas) → **E25 / E27** · FR-87 (Landing page) → **E25 / E27** · FR-88 (Affiliate) → **E25.x** · FR-91 (VietQR) → **E25.x`. **Epic 21 là umbrella tracking; Epic con E23–E26/E25 nhận việc.**
+- **Mới 2026-08-29 (Customer Location Profile & Pre-Flight Lead Plan):** FR-69.2 (Location Profile) → **E26.25** `[ready-for-dev]` · FR-69.3 (Location-Aware Adapter Routing) → **E26.26** `[ready-for-dev]` · FR-69.4 (Pre-Flight Plan Summary) → **E26.27** `[ready-for-dev]` · FR-69.5 (Source Coverage in Right-Canvas) → **E26.28** `[ready-for-dev]` · FR-69.6 (Smoke Test Feedback Loop) → **E26.29** `[ready-for-dev]`. **Đã remap từ Story 21.25–21.29 sang E26.25–E26.29 (Autonomous Lead Missions)._
 
 ## Epic List
 
@@ -273,26 +357,26 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết. U
 >
 > **🆕 2026-07-25 — Epic 9 *(Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng)*:** SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED). **FR-24 rời E2 → E9.** Các việc P0/P1, đều là lỗi thương mại/kiến trúc đang chạy trong production path chứ không phải tính năng mới: **9.1a** degradation + self-host độc lập (P0, **chặn public repo**) · **9.1b** contract regression guard (P0, không chặn) · **9.2** cost metering thật — **DONE**: parser `done.usage.costDollars` + fallback 60k micros (~$0.06), cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671 (P0) · **9.3** latency budget State A/B + mode default `quality`→`balanced` (P1) · **9.4** docs (P1) · **9.6a/9.6b** provenance + re-validate. **Gate:** pricing có thể bắt đầu định hình dựa trên số thật, vẫn giữ margin 1.5–2.5× cho full-pipeline cost aggregation.
 
-### Epic 1: Identity, Auth & Workspace RBAC — ✅ DONE
+### Epic 1: Identity, Auth & Workspace RBAC
 Đăng ký/đăng nhập/OAuth/PAT + workspace RBAC Owner/Editor/Viewer. **FRs:** FR-1,2,3,4,10.
 > **Brownfield note (readiness audit 2026-08-08):** Implemented prior to epic breakdown. No individual story files — functionality verified through code review and production usage.
 
-### Epic 2: Connectors — ✅ DONE (retrospective 2026-08-08)
+### Epic 2: Connectors
 Built-in scrapers + OAuth connectors + external MCP connectors; connectors là memory ingestion source. **FRs:** FR-6,7,8. **All 6 stories done:** 2.5 MCP toggle, 2.6 Indeed, 2.7 Walmart, 2.8 Amazon EU, 2.9 input validation, 2.10 Exa MCP (with citation ACs).
 > **⚠️ 2026-07-25: FR-24 (ChainLens) đã rời Epic 2 → Epic 9.** ChainLens không phải connector. Story `2-4-chainlens-research-mcp-tool` giữ `done` làm lịch sử — nó đã ship tool thật; việc còn lại thuộc Epic 9.
 
-### Epic 3: Knowledge Base + Long-Term Memory — ✅ DONE
-KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*, **FR-99** *(mới 2026-08-21 — recall precision/noise gate từ PRFAQ)*. **Open:** 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`, 3.17 memory injection perf gate `[ready-for-dev]`, 3.18 recall precision gate `[backlog]`.
+### Epic 3: Knowledge Base + Long-Term Memory
+KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*, **FR-99** *(mới 2026-08-21 — recall precision/noise gate từ PRFAQ)*. **Story 3.18 (FR-99)** là backlog thuộc Epic 3; thuật toán gate được triển khai trong `nowing_evals`, gán về Epic 3 vì đây là memory recall gate. **Open:** 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`, 3.17 memory injection perf gate `[ready-for-dev]`, 3.18 recall precision gate `[backlog]`.
 > **🆕 2026-07-25 (readiness Nhóm 3):** hai story mới, cả hai đều là **gap trước đây không có FR lẫn epic**. **3.13** — `MemoryExtractionService` chỉ có `extract_from_turn` và workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, **M1 (first-run value ≤15 phút) không tồn tại**. **3.14** — `MemoryInjectionMiddleware` **chặn mọi lượt chat** với `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có sẵn ⇒ chi phí mỗi lượt tăng tuyến tính theo mức dùng. **3.14 nên chạy trước khi chốt số SM-10 của 3.9.**
 
-### Epic 4: Chat & Agents — ✅ DONE
+### Epic 4: Chat & Agents
 Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,17 (+4.5, 4.6). **Open:** 4.7 pointer-based tabs `[ready-for-dev]`, 4.8d chat quality LLM-as-judge `[ready-for-dev]`.
 
-### Epic 5: Deliverables — ✅ DONE
+### Epic 5: Deliverables
 Report/podcast/video/image. **FRs:** FR-21,22,23.
 > **Brownfield note (readiness audit 2026-08-08):** Implemented prior to epic breakdown. No individual story files — functionality verified through code review and production usage.
 
-### Epic 6: Automations — ✅ CORE DONE (4 gap mới: playbook layer; plus Story 6.8 Generic Alert Engine `[ready-for-dev]`)
+### Epic 6: Automations
 Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**write_back_notion|slack|linear|jira** action. **FRs:** FR-19, FR-20, **FR-18**, **FR-35**. **Open:** 6.6/6.7/6.9 (playbook reuse + schema-driven UI + workspace vertical & library) — **gated sau pilot BĐS; không có forward dependency kỹ thuật**.
 > **⚠️ Cải chính 2026-07-25:** header trước ghi *"DONE (2 gap)"* với 6.4 `[GAP]` và 6.5 `[GAP, post-MVP]` — **cả hai đều đã DONE** (verify code; xem Story 6.4/6.5).
 > **➕ Bổ sung 2026-08-05 (pivot bdsai):** core automation đã đủ, nhưng thiếu **lớp playbook** — user hiện phải mô tả lại `intent` mỗi lần, không dùng được cho nghiệp vụ vertical lặp lại.
@@ -300,14 +384,14 @@ Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**wr
 > **ADR cần chốt:** *tool = code (subagent builtin) · nghiệp vụ = data (playbook definition)* — hiện có hai đường mở rộng song song (`registry.py` import tĩnh vs automation JSON); không chốt sẽ dẫn tới nghiệp vụ nửa code nửa data.
 > Cả ba story **KHÔNG build trước pilot 2 tuần**.
 
-### Epic 7: Multi-surface Clients — ✅ DONE
+### Epic 7: Multi-surface Clients
 Web/desktop/extension/Obsidian/MCP. **FRs:** FR-25,26,27,28,29. **Open:** 7.4 dedicated connectors layout `[ready-for-dev]`.
 
-### Epic 8: Người dùng thấy và kiểm soát được chi phí — ✅ DONE (2026-08-02)
+### Epic 8: Người dùng thấy và kiểm soát được chi phí
 Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, admin UI cho global LLM model config, workspace limits, và PostHog analytics. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10, 8.11, 8.12, 8.13 **done**. **Open:** 8.14 Usage & Credit Dashboard v2 — per-turn cost + auto-extract budget toggle `[ready-for-dev]` *(mới 2026-08-21 từ PRFAQ, UX-DR-PRFAQ-4; re-scope 2026-08-23 là follow-up của Story 8.3)*.
 > **⚠️ Đổi tên + đánh lại số hiệu 2026-07-25 (readiness Q-7 + C-C).** Tên trước *"Platform Operations (Billing/Usage/Token)"* là framing ops. **Và quan trọng hơn — số hiệu story đã bị xung đột với `sprint-status.yaml`:** `8.4a`/`8.5`/`8.6` trong tài liệu này nghĩa **khác** `8-4`/`8-5`/`8-6` trong sprint-status (observability-logging / security-permissions / multi-tenant-isolation). Đã đánh lại theo số **chưa dùng**: `8.4a → 8.8` · `8.5 → 8.9` · `8.6 → 8.10`. Từ giờ số hiệu ở hai tài liệu khớp 1-1.
 
-### Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng — ✅ DONE (2026-08-05)
+### Epic 9: Deep Research đáng tin cậy
 Người dùng research sâu được mà **không vỡ** khi engine chết (9.1a), **không treo** cả chat turn khi engine chậm (9.3, State A mặc định), và **trả đúng tiền** cho thứ mình dùng (9.2). **FRs:** FR-38 [DONE,P0], FR-24 [DONE,P0], FR-37 [DONE,P0, parser `done.usage.costDollars` + `done.usage.estimated` + `done.resolvedMode` (top-level canonical) + `promptTokens`/`completionTokens`/`totalTokens`/`model` + canonical golden fixtures + fallback 60k micros ≈ $0.06; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671], FR-39 [DONE — 9.6 provenance + re-validation], NFR-9 [DONE — State A async deliverable default; sync chat-mode chỉ cho `speed`/`balanced`; `quality`/`deep` async-only; State B mở khi ChainLens 34.1 full-pipeline cost + Nowing e2e p95 `balanced` ≤ 30s]. **Deferred / Post-MVP:** **9.5** metered self-host endpoint (chưa phê duyệt). **Governed by:** `AD-15` · `AD-16` (license — cho 9.4) · **`AD-11.1`** (provenance recipe — cho 9.6) · **`AD-17`** (async door — cho 9.3) · **`AD-19`** (trang khó: anti-bot ở Nowing, engine không gọi ngược inline, escalation async — cho 9.1a/9.3) · **`AD-20`** (screenshot-as-evidence, không adopt visual-RAG stack) · AD-7, AD-8 amended.
 > **✅ Cập nhật 2026-08-05:** 9.1a, 9.1b, 9.2, 9.3, 9.4, 9.6 **done**. 9.5 **deferred**.
 >
@@ -316,49 +400,55 @@ Người dùng research sâu được mà **không vỡ** khi engine chết (9.1
 >
 > **🆕 2026-08-03 — Epic 11: Telegram Automation & Bot** (notification, write-back, inline keyboard, commands). **Open:** 11.1 notification foundation `[done]`, 11.2 write-back & builder `[done]`, 11.3 interactive bot & commands `[done]`.
 
-### Epic 10: Connector & Scraper Expansion (Vietnam Real Estate & Spatial GIS) — 🔄 IN PROGRESS
+### Epic 10: Connector & Scraper Expansion
 Vietnam BĐS (batdongsan, chotot, muaban) + PostGIS spatial land zoning (`ONT`/`ODT`/`DGT`/`CX`). **Open:** 10.6–10.8.
 
-### Epic 11: Telegram Automation & Bot — ✅ DONE
+### Epic 11: Telegram Automation & Bot
 Notification, write-back, builder UI, inline keyboard, commands. **FRs:** FR-20 variants. **All done.**
 
-### Epic 12: HR/Recruitment Vertical — Vietnam Job Market & LinkedIn B2B — 🔄 IN PROGRESS
+### Epic 12: HR/Recruitment Vertical
 VietnamWorks, TopCV, ITviec, Indeed, LinkedIn Public Guest API (`seeMoreJobPostings`); job listing normalization/dedup/PII/ingest; saved searches + job market alerts. **Done:** 12.1–12.5, 12.4a–e (code merged; FR-43–47 marked `DONE` here, PRD status to be ratified in next `bmad-prd` pass). **Open:** 12.6, 12.9, 12.10.
 
-### Epic 13: Canonical Entity Storage & Multi-Domain Indexing — 🗑️ DROPPED 2026-08-08
+### Epic 13: Canonical Entity Storage & Multi-Domain Indexing
 Canonical index moved to `chainlens-research`; Nowing scrapers feed via `POST /v1/ingest/scraper`.
 
-### Epic 14: News Aggregation (Vietnam) — ♻️ RE-SCOPED
+### Epic 14: News Aggregation
 RSS feed integration, entity enrichment. **FR-49 re-scoped 2026-08-08:** Nowing feed/crawl infrastructure is done, but Nowing does not keep a local news index. News alerts/digest merged into Epic 6.11/6.12. **Done:** 14.1, 14.2a; **Blocked/Backlog:** 14.2b.
 
-### Epic 15: Financial Data (Vietnam) — ♻️ RE-SCOPED
+### Epic 15: Financial Data
 CafeF / Vietstock data. **FR-50 re-scoped 2026-08-08:** Nowing feed/crawl infrastructure is done, but Nowing does not keep a local financial index. Stock price alerts/financial trend merged into Epic 6.11/6.12. **Done:** 15.1, 15.1b, 15.2.
 
-### Epic 16: Company Directory & Public Procurement (Vietnam) — ♻️ RE-SCOPED
+### Epic 16: Company Directory & Public Procurement
 masothue.com company data, official business registry, national public procurement tenders. **FR-51 re-scoped 2026-08-08:** Nowing feed/crawl partially done (16.1, 16.5), but Nowing does not keep a local company index. Company alerts/timeline merged into Epic 6.11/6.12. **Done:** 16.1, 16.5; **Backlog:** 16.2.
 
-### Epic 17: E-commerce Intelligence (Vietnam) — ♻️ RE-SCOPED
+### Epic 17: E-commerce Intelligence
 Lazada / Shopee / TikTok Shop product data. **FR-52 re-scoped 2026-08-08:** Nowing feed/crawl partially done (17.2), 17.1 and 17.5 blocked-by-external XActions. Nowing does not keep a local product index. Price-drop alerts/competitor tracking merged into Epic 6.11. **Done:** 17.2; **Backlog/Blocked:** 17.1, 17.5. Governed by `architecture-shopee-ecommerce-2026-08-15`.
 
-### Epic 18: Vertical Client Platform (Public Agent-Chat) — ✅ DONE
+### Epic 18: Vertical Client Platform
 Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **FR-56/57 [DONE] in PRD 2026-08-24.** **Done:** 18.1–18.8.
 
-### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
+### Epic 20: Nowing Ecosystem Integration
 `NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
-### Epic 21: Lead Gen Intelligence & Social Graph — ⏳ IN-PROGRESS
-Toàn diện hóa hệ thống Săn Lead & Tiếp cận Khách hàng Đa kênh: Phone Waterfall 3 tầng (Batdongsan/Chotot/Zalo), Zalo OA & Telegram Outbound Waterfall, XActions Social Ingress (Facebook Groups/Twitter), 1-Click Reverse-ICP từ Website/Dự án, AI Actionable Turn Dispatches, Viral Social Outbound Co-pilot, Multi-Table Tabs & Export Hub (Lark Base, Google Sheets), DNC Compliance Engine, Origami Workspace, Partners Affiliate Portal, $0 Pricing, và Selective Micro-LLM Fallback Extraction. **Stories:** 21.1–21.21 (21.3, 21.6, 21.14 P0; 21.21 ready-for-dev). Governed by `architecture-xactions-social-integration-2026-08-15` & `architecture-linkedin-b2b-2026-08-15` & `AD-119`.
+### Epic 21: Lead Gen Intelligence
+Umbrella / tracking epic cho hệ sinh thái săn lead: Lead Capture & Enrichment (E23), Multi-Channel Outreach & CRM (E24), Platform Admin & Multi-Tenant (E25), Autonomous Lead Missions / DSH (E26), SaaS Operations & Admin Analytics (E29). Chi tiết triển khai đã chuyển sang các epic con. **FRs:** FR-63–69, FR-80–88, FR-91. **Dependencies:** E10, E12, E22. _Tách 2026-08-29: epic con E23–E26/E29 nhận stories từ Epic 21 nguyên bản. Customer Location Profile & Pre-Flight Lead Plan stories (21.25–21.29 từ main) đã remap E26.25–E26.29._
 
-### Epic 22: Telegram Scraper & Channel Ingestion Engine — ⏳ READY-FOR-DEV
+### Epic 22: Telegram Scraper & Channel Ingestion Engine
 Public channel web preview, MTProto Userbot session pool, distributed mutex lock, FloodWait cooldown state machine, regex entity extractor, S3 media chunk streaming, realtime stream daemon, Alert Engine trigger, AI Agent tools. **Stories:** 22.1–22.3. Governed by `architecture-telegram-scraper-2026-08-15`.
 
-### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness — 📋 BACKLOG *(mới 2026-08-21 từ PRFAQ)*
-Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95, FR-96, FR-97, FR-98. **ARs:** AR-11, AR-12, AR-13, AR-14. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding). **Stories:** 28.1–28.5. **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
+### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness
+Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95 (Data export & portability), FR-96 (Encryption-at-rest & key management), FR-97 (ToS/legal review + retention), FR-98 (Self-host OSS onboarding <10 min), **FR-99** (recall precision/noise gate — GA launch gate). **ARs:** AR-11, AR-12, AR-13, AR-14, AR-15. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding), UX-DR-PRFAQ-4 (cost control dashboard). **Stories:** 28.1–28.6 (28.6 = recall precision ratification, FR-99). **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
+
+### Epic 36: XActions Unified Connection Contract (Nowing-side)
+Contract kết nối nowing↔XActions: MCP client loop-scoped, x_crawl_post fallback, error map tập trung, single-writer stream, dynamic action discovery. **FRs:** FR-XC1..XC6 (spec-xactions-connection CAP-1..6). **Governed by** `architecture-Nowing-2026-09-13` (AD-1..10). **XActions-side** giao qua XACTIONS-REQUIREMENTS-2026-09-13.md. **Stories:** 36.1–36.6. **Dependencies:** Epic 21 (lead-gen), Epic 35 (stream consumer), XActions-side REQ-X1..X4.
+
+### Epic 29: SaaS Operations, Advanced Admin Governance & Analyst Workspace
+Nowing nâng cấp từ single-tenant ops lên SaaS operations console: superadmin quản lý workspace/tenant, subscription tier/quota, bulk operations, audit; owner/admin/analyst có dashboard health/adoption và memory browser/research timeline. **FRs:** FR-100 (Custom workspace roles & permissions builder), FR-101 (Workspace health & adoption analytics dashboard), FR-102 (Tenant subscription tier & quota management), FR-103 (Admin bulk operations console), FR-104 (Memory browser & research timeline for analyst). **ARs:** AR-17, AR-18. **UX-DRs:** UX-DR-PRFAQ-5 (SaaS admin operations console), UX-DR-PRFAQ-6 (analyst memory browser / research timeline). **Stories:** 29.1–29.6. **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory schema/provenance), Epic 8 (billing/cost/wallet), Epic 25 (admin platform operations baseline), Epic 28 (retention/right-to-delete cho 29.6).
 
 ---
 
 ## Epic 2: Connectors
-### Story 2.5: Per-Workspace MCP Tool Enable/Disable Toggle  `[DONE per sprint-status: 2-5]`
+### Story 2.5: Per-Workspace MCP Tool Enable/Disable Toggle
 As a workspace owner,
 I want to enable/disable từng MCP tool theo workspace,
 So that tôi kiểm soát agent được dùng tool nào (vd tắt `nowing_reddit_scrape`).
@@ -368,7 +458,7 @@ So that tôi kiểm soát agent được dùng tool nào (vd tắt `nowing_reddi
 **And** selfcheck `EXPECTED_TOOLS` (AR-8) phải toggle-aware — không fail khi tool bị ẩn hợp lệ.
 _OQ-4 · AD-DEFER-3._
 
-### Story 2.6: Indeed Jobs Scraper  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 2.6: Indeed Jobs Scraper
 As a recruiter or market researcher,
 I want to scrape job listings and job details from Indeed,
 So that I can track hiring trends, competitor headcount, and job market signals in my workspace.
@@ -381,7 +471,7 @@ So that I can track hiring trends, competitor headcount, and job market signals 
 **Kỹ thuật:** tái dùng pattern scraper hiện có (URL resolver, warmed browser, parse, billing unit). Tạo `indeed.scrape` capability với REST + agent subagent + MCP tool.
 _FR-6 · upstream PR #1605._
 
-### Story 2.7: Walmart Product + Reviews Scraper  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 2.7: Walmart Product + Reviews Scraper
 As an e-commerce analyst,
 I want to scrape Walmart product listings and reviews,
 So that I can monitor competitor pricing, ratings, and customer feedback.
@@ -395,7 +485,7 @@ So that I can monitor competitor pricing, ratings, and customer feedback.
 **Kỹ thuật:** parse `__NEXT_DATA__`, rotate proxies on block, add `walmart.scrape` + `walmart.reviews` verbs, register billing units.
 _FR-6 · upstream PR #1614._
 
-### Story 2.8: Amazon EU Marketplaces  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 2.8: Amazon EU Marketplaces
 As a seller watching European markets,
 I want the Amazon scraper to support EU marketplaces (`amazon.de`, `amazon.fr`, `amazon.co.uk`, etc.),
 So that I can track prices and listings across regions.
@@ -406,7 +496,7 @@ So that I can track prices and listings across regions.
 **Given** an Amazon EU product URL points to an unsupported TLD, returns a 404/403, or the page is blocked by a bot challenge, **When** the scraper runs, **Then** it rejects the invalid input or returns `degraded=true` with `degradation_reason` and does not retry indefinitely.
 _FR-6 · upstream PR #1628._
 
-### Story 2.9: Scraper API Input Validation & Error Handling  `(mới 2026-07-30)`  `[done]`
+### Story 2.9: Scraper API Input Validation & Error Handling
 As an API consumer,
 I want clear 422 validation errors and inline feedback when I submit invalid scrape URLs,
 So that I can fix my request without guessing.
@@ -417,7 +507,7 @@ So that I can fix my request without guessing.
 **And** all scrapers (web, amazon, walmart, youtube, reddit, tiktok, google maps, indeed) reuse a shared URL validator and `HttpUrlStr` type.
 _FR-6 · upstream PR #1623._
 
-### Story 2.10: Exa MCP Search Connector  `(mới 2026-08-05)`  `[DONE 2026-08-05]`
+### Story 2.10: Exa MCP Search Connector
 As a workspace user,
 I want to connect the Exa AI MCP server as a first-class search connector,
 So that the agent can answer questions with up-to-date web search and full-page fetch without human-in-the-loop approval.
@@ -433,6 +523,11 @@ So that the agent can answer questions with up-to-date web search and full-page 
 **Given** the Exa MCP server returns a 401/403, 429 rate-limit, or times out during `web_search_exa`/`web_fetch_exa`, **When** the tool is invoked, **Then** the capability returns `degraded=true` with `degradation_reason` and does not crash the chat turn.
 
 **Kỹ thuật:** add `EXA_MCP_CONNECTOR` to `SearchSourceConnectorType`, `MCP_SERVICES`, connector agent/searchable maps, and validation; create route-level `server_config` builder from `exa_api_key`; reuse `mcp_discovery` subagent with curated `allowed_tools` / `readonly_tools`.
+
+**Regression (post-Story 3.15):**
+**Given** Story 3.15 finalizes the `WEB_RESULT` citation contract and `register_web_citations()` helper, **When** the Exa MCP `web_search_exa` and `web_fetch_exa` tools are invoked, **Then** their result URLs are registered as `WEB_RESULT` citations and render as `UrlCitation` chips in chat.
+**Given** the 3.15 citation contract changes, **When** Exa MCP tool tests run, **Then** they pass without modification to the Exa connector logic (only citation registration call site may need updating).
+
 _FR-8 · FR-8.1 · OQ-4._
 
 > **🆕 Extend 2026-08-08 (SCP `sprint-change-proposal-2026-08-08.md`):** `web_search_exa`/`web_fetch_exa` là MCP tools return text trực tiếp — không qua `_capability_tool` hay citation registry. Agent nhận search results nhưng không có `[n]` labels để cite. Append ACs dưới đây.
@@ -455,7 +550,7 @@ _FR-8 · FR-8.1 · OQ-4._
 _Đã DONE: 3.1 upload/index, 3.2 folders, 3.3 hybrid search, 3.4 citation panel, 3.5 AI-file-sort [REMOVED], 3.8 long-term memory storage/retrieval (FR-32, mig 177 + `memories_routes.py` + MCP)._
 _Mới 2026-07-25 (readiness Nhóm 3): **3.13** first-run value (FR-40) · **3.14** memory injection bound (`AD-18`)._
 
-### Story 3.6: Citation Scroll-to-Highlight in Full Document Editor  `[DONE per sprint-status: 3-6]`
+### Story 3.6: Citation Scroll-to-Highlight in Full Document Editor
 As a researcher,
 I want click citation nhảy đúng đoạn chunk trong full editor,
 So that tôi lần ngược câu trả lời về nguồn chính xác.
@@ -467,7 +562,7 @@ So that tôi lần ngược câu trả lời về nguồn chính xác.
 **UX Notes (nhẹ, brownfield):** bám component `nowing_web/components/citation-panel/citation-panel.tsx` (đã có scroll/highlight chunk) + editor hiện có — chỉ mở rộng state, KHÔNG thiết kế mới. Cần contract đầy đủ → `bmad-ux`.
 _NFR-6 · AD-DEFER-1._
 
-### Story 3.7: Memory Retention, Right-to-Delete & Legal Readiness  `[DONE retention: 3-7; memory right-to-delete/legal → xác nhận khi GA cloud]`
+### Story 3.7: Memory Retention, Right-to-Delete & Legal Readiness
 As a workspace owner / DPO,
 I want retention + right-to-delete cho memory và dữ liệu scrape lưu dài hạn,
 So that Nowing đáp ứng ToS/bản quyền/PII và người dùng kiểm soát dữ liệu (chốt TRƯỚC GA cloud).
@@ -479,7 +574,7 @@ So that Nowing đáp ứng ToS/bản quyền/PII và người dùng kiểm soát
 **Given** `source_type`/`source_id` dùng cho ToS takedown bị thiếu hoặc không hợp lệ, **When** thực hiện bulk-delete, **Then** hệ thống trả `invalid_source` và không xóa memory không liên quan.
 _OQ-3 · AR-4 · AD-DEFER-4._
 
-### Story 3.7-followup: Retention Hardening  `(tech debt)`  `[backlog]`
+### Story 3.7-followup: Retention Hardening
 As a platform engineer,
 I want retention settings có DB-level guards + concurrent safety + test robustness,
 So that retention không corrupt dưới concurrent access và tests không pass for wrong reasons.
@@ -494,7 +589,7 @@ _Source: code review defer items từ 3-7. Priority: P2. Effort: 1-2 days. Trigg
 
 ---
 
-### Story 3.9: Memory Recall Eval-Gate  `(mới)`  `[DONE — SHIP-GATE implementation complete; baseline ratification pending]`
+### Story 3.9: Memory Recall Eval-Gate
 As a platform team,
 I want một eval gate đo chất lượng recall của memory trên `nowing_evals`,
 So that không ship recall rác (agent "đoán" thay vì "nhớ").
@@ -508,7 +603,7 @@ So that không ship recall rác (agent "đoán" thay vì "nhớ").
 _NFR-8 · AR-1 (re-scoped: extend harness, KHÔNG bootstrap) · AR-3 · AR-8 · RS-2 · SM-10._
 **Phối hợp (KHÔNG hard forward-dep):** dựng suite/harness/label dataset chạy độc lập được; chỉ **đo baseline cuối** trên corpus sau 3.10 (legacy data safety) và sau khi 8.4a đông cứng auto-extract. 3.10 & 8.4a là **P0 theo ưu tiên** (mitigate rủi ro prod), không chặn khởi động story này.
 
-### Story 3.10: Legacy Memory Data Safety (forensic + backfill guard)  `(mới)`  `[DONE 2026-07-25]`
+### Story 3.10: Legacy Memory Data Safety
 As a user with existing memory data,
 I want migration 178 drop legacy `memory_md` columns safely,
 So that no user memory is lost when the new `Memory` table goes live.
@@ -523,7 +618,7 @@ So that no user memory is lost when the new `Memory` table goes live.
 **And** gate: KHÔNG merge/deploy 178 lên production nếu `upgrade()` chưa có backfill.
 _FR-36 · AR-2._
 
-### Story 3.11: Memory Dedupe & Confidence Tuning  `(mới)`  `[DONE dedupe (đã wire cosine<0.08); tuning ngưỡng optional qua 3.9]`
+### Story 3.11: Memory Dedupe & Confidence Tuning
 As a platform team,
 I want validate/tune ngưỡng dedupe + confidence qua eval,
 So that memory không thành "bãi rác" (nhớ trùng/nhiễu) mà cũng không merge nhầm.
@@ -534,7 +629,7 @@ So that memory không thành "bãi rác" (nhớ trùng/nhiễu) mà cũng không
 **Given** một memory row có embedding rỗng hoặc malformed trong bench dedupe, **When** tính cosine similarity, **Then** hệ thống log `invalid_embedding`, bỏ qua row đó, và tiếp tục tuning ngưỡng.
 _AR-3 · gắn với 3.9._
 
-### Story 3.12: Memory Security — RBAC Enforcement, Isolation & Audit  `(mới)`  `[DONE — sprint 8-5 security + IDOR fix (deferred-work 4.5)]`
+### Story 3.12: Memory Security
 As a security-conscious team,
 I want memory an toàn multi-tenant + có audit,
 So that recall không rò rỉ cross-tenant và mọi memory write có vết.
@@ -546,7 +641,7 @@ So that recall không rò rỉ cross-tenant và mọi memory write có vết.
 **Given** một user không có quyền `memory:read` hoặc thuộc workspace khác, **When** gọi memory endpoint/MCP tool, **Then** request bị denied với 403 và ghi `unauthorized_memory_access` vào audit log.
 _AR-9 · NFR-2/NFR-5 (memory-scoped)._
 
-### Story 3.13: First-Run Value — Research Run sinh ra Memory  `(mới 2026-07-25)`  `[DONE — HIGH]`
+### Story 3.13: First-Run Value
 
 **Là** người dùng mới của Nowing,
 **tôi muốn** hành động research **đầu tiên** của mình để lại memory,
@@ -573,7 +668,7 @@ _FR-40 · M1 · brief §9 H-4 · `AD-11.1`._
 
 ---
 
-### Story 3.14: Memory Injection — chặn trên & ngân sách latency  `(mới 2026-07-25)`  `[DONE — đi kèm 3.13]`
+### Story 3.14: Memory Injection
 
 **Là** người dùng dùng Nowing càng lâu càng nhiều memory,
 **tôi muốn** mỗi lượt chat có chi phí ổn định,
@@ -611,7 +706,7 @@ Và là **điều kiện đi kèm** của `3.13`, vì `3.13` làm N tăng nhanh 
 
 _NFR-1b/1c/1d · `AD-18` · tiền đề của NFR-8 · nhận việc treo từ `3-11` (expose RRF score)._
 
-### Story 3.15: Run Citations as Verifiable Sources  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 3.15: Run Citations as Verifiable Sources
 As a researcher,
 I want scraper runs to be citable sources in chat,
 So that I can trace claims back to the exact run that produced them.
@@ -638,7 +733,7 @@ _FR-13 · FR-39 · upstream PR #1619._
 
 **Kỹ thuật (appended):** add `register_web_citations(registry, sources: list[Source])` helper; call in `agent.py` sync ChainLens path after executor returns, before `attach_run_citation()`. Frontend: no changes — `citation-parser.ts` already handles `kind: "url"`, `UrlCitation` component already renders.
 
-### Story 3.16: Open Knowledge Format (OKF) Export  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 3.16: Open Knowledge Format (OKF) Export
 As a data owner or integrator,
 I want to export my workspace knowledge base in Open Knowledge Format (OKF),
 So that I can move, archive, or integrate Nowing knowledge with other tools.
@@ -651,7 +746,7 @@ So that I can move, archive, or integrate Nowing knowledge with other tools.
 **Kỹ thuật:** build an export job over workspace-scoped `Document`, `Chunk`, `Memory`, `MemoryRelation`; serialize to OKF JSON; stream/limit size for large KBs.
 _FR-32 · RS-8 · upstream PR #1617._
 
-### Story 3.17: Memory Injection Bounded-Retrieval Performance Gate  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 3.17: Memory Injection Bounded-Retrieval Performance Gate
 
 As a platform engineer,
 I want a performance + regression gate proving `MemoryInjectionMiddleware` stays O(top-k),
@@ -677,7 +772,7 @@ So that `AD-18` is not silently regressed as the product accumulates memories.
 
 _Governed by `AD-18`, NFR-1b._
 
-### Story 3.18: Recall Precision / Noise Gate Ratification  `(mới 2026-08-21 từ PRFAQ)`  `[backlog]`
+### Story 3.18: Recall Precision / Noise Gate Ratification
 
 As a platform team,
 I want to ratify a precise precision/noise threshold for `nowing_recall` on `nowing_evals` before scaling,
@@ -706,7 +801,7 @@ _FR-99 · AR-15 · NFR-8 · AD-46 · AR-1 · AR-3 · RS-7 · SM-10. Threshold ar
 ---
 
 ## Epic 4: Chat & Agents
-### Story 4.7: Pointer-Based Tabs with Live Title Resolution  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 4.7: Pointer-Based Tabs with Live Title Resolution
 As a user with many open documents and chats,
 I want tabs to be lightweight pointers that resolve titles from the live source,
 So that tab state is fast to save/load and titles stay up to date without stale snapshots.
@@ -720,7 +815,7 @@ So that tab state is fast to save/load and titles stay up to date without stale 
 **Kỹ thuật:** refactor `Tab` to pointer-only state, add `useResolvedTabs` hook, resolve document/chat title via Zero/`react-query`, render `TabBar` from resolved tabs.
 _FR-14 · upstream PR #1609._
 
-### Story 4.8a: Extend `NewChatClient` telemetry  `[done]`
+### Story 4.8a: Extend `NewChatClient` telemetry
 As a benchmark runner, I want `NewChatClient` capture token usage, TTFB, turn id and finish status from `/api/v1/new_chat` SSE, so that `nowing_evals` can measure chat cost, latency and outcome per turn.
 
 **Acceptance Criteria:**
@@ -734,7 +829,7 @@ As a benchmark runner, I want `NewChatClient` capture token usage, TTFB, turn id
 
 _FR-42 · NFR-10 · `nowing_evals/core/clients/new_chat.py`._
 
-### Story 4.8b: Chat Regression Benchmark Suite  `[done/review]`
+### Story 4.8b: Chat Regression Benchmark Suite
 As a release engineer, I want `nowing_evals run chat regression` over a representative query set, so that every deploy is checked for latency/cost/citation drift.
 
 **Acceptance Criteria:**
@@ -752,7 +847,7 @@ As a release engineer, I want `nowing_evals run chat regression` over a represen
 
 _FR-42 · NFR-10 · `nowing_evals/suites/chat/regression/`._
 
-### Story 4.8c: Production query sampler + anonymizer  `[done]`
+### Story 4.8c: Production query sampler + anonymizer
 As an eval operator, I want to extract and anonymize real production queries for the benchmark dataset, so that regression tests reflect actual usage without leaking PII.
 
 **Acceptance Criteria:**
@@ -766,7 +861,7 @@ As an eval operator, I want to extract and anonymize real production queries for
 
 _FR-42 · NFR-10 · `market-*-production-query-sampler-research-2026-08-02.md`._
 
-### Story 4.8c-followup: Sampler Hardening  `(tech debt)`  `[backlog]`
+### Story 4.8c-followup: Sampler Hardening
 As an eval operator,
 I want sampler có HMAC hash + DB error handling + test cleanup,
 So that sampler robust khi trở thành automated job.
@@ -786,7 +881,7 @@ So that sampler robust khi trở thành automated job.
 
 _Source: code review defer items từ 4-8c. Priority: P3. Effort: 1 day. Trigger: khi sampler trở thành automated job._
 
-### Story 4.8d: Chat quality benchmark with LLM-as-judge  `[ready-for-dev]`
+### Story 4.8d: Chat quality benchmark with LLM-as-judge
 As an ML/QA engineer, I want `chat/quality` judge responses on groundedness, citation accuracy, and helpfulness, so that quality regressions are caught before deploy.
 
 **Acceptance Criteria:**
@@ -815,7 +910,7 @@ As an ML/QA engineer, I want `chat/quality` judge responses on groundedness, cit
 
 _FR-42 · `nowing_evals/suites/chat/quality/`._
 
-### Story 4.8d-followup: Quality Benchmark Test Robustness  `(tech debt)`  `[backlog]`
+### Story 4.8d-followup: Quality Benchmark Test Robustness
 As an ML/QA engineer,
 I want quality benchmark tests handle missing gate.yaml gracefully,
 So that tests don't fail in CI if the fixture file is missing.
@@ -831,7 +926,7 @@ So that tests don't fail in CI if the fixture file is missing.
 
 _Source: code review defer item từ 4-8d. Priority: P3. Effort: 0.5 day. Trigger: làm trước — rủi ro thấp nhất._
 
-### Story 4.8e: CI / deploy gate for chat regression  `[done]`
+### Story 4.8e: CI / deploy gate for chat regression
 As a release engineer, I want CI block deploy if `chat/regression` drifts beyond ratified baseline, so that bad changes do not reach production.
 
 **Acceptance Criteria:**
@@ -853,7 +948,7 @@ As a release engineer, I want CI block deploy if `chat/regression` drifts beyond
 
 _NFR-10 · `gate.yaml` · CI workflow._
 
-### Story 4.8f: Benchmark stability — scrape, CAPTCHA, rate-limit, multi-turn  `[done]`
+### Story 4.8f: Benchmark stability
 As a release engineer, I want the benchmark robust against live web variance, so that flaky external factors do not mask real regressions.
 
 **Acceptance Criteria:**
@@ -871,7 +966,7 @@ As a release engineer, I want the benchmark robust against live web variance, so
 
 _FR-42 · NFR-10 · `nowing_evals` runner._
 
-### Story 4.8g: Benchmark mode/tier matrix and local vs production parity  `[done]`
+### Story 4.8g: Benchmark mode/tier matrix and local vs production parity
 As a release engineer, I want benchmark matrix cover speed/balanced/quality/auto modes and local vs prod parity, so that cost/latency claims are validated across configurations.
 
 **Acceptance Criteria:**
@@ -889,7 +984,7 @@ As a release engineer, I want benchmark matrix cover speed/balanced/quality/auto
 
 _FR-42 · NFR-10 · `report-per-mode.md`._
 
-### Story 4.8h: Mode-Aware Chat Policy for Latency/Cost  `(mới 2026-08-05)`  `[done]`
+### Story 4.8h: Mode-Aware Chat Policy for Latency/Cost
 As a user,
 I want `new_chat` to respect the requested `mode` (speed/balanced/quality/auto) when selecting tools, retrieval depth, and escalation to deep research,
 So that `chat/regression` passes latency, TTFB, and cost gates without losing answer quality.
@@ -902,7 +997,7 @@ So that `chat/regression` passes latency, TTFB, and cost gates without losing an
 **And** `chat/regression` with the large-doc dataset passes all p95 latency, TTFB, and cost gates; `chat/quality` still passes correctness/citation/completeness. Detailed spec: `@doc/specs/2026-08-05/new-chat-mode-aware-latency-cost-policy`.
 _FR-42 · NFR-10 · `sprint-change-proposal-2026-08-05-chat-mode-policy.md`._
 
-### Story 4.8h-followup: Mode-Aware Chat Policy Hardening  `(tech debt)`  `[backlog]`
+### Story 4.8h-followup: Mode-Aware Chat Policy Hardening
 As a platform engineer,
 I want mode budget có concurrent safety + ChainLens conditional gating,
 So that budget counter không race và ChainLens chỉ trigger khi cần.
@@ -921,7 +1016,7 @@ _Source: code review defer items từ 4-8h. Priority: P2. Effort: 2-3 days. Trig
 
 _Đã DONE: 6.1 triggers, 6.2 runs/retries, 6.3 agent_task._
 
-### Story 6.4: Direct Write-Back Actions  `[DONE per sprint-status: 6-4]`
+### Story 6.4: Direct Write-Back Actions
 As a workspace owner,
 I want automation ghi trực tiếp Notion/Slack/Linear/Jira như action type,
 So that workflow không phải đi vòng qua `agent_task`.
@@ -932,7 +1027,7 @@ So that workflow không phải đi vòng qua `agent_task`.
 **Given** API Notion/Slack/Linear/Jira trả về 401/403/429 hoặc OAuth token đã expired, **When** write-back action chạy, **Then** nó fail với `provider_error` typed, trigger `on_failure`, và không retry vô hạn.
 _FR-18 · OQ-5 · AD-DEFER-2. Lưu ý: agent_task đã cho phép write-back → đây là nâng cấp, không chặn beachhead._
 
-### Story 6.5: Memory-Driven Automations  `[DONE per sprint-status: 6-5 — cải chính 2026-07-25]`
+### Story 6.5: Memory-Driven Automations
 
 > **⚠️ Cải chính 2026-07-25 (readiness check C-B).** Header trước ghi `[GAP, post-MVP]` — **SAI**. Verify code: trigger `memory_change` (`app/automations/triggers/builtin/memory_change/`, đăng ký trong `triggers/builtin/__init__.py`) · action `continue_research` (`actions/builtin/continue_research/`, đăng ký trong `actions/builtin/__init__.py`) · `AutomationRun.research_thread_id` (`db.py:712` + relationship `db.py:746`) · resolve qua `dispatch/launch.py:44`. `sprint-status.yaml` (`6-5: done`) là bên đúng.
 As a workspace owner,
@@ -944,7 +1039,7 @@ So that workflow nghiên cứu chạy liên tục không cần prompt tay.
 **Given** trigger `memory_change` query trả về empty hoặc `AutomationRun` vượt timeout, **When** automation thực thi, **Then** nó log `trigger_empty`/`timeout` và không enqueue run mới.
 _FR-35 · AD-DEFER-6._
 
-### Story 6.6: Playbook Reuse — expose `inputs.schema` đã có  `[GAP — P1, gated sau pilot BĐS]`
+### Story 6.6: Playbook Reuse
 
 > **⚠️ Cải chính kiến trúc 2026-08-05 (Winston / architect review).** Bản đầu của story này viết *"thêm parameterization + `params_model` cho playbook"* — **SAI hiện trạng**. Verify code: `AutomationDefinition.inputs: Inputs | None` **đã tồn tại** và `Inputs.schema_` chính là *"JSON Schema (draft 2020-12) for accepted inputs"* (`schemas/definition/inputs.py`); `PlanStep.params` *"rendered at execute time"* (`plan_step.py:21-23`); `build_run_context()` expose namespace `{run, inputs, steps}` cho Jinja **sandboxed** (`templating/context.py:39`, `environment.py` — `SandboxedEnvironment` + `StrictUndefined`).
 > ⇒ **Automation ĐÃ là template có tham số.** Story này KHÔNG xây cơ chế mới, mà **expose cơ chế đã có** thành playbook tái dùng được. **Tuyệt đối không thêm lớp params thứ hai** (sẽ tạo hai đường render — nợ kiến trúc tệ nhất).
@@ -962,7 +1057,7 @@ So that tôi không phải mô tả lại toàn bộ yêu cầu nghiệp vụ m�
 _Nền tảng đã có (dùng lại, không xây mới): `AutomationDefinition.inputs` + `Inputs.schema_` · `PlanStep.params` render-at-execute · `templating/` (Jinja sandboxed, `{run, inputs, steps}`) · `ActionDefinition.params_schema` (`actions/types.py`) · `all_actions()` (`actions/store.py`) · `WorkspaceMcpToolSetting` (tiền lệ scope per-workspace)._
 _⚠️ Gate: KHÔNG build trước khi pilot BĐS 2 tuần cho tín hiệu retention — chưa biết `inputs.schema` cần field nào cho môi giới thì chưa build (xem `vision-lock-and-this-week-2026-08-04.md`)._
 
-### Story 6.7: Schema-Driven Form UI cho playbook & action  `[GAP — P1, gated sau pilot BĐS]`
+### Story 6.7: Schema-Driven Form UI cho playbook & action
 
 > **Vấn đề UX cần giải một lần cho mọi vertical.** Nowing có ~17 subagent builtin + MCP tools, và sẽ thêm nữa (xe, thiết bị B2B, tuyển dụng). Nếu mỗi tool phải code UI riêng → nợ UI tăng theo số tool.
 > **Điểm mạnh kiến trúc:** cả `ActionDefinition.params_schema` (action) và `AutomationDefinition.inputs.schema` (playbook) đều là **JSON Schema draft 2020-12** ⇒ **một renderer dùng được cho cả hai**.
@@ -979,7 +1074,7 @@ So that tôi dùng được mọi tool mà không cần học prompt, và tool m
 **And** danh sách tool KHÔNG phơi ra dạng menu kỹ thuật: gom theo vertical + ẩn sau tên nghiệp vụ người dùng hiểu.
 _⚠️ Gate: business — chỉ build sau pilot BĐS retention xanh (không phụ thuộc kỹ thuật 6.6)._
 
-### Story 6.8: Generic Alert Engine `[ready-for-dev P1]`
+### Story 6.8: Generic Alert Engine
 
 As a workspace user,
 I want a single alert engine that watches any data source and notifies me when meaningful changes occur,
@@ -1000,7 +1095,7 @@ So that I don't end up with 8 separate scheduler/notification implementations fo
 
 _Kỹ thuật (không phải AC):_ `AlertRule` table: `id` (UUID), `workspace_id`, `client_id` (CITEXT), `capability_id`, `query` (JSONB), `schedule`, `diff_strategy`, `threshold`, `notification_channels`, `target_sequence_id`, `target_step_id`, `enabled`. `alert_snapshots`, `alert_subscriptions`. Built as an Automation template/extension in `app/automations/` or `app/alerts/`. Governed by `AD-33`, Epic 6 scheduler, FR-44/49/50/51/52.
 
-### Story 6.9: Workspace `vertical` + Playbook Library  `[GAP — P2, gated sau pilot BĐS]`
+### Story 6.9: Workspace `vertical` + Playbook Library
 
 > **Phát hiện từ architect review:** khái niệm `vertical` **chưa tồn tại** trong schema. Không có nó thì không thể "gom playbook theo ngành". Story này gộp cả việc khai báo vertical và thư viện playbook lọc theo vertical.
 
@@ -1025,7 +1120,7 @@ _Tham chiếu: `vertical-expansion-roadmap-2026-08-04.md` (G6: mở vertical m�
 ---
 
 ## Epic 7: Multi-surface Clients
-### Story 7.4: Dedicated Connectors Layout  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 7.4: Dedicated Connectors Layout
 As a workspace member,
 I want a dedicated page (not a modal) for managing connectors,
 So that I can search, group, view health, and connect new data sources in a focused UI.
@@ -1039,7 +1134,7 @@ So that I can search, group, view health, and connect new data sources in a focu
 **Kỹ thuật:** add `/connectors` route, build `useConnectorRows` hook, group connectors by type, add mobile drawer for adding connectors.
 _FR-25 · FR-7/8 · upstream PR #1624._
 
-### Story 7.7: MCP Server Tool Expansion  `(mới 2026-08-05)`  `[ready-for-dev]`  `[backfill]`
+### Story 7.7: MCP Server Tool Expansion
 
 As an AI agent builder,
 I want to drive Nowing's full backend surface — memory, team memory, image generation, BĐS platforms, automations, reports — through Nowing's own MCP server,
@@ -1059,7 +1154,7 @@ So that agents can operate the research workspace end-to-end without the web UI.
 **Kỹ thuật (backfill):** Slice 0–3 đã implement + verified (selfcheck 42 tools, MCP suite 83 passed, ruff clean); Slice 4–5 còn pending chờ `bmad-dev-story`. Khác biệt với FR-8 (External MCP Connectors — Nowing tiêu thụ MCP third-party): story này là MCP server của Nowing (FR-29).
 _FR-29 · FR-21/23 · FR-18/19/20 · FR-32/33/34 · AD-7 · story file `7-7-mcp-server-tool-expansion.md`._
 
-### Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection  `(mới 2026-08-17)`  `[ready-for-dev]`
+### Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection
 
 As a Vietnamese user or international visitor,
 I want Nowing to support Vietnamese language and automatically detect my location on my first visit to present the appropriate language,
@@ -1076,7 +1171,7 @@ So that I can immediately experience the application in my native language witho
 ---
 
 ## Epic 8: Workspace Billing & Usage Transparency
-### Story 8.3: Usage & Credit Dashboard  `[DONE per sprint-status: 8-3]`
+### Story 8.3: Usage & Credit Dashboard
 As a user,
 I want dashboard xem usage/chi phí theo workspace/model/thời gian,
 So that tôi hiểu mình tiêu gì (dữ liệu `TokenUsage`/`credit_micros_balance` đã có, thiếu UI).
@@ -1088,7 +1183,7 @@ So that tôi hiểu mình tiêu gì (dữ liệu `TokenUsage`/`credit_micros_bal
 **UX Notes (nhẹ, brownfield):** bám pattern settings/buy-credits page hiện có trong `nowing_web/`; dashboard = bảng + biểu đồ aggregate theo workspace/model/thời gian. Cần contract đầy đủ → `bmad-ux`.
 _NFR-7 · FR-31 · AD-DEFER-5._
 
-### Story 8.7: Auto-Extract Spend/Budget Cap, Wallet Pre-Check & Rate-Limit  `(mới)`  `[DONE — 59 tests passed; gate before auto-extract goes to prod]`
+### Story 8.7: Auto-Extract Spend/Budget Cap, Wallet Pre-Check & Rate-Limit
 As a workspace owner,
 I want spend budget cap + wallet pre-check + rate-limit theo thời gian cho auto-extract,
 So that chi phí dự đoán được khi auto-extract bật.
@@ -1099,7 +1194,7 @@ So that chi phí dự đoán được khi auto-extract bật.
 **Given** ví credit rỗng hoặc rate-limit window bị vượt, **When** yêu cầu auto-extract, **Then** extraction bị skip và emit counter `wallet_empty`/`rate_limited` thay vì âm thầm đốt credit.
 _AR-6 · RS-1. **Dep: 8.8** (kill-switch/flags đã có)._
 
-### Story 8.8: Auto-Extract Kill-Switch & Safe Default  `(mới)` `(đánh lại số từ 8.4a — C-C)`  `[DONE — flags MEMORY_AUTO_EXTRACT_ENABLED (global) + workspaces.memory_auto_extract_enabled (per-ws) đã có]`
+### Story 8.8: Auto-Extract Kill-Switch & Safe Default  `(mới)` `(đánh lại số từ 8.4a
 As a platform engineer,
 I want kill-switch tin cậy + default an toàn cho auto-extract,
 So that chi phí per-turn không kiểm soát dừng ngay lập tức.
@@ -1111,7 +1206,7 @@ So that chi phí per-turn không kiểm soát dừng ngay lập tức.
 **Given** flag `MEMORY_AUTO_EXTRACT_ENABLED` bị thiếu trong config hoặc `workspaces.memory_auto_extract_enabled` là `NULL`, **When** đánh giá auto-extract, **Then** mặc định là `OFF` và log `missing_flag` để extraction không chạy bất ngờ.
 _AR-6 · FR-15. **Dep: none** (P0)._
 
-### Story 8.9: Memory Cost/Turn Observability  `(mới)` `(đánh lại số từ 8.5 — C-C)`  `[DONE — code-complete qua sprint story 8-4 observability-logging]`
+### Story 8.9: Memory Cost/Turn Observability  `(mới)` `(đánh lại số từ 8.5
 As a team,
 I want cost/turn của memory extraction/recall được đo,
 So that định lượng unit economics cloud trước khi pricing (SM-C2/RS-10).
@@ -1122,7 +1217,7 @@ So that định lượng unit economics cloud trước khi pricing (SM-C2/RS-10)
 **Given** extraction/recall span thiếu `workspace_id`/`user_id` hoặc cost là `null`, **When** observability aggregate chạy, **Then** row được tag `invalid` và route đến dead-letter table thay vì làm corrupt dashboard.
 _AR-5 · SM-C2 · RS-10._
 
-### Story 8.10: Docs / README / Vision Sync  `(mới)` `(đánh lại số từ 8.6 — C-C)`  `[DONE per sprint-status: 8-10]`
+### Story 8.10: Docs / README / Vision Sync  `(mới)` `(đánh lại số từ 8.6
 As an OSS beachhead user (agent-builder),
 I want README/docs to reflect the current research-memory vision and only shipped features,
 So that the repo does not look like vaporware with old positioning or removed features.
@@ -1140,7 +1235,7 @@ _OQ-6 · AR-10 · RS-5._
 
 ---
 
-### Story 8.11: Admin UI for Global LLM Model Configuration  `(mới 2026-07-26)`  `[DONE per sprint-status: 8-11]`
+### Story 8.11: Admin UI for Global LLM Model Configuration
 
 **Là** a platform operator with the existing `is_superuser` flag (not a new admin role; workspace RBAC in FR-10 is unchanged),
 **tôi muốn** thêm/sửa/xoá/bật-tắt global chat model (model dùng chung cho Auto mode) qua một trang settings trên web UI,
@@ -1185,7 +1280,7 @@ _Implementation hints (not AC — story 8.11 has no file paths in AC):_
 
 _References: FR-41 · AD-8 (cost registration) · AD-9 (mở rộng — không đổi 3 role cấp workspace) · `model_connections_routes.py` · `app/config/__init__.py` (`load_global_llm_configs`, `refresh_global_model_catalog`) · `app/services/global_model_catalog.py`._
 
-### Story 8.11-followup: Admin Model Config Hardening  `(tech debt)`  `[backlog]`
+### Story 8.11-followup: Admin Model Config Hardening
 As a platform operator,
 I want admin model config có provider validation + pagination,
 So that config không corrupt và list không chậm khi scale.
@@ -1207,7 +1302,7 @@ _Source: code review defer items từ 8-11. Priority: P3. Effort: 1 day. Trigger
 
 ---
 
-### Story 8.12: Workspace Limits  `(mới 2026-07-30)`  `[DONE per sprint-status: 8-12]`
+### Story 8.12: Workspace Limits
 As a platform admin,
 I want to enforce per-workspace limits (documents, members, storage, runs),
 So that I can offer tiered plans and prevent abuse on the cloud offering.
@@ -1221,7 +1316,7 @@ So that I can offer tiered plans and prevent abuse on the cloud offering.
 **Kỹ thuật:** add `WorkspaceLimit` / plan config, gate document upload, member invite, and run creation; expose usage/limit API; build settings UI.
 _FR-3 · FR-30 · upstream PR #1609._
 
-### Story 8.13: PostHog Product Analytics  `(mới 2026-07-30)`  `[DONE per sprint-status: 8-13]`
+### Story 8.13: PostHog Product Analytics
 As a product team,
 I want PostHog analytics integrated into the web app,
 So that I can understand user flows, feature adoption, and retention.
@@ -1234,7 +1329,7 @@ So that I can understand user flows, feature adoption, and retention.
 **Kỹ thuật:** add `@posthog-js` (if not already), initialize in layout, wrap key events, keep server-side observability separate.
 _NFR-3 · upstream PR #1622._
 
-### Story 8.14: Usage & Credit Dashboard v2 — Per-Turn Cost & Auto-Extract Budget Toggle `(mới 2026-08-21 từ PRFAQ)` `[ready-for-dev]`
+### Story 8.14: Usage & Credit Dashboard v2
 
 > **Re-scope 2026-08-23:** Story này là **follow-up / v2** của **Story 8.3 (Usage & Credit Dashboard)**. Không duplicate 8.3; 8.3 vẫn `done` với aggregate theo workspace/model/time. Story 8.14 mở rộng thêm **per-turn cost breakdown** và **auto-extract budget toggle UI** trên cùng data.
 
@@ -1256,8 +1351,8 @@ So that I can control spend and avoid surprise bills from memory extraction.
 
 _UX-DR-PRFAQ-4 · AR-5 · AR-6 · FR-31 · NFR-7 · Story 8.3 v2 extension._
 
-## Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng  `(mới 2026-07-25)`
-### Story 9.1a: Research Degradation & Self-Host Independence  `(mới)`  `[DONE — P0, tiền đề trước khi public repo]`
+## Epic 9: Deep Research đáng tin cậy
+### Story 9.1a: Research Degradation & Self-Host Independence
 As a self-hoster,
 I want Nowing dùng được đầy đủ **mà không cần** deep-research engine, và deep research **không hard-fail** khi engine chậm/chết/chưa cấu hình,
 So that tôi không cài xong mới phát hiện một tính năng vỡ, và đường OSS/PLG không sụp.
@@ -1299,7 +1394,7 @@ _Implementation hints (not AC):_
 
 _FR-38 · AD-15 · D5. Files: `app/capabilities/chainlens/research/executor.py`, `app/retriever/`, `tests/unit/capabilities/chainlens/`, `docker/`, `.env.example`._
 
-### Story 9.1b: Research Contract Regression Guard  `(mới)`  `[DONE — P0, không chặn public repo]`
+### Story 9.1b: Research Contract Regression Guard
 As a Nowing maintainer,
 I want contract với deep-research engine được khoá bằng test trong CI,
 So that engine đổi format thì tôi biết trước khi vỡ production, chứ không phát hiện qua báo lỗi của user.
@@ -1340,7 +1435,7 @@ _Implementation hints (not AC):_
 
 _FR-24 · AD-15 · OQ-7(1)+(4). Files: `tests/unit/capabilities/chainlens/research/test_executor.py`, `app/capabilities/chainlens/research/executor.py` (gỡ nhánh `event:`), PRD §4.9, `AD-15`. **Đối ứng ChainLens:** `42-2`._
 
-### Story 9.2: Deep-Research Cost Metering (cost thật, không giá phẳng)  `(mới)`  `[DONE — P0, parser + fallback in place; waits ChainLens 34.1 full-pipeline cost, target 2026-08-19]`
+### Story 9.2: Deep-Research Cost Metering
 As a PO định giá cloud,
 I want cost mỗi deep-research call được ghi theo **cost thật engine báo về**, không theo hằng số env,
 So that pricing/subscription có cost basis thật thay vì phỏng đoán sai 2–3×.
@@ -1383,7 +1478,7 @@ _Implementation hints (not AC):_
 
 _FR-37 · AD-8(amended) · AD-15 · SM-11a · OQ-7(3). Files: `app/capabilities/chainlens/research/executor.py`, `app/capabilities/core/billing.py`, `app/capabilities/core/types.py`, `app/services/token_tracking_service.py`._
 
-### Story 9.3: Latency Budget & State A→B Gate  `(mới)`  `[DONE per sprint-status: 9-3]`
+### Story 9.3: Latency Budget & State A→B Gate
 As a product owner,
 I want đo latency deep-research **từ phía Nowing** và có đường async deliverable làm sàn,
 So that không cược vào giả định latency theo chiều nào, và biết đúng lúc nào được bật sync chat-mode.
@@ -1466,7 +1561,7 @@ So that không cược vào giả định latency theo chiều nào, và biết 
 
 _NFR-9 · **`AD-17`** · FR-24(mode default, D3) · SM-11b/c · AD-4 (Redis) · AD-5 (giữ nguyên — `runs` không vào Zero). Tiền đề UX: `ux-designs/` chỉ có scaffold rỗng → cần UX spec async/progress-first trước khi build UI deep-research._
 
-### Story 9.4: Docs — Quan hệ Nowing ↔ ChainLens  `(mới)`  `[DONE — P1, README/docs/.env.example synced]`
+### Story 9.4: Docs
 As an OSS user / self-hoster,
 I want docs nói rõ Nowing là sản phẩm, deep research là năng lực hosted, và Nowing dùng được mà không có nó,
 So that tôi không cài xong mới phát hiện một tính năng vỡ.
@@ -1498,7 +1593,7 @@ So that tôi không cài xong mới phát hiện một tính năng vỡ.
 
 _OQ-6(mở rộng) · AR-10 · FR-38 · D5 · NG-1/2/3. Phối hợp với Story 8.10 (vision sync) — nên làm cùng một lượt. Nguồn copy: `briefs/brief-Nowing-2026-07-25/brief.md` §1, §5.1, §7, §8._
 
-### Story 9.5: Metered Deep-Research Endpoint cho Self-Host  `(mới)`  `[POST-MVP — CHƯA PHÊ DUYỆT, đăng ký để không bị mất]`
+### Story 9.5: Metered Deep-Research Endpoint cho Self-Host
 As a self-hoster,
 I want trả tiền theo call để dùng deep research trên bản self-host,
 So that tôi không phải chuyển sang cloud chỉ vì một năng lực.
@@ -1525,7 +1620,7 @@ _D5 · AD-15 · AD-8 · FR-37/FR-38. **Đã loại (không mở lại mà không
 
 > **✅ Gộp story 2026-08-05 (readiness fix):** `9.6a` và `9.6b` được gộp thành story 9.6 duy nhất — provenance recipe và re-validation API là hai nhóm AC trong cùng một story, không còn forward dependency.
 
-### Story 9.6: Memory Provenance & Re-Validation  `(mới)`  `[DONE per sprint-status: 9-6]`
+### Story 9.6: Memory Provenance & Re-Validation
 As an agent hoặc người dùng,
 I want memories created from scraped data to be traceable and re-executable,
 So that the system knows when a fact is stale instead of returning outdated information with a citation.
@@ -1582,7 +1677,7 @@ So that the system knows when a fact is stale instead of returning outdated info
 
 _FR-39 · **`AD-11.1`** · FR-34 · AD-8. **Ưu tiên:** không chặn launch, nhưng **P0 nếu muốn kể câu chuyện re-validation** — xem brief §4, §8, §12 H-3._
 
-### Story 9.6-followup: Re-Validation Hardening  `(tech debt)`  `[backlog]`
+### Story 9.6-followup: Re-Validation Hardening
 As a platform engineer,
 I want revalidation có DB constraint + concurrent safety + output limits + test robustness,
 So that confidence không corrupt và revalidation robust dưới load.
@@ -1606,7 +1701,7 @@ So that confidence không corrupt và revalidation robust dưới load.
 
 _Source: code review defer items từ 9-6b. Priority: P2. Effort: 2-3 days. Trigger: khi có automated revalidation._
 
-### Story 9.6c: Memory Provenance End-to-End Revalidation Gate  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 9.6c: Memory Provenance End-to-End Revalidation Gate
 
 As a platform engineer,
 I want an E2E gate proving every scraper-derived memory carries a self-contained recipe and can be re-validated after its source `Run` is gone,
@@ -1635,7 +1730,7 @@ _Governed by `AD-11.1`, `FR-39`, `AD-8`._
 ---
 
 ## Epic 10: Connector & Scraper Expansion
-### Story 10.1: Batdongsan.com.vn Scraper  `[DONE per sprint-status: 10-1]`
+### Story 10.1: Batdongsan.com.vn Scraper
 
 As a real-estate researcher or investor in Vietnam,
 I want to scrape property listings from batdongsan.com.vn,
@@ -1658,7 +1753,7 @@ _Implementation hints (not AC):_ Decode pipeline is `gzip → base64 → nibble-
 
 _FR-6 · AD-3 · AD-16 · AD-19 · `technical-batdongsan-scraper-research-2026-08-02.md`._
 
-### Story 10.2: Chotot.vn / Nhà Tốt Scraper  `[done]`
+### Story 10.2: Chotot.vn / Nhà Tốt Scraper
 
 As a real-estate researcher or investor in Vietnam,
 I want to scrape property listings from `chotot.com` (Nhà Tốt),
@@ -1677,7 +1772,7 @@ So that I can cross-compare classified listings with batdongsan.com.vn and ident
 
 _FR-6 · AD-3 · AD-16 · AD-19 · `market-vietnam-real-estate-research-data-scraping-landscape-research-2026-08-03.md`._
 
-### Story 10.3: Muaban.net BĐS Scraper  `[done]`
+### Story 10.3: Muaban.net BĐS Scraper
 
 As a real-estate researcher or investor in Vietnam,
 I want to scrape property listings from `muaban.net` (mục BĐS),
@@ -1698,7 +1793,7 @@ So that I can broaden cross-compare coverage beyond batdongsan and chotot.
 
 _FR-6 · AD-3 · AD-16 · AD-19 · `market-vietnam-real-estate-research-data-scraping-landscape-research-2026-08-03.md`._
 
-### Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score  `[DONE per sprint-status: 10-4]`
+### Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score
 
 As a real-estate researcher,
 I want the system to merge and score listings from multiple Vietnamese BĐS sources,
@@ -1721,7 +1816,7 @@ So that I can trust the price and detect fake/duplicate listings.
 **Kỹ thuật (không phải AC):** thêm `app/services/bds_aggregator/` để normalize/dedupe listings rồi gửi `Chunk[]` tới `chainlens-research` qua `POST /v1/ingest/scraper`; không mở rộng `Memory`/`ResearchThread` để lưu aggregated listing làm search corpus.
 _FR-6 · FR-32 · FR-39 · AD-11.1 · `market-vietnam-real-estate-data-scraping-landscape-research-2026-08-03.md`._
 
-### Story 10.5: Anti-Bot / CAPTCHA Screenshot Escalation  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 10.5: Anti-Bot / CAPTCHA Screenshot Escalation
 
 As a scraper operator,
 I want CAPTCHA or anti-bot blocks to be captured as a screenshot and surfaced in the Inbox for human review,
@@ -1747,7 +1842,7 @@ So that we can audit blocks and decide whether to rotate credentials, proxy, or 
 
 _Governed by `AD-19`, `AD-3`, `AD-16`._
 
-### Story 10.6: Chợ Tốt Multi-Category Scraper `[ready-for-dev]`
+### Story 10.6: Chợ Tốt Multi-Category Scraper
 
 As a researcher using the Chợ Tốt scraper,
 I want to scrape listings from any major vertical (`xe cộ`, `điện tử`, `việc làm`, `đồ gia dụng`, `vật nuôi`, `dịch vụ`, `thời trang`, v.v.) in addition to real estate,
@@ -1798,7 +1893,7 @@ So that one scraper foundation returns typed, useful data for each category inst
 
 _See full story file: `implementation-artifacts/stories/10-6-chotot-multi-category-scraper.md`._
 
-### Story 10.7: Chợ Tốt Multi-Category Capability and Billing `[ready-for-dev]`
+### Story 10.7: Chợ Tốt Multi-Category Capability and Billing
 
 As a workspace owner,
 I want a single `chotot.scrape` capability that accepts any supported category and bills per returned listing on the correct meter,
@@ -1831,7 +1926,7 @@ So that users can research Chợ Tốt vehicles, jobs, electronics, and goods wi
 
 **Kỹ thuật (không phải AC):** Architecture decision recorded for single `chotot.scrape`; add `BillingUnit.CHOTOT_ITEM` and `CHOTOT_SCRAPE_MICROS_PER_ITEM` config; update `app/capabilities/core/billing.py`; register/alias in `definition.py`, `executor.py`, `schemas.py`; add docs and `.env.example`. Unit + integration + regression tests.
 
-### Story 10.8: Spatial Planning & Land Zoning GIS (PostGIS Map Layers) `[P1]`
+### Story 10.8: Spatial Planning & Land Zoning GIS
 
 As a real estate researcher, investor, or appraiser,
 I want to query land zoning classifications (`ONT`, `ODT`, `DGT`, `CX`) by GPS coordinates,
@@ -1852,8 +1947,8 @@ _AD-GIS-1 · AD-GIS-2 · AD-GIS-4 · AD-GIS-5 · AD-GIS-6 · Governed by `archit
 
 ---
 
-## Epic 11: Telegram Automation & Bot `[done]`
-### Story 11.1: Telegram Notification Foundation `[done]`
+## Epic 11: Telegram Automation & Bot
+### Story 11.1: Telegram Notification Foundation
 
 As a user,
 I want to enable or disable Telegram notifications for automation runs and receive a clear message with a deep link when a run completes or fails,
@@ -1874,7 +1969,7 @@ So that I can control whether Nowing messages me on Telegram and quickly review 
 
 **Kỹ thuật (không phải AC):** Alembic migration thêm `notification_preferences` JSONB vào `User` (hoặc bảng riêng) (`AD-2`); endpoint `PATCH /api/v1/users/me/notification-preferences`; UI toggle trong `MessagingChannelsContent`; hook vào `app/automations/runtime/executor.py` sau `mark_succeeded`/`mark_failed`; dispatch gửi Telegram qua Celery task; reuse `NotificationService` + `TelegramAdapter` + `chunk_message` và rate-limit.
 
-### Story 11.2: Telegram Write-Back, Builder UI & Chat Resolution `[done]`
+### Story 11.2: Telegram Write-Back, Builder UI & Chat Resolution
 
 As an automation builder,
 I want a "Send Telegram message" action that authors a custom message and automatically resolves the right bot and chat,
@@ -1895,7 +1990,7 @@ So that I can push results or alerts to Telegram without writing JSON or looking
 
 **Kỹ thuật (không phải AC):** package `app/automations/actions/builtin/write_back_telegram/` (`definition.py`, `params.py`, `factory.py`, `invoke.py`); reuse `TelegramAdapter`; mở rộng `nowing_web/lib/automations/builder-schema.ts` và `app/dashboard/[workspace_id]/automations/components/builder/task-item.tsx`.
 
-### Story 11.3: Telegram Interactive Bot & Commands `[done]`
+### Story 11.3: Telegram Interactive Bot & Commands
 
 As a Telegram user,
 I want inline keyboards and `/status`, `/run` commands so I can view runs and trigger automations directly from the chat,
@@ -1924,8 +2019,8 @@ So that I can take action without opening the dashboard.
 
 ---
 
-## Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research
-### Story 20.4: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[done]`
+## Epic 20: Nowing Ecosystem Integration
+### Story 20.4: Service-to-Service Auth + Cost Ledger Sync
 
 As a platform engineer,
 I want secure service-to-service auth and a shared cost envelope between Nowing and `chainlens-research`,
@@ -1959,7 +2054,7 @@ So that `chainlens-research` can meter usage and Nowing can bill the user.
 
 _Governed by `AD-3`, `AD-4`, `AD-5`, FR-61, `AD-8`._
 
-### Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[done]`
+### Story 20.1: Nowing Scraper `to_chunks()` +
 
 As a Nowing user / chat user,
 I want my scraper data to be searchable through chainlens,
@@ -2004,7 +2099,7 @@ so that the agent can answer with fresh data.
 _Governed by `AD-34`, `AD-35`, FR-58, FR-62._
 
 
-### Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[done]`
+### Story 20.2: Gap-Fill Caller + Cost Allocation
 
 As a chat user,
 I want the agent to ask `chainlens-research` to index missing data on demand,
@@ -2031,7 +2126,7 @@ So that the answer does not say "I don't know" when the data is available on the
 _Governed by `AD-4`, FR-59, `AD-8`._
 
 
-### Story 20.3: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[done]`
+### Story 20.3: `NowingPrivateProvider` for
 
 As a Nowing user,
 I want my private data to stay in Nowing while still being used for answers,
@@ -2058,9 +2153,134 @@ so that privacy is preserved.
 
 _Governed by `AD-5`, FR-60, `AD-16`._
 ---
-## Epic 12: HR/Recruitment Vertical — Vietnam Job Market Pilot
+## Epic 12: HR/Recruitment Vertical
 
-### Story 12.0: ToS & Legal Review `[PREREQUISITE — approved by legal counsel 2026-08-08]`
+
+
+### Story 20.5: `chainlens.contents` URL Extraction
+
+As a Nowing agent or scraper pipeline,
+I want to extract clean, token-efficient markdown content from one or more URLs via ChainLens,
+so that I can read web pages, articles, and documentation without launching heavy browser sandboxes.
+
+**Acceptance Criteria:**
+1. **Given** a request to read one or more URLs with optional focus query, **When** `chainlens.contents` capability is invoked, **Then** it calls ChainLens `POST /api/v1/search` with `output: 'contents'`, `urls: [...]`, and `summary: true`.
+2. **Given** ChainLens returns extracted page contents and highlights, **When** parsing the response, **Then** the output conforms to `ContentsOutput` containing clean markdown `content`, `sourceUrls`, and `cost_micros`.
+3. **Given** the capability completes, **When** billing is processed, **Then** a `TokenUsage` record with `usage_type="chainlens_contents"` is recorded.
+4. **Given** any outbound query payload (AD-25/AD-49), **When** the request leaves Nowing, **Then** it passes through `redact_pii()` first — no raw PII leaves the boundary.
+5. **Given** a URL behind an authenticated portal or interactive form, **When** contents extraction is requested, **Then** the capability returns a typed `unsupported_auth_wall` hint directing the caller to Browser Operator (Epic 32) — this capability is a public-web Fast-Reader only.
+
+**Dev notes (Amelia 2026-09-20):** copy `app/capabilities/news/entity_search/` structure (`definition.py` + `executor.py` + `schemas.py`; `billing_unit=BillingUnit.CHAINLENS_QUERY`, `context_aware=True`). Dedicated `ContentsInput`/`ContentsOutput` — do NOT widen `ResearchInput.output` Literal (`schemas.py:116`). Wire into `_CI_VERBS` in `app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/tools/index.py`; `build_capability_tools()` auto-generates the LLM tool — description verbatim from UX spec Part A. To surface to the agent: (a) register `Capability`, (b) append the verb to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` `<available_tools>`+`<playbook>` + `description.md` triggers (UX spec Part A).
+
+_Governed by `AD-15`, `AD-34`, FR-58._
+
+
+### Story 20.6: `chainlens.code_search` Code Search
+
+As a developer using Nowing Web Builder or coding sub-agents,
+I want to search GitHub repositories, documentation, and Stack Overflow for high-signal code context,
+so that my agent receives token-efficient code snippets and API usage instead of generic prose.
+
+**Acceptance Criteria:**
+1. **Given** a technical programming query, **When** `chainlens.code_search` is invoked, **Then** it calls ChainLens `POST /api/v1/search` with `output: 'code_context'`, `sources: ['web']`.
+2. **Given** the SSE stream returns code blocks and citations, **When** the stream finalizes, **Then** the output returns formatted code blocks, repository references, and file path markers.
+3. **Given** the capability tool completes, **When** recording usage, **Then** `TokenUsage` is recorded with `usage_type="chainlens_code_search"`.
+4. **Given** code results are returned, **When** rendered in chat, **Then** they map to PlateJS code-block schema (language tag + line numbers) with copy button and source repo link; >5 snippets collapse to top-3 with an expander.
+
+**Dev notes (Amelia 2026-09-20):** same `entity_search` structure; dedicated `CodeSearchInput`/`CodeSearchOutput` (`query`, `language` regex `^[a-z0-9+#-]+$`, `maxResults` 1–20, `mode` instant/fast/balanced/auto). Wire into `_CI_VERBS` (`tools/index.py`); description verbatim from UX spec Part A. To surface to the agent: (a) register `Capability`, (b) append `CHAINLENS_CODE_SEARCH` to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` + `description.md` triggers.
+
+_Governed by `AD-15`, FR-24._
+
+
+### Story 20.7: ChainLens OpenAI Gateway Model Connections
+
+As a Nowing superadmin or workspace owner,
+I want to connect ChainLens as an OpenAI-compatible model provider,
+so that any chat agent in Nowing can directly select ChainLens grounded models without custom code.
+
+**Acceptance Criteria:**
+1. **Given** the Admin Global Model Connections page, **When** an admin adds a new connection, **Then** ChainLens is available as a preset template (`https://research-api.chainlens.net/v1`, models: `claude-sonnet-4-6`, `haiku-4.5`, `deepseek-v4-pro`).
+2. **Given** a chat request using a ChainLens-connected model, **When** Nowing calls `POST /v1/chat/completions`, **Then** ChainLens executes the request and streams standard OpenAI SSE chunks back.
+3. **Given** connection test is clicked, **When** calling `GET /v1/models`, **Then** it returns HTTP 200 and lists active models.
+4. **Given** the model picker UI, **When** ChainLens models are listed, **Then** they appear under a distinct "ChainLens (Web-Grounded)" group with a globe icon and tooltip setting latency expectation (~3–6s first token).
+
+**Dev notes (Amelia 2026-09-20):** generic OpenAI provider already supported — `app/routes/model_connections_routes.py` `list_model_providers` (`:262`) + `app/services/provider_registry.py` `REGISTRY`. Work = add preset template (`default_base_url=https://research-api.chainlens.net/v1`) + frontend badge `[Web-Grounded]` in `nowing_web/app/admin/global-model-connections/page.tsx`. Zero backend schema change.
+
+_Governed by `AD-8`, FR-41._
+
+
+### Story 20.8: ChainLens Webhook Monitors Automations
+
+As a Nowing user setting up automations,
+I want to schedule recurring web search monitors on ChainLens that ping Nowing via webhook,
+so that my automations trigger automatically when new market news or competitor updates emerge.
+
+**Acceptance Criteria:**
+1. **Given** an Automation with trigger type `chainlens_monitor`, **When** enabled, **Then** Nowing calls ChainLens `POST /v1/monitors` with query, cron, and Nowing webhook URL.
+2. **Given** ChainLens detects new delta results on schedule, **When** it posts findings to Nowing's webhook, **Then** Nowing enqueues an `AutomationRun` with the new search results as trigger payload.
+3. **Given** an automation is paused or deleted, **When** status changes, **Then** Nowing calls ChainLens API to delete or pause the recurring monitor.
+4. **Given** an inbound monitor webhook, **When** it arrives at Nowing, **Then** the endpoint verifies HMAC-SHA256 signature (shared secret `CHAINLENS_AUTH_CONTEXT_SECRET`) before enqueueing any `AutomationRun` — forged webhooks are rejected 401 and never drain credits.
+5. **Given** a monitor run with zero new deltas, **When** the run timeline renders, **Then** it shows a friendly empty state ("Chưa có tin mới kể từ lần kiểm tra trước"), never an error.
+
+**Dev notes (Amelia 2026-09-20):**
+- `TriggerType` lives at `app/automations/persistence/enums/trigger_type.py` (values `schedule|event|manual|memory_change`), column `SQLAlchemyEnum(name="automation_trigger_type")` (`models/trigger.py:31`). Adding `CHAINLENS_MONITOR` requires **Alembic migration `ALTER TYPE automation_trigger_type ADD VALUE 'chainlens_monitor'`** — Postgres enum, cannot run in a transaction block on PG<12.
+- Store `{query, cron, dedupKeyPolicy, monitorId}` in existing `AutomationTrigger.params` JSONB (`models/trigger.py:39`) — no new column.
+- Enable-path in `app/automations/services/trigger.py` → `POST /v1/monitors`; inbound route `app/routes/webhooks/chainlens_monitor.py` → enqueue `AutomationRun`. HMAC via `hmac.compare_digest` (pattern `app/routes/gateway_webhook/webhooks.py:119`).
+
+_Governed by `AD-15`, FR-19, FR-20._
+
+
+### Story 20.9: Async Research Jobs Resumption
+
+As a system operator,
+I want long-running deep research queries (over 60 seconds) to execute via ChainLens Async Jobs,
+so that client HTTP disconnections or reverse-proxy timeouts do not abort in-flight research.
+
+**Acceptance Criteria:**
+1. **Given** an execution mode configured for asynchronous dispatch, **When** research is requested, **Then** Nowing calls ChainLens `POST /async-jobs` and receives `{ runId, status: "pending" }`.
+2. **Given** an active `runId`, **When** Nowing listens to `GET /async-jobs/{runId}/events`, **Then** it streams live research phases to the client and persists final deliverables.
+3. **Given** a worker restart during deep research, **When** it recovers, **Then** it inspects `GET /async-jobs/{runId}` to recover the completed report without re-paying token or search costs.
+
+**Dev notes (Amelia 2026-09-20):** two distinct run systems — implement `app/services/chainlens/async_jobs.py` `AsyncJobsClient` (external `POST /async-jobs` + `GET /async-jobs/{runId}/events`) then map external `runId` → Nowing `run_id` via `app/capabilities/core/async_runner.py` `start_async_run` (`:50`).
+
+_Governed by `AD-17`, FR-38._
+
+### Story 20.10: `chainlens.pulse_feed` Curated Intelligence Feed
+
+As a Nowing agent, dashboard surface, or automation,
+I want to pull the ChainLens Pulse curated intelligence feed plus each item's pre-generated research angles,
+so that users can browse proactive market/competitor news instead of only on-demand search.
+
+**Acceptance Criteria:**
+1. **Given** a request for the intelligence feed with optional `topic` and `cursor`, **When** `chainlens.pulse_feed` is invoked, **Then** it calls `GET /v1/pulse/feed?topic=&cursor=` (alias `/v1/news/feed`) and returns `{ items, pagination:{nextCursor,hasMore,limit} }`. `topic` ∈ `tech|ai|finance|science|security|startup`; `cursor` is an ISO date for keyset pagination (older-than), not an offset.
+2. **Given** a feed `itemId`, **When** angles are requested via `GET /v1/pulse/items/{id}/angles`, **Then** it returns `PulseAngleResponse[]` with `{angleId,label,description,prompt,estimatedCredits,costDollars,model}` — cost hint drives the UX cost badge.
+3. **Given** the call completes, **When** billing is processed, **Then** `TokenUsage` records `usage_type="chainlens_pulse_feed"`.
+4. **Given** an empty feed page or zero angles, **When** the surface renders, **Then** it shows a friendly empty state, never an error.
+
+**Dev notes (Amelia 2026-09-20):** copy `news/entity_search/` structure → `app/capabilities/chainlens/pulse/`; `billing_unit=BillingUnit.CHAINLENS_QUERY`, `context_aware=True`. Feed/angles are PUBLIC throttled GETs — plain `httpx.get` with `ChainLensServiceAuth.get_outbound_headers`, NOT the SSE parser. Client `app/services/chainlens/pulse.py`. Wire into `_CI_VERBS` (`tools/index.py`); description verbatim from UX spec Part A. To surface to the agent: (a) register `Capability`, (b) append the verb to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` `<available_tools>`+`<playbook>` + `description.md` triggers (UX spec Part A).
+
+_Governed by `AD-15`, FR-24._
+
+
+### Story 20.11: `chainlens.pulse_research` Angle Deep-Research
+
+As a Nowing agent or automation acting on a Pulse angle,
+I want to run the ChainLens angle deep-research stream on a chosen `{itemId, angleId}`,
+so that a single click converts a curated news angle into a cited deep-research report.
+
+**Acceptance Criteria:**
+1. **Given** a `{itemId, angleId}` pair plus optional `mode` and `chatId`, **When** `chainlens.pulse_research` is invoked, **Then** it calls `POST /v1/pulse/research` with `{itemId,angleId,mode,output:"news",chatId}` (`mode` ∈ research|balanced|deep|speed|auto|fast|instant|quality) and streams SSE.
+2. **Given** the upstream SSE stream, **When** parsing frames, **Then** the executor reuses `searchStream` parser — events are the SAME contract as `chainlens.research` (`init`→`text_delta`→`done{usage,chatId}`), so `sse_parser.py` + `ResearchOutput` are reused, not reimplemented.
+3. **Given** the `done` frame `usage.costDollars`, **When** billing is processed, **Then** `TokenUsage` records `usage_type="chainlens_pulse_research"` and `cost_micros` via `cost_dollars_to_micros`.
+4. **Given** 402/404 upstream, **When** resolving, **Then** return typed degradation (engine_unavailable / insufficient_credits), never a raw error.
+5. **Given** a `chatId`, **When** research completes, **Then** persist the session handle so `chainlens_chats`/`chainlens_ask` can resume the SEP-2567 thread.
+
+**Dev notes (Amelia 2026-09-20):** register `CHAINLENS_PULSE_RESEARCH` in `app/capabilities/chainlens/pulse_research/`. REUSE `research/sse_parser.py` + `ResearchOutput` — upstream `pulse-research.service.ts` pipes through `searchService.searchStream` (same events). Executor mirrors `research/executor.py:_call_chainlens` but posts `/v1/pulse/research`, forces `output="news"` + `tier="research"` (internal — upstream bills once). To surface to the agent: (a) register `Capability`, (b) append the verb to `_CI_VERBS` in `tools/index.py:18`, (c) update `system_prompt.md` `<available_tools>`+`<playbook>` + `description.md` triggers (UX spec Part A).
+
+_Governed by `AD-15`, FR-24._
+
+---
+### Story 12.0: ToS & Legal Review
 
 As a product owner,
 I want to confirm ToS and legal classification for VietnamWorks, TopCV, and ITviec,
@@ -2078,7 +2298,7 @@ _Kỹ thuật (không phải AC):_ No code. Output: legal review memo + ToS deci
 
 _FR-43..FR-47 · NFR-11 · OQ-8 · AD-26_
 
-### Story 12.1: VietnamWorks Scraper `[ready-for-dev P0]`
+### Story 12.1: VietnamWorks Scraper
 
 As a recruiter or market researcher,
 I want to search VietnamWorks job postings via the public API,
@@ -2095,7 +2315,7 @@ _Kỹ thuật (không phải AC):_ `app/capabilities/vietnamworks/scrape/` (Apac
 
 _FR-43 · AD-3 · AD-16 · AD-22 · `technical-spike-vietnamworks-api-2026-08-05.md`._
 
-### Story 12.2: TopCV Scraper `[ready-for-dev P0]`
+### Story 12.2: TopCV Scraper
 
 As a recruiter,
 I want to search TopCV job postings,
@@ -2111,7 +2331,7 @@ _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/topcv/` (BSL 1.1 f
 
 _FR-44 · AD-3 · AD-16 · AD-19 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
 
-### Story 12.3: ITviec Scraper `[ready-for-dev P0]`
+### Story 12.3: ITviec Scraper
 
 As a tech recruiter,
 I want to search ITviec job postings,
@@ -2128,7 +2348,7 @@ So that I can monitor IT/AI hiring trends.
 _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/itviec/` (BSL 1.1 fetcher/parser) + `app/capabilities/itviec/scrape/` (Apache-2.0 capability). Rate-limit + user-agent rotation + circuit-breaker.
 _FR-45 · AD-3 · AD-16 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
 
-### Story 12.4a: Vietnam Job Listing Normalization `[ready-for-dev P0]`
+### Story 12.4a: Vietnam Job Listing Normalization
 
 As a research analyst,
 I want the Vietnamese job market data from multiple sources normalized into a common schema,
@@ -2139,7 +2359,7 @@ So that downstream deduplication and indexing can work on a single shape.
 - **Given** results from multiple sources, **When** normalized, **Then** they map to `VnJobAggregatedListing` with `salary`, `location`, `employment_type`, `experience`, `posted_at`, and `source` fields.
 - **Given** a source fails or is blocked by anti-bot, **When** aggregation completes, **Then** it returns `degraded=true` with `degradation_reasons` drawn from `{SOURCE_FAILED, ANTI_BOT, RATE_LIMIT, PARTIAL_DATA}` and `degraded_source_ids`; successful source listings are still normalized.
 
-### Story 12.4b: Vietnam Job Deduplication, Confidence & Conflict Detection `[ready-for-dev P0]`
+### Story 12.4b: Vietnam Job Deduplication, Confidence & Conflict Detection
 
 As a research analyst,
 I want duplicate job listings merged and conflicts surfaced,
@@ -2150,7 +2370,7 @@ So that the agent presents a trustworthy single answer with source transparency.
 - **Given** two listings matched with salary difference ≤ 10%, **When** compared, **Then** `confidence_score ≥ 0.8` and `salary_consistency_score = stable`; the aggregated record is kept as a single record with `metadata.source_count` and `metadata.confidence_score`.
 - **Given** two listings matched with salary difference > 20% or location mismatch, **When** compared, **Then** it sets `conflict_flag = SALARY_MISMATCH` or `LOCATION_MISMATCH`, lowers `confidence_score` to 0.5–0.7, and preserves both source records so `chainlens-research` can display conflict metadata.
 
-### Story 12.4c: PII Redaction for Job Data Chunks `[ready-for-dev P0]`
+### Story 12.4c: PII Redaction for Job Data Chunks
 
 As a workspace owner,
 I want personal information removed from job descriptions before storage or ingest,
@@ -2160,7 +2380,7 @@ So that Nowing does not retain unconsented PII.
 - **Given** PII (phone, email, person names) is found in `job_description` or `job_requirement`, **When** chunks are built, **Then** AD-25 redaction is applied before any data is sent to `chainlens-research` or stored in `Memory`.
 - **Given** redaction completes, **When** the chunk is persisted or sent, **Then** it contains only masked/dropped PII and audit stats log counts (not values).
 
-### Story 12.4d: Job Chunks Ingest to chainlens-research `[ready-for-dev P0]`
+### Story 12.4d: Job Chunks Ingest to chainlens-research
 
 As a platform engineer,
 I want normalized, deduplicated, redacted job listings handed off to `chainlens-research` reliably,
@@ -2171,7 +2391,7 @@ So that the research index stays fresh without building a local corpus.
 - **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` on `chainlens-research` with service auth, `workspace_id`, and the batch; it returns `ingestJobId` and stores the job mapping in Nowing Postgres.
 - **Given** `chainlens-research` returns `5xx` or times out, **When** `NowingIngestService.ingest()` is called, **Then** it retries with exponential backoff (max 3 attempts) and stores the failed batch in a dead-letter queue; after max retries it marks the job `failed` and emits a `chainlens_ingest_failed` counter.
 
-### Story 12.4e: Vietnam Job Aggregator Exposure (REST / MCP / Chat Agent) `[ready-for-dev P0]`
+### Story 12.4e: Vietnam Job Aggregator Exposure
 
 As a research analyst,
 I want to call the job aggregator from chat, MCP, and REST,
@@ -2181,7 +2401,7 @@ So that I can ask job market questions anywhere I work.
 - **Given** the aggregator is exposed, **When** called via REST, MCP (`nowing_vn_jobs_aggregate`), or chat agent, **Then** it returns `VnJobAggregateOutput { items: VnJobAggregatedListing[], degraded, degradationReasons, sourceBreakdown, costMicros, ingestJobId }`; it does not query a local Nowing search corpus.
 - **Given** `to_chunks()` produces a `Chunk[]`, **When** the batch is sent to `chainlens-research`, **Then** each `Chunk` conforms to the canonical schema and `source` enum defined in `chainlens-research` Story 47-1 (FR-62, AD-35); if `chainlens-research` rejects a chunk for schema violation, `NowingIngestService` logs the first failing chunk and fails the batch.
 
-### Story 12.5: PII Redaction for Job Data `[ready-for-dev P0]`
+### Story 12.5: PII Redaction for Job Data
 
 As a workspace owner,
 I want job postings to be scanned for personal information before storage,
@@ -2201,7 +2421,7 @@ _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
 
 ---
 
-### Story 12.6: Saved Searches `[P0 — must ship before 12.9]`
+### Story 12.6: Saved Searches
 
 As a researcher,
 I want to save complex search queries and auto-run them on schedule,
@@ -2221,21 +2441,15 @@ So that I always have fresh results without manual work.
 
 _AD-33 (Generic Alert Engine — Saved Search AlertRule template)._
 
-### Story 12.7: Property Price Alerts `[DROPPED 2026-08-08]`
+**Story 12.7: Property Price Alerts — DROPPED per SCP 2026-08-08.**
+Nowing does not build canonical property entities. Property price alerting may be implemented on `chainlens-research` index data in a future Phase 2. As originally scoped, this alert required `canonical_entities` storage which is no longer built in Nowing.
 
-> **DROPPED per SCP 2026-08-08.** Nowing does not build canonical property entities. Property price alerting may be implemented on `chainlens-research` index data in a future Phase 2.
-
-_As originally scoped, this alert required `canonical_entities` storage which is no longer built in Nowing._
-
-### Story 12.8: Cross-Source Entity Timeline `[DROPPED 2026-08-08]`
-
-> **DROPPED per SCP 2026-08-08.** Nowing does not build canonical entity storage. Cross-source entity timelines (if needed) will be provided by `chainlens-research` as a product feature, not built as a Nowing index.
-
-_As originally scoped, this timeline required `canonical_entities`, source-lineage and merge-history tables which are no longer built in Nowing._
+**Story 12.8: Cross-Source Entity Timeline — DROPPED per SCP 2026-08-08.**
+Nowing does not build canonical entity storage. Cross-source entity timelines (if needed) will be provided by `chainlens-research` as a product feature, not built as a Nowing index. As originally scoped, this timeline required `canonical_entities`, source-lineage and merge-history tables which are no longer built in Nowing.
 
 ---
 
-### Story 12.9: Job Market Alerts `[P1]`
+### Story 12.9: Job Market Alerts
 
 As a job market researcher,
 I want to receive alerts when new postings match my criteria,
@@ -2254,7 +2468,7 @@ So that I don't have to manually re-run searches every day.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
 
-### Story 12.10: LinkedIn Public Guest Jobs & Headcount Growth Signals `[P1]`
+### Story 12.10: LinkedIn Public Guest Jobs & Headcount Growth Signals
 
 As an executive recruiter or B2B SaaS founder,
 I want to scrape job listings via LinkedIn Public Guest API (`seeMoreJobPostings`) without login and track hiring velocity,
@@ -2276,9 +2490,9 @@ _AD-LI-1 · AD-LI-2 · AD-LI-3 · AD-LI-5 · Governed by `architecture-linkedin-
 
 ---
 
-## Epic 14: News Aggregation (Vietnam)
+## Epic 14: News Aggregation
 
-### Story 14.1: RSS Feed Integration `[P0]`
+### Story 14.1: RSS Feed Integration
 
 As a user,
 I want news from major Vietnamese portals available in my workspace,
@@ -2301,7 +2515,7 @@ So that I can search and reference news articles via the Nowing chat agent.
 
 _AD-34 · AD-35 · AD-25 · Method: RSS (official feeds, no anti-bot)_
 
-### Story 14.2a: News Entity Extraction `[P1]`
+### Story 14.2a: News Entity Extraction
 
 As a researcher,
 I want named entities (people, organizations, locations) extracted from news articles and attached to `Chunk` metadata before the article is sent to `chainlens-research`,
@@ -2322,7 +2536,7 @@ So that `chainlens-research` can index those entities later without needing a re
 
 _AD-34 · AD-35 · AD-25 (PII redaction for person names)_
 
-### Story 14.2b: News Entity Search `[P1]`
+### Story 14.2b: News Entity Search
 
 > **Blocked-by-external (2026-08-24):** `chainlens-research` chưa hỗ trợ entity search / ingest với entity metadata. Câu chuyện này phụ thuộc vào contract của engine; Nowing chỉ cần agent wiring khi contract sẵn sàng. Giữ `backlog` trong `sprint-status.yaml`.
 
@@ -2341,7 +2555,7 @@ _AD-34 · AD-35 · AD-27_
 
 ---
 
-### Story 14.3: News Alerts & Topic Monitoring `[P1, MERGED INTO Story 6.11]`
+**Story 14.3: News Alerts & Topic Monitoring — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2362,7 +2576,7 @@ So that I stay informed without manually checking news sites.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy) · AD-34 · AD-35_
 
-### Story 14.4: News Digest & Synthesis `[P2, MERGED INTO Story 6.12]`
+**Story 14.4: News Digest & Synthesis — MERGED into Story 6.12 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
@@ -2385,9 +2599,9 @@ _AD-34 · AD-35 · Reuses archived `_bmad-output/planning-artifacts/ux-designs/a
 
 ---
 
-## Epic 15: Financial Data (Vietnam)
+## Epic 15: Financial Data
 
-### Story 15.1: CafeF Financial Data Integration `[P0]`
+### Story 15.1: CafeF Financial Data Integration
 
 As an investment researcher,
 I want stock prices, financial statements, and market news from CafeF,
@@ -2409,7 +2623,7 @@ So that I can analyze company fundamentals via the Nowing chat agent.
 
 _AD-34 · AD-35 · Method: Unofficial public API (no auth needed)_
 
-### Story 15.2: Vietstock Deep Financials `[P1]`
+### Story 15.2: Vietstock Deep Financials
 
 As a deep researcher,
 I want comprehensive financial data from Vietstock (3000+ companies, 130K+ statements),
@@ -2431,7 +2645,7 @@ _AD-34 · AD-35 · AD-24 (cross-source sourceId convention)_
 
 ---
 
-### Story 15.3: Stock Price Alerts `[P1, MERGED INTO Story 6.11]`
+**Story 15.3: Stock Price Alerts — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2452,7 +2666,7 @@ So that I can act on market movements.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
-### Story 15.4: Financial Trend Detection `[P2, MERGED INTO Story 6.12]`
+**Story 15.4: Financial Trend Detection — MERGED into Story 6.12 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
@@ -2474,9 +2688,9 @@ _AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff stra
 
 ---
 
-## Epic 16: Company Directory (Vietnam)
+## Epic 16: Company Directory
 
-### Story 16.1: masothue.com Company Data `[P0]`
+### Story 16.1: masothue.com Company Data
 
 > **Implementation status (2026-08-20):** `app/proprietary/platforms/masothue/` scraper and MCP tool `nowing_masothue_scrape` already exist. Missing `app.capabilities.masothue.scrape` executor, `BillingUnit.MASOTHUE_COMPANY`, and mutation-gate retest. Sprint status updated to `in-progress`.
 
@@ -2499,7 +2713,7 @@ So that I can verify business partners and research market players via the Nowin
 
 _AD-34 · AD-35 · AD-25 · Method: HTML scrape (simple, low anti-bot)_
 
-### Story 16.2: Official Business Registry (`dangkykinhdoanh.gov.vn`) `[P1]`
+### Story 16.2: Official Business Registry
 
 As a compliance researcher, corporate lawyer, or due diligence analyst,
 I want official company registration data, authentic charter capital, founding shareholders, and PDF change declarations from `dangkykinhdoanh.gov.vn`,
@@ -2521,7 +2735,7 @@ _AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Governed by `
 
 ---
 
-### Story 16.3: Company Alerts `[P1, MERGED INTO Story 6.11]`
+**Story 16.3: Company Alerts — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2544,7 +2758,7 @@ _AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff stra
 
 ---
 
-### Story 16.4: Company Timeline `[P1, MERGED INTO Story 6.12]`
+**Story 16.4: Company Timeline — MERGED into Story 6.12 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.12 — Narrative Report Engine for Indexed Data**. Giữ lại để traceability; không implement riêng.
 
@@ -2567,7 +2781,7 @@ _AD-34 · AD-35 · Timeline data owned by `chainlens-research`_
 
 ---
 
-### Story 16.5: National Public Procurement & Tender Intelligence (`muasamcong.mpi.gov.vn`) `[P1]`
+### Story 16.5: National Public Procurement & Tender Intelligence
 
 As a business development manager or bid analyst,
 I want to ingest public bidding notices (TBMT), award results (KQLCNT), and parse attached tender dossiers (E-HSMT PDF/ZIP) from `muasamcong.mpi.gov.vn`,
@@ -2587,9 +2801,9 @@ _AD-PROC-1 · AD-PROC-2 · AD-PROC-3 · AD-PROC-4 · AD-PROC-5 · AD-PROC-6 · A
 
 ---
 
-## Epic 17: E-commerce Intelligence (Vietnam)
+## Epic 17: E-commerce Intelligence
 
-### Story 17.1: Lazada Product Data `[P1]`
+### Story 17.1: Lazada Product Data
 
 > **Blocked-by-external (2026-08-23):** Raw scraping và anti-bot proxy rotation được giao cho `XActions` (`x_lazada_search` / `x_lazada_product` MCP tools) theo AD-SOC-1/AD-SOC-9. Story 17.1 chỉ implement `LazadaLeadAdapter` + normalization sau khi MCP tool sẵn sàng. Chuyển `backlog` trong `sprint-status.yaml` cho đến khi XActions tool tồn tại.
 
@@ -2614,7 +2828,7 @@ _AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Method: Consumes XActions MCP tool / 
 
 > **XActions Delegation Note (AD-SOC-1 & AD-SOC-9):** Do NOT build in-house Lazada Playwright crawlers inside Nowing. Raw product scraping and anti-bot proxy rotation are delegated to XActions (`x_lazada_search` / `x_lazada_product` MCP tools). Nowing focuses on `LazadaLeadAdapter`, schema normalization into `ecommerce_products`, Confidence Gate verification, and `chainlens-research` ingestion.
 
-### Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization `[P1]`
+### Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization
 
 As a market intelligence analyst,
 I want product data from Shopee Vietnam (70%+ market share) via internal fast JSON API (`/api/v4/search/search_items` and `/api/v4/item/get`),
@@ -2636,7 +2850,7 @@ _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-4 · Governed by `architecture-shopee-ec
 
 ---
 
-### Story 17.5: TikTok Shop Product & Trending SKUs Ingestion `[P2]`
+### Story 17.5: TikTok Shop Product & Trending SKUs Ingestion
 
 > **Blocked-by-external (2026-08-23):** Codebase hiện chỉ có public TikTok video scraper, không có TikTok Shop. Raw scraping TikTok Shop được giao cho `XActions` (`x_tiktok_shop_products` MCP tool) theo AD-SOC-1/AD-SOC-2/AD-SOC-9. Story 17.5 chỉ implement adapter + normalization sau khi MCP tool sẵn sàng. When implemented, reuse `ecommerce_products` + `ecommerce_price_history` schema and alert patterns from Shopee architecture (AD-EC-1..6).
 
@@ -2658,7 +2872,7 @@ _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-6 · AD-SOC-1 · AD-SOC-2 · AD-SOC-9_
 
 ---
 
-### Story 17.3: Price Drop Alerts `[P1, MERGED INTO Story 6.11]`
+**Story 17.3: Price Drop Alerts — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2679,7 +2893,7 @@ So that I can identify pricing trends and opportunities.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
-### Story 17.4: Competitor Tracking `[P2, MERGED INTO Story 6.11]`
+**Story 17.4: Competitor Tracking — MERGED into Story 6.11 per 2026-08-20.**
 
 > **Merged 2026-08-20:** Nội dung story này được gộp vào **Story 6.11 — Vertical Alert Rule Templates**. Giữ lại để traceability; không implement riêng.
 
@@ -2701,9 +2915,9 @@ _AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy) 
 
 ---
 
-## Epic 13: Canonical Entity Storage & Multi-Domain Indexing `[DROPPED 2026-08-08 — ARCHIVED]`
-## Epic 18: Vertical Client Platform (Public Agent-Chat)
-### Story 18.1: Public Agent-Chat Endpoints `[P0]`
+## Epic 13: Canonical Entity Storage & Multi-Domain Indexing
+## Epic 18: Vertical Client Platform
+### Story 18.1: Public Agent-Chat Endpoints
 
 As a vertical client,
 I want to create chat threads and send messages via public API,
@@ -2726,7 +2940,7 @@ _Kỹ thuật: `app/routes/agent_chat_routes.py`, PAT auth middleware, rate limi
 
 ---
 
-### Story 18.2: NewChatRequest Extension `[P0]`
+### Story 18.2: NewChatRequest Extension
 
 As a vertical chat user,
 I want to include `agent_id`, `client_id`, and `platform_metadata` in chat requests,
@@ -2742,7 +2956,7 @@ So that my agent is configured per client and context is forwarded correctly.
 _Kỹ thuật: Extend `NewChatRequest` schema in `app/schemas/new_chat.py`. **AD-29** + **AD-30**._
 ---
 
-### Story 18.3: Agent Registry `[P0]`
+### Story 18.3: Agent Registry
 
 As a platform administrator,
 I want to register agents with custom system prompts and tool configurations,
@@ -2758,7 +2972,7 @@ _Kỹ thuật: `app/db.py` (AgentConfig model), Alembic migration (number assign
 
 ---
 
-### Story 18.4: AgentConfig Prompt Injection `[P0]`
+### Story 18.4: AgentConfig Prompt Injection
 
 As a vertical chat user,
 I want agent-specific system instructions injected into the chat prompt,
@@ -2773,7 +2987,7 @@ So that my client gets a specialized agent experience.
 _Kỹ thuật: chat orchestrator — load config, inject prompt, filter tools. **AD-30**._
 ---
 
-### Story 18.5: ResearchThread Auto-Linkage `[P0]`
+### Story 18.5: ResearchThread Auto-Linkage
 
 As a vertical client,
 I want chat threads to be automatically linked to ResearchThreads,
@@ -2788,7 +3002,7 @@ So that memory is properly isolated and contextual across sessions.
 _Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. **AD-13** + **AD-29**. **Prerequisite:** AD-13 ResearchThread linkage accepted; if not, the response omits `research_thread_id` and logs `research_thread_link_degraded`._
 ---
 
-### Story 18.6: Memory Tagging + RAG Filter `[P1]`
+### Story 18.6: Memory Tagging + RAG Filter
 
 As a workspace owner,
 I want memories tagged with `client_id`/`agent_id` and RAG recall to hard-filter by tenant,
@@ -2803,7 +3017,7 @@ So that one client's data never leaks into another client's chat.
 _Kỹ thuật: Alembic migration for memory tenant tags, update `app/retriever/`. **AD-31**, NFR-MULTI-1. **Prerequisite:** AD-31 tenancy design accepted; ACs are conditional on `AD-31_accepted=true`._
 ---
 
-### Story 18.7: Cost Traceability `[P1]`
+### Story 18.7: Cost Traceability
 
 As a vertical client,
 I want to attribute costs to my users and listings,
@@ -2818,7 +3032,7 @@ So that I can track and bill for Nowing usage.
 _Kỹ thuật: Alembic migration for TokenUsage/Run external_metadata, update `app/services/token_tracking_service.py`. **AD-29** cost attribution; FR-37 patterns reused. Not AD-28._
 ---
 
-### Story 18.8: Rate Limiting + Tenant Isolation `[P1]`
+### Story 18.8: Rate Limiting + Tenant Isolation
 
 As a workspace owner,
 I want rate limits enforced per workspace and per client,
@@ -2838,9 +3052,9 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 ---
 
 
-## Epic 21: Lead Gen Intelligence & Social Graph `[in-progress]`
+## Epic 21: Lead Gen Intelligence `[in-progress]` *(umbrella
 
-> **Epic Goal:** Trung tâm Xử lý, Chấm điểm và Quản trị Lead tập trung (Lead Intelligence & CRM Hub) của toàn hệ thống Nowing. Tiếp nhận dữ liệu khách hàng tiềm năng từ TẤT CẢ các phễu cào (BĐS Epic 10, Tuyển dụng Epic 12, Đấu thầu/Pháp lý Epic 16, TMĐT Epic 17, Telegram Epic 22 và Mạng xã hội qua `XActions`), bóc tách thông tin liên hệ (SĐT, Email, Tên), phân loại ý định thương mại (Intent Signals), chấm điểm Fit Score, lưu trữ vào Lead CRM và kích hoạt chiến dịch Outbound Automation (Zalo OA, Telegram, Email, Lark Base, Google Sheets).
+> **Epic Goal:** Umbrella / tracking epic cho hệ sinh thái săn lead. Implementation chi tiết đã phân tán sang các epic con: E23 (Lead Capture, Real-Time Enrichment & Automated Outreach), E24 (Enterprise Lead Conversion & Multi-Channel Outreach + Team CRM), E25 (Platform Administration & Multi-Tenant Operations), E26 (Autonomous Lead Missions & Deep Sales Research). Epic 21 detailed stories (21.1–21.21) below are **superseded** by E23–E26 stories; kept for historical traceability.
 
 **Status:** `[in-progress]`  
 **Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
@@ -2848,7 +3062,7 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 
 ---
 
-### Story 21.1: Intent Signal Detection `[DONE]`
+### Story 21.1: Intent Signal Detection
 
 As a sales development representative or investor,
 I want to detect buying signals from target companies and market posts (funding, hiring surges, tech stack changes, executive moves, social buy/sell requests),
@@ -2864,7 +3078,7 @@ _FR-63 · AD-31 · AD-33 · AD-37 · AD-44_
 
 ---
 
-### Story 21.2: Lead Scoring & Prioritization `[DONE]`
+### Story 21.2: Lead Scoring & Prioritization
 
 As a sales manager,
 I want leads automatically scored and ranked by conversion likelihood (Fit Score & Intent Score),
@@ -2880,7 +3094,7 @@ _FR-64 · AD-31 · AD-38 · AD-42_
 
 ---
 
-### Story 21.3: Vietnam Phone & Contact Waterfall Engine `[DONE]`
+### Story 21.3: Vietnam Phone & Contact Waterfall Engine
 
 As an SDR or real estate broker in Vietnam,
 I want a multi-tiered phone resolution engine that unlocks hidden mobile numbers from scraped listings with real-time verification and auto-refund SLA,
@@ -2904,7 +3118,7 @@ _FR-65 · AD-25 · AD-31 · AD-36 · AD-42 · Nghị định 13/2023/NĐ-CP_
 
 ---
 
-### Story 21.4: Outbound Prospecting Automation & Panel `[DONE]`
+### Story 21.4: Outbound Prospecting Automation & Panel
 
 As a sales team,
 I want to create multi-step outbound email sequences connected to dynamic lead lists in a 2-panel split interface,
@@ -2919,7 +3133,7 @@ _FR-66 · AD-31 · AD-33 · AD-39 · AD-42_
 
 ---
 
-### Story 21.5: CRM Integration & Lark Base / Google Sheets 1-Click Sync `[DONE]`
+### Story 21.5: CRM Integration & Lark Base / Google Sheets 1-Click Sync
 
 As a sales operations manager,
 I want to sync lead data bi-directionally with HubSpot, Salesforce, Lark Base, and Google Sheets,
@@ -2934,7 +3148,7 @@ _FR-67 · AD-3 · AD-31 · AD-40_
 
 ---
 
-### Story 21.6: Vietnam Outbound Automation (Zalo OA & Telegram Sender) `[DONE]`
+### Story 21.6: Vietnam Outbound Automation
 
 As a Vietnamese sales representative or real estate agent,
 I want 1-click Zalo outreach assistance and Telegram notifications for high-intent leads,
@@ -2949,7 +3163,7 @@ _FR-68 · AD-31 · AD-41 · AD-SOC-7_
 
 ---
 
-### Story 21.7: Outcome-Based Pricing & Transparent Credit Ledger `[DONE]`
+### Story 21.7: Outcome-Based Pricing & Transparent Credit Ledger
 
 As a sales team founder,
 I want a transparent economic model with $0 cost for AI Chat & Sequencer and pay-as-you-go credits for verified leads and booked meetings,
@@ -2967,29 +3181,108 @@ _FR-69 · AD-8 · AD-10 · AD-31 · AD-42_
 
 ---
 
-### Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed) `[DONE]`
+### Story 21.8: Social Ingress via XActions Integration — Foundation
 
 As a B2B sales development representative or real estate investor,
-I want to ingest targeted Facebook Group posts and Twitter keyword searches via XActions integration (`/Users/luisphan/Documents/GitHub/XActions`),
-So that I can capture real-time social conversations and extract contact numbers without building scrapers from scratch.
+I want a foundation to ingest social posts via XActions (`/Users/luisphan/Documents/GitHub/XActions`),
+So that I can capture real-time conversations and extract contact numbers without building scrapers from scratch.
 
-**Acceptance Criteria:**
-- **Given** target groups or search keywords, **When** `XActionsSocialAdapter` calls `x_facebook_group_posts` or `x_search_tweets`, **Then** raw social posts are fetched via XActions stealth session pool with sticky 1-to-1 residential proxy IP binding per account.
-- **Given** raw post data, **When** ingested into PostgreSQL, **Then** records are saved into `social_monitored_targets` and `social_posts` with unique constraint `(platform, external_post_id)` and pushed to Redis Stream `stream:social:raw_posts`.
-- **Given** post content, **When** `SocialEntityExtractor` processes the text, **Then** it runs a 3-step pipeline (pre-normalization of letter-substitutions `o/O->0`, punctuation stripping, Vietnamese regex pattern matching) protected by a 50ms timeout against ReDoS, extracting phone numbers (formats `0912...`, `o9.xx...`, `+84...`), prices, and locations into `raw_entities JSONB`, and assigning `intent_tag: 'sell'`, `'buy'`, `'hiring'`, or `'seeking'`.
-- **Given** new ingested posts, **When** matching active `AlertRule` saved searches, **Then** `AlertEngine` fires instant notifications via Telegram/Email.
-- **Given** an AI Agent session, **When** calling `social_search_posts(platform, intent, keyword)`, **Then** matched posts with extracted contact numbers are returned.
+**Baseline Scope (Done):**
+- PostgreSQL schema `social_monitored_targets` and `social_posts` with unique constraint `(platform, external_post_id)`.
+- `SocialEntityExtractor` for Vietnamese phone/price/location/intent extraction (50ms ReDoS timeout).
+- Redis Stream `stream:social:raw_posts` producer from Python `XActionsSocialAdapter`.
+- Unit and integration tests for regex and Redis stream.
+
+**Deferred to Stories 21.8a–f:**
+- StreamableHTTP MCP transport (21.8a).
+- Redis Stream consumer Celery wiring (21.8b).
+- Multi-domain social target expansion (21.8c).
+- Universal scrape target mapper (21.8d).
+- Per-account proxy and cookie binding (21.8e).
+- XActions governance and health integration (21.8f).
 
 **Validation & Testing:**
 - Unit test: `test_obfuscated_phone_regex.py` — verifies extraction of 10+ obfuscated VN phone variants.
 - Unit test: `test_phone_regex_redos_safety.py` — asserts execution $\le 50$ms on pathological input strings.
-- Integration test: `test_social_redis_stream.py` — verifies Redis Stream ingestion and Celery processing.
+- Integration test: `test_social_redis_stream.py` — verifies Redis Stream producer and consumer.
+
+**Status:** `[done]` foundation; `[reopened]` via 21.8a–f.
 
 _AD-SOC-1 · AD-SOC-2 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-7_
 
 ---
 
-### Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach `[DONE]`
+### Story 21.8a: XActions Universal Ingress Productionization
+
+As a Nowing B2B sales development representative and real estate investor,
+I want XActions social ingress to run over MCP streamable-http, support every configured platform, process the Redis stream end-to-end, and expose health/governance telemetry,
+so that I can ingest leads from any vertical reliably, without spawning Node subprocesses, without duplicate posts, and without losing data when XActions throttles or proxies fail.
+
+**Consolidated from Stories 21.8a–f:**
+- 21.8a: MCP StreamableHTTP transport
+- 21.8b: Redis Stream consumer Celery wiring
+- 21.8c: Multi-domain social target expansion
+- 21.8d: Universal scrape target mapper
+- 21.8e: Per-account proxy and cookie binding
+- 21.8f: XActions governance and health integration
+
+**Acceptance Criteria:**
+1. **Given** `XACTIONS_MCP_URL`, `XACTIONS_MCP_API_KEY`, `XACTIONS_CONSUMER_ID` configured, **When** the adapter runs, **Then** it uses `mcp.client.streamable_http.streamablehttp_client` with Bearer auth and `X-Consumer-Id` headers, and reuses sessions across calls.
+2. **Given** a tool call, **When** XActions returns JSON, **Then** the client parses `success`, `data`, `meta` (incl. `datasetArtifactPath`), and `summary` correctly, and empty/non-JSON responses degrade safely.
+3. **Given** `XACT_4291`, `PROXY_EXHAUSTED`/`XACT_5030`, `ACCOUNT_HIBERNATION`, `XACT_4010`, `XACT_5000`, **When** they occur, **Then** the client raises `XActionsMcpError` with `code`, `retry_after`, `suggested_action`; the scheduler retries 4291 after `retry_after`, pauses target on hibernation/proxy exhaustion, and stops on auth expired.
+4. **Given** messages in `stream:social:raw_posts`, **When** Celery beat enqueues `process_social_stream` every 30 seconds, **Then** the consumer group `social_processors` persists posts to `SocialPost`, creates `Lead` for high-intent posts, evaluates `AlertRule`, ACKs, and DLQs failures.
+5. **Given** `POST /workspaces/{id}/social-monitored-targets`, **When** any supported platform is used, **Then** it is accepted and persisted. Supported: `facebook_group`, `facebook_page`, `twitter_keyword`, `twitter_user`, `tiktok_hashtag`, `chotot_category`, `shopee_keyword`, `topcv_search`, `vietnamworks_search`, `linkedin_company`, `batdongsan_category`, `masothue_lookup`, `b2b_registry_search`.
+6. **Given** an existing target, **When** `GET`/`PATCH`/`DELETE` endpoints are called, **Then** the operation succeeds with workspace-scoped tenancy and permission check.
+7. **Given** a `SocialMonitoredTarget`, **When** `UniversalScrapeTargetMapper.map(target)` runs, **Then** it returns `(tool_name, arguments)` for the matching XActions tool (Facebook/Twitter named tools or `x_scrape` for VN domains; fallback to `x_crawl_post`).
+8. **Given** a target with `account_id`/`proxy_url`, **When** the scheduler runs, **Then** the request includes those values; fallback to `XACTIONS_FACEBOOK_ACCOUNT_ID` or `x_facebook_list_accounts`; bindings stored in `xactions_proxy_bindings`.
+9. **Given** admin telemetry, **When** `x_governor_status` and `x_admin_stream_metrics` are called, **Then** health/proxy/quota and stream lag metrics are returned; and `x_admin_stream_alerts` breaches send admin Telegram/Email alerts.
+10. **Given** the implementation complete, **Then** unit/integration tests cover transport, error matrix, mapper, stream end-to-end, and an opt-in MCP smoke test.
+
+**Validation & Testing:**
+- Unit test: `test_xactions_mcp_client.py` — session reuse, auth headers, envelope parsing, error codes.
+- Unit test: `test_xactions_mapper.py` — all 13 platforms return correct tool/args.
+- Integration test: `test_social_redis_stream.py` — producer/consumer end-to-end.
+- Optional smoke: `test_xactions_mcp_smoke.py` — live daemon `list_tools()`.
+
+**Status:** `[ready-for-dev]`
+
+_AD-SOC-1 · AD-SOC-2 · AD-SOC-3 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-7 · AD-SOC-8 · AD-SOC-9 · AD-SOC-10 · AD-SOC-11 · TRINITY-4_
+
+---
+
+### Story 21.8b: Redis Stream Consumer Celery Wiring
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Registers `process_social_stream` as Celery beat task.
+
+_AD-SOC-4 · AD-SOC-6 · AD-SOC-7_
+
+### Story 21.8c: Multi-Domain Social Target Expansion
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Expands platform enum to 13+ platforms.
+
+_AD-SOC-9 · AD-SOC-1_
+
+### Story 21.8d: Universal Scrape Target Mapper
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Maps `SocialMonitoredTarget` to XActions tool and arguments.
+
+_AD-SOC-9 · AD-SOC-4_
+
+### Story 21.8e: Per-Account Proxy and Cookie Binding
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Per-account XActions account and proxy binding.
+
+_AD-SOC-3 · AD-SOC-11_
+
+### Story 21.8f: XActions Governance and Health Integration
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Admin telemetry and alert hooks.
+
+_AD-SOC-11 · AD-SOC-7_
+
+### Story 21.8g: XActions MCP Chat Connector
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. MCP chat connector integration.
+
+_AD-SOC-1 · AD-SOC-4_
+
+---
+
+### Story 21.9: Executive Decision Maker Mapping & B2B Lead Outreach
 
 As an enterprise sales team or SaaS founder,
 I want to identify C-Level executives and HR leaders of expanding companies,
@@ -3003,7 +3296,7 @@ _AD-LI-4 · AD-LI-6_
 
 ---
 
-### Story 21.10: 1-Click Reverse-ICP from Website / Project URL `[DONE]`
+### Story 21.10: 1-Click Reverse-ICP from Website / Project URL
 
 As a business owner or broker,
 I want to paste my website domain or a real estate project link and have Nowing automatically generate the Ideal Customer Profile (ICP), search filters, and lead table,
@@ -3018,7 +3311,7 @@ _FR-80 · AD-31 · AD-37_
 
 ---
 
-### Story 21.11: Actionable Turn Dispatches (Suggested Action Pills) `[DONE]`
+### Story 21.11: Actionable Turn Dispatches
 
 As an active user in the split-view chat interface,
 I want AI responses to include contextual 1-click execution chips (Suggested Action Pills),
@@ -3033,7 +3326,7 @@ _FR-81 · AD-31 · UX-Contract-Lead-Panel_
 
 ---
 
-### Story 21.12: Viral Social Outbound Co-pilot (Voice Learner & Outlier Analyzer) `[DONE]`
+### Story 21.12: Viral Social Outbound Co-pilot
 
 As a founder or real estate influencer,
 I want AI to analyze high-performing viral posts in my industry across Facebook, X, and TikTok, learn my voice, and rewrite proven formats into original lead-magnet posts,
@@ -3048,7 +3341,7 @@ _FR-82 · AD-SOC-1 · AD-SOC-6_
 
 ---
 
-### Story 21.13: Multi-Table Tabs & Send/Export Hub `[DONE]`
+### Story 21.13: Multi-Table Tabs & Send/Export Hub
 
 As a sales rep managing multiple target campaigns,
 I want a browser-tabbed spreadsheet interface supporting multiple simultaneous lead tables with live Zero-cache sync and multi-format export,
@@ -3063,7 +3356,7 @@ _FR-83 · AD-31 · AD-40 · Zero-Cache-Publication_
 
 ---
 
-### Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine `[DONE]`
+### Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engine
 
 As a compliance manager and sales leader,
 I want to manage Do-Not-Call / Exclusion lists for contacts and domains with CSV bulk import,
@@ -3078,7 +3371,7 @@ _FR-84 · AD-25 · AD-31 · Nghị định 91/2020/NĐ-CP · Nghị định 13/2
 
 ---
 
-### Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters `[DONE]`
+### Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator & Universal Scraper Adapters
 
 As an active sales rep or researcher,
 I want to describe my target prospect in natural language in the chat,
@@ -3100,7 +3393,7 @@ _FR-85 · AD-31 · AD-37 · AD-44_
 
 ---
 
-### Story 21.16: Nowing Split-View Canvas & Workspace Modernization `[DONE]`
+### Story 21.16: Nowing Split-View Canvas & Workspace Modernization
 
 As a workspace user,
 I want a 2-panel split canvas (340px Chat Co-pilot on the left + Resizable Dynamic Canvas on the right) with Mint Green theme, Sọc Caro grid background, bi-directional context sync, and 100% production-ready real APIs,
@@ -3116,7 +3409,7 @@ _FR-86 · AD-31 · UX-Contract-Lead-Panel_
 
 ---
 
-### Story 21.17: Complete Origami Landing Page & Public Site Transformation `[DONE]`
+### Story 21.17: Complete Origami Landing Page & Public Site Transformation
 
 As a prospective visitor,
 I want a world-class, clean, editorial-style Landing Page with 10 full sections, interactive 3-tab product demo, 12 verticals menu, and clear $0 pricing,
@@ -3140,7 +3433,7 @@ _FR-87 · UX-Design-Landing-Page_
 
 ---
 
-### Story 21.18: Partners Affiliate Portal & $0 Pricing Page Deployment `[DONE]`
+### Story 21.18: Partners Affiliate Portal & $0 Pricing Page Deployment
 
 As an affiliate partner or agency,
 I want dedicated `/pricing` and `/partners` pages with commission tracking and Stripe/VietQR payout ledger,
@@ -3154,7 +3447,7 @@ _FR-88 · AD-42_
 
 ---
 
-### Story 21.19: Lead Source Adapter Live Data Integration & Persistence `[DONE]`
+### Story 21.19: Lead Source Adapter Live Data Integration & Persistence
 
 As a sales rep or real estate broker in Vietnam,
 I want to describe my target prospects in natural language in chat and get a live multi-source lead table,
@@ -3174,7 +3467,7 @@ _FR-89 · AD-42 · AD-44_
 
 ---
 
-### Story 21.20: Extend Multi-Source Lead Gen Adapters `[done]`
+### Story 21.20: Extend Multi-Source Lead Gen Adapters
 
 As a sales rep or real estate broker in Vietnam,
 I want `multi_source_lead_gen` to also cover the sources it currently advertises but does not yet wire (`muaban_bds`, `vn_jobs`/`VietnamWorks`, `Mua Sắm Công` / `muasamcong`),
@@ -3192,7 +3485,7 @@ _FR-85 · FR-43 · FR-44 · FR-45 · FR-46 · AD-42_
 
 ---
 
-### Story 21.21: Deterministic Confidence Gate & Selective Micro-LLM Fallback Worker `[ready-for-dev]`
+### Story 21.21: Deterministic Confidence Gate & Selective Micro-LLM Fallback Worker
 
 As a sales rep or lead researcher,
 I want scraped lead records to be automatically classified by schema completeness and only the truly incomplete records to be selectively enriched by a lightweight micro-LLM,
@@ -3216,9 +3509,100 @@ _FR-85 · AD-103 · AD-119 (Rules 1-3, 6) · Decree 13/2023 Compliance_
 
 ---
 
+### Story 26.25: Customer Location Profile Selector with Progressive Disclosure
+
+As a sales rep or broker in Vietnam,
+I want to specify where my target customers live, work, and transact using a structured province/district/ward selector that starts simple and expands only when I need more detail,
+So that lead searches match the right geography without overwhelming me with too many fields up front.
+
+**Acceptance Criteria:**
+- **Given** the Playbook Builder reaches the location step, **When** the user opens it, **Then** a `LocationSelector` component is displayed with a required Province/Thành phố combobox, an optional Quận/Huyện multi-select that appears after a province is selected, and an optional Phường/Xã multi-select collapsed behind a "Khu vực chi tiết (nâng cao)" toggle.
+- **Given** the location type row, **When** the user sees it, **Then** the default is "both" (residence + transaction) and the user can switch to "customer_residence", "customer_work", or "transaction".
+- **Given** a smart-search text box, **When** the user types a ward, district, province, or common alias ("HCM", "Saigon", "Hà Nội", "Ha Noi"), **Then** the system normalizes Unicode and diacritics, suggests matching GSO/TCTK codes, and tags the selected location as chips.
+- **Given** quick-location chips ("Hà Nội", "TP.HCM", "Đà Nẵng", "Hải Phòng", "Cần Thơ"), **When** the user clicks one, **Then** the corresponding province code is selected and nearby districts are optionally suggested.
+- **Given** a selected province, **When** the user opens the district dropdown, **Then** it lists only districts belonging to that province; when a district is selected, the ward dropdown lists only wards belonging to that district.
+- **Given** the user selects multiple districts or wards, **When** the selection is saved, **Then** the UI displays compact chips with remove buttons and `location_text` is updated for the final summary.
+- **Given** no province selected, **When** the user tries to proceed, **Then** the form shows a validation error and prevents advancing.
+
+_FR-69.2 · FR-85 · AD-31 · UX-Origami-Split-Canvas_
+
 ---
 
-## Epic 22: Telegram Scraper & Channel Ingestion Engine `ready-for-dev`
+### Story 26.26: Location-Aware Adapter Routing & Coverage Quality
+
+As a lead generation orchestrator,
+I want the system to prefer and rank adapters that actually cover the selected provinces, districts, and wards,
+So that scraping budget is spent on sources that are most likely to return relevant local leads.
+
+**Acceptance Criteria:**
+- **Given** a `LeadSourceAdapter` implementation, **When** it is registered, **Then** it may declare `supported_provinces: list[str]` and `coverage_quality_by_location: dict[str, float | str]` (province/district code → quality enum or score).
+- **Given** a campaign with a `LocationProfile`, **When** `resolve_adapters_for_campaign()` runs, **Then** the system first resolves adapters by intent/keyword/category as today, then re-orders the result using a composite score: `location_coverage_score * 0.4 + vertical_relevance_score * 0.4 + cost_efficiency_score * 0.2`.
+- **Given** two adapters in the same category, **When** one has `coverage_quality_by_location` >= "medium" for the target province and the other has "low" or none, **Then** the higher-coverage adapter gets a larger budget share and higher execution priority.
+- **Given** no location match, **When** all adapters are otherwise available, **Then** the system falls back to keyword-based routing and surfaces a warning in the plan summary.
+- **Given** the orchestrator filters leads, **When** `pre_filter_by_icp()` runs with a `LocationProfile`, **Then** it tokenizes and normalizes the lead's `city`, `address`, `title`, and `content_snippet`, matches province/district/ward codes against the location name trie with Unicode normalization and diacritic stripping, and rejects leads that do not match.
+- **Given** adversarial inputs (e.g. "Quận 1" vs "Quận 10-12", "Châu Thành" in multiple provinces, mixed NFD/NFC), **When** the matcher runs, **Then** it uses word-boundary token matching and hierarchical precedence (ward → district → province) to avoid false positives.
+- **Given** a lead matches the target location, **When** fit scoring runs, **Then** `location_weight` (default 0.3) is applied to blend the location match (0–100) with the existing `fit_score`.
+
+_FR-69.2 · FR-69.3 · FR-85 · AD-31 · AD-42 · NFR-1_
+
+---
+
+### Story 26.27: Pre-Flight Lead Plan Summary & PlanSummaryCard
+
+As a sales rep,
+I want to review a concise plan summary (sources, locations, intent, product, channels, estimated lead count, estimated cost) before the system starts scraping,
+So that I can adjust inputs without wasting credits on a poorly targeted run.
+
+**Acceptance Criteria:**
+- **Given** a completed playbook wizard, **When** the user reaches the final step, **Then** a `PlanSummaryCard` is rendered inside the playbook dialog and a mirror of the card is available in the Right-Canvas (Origami split-view) for persistent review.
+- **Given** the plan summary, **When** it is displayed, **Then** it shows: selected preset, intent, product, `LocationProfile` summary, active channels, target sources, estimated reachable lead count, and estimated credit cost.
+- **Given** each source in the plan, **When** the user expands its coverage badge, **Then** the card displays `supported_provinces`, `coverage_quality_by_location` for the selected locations (high/medium/low/none), and any `degraded` reason.
+- **Given** a source with insufficient coverage for the selected location, **When** the plan is rendered, **Then** the card shows a warning and suggests a broader province or nearby alternative.
+- **Given** the smoke-test button, **When** clicked, **Then** the plan runs with `limit=5`, updates the card with actual reachable and cost numbers, and switches the CTA to "Chạy đầy đủ" or "Chỉnh sửa kế hoạch".
+- **Given** the plan summary, **When** the user clicks "Quay lại", **Then** they can edit any previous step without losing selections; when they click "Chạy chiến dịch", **Then** the multi-source lead orchestrator starts the full run.
+
+_FR-69.4 · FR-85 · FR-86 · AD-31 · UX-Origami-Split-Canvas_
+
+---
+
+### Story 26.28: Source Coverage Badge in Right-Canvas
+
+As a sales rep actively monitoring a lead discovery run,
+I want to see source status and coverage context inside the Right-Canvas instead of a separate page,
+So that I can keep the chat/table in focus while checking why a source is slow, degraded, or missing from the plan.
+
+**Acceptance Criteria:**
+- **Given** a playbook run or active multi-source search, **When** the Right-Canvas is open, **Then** it renders a `SourceStatusPanel` showing each source's `last_execution_status`, `coverage_quality_by_location` for the current `LocationProfile`, and toggle to enable/disable the source for this run.
+- **Given** a source in the panel, **When** its coverage for the selected location is "high", "medium", "low", or "none", **Then** the badge uses the corresponding color and tooltip text, and the panel explains what the rating means.
+- **Given** a degraded source, **When** the user expands it, **Then** the panel shows the reason (rate-limited, proxy down, anti-bot, location unsupported) and the last successful/failed heartbeat time.
+- **Given** a source is toggled off, **When** the user runs the playbook, **Then** the orchestrator excludes that source for this run only and updates the plan summary in real time.
+- **Given** the user is not in an active run, **When** they open Right-Canvas, **Then** the panel shows the global source health dashboard from cached `capability status` data without requiring a new run.
+
+_FR-69.4 · FR-86 · AD-31 · AD-42 · UX-Origami-Split-Canvas_
+
+---
+
+### Story 26.29: Smoke Test Feedback Loop for Location Refinement
+
+As a sales rep,
+I want a 5-lead smoke test that previews real results and lets me refine the location profile before committing a full run,
+So that I can correct location mismatches early and avoid paying for irrelevant leads.
+
+**Acceptance Criteria:**
+- **Given** a playbook plan summary, **When** the user clicks "Chạy thử 5 lead", **Then** the orchestrator runs a low-cost preview, returns up to 5 leads, and renders a compact `NowingLeadMatrix` preview with location, source, and content snippet.
+- **Given** the smoke test results, **When** the user is asked "Địa điểm có đúng không?", **Then** they can choose "Đúng — chạy đầy đủ", "Thu hẹp khu vực", "Mở rộng khu vực", "Đổi nguồn", or "Chỉnh vị trí chi tiết".
+- **Given** the user chooses to refine the location, **When** the location step reopens, **Then** the previous `LocationProfile` is pre-filled and the user can add/remove province, district, or ward selections.
+- **Given** a refined location, **When** the user re-runs smoke test, **Then** the new 5-lead preview reflects the updated profile and a diff summary highlights what changed (added/removed locations, source order, estimated cost).
+- **Given** the user approves after smoke test, **When** they click "Chạy đầy đủ", **Then** the full run uses the final `LocationProfile` and the smoke-test leads are included in the final results with deduplication.
+- **Given** the smoke test returns 0 leads, **When** the panel renders, **Then** it explains why (no source coverage, too narrow, source degraded) and suggests next actions.
+
+_FR-69.4 · FR-85 · AD-31 · UX-Origami-Split-Canvas_
+
+---
+
+---
+
+## Epic 22: Telegram Scraper & Channel Ingestion Engine
 
 > **Epic Goal:** Cung cấp giải pháp trích xuất dữ liệu đa nguồn từ Telegram (kênh công khai, nhóm thảo luận, bài đăng, bình luận, media), tự động phân tích thực thể (SĐT, giá BĐS, email), bảo vệ tài khoản chống khóa (Anti-ban/FloodWait), tích hợp thông báo tức thời (Alert Engine) và cung cấp công cụ tra cứu cho AI Agent.
 
@@ -3316,7 +3700,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-## Epic 23: Lead Capture, Real-Time Enrichment & Automated Outreach `done`
+## Epic 23: Lead Capture, Real-Time Enrichment & Automated Outreach
 *Governed by Architecture Spine: `architecture-epic23-lead-infrastructure.md`*
 *Reviewed & Ratified: 2026-08-16 by Winston (Arch), Mary (BA), Sally (UX), Amelia (Dev), Murat (QA)*
 
@@ -3335,7 +3719,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 23.1: Asynchronous Scraper Worker Pool (Celery + Redis Streams)
+### Story 23.1: Asynchronous Scraper Worker Pool
 - **User Value:** Lead scraping across 15+ Vietnamese platforms runs asynchronously in parallel Celery workers without blocking chat SSE responses, streaming individual leads to the browser matrix via Zero-cache / Redis pub-sub as they are found.
 - **Key Deliverables:**
   - `LeadScraperWorker`: Celery tasks on dedicated queue `nowing.lead_scrapers` with per-platform rate limiters (Leaky bucket in Lua) and circuit breaker.
@@ -3434,7 +3818,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.1: Multi-Channel Drip Outreach Campaign Engine (Sequence Backend — Email-first MVP) `[done]`
+### Story 24.1: Multi-Channel Drip Outreach Campaign Engine (Sequence Backend
 - **User Value:** Sales teams and researchers can define automated multi-step outreach Sequences (Email in MVP; Zalo ZNS and Telegram reserved behind feature gates) with conditional delays, quiet-hour compliance, and real-time opt-out/reply handling.
 - **Acceptance Criteria:**
   - **Given** an active lead list in Nowing Workspace,  
@@ -3452,7 +3836,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.2: Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine `[ready-for-dev]`
+### Story 24.2: Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine
 - **User Value:** Automatically enrich scraped leads with verified phone numbers, Zalo registration status, and corporate legal entity details (Tax Code / MST, charter capital, legal representative, operating status) to maximize lead quality.
 - **Acceptance Criteria:**
   - **Given** raw lead records with business names or addresses,  
@@ -3467,7 +3851,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.3: Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling `[ready-for-dev]`
+### Story 24.3: Multi-Seat Team CRM Pipeline & Shared Workspace Credit Pooling
 - **User Value:** Enable agencies and sales teams to collaborate in real-time on a shared Kanban pipeline, assign leads via Round-robin, track conversation history, and share a central workspace credit wallet with granular per-member caps.
 - **Acceptance Criteria:**
   - **Given** `/dashboard/[workspace_id]/leads/pipeline`,  
@@ -3482,7 +3866,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.4: Nowing Lead Clipper — Chrome Extension for 1-Click Lead Capturing `[ready-for-dev]`
+### Story 24.4: Nowing Lead Clipper
 - **User Value:** Sales reps and sourcers browsing Facebook Groups, LinkedIn, Batdongsan.com.vn, or TopCV can capture leads, posts, and contact information directly into their Nowing Workspace table with 1 click.
 - **Acceptance Criteria:**
   - **Given** the Nowing Chrome Extension (Manifest V3) installed and authenticated with `leads:clipper:write` scoped PAT,  
@@ -3494,7 +3878,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.5: Vertical Playbook Marketplace & Community Workflow Templates `[ready-for-dev]`
+### Story 24.5: Vertical Playbook Marketplace & Community Workflow Templates
 - **User Value:** Users can browse, install, and execute pre-built 1-click workflows tailored to specific industries (Real Estate Brokerage, IT Headhunting, B2B SaaS Sales, E-Commerce Price Monitoring).
 - **Acceptance Criteria:**
   - **Given** `/dashboard/[workspace_id]/playbooks/marketplace`,  
@@ -3506,7 +3890,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.6: Two-Way AI Outreach Auto-Reply Agent `[ready-for-dev]`
+### Story 24.6: Two-Way AI Outreach Auto-Reply Agent
 - **User Value:** Automated AI Agent that listens to incoming prospect replies on Zalo OA and Telegram, intelligently answers inquiries based on the workspace's uploaded documents/FAQ, and escalates hot leads to human sales reps.
 - **Acceptance Criteria:**
   - **Given** an incoming message from an outreach prospect via Zalo OA or Telegram Bot,  
@@ -3516,7 +3900,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 24.7: Multi-Channel Drip Outreach Campaign Engine (Zalo ZNS + Telegram + Email Cadence) `[backlog]`
+### Story 24.7: Multi-Channel Drip Outreach Campaign Engine
 - **User Value:** Sales teams and researchers can define automated multi-step outreach cadences across Zalo ZNS, Telegram Bot, and Email with AI-personalized copy, conditional delays (e.g. "Wait 2 days for reply"), and automated status transitions.
 - **Acceptance Criteria:**
   - **Given** an active lead list in Nowing Workspace,  
@@ -3546,7 +3930,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 25.1: Multi-Tenant User & Workspace Hub + Scoped Impersonation `[ready-for-dev]`
+### Story 25.1: Multi-Tenant User & Workspace Hub + Scoped Impersonation
 - **User Value:** Superadmin can search, view 360° user/workspace activity, suspend/ban fraudulent accounts, and securely impersonate users in 1-click to triage customer support issues without credential sharing.
 - **Acceptance Criteria:**
   - **Given** `/admin/users` and `/admin/workspaces`,  
@@ -3561,7 +3945,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 25.2: Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger `[ready-for-dev]`
+### Story 25.2: Manual Credit Adjustment & Refund Desk with Dual-Audit Ledger
 - **User Value:** Superadmin can credit or debit tokens/credits to any workspace for customer support compensation, bank transfer top-ups, or partner promotions with strict operational guardrails and immutable audit logs.
 - **Acceptance Criteria:**
   - **Given** `/admin/workspaces/{id}/credits`,  
@@ -3576,7 +3960,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 25.3: Affiliate Partner Payout Desk & Anti-Fraud Engine `[ready-for-dev]`
+### Story 25.3: Affiliate Partner Payout Desk & Anti-Fraud Engine
 - **User Value:** Superadmin can audit affiliate partner payout requests, view automated fraud risk scores (IP/Device clusters, self-referral rings), and execute 1-click 24/7 bank payouts via VietQR / Napas API.
 - **Acceptance Criteria:**
   - **Given** `/admin/affiliates/payouts`,  
@@ -3591,7 +3975,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 25.4: Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry `[ready-for-dev]`
+### Story 25.4: Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry
 - **User Value:** Superadmin can monitor real-time AI infrastructure costs, gross margins per model/workspace, proxy pool availability, and Celery worker queue health with emergency controls.
 - **Acceptance Criteria:**
   - **Given** `/admin/telemetry`,  
@@ -3606,7 +3990,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 25.5: Dynamic Scraper Rule Engine & ReDoS Sandbox `[ready-for-dev]`
+### Story 25.5: Dynamic Scraper Rule Engine & ReDoS Sandbox
 - **User Value:** Superadmin can update CSS selectors, request delays, and retry policies for scrapers (Batdongsan, Chotot, TopCV, Muaban) live on the dashboard without redeploying backend code.
 - **Acceptance Criteria:**
   - **Given** `/admin/scrapers/rules`,  
@@ -3621,7 +4005,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 25.6: Security Audit Trail Logs & In-App Broadcast Announcements `[ready-for-dev]`
+### Story 25.6: Security Audit Trail Logs & In-App Broadcast Announcements
 - **User Value:** Full compliance audit logging for PDPD Decree 13, global DNC blacklist management, and 1-click in-app banner announcements for system maintenance or promotional campaigns.
 - **Acceptance Criteria:**
   - **Given** `/admin/audit-logs`,  
@@ -3634,12 +4018,37 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
     **When** admin creates an announcement banner (Maintenance / Promo),  
     **Then** the banner mounts on top of `/dashboard/*` for targeted or all workspaces via Zero-cache realtime push.
 
+### Story 25.7: Third-Party Health & Operations Dashboard
+- **User Value:** Platform superadmin can monitor the health of every third-party integration (LLM/embedding models, scrapers, proxies, connectors, messaging, payments, storage, infrastructure) from a unified dashboard with real-time status, drill-down, and alerting.
+- **Acceptance Criteria:**
+  - **Given** `/admin/telemetry` is loaded,
+    **When** the dashboard renders,
+    **Then** it shows tabbed sections: Infrastructure, LLM/AI, Scrapers, Connectors, Messaging, Payments, Storage, and a top Active Alerts banner.
+  - **Given** a probe target (e.g. `azure/gpt-5.1`, `batdongsan.scrape`, `chainlens/research`, `telegram/bot`),
+    **When** the scheduler runs,
+    **Then** it records `latency_ms`, `status` (`healthy`/`degraded`/`unavailable`/`not_configured`/`disabled`), `error_rate_15m`, and `last_error`.
+  - **Given** a critical service fails 2 consecutive probes,
+    **When** the alert engine evaluates rules,
+    **Then** it creates an `admin_health_alerts` row and dispatches via configured channels (in-app, email, Telegram, Slack).
+  - **Given** the superadmin clicks a service card,
+    **When** the drill-down opens,
+    **Then** it displays a 24h latency/success-rate chart and recent error logs.
+- **Consequences:**
+  - New `app/services/health/` module with `ThirdPartyHealthService`, `HealthProbeScheduler`, `HealthProbeRegistry`, `HealthResultStore`, `AdminHealthAlertEngine`.
+  - New or extended admin routes (`admin_telemetry_routes.py` or `admin_operations_routes.py`) and frontend tabbed `/admin/telemetry` page.
+  - DB migrations for `admin_health_status`, `admin_health_history`, `admin_health_alert_rules`, `admin_health_alerts`.
+  - Reuses `CapabilityRegistry` to discover probe targets; reuses Generic Alert Engine (`app/alerts/`) for rule scheduling and notification.
+  - Reuses `model_connection_service` for model/connection verification, `admin_telemetry_service` for proxy/celery, `hybrid_llm_router._vllm_health()` for vLLM.
+- **Dependencies:** Story 25.4 (Realtime Telemetry), Story 6.8 (Generic Alert Engine), Story 8.11 (Global Model Config), Story 26.3 (Hybrid LLM Router — optional for vLLM health).
+
 ---
 
-## Epic 26: Autonomous Lead Missions & Deep Sales Research `in-progress`
+## Epic 26: Autonomous Lead Missions & Deep Sales Research
 *Governed by Architecture Spine: `architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md` (AD-101 to AD-110) & BMAD Full-Spectrum Panel (Winston, John, Mary, Amelia, Murat, Sally, DevOps)*
 
 > **UX Refinement (2026-08-20):** Epic 26 bổ sung story cải tiến UX cho `MissionControlWidget` (Glass Box) và `PhoneUnlockPill` / `SmartUnlockPopover` (Two-Tier Phone Unlock) dựa trên `ux-spec-epic26-mission-control-phone-unlock-2026-08-20.md` (UX-DR1–UX-DR12). Mục tiêu: mission minh bạch chi phí, tránh mất tiền oan, đảm bảo accessibility và analytics đầy đủ.
+>
+> **Stories 26.25–26.29 (Customer Location Profile & Pre-Flight Lead Plan):** được remap từ Epic 21.25–21.29 sau merge 2026-08-29. Các story này thuộc E26 vì liên quan Autonomous Lead Missions / Pre-Flight Plan / DSH Location Profile.
 
 ### Architectural Invariants (AD-101 – AD-110)
 - **AD-101 (Stateless ChainLens & Unified pgvector Ingestion):** ChainLens chỉ đóng vai trò Crawler/Parser không lưu trạng thái. Chunks được đẩy về `POST /v1/chainlens/ingest` để Nowing tự tạo embeddings và lưu vào PostgreSQL 16 `chunks` (HNSW).
@@ -3655,7 +4064,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.1: FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline `[done]`
+### Story 26.1: FastMCP Ingest Gateway, Batch Ingestion & Stateless ChainLens Pipeline
 - **User Value:** Nowing backend exposes high-throughput, deadlock-free FastMCP batch ingestion endpoints and an idempotent callback receiver for stateless ChainLens crawls to index chunks directly into Nowing PostgreSQL 16 pgvector.
 - **Acceptance Criteria:**
   - **Given** `POST /mcp/v1/tools/batch_ingest_leads`,  
@@ -3670,7 +4079,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.2: dsh-worker Sidecar Container, Redis Streams & Task Resumption `[done]`
+### Story 26.2: dsh-worker Sidecar Container, Redis Streams & Task Resumption
 - **User Value:** Autonomous long-running missions (1–8h) execute reliably in an isolated sidecar container without blocking FastAPI/Celery, with automatic task recovery from crashes via Redis `XAUTOCLAIM`.
 - **Acceptance Criteria:**
   - **Given** `nowing-dsh-worker` container running with `tini` as PID 1,  
@@ -3682,7 +4091,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.3: Multi-Tier Hybrid LLM Router (Gemini Flash Free Tier + DeepSeek V4 + Qwen 3.8) `[done]`
+### Story 26.3: Multi-Tier Hybrid LLM Router
 - **User Value:** AI reasoning and extraction costs are minimized by prioritizing Google Gemini Flash (Free Tier, $0 COGS) and Local vLLM Qwen 3.8-27B ($0 COGS), bursting to DeepSeek-V4-Flash and DeepSeek-V4-Pro-0813 for deep reasoning with 100% Pydantic JSON schema compliance.
 - **Acceptance Criteria:**
   - **Given** `HybridLLMRouter` receiving text extraction and tool dispatch tasks,  
@@ -3698,7 +4107,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.4: PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out `[done]`
+### Story 26.4: PII Vault AES-256 Encryption, HMAC Deduplication & Decree 13 Opt-Out
 - **User Value:** Full compliance with Decree 13/2023/ND-CP with encrypted phone/email storage, blind HMAC deduplication, and automated opt-out suppression.
 - **Acceptance Criteria:**
   - **Given** a new lead contact,  
@@ -3710,7 +4119,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.5: Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx `[done]`
+### Story 26.5: Split Canvas Glass Box Mission Control, Two-Tier Phone Unlock & Shimmer Influx
 - **User Value:** Users can track live autonomous AI reasoning with a 4-stage stepper without feeling UI freeze, and unlock phone numbers smoothly with a 1-Click Fast Unlock session toggle.
 - **Acceptance Criteria:**
   - **Given** an active mission in Split Canvas,  
@@ -3722,7 +4131,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.6: Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog `[done]`
+### Story 26.6: Telegram Interactive Checkpoint Bot & 1-Click Auto-Refund Dialog
 - **User Value:** Mobile sales reps receive 3-second glanceable lead cards on Telegram, make inline decisions with `editMessageText`, and trigger automated 24h refunds for invalid numbers with a 15% safety cap.
 - **Acceptance Criteria:**
   - **Given** a high-fit lead detected during a mission,  
@@ -3737,7 +4146,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.7: Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing `[done]`
+### Story 26.7: Hermetic Quality Gates, Benchmark Suite & Anti-Zombie Chaos Testing
 - **User Value:** Automated CI/CD pipelines run at $0 API cost while enforcing strict data extraction accuracy and 0-zombie process guarantees.
 - **Acceptance Criteria:**
   - **Given** `nowing_evals` executing the regression benchmark,  
@@ -3749,7 +4158,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.10: Mission Control Glass Box UX Refinement `[ready-for-dev]`
+### Story 26.10: Mission Control Glass Box UX Refinement
 - **User Value:** Sales managers and SDRs can track the AI mission progress, understand costs, and download deliverables without confusion.
 - **Acceptance Criteria:**
   - **Given** an active DSH mission,  
@@ -3778,7 +4187,7 @@ So that I receive instant listing leads, query Telegram history via AI chat, and
 
 ---
 
-### Story 26.11: Two-Tier Phone Unlock UX Refinement `[ready-for-dev]`
+### Story 26.11: Two-Tier Phone Unlock UX Refinement
 - **User Value:** Sales reps can unlock phone numbers with transparent cost, optional fast unlock, and a reliable undo option without accidental credit spend.
 - **Acceptance Criteria:**
   - **Given** a masked phone pill,  
@@ -3899,15 +4308,32 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-### Mở rộng Epic 26: Story 26.9a — Wide Research Crawl Subgraph `[ready-for-dev]`
+### Story 26.9a: Wide Research Crawl Subgraph
 **Scope:** Tách phần "Wide Research" ra khỏi client độc lập, biến thành **LangGraph `crawl` subgraph** trong DSH mission (bổ sung cho `LangGraphMissionExecutor` của Story 26.8). Subgraph gọi `chainlens.research` với **`output=table` + `outputSchema`** (Direction A — sử dụng contract ChainLens đã có, không chờ `output=wide_research` query param), parse `ResearchOutput.structured_output` / `answer`, ghi `cost_micros` vào `checkpoint.cost_micros`, và lưu ma trận `sources` / `wide_research_matrix` vào `dsh_missions.checkpoint` JSONB để resumption. **Tận dụng code đã có:** `ChainLensServiceAuth` (`app/services/chainlens/auth.py`), `ResearchInput`/`ResearchOutput` (`app/capabilities/chainlens/research/schemas.py`), ChainLens research executor (`app/capabilities/chainlens/research/executor.py`), `DshRestClient` (`app/tasks/dsh_worker.py`), DSH mission routes (`app/routes/dsh_routes.py`), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`). **Code mới:** `app/tasks/dsh_worker_crawl_subgraph.py`, unit tests cassettes. Story 26.9a xong mới unblock 26.9b. Governed by `AD-102`, `AD-106`, `AD-107`, `AD-108`, `AD-112`.
 
-### Mở rộng Epic 26: Story 26.9b — Pro Excel Formatter in Daytona Sandbox `[backlog]`
+### Story 26.9b: Pro Excel Formatter in Daytona Sandbox
 **Scope:** Nhận `checkpoint.wide_research_matrix` từ 26.9a, chạy Pro Excel Template Script trong **Daytona sandbox đã có sẵn** để xuất `.xlsx` đa tab. **Tận dụng code đã có:** Daytona sandbox lifecycle (`middleware/filesystem/sandbox.py`), `sandbox_routes.py`, pre-installed `pandas`/`numpy`/`openpyxl` (`execute_code/description.py`). **Code mới:** template `scripts/sandbox_pro_excel_template.py` và node `deliver` trong LangGraph (hoặc mở rộng `ingestion`). Governed by `AD-112`.
+
+### Story 26.9c: Native `wide_research` Matrix Upgrade
+
+As a DSH Mission researcher,
+I want the LangGraph `crawl` subgraph to use ChainLens's native `output=wide_research` engine,
+so that multi-entity competitive research matrices (up to 50 entities) are generated with native matrix citations rather than the fallback `output=table` workaround.
+
+**Acceptance Criteria:**
+1. **Given** a DSH mission with research targets (10–50 entities), **When** the LangGraph crawl subgraph executes, **Then** it calls ChainLens `POST /api/v1/search` with `output: 'wide_research'`, `stream: true`, and `numEntities: N`.
+2. **Given** ChainLens streams `entity_result` events containing `entityName`, `attributes`, and `citations`, **When** the stream completes, **Then** `dsh_worker_crawl_subgraph.py` aggregates all entities into `checkpoint.wide_research_matrix`.
+3. **Given** `checkpoint.wide_research_matrix` exists, **When** mission resumes from checkpoint, **Then** the crawl node skips re-invoking ChainLens and transitions directly to reasoning.
+4. **Given** `entity_result` events stream in over 45–120s (AD-108), **When** each entity completes, **Then** it is persisted incrementally to `checkpoint.wide_research_matrix` so a worker restart never loses completed entities; UI shows live progress "Đã phân tích N/M thực thể…".
+
+**Dev notes (Amelia 2026-09-20):** `dsh_worker_crawl_subgraph.py` already forwards `output`/`outputSchema`; change to `output="wide_research"` + `numEntities`, handle SSE `entity_result` events, persist each entity incrementally to `checkpoint.wide_research_matrix` (AD-108). `ResearchInput.output` Literal (`schemas.py:116`) may need `"wide_research"` added.
+
+_Governed by `AD-102`, `AD-106`, `AD-108`, `AD-112`._
+
 
 ---
 
-### Mở rộng Epic 24: Story 24.8 — Browser Operator CDP Tool for DSH Crawl + Human Live Takeover
+### Story 24.8: Browser Operator CDP Tool for DSH Crawl + Human Live Takeover
 **Scope:** 24.8 cung cấp một **capability `browser_operator.execute`** để agent điều khiển trình duyệt Chrome của user qua CDP thông qua Plasmo extension. Chi tiết:
 - (a) `app/capabilities/browser_operator/` (`definition.py`, `schemas.py`, `executor.py`) đăng ký CDP tool với các action `navigate`, `click`, `fill`, `scroll`, `extract`, `take_screenshot`, `detect_challenge`.
 - (b) `app/agents/chat/multi_agent_chat/subagents/builtins/web_crawler/system_prompt.md` hướng dẫn subagent gọi `browser_operator.execute` khi user yêu cầu điều khiển trình duyệt (`mở trang`, `click`, `scroll`, `screenshot`, etc.).
@@ -3920,13 +4346,13 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-### Mở rộng Epic 6: Story 6.10 — Inbound Mail Gateway (`task@nowing.ai`) & Stateful Scheduled Tasks 2.0
+### Story 6.10: Inbound Mail Gateway (`task@nowing.ai`) & Stateful Scheduled Tasks 2.0
 **Scope:** Thêm email adapter vào gateway framework và nâng cấp Celery scheduler thêm delta analysis. Với `LangGraphMissionExecutor` (26.8) đã có checkpoint/resumption qua `dsh_missions.checkpoint`, phần **Stateful Scheduled Tasks 2.0** nên được triển khai như một **DSH mission template** (`schedule_type=recurring_report`) thay vì snapshot storage + scheduler riêng. **Tận dụng code đã có:** Gateway webhook framework (`gateway_webhook_routes.py`), Celery Beat scheduler (`celery_app.py`), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`), `dsh_missions.checkpoint` JSONB. **Code mới:** (a) `app/gateway/email/adapter.py` tiếp nhận webhook SendGrid/Mailgun, parse attachment, enqueue DSH mission, reply SMTP, (b) `app/tasks/dsh_worker_scheduled_mission.py` enqueue recurring missions từ Celery Beat, (c) `ingestion` node viết snapshot vào checkpoint. Snapshot storage table riêng bị loại bỏ. Có thể tách thành 6.10a (Mail Gateway) và 6.10b (Scheduled DSH Mission). Governed by `AD-115`.
 
 ---
 
 
-### Mở rộng Epic 6: Story 6.11 — Vertical Alert Rule Templates
+### Story 6.11: Vertical Alert Rule Templates
 **Scope:** Đăng ký sẵn các `AlertRule` template cho news (`new_items`), stock (`price_change`/`threshold_cross`), company (`threshold_cross`), e-commerce price-drop (`price_change`) và competitor tracking (`new_items`/`price_change`) trên nền **Generic Alert Engine** (Story 6.8). Mỗi template điền sẵn `capability_id`, `query`, `schedule`, `diff_strategy` và `notification_channels` để user bật cảnh báo trong một click mà không cần viết automation. Tận dụng `app/alerts/`, bảng `AlertRule`/`AlertSnapshot`/`AlertSubscription`, và các scraper/capability hiện có (`news.rss`, `cafef.scrape`, `vietstock.scrape`, `masothue.scrape`, `shopee.scrape`, `lazada.scrape` khi có). **Không xây scheduler hay notification path mới.** Với `LangGraphMissionExecutor` (26.8), `notification_channels` có thể thêm `dsh_mission` để alert trigger một DSH mission (ví dụ: tự động research khi có competitor news).
 
 **Acceptance Criteria:**
@@ -3943,7 +4369,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-### Mở rộng Epic 6: Story 6.12 — Narrative Report Engine for Indexed Data
+### Story 6.12: Narrative Report Engine for Indexed Data
 **Scope:** Re-scope thành **DSH mission deliverable** / `ingestion` node extension: truy vấn `chainlens-research` lấy dữ liệu đã index theo topic/công ty/sản phẩm, rồi prompt LLM tổng hợp thành narrative (digest, trend, timeline) và ghi vào `checkpoint.deliverables`. Tận dụng `generate_report` deliverable tool, `chainlens.research` capability, `LangGraphMissionExecutor` (26.8), và Generic Alert Engine scheduler để trigger DSH mission. Output: news digest, financial trend detection, company timeline. **Không viết scheduler hay synthesis code riêng cho từng vertical.** Sau 26.8, report engine nên chạy như một mission type `narrative_report` với `crawl` → `reasoning` → `extraction` → `ingestion` nodes.
 
 **Acceptance Criteria:**
@@ -3958,24 +4384,31 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-### Mở rộng Epic 3: Story 3.18 — Projects Persistent Workspace & Modular Skills Hub
+### Story 3.18: Projects Persistent Workspace & Modular Skills Hub
 **Scope:** Thêm layer Project vào workspace hiện có và xây concept Skills Hub mới. **Tận dụng code đã có:** Workspace CRUD + RBAC (`workspaces_routes.py` — 619 dòng, roles, limits, MCP tool toggles), Prompt CRUD (`prompts_routes.py` — name, mode, content), Documents management (`documents_routes.py` — File/Note/Extension types), `LangGraphMissionExecutor` (`app/tasks/dsh_worker_langgraph.py`). **Code mới (gần toàn bộ):** (a) entity `Project` (DB migration + API) chứa Master Instructions + pinned documents, (b) auto-inject project context vào system prompt trước mỗi chat turn (middleware hook trong `new_chat_routes.py`), (c) document pinning field + API, (d) `.skill.md` parser và Modular Skills registry. **Kiến trúc mới:** Skills Hub có thể đăng ký skill như một **LangGraph subgraph** hoặc **DSH mission template**, cho phép agent sử dụng DSH mission làm một skill có thể gọi (ví dụ: "Research competitor X").
 
 ---
 
-## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio (2026-08-20) `[in-progress]` — 27.1a `done`, 27.1 parent/children `backlog`, 27.2a/27.2b `ready-for-dev`
+## Epic 27: Full-Stack Web App Builder, Instant Hosting & Creative Studio
 **Epic goal:** Cung cấp trọn bộ công cụ sáng tạo và sản xuất phần mềm tự hành gồm Web Builder deploy `*.apps.nowing.net`, công cụ chỉnh sửa trực quan Design View (Mark Tool), studio soạn thảo slide thuyết trình PPTX/Marp, và pipeline bóc tách ghi âm cuộc họp thành Action Items.
 **FRs:** FR-93 (Web App Builder & Instant Hosting), FR-94 (Design View Mark Tool & Presentation Studio).
 **ADs:** AD-113, AD-114.
 
 **Stories:**
-- **27.1 Full-Stack Web App Builder, 1-Click Hosting `*.apps.nowing.net` & Design View Mark Tool** — `[in-progress]` parent/tracking story. Split 2026-08-24 because it bundled four subsystems. 27.1a `done`; 27.1b/c/d `in-progress` per `web-builder-27-1-status-audit-2026-08-25.md`.
-  - **27.1a Web Builder Chat Mode MVP for Sales & Marketing** — `[done]` chat-first static publish (Option A).
-  - **27.1b Web App Build & Preview Runner** — `[in-progress]` generation/validation/registry/cost done; missing real `npm install` + `next build`/preview runner.
-  - **27.1c Web App Container Deploy & Custom CNAME** — `[in-progress]` static publish / host route / Dockerfile / custom-domain endpoint done; missing real Docker build/run and CNAME DNS validation.
-  - **27.1d Web App Mark Tool & JSX AST Mutator** — `[in-progress]` UI/iframe postMessage/regex-based patch endpoint done; missing real AST parser.
-- **27.2a Manus Slides Presentation Studio from Chat (PPTX/Marp)** — `[ready-for-dev]` chat-first deliverable theo pattern 27.1a. **Tận dụng code đã có:** Video presentation model/routes (`video_presentations_routes.py`), report/export flow (`reports_routes.py`), chat tool + artifact sidebar (`build_web_app` pattern). **Code mới:** `SlidePresentation` table, `PresentationStudioService` (`python-pptx` + Marp Markdown driver), `generate_presentation` LangChain tool, `PresentationToolUI` card, quick chip `/slides`, `PRESENTATION_STUDIO_ENABLED` gate.
-- **27.2b Speaker Diarization Meeting Minutes from Chat** — `[ready-for-dev]` chat-first deliverable theo pattern 27.1a. **Tận dụng code đã có:** Whisper STT (`services/stt_service.py`), Circleback meeting notes webhook, chat tool + artifact sidebar. **Code mới:** `MeetingMinutes` table, `MeetingMinutesService` (diarization via `pyannote.audio`/`whisperx` + LLM action-item extraction), `generate_meeting_minutes` tool, `MeetingMinutesToolUI` card, quick chip `/meeting`, `MEETING_MINUTES_ENABLED` gate.
+
+### Story 27.1: Full-Stack Web App Builder, 1-Click Hosting & Design View Mark Tool
+
+### Story 27.1a: Web Builder Chat Mode MVP for Sales & Marketing
+
+### Story 27.1b: Web App Build & Preview Runner
+
+### Story 27.1c: Web App Container Deploy & Custom CNAME
+
+### Story 27.1d: Web App Mark Tool & JSX AST Mutator
+
+### Story 27.2a: Manus Slides Presentation Studio from Chat
+
+### Story 27.2b: Speaker Diarization Meeting Minutes from Chat
 
 
 
@@ -4001,7 +4434,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 ---
 
-## Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness `(mới 2026-08-21 từ PRFAQ)`
+## Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness
 
 **Epic goal:** Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút.
 
@@ -4030,7 +4463,7 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 **Stories:**
 
-### Story 28.1: Workspace Memory & Research Data Export `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+### Story 28.1: Workspace Memory & Research Data Export
 
 As a workspace owner,
 I want to export all workspace memory, research threads, and citations in JSON or CSV on top of OKF,
@@ -4052,7 +4485,7 @@ So that I can back up, migrate, or leave the platform without lock-in.
 
 _FR-95 · AR-11 · RS-8 · INV-28.4 · AD-28.2._
 
-### Story 28.2: Encryption-at-Rest for Cloud Memory `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+### Story 28.2: Encryption-at-Rest for Cloud Memory
 
 As a cloud workspace user,
 I want memory content, PII source input, and metadata encrypted at rest with a managed or customer-managed key,
@@ -4076,7 +4509,7 @@ So that my long-term research data is protected if the underlying storage is com
 
 _FR-96 · AR-12 · RS-12 · NFR-2 · INV-28.1 · AD-28.1._
 
-### Story 28.3: ToS / Legal Review & Retention Policy for Long-Term Scrape Data `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+### Story 28.3: ToS / Legal Review & Retention Policy for Long-Term Scrape Data
 
 As a data protection officer / cloud user,
 I want Nowing to have a documented ToS/legal review and a retention / right-to-delete policy for data kept in long-term memory,
@@ -4100,7 +4533,7 @@ So that the cloud GA is legally safe and users can remove infringing or outdated
 
 _FR-97 · AR-13 · RS-11 · INV-28.2 · AD-28.3. Legal review approved 2026-08-21; see `legal/tos-review-2026-08-21.md`._
 
-### Story 28.4: Self-Host OSS Onboarding in Under 10 Minutes `(mới 2026-08-21 từ PRFAQ)` `[backlog]`
+### Story 28.4: Self-Host OSS Onboarding in Under 10 Minutes
 
 As a developer evaluating Nowing,
 I want to self-host the open-core with `docker compose` and have a working workspace with local or remote LLM/embedding in under 10 minutes,
@@ -4124,7 +4557,7 @@ So that I can trust the product and try it without a cloud account.
 
 _FR-98 · AR-14 · RS-13 · INV-28.3 · AD-28.4._
 
-### Story 28.5: Workspace Memory Storage Cap & Retention Lifecycle `(mới 2026-08-23)` `[ready-for-dev]`
+### Story 28.5: Workspace Memory Storage Cap & Retention Lifecycle
 
 As a cloud workspace owner,
 I want my workspace to enforce a memory count/storage cap and apply a retention lifecycle to old memories,
@@ -4159,14 +4592,18 @@ _FR-97 (retention/right-to-delete) · NFR-1b/1c/1d (memory bound) · AD-18 · AR
 | **AR-13** ToS/legal review + right-to-delete | **Epic 28** | Same as FR-97. |
 | **AR-14** Self-host onboarding <10 phút | **Epic 28** | Same as FR-98. |
 | **AR-15** Refine recall precision gate | **Epic 3** | Same as FR-99. |
-| **UX-DR-PRFAQ-1** Memory browser / research timeline | **Epic 3** *(post-MVP)* | UI cho analyst duyệt memory theo thread/source/confidence. |
+| **AR-17** SaaS admin operations console | **Epic 29** | Custom roles, subscription tier, bulk operations, health analytics, memory browser (29.1–29.6). |
+| **AR-18** Auditability & traceability admin bulk op | **Epic 29** | Append-only `audit_events` cho mọi bulk op và tier change. |
+| **UX-DR-PRFAQ-1** Memory browser / research timeline | **Epic 29** *(chính)* | UI cho analyst duyệt memory theo thread/source/confidence (29.5). |
 | **UX-DR-PRFAQ-2** Self-host onboarding flow | **Epic 28** | Landing page + README hướng dẫn `docker compose` + MCP. |
 | **UX-DR-PRFAQ-3** Memory correction / version history | **Epic 3** *(post-MVP)* | UI flag/update fact, xem version history & relations. |
 | **UX-DR-PRFAQ-4** Cost control / auto-extract budget dashboard | **Epic 8** *(chính)* | Per-workspace budget toggle + cost/turn panel (8.14). |
+| **UX-DR-PRFAQ-5** SaaS admin operations console | **Epic 29** | `/admin/saas` workspace directory, plan/tier, quota usage, health score, bulk action. |
+| **UX-DR-PRFAQ-6** Analyst memory browser / research timeline | **Epic 29** | Filter memory theo thread/source/confidence/time, click-to-source, flag fact. |
 
 ---
 
-## Epic 26 UX Refinement — Requirements Coverage Map
+## Epic 26 UX Refinement
 
 | Requirement | Epic / Story | Notes |
 |---|---|---|
@@ -4189,4 +4626,810 @@ _FR-97 (retention/right-to-delete) · NFR-1b/1c/1d (memory bound) · AD-18 · AR
 | `NFR-5` Multi-tenancy | **Epic 26** | Workspace-scoped mission data, fast unlock session. |
 
 
+---
 
+## Epic 29: SaaS Operations, Advanced Admin Governance & Analyst Workspace
+
+**Epic goal:** Nowing nâng cấp từ single-tenant ops lên SaaS operations console: superadmin quản lý workspace/tenant, subscription tier/quota, bulk operations, audit; owner/admin/analyst có dashboard health/adoption và memory browser/research timeline.
+
+**FRs:** FR-100 (Custom workspace roles & permissions builder), FR-101 (Workspace health & adoption analytics dashboard), FR-102 (Tenant subscription tier & quota management), FR-103 (Admin bulk operations console), FR-104 (Memory browser & research timeline for analyst).
+
+**ARs:** AR-17 (SaaS admin operations console), AR-18 (Auditability & traceability admin bulk op).
+
+**UX-DRs:** UX-DR-PRFAQ-5 (SaaS admin operations console), UX-DR-PRFAQ-6 (Analyst memory browser / research timeline).
+
+**Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory schema/provenance/versioning), Epic 8 (billing/cost/wallet), Epic 25 (admin platform operations baseline), Epic 28 (retention/right-to-delete cho 29.6).
+
+### Architectural Invariants (INV-29.1 – INV-29.4)
+
+- **INV-29.1 (Custom Role Boundary):** Custom roles (`WorkspaceRole.is_system_role=False`) cannot grant permissions beyond the `Owner` system role ceiling. The maximum permission set for custom roles is defined as the union of all `WorkspaceRole.permissions` entries on the `Owner` system role. Custom roles cannot modify/delete system roles. `is_superuser` and platform-admin routes are not workspace-role-gated and are unreachable by custom roles (AD-9).
+- **INV-29.2 (Bulk Operation Idempotency):** Mọi admin bulk op (xóa, cấp/quỷ quyền, gán tier) bắt buộc gửi kèm `Idempotency-Key` do client sinh ra; backend lưu kết quả trong `idempotency_keys` table (key, request_hash, response, expires_at) với TTL 24h; từ chối thực thi lại khi key đã tồn tại trừ khi request body khớp SHA-256 hash. Cleanup qua periodic task mỗi 6h.
+- **INV-29.3 (Analyst Browser Isolation):** `MemoryBrowser` chỉ trả memory thuộc workspace mà user được gán qua `WorkspaceMembership`; query bắt buộc áp dụng `workspace_id` filter trong SQL WHERE clause (không chỉ RLS policy) + permission check (`memory_read` hoặc `analytics_read` trên `WorkspaceRole.permissions` của user) trước khi lọc theo source/confidence/time.
+- **INV-29.4 (Subscription Tier Reversibility):** Thay đổi tier (upgrade/downgrade) được ghi nhận nhưng có hiệu lực tối đa 7 ngày sau (hoặc ngay nếu owner xác nhận qua `immediate=true`); downgrade gây ảnh hưởng hạ tầng (memory count > new `max_memory_count`, members > new `max_members`) được cảnh báo với checklist, rollback trong 7 ngày không mất dữ liệu nếu quota mới vẫn chứa được.
+
+### Story 29.1: Custom Workspace Roles & Permissions Builder
+
+As a workspace Owner,
+I want to define custom roles (e.g. Analyst, Editor, Billing Viewer) with a fine-grained permissions matrix,
+So that I can delegate access without granting full Owner or accidentally leaking sensitive operations.
+
+**Acceptance Criteria:**
+
+**Given** the Owner opens `/dashboard/[workspace_id]/settings/roles`, **When** they click "New Role", **Then** they can name the role, choose a base template (`Viewer`, `Editor`, `Analyst`, `Billing`, `Custom`), and toggle individual permissions from the allowed set on `WorkspaceRole.permissions` (ARRAY of enum strings). Permissions include `memory_read`, `memory_write`, `memory_delete`, `source_configure`, `tool_enable`, `billing_read`, `billing_manage`, `member_invite`, `member_remove`, `analytics_read`, `settings_read`, `settings_write`.
+
+**Given** a permission toggle that conflicts with the base template (e.g. `member_remove` on an Analyst template), **When** the Owner enables it, **Then** the UI shows a warning ("This exceeds the recommended template") but allows save if the Owner confirms.
+
+**Given** a custom role is saved, **When** the backend receives `POST /workspaces/{workspace_id}/roles`, **Then** it validates that `WorkspaceRole.is_system_role=False`, that the chosen name is unique per workspace, that no permission exceeds the Owner ceiling (INV-29.1, AD-9, AD-51), persists the role, and invalidates the workspace permission cache.
+
+**Given** a user is assigned a custom role via `WorkspaceMembership.role_id`, **When** they call any API or load any UI, **Then** the permission resolver reads the single `WorkspaceRole` record assigned to that membership, resolves `permissions` as a set, and returns `403` for disallowed actions without leaking unauthorized resources.
+
+**Given** migration 72 removed the `Admin` system role, **When** the role builder renders system roles, **Then** only `Owner`, `Editor`, `Viewer` are shown as system roles; `Admin` is a reserved name blocked at the DB unique constraint plus an API name-reservation check; any legacy `Admin` assignment in the UI is mapped to `Editor` + `billing_read` custom template.
+
+**And** the role builder supports clone, archive, and `audit_events` per change (AR-18 applies to 29.1 role changes).
+
+_FR-100 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · AD-9 · AD-51._
+
+### Story 29.2: Workspace Health & Adoption Analytics Dashboard
+
+As a workspace Owner or delegated analyst,
+I want a SaaS-style health dashboard showing adoption, memory growth, query volume, credit burn, and source coverage,
+So that I can understand usage patterns, justify cost, and decide when to upgrade.
+
+**Acceptance Criteria:**
+
+**Given** the user opens `/dashboard/[workspace_id]/health`, **When** the page loads, **Then** it displays aggregate metrics: active members (daily/weekly), total memories, memory growth rate, `nowing_recall` / `nowing_remember` / `nowing_research` query volume, credits consumed, cost per turn, top sources, and source coverage gaps.
+
+**Given** the dashboard has a time-range selector (7d/30d/90d/custom), **When** the user changes range, **Then** all charts and tables refresh in < 500ms from pre-aggregated table `workspace_health_daily` (materialized view or per-day roll-up table) keyed by `workspace_id` and `date`.
+
+**Given** the user clicks a metric (e.g. "Top source: Reddit"), **When** the drill-down opens, **Then** it shows the underlying memory count, query count, and cost attribution for that source within the selected period, filtered by `workspace_id` in SQL WHERE and `memory_read` permission.
+
+**Given** the workspace approaches its plan quota (memory count, credits, storage bytes) defined by `WorkspaceLimit` rows for the workspace's `plan_tier`, **When** the threshold exceeds 80%, **Then** the dashboard surfaces an upgrade CTA with the estimated tier needed, without blocking current usage.
+
+**Given** the user has the `analytics_read` permission on their `WorkspaceRole`, **When** they access the dashboard, **Then** they see the full dashboard; members with `memory_read` but not `analytics_read` see a reduced public snapshot. (If Story 29.1 has not shipped, `Owner`/`Editor` can access the full dashboard and `analytics_read` falls back to `Owner` until 29.1 lands.)
+
+**Given** the "source coverage gap" metric is computed, **When** the formula is applied, **Then** it counts `source_type` values that are (a) enabled in the workspace and (b) have zero `Memory` rows with `created_at` in the last 30 days, scoped to `workspace_id`.
+
+**And** the dashboard is instrumented with analytics events and can be exported to CSV/JSON.
+
+_FR-101 · AR-17 · UX-DR-PRFAQ-5 · NFR-1 · NFR-5 · INV-29.3._
+
+### Story 29.3: Tenant Subscription Tier & Quota Management
+
+As a platform superuser (`User.is_superuser=True` gated by `require_superuser()`),
+I want to manage tenant workspaces by plan tier (Free / Team / Growth / Enterprise), trial status, quotas, and reversible upgrades/downgrades,
+So that Nowing can operate as a multi-tenant SaaS with predictable unit economics.
+
+**Acceptance Criteria:**
+
+**Given** the Superadmin opens `/admin/saas/plans`, **When** the page loads, **Then** it lists all `WorkspaceLimit` plan definitions with limits: `max_members`, `max_memory_count`, `max_memory_bytes`, `max_monthly_credits`, `max_sources`, `support_level`, `price_micros`, `currency` (default `USD` for consistency with AD-8), and enabled/disabled flags. Plan definitions use `WorkspaceLimit` rows where `plan_tier` is set and `workspace_id IS NULL` (existing XOR constraint). Columns `max_monthly_credits`, `max_sources`, `support_level`, `price_micros`, `currency` are added by Story 29.3 if they do not already exist; per-workspace overrides continue to set `workspace_id` with `plan_tier IS NULL`.
+
+**Given** a workspace is on the `Free` plan, **When** the Superadmin (or Owner via self-serve) upgrades to `Team`, **Then** the backend creates a `subscription_change` record (`id`, `workspace_id`, `from_plan`, `to_plan`, `effective_at`, `status`, `initiated_by`, `payment_method_id`, `immediate`, `reversible_until`), sets `effective_at` to now + 7 days by default (INV-29.4), and queues an email confirmation with quota delta and first charge.
+
+**Given** the Owner requests an immediate downgrade from `Growth` to `Team`, **When** the current usage (memory count, members, credits) exceeds the new tier limits, **Then** the backend rejects with `409 Conflict` and a checklist of what must be reduced; the change can be scheduled 7 days out with a remediation email.
+
+**Given** a subscription change is within the 7-day reversible window, **When** the Owner or Superadmin clicks "Undo tier change", **Then** the tier reverts, `Workspace.plan_tier` is restored, no data is lost, and the reversal is logged to `audit_events` with `diff_payload`.
+
+**Given** the trial period ends, **When** the cron job runs, **Then** it converts the workspace to `Free` if no payment method exists, suspends new writes if over `Free` quota, and notifies the Owner with a grace period of 72 hours.
+
+**Given** the Superadmin edits a plan definition, **When** the change affects active workspaces, **Then** it only applies to new workspaces or workspaces that explicitly re-select the plan; existing workspaces keep grandfathered limits with a visible "legacy plan" badge.
+
+**And** quota enforcement hooks into memory creation, member invite, and source enable; proration credits are calculated daily against `User.credit_micros_balance` / `Workspace.credit_micros_balance` (AD-8).
+
+_FR-102 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-1 · NFR-5 · INV-29.2 · INV-29.4 · AD-8 · AD-53._
+
+### Story 29.4: Admin Bulk Operations Console
+
+As a platform superuser or delegated Workspace Owner,
+I want a bulk operations console to query, dry-run, and execute actions across workspaces or members,
+So that I can respond to abuse, compliance requests, and tenant-wide changes safely and auditably.
+
+**Acceptance Criteria:**
+
+**Given** the admin opens `/admin/saas/bulk-ops`, **When** they build a filter, **Then** the UI uses a structured filter builder (not free-form NLP) against an allow-list of fields and operators, and the backend returns a paginated preview with exact `COUNT(*)` from the target table. (Actions `assign_role` and `apply_tier` require Stories 29.1 and 29.3; remaining actions can ship independently.)
+
+**Given** the admin selects an action from `BulkAction` enum (`archive_inactive_workspaces`, `rotate_api_keys`, `assign_role`, `delete_source_type_memories`, `apply_tier`, `revoke_membership`), **When** they click "Dry-run", **Then** the system simulates the action, lists affected subjects, estimates affected row count, and reports conflicts without mutating data.
+
+**Given** the admin confirms a dry-run and provides an `Idempotency-Key` header, **When** the backend executes, **Then** it schedules an async `bulk_op_job` (fields: `id`, `actor_id`, `action`, `filter`, `status`, `affected_count`, `processed_count`, `error_count`, `started_at`, `finished_at`, `idempotency_key`), returns `202 Accepted` with `job_id`, and enforces INV-29.2 by rejecting duplicate keys unless request SHA-256 hash matches.
+
+**Given** a bulk op is running, **When** the admin polls `GET /admin/saas/bulk-ops/{job_id}`, **Then** they see progress percent, processed count, failed rows, and a cancel button if the action is in the cancelable set.
+
+**Given** any bulk op completes or fails, **When** the job finishes, **Then** it writes one `audit_events` row per affected subject (`actor_id`, `subject_type`, `subject_id`, `diff_payload`, `idempotency_key`) and a summary row; failed rows are written to `bulk_op_errors` (`job_id`, `subject_type`, `subject_id`, `error_message`, `retryable`) for retry.
+
+**And** only Superadmin can execute cross-workspace actions; Workspace Owner can only execute within their own workspace and must hold `settings_write` + `member_remove`. `rotate_api_keys` is marked high-risk and requires explicit password / MFA confirmation.
+
+_FR-103 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · NFR-2 · NFR-5 · INV-29.1 · INV-29.2 · AD-9 · AD-54._
+
+### Story 29.5: Memory Browser & Research Timeline for Analyst
+
+As an Analyst in a workspace,
+I want a memory browser that lists, filters, and explores research memories with source citation and version history,
+So that I can verify facts, trace research lineage, and flag outdated or low-confidence claims.
+
+**Acceptance Criteria:**
+
+**Given** the Analyst opens `/dashboard/[workspace_id]/memory-browser`, **When** the page loads, **Then** it shows a paginated, sortable list of `Memory` rows scoped to the workspace, with default page size 50 and selector 25/50/100, and columns: content snippet, source type, source URL, confidence, created at, updated at, created by, version count, and flag status.
+
+**Given** the Analyst uses the filter bar, **When** they select source type, confidence range, time range, creator, or search by keyword, **Then** the backend applies `workspace_id` filter in SQL WHERE (INV-29.3), plus indexes on `(workspace_id, source_type, confidence)`, `(workspace_id, created_at DESC)`, and `(workspace_id, user_id)` to return results in < 300ms for workspaces up to 100,000 memories.
+
+**Given** the Analyst clicks a memory row, **When** the detail panel opens, **Then** it shows: full content, all source citations with click-to-source, version history (who changed what, when via `MemoryVersion`), linked research threads (via `Memory.research_thread_id` per AD-11), and a "Flag for review" action.
+
+**Given** the Analyst flags a memory as outdated or incorrect, **When** they submit a note, **Then** the system creates a `memory_review_queue` entry (`id`, `memory_id`, `flag_reason`, `flagged_by`, `status`, `created_at`) with status `open`, notifies Owner/Editor, and does not auto-delete or auto-rewrite the memory. v1 phạm vi chỉ flag + notify, không có approval-edit workflow.
+
+**Given** the Analyst has only `memory_read` permission, **When** they try to flag or edit, **Then** the UI hides the actions and the backend rejects with `403`; `memory_write` or `memory_delete` are required for destructive actions.
+
+**Given** the Analyst toggles "Research timeline" view, **When** the view switches, **Then** memories are grouped by `ResearchThread` via `research_thread_id` (AD-11), ordered chronologically, with branch/merge markers when a memory appears in multiple `MemoryRelation` rows.
+
+**And** the browser is reachable from the analyst workspace dashboard and is keyboard-navigable / screen-reader friendly.
+
+_FR-104 · AR-17 · UX-DR-PRFAQ-1 · UX-DR-PRFAQ-6 · NFR-1 · NFR-2 · NFR-5 · INV-29.3 · AD-11 · AD-55._
+
+### Story 29.6: Data Governance & Retention Policy Console
+
+As a workspace Owner or platform superuser,
+I want a governance console to define retention policy, source risk tiers, DNC list, and right-to-delete flows,
+So that Nowing cloud stays compliant with scraped-source ToS and data-subject requests.
+
+**Acceptance Criteria:**
+
+**Given** the Owner opens `/dashboard/[workspace_id]/governance`, **When** the page loads, **Then** it shows the active retention policy (`memory_retention_days`, `memory_auto_archive_enabled`, `memory_retention_action`), source risk tier mapping, DNC list entries (workspace `WorkspaceDncRecord`), and a "Right-to-delete" request queue.
+
+**Given** the Owner edits the retention policy, **When** they save, **Then** the backend validates the window against source risk tiers (shortest required window wins), schedules the lifecycle job, and logs the change to `audit_events`. Story 28.3 vẫn là nơi định nghĩa policy mặc định; Story 29.6 chỉ cung cấp UI console.
+
+**Given** a source risk tier is changed from `low` to `high`, **When** the change is saved, **Then** the system pauses all active scrapes for that source type across the workspace and shows a warning requiring explicit opt-in before resuming.
+
+**Given** the Owner receives a right-to-delete request, **When** they approve it, **Then** the system runs a dry-run listing affected `Memory` rows, versions, and relations, and only purges after explicit confirmation; bulk deletion > 100,000 rows is chunked into 1,000-row batches with progress and cancel-ability.
+
+**Given** a DNC phone/email/tax code is added to workspace DNC (`WorkspaceDncRecord`), **When** the entry is saved, **Then** it propagates to the workspace blacklist within < 1s, suppresses future scraping/messaging for that value, and writes an `audit_events` entry.
+
+**Given** the platform is configured to use a global DNC list (Epic 25.6, `global_dnc_records` or platform-level list), **When** a workspace entry conflicts with a global entry, **Then** the global entry wins and the workspace entry is marked `superseded_by_global`. (Deploy mode flag `GLOBAL_DNC_ENABLED` controls whether the global list is consulted.)
+
+**Given** self-host vs cloud deployment, **When** the policy is published, **Then** it clearly states that self-host users retain responsibility for source compliance, while cloud Nowing acts as a processor with documented retention windows (tái khẳng định Story 28.3).
+
+**And** archived rows (via `archived_at` per AD-28.3) are reversible (unarchive) within 7 days; right-to-delete after hard delete is not reversible. Bulk lifecycle actions are idempotent (INV-29.2) and auditable (AR-18).
+
+_FR-97 · FR-104 · AR-13 · AR-17 · AR-18 · UX-DR-PRFAQ-5 · UX-DR-PRFAQ-6 · NFR-1 · NFR-2 · NFR-5 · INV-28.2 · INV-29.2 · AD-28.3._
+
+### Epic 29 
+
+| Requirement | Story | Notes |
+|---|---|---|
+| **FR-100** Custom workspace roles & permissions builder | **29.1** | Permission matrix, custom CRUD, Owner ceiling, `Admin` name reservation, `WorkspaceRole.is_system_role` guard (AD-9, AD-51). |
+| **FR-101** Workspace health & adoption analytics dashboard | **29.2** | Health metrics, drill-down, quota CTA, export, `workspace_health_daily` pre-aggregation. |
+| **FR-102** Tenant subscription tier & quota management | **29.3** | `WorkspaceLimit` plan directory, `subscription_change` table, trial, upgrade/downgrade, 7-day reversal, `price_micros` currency (AD-8, AD-53). |
+| **FR-103** Admin bulk operations console | **29.4** | Structured filter builder, `BulkAction` enum, `bulk_op_job`/`bulk_op_errors`, `Idempotency-Key`, per-subject `audit_events` (AD-54). |
+| **FR-104** Memory browser & research timeline for analyst | **29.5** | Paginated memory list, index-backed filters, `MemoryVersion`, `ResearchThread` grouping, `memory_review_queue`, default page size 50 (AD-11, AD-55). |
+| **AR-17** SaaS admin operations console | **29.1–29.6** | Custom roles, health dashboard, tier, bulk ops, memory browser, governance. |
+| **AR-18** Auditability & traceability admin bulk op | **29.1, 29.3–29.6** | `audit_events` cho custom role changes, tier change, bulk op, retention, DNC, right-to-delete. |
+| **UX-DR-PRFAQ-5** SaaS admin operations console | **29.1–29.4, 29.6** | `/admin/saas` and `/dashboard/[workspace_id]` role/tier/quota/health/bulk/governance console. |
+| **UX-DR-PRFAQ-6** Analyst memory browser / research timeline | **29.5** | UI filter memory theo thread/source/confidence/time, click-to-source, flag. |
+
+**Story count:** 29.1–29.6 (6 stories) · **Status:** all `[backlog]` · **Dependencies:** Epic 1, Epic 3, Epic 8, Epic 25, Epic 28.
+
+
+---
+
+## Epic 30: Technical Debt
+
+**Epic goal:** Track and retire deferred correctness, reliability, and test-coverage issues from code reviews and Winston backlog audits that do not map to a single feature epic.
+
+### Story 30.2: Redis event bus subscribe failure state leak
+*Status: done.* On subscribe timeout, remove the channel from the `subscribers` dict and add retry with exponential backoff so cross-replica delivery does not fail silently.
+
+### Story 30.5: title_gen.py lacks timeout/retry on litellm.acompletion
+*Status: done.* Add explicit `timeout` and `num_retries` to `title_gen.py` `litellm.acompletion()` calls so chat title generation cannot hang for 120s+ on slow models.
+
+### Story 30.8: Epic 13 canonical entity cleanup
+*Status: done.* Remove `app/canonical/`, `canonical_entities_routes.py`, models, tests, and migration `d33c362fa627` dropping canonical tables after verifying zero live callers.
+
+### Story 30.9: Technical Debt Retirement & System Hardening
+*Status: done.* Consolidation of micro-scope technical debt stories (30.1, 30.3, 30.4, 30.6, 30.7):
+- **30.1**: Idempotency key & dedup lock for `POST /automations/{id}/run`.
+- **30.3**: Storage quota reconciliation between `DocumentFile` and storage backend.
+- **30.4**: Atomic `SELECT ... FOR UPDATE` merge for `PATCH /users/me/notification-preferences`.
+- **30.6**: Explicit `num_retries=1` in `scripts/verify_chat_image_capability.py`.
+- **30.7**: Comprehensive unit tests for `test_model()` in `model_connection_service.py`.
+
+### Story 30.10: Frontend Navigation Performance & Layout Modernization
+*Status: ready-for-dev.* Consolidates frontend technical debt and eliminates navigation delays and UI freezing when switching dashboard views:
+- **Instant Navigation & Prefetch**: Refactor `Sidebar.tsx`, `SidebarButton.tsx`, `IconRail.tsx`, and `AllChatsSidebar.tsx` from raw `router.push()` buttons to polymorphic Next.js `<Link href="..." prefetch={true}>` with hover prefetch triggers and instant `:active` visual state.
+- **Comprehensive Route Loading Boundaries**: Standardize `DashboardPageSkeleton.tsx` as a pure Server Component (CLS < 0.05). Provide universal root fallback `loading.tsx` in `app/dashboard/[workspace_id]/` and dedicated `loading.tsx` skeletons across all leaf routes (`health`, `usage`, `connectors`, `automations`, `artifacts`, `playbooks`, `chats`, `workspace-settings`, `user-settings`, `crm`, `leads`, `research`, `team`, `governance`) ensuring zero frozen UI transitions (< 50ms visual response).
+- **Persistent Shell & Layout Stability**: Unify `MainContentPanel` and `WorkspacePanel` inside `LayoutShell.tsx` into a single persistent `<main id="main-workspace-root">` element to eliminate layout thrashing and unnecessary DOM unmount/remount cycles during view transitions.
+- **Provider Decoupling & Bundle Optimization**: Decouple `Fumadocs RootProvider` from root layout to `/docs/layout.tsx`, deduplicate `useSession()` via shared atom/query, dynamic import heavy `recharts` components, and register explicit Radix UI packages in `optimizePackageImports` (`next.config.ts`).
+
+## Epic 31: Web Builder Container Isolation, AST Security & Entitlements
+
+*Status: backlog.* Provides enterprise multi-tenant container isolation on Dokploy, AST security policy, and plan-tier entitlements.
+
+### Story 31.1: Dokploy Multi-Tenant Container Resource Constraints (Cgroup CPU/Memory) & Network Isolation
+As a Platform Administrator,
+I want deployed user web app containers to be constrained by Cgroup CPU and memory quotas and placed in isolated Docker networks,
+So that no single user application can exhaust server resources or inspect other tenant containers on Dokploy.
+
+**Acceptance Criteria:**
+- **Given** a web app container deploy request on Dokploy, **When** the service starts the container, **Then** it specifies explicit `nano_cpus` and `memory_bytes` limits from workspace tier config.
+- **And** the container is placed on an isolated bridge network with no ingress access to the internal Docker daemon or backend databases.
+
+### Story 31.2: Strict CNAME DNS/Ingress Ownership Verification
+As a Workspace Owner,
+I want to attach custom CNAME domains to my published web apps,
+So that my end-users see my branded domain with validated SSL certificates.
+
+**Acceptance Criteria:**
+- **Given** a user inputs a custom CNAME, **When** DNS verification runs, **Then** the backend checks TXT ownership token before configuring Traefik/Caddy routes.
+- **And** requests to unverified domains are rejected with HTTP 400.
+
+### Story 31.3: AST Static-Eval Policy for Dynamic JSX Expression Matching in Mark Tool
+As a Frontend Developer using Web Builder,
+I want the Mark Tool to match elements whose className uses dynamic template literals or utility expressions,
+So that I can highlight and mutate components using modern CSS-in-JS or clsx patterns.
+
+**Acceptance Criteria:**
+- **Given** a JSX AST with dynamic class expressions, **When** the mark tool evaluates elements, **Then** it applies a safe static-eval policy to resolve static string concatenations.
+
+### Story 31.4: Entitlement-driven Presentation Studio Format Selection from Chat Entry Points
+As a Presentation Studio User,
+I want my chat slash/chip commands to select PPTX or Marp format based on plan entitlements,
+So that higher-tier workspaces get native PowerPoint export while free workspaces receive Markdown slides.
+
+**Acceptance Criteria:**
+- **Given** a user triggers presentation generation via chat mode, **When** the workspace plan is resolved, **Then** the input schema auto-selects PPTX or Marp according to the workspace tier entitlement.
+
+
+## Epic 32: Browser Operator Runtime, Interactive Takeover & CDP Lifecycle
+
+*Status: backlog.* Provides live human takeover, session token validation, and robust CDP lifecycle hooks for browser automation.
+
+### Story 32.1: HumanLiveTakeoverPopover UI with Countdown Timer and Abort Scheduler
+As an Analyst monitoring an automated browser crawl,
+I want an interactive takeover popover with a 15-minute countdown timer,
+So that I can intervene manually when a site presents complex interactive challenges.
+
+**Acceptance Criteria:**
+- **Given** an active browser operator session hits a manual roadblock, **When** takeover is requested, **Then** the UI shows a live 15:00 countdown timer.
+- **And** if no human interaction occurs within 15 minutes, the session transitions to `aborted_timeout` and releases resources.
+
+### Story 32.2: Chrome Extension chrome.debugger.onDetach Recovery & Reconnection
+As a Browser Automation Engineer,
+I want the extension controller to detect onDetach events cleanly,
+So that user closure of DevTools does not orphan backend task threads or leak WebSocket handles.
+
+**Acceptance Criteria:**
+- **Given** a user manually closes DevTools or navigates away, **When** `chrome.debugger.onDetach` fires, **Then** the backend marks the active step cancelled and cleans up the CDP socket.
+
+### Story 32.3: Cryptographic CDP Session Token Lifecycle & Audited Command Log
+As a Security Auditor,
+I want all browser operator CDP commands authenticated via cryptographic session tokens and persisted to an audit log,
+So that automation runs can be traced for security compliance.
+
+**Acceptance Criteria:**
+- **Given** an incoming CDP command from an external agent, **When** verified against the session secret, **Then** the execution metadata is logged to `browser_operator_audit_events`.
+
+
+## Epic 33: Enterprise Cryptographic PII Vault & Global Right-to-be-Forgotten
+
+*Status: backlog.* Enterprise cryptographic key rotation, GDPR/Decree 13 superadmin purge, and transactional credit safety.
+
+### Story 33.1: Automated Zero-Downtime SECRET_KEY Rotation with Dual-Key Fallback
+As an Enterprise Security Officer,
+I want to rotate the PII vault's `SECRET_KEY` without downtime,
+So that compromised or aging encryption keys can be updated seamlessly.
+
+**Acceptance Criteria:**
+- **Given** a new primary encryption key, **When** reading existing `VerifiedContact` records, **Then** the vault falls back to the secondary key to decrypt and re-encrypts using the new primary key.
+
+### Story 33.2: Superadmin Cross-Workspace Global Right-to-be-Forgotten (DNC) Purge Engine
+As a Compliance Administrator,
+I want a unified API to purge an individual's phone/email across all workspaces simultaneously,
+So that Decree 13 and GDPR deletion requests are fully honored enterprise-wide.
+
+**Acceptance Criteria:**
+- **Given** a verified opt-out request, **When** executed by Superadmin, **Then** all `VerifiedContact`, `Lead`, and `SocialPost` records containing the phone/email hash across all workspaces are purged and refunded.
+
+### Story 33.3: Two-Phase Transactional Credit Locking for Phone Waterfall Provider
+As a Finance Manager,
+I want credit reservation and deduction for phone waterfall resolution executed in a strict two-phase commit,
+So that failed provider invocations or network interruptions never leak credits.
+
+**Acceptance Criteria:**
+- **Given** a phone waterfall lookup, **When** provider resolution fails, **Then** the locked balance is released atomically without calling Celery refund tasks.
+
+
+## Epic 34: Bi-Directional CRM Synchronization & Unified Channel Operations
+
+*Status: backlog.* Enterprise two-way CRM deal pipelines, Telegram Userbot web administration, and dedicated CRM frontend tabs.
+
+### Story 34.1: Bi-Directional Deal Stage & Activity Synchronization for HubSpot/Salesforce
+As a Sales Representative,
+I want leads discovered in Nowing to sync bi-directionally with HubSpot and Salesforce deal pipelines,
+So that stage updates in the external CRM reflect back into Nowing and vice versa.
+
+**Acceptance Criteria:**
+- **Given** a deal stage change in HubSpot/Salesforce, **When** webhook arrives, **Then** Nowing updates the corresponding `Lead.status` and logs an activity timeline entry.
+
+### Story 34.2: Web Admin Management Endpoints for Telegram Userbots & Monitored Channels
+As a Workspace Admin,
+I want a web management console for Telegram userbot sessions, channel lists, and ingest filters,
+So that I do not need terminal CLI commands to manage Telegram monitored channels.
+
+**Acceptance Criteria:**
+- **Given** the user navigates to `/dashboard/[workspace_id]/channels/telegram`, **When** requesting channel status, **Then** the frontend loads all active userbot sessions and allows toggling channel monitoring.
+
+### Story 34.3: Dedicated CRM Deal Pipeline & Customer Activity Timeline UI Tabs
+As a Sales Lead,
+I want dedicated CRM Pipeline and Activity Timeline tabs in the web workspace,
+So that I can manage sales pipelines directly within Nowing.
+
+**Acceptance Criteria:**
+- **Given** the workspace has CRM enabled, **When** navigating to the CRM section, **Then** a Kanban deal board and unified chronological interaction timeline are rendered.
+
+
+## Epic 35: High-Scale Ingestion, Stream Resilience & Algorithmic Deduplication
+
+*Status: backlog.* High-throughput stream recovery, sub-quadratic entity deduplication, and per-scraper ingest observability.
+
+### Story 35.1: Redis Consumer Group Pending Message Auto-Claim (XAUTOCLAIM) & DLQ Replay
+As a Data Infrastructure Engineer,
+I want consumer groups on `stream:social:raw_posts` to automatically reclaim pending messages from dead worker processes,
+So that worker crashes during high-volume ingress do not leave messages stuck in PEL.
+
+**Acceptance Criteria:**
+- **Given** messages stuck in PEL longer than `min_idle_time`, **When** the stream worker runs, **Then** `XAUTOCLAIM` reassigns them to active workers before reading new messages.
+
+### Story 35.2: O(n log n) Spatial/Windowed Deduplication for Mass Entity Datasets
+As a Data Pipeline Engineer,
+I want cross-source deduplication of job and real estate postings to use windowed title/location sorting,
+So that company groupings with thousands of items do not suffer O(n²) performance degradation.
+
+**Acceptance Criteria:**
+- **Given** a cluster of 5,000+ postings for a single enterprise, **When** deduplication runs, **Then** pairwise comparisons are bounded to sliding date/title windows in O(n log n) time.
+
+### Story 35.3: Per-Platform Scraper Failure Metrics & SSE Streaming Idle Heartbeat Guards
+As a System Reliability Engineer,
+I want per-scraper ingest failure counters and SSE stream idle heartbeat guards,
+So that scraper failures are surfaced immediately on Prometheus and idle client connections do not hang.
+
+**Acceptance Criteria:**
+- **Given** an ingest failure from any platform scraper, **When** error occurs, **Then** `record_scraper_ingest_failure(platform, reason)` increments.
+- **And** long-running SSE connections emit keep-alive comments every 15 seconds.
+
+
+## Epic 36: XActions Unified Connection Contract (Nowing-side)
+
+*Status: backlog.* Governed by `ARCHITECTURE-SPINE.md` (AD-1..10, AD-SOC-1..11) and `spec-xactions-connection/SPEC.md` (CAP-1..6). Cross-repo: các yêu cầu phía XActions được đặc tả trong `_bmad-output/planning-artifacts/XACTIONS-REQUIREMENTS-2026-09-13.md` (nằm ngoài phạm vi epic này).
+
+> **Boundary:** Epic này chỉ chứa connection contract phía Nowing — MCP client, dispatch mapper, stream consumer, error mapping. Các story có trạng thái `blocked-by-external` (17.1 Lazada, 17.5 TikTok Shop và các `SocialMonitoredTarget` thuộc VN-domain) KHÔNG thuộc epic này; các story này sẽ được unblock khi Epic 36 và phần việc phía XActions hoàn tất.
+
+### Story Execution & Dependency Matrix
+
+| Story | Scope | Dependencies / Blockers | Phase |
+| --- | --- | --- | --- |
+| 36.1 | `x_crawl_post` fallback + graceful unsupported | None (local) | Phase 1 — immediate |
+| 36.2 | Loop-scoped MCP client cache | None (local) | Phase 1 — immediate |
+| 36.3 | Centralized `XACT_*` error map | None (local) | Phase 1 — immediate |
+| 36.4 | Single-writer stream cleanup | **Blocked by REQ-X2** (XActions stream hook); feature flag | Phase 2 — external |
+| 36.5 | Stream consumer schema contract + DLQ | Depends on 36.4 + REQ-X2 | Phase 2 — external |
+| 36.6 | Canonical action matrix + legacy tool deprecation | **Blocked by REQ-X1 + REQ-X3**; feature flag | Phase 2 — external |
+
+> **Deploy order (hard):** Phase-2 stories MUST NOT deploy before the matching XActions REQ ships and `health_probe_xactions` verifies it. All Phase-2 dispatch paths sit behind feature flags (`XACTIONS_USE_UNIFIED_DISPATCH`, `XACTIONS_STREAM_SINGLE_WRITER_ENABLED`) for rollback without redeploy. Phase-1 stories are safe to ship independently.
+
+### Story 36.1: Wire `x_crawl_post` Fallback & Graceful Unsupported Marking (P0 — unblock VN targets now)
+
+As a Backend Engineer,
+I want the XActions adapter to fall back to `x_crawl_post` when `x_scrape` is unavailable and to mark unserveable targets unsupported,
+So that VN-domain monitored targets return post-detail data instead of failing silently with XACT_404 (tool_not_found).
+
+**Acceptance Criteria:**
+- **Given** `fetch_posts_for_target` invokes a tool that fails with `XACT_404` (tool_not_found), **When** the adapter catches the error, **Then** it invokes `fallback_crawl_post(target)` and retries once via `x_crawl_post`.
+- **And** the `x_crawl_post` fallback arguments MUST include `platform` (mapped from `target.platform`) and `url`.
+- **And** when `target` has no valid `http(s)` `target_url`/`target_id`, **Then** `fallback_crawl_post` does not raise — the target is marked `unsupported` (`status='unsupported'`, `is_active=False`, committed) so the scheduler stops dispatching it.
+- **And** when `x_crawl_post` also fails (timeout, `XACT_4001`, `XACT_5000`), the failure routes through the centralized error map (Story 36.3) — transient errors pause/retry, permanent errors mark `unsupported` after a retry threshold rather than on the first hiccup.
+
+### Story 36.2: Loop-Scoped `XActionsMcpClient` Connection Cache
+
+As a Backend Engineer,
+I want the MCP client bound to the running asyncio loop with re-initialization on loop change and serialized calls,
+So that consecutive Celery tasks on the same worker reuse a live session without crashing or leaking.
+
+**Acceptance Criteria:**
+- **Given** `run_async_celery_task` creates a `new_event_loop()` per task and closes it, **When** two ingest tasks run on the same worker, **Then** each gets a working `XActionsMcpClient` session.
+- **And** the client keys its session cache by `asyncio.get_running_loop()` and calls `session.initialize()` whenever the current loop differs from the cached loop or is closed; failed initialize evicts the cache entry rather than leaving a half-initialized client.
+- **And** the cache is a `weakref.WeakKeyDictionary` keyed on the loop so dead loops and their clients are garbage-collected — no unbounded retention across thousands of tasks.
+- **And** `call_tool` is serialized through a lock so concurrent coroutines on one loop cannot interleave streamable-http frames.
+- **And** `accountId` and `proxyUrl` are passed per call via request arguments for multi-tenancy and are never stored on the session.
+
+### Story 36.3: Centralized `XACT_*` → Task-Behavior Error Map
+
+As a Backend Engineer,
+I want a single mapping from XActions error codes to task behavior, with the adapter returning a behavior enum and the Celery layer executing it,
+So that every caller handles rate-limit, hibernation, and fatal errors identically.
+
+**Acceptance Criteria:**
+- **Given** the adapter raises `XActionsMcpError` with a `code`, **When** the ingest task handles it, **Then** behavior is dispatched via one centralized map: `XACT_4291` → `retry(countdown=clamp(retry_after, 5..3600), max_retries=5)`; `ACCOUNT_HIBERNATION`/`PROXY_EXHAUSTED`/`XACT_5030` → pause target (set `last_scraped_at` into the future by `retry_after` or a default cooldown); `XACT_4010` → halt target; `XACT_5000` → retry up to 3 times then DLQ + halt; `XACT_4001` → log `suggestedAction` and pause.
+- **And** the adapter returns a `TaskBehavior` enum + metadata (never calls `task.retry` itself) so non-Celery callers (API routes, CLI, health probes) are not coupled to Celery primitives.
+- **And** an unmapped `code` or `code=None` falls through to a default `raise`/`pause` rather than a `KeyError`.
+- **And** `XACT_5000` exhausting retries writes to `stream:social:failed` and halts the target rather than crash-looping every interval.
+
+### Story 36.4: Single-Writer Stream — Stop Nowing Publishing to `stream:social:raw_posts`
+
+As a Backend Engineer,
+I want Nowing to consume `stream:social:raw_posts` only and never publish raw posts into it,
+So that XActions is the sole writer and the stream carries one canonical event schema.
+
+**Acceptance Criteria:**
+- **Given** `REDIS_STREAM_ENABLED` and the XActions stream hook (REQ-X2) is live, **When** Nowing ingests, **Then** it consumes exclusively via a consumer group and never executes `XADD` against `stream:social:raw_posts`.
+- **And** `adapter_v2.ingest_raw_post_to_stream` is removed from the external stream path; if Nowing needs an internal ingest channel it uses a distinct name (e.g. `stream:social:internal_raw_posts`).
+- **And** the cutover is gated by feature flag `XACTIONS_STREAM_SINGLE_WRITER_ENABLED`; while the flag is off the legacy dual-write path still runs so no data is lost during the transition.
+- **And** the story MUST NOT deploy until REQ-X2 is deployed and `health_probe_xactions` confirms XActions emits events for the target platforms — otherwise VN/non-social ingestion blacks out.
+
+### Story 36.5: Stream Consumer Schema Contract & DLQ Routing
+
+As a Data Pipeline Engineer,
+I want the stream consumer to validate the thin-event schema and route violations to a dead-letter queue with an explicit reason,
+So that malformed or context-less events never drop silently or wedge the pending-entries list.
+
+**Acceptance Criteria:**
+- **Given** an incoming thin event missing `workspace_id` or `content_snippet`, **When** the consumer parses the payload, **Then** it logs the schema-violation reason, routes the message to dead-letter queue `stream:social:failed`, and `XACK`s the original message so it does not sit in the PEL.
+- **And** `SocialPostEvent` accepts `content_snippet` as an alias for `content` (`validation_alias=AliasChoices('content','content_snippet')`) so the field XActions emits is not silently discarded.
+- **And** an event with `schema_version` above the supported max routes to DLQ with `UNSUPPORTED_SCHEMA_VERSION`; a payload that fails JSON serialization on the DLQ path falls back to `repr()` and still `XACK`s.
+- **And** a valid event produces a `social_post` with correct `workspace_id` and content for entity extraction (lead creation + `UNIQUE(workspace_id, platform, external_post_id)` dedup is owned by Epic 21/17 pipeline, out of scope here).
+- **And** the consumer exposes a lag probe (`XINFO GROUPS` /`XPENDING`) on `stream:social:raw_posts`; when consumer lag crosses a threshold it logs/alerts so ingestion stoppage is not silent while the stream approaches `MAXLEN` truncation.
+
+### Story 36.6: Canonical Action Matrix & Legacy Tool Deprecation
+
+As a Backend Engineer,
+I want target dispatch and validation driven by the XActions canonical action catalog instead of a hard-coded `PLATFORM_TOOL_MAP`,
+So that action-name or argument changes on XActions never require editing Nowing code.
+
+**Acceptance Criteria:**
+- **Given** `x_actions_list` returns canonical `ActionDescriptor[]` for all platforms, **When** `UniversalScrapeTargetMapper` or a `SocialMonitoredTarget` resolves, **Then** the dispatch `action` and payload `args` are derived from the descriptor's canonical `action`/`requiredArgs` and dispatched via `x_scrape` — not from hard-coded tool/action mappings.
+- **And** dispatch arguments are packaged as `x_scrape` nested form `{platform, action, args, context:{targetId, workspaceId}, accountId?, proxyUrl?}` — never flat top-level fields.
+- **And** the catalog is cached with a TTL; on refresh failure or an empty/partial catalog it serves the stale cache or a validated static fallback matrix rather than failing all mappings.
+- **And** `SocialMonitoredTarget` creation/update validates `platform`+`action` against the matrix (falling back to the static matrix when XActions is down) and rejects unsupported combinations with a `422` error.
+- **And** legacy per-platform tools migrate to `x_scrape` only behind feature flag `XACTIONS_USE_UNIFIED_DISPATCH` and only for platforms whose descriptor + stream routing are confirmed live — so working Facebook/Twitter monitoring does not regress.
+
+> **Cross-repo note:** `SocialMonitoredTarget.platform` values must equal XActions canonical platform keys; the shared matrix (REQ-X4) is the single source both sides validate against.
+
+
+## Epic 37: Nowing Revenue Engine — Unified Outbound Workstation
+
+*Status: in-progress.* Governed by `sprint-change-proposal-2026-09-17-phase-next-ai-sdr-impact-gap-analysis.md`, Market Research Deep-Recon (`market-dinh-gia-dung-luong-thi-truong-b2b-outbo-2026-09-17`), and Architectural Review (AD-115 to AD-121).
+
+> **Strategic Scope:** Tận dụng 100% nền tảng hạ tầng sẵn có (Epics 21, 22, 24, 26, 27, 34) để hoàn thiện 7 mắt xích cuối cùng (Last-Mile Gaps), biến Nowing thành cỗ máy tạo doanh thu tự hành (Autonomous Revenue Engine) chuẩn hóa cho thị trường B2B Việt Nam & Đông Nam Á.
+
+### Architectural Invariants (AD-115 – AD-121)
+- **AD-115 (Aho-Corasick Pre-Filtering & Signal Budget Cap):** Telegram purchase intent stream matching runs an in-memory compiled Aho-Corasick keyword trie ($O(n)$) before regex execution. Workspace background scans capped at 100 scans/day with automatic pause below 50 credits.
+- **AD-116 (Deterministic Zero-Latency Honorific Engine):** Age and title hierarchy mapping runs on deterministic rules (0ms latency, $0 token cost) without LLM calls. Foreign names default to English business tone; unresolvable contacts safely fallback to `Quý anh/chị` or `Quý đối tác`.
+- **AD-117 (Calendar Slot Soft-Lock & Strict Timezone Separation):** Meeting slots proposed by the auto-reply agent are soft-locked in Redis (`lock:calendar_slot:{user_id}:{slot}`) with a 15-minute TTL to prevent concurrent double-booking. Backend stores ISO 8601 UTC; localized ICT (UTC+7) formatting applied only in rendered templates.
+- **AD-118 (Semantic Selector & Human-in-the-Loop Zalo Co-pilot):** Extension injects via semantic attributes (`div[contenteditable="true"]`, `div[role="textbox"]`), avoiding obfuscated CSS classes. Message insertion uses standard `InputEvent`/`insertText`; user clicks Send manually (Zero Ban Penalty).
+- **AD-119 (Single Multi-Tenant SSR Pitch Engine — NO per-lead Dokploy containers):** Interactive mini-pitch portals are served via a unified Next.js SSR route (`/pitch/[workspace_slug]/[lead_id]`) reading metadata from Postgres/Redis with Cloudflare edge caching. Dokploy container-per-lead deployment is strictly prohibited.
+- **AD-120 (Beacon Debounce & 30-Minute Alert Cooldown):** Pitch view beacon triggers Telegram bot push alerts at most once per 30 minutes per lead ID via Redis lock. Crawler user-agents and sessions $< 3$s are filtered as preview pings; subsequent interactions update CRM timeline silently.
+- **AD-121 (Objective Technical Refund SLA & 15% Circuit Breaker):** Phone unlock auto-refunds are triggered strictly by telco/Zalo programmatic error codes (`ZALO_USER_NOT_FOUND`, `TELCO_NUMBER_UNALLOCATED`), not manual user claims. Kế thừa AD-110: auto-refund volume is capped at 15% of monthly unlocked leads.
+
+---
+
+### Story 37.1: Proactive Intent Signal Radar (Background Ingestion & Telegram Stream Matcher)
+
+As a Growth / RevOps Engineer,
+I want a background daemon and stream listener that proactively scans hiring spikes, newly registered tax codes, and Telegram buy-requests,
+So that buying-intent leads are captured into the workspace matrix without requiring manual query triggers.
+
+**Acceptance Criteria:**
+- **Given** `SignalDetectionService` (`app/lead_intelligence/signals/service.py`), **When** Celery Beat task `scan_high_intent_companies_periodic` executes every 6 hours, **Then** it scans hiring surges ($\ge 3$ new job postings in 7 days across TopCV/VietnamWorks) and newly incorporated tax codes from `masothue.com`/`dangkykinhdoanh.gov.vn`, persisting `SignalEvent` records with `intent_score >= 0.75`.
+- **Given** Redis stream `stream:telegram:raw_events` (Epic 22), **When** incoming messages pass the Aho-Corasick pre-filter and match purchase intent patterns ("cần tìm nhà cung cấp", "báo giá", "tìm agency", "thuê ngoài"), **Then** the listener extracts contact details and creates an enriched `Lead` assigned round-robin to active workspace sales reps via `LeadAssignmentService`.
+- **Given** a Telegram intent message containing NO extractable phone or email, **When** processed, **Then** the system creates an Unqualified Signal Lead with `status='pending_enrichment'` and does NOT deduct workspace credits.
+- **And** background scanning enforces AD-115 budget caps: maximum 100 scans per workspace per day, pausing automatically if credit balance falls below 50 credits.
+
+### Story 37.2: Vietnam Cultural Honorific & Relationship Tone Engine
+
+As a B2B Sales Representative,
+I want the sequencer and auto-reply agent to dynamically select native Vietnamese honorific pronouns (Anh/Chị/Em/Quý đối tác) based on prospect seniority and estimated age,
+So that cold outreach and automated replies sound respectful, professional, and indistinguishable from an experienced local sales rep.
+
+**Acceptance Criteria:**
+- **Given** an enriched prospect profile with title, birth year (from CCCD/MST), or education graduation year, **When** `VietnamHonorificResolver` evaluates the contact using AD-116 deterministic rules, **Then** it calculates age differential relative to the sender and resolves the address tuple (`Anh - Em`, `Chị - Em`, `Quý đối tác - Chúng tôi`).
+- **And** the resolved honorific tuple is injected into the LLM context of `app/services/sequencer/services/executor.py` and `app/services/sequencer/inbound.py` under the `{salutation}` token.
+- **And** if the prospect is identified as a foreign national or international domain, the engine defaults to standard English business honorifics (`Dear Mr./Ms. [Lastname]`).
+- **And** if age or gender is ambiguous, the engine safely defaults to neutral professional business phrasing (`Quý anh/chị` or `Quý đối tác`).
+- **And** outbound sequence execution is curfews-enforced: message dispatch strictly halts between 21:00 and 08:00 ICT in compliance with Decree 91/2020/NĐ-CP.
+
+### Story 37.3: Smart Meeting Booking Engine for Auto-Reply (Google & Lark Calendar)
+
+As an Account Executive,
+I want the two-way AI auto-reply agent to extract my calendar availability and propose concrete meeting slots when a prospect shows interest,
+So that meetings are booked automatically into my calendar without back-and-forth scheduling ping-pong.
+
+**Acceptance Criteria:**
+- **Given** connected Google Calendar or Lark Calendar OAuth credentials in Workspace Settings, **When** `app/services/sequencer/inbound.py` detects positive meeting intent, **Then** `CalendarAvailabilityService` queries free/busy slots across 5 upcoming business days, restricted to working hours (09:00–12:00, 13:30–17:30 ICT, Monday–Friday) with a 15-minute buffer before/after existing events.
+- **And** proposed meeting slots are soft-locked in Redis with a 15-minute TTL per AD-117 to prevent double-booking across concurrent prospect conversations.
+- **And** the AI auto-reply proposes exactly 2-3 specific time options formatted in ICT ("14:00 Thứ Ba" hoặc "10:00 Thứ Năm").
+- **And** upon prospect confirmation, the agent creates the calendar event with Google Meet or Lark Video link, sends calendar invites to both parties, releases the Redis soft lock, and updates `Lead.status` to `meeting_scheduled` in the CRM pipeline.
+- **And** if the prospect rejects proposed slots across 2 negotiation turns, the agent provides a direct calendar booking link and appends a `human_takeover_needed` tag.
+
+### Story 37.4: Zalo Desktop/Web Co-pilot Overlay in Nowing Lead Clipper
+
+As a Sales Rep using Zalo on browser or desktop,
+I want the Nowing Lead Clipper extension to detect open Zalo chats and provide a 1-click contextual prompt drawer,
+So that I can execute personalized outbound touches with human-in-the-loop control without risking account bans.
+
+**Acceptance Criteria:**
+- **Given** the Nowing Lead Clipper Chrome extension is active, **When** the user opens `chat.zalo.me` with an unlocked prospect phone number, **Then** a floating action pill (36px) appears at the right edge, expanding on click into a 320px contextual flyout drawer.
+- **And** the overlay fetches company context, recent intent signals, and recommended pitch scripts generated by Nowing.
+- **And** clicking `Chèn tin nhắn` populates Zalo's active textbox via semantic selector (`div[contenteditable="true"]`, `div[role="textbox"]`) using standard `InputEvent` without background automated sending, ensuring zero account ban penalty per AD-118.
+- **And** if the prospect phone number exists in the DNC Blacklist (Decree 91/2020/NĐ-CP), the extension displays a red warning banner and disables message insertion.
+- **And** if the Zalo input already contains draft text, the extension prompts confirmation before overwriting or appends below.
+
+### Story 37.5: Sequencer-to-Artifact Integration (1-Click Mini-Pitch Portal Generator)
+
+As an Outbound Campaign Manager,
+I want the sequencer to automatically trigger the Web Builder (Epic 27.1) to generate personalized 1-click interactive mini-pitch portals for target prospects,
+So that our outreach emails and messages feature a tailored, branded interactive value proposition.
+
+**Acceptance Criteria:**
+- **Given** a cadence step configured with action `generate_pitch_portal`, **When** the sequence scheduler executes for a prospect company, **Then** it generates metadata rendered via unified multi-tenant SSR route `pitch.nowing.ai/[workspace_slug]/[lead_id]` per AD-119, with edge caching guaranteeing TTFB $< 100$ms.
+- **And** the mini-pitch portal features prospect branding (logo, company name, industry benchmarks), a 30-second executive summary, an interactive ROI calculator, and an inline meeting booking CTA.
+- **And** all dynamic prospect fields are sanitized against Stored XSS attacks (DOMPurify/HTML escaping).
+- **And** the portal footer includes a verified "Yêu cầu xóa thông tin của tôi / Opt-out" link compliant with Decree 13/2023/NĐ-CP.
+- **And** the generated unique URL is injected into template variable `{{pitch_portal_url}}` for inclusion in outreach copy.
+
+### Story 37.6: Realtime Prospect Engagement Tracker & Telegram Alert Bot Ping
+
+As a Sales Representative,
+I want real-time notifications sent to my Telegram bot whenever a prospect opens their personalized mini-pitch portal or presentation slides,
+So that I can follow up at the exact moment of peak buyer engagement.
+
+**Acceptance Criteria:**
+- **Given** an interactive pitch portal (`pitch.nowing.ai`), **When** a prospect accesses the link, **Then** a lightweight, cookieless beacon (`navigator.sendBeacon`) records dwell time, sections viewed, and device type.
+- **And** per AD-120, a Redis cooldown lock (`lock:pitch_beacon:{lead_id}`) limits Telegram push alerts to at most 1 alert per 30 minutes; subsequent dwell time updates record silently to `LeadActivityTimeline`.
+- **And** crawler user-agents (e.g. `facebookexternalhit`, `ZaloPC-crawler`) and sessions with dwell time $< 3$s are filtered out as preview pings.
+- **And** eligible views trigger an instant Telegram alert to the assigned sales rep with dwell time, section read, and 1-click Zalo chat deep-link.
+
+### Story 37.7: Hybrid Pricing Packaging UI & Auto-Refund Guarantee SLA
+
+As a Platform Administrator and Customer,
+I want the web dashboard to display transparent hybrid pricing tiers (Starter, Professional, Business) with instant VietQR checkout and an automated refund guarantee for invalid contacts,
+So that pricing matches local willingness-to-pay and eliminates buyer hesitation.
+
+**Acceptance Criteria:**
+- **Given** `/dashboard/[workspace_id]/buy-tokens`, **When** the page renders, **Then** it presents the 3 standard hybrid packages: Starter (990.000đ/tháng, 1.000 credits), Professional (2.490.000đ/tháng, 3.500 credits, 3 seats, highlighted), and Business (5.990.000đ/tháng, 10.000 credits, unlimited seats) with an interactive credit calculator slider.
+- **And** selecting a tier opens a dynamic VietQR payment modal with a 10-minute countdown timer, credited automatically within 5 seconds of Napas bank transfer webhook receipt.
+- **And** per AD-121, if an unlocked phone number programmatically returns `ZALO_USER_NOT_FOUND` or `TELCO_NUMBER_UNALLOCATED`, the 10 credits deducted are refunded immediately with an audited ledger entry `credit_refund_invalid_contact`.
+- **And** the refund circuit breaker enforces a monthly cap of 15% of total unlocked leads per workspace (AD-110); requests exceeding this threshold route to the manual Admin Desk.
+
+
+## Epic 38: Autonomous Voice AI SDR & Telephony Workstation
+
+*Status: in-progress.* Governed by `_bmad-output/planning-artifacts/research/technical-market-deep-recon-epic-38-voice-ai-sdr.md` and Architectural Decisions (AD-122 to AD-129).
+
+> **Strategic Scope:** Xây dựng trạm thoại AI tự hành đa kênh (Autonomous Voice SDR) chuẩn pháp lý viễn thông Việt Nam theo Nghị định 91/2020/NĐ-CP và Nghị định 13/2023/NĐ-CP. Đạt độ trễ hội thoại thời gian thực sub-800ms perceived latency qua LiveKit SIP Gateway, Kamailio SBC, Silero VAD v5, Streaming STT/TTS và Local Filler Audio.
+
+### Architectural Invariants (AD-122 – AD-129)
+- **AD-122 (Kamailio SBC & LiveKit SIP Gateway Bridge):** Kết nối SIP Trunk viễn thông nội địa (Viettel/VNPT/FPT/CMC) theo chuẩn G.711a 8kHz, chuyển đổi sang WebRTC Audio Track (Opus 48kHz) tại LiveKit SIP Gateway với độ trễ nội bộ $P99 < 3$ms.
+- **AD-123 (Sub-800ms Perceived Latency & Local Filler Audio):** Chèn câu đệm cục bộ ("Dạ vâng anh...", "Dạ để em kiểm tra...") trong vòng 80ms ngay khi VAD dứt câu nếu LLM chưa trả token đầu, đưa độ trễ nhận thức của người nghe về 300ms - 550ms.
+- **AD-124 (Multi-tier Barge-in & Anti-Echo Lockout):** Áp dụng 400ms lockout khi bot bắt đầu nói để triệt tiêu echo; giảm âm lượng bot -14dB (Audio Ducking) và dùng KWS cục bộ lọc từ đệm (< 280ms: "ừ", "dạ") trước khi gửi SIP Silence Packet cắt lời.
+- **AD-125 (Strict Compliance & DNC 5656 Filtering):** Kiểm tra danh sách DNC Quốc gia (5656) trước khi quay số; chỉ gọi trong khung giờ 09:00–11:30 và 13:30–17:00 ICT (Thứ 2 - Thứ 6); tự động ngắt và blacklist khi khách nói "đừng gọi nữa" hoặc nhấn phím 0/9.
+- **AD-126 (AMD & Dead-air Watchdog Protection):** Nhận diện tiếng chuông tổng đài / hộp thư thoại và cúp máy trước 4s; nếu khách nhấc máy nhưng im lặng quá 6s tự động cúp máy trước 8s; trần cuộc gọi tối đa 180s.
+- **AD-127 (Day-1 DID & Multi-tenant Brandname BYO-SIP):** Cấp đầu số cố định DID (024/028-7xxx) để gọi ngay trong ngày; hỗ trợ workspace cấu hình SIP credentials riêng mã hóa AES-256-GCM và gửi hồ sơ đăng ký Voice Brandname chính danh qua aggregator API.
+- **AD-128 (Speed-to-Lead & Post-Call Omnichannel Handoff):** Tự động kích hoạt cuộc gọi trong vòng 5 phút sau khi prospect xem Mini-Pitch Portal > 45s (Story 37.6); sau khi cúp máy tự động gửi tóm tắt qua Zalo ZNS / Zalo Co-pilot (Story 37.4) và đồng bộ CRM.
+- **AD-129 (Realtime Voice Metering & 15% Hang-up Protection):** Trừ credit theo block 6s + 1s (tỷ lệ 2.500đ/phút = 2.5 credits/phút); miễn phí cước cho cuộc gọi dập máy dưới 10s (tối đa 15% số cuộc/campaign); LLM tự động chấm QA Scorecard 1-100 sau cuộc gọi.
+
+---
+
+### Story 38.1: LiveKit SIP Gateway & Kamailio Media Infrastructure
+
+As a System Architect,
+I want to deploy Kamailio SBC and LiveKit SIP Gateway bridging Vietnamese telco SIP trunks to WebRTC SFU,
+So that telephony audio streams convert to real-time WebRTC audio tracks with sub-5ms internal transport latency.
+
+**Acceptance Criteria:**
+- **Given** SIP Trunking UDP from VN Telco (Viettel/VNPT/FPT/CMC) with G.711 A-law (PCMA 8kHz), **When** incoming/outgoing call is initiated, **Then** Kamailio SBC verifies anti-fraud and relays SIP signaling to LiveKit SIP Gateway.
+- **And** LiveKit SIP Gateway automatically creates a LiveKit Room `call_<session_uuid>` upon receiving SIP `INVITE`.
+- **And** bidirectional codec transcoding between G.711a 8kHz and WebRTC Opus 48kHz executes with no audible distortion.
+- **And** internal routing latency between SBC, SIP Gateway, and Media Server SFU measures $P99 < 3$ms.
+
+### Story 38.2: Voice Agent Worker Runtime với Silero VAD & Micro-clause Streaming
+
+As a Backend Engineer,
+I want an Asyncio Python Voice Agent Worker connected to LiveKit rooms executing streaming STT, LLM, and TTS with local filler audio injection,
+So that conversational voice round-trip latency stays below 800ms perceived latency.
+
+**Acceptance Criteria:**
+- **Given** an active LiveKit room, **When** Voice Agent Worker joins as participant, **Then** it reads/writes audio tracks via `livekit-agents` SDK.
+- **And** Silero VAD v5 running on ONNX C++ Runtime processes 30ms audio frames with speech start/stop detection within 180ms - 220ms.
+- **And** WebSocket audio streaming to FPT.AI / Deepgram STT yields partial transcripts with final sentence emitted within 40ms of VAD endpoint.
+- **And** Micro-clause Token Accumulator forwards LLM tokens to Cartesia Sonic / Vbee TTS on first punctuation or 3–5 tokens.
+- **And** Local Filler Audio ("Dạ vâng anh...", "Dạ em hiểu...") injects within 80ms of silence if LLM first token is not yet ready per AD-123.
+
+### Story 38.3: Anti-False-Interruption & Multi-tier Barge-in Engine (Ducking + KWS)
+
+As a Call Participant,
+I want natural conversation interruption where the bot smoothly ducks volume on customer speech and ignores short backchannels,
+So that speech flows smoothly without awkward cutoffs from background traffic noise or coughing.
+
+**Acceptance Criteria:**
+- **Given** bot audio output, **When** the first 400ms plays, **Then** Barge-in Lockout Guard suppresses VAD triggers to prevent acoustic echo cancellation leaks.
+- **And** when speech probability $P \ge 0.88$ is detected during bot playback, the bot volume ducks by -14dB rather than halting abruptly.
+- **And** local Keyword Spotting (KWS) evaluates utterances $< 280$ms: short backchannels ("ừ", "dạ", "vâng") restore bot volume to 0dB without interrupting dialogue.
+- **And** when customer speech exceeds 280ms with semantic intent, the bot sends a 40ms SIP Silence Packet, cancels pending LLM/TTS asyncio tasks, and logs the truncated utterance for conversational context continuity.
+
+### Story 38.4: Telephony Compliance Gate, National DNC 5656 & Curfew Scheduler
+
+As a Compliance Officer,
+I want an automated telephony pre-flight gate enforcing National DNC 5656 registry, business hour curfews, and instant voice opt-out,
+So that 100% of automated outbound calls comply strictly with Decree 91/2020/NĐ-CP and Decree 13/2023/NĐ-CP.
+
+**Acceptance Criteria:**
+- **Given** outbound call queue dispatch, **When** current time is outside 09:00–11:30 or 13:30–17:00 ICT, or is Saturday/Sunday/National Holiday, **Then** Curfew Scheduler blocks dispatch.
+- **And** Frequency Cap enforces a hard maximum of 1 call attempt per 24 hours per E.164 phone number.
+- **And** `DncComplianceService` queries the National 5656 DNC list (HMAC hash); if matched, the call is canceled with reason `DNC_NATIONAL_BLOCKED` and credits refunded.
+- **And** the call automatically plays a mandatory call-recording notification in the first 3 seconds.
+- **And** customer verbal rejection ("không có nhu cầu", "đừng gọi nữa") or DTMF 0/9 triggers immediate call termination within 2 seconds and permanent suppression in `WorkspaceDncRecord`.
+
+### Story 38.5: Telecom Signal Classifier, AMD & Dead-air Watchdog Engine
+
+As a System Reliability Engineer,
+I want automated answering machine detection, telco ringback classification, and dead-air watchdogs,
+So that voicemail greetings and silent connections are dropped in under 4 seconds to preserve telco budget.
+
+**Acceptance Criteria:**
+- **Given** outbound call pickup, **When** Answering Machine Detection (AMD) identifies telco IVR or voicemail audio in the first 3 seconds, **Then** it terminates the call via SIP `BYE` within $< 4$ seconds.
+- **And** Dead-air Watchdog monitors post-answer silence: if silent for 3 seconds, prompts "Alo, anh/chị nghe rõ không ạ?"; if still silent for another 3 seconds, terminates before 8 seconds.
+- **And** an absolute hard ceiling of 180 seconds (3 minutes) is enforced for all outbound SDR calls.
+- **And** 1-second Redis worker heartbeat ensures media gateway forcibly tears down SIP call if worker RTP stream disconnects for $> 5$ seconds.
+
+### Story 38.6: Dynamic DID & Voice Brandname Multi-tenant BYO-SIP Architecture
+
+As a Workspace Administrator,
+I want to configure custom SIP credentials, provision Day-1 fixed DID numbers, and register official Voice Brandnames,
+So that recipient screens display my verified corporate caller ID.
+
+**Acceptance Criteria:**
+- **Given** Workspace Settings `/dashboard/[workspace_id]/telephony`, **When** admin inputs SIP trunk credentials (domain, port, username, password), **Then** credentials are encrypted with AES-256-GCM in PII Vault.
+- **And** Day-1 Instant Onboarding provisions a verified fixed DID (024/028-7xxx) allowing immediate warm-lead calling without waiting for telco brandname approval.
+- **And** the UI provides a formal Voice Brandname registration portal forwarding business license and Decree 91 Form 01 to telco aggregator APIs.
+- **And** In-flight Anti-Spam Circuit Breaker halts the workspace campaign if calls $< 5$s exceed 40% or user spam complaints exceed 6%.
+
+### Story 38.7: Outbound Trigger Engine: Speed-to-Lead & Hiring Radar Integration
+
+As a B2B Sales Representative,
+I want automated voice calls triggered within 5 minutes of prospect mini-pitch interaction or upon hiring surge detection,
+So that leads are contacted at the exact moment of peak buying intent.
+
+**Acceptance Criteria:**
+- **Given** a prospect viewing `pitch.nowing.ai` for $> 45$ seconds (Epic 37.6), **When** Speed-to-Lead trigger evaluates, **Then** it initiates an outbound AI SDR call within 5 minutes during business hours.
+- **And** when Intent Radar (Story 37.1) detects $\ge 3$ new relevant job postings within 48 hours, a contextual qualification mission is queued.
+- **And** prospect context (company name, contact name, job title, viewed pitch sections) is injected into the Agent System Prompt before dialing.
+- **And** post-call pipeline automatically dispatches summary and action items to Zalo ZNS / Zalo Co-pilot (Story 37.4) and creates a CRM deal timeline activity.
+
+### Story 38.8: Voice Billing, Realtime Metering & QA Scorecard
+
+As a Product Manager,
+I want call duration metered in 6s+1s blocks, automated 10-second hang-up credit protection, and post-call LLM QA scorecards,
+So that call charges are transparent and conversation quality is audited automatically.
+
+**Acceptance Criteria:**
+- **Given** an outbound call dispatch, **When** initiated, **Then** 7.500 VNĐ (3-minute buffer = 7.5 credits) is soft-locked in Nowing Wallet; calls are rejected if balance is insufficient.
+- **And** calls terminated in $< 10$ seconds are 100% refunded under Hang-up Protection up to 15% of campaign volume per AD-129.
+- **And** completed calls are billed at 2.500 VNĐ/minute (2.5 credits) calculated on standard viễn thông 6s + 1s blocks.
+- **And** post-call Celery task `process_post_call_analytics` generates structured Call Summary, BANT qualification status, and QA Score (1–100) recorded in CRM timeline.
+---
+
+## Epic 39: Typed-Decision Layer (Jev Integration) `[new]`
+
+**Source:** `_bmad-output/planning-artifacts/research/technical-typesafe-ai-jev-integration-2026-09-21/research.md` + `architecture-jev-decision-service-2026-09-21/ARCHITECTURE-SPINE.md`
+
+**Eval evidence:** `nowing_backend/scripts/jev_eval/summary.md` — 96.3% Vietnamese accuracy, 308ms median latency, $0.0018/80 calls.
+
+**Goal:** Tích hợp TypeSafe Jev làm typed-decision layer — Choice/Score/Noul primitives với calibrated probabilities — phục vụ subagent routing, entity resolution, content guardrails, intent classification. Không phải LLM thay thế; là complement giảm latency và cost cho decision tasks.
+
+### Story 39.1: `DecisionService` Port + Jev Backend + Question Registry
+
+As a Backend Developer,
+I want a `DecisionService` interface wrapping `typesafe-sdk` behind a backend-agnostic port,
+So that any caller can make typed decisions (Choice/Score/Noul) without importing Jev SDK directly.
+
+**Acceptance Criteria:**
+- **Given** `TYPESAFE_API_KEY` set, **When** `DecisionService` is instantiated with `DECISION_BACKEND=jev`, **Then** `decide(state, questions)` calls `POST /v1/systemone` via `AsyncTypeSafeClient` and returns `DecisionResult` with typed answers + confidence + latency + token usage.
+- **And** `DecisionResult` carries `model` field (e.g. `jev-1.13.0`) logged per call for calibration drift detection per AD-J3.
+- **And** `QuestionRegistry` loads named question sets from `app/services/decision/questions/` — each set is a versioned dict of `Choice`/`Score`/`Noul` objects per AD-J5.
+- **And** `ConfidenceGate` helper applies per-task thresholds (routing=0.6, filter=0.5, entity=0.7, intent=0.5) with env-var overrides per AD-J4.
+- **And** `MockBackend` returns expected answers deterministically for unit tests.
+- **And** `LLMJsonBackend` (litellm structured output) works as fallback when `DECISION_BACKEND=llm_json` or Jev errors (5xx/529/timeout) per AD-J2.
+- **And** feature flag `DECISION_ENABLED` + per-task flags (`DECISION_ROUTING_ENABLED` etc.) gate all decision calls per consistency conventions.
+- **And** all calls log `input_tokens`, `output_tokens`, `latency_ms`, `model`, `backend` to `TokenUsage` per AD-J7.
+- **And** every answer passes **strict structural validation** before reaching a caller — ported from `jev-ultrafast` `validate_choice()` per research `technical-jev-ultrafast-...-2026-09-21`: for Choice/Score, `choice`/`score` ∈ offered ids, `probabilities` keys exactly match ids, all values finite ∈[0,1], distribution sums to 1 ±0.02, chosen key is the argmax; for Noul, value is a finite float ∈[0,1]. A malformed/miscalibrated answer raises `InvalidDecisionAnswer` → caller falls back, **never** becomes an action. This is stricter than the current `jev_router.py` threshold-only check and is the first defense against acting on bad model output.
+
+### Story 39.2: Subagent Routing via Jev Choice (R2 — highest impact)
+
+As a Main Agent Orchestrator,
+I want a pre-routing decision step that calls `DecisionService` with the user's message to suggest the best subagent before LLM processing,
+So that subagent dispatch is faster (~300ms vs ~8s LLM router) and more consistent.
+
+**Acceptance Criteria:**
+- **Given** a Vietnamese user message enters multi-agent chat, **When** `DECISION_ROUTING_ENABLED=true`, **Then** `DecisionService.decide()` is called with `subagent_routing` question set (Choice over 16 Nowing subagent options + `none_needed`) before the LLM generates its response.
+- **And** if `confidence >= 0.6` the routing suggestion is injected into the LLM's context as a system hint (e.g. `[Routing hint: batdongsan (confidence 0.95)]`), biasing but not forcing the LLM's `task()` call.
+- **And** if `confidence < 0.6` no hint is injected — the LLM routes normally (existing behavior preserved).
+- **And** the routing decision, confidence, and whether the hint was used are logged to telemetry for offline accuracy tracking.
+- **And** `jev-1.13.0` is the pinned model; upgrade requires re-running `scripts/jev_eval/runner.py --task SUBAGENT_ROUTING` and confirming ≥95% accuracy.
+- **And** eval baseline: Jev achieved 100% accuracy on 20 Vietnamese routing cases.
+
+### Story 39.3: Entity Resolution Confidence Scoring (R3)
+
+As a Scraper Pipeline Engineer,
+I want `DecisionService` to score whether two scraped entities (listings, companies, contacts) are the same real-world entity,
+So that dedup/merge decisions are fast (~300ms/pair), cheap (~$0.0004/pair), and confidence-calibrated.
+
+**Acceptance Criteria:**
+- **Given** two entity dicts (`entity_a`, `entity_b`) from scraper output, **When** `DECISION_ENTITY_ENABLED=true`, **Then** `DecisionService.decide()` is called with `entity_match` question set (Score: 0=different, 1=uncertain, 2=same).
+- **And** Score ≥1.5 → auto-merge; 0.5–1.5 → curator review queue; <0.5 → keep separate (per AD-J4 threshold 0.7 on the confidence, not the score).
+- **And** question criteria handles Vietnamese naming conventions: diacritics, abbreviations ("TP.HCM" vs "Thành phố Hồ Chí Minh"), Vietnamese vs English names.
+- **And** eval baseline: Jev achieved 90% accuracy on 20 Vietnamese entity pairs; the 2 misses were borderline uncertain scores (defensible, not errors).
+- **And** the dedup path is **two-stage** (ported from `jev-ultrafast` "operation + per-head target" speculative fan-out, `model.py choose()`): stage 1 = cheap heuristic (`SpatialWindowedDeduplicator` Jaccard/spatial bucket, or `bds_aggregator` phone/address/image union-find) narrows N entities → K candidate pairs; stage 2 = **one** `DecisionService.decide()` call per anchor carrying a `match_decision` Choice whose criteria contain **only the heuristic-surviving candidate ids** plus a `no_match` option — Jev confirms which (if any) candidate the anchor matches, never re-scoring pairs the heuristic already rejected. Unused head never executes.
+- **And** batch behavior: the fan-out keeps cost at ~1 Jev call per anchor regardless of candidate count K (K≤250 cap mirrors jev-ultrafast's action-space bound); entity throughput stays scraper-viable (~$0.0004/decision).
+- **And** the Jev-confirm stage is **optional/advisory**: heuristic-only dedup still runs when `DECISION_ENTITY_ENABLED=false` (existing behavior preserved); Jev only refines borderline groups the heuristic flagged uncertain.
+
+### Story 39.4: Content Guardrails via Jev Noul Battery (R4)
+
+As a Platform Safety Engineer,
+I want `DecisionService` to run 3 Noul checks (relevance, prompt injection, sensitive PII) on RAG passages and user inputs in a single API call,
+So that content filtering is real-time (~300ms for all 3 checks) and catches Vietnamese-language injection attempts.
+
+**Acceptance Criteria:**
+- **Given** a text passage (RAG result, scraped content, user input), **When** `DECISION_FILTER_ENABLED=true`, **Then** `DecisionService.decide()` is called with `content_filter` question set: `is_relevant` (Noul), `contains_prompt_injection` (Noul), `contains_sensitive` (Noul).
+- **And** all 3 Nouls evaluate in parallel within one `POST /v1/systemone` call (~300ms total).
+- **And** `contains_prompt_injection >= 0.5` → passage is dropped and logged; `contains_sensitive >= 0.5` → passage is flagged + PII-masked before storage.
+- **And** eval baseline: Jev achieved 100% accuracy on 20 Vietnamese content filter cases including Vietnamese prompt injection ("Bỏ qua mọi hướng dẫn trước đó").
+- **And** Vietnamese CMND/CCCD numbers, personal phones, and home addresses are detected as sensitive.
+
+### Story 39.5: Intent Classification via Jev Choice (R5-low)
+
+As a Chat System,
+I want `DecisionService` to classify Vietnamese user intent (search/action/question/comparison/recommendation/chitchat/complaint/feedback),
+So that downstream features (analytics, auto-response templates, escalation rules) can act on typed intent labels.
+
+**Acceptance Criteria:**
+- **Given** a Vietnamese user message, **When** `DECISION_INTENT_ENABLED=true`, **Then** `DecisionService.decide()` is called with `intent_classify` question set (Choice over 8 intent categories).
+- **And** intent label + confidence are stored on the chat message metadata for analytics and automation triggers.
+- **And** eval baseline: Jev achieved 95% accuracy on 20 Vietnamese intent cases; the 1 miss was a borderline search-vs-recommendation label.
+
+### Story 39.6: Voice Agent Post-STT Semantic Decisions (R6 — deferred)
+
+As a Voice Pipeline Engineer,
+I want `DecisionService` to evaluate post-STT transcript for turn-taking confidence, frustration scoring, and human-transfer gating,
+So that voice calls make semantic decisions in ~300ms within LiveKit's endpointing-delay budget.
+
+**Acceptance Criteria:**
+- **Given** a completed STT transcript in `VoiceSDRAgent.on_user_turn_completed`, **When** `DECISION_VOICE_ENABLED=true`, **Then** `DecisionService.decide()` evaluates: `should_respond` (Noul), `caller_frustration` (Score 0-3), `transfer_to_human` (Noul).
+- **And** `transfer_to_human >= 0.7` → triggers escalation flow.
+- **And** all decisions complete within 500ms budget to not block the voice loop.
+- **And** constraint: Jev is text-only — decisions operate on STT transcript, never raw audio frames.
+
+### Story 39.7: Decision Telemetry Dashboard + Cost Tracking
+
+As a Product Manager,
+I want per-decision cost, latency, and accuracy telemetry aggregated in a dashboard,
+So that I can monitor Jev's ROI and detect calibration drift.
+
+**Acceptance Criteria:**
+- **Given** `DecisionService` calls logging to `TokenUsage`, **When** admin views decision metrics, **Then** dashboard shows: daily calls by task type, median latency, accuracy rate (when ground truth available), total cost.
+- **And** alert fires if daily Jev cost exceeds configurable threshold.
+- **And** model version tracked per call — drift detected when `jev-latest` alias moves.
+
+### Story 39.8: Eval Harness CI Integration
+
+As a QA Engineer,
+I want the Vietnamese eval suite (`scripts/jev_eval/`) runnable as a CI gate,
+So that model upgrades (new `jev-x.y.z`) are validated against the 80-case Vietnamese benchmark before deployment.
+
+**Acceptance Criteria:**
+- **Given** a new Jev model version or question set change, **When** `uv run scripts/jev_eval/runner.py --backend jev` runs in CI, **Then** accuracy report is generated and compared against baseline (96.3%).
+- **And** CI fails if accuracy drops below 90% on any task type.
+- **And** eval can run in `--dry-run` mode (no API key needed) for harness validation in PR checks.
+
+---
+
+### Epic 39 Non-Goals
+
+- **Jev is NOT a replacement for LLMs** — it cannot generate text, summarize, or reason. It only makes typed decisions.
+- **Not in billing path** — money decisions are exact arithmetic (per research recommendation).
+- **Not in VAD path** — voice activity detection stays on Silero (frame-level, <10ms); Jev operates on transcripts.
+- **No streaming** — Jev API is single-request; no streaming surface exists.

@@ -200,7 +200,7 @@ async def _record_audit_best_effort(
             total_tokens,
             cost_micros,
         )
-    except Exception:
+    except Exception:  # best-effort audit logging; never abort the billable call
         logger.exception(
             "[billable_call] audit failed label=%s usage_type=%s user=%s thread=%s "
             "total_tokens=%d cost_micros=%d",
@@ -353,7 +353,7 @@ async def billable_call(
                         user_id=user_id,
                         reserved_micros=reserve_micros,
                     )
-            except Exception:
+            except Exception:  # best-effort reservation release on execution failure
                 logger.exception(
                     "[billable_call] credit_release failed for user=%s "
                     "reserve_micros=%d (reservation will be GC'd by quota "
@@ -393,7 +393,7 @@ async def billable_call(
                 final_result.balance,
                 final_result.remaining,
             )
-        except Exception as finalize_exc:
+        except Exception as finalize_exc:  # last-ditch release if finalize fails; re-raise finalize error
             # Last-ditch: if finalize itself fails, we must at least release
             # so the reservation doesn't leak.
             logger.exception(
@@ -408,7 +408,7 @@ async def billable_call(
                         user_id=user_id,
                         reserved_micros=reserve_micros,
                     )
-            except Exception:
+            except Exception:  # best-effort reservation release after finalize failure
                 logger.exception(
                     "[billable_call] release after finalize failure ALSO failed "
                     "for user=%s",

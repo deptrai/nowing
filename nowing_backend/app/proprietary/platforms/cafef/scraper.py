@@ -60,7 +60,7 @@ async def scrape_cafef(
         logger.warning("cafef quote fetch failed", exc_info=exc)
         degraded = True
         degradation_reason = "api_error"
-    except Exception as exc:
+    except Exception as exc:  # unexpected quote fetch/parse error; mark degraded api_error
         logger.exception("cafef quote unexpected error: %s", exc)
         degraded = True
         degradation_reason = "api_error"
@@ -80,7 +80,7 @@ async def scrape_cafef(
             logger.warning("cafef financials fetch failed", exc_info=exc)
             degraded = True
             degradation_reason = "api_error"
-        except Exception as exc:
+        except Exception as exc:  # unexpected financials fetch/parse error; mark degraded api_error
             logger.exception("cafef financials unexpected error: %s", exc)
             degraded = True
             degradation_reason = "api_error"
@@ -100,7 +100,7 @@ async def scrape_cafef(
             logger.warning("cafef news decode failed", exc_info=exc)
         except CafeFAccessBlockedError as exc:
             logger.warning("cafef news fetch failed", exc_info=exc)
-        except Exception as exc:
+        except Exception as exc:  # unexpected news fetch/parse error; news is optional, log and continue
             logger.exception("cafef news unexpected error: %s", exc)
 
     if quote is None and not degraded:

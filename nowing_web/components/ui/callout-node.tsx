@@ -2,6 +2,7 @@
 
 import { CalloutPlugin } from "@platejs/callout/react";
 import { cva } from "class-variance-authority";
+import { useTranslations } from "next-intl";
 import type { TCalloutElement } from "platejs";
 import { PlateElement, type PlateElementProps, useEditorPlugin } from "platejs/react";
 import * as React from "react";
@@ -38,6 +39,7 @@ const calloutIcons: Record<CalloutVariant, string> = {
 };
 
 export function CalloutElement({ children, ...props }: PlateElementProps<TCalloutElement>) {
+	const t = useTranslations("ui");
 	const { editor } = useEditorPlugin(CalloutPlugin);
 	const element = props.element;
 	const variant = variantCycle.includes(element.variant as CalloutVariant)
@@ -67,7 +69,7 @@ export function CalloutElement({ children, ...props }: PlateElementProps<TCallou
 				contentEditable={false}
 				onClick={cycleVariant}
 				type="button"
-				aria-label="Change callout type"
+				aria-label={t("ui_change_callout_type")}
 			>
 				{icon}
 			</Button>

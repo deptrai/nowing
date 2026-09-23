@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, Eye, RefreshCw, Search, ShieldAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type {
 	AuditEventRead,
@@ -72,6 +73,7 @@ function getActionBadgeStyle(action: string) {
 }
 
 export default function AdminAuditLogsPage() {
+	const t = useTranslations("admin");
 	const [items, setItems] = useState<AuditEventRead[]>([]);
 	const [total, setTotal] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +106,7 @@ export default function AdminAuditLogsPage() {
 			setItems(res.items);
 			setTotal(res.total);
 		} catch (err) {
-			console.error("Failed to load audit logs:", err);
+			console.error(t("audit_load_failed"), err);
 		} finally {
 			setIsLoading(false);
 		}
@@ -130,12 +132,9 @@ export default function AdminAuditLogsPage() {
 				<div>
 					<div className="flex items-center gap-2">
 						<ShieldAlert className="h-6 w-6 text-primary" />
-						<h1 className="text-2xl font-bold tracking-tight">Security Audit Trail Logs</h1>
+						<h1 className="text-2xl font-bold tracking-tight">{t("audit_title")}</h1>
 					</div>
-					<p className="text-sm text-muted-foreground">
-						Immutable dual-principal audit trail for administrative actions, impersonation, rules,
-						and configuration changes.
-					</p>
+					<p className="text-sm text-muted-foreground">{t("audit_subtitle")}</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<button
@@ -145,7 +144,7 @@ export default function AdminAuditLogsPage() {
 						className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
 					>
 						<RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-						Refresh
+						{t("audit_refresh")}
 					</button>
 					<button
 						type="button"
@@ -154,7 +153,7 @@ export default function AdminAuditLogsPage() {
 						className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 					>
 						<Download className="h-4 w-4" />
-						Export CSV
+						{t("audit_export_csv")}
 					</button>
 				</div>
 			</div>
@@ -163,7 +162,7 @@ export default function AdminAuditLogsPage() {
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
 				<div>
 					<label htmlFor="action-filter" className="text-xs font-medium text-muted-foreground">
-						Action Type
+						{t("audit_action_type")}
 					</label>
 					<select
 						id="action-filter"
@@ -174,7 +173,7 @@ export default function AdminAuditLogsPage() {
 						}}
 						className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
 					>
-						<option value="">All Actions</option>
+						<option value="">{t("audit_all_actions")}</option>
 						<option value="user.impersonate_start">user.impersonate_start</option>
 						<option value="user.impersonate_exit">user.impersonate_exit</option>
 						<option value="global_dnc.add">global_dnc.add</option>
@@ -191,14 +190,14 @@ export default function AdminAuditLogsPage() {
 
 				<div>
 					<label htmlFor="search-actor" className="text-xs font-medium text-muted-foreground">
-						Actor Email
+						{t("audit_actor_email")}
 					</label>
 					<div className="relative mt-1">
 						<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 						<input
 							id="search-actor"
 							type="text"
-							placeholder="Search actor..."
+							placeholder={t("audit_search_actor")}
 							value={searchActor}
 							onChange={(e) => {
 								setSearchActor(e.target.value);
@@ -211,14 +210,14 @@ export default function AdminAuditLogsPage() {
 
 				<div>
 					<label htmlFor="search-subject" className="text-xs font-medium text-muted-foreground">
-						Subject Email / ID
+						{t("audit_subject_email")}
 					</label>
 					<div className="relative mt-1">
 						<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 						<input
 							id="search-subject"
 							type="text"
-							placeholder="Search subject..."
+							placeholder={t("audit_search_subject")}
 							value={searchSubject}
 							onChange={(e) => {
 								setSearchSubject(e.target.value);
@@ -231,7 +230,7 @@ export default function AdminAuditLogsPage() {
 
 				<div>
 					<label htmlFor="ticket-ref-filter" className="text-xs font-medium text-muted-foreground">
-						Ticket Reference
+						{t("audit_ticket_ref")}
 					</label>
 					<input
 						id="ticket-ref-filter"
@@ -248,7 +247,7 @@ export default function AdminAuditLogsPage() {
 
 				<div>
 					<label htmlFor="start-date-filter" className="text-xs font-medium text-muted-foreground">
-						Start Date
+						{t("audit_start_date")}
 					</label>
 					<input
 						id="start-date-filter"
@@ -264,7 +263,7 @@ export default function AdminAuditLogsPage() {
 
 				<div>
 					<label htmlFor="end-date-filter" className="text-xs font-medium text-muted-foreground">
-						End Date
+						{t("audit_end_date")}
 					</label>
 					<input
 						id="end-date-filter"
@@ -285,26 +284,26 @@ export default function AdminAuditLogsPage() {
 					<table className="w-full text-left text-sm">
 						<thead className="border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground uppercase">
 							<tr>
-								<th className="px-4 py-3">Timestamp</th>
-								<th className="px-4 py-3">Action</th>
-								<th className="px-4 py-3">Actor (Admin)</th>
-								<th className="px-4 py-3">Subject (Target)</th>
-								<th className="px-4 py-3">IP & Client</th>
-								<th className="px-4 py-3">Ticket</th>
-								<th className="px-4 py-3 text-right">Details</th>
+								<th className="px-4 py-3">{t("audit_col_timestamp")}</th>
+								<th className="px-4 py-3">{t("audit_col_action")}</th>
+								<th className="px-4 py-3">{t("audit_col_actor")}</th>
+								<th className="px-4 py-3">{t("audit_col_subject")}</th>
+								<th className="px-4 py-3">{t("audit_col_ip")}</th>
+								<th className="px-4 py-3">{t("audit_col_ticket")}</th>
+								<th className="px-4 py-3 text-right">{t("audit_col_details")}</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
 							{isLoading ? (
 								<tr>
 									<td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-										Loading audit events...
+										{t("audit_loading")}
 									</td>
 								</tr>
 							) : items.length === 0 ? (
 								<tr>
 									<td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-										No audit records match the current filters.
+										{t("audit_empty")}
 									</td>
 								</tr>
 							) : (
@@ -324,7 +323,7 @@ export default function AdminAuditLogsPage() {
 										</td>
 										<td className="px-4 py-3">
 											<div className="font-medium text-foreground">
-												{event.actor_email || "System"}
+												{event.actor_email || t("audit_system")}
 											</div>
 											{event.actor_id && (
 												<div className="text-[10px] text-muted-foreground font-mono truncate max-w-[140px]">
@@ -371,7 +370,7 @@ export default function AdminAuditLogsPage() {
 													className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
 												>
 													<Eye className="h-3 w-3" />
-													View
+													{t("audit_view")}
 												</button>
 											) : (
 												<span className="text-xs text-muted-foreground">—</span>
@@ -387,7 +386,7 @@ export default function AdminAuditLogsPage() {
 				{/* Pagination Bar */}
 				<div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
 					<div className="text-xs text-muted-foreground">
-						Showing {items.length} of {total} events
+						{t("audit_showing", { count: items.length, total })}
 					</div>
 					<div className="flex gap-2">
 						<button
@@ -396,7 +395,7 @@ export default function AdminAuditLogsPage() {
 							disabled={offset === 0 || isLoading}
 							className="rounded-md border border-border px-3 py-1 text-xs font-medium hover:bg-muted disabled:opacity-40"
 						>
-							Previous
+							{t("audit_previous")}
 						</button>
 						<button
 							type="button"
@@ -404,7 +403,7 @@ export default function AdminAuditLogsPage() {
 							disabled={offset + limit >= total || isLoading}
 							className="rounded-md border border-border px-3 py-1 text-xs font-medium hover:bg-muted disabled:opacity-40"
 						>
-							Next
+							{t("audit_next")}
 						</button>
 					</div>
 				</div>
@@ -415,7 +414,7 @@ export default function AdminAuditLogsPage() {
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
 					<div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
 						<div className="flex items-center justify-between">
-							<h3 className="text-lg font-bold">Audit Event Diff Payload</h3>
+							<h3 className="text-lg font-bold">{t("audit_diff_title")}</h3>
 							<button
 								type="button"
 								onClick={() => setSelectedPayload(null)}
@@ -433,7 +432,7 @@ export default function AdminAuditLogsPage() {
 								onClick={() => setSelectedPayload(null)}
 								className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
 							>
-								Close
+								{t("audit_close")}
 							</button>
 						</div>
 					</div>

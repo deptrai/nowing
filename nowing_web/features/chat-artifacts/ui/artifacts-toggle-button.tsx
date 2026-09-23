@@ -2,6 +2,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { Boxes } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ import {
 
 /** Header toggle that opens the artifacts sidebar. Hidden when the thread has none. */
 export function ArtifactsToggleButton() {
+	const t = useTranslations("artifacts");
 	const artifacts = useAtomValue(chatArtifactsAtom);
 	const isOpen = useAtomValue(artifactsPanelOpenAtom);
 	const toggle = useSetAtom(toggleArtifactsPanelAtom);

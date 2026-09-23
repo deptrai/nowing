@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy, Info, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -31,6 +32,7 @@ import { usePats } from "@/hooks/use-pats";
 import { copyToClipboard as copyToClipboardUtil } from "@/lib/utils";
 
 export function ApiKeyContent() {
+	const t = useTranslations("userSettings");
 	const { tokens, createdToken, setCreatedToken, isLoading, isMutating, createToken, deleteToken } =
 		usePats();
 	const [createOpen, setCreateOpen] = useState(false);
@@ -74,20 +76,16 @@ export function ApiKeyContent() {
 		<div className="space-y-6 min-w-0">
 			<Alert>
 				<Info />
-				<AlertDescription>
-					API keys let extensions, Obsidian, and other apps connect to Nowing.
-				</AlertDescription>
+				<AlertDescription>{t("apikey_lede")}</AlertDescription>
 			</Alert>
 
 			<div className="flex items-center justify-between gap-3">
 				<div>
-					<h3 className="text-sm font-semibold tracking-tight">API keys</h3>
-					<p className="text-xs text-muted-foreground">
-						Expired API keys stay listed until you delete them.
-					</p>
+					<h3 className="text-sm font-semibold tracking-tight">{t("apikey_title")}</h3>
+					<p className="text-xs text-muted-foreground">{t("apikey_expired_note")}</p>
 				</div>
 				<Button size="sm" onClick={() => setCreateOpen(true)}>
-					Create API key
+					{t("apikey_create")}
 				</Button>
 			</div>
 
@@ -125,7 +123,7 @@ export function ApiKeyContent() {
 												</h4>
 												{isExpired ? (
 													<span className="rounded-md border-0 bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-														Expired
+														{t("apikey_expired")}
 													</span>
 												) : null}
 											</div>
@@ -155,36 +153,34 @@ export function ApiKeyContent() {
 					})}
 				</div>
 			) : (
-				<p className="py-6 text-center text-sm text-muted-foreground">No API keys yet.</p>
+				<p className="py-6 text-center text-sm text-muted-foreground">{t("apikey_none")}</p>
 			)}
 
 			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Create API key</DialogTitle>
-						<DialogDescription>
-							Name this API key so you can recognize where it is used later.
-						</DialogDescription>
+						<DialogTitle>{t("apikey_create")}</DialogTitle>
+						<DialogDescription>{t("apikey_name_hint")}</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="pat-label">Name</Label>
+							<Label htmlFor="pat-label">{t("name")}</Label>
 							<Input
 								id="pat-label"
 								value={label}
 								onChange={(event) => setLabel(event.target.value)}
-								placeholder="Obsidian vault"
+								placeholder={t("apikey_name_placeholder")}
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="pat-expiry">Expires in days (optional)</Label>
+							<Label htmlFor="pat-expiry">{t("apikey_expires_days")}</Label>
 							<Input
 								id="pat-expiry"
 								type="number"
 								min={1}
 								value={expiresInDays}
 								onChange={(event) => setExpiresInDays(event.target.value)}
-								placeholder="Never expires"
+								placeholder={t("apikey_never")}
 							/>
 						</div>
 					</div>
@@ -205,7 +201,7 @@ export function ApiKeyContent() {
 							onClick={handleCreate}
 							className="relative text-sm h-9 min-w-[128px]"
 						>
-							<span className={isMutating ? "opacity-0" : ""}>Create API key</span>
+							<span className={isMutating ? "opacity-0" : ""}>{t("apikey_create")}</span>
 							{isMutating && <Spinner size="sm" className="absolute" />}
 						</Button>
 					</DialogFooter>
@@ -215,10 +211,8 @@ export function ApiKeyContent() {
 			<Dialog open={!!createdToken} onOpenChange={(open) => !open && setCreatedToken(null)}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Copy your API key now</DialogTitle>
-						<DialogDescription>
-							This API key is shown only once. Store it somewhere secure before closing this dialog.
-						</DialogDescription>
+						<DialogTitle>{t("apikey_copy_now")}</DialogTitle>
+						<DialogDescription>{t("apikey_once")}</DialogDescription>
 					</DialogHeader>
 					<div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 p-2">
 						<code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-xs">
@@ -249,14 +243,14 @@ export function ApiKeyContent() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete API key?</AlertDialogTitle>
+						<AlertDialogTitle>{t("apikey_delete")}</AlertDialogTitle>
 						<AlertDialogDescription>
 							<span className="font-medium text-foreground">{deleteTarget?.label}</span> will be
 							permanently removed. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={isMutating}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							disabled={isMutating}
 							className="bg-destructive text-white hover:bg-destructive/90"
@@ -268,10 +262,10 @@ export function ApiKeyContent() {
 							{isMutating ? (
 								<span className="inline-flex items-center gap-2">
 									<Spinner size="xs" />
-									Deleting...
+									{t("deleting")}
 								</span>
 							) : (
-								"Delete"
+								t("delete_btn")
 							)}
 						</AlertDialogAction>
 					</AlertDialogFooter>

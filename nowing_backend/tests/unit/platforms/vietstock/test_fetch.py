@@ -202,3 +202,39 @@ def test_rate_limit_negative_config_defaults_to_safe_value(monkeypatch) -> None:
     """Edge: negative rate limit config should clamp to a safe interval."""
     monkeypatch.setattr("app.config.config.VIETSTOCK_RATE_LIMIT_RPS", -10.0)
     assert _rate_limit_interval() > 0
+
+
+@respx.mock
+async def test_fetch_quote_5xx_retry_then_success() -> None:
+    """Verify bounded retry on 500 error before success."""
+    token = "TOKEN_500"
+    respx.get("https://finance.vietstock.vn").mock(
+        return_value=httpx.Response(200, text=_token_page(token))
+    )
+    respx.post("https://finance.vietstock.vn/company/tradinginfo").mock(
+        side_effect=[
+            httpx.Response(500),
+            httpx.Response(
+                200,
+                json={"symbol": "HPG", "current_price": 28000.0, "key_ratios": {"pe": 8.5}},
+            ),
+        ]
+    )
+    raw = await fetch_quote("HPG")
+    assert raw["symbol"] == "HPG"
+    assert raw["current_price"] == 28000.0
+
+
+@respx.mock
+async def test_fetch_quote_connection_error_raises_connection_error() -> None:
+    """Verify timeout/connect failure raises VietstockConnectionError."""
+    from app.proprietary.platforms.vietstock.fetch import VietstockConnectionError
+
+    respx.get("https://finance.vietstock.vn").mock(
+        return_value=httpx.Response(200, text=_token_page("TOKEN"))
+    )
+    respx.post("https://finance.vietstock.vn/company/tradinginfo").mock(
+        side_effect=httpx.ConnectError("Connection refused")
+    )
+    with pytest.raises(VietstockConnectionError):
+        await fetch_quote("HPG")

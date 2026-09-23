@@ -73,7 +73,7 @@ class TelegramLeadAdapter(LeadSourceAdapter):
         if isinstance(entities, str):
             try:
                 entities = json.loads(entities)
-            except Exception:
+            except Exception:  # lead intelligence operation fallback
                 entities = {}
         if not isinstance(entities, dict):
             entities = TelegramEntityExtractor.extract_entities(text)
@@ -132,7 +132,7 @@ class TelegramLeadAdapter(LeadSourceAdapter):
         if isinstance(entities, str):
             try:
                 entities = json.loads(entities)
-            except Exception:
+            except Exception:  # lead intelligence operation fallback
                 entities = {}
         if not isinstance(entities, dict):
             entities = TelegramEntityExtractor.extract_entities(text)

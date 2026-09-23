@@ -16,6 +16,7 @@
     "https://*.topcv.vn/*",
     "https://*.chotot.com/*",
     "https://*.linkedin.com/*",
+    "https://chat.zalo.me/*",
     "http://localhost:*/*",
     "https://*.nowing.net/*"
   ],
@@ -34,7 +35,8 @@
         "https://*.batdongsan.com.vn/*",
         "https://*.topcv.vn/*",
         "https://*.chotot.com/*",
-        "https://*.linkedin.com/*"
+        "https://*.linkedin.com/*",
+        "https://chat.zalo.me/*"
       ],
       "js": ["assets/content.js"],
       "run_at": "document_idle"

@@ -52,7 +52,7 @@ class ScopedModelFallbackMiddleware(ModelFallbackMiddleware):
         last_exception: Exception
         try:
             return handler(request)
-        except Exception as e:
+        except Exception as e:  # primary sync model call failure; check fallback eligibility
             if not _is_fallback_eligible(e):
                 raise
             last_exception = e
@@ -69,7 +69,7 @@ class ScopedModelFallbackMiddleware(ModelFallbackMiddleware):
             )
             try:
                 return handler(request.override(model=fallback_model))
-            except Exception as e:
+            except Exception as e:  # fallback sync model call failure; try next candidate or re-raise
                 if not _is_fallback_eligible(e):
                     raise
                 last_exception = e
@@ -85,7 +85,7 @@ class ScopedModelFallbackMiddleware(ModelFallbackMiddleware):
         last_exception: Exception
         try:
             return await handler(request)
-        except Exception as e:
+        except Exception as e:  # primary async model call failure; check fallback eligibility
             if not _is_fallback_eligible(e):
                 raise
             last_exception = e
@@ -102,7 +102,7 @@ class ScopedModelFallbackMiddleware(ModelFallbackMiddleware):
             )
             try:
                 return await handler(request.override(model=fallback_model))
-            except Exception as e:
+            except Exception as e:  # fallback async model call failure; try next candidate or re-raise
                 if not _is_fallback_eligible(e):
                     raise
                 last_exception = e

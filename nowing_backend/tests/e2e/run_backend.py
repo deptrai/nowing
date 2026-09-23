@@ -91,6 +91,17 @@ def _load_dotenv_and_set_env_defaults() -> None:
     # Allow any loopback origin so CSRF does not block logins during local testing.
     os.environ.setdefault("CSRF_ALLOW_LOOPBACK", "true")
 
+    # Story 6.10: enable the inbound email gateway surface for the E2E backend.
+    # Otherwise /api/v1/gateway/email/inbound returns 404 because routes are
+    # mounted with a Depends(require_gateway_enabled) guard.
+    os.environ.setdefault("GATEWAY_ENABLED", "TRUE")
+
+    # Story 6.10: the inbound email gateway signature check must be bypassed when
+    # no real signing key is configured, which is always true for the E2E backend.
+    # TESTING=true causes _verify_provider_signature to skip verification when
+    # the provider key is empty (see app/routes/gateway_email_routes.py).
+    os.environ.setdefault("TESTING", "true")
+
     # Sentinel keys — fakes never read them; turns leaked real calls into 401s.
     os.environ.setdefault("COMPOSIO_API_KEY", "local-deny-real-call-sentinel")
     os.environ.setdefault("COMPOSIO_ENABLED", "TRUE")
@@ -365,6 +376,8 @@ def _install_test_only_app_extensions(app) -> None:
     limit so Playwright workers can authenticate without thrashing the
     production auth surface. See tests/e2e/auth_mint.py.
     """
+    from starlette.routing import Host
+
     from tests.e2e.auth_mint import install as install_e2e_mint
     from tests.e2e.document_archive import _install as install_e2e_document_archive
     from tests.e2e.middleware.scenario import ScenarioMiddleware
@@ -372,6 +385,15 @@ def _install_test_only_app_extensions(app) -> None:
     app.add_middleware(ScenarioMiddleware)
     install_e2e_mint(app)
     install_e2e_document_archive(app)
+
+    # The production app appends a catch-all Host("{host}", ...) route at the
+    # end of app.router.routes. Because Starlette matches routes in order, that
+    # catch-all host matches every request (including localhost) before the
+    # /__e2e__ path routes added above are reached, causing 404s for all E2E
+    # helpers. Move Host routes to the end of the list so path routes win.
+    non_host_routes = [r for r in app.router.routes if not isinstance(r, Host)]
+    host_routes = [r for r in app.router.routes if isinstance(r, Host)]
+    app.router.routes = non_host_routes + host_routes
 
 
 class _InlineTaskDispatcher:

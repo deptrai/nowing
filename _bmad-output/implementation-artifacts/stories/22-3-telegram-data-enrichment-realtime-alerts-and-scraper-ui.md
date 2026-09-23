@@ -1,3 +1,8 @@
+---
+story_key: 22-3-telegram-data-enrichment-realtime-alert-trigger-ai-agent-too
+status: done
+---
+
 story_key: 22-3-telegram-data-enrichment-realtime-alerts-and-scraper-ui
 status: done
 baseline_commit: d1877927ca8681283e1858a7da054b1f413a9686

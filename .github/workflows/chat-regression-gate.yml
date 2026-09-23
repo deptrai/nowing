@@ -27,56 +27,147 @@ on:
         description: 'Cost cap in micros (e.g. 500000 = $0.50)'
         required: true
         default: '500000'
-      search_space_id:
-        description: 'SearchSpace id for thread creation'
+      n:
+        description: 'Max cases to run (sets --n)'
         required: true
+        default: '10'
+      tags:
+        description: 'Comma-separated tag filter (optional)'
+        required: false
+        default: ''
+      tier:
+        description: 'Comma-separated tier filter (optional)'
+        required: false
+        default: ''
+      profile:
+        description: 'Run profile (quick or full)'
+        required: true
+        default: 'full'
+      backend_build_id:
+        description: 'Deployed backend build/commit identifier'
+        required: false
+        default: ''
+      fail_on_unratified:
+        description: 'Fail if gate baseline is not ratified'
+        required: true
+        default: 'false'
+      search_space_id:
+        description: 'SearchSpace id for thread creation (overrides CHAT_EVAL_SEARCH_SPACE_ID)'
+        required: true
+      workspace_id:
+        description: 'Workspace id for audit/reporting (overrides CHAT_EVAL_WORKSPACE_ID)'
+        required: false
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NOWING_EVAL_MODE: ${{ github.event.inputs.environment }}
+  NOWING_EVAL_MODES: ${{ github.event.inputs.modes }}
+  NOWING_EVAL_CONCURRENCY: ${{ github.event.inputs.concurrency }}
+  NOWING_EVAL_MAX_TOTAL_COST_MICROS: ${{ github.event.inputs.max_total_cost_micros }}
+  NOWING_EVAL_N: ${{ github.event.inputs.n }}
+  NOWING_EVAL_TAGS: ${{ github.event.inputs.tags }}
+  NOWING_EVAL_TIER: ${{ github.event.inputs.tier }}
+  NOWING_EVAL_PROFILE: ${{ github.event.inputs.profile }}
+  NOWING_EVAL_BACKEND_BUILD_ID: ${{ github.event.inputs.backend_build_id }}
+  NOWING_EVAL_FAIL_ON_UNRATIFIED: ${{ github.event.inputs.fail_on_unratified }}
+  NOWING_EVAL_SEARCH_SPACE_ID: ${{ github.event.inputs.search_space_id }}
+  NOWING_EVAL_WORKSPACE_ID: ${{ github.event.inputs.workspace_id }}
 
 jobs:
   chat-regression-gate:
     name: Chat regression benchmark
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v5
 
       - name: Sync eval dependencies
         working-directory: nowing_evals
         run: uv sync --all-extras --frozen
 
-      - name: Run chat regression benchmark
+      - name: Ingest chat regression dataset
         working-directory: nowing_evals
         env:
           NOWING_API_BASE: ${{ secrets.NOWING_API_BASE }}
           NOWING_USER_EMAIL: ${{ secrets.NOWING_USER_EMAIL }}
           NOWING_USER_PASSWORD: ${{ secrets.NOWING_USER_PASSWORD }}
+          NOWING_JWT: ${{ secrets.NOWING_JWT }}
+          NOWING_REFRESH_TOKEN: ${{ secrets.NOWING_REFRESH_TOKEN }}
+        run: >-
+          uv run --active python -m nowing_evals ingest chat regression
+
+      - name: Run chat regression benchmark
+        id: benchmark
+        working-directory: nowing_evals
+        timeout-minutes: 45
+        env:
+          NOWING_API_BASE: ${{ secrets.NOWING_API_BASE }}
+          NOWING_USER_EMAIL: ${{ secrets.NOWING_USER_EMAIL }}
+          NOWING_USER_PASSWORD: ${{ secrets.NOWING_USER_PASSWORD }}
+          NOWING_JWT: ${{ secrets.NOWING_JWT }}
+          NOWING_REFRESH_TOKEN: ${{ secrets.NOWING_REFRESH_TOKEN }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           NOWING_EVALS_ARTIFACT_URL_PREFIX: ${{ vars.NOWING_EVALS_ARTIFACT_URL_PREFIX }}
+          CHAT_EVAL_SEARCH_SPACE_ID: ${{ github.event.inputs.search_space_id }}
+          CHAT_EVAL_WORKSPACE_ID: ${{ github.event.inputs.workspace_id }}
+          CHAT_EVAL_MAX_CASES: ${{ github.event.inputs.n }}
         run: >-
           uv run --active python -m nowing_evals run chat regression
-          --environment ${{ github.event.inputs.environment }}
-          --search-space-id ${{ github.event.inputs.search_space_id }}
-          --modes ${{ github.event.inputs.modes }}
-          --concurrency ${{ github.event.inputs.concurrency }}
-          --max-total-cost-micros ${{ github.event.inputs.max_total_cost_micros }}
+          --environment '${{ env.NOWING_EVAL_MODE }}'
+          ${{ env.NOWING_EVAL_SEARCH_SPACE_ID != '' && format('--search-space-id {0}', env.NOWING_EVAL_SEARCH_SPACE_ID) || '' }}
+          --n '${{ env.NOWING_EVAL_N }}'
+          --modes '${{ env.NOWING_EVAL_MODES }}'
+          --concurrency '${{ env.NOWING_EVAL_CONCURRENCY }}'
+          --max-total-cost-micros '${{ env.NOWING_EVAL_MAX_TOTAL_COST_MICROS }}'
+          --profile '${{ env.NOWING_EVAL_PROFILE }}'
+          ${{ env.NOWING_EVAL_TAGS != '' && format('--tags {0}', env.NOWING_EVAL_TAGS) || '' }}
+          ${{ env.NOWING_EVAL_TIER != '' && format('--tier {0}', env.NOWING_EVAL_TIER) || '' }}
+          ${{ env.NOWING_EVAL_WORKSPACE_ID != '' && format('--workspace-id {0}', env.NOWING_EVAL_WORKSPACE_ID) || '' }}
+          ${{ env.NOWING_EVAL_BACKEND_BUILD_ID != '' && format('--backend-build-id {0}', env.NOWING_EVAL_BACKEND_BUILD_ID) || '' }}
+          ${{ env.NOWING_EVAL_FAIL_ON_UNRATIFIED == 'true' && '--fail-on-unratified' || '' }}
+
+      - name: Write GitHub Step Summary
+        if: always()
+        working-directory: nowing_evals
+        run: |
+          set -e
+          artifact=$(find data/chat/runs -name run_artifact.json -path '*/regression/*' | head -n 1 || true)
+          if [ -f "$artifact" ]; then
+            echo "## Chat regression benchmark" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`json" >> "$GITHUB_STEP_SUMMARY"
+            cat "$artifact" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Chat regression benchmark" >> "$GITHUB_STEP_SUMMARY"
+            echo "No run artifact found." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload run artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chat-regression-run
-          path: nowing_evals/data/chat/runs/*/regression/run_artifact.json
+          name: chat-regression-run-${{ github.run_id }}
+          path: |
+            nowing_evals/data/chat/runs/*/regression/run_artifact.json
+            nowing_evals/data/chat/runs/*/regression/raw.jsonl
           if-no-files-found: ignore

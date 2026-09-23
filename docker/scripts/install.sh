@@ -189,6 +189,168 @@ compose_up_wait() {
     fi
 }
 
+# ── Port conflict detection ──────────────────────────────────────────────────
+
+# Defaults must match docker-compose.yml and .env.example
+# Only host-published ports are checked; DB/Redis/backend are internal.
+default_ports() {
+    cat << 'EOF'
+LISTEN_HTTP_PORT:3929
+LISTEN_HTTPS_PORT:443
+EOF
+}
+
+# Check if something is listening on a TCP port on the host (Linux/macOS/WSL2).
+# Returns 0 if the port is in use.
+_port_in_use() {
+    local port="$1"
+    if command -v ss >/dev/null 2>&1; then
+        ss -H -tln 2>/dev/null | awk -v p="$port" '$4 ~ ":"p"$" {found=1} END {exit found ? 0 : 1}' || return 0
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -an 2>/dev/null | grep -qE "^tcp.*[.:]${port}[[:space:]].*LISTEN" && return 0
+    fi
+    # Fallback: try to connect to the port on localhost.
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - << PY 2>/dev/null
+import socket, sys
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.5)
+    s.connect(('127.0.0.1', ${port}))
+    s.close()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY
+        return $?
+    fi
+    return 1
+}
+
+# Prompt for an alternative port when the default is in use.
+_prompt_alt_port() {
+    local name="$1" default="$2"
+    local input alt
+    if $QUIET; then
+        warn "${name} default port ${default} appears to be in use. Run interactively or edit ${INSTALL_DIR}/.env manually."
+        return 1
+    fi
+    if [[ ! -r /dev/tty || ! -w /dev/tty ]]; then
+        warn "Cannot prompt for alternative port (no TTY). Edit ${INSTALL_DIR}/.env manually."
+        return 1
+    fi
+    printf "\n" > /dev/tty
+    warn "${name} default port ${default} is already in use." > /dev/tty
+    printf "Enter an alternative port for ${name} [${default}]: " > /dev/tty
+    read -r input < /dev/tty || input=""
+    if [[ -z "$input" ]]; then
+        alt="$default"
+    elif [[ "$input" =~ ^[0-9]+$ && "$input" -ge 1 && "$input" -le 65535 ]]; then
+        alt="$input"
+    else
+        warn "Invalid port '${input}', using default ${default}." > /dev/tty
+        alt="$default"
+    fi
+    printf '%s' "$alt"
+    return 0
+}
+
+# Map env var names to the docker-compose service ports exposed on the host.
+_port_env_name() {
+    case "$1" in
+        LISTEN_HTTP_PORT) printf 'LISTEN_HTTP_PORT' ;;
+        LISTEN_HTTPS_PORT) printf 'LISTEN_HTTPS_PORT' ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+detect_port_conflicts() {
+    if $QUIET; then
+        # In quiet mode we just surface warnings; the user is expected to
+        # pre-configure ports in .env or accept Docker publish failures.
+        return 0
+    fi
+
+    local env_file="$1"
+    local port_map changed_port
+    changed_port=false
+
+    # Services that publish ports in the default compose stack.
+    # DB_PORT and REDIS_PORT are exposed via env overrides in the compose.
+    while IFS=: read -r name default; do
+        [[ -n "$name" && -n "$default" ]] || continue
+        if _port_in_use "$default"; then
+            local alt
+            alt=$(_prompt_alt_port "$name" "$default") || continue
+            if [[ "$alt" != "$default" ]]; then
+                set_env_value "$env_file" "$(_port_env_name "$name")" "$alt"
+                changed_port=true
+            fi
+        fi
+    done < <(default_ports)
+
+    if $changed_port; then
+        info "Port overrides written to ${env_file}."
+        info "Re-run this installer if you later free the original ports."
+    fi
+}
+
+# ── Local model / Ollama path ────────────────────────────────────────────────
+
+prompt_local_model_path() {
+    local env_file="$1"
+
+    # Skip if .env is being reused (user already configured) or in quiet mode.
+    if $MIGRATION_MODE || [[ -f "${INSTALL_DIR}/.env" ]] || $QUIET; then
+        return 0
+    fi
+    if [[ ! -r /dev/tty || ! -w /dev/tty ]]; then
+        return 0
+    fi
+
+    # Ollama installed locally (not necessarily running).
+    local has_ollama=false
+    if command -v ollama >/dev/null 2>&1 || docker ps --format '{{.Names}}' 2>/dev/null | grep -qi '^ollama$'; then
+        has_ollama=true
+    fi
+
+    local choice
+    printf "\n" > /dev/tty
+    printf "${BOLD}${CYAN}LLM / embedding provider${NC}\n" > /dev/tty
+    if $has_ollama; then
+        printf "Ollama was detected on the host. Use local models (nomic-embed-text + llama3.1) for offline-first setup? [Y/n]: " > /dev/tty
+    else
+        printf "No OpenAI/Anthropic key is required, but local models need Ollama.\n" > /dev/tty
+        printf "Use local Ollama models for offline-first setup? (Ollama must be installed) [y/N]: " > /dev/tty
+    fi
+    read -r choice < /dev/tty || choice=""
+
+    local use_local=false
+    if $has_ollama; then
+        case "$choice" in
+            ""|[Yy]|[Yy][Ee][Ss]) use_local=true ;;
+        esac
+    else
+        case "$choice" in
+            [Yy]|[Yy][Ee][Ss]) use_local=true ;;
+        esac
+    fi
+
+    if $use_local; then
+        set_env_value "$env_file" "LOCAL_MODEL" "true"
+        set_env_value "$env_file" "OLLAMA_BASE_URL" "http://host.docker.internal:11434"
+        set_env_value "$env_file" "EMBEDDING_MODEL" "litellm://ollama/nomic-embed-text"
+        set_env_value "$env_file" "EMBEDDING_BASE_URL" "http://host.docker.internal:11434"
+        # Planner/chat default for local path. User can override via admin UI.
+        set_env_value "$env_file" "DEFAULT_CHAT_MODEL" "openai/llama3.1"
+        set_env_value "$env_file" "DEFAULT_CHAT_API_BASE" "http://host.docker.internal:11434/v1"
+        success "Local model path enabled (Ollama on host port 11434)."
+        warn "Run: ollama pull nomic-embed-text && ollama pull llama3.1"
+    else
+        set_env_value "$env_file" "LOCAL_MODEL" "false"
+    fi
+}
+
 # ── Variant and .env helpers ─────────────────────────────────────────────────
 
 set_env_value() {
@@ -410,6 +572,8 @@ if [ ! -f "${INSTALL_DIR}/.env" ]; then
         sed -i "s|SECRET_KEY=replace_me_with_a_random_string|SECRET_KEY=${SECRET_KEY}|" "${INSTALL_DIR}/.env"
     fi
     apply_variant_env "${INSTALL_DIR}/.env" "$SELECTED_VARIANT" "false"
+    detect_port_conflicts "${INSTALL_DIR}/.env"
+    prompt_local_model_path "${INSTALL_DIR}/.env"
     info "Created ${INSTALL_DIR}/.env"
 else
     if $VARIANT_EXPLICIT; then

@@ -37,7 +37,7 @@ class DiarizationService:
                 "pyannote/speaker-diarization-3.1",
                 token=token,
             )
-        except Exception as exc:
+        except Exception as exc:  # pipeline load raises broadly (model download, torch); wrap as ImportError
             logger.warning("Failed to load pyannote diarization pipeline: %s", exc)
             raise ImportError(f"failed to load diarization pipeline: {exc}") from exc
 
@@ -58,7 +58,7 @@ class DiarizationService:
 
         try:
             diarization = pipeline(str(audio_path))
-        except Exception as exc:
+        except Exception as exc:  # inference failure → empty turns; caller degrades to transcript-only
             logger.warning("Diarization failed: %s", exc)
             return []
 

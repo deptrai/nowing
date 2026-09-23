@@ -36,7 +36,7 @@ def draft_transcript_task(self, podcast_id: int, workspace_id: int) -> dict:
         return run_async_celery_task(
             lambda: _draft_transcript(podcast_id, workspace_id)
         )
-    except Exception as exc:
+    except Exception as exc:  # podcast draft transcript task error; mark failed and return status
         logger.error("Podcast %s drafting failed: %s", podcast_id, exc)
         message = str(exc)
         run_async_celery_task(lambda: mark_failed(podcast_id, message))

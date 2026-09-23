@@ -100,7 +100,7 @@ async def download_and_extract_content(
         markdown = result.markdown_content
         return markdown, metadata, None
 
-    except Exception as e:
+    except Exception as e:  # attachment extraction error; skip content
         logger.warning(f"Failed to extract content from {file_name}: {e!s}")
         return None, metadata, str(e)
     finally:

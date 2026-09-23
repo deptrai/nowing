@@ -42,6 +42,9 @@ async function handleMessage(message: ExtensionMessage): Promise<any> {
     case 'SYNC_OFFLINE_QUEUE':
       return await handleSyncOfflineQueue();
 
+    case 'GET_ZALO_CONTEXT':
+      return await handleZaloContext(message.phone);
+
     case 'PING':
       return { status: 'ok', timestamp: Date.now() };
 
@@ -102,6 +105,69 @@ async function handleClipLead(payload: LeadClipPayload): Promise<any> {
       queued: true,
       message: 'Network offline. Saved to offline sync buffer.',
     };
+  }
+}
+
+/**
+ * Story 37.4: fetch co-pilot context for a phone detected on chat.zalo.me.
+ * PAT never leaves the service worker (INV-24.5); the content script only
+ * receives the sanitized context payload.
+ */
+
+// Per-phone cache so SPA conversation flips don't refetch/rebuild.
+const ZALO_CONTEXT_TTL_MS = 60_000;
+const zaloContextCache = new Map<string, { context: any; ts: number }>();
+
+function detailToMessage(detail: any, fallback: string): string {
+  // FastAPI 422 returns detail as an array of {msg, loc, ...} objects.
+  if (Array.isArray(detail)) return detail[0]?.msg || fallback;
+  return detail || fallback;
+}
+
+async function handleZaloContext(phone: string): Promise<any> {
+  const config = await getConfig();
+
+  if (!config.patToken?.trim()) {
+    return { success: false, message: 'Please set Personal Access Token (PAT) in Extension popup' };
+  }
+  if (!config.workspaceId) {
+    return { success: false, message: 'Please configure active Workspace ID in Extension popup' };
+  }
+
+  const cached = zaloContextCache.get(phone);
+  if (cached && Date.now() - cached.ts < ZALO_CONTEXT_TTL_MS) {
+    return { success: true, context: cached.context };
+  }
+
+  const endpoint =
+    `${config.backendUrl.replace(/\/$/, '')}` +
+    `/api/v1/workspaces/${config.workspaceId}/leads/copilot-context` +
+    `?phone=${encodeURIComponent(phone)}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${config.patToken.trim()}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({ detail: response.statusText }));
+      return {
+        success: false,
+        message: detailToMessage(errBody.detail, `Server error (${response.status})`),
+      };
+    }
+
+    const context = await response.json();
+    zaloContextCache.set(phone, { context, ts: Date.now() });
+    return { success: true, context };
+  } catch (netErr: any) {
+    const message =
+      netErr?.name === 'TimeoutError' || netErr?.name === 'AbortError'
+        ? 'Request timed out'
+        : netErr?.message || 'Network offline';
+    return { success: false, message };
   }
 }
 

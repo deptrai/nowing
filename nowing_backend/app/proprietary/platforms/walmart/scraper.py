@@ -260,7 +260,7 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     """Last-resort HTML selector parse when ``__NEXT_DATA__`` is unavailable."""
     try:
         root = lxml_html.fromstring(html)
-    except Exception:
+    except Exception:  # malformed HTML parse failure; cannot extract product
         return None
 
     title = None
@@ -271,7 +271,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:  # XPath evaluation failure on title selector; continue
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             title = " ".join(el[0].itertext()).strip()
@@ -290,7 +291,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:  # XPath evaluation failure on price selector; continue
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             price_text = " ".join(el[0].itertext()).strip()
@@ -304,7 +306,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:  # XPath evaluation failure on availability selector; continue
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             availability = " ".join(el[0].itertext()).strip()
@@ -318,7 +321,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:  # XPath evaluation failure on seller selector; continue
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             seller = " ".join(el[0].itertext()).strip()
@@ -332,7 +336,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:  # XPath evaluation failure on rating selector; continue
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             rating = _price(" ".join(el[0].itertext()))
@@ -346,7 +351,8 @@ def _parse_product_html(html: str, url: str) -> dict[str, Any] | None:
     ):
         try:
             el = root.xpath(selector)
-        except Exception:
+        except Exception as exc:  # XPath evaluation failure on image selector; continue
+            logger.debug("Suppressed %r", exc)
             continue
         if el:
             image_url = el[0].get("src") or el[0].get("content")
@@ -440,7 +446,7 @@ def _parse_search_html(html: str, url: str) -> list[dict[str, Any]]:
     """Parse search result cards with lxml selectors."""
     try:
         root = lxml_html.fromstring(html)
-    except Exception:
+    except Exception:  # malformed search HTML; return empty cards
         return []
 
     cards = root.xpath('//div[@data-automation-id="product-tile"]')

@@ -9,7 +9,7 @@ from app.automations.persistence.enums.automation_status import AutomationStatus
 from app.automations.persistence.models.automation import Automation
 from app.automations.persistence.models.trigger import AutomationTrigger
 
-from .errors import DispatchError
+from .errors import DispatchError, DispatchNotFoundError
 
 
 async def resolve_active_automation(
@@ -21,7 +21,7 @@ async def resolve_active_automation(
     """
     automation = await _load_automation(session, trigger.automation_id)
     if automation is None:
-        raise DispatchError(
+        raise DispatchNotFoundError(
             f"automation {trigger.automation_id} not found for trigger {trigger.id}"
         )
 

@@ -15,6 +15,7 @@ import {
 	RefreshCw,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { SidebarListItem } from "@/components/layout/ui/sidebar/SidebarListItem";
@@ -125,6 +126,7 @@ export const FolderNode = React.memo(function FolderNode({
 	onStopWatching,
 	onExportFolder,
 }: FolderNodeProps) {
+	const t = useTranslations("documents");
 	const isMobile = useIsMobile();
 	const [renameValue, setRenameValue] = useState(folder.name);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -308,8 +310,8 @@ export const FolderNode = React.memo(function FolderNode({
 								</TooltipTrigger>
 								<TooltipContent side="top">
 									{processingState === "processing"
-										? "Syncing folder contents"
-										: "Some files failed to process"}
+										? t("syncing_folder_contents")
+										: t("files_failed_to_process")}
 								</TooltipContent>
 							</Tooltip>
 						) : (
@@ -330,7 +332,7 @@ export const FolderNode = React.memo(function FolderNode({
 												? "indeterminate"
 												: false
 									}
-									aria-label={`Select ${folder.name}`}
+									aria-label={t("select_folder", { name: folder.name })}
 									onCheckedChange={handleCheckChange}
 									onClick={(e) => e.stopPropagation()}
 									className={cn(
@@ -353,7 +355,7 @@ export const FolderNode = React.memo(function FolderNode({
 							onBlur={handleRenameSubmit}
 							onKeyDown={handleRenameKeyDown}
 							onClick={(e) => e.stopPropagation()}
-							placeholder="Enter folder name"
+							placeholder={t("enter_folder_name")}
 							className="flex-1 min-w-0 bg-transparent px-1 py-0.5 text-sm outline-none caret-primary placeholder:text-muted-foreground/50"
 						/>
 					) : (
@@ -384,7 +386,7 @@ export const FolderNode = React.memo(function FolderNode({
 											dropdownOpen && "bg-accent hover:bg-accent"
 										)}
 										onClick={(e) => e.stopPropagation()}
-										aria-label={`Folder actions for ${folder.name}`}
+										aria-label={t("folder_actions", { name: folder.name })}
 									>
 										<MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
 									</Button>
@@ -398,7 +400,7 @@ export const FolderNode = React.memo(function FolderNode({
 											}}
 										>
 											<RefreshCw className={cn("mr-2 h-4 w-4", isRescanning && "animate-spin")} />
-											Re-scan
+											{t("rescan")}
 										</DropdownMenuItem>
 									)}
 									{isWatched && onStopWatching && (
@@ -409,7 +411,7 @@ export const FolderNode = React.memo(function FolderNode({
 											}}
 										>
 											<EyeOff className="mr-2 h-4 w-4" />
-											Stop watching
+											{t("stop_watching")}
 										</DropdownMenuItem>
 									)}
 									<DropdownMenuItem
@@ -419,7 +421,7 @@ export const FolderNode = React.memo(function FolderNode({
 										}}
 									>
 										<FolderPlus className="mr-2 h-4 w-4" />
-										New subfolder
+										{t("new_subfolder")}
 									</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={(e) => {
@@ -428,7 +430,7 @@ export const FolderNode = React.memo(function FolderNode({
 										}}
 									>
 										<Pencil className="mr-2 h-4 w-4" />
-										Rename
+										{t("rename")}
 									</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={(e) => {
@@ -437,7 +439,7 @@ export const FolderNode = React.memo(function FolderNode({
 										}}
 									>
 										<Move className="mr-2 h-4 w-4" />
-										Move to...
+										{t("move_to")}
 									</DropdownMenuItem>
 									{onExportFolder && (
 										<DropdownMenuItem
@@ -447,7 +449,7 @@ export const FolderNode = React.memo(function FolderNode({
 											}}
 										>
 											<Download className="mr-2 h-4 w-4" />
-											Export folder
+											{t("export_folder")}
 										</DropdownMenuItem>
 									)}
 									<DropdownMenuItem
@@ -457,7 +459,7 @@ export const FolderNode = React.memo(function FolderNode({
 										}}
 									>
 										<Trash2 className="mr-2 h-4 w-4" />
-										Delete
+										{t("delete")}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -471,36 +473,36 @@ export const FolderNode = React.memo(function FolderNode({
 					{isWatched && onRescan && (
 						<ContextMenuItem onClick={() => handleRescan()}>
 							<RefreshCw className={cn("mr-2 h-4 w-4", isRescanning && "animate-spin")} />
-							Re-scan
+							{t("rescan")}
 						</ContextMenuItem>
 					)}
 					{isWatched && onStopWatching && (
 						<ContextMenuItem onClick={() => onStopWatching(folder)}>
 							<EyeOff className="mr-2 h-4 w-4" />
-							Stop watching
+							{t("stop_watching")}
 						</ContextMenuItem>
 					)}
 					<ContextMenuItem onClick={() => onCreateSubfolder(folder.id)}>
 						<FolderPlus className="mr-2 h-4 w-4" />
-						New subfolder
+						{t("new_subfolder")}
 					</ContextMenuItem>
 					<ContextMenuItem onClick={() => startRename()}>
 						<Pencil className="mr-2 h-4 w-4" />
-						Rename
+						{t("rename")}
 					</ContextMenuItem>
 					<ContextMenuItem onClick={() => onMove(folder)}>
 						<Move className="mr-2 h-4 w-4" />
-						Move to...
+						{t("move_to")}
 					</ContextMenuItem>
 					{onExportFolder && (
 						<ContextMenuItem onClick={() => onExportFolder(folder)}>
 							<Download className="mr-2 h-4 w-4" />
-							Export folder
+							{t("export_folder")}
 						</ContextMenuItem>
 					)}
 					<ContextMenuItem onClick={() => onDelete(folder)}>
 						<Trash2 className="mr-2 h-4 w-4" />
-						Delete
+						{t("delete")}
 					</ContextMenuItem>
 				</ContextMenuContent>
 			)}

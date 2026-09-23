@@ -1,4 +1,9 @@
 ---
+story_key: 12-6-saved-searches
+status: done
+---
+
+---
 title: Story 12.6 — Saved Searches
 epic: 12
 story: 6

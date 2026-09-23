@@ -1,7 +1,7 @@
 """ZNS (Zalo Notification Service) Client & Template Service.
 
 Handles approved template retrieval, dynamic variable mapping,
-sending time-window validation (08:00 - 21:30 VN Time per Decree 91),
+sending time-window validation (08:00 - 21:00 VN Time per Decree 91),
 and transactional quota billing.
 """
 
@@ -11,7 +11,6 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
-from zoneinfo import ZoneInfo
 
 import httpx
 from sqlalchemy import select
@@ -32,7 +31,7 @@ ZNS_DEFAULT_COST_MICROS = 300  # 300 VND per ZNS message (~0.3 credits)
 
 
 class ZnsTimeWindowViolationError(ValueError):
-    """Raised when sending is attempted outside 08:00 - 21:30 VN Time."""
+    """Raised when sending is attempted outside 08:00 - 21:00 VN Time."""
 
 
 class ZnsDncViolationError(ValueError):
@@ -51,24 +50,17 @@ ZnsQuotaExceededError = ZnsInsufficientCreditError
 
 
 def is_zns_sending_window_open(now: datetime | None = None) -> bool:
-    """Verify if current time in Vietnam (UTC+7) falls within legal sending window (08:00 - 21:30).
+    """Verify if current time in Vietnam (UTC+7) falls within the legal sending window (08:00 - 21:00).
 
-    Nghị định 91/2020/NĐ-CP: Tin nhắn quảng cáo/thông báo chỉ được gửi từ 08h00 đến 21h30.
+    Nghị định 91/2020/NĐ-CP: outbound marketing dispatch halts 21h00 - 08h00.
+    Consumes the shared sequencer curfew logic so the ZNS gate can never drift
+    from the sequence-dispatch curfew (Story 37.2 / AC-4).
     """
-    vn_tz = ZoneInfo("Asia/Ho_Chi_Minh")
-    if now is None:
-        now = datetime.now(vn_tz)
-    elif now.tzinfo is None:
-        # Assume UTC if naive, then convert to Vietnam Time (REL-03)
-        now = now.replace(tzinfo=datetime.UTC).astimezone(vn_tz)
-    else:
-        now = now.astimezone(vn_tz)
+    # Lazy import: app.services.sequencer.__init__ → dispatch → zns_client —
+    # a top-level import here would create a module cycle at import time.
+    from app.services.sequencer.scheduling import is_dispatch_curfew
 
-    current_minute = now.hour * 60 + now.minute
-    start_minute = 8 * 60  # 08:00 -> 480
-    end_minute = 21 * 60 + 30  # 21:30 -> 1290
-
-    return start_minute <= current_minute <= end_minute
+    return not is_dispatch_curfew(now)
 
 
 def validate_template_params(
@@ -169,7 +161,7 @@ class ZnsClient:
         # 1. Time-gate verification (INV-23.9)
         if not is_zns_sending_window_open():
             raise ZnsTimeWindowViolationError(
-                "ZNS sending is prohibited outside 08:00 - 21:30 VN Time per Decree 91/2020/ND-CP"
+                "ZNS sending is prohibited outside 08:00 - 21:00 VN Time per Decree 91/2020/ND-CP"
             )
 
         # 2. DNC verification
@@ -252,7 +244,7 @@ class ZnsClient:
                 else:
                     is_success = False
                     error_message = f"Zalo HTTP {api_res.status_code}"
-        except Exception as exc:
+        except Exception as exc:  # ZNS API HTTP/transport failure; handle mock or record failure
             # If in mock test mode, allow synthetic success
             if token == "mock_zalo_token":
                 logger.info(

@@ -25,7 +25,7 @@ export type IndexingConfigState = z.infer<typeof indexingConfigStateSchema>;
  * Schema for frequency minutes (must be one of the allowed values)
  */
 export const frequencyMinutesSchema = z.enum(["5", "15", "60", "360", "720", "1440", "10080"], {
-	message: "Invalid frequency value",
+	message: "connector.invalid_frequency",
 });
 
 export type FrequencyMinutes = z.infer<typeof frequencyMinutesSchema>;
@@ -46,7 +46,7 @@ export const dateRangeSchema = z
 			return true;
 		},
 		{
-			message: "Start date must be before or equal to end date",
+			message: "connector.invalid_date_range",
 			path: ["endDate"],
 		}
 	);

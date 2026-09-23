@@ -11,6 +11,7 @@ import {
 	TerminalIcon,
 	XCircleIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
@@ -157,6 +158,7 @@ function truncateCommand(command: string, maxLen = 80): string {
 // ============================================================================
 
 async function downloadSandboxFile(threadId: string, filePath: string, fileName: string) {
+	const t = useTranslations("toolUi");
 	const url = buildBackendUrl(`/api/v1/threads/${threadId}/sandbox/download`, {
 		path: filePath,
 	});
@@ -194,6 +196,7 @@ function ExecuteLoading({ command }: { command: string }) {
 }
 
 function ExecuteErrorState({ command, error }: { command: string; error: string }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5 p-4">
 			<div className="flex items-center gap-3">
@@ -201,7 +204,7 @@ function ExecuteErrorState({ command, error }: { command: string; error: string 
 					<AlertCircleIcon className="size-4 text-destructive" aria-hidden="true" />
 				</div>
 				<div className="min-w-0 flex-1">
-					<p className="text-sm font-medium text-destructive">Execution failed</p>
+					<p className="text-sm font-medium text-destructive">{t("tu_execution_failed")}</p>
 					<code className="mt-0.5 block truncate text-xs text-muted-foreground font-mono">
 						$ {command}
 					</code>
@@ -224,6 +227,7 @@ function ExecuteCancelledState({ command }: { command: string }) {
 }
 
 function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: string }) {
+	const t = useTranslations("toolUi");
 	const [downloading, setDownloading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -233,7 +237,7 @@ function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: 
 		try {
 			await downloadSandboxFile(threadId, file.path, file.name);
 		} catch (e) {
-			setError(e instanceof Error ? e.message : "Download failed");
+			setError(e instanceof Error ? e.message : t("tu_download_failed"));
 		} finally {
 			setDownloading(false);
 		}
@@ -268,6 +272,7 @@ function ExecuteCompleted({
 	parsed: ParsedOutput;
 	threadId: string | null;
 }) {
+	const t = useTranslations("toolUi");
 	const [open, setOpen] = useState(false);
 	const isLongCommand = command.length > 80 || command.includes("\n");
 	const hasTextContent = parsed.displayOutput.trim().length > 0 || isLongCommand;
@@ -340,7 +345,7 @@ function ExecuteCompleted({
 						{isLongCommand && (
 							<div>
 								<p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-									Command
+									{t("tu_command")}
 								</p>
 								<pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all rounded-md bg-zinc-900/80 dark:bg-zinc-800/40 px-3 py-2 text-xs font-mono text-emerald-400 leading-relaxed">
 									{command}
@@ -360,9 +365,7 @@ function ExecuteCompleted({
 							</div>
 						)}
 						{parsed.truncated && (
-							<p className="text-[10px] text-zinc-500 italic">
-								Output was truncated due to size limits
-							</p>
+							<p className="text-[10px] text-zinc-500 italic">{t("tu_output_was_truncated_due")}</p>
 						)}
 						{hasFiles && threadId && (
 							<div>

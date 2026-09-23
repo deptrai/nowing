@@ -7,8 +7,13 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import RunnableConfig
 
+from app.db.base import async_session_maker
 from app.redis_client import get_redis_client
 from app.schemas.dsh import BrowserOperatorCdpPayload
+from app.services.browser_operator_audit_service import (
+    BrowserOperatorAuditService,
+    generate_session_token,
+)
 from app.services.pii.redact import redact_pii
 
 MissionState = dict[str, Any]
@@ -27,6 +32,10 @@ class HumanInterventionRequired(Exception):  # noqa: N818
 
 class CdpExecutionError(RuntimeError):
     """Raised when CDP execution fails but a graceful degradation is possible."""
+
+
+class CdpDebuggerDetachedError(CdpExecutionError):
+    """Raised when Chrome debugger is detached (user canceled infobar or tab closed)."""
 
 
 class BrowserOperatorCdpSubgraph:
@@ -56,7 +65,7 @@ class BrowserOperatorCdpSubgraph:
         if isinstance(value, str):
             try:
                 return redact_pii(value, context="lead_enrichment").text
-            except Exception as exc:
+            except Exception as exc:  # fail-soft PII redaction; log warning and return marker
                 logger.warning("PII redaction failed for CDP value: %s", exc)
                 return "<redaction_failed>"
         return value
@@ -85,7 +94,7 @@ class BrowserOperatorCdpSubgraph:
 
         try:
             payload_model = BrowserOperatorCdpPayload.model_validate(payload)
-        except Exception as exc:
+        except Exception as exc:  # malformed CDP payload validation failure; re-raise ValueError
             raise ValueError(f"Invalid CDP mission payload: {exc}") from exc
 
         target_url = str(payload_model.target_url)
@@ -104,20 +113,46 @@ class BrowserOperatorCdpSubgraph:
                 raise HumanInterventionRequired("No extension listening for CDP takeover")
         except HumanInterventionRequired:
             raise
-        except Exception as exc:
+        except Exception as exc:  # redis pubsub subscription check failure; wrap in CdpExecutionError
             # If we cannot check subscription state due to a Redis error, surface it
             # as a degradation error so the retry/ DLQ path can distinguish it from
             # a genuine "no extension" condition.
             raise CdpExecutionError(f"Cannot verify extension CDP subscription: {exc}") from exc
 
         command_id = uuid.uuid4().hex
+        session_token = generate_session_token(str(mission_id), str(resolved_user_id))
         cmd = {
             "action": "navigate",
             "url": target_url,
             "mission_id": str(mission_id),
             "command_id": command_id,
             "user_id": str(resolved_user_id),
+            "session_token": session_token,
         }
+
+        # Log command dispatch to audit trail before publishing.
+        try:
+            import uuid as _uuid
+            async with async_session_maker() as audit_session:
+                from app.models.leads import DshMission
+                mission_obj = await audit_session.get(
+                    DshMission, _uuid.UUID(str(mission_id))
+                )
+                if mission_obj:
+                    await BrowserOperatorAuditService.log_command_received(
+                        audit_session,
+                        mission_id=mission_obj.id,
+                        workspace_id=mission_obj.workspace_id,
+                        user_id=mission_obj.user_id,
+                        command_id=command_id,
+                        action="navigate",
+                        target_url=target_url,
+                    )
+                    await audit_session.commit()
+        except Exception as audit_exc:
+            logger.warning(
+                "Failed to log CDP command received audit event: %s", audit_exc
+            )
 
         # Publish command as an SSE event through the Redis pub/sub channel.
         await redis.publish(channel, json.dumps(cmd))
@@ -139,6 +174,14 @@ class BrowserOperatorCdpSubgraph:
         if not isinstance(parsed_result, dict):
             raise CdpExecutionError("CDP result must be a JSON object")
 
+        # Verify the result belongs to the command we just sent before processing
+        # data or errors. A mismatch means we received a stale result from a prior race.
+        if parsed_result.get("command_id") != command_id:
+            raise CdpExecutionError(
+                f"CDP result command_id mismatch for mission {mission_id}: "
+                f"expected {command_id}, got {parsed_result.get('command_id')}"
+            )
+
         if parsed_result.get("requires_human"):
             challenge = parsed_result.get("challenge", "challenge")
             exc = HumanInterventionRequired(f"CDP requires human intervention: {challenge}")
@@ -148,17 +191,20 @@ class BrowserOperatorCdpSubgraph:
 
         if parsed_result.get("error"):
             error_msg = parsed_result["error"]
+            if isinstance(error_msg, str) and (
+                error_msg.startswith("DEBUGGER_DETACHED")
+                or "Debugger is not attached" in error_msg
+            ):
+                clean_reason = error_msg.removeprefix("DEBUGGER_DETACHED:").strip()
+                logger.warning(
+                    "CDP debugger detached for mission %s: %s",
+                    mission_id,
+                    clean_reason,
+                )
+                raise CdpDebuggerDetachedError(f"CDP debugger detached: {clean_reason}")
             # Degrade on extension-reported CDP errors instead of crashing the mission.
             logger.warning("CDP execution failed for mission %s: %s", mission_id, error_msg)
             raise CdpExecutionError(f"Extension CDP execution failed: {error_msg}")
-
-        # Verify the result belongs to the command we just sent. A mismatch means
-        # we received a stale result, possibly from a previous command or a race.
-        if parsed_result.get("command_id") != command_id:
-            raise CdpExecutionError(
-                f"CDP result command_id mismatch for mission {mission_id}: "
-                f"expected {command_id}, got {parsed_result.get('command_id')}"
-            )
 
         cdp_res = parsed_result.get("result") or {}
 
@@ -221,7 +267,7 @@ class BrowserOperatorCdpSubgraph:
         # Keep a PII-redacted trace of the raw command/result for debugging.
         try:
             redacted_url = redact_pii(target_url, context="lead_enrichment").text
-        except Exception as exc:
+        except Exception as exc:  # fail-soft PII redaction on target URL; log warning and use marker
             logger.warning("PII redaction failed for CDP target URL: %s", exc)
             redacted_url = "<redaction_failed>"
         state_checkpoint["cdp_last_command"] = {
@@ -246,5 +292,5 @@ def _extract_domain(url: str | None) -> str | None:
     try:
         parsed = urlparse(url)
         return parsed.netloc if parsed.netloc else None
-    except Exception:
+    except Exception:  # malformed URL parse failure; return None
         return None

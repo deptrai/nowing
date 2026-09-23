@@ -78,7 +78,7 @@ async def scrape_vietstock(
         logger.warning("vietstock quote fetch blocked", exc_info=exc)
         degraded = True
         degradation_reason = "api_error"
-    except Exception as exc:
+    except Exception as exc:  # unexpected quote error; mark degraded api_error
         logger.exception("vietstock quote unexpected error: %s", exc)
         degraded = True
         degradation_reason = "api_error"
@@ -102,7 +102,7 @@ async def scrape_vietstock(
             logger.warning("vietstock financials fetch blocked", exc_info=exc)
             degraded = True
             degradation_reason = "api_error"
-        except Exception as exc:
+        except Exception as exc:  # unexpected financials error; mark degraded api_error
             logger.exception("vietstock financials unexpected error: %s", exc)
             degraded = True
             degradation_reason = "api_error"

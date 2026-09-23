@@ -132,7 +132,7 @@ def create_read_gmail_email_tool(
 
             return {"status": "success", "message_id": message_id, "content": content}
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

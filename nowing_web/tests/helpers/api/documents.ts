@@ -68,17 +68,22 @@ export async function uploadMarkdown(
 	filename: string,
 	content: string
 ): Promise<FileUploadResponse> {
-	const response = await request.post(`${BACKEND_URL}/api/v1/documents/fileupload`, {
-		multipart: {
-			workspace_id: workspaceId.toString(),
-			files: {
-				name: filename,
-				mimeType: "text/markdown",
-				buffer: Buffer.from(content, "utf-8"),
+	// The endpoint declares workspace_id both as a required query parameter and
+	// as a required multipart form field — send both so either binding resolves.
+	const response = await request.post(
+		`${BACKEND_URL}/api/v1/documents/fileupload?workspace_id=${workspaceId}`,
+		{
+			multipart: {
+				workspace_id: workspaceId.toString(),
+				files: {
+					name: filename,
+					mimeType: "text/markdown",
+					buffer: Buffer.from(content, "utf-8"),
+				},
 			},
-		},
-		headers: { Authorization: `Bearer ${token}` },
-	});
+			headers: { Authorization: `Bearer ${token}` },
+		}
+	);
 	if (!response.ok()) {
 		throw new Error(`uploadMarkdown failed (${response.status()}): ${await response.text()}`);
 	}

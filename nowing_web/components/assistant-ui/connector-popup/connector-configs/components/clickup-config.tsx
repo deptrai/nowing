@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,7 +18,7 @@ export const ClickUpConfig: FC<ClickUpConfigProps> = ({
 	onConfigChange,
 	onNameChange,
 }) => {
-	// Check if this is an OAuth connector (has access_token or _token_encrypted flag)
+	const t = useTranslations("assistant"); // Check if this is an OAuth connector (has access_token or _token_encrypted flag)
 	const isOAuth = !!(connector.config?.access_token || connector.config?._token_encrypted);
 
 	const [apiToken, setApiToken] = useState<string>(
@@ -50,13 +51,13 @@ export const ClickUpConfig: FC<ClickUpConfigProps> = ({
 				{/* OAuth Info */}
 				<Alert>
 					<Info />
-					<AlertTitle>Connected via OAuth</AlertTitle>
+					<AlertTitle>{t("connected_oauth")}</AlertTitle>
 					<AlertDescription>
 						<p>
 							Workspace:{" "}
 							<code className="bg-muted px-1 py-0.5 rounded text-inherit">{workspaceName}</code>
 						</p>
-						<p>To update your connection, reconnect this connector.</p>
+						<p>{t("oauth_reconnect")}</p>
 					</AlertDescription>
 				</Alert>
 			</div>
@@ -69,39 +70,37 @@ export const ClickUpConfig: FC<ClickUpConfigProps> = ({
 			{/* Connector Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Connector Name</Label>
+					<Label className="text-xs sm:text-sm">{t("connector_name")}</Label>
 					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="My ClickUp Connector"
+						placeholder={t("clickup_name_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("connector_name_desc")}</p>
 				</div>
 			</div>
 
 			{/* Configuration */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Configuration</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("configuration")}</h3>
 				</div>
 
 				<div className="space-y-2">
 					<Label className="flex items-center gap-2 text-xs sm:text-sm">
 						<KeyRound className="h-4 w-4" aria-hidden="true" />
-						ClickUp API Token
+						{t("clickup_api_token")}
 					</Label>
 					<Input
 						type="password"
 						value={apiToken}
 						onChange={(e) => handleApiTokenChange(e.target.value)}
-						placeholder="pk_..."
+						placeholder={t("clickup_pat_placeholder")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
 					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						Update your ClickUp API Token if needed. For better security and automatic token
+						Update your {t("clickup_api_token")} if needed. For better security and automatic token
 						refresh, consider disconnecting and reconnecting using OAuth 2.0.
 					</p>
 				</div>

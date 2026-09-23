@@ -314,6 +314,8 @@ def test_parse_sse_accepts_object_with_aiter():
 async def test_call_chainlens_degrades_on_whitespace_api_key():
     with (
         patch.object(config, "CHAINLENS_API_KEY", "   "),
+        patch.object(config, "CHAINLENS_SERVICE_TOKEN", ""),
+        patch.object(config, "CHAINLENS_AUTH_CONTEXT_SECRET", ""),
         patch("httpx.AsyncClient") as client_cls,
     ):
         client_cls.side_effect = AssertionError("should not instantiate client")

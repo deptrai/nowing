@@ -1976,3 +1976,186 @@ class TestScrapeCostMicros:
             {"keyword": "x", "max_items": 1, "max_pages": 1, "fetch_details": True}
         )
         assert out["cost_micros"] == per_item * 3 + per_item
+
+
+class TestDeferredWorkStoryTwelveTwo:
+    """Story 12-2 items 1, 2, 4, 6, 7 tests."""
+
+    @pytest.mark.asyncio
+    async def test_item1_cumulative_detail_degradation_over_fifty_percent(
+        self, monkeypatch
+    ):
+        """Item 1: When detail blocked > 50%, run returns degraded=True and cost_micros=0."""
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+
+        async def _fake_search(_kw, _page, **_kwargs):
+            return "<html/>"
+
+        # Return 1 success and 2 blocks -> 2/3 = 66% blocked > 50%
+        detail_calls = 0
+
+        async def _fake_detail(_url, **_kwargs):
+            nonlocal detail_calls
+            detail_calls += 1
+            if detail_calls == 1:
+                return {"skills": ["python"]}
+            return None  # blocked
+
+        def _fake_parse(_html):
+            return [
+                {"source_url": f"https://www.topcv.vn/j/{i}", "salary_raw": ""}
+                for i in range(3)
+            ]
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
+        monkeypatch.setattr(scraper, "_parse_search_page", _fake_parse)
+
+        out = await scraper.scrape_topcv(
+            {"keyword": "test", "max_items": 3, "fetch_details": True}
+        )
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "bot_detected"
+        # Item 2: Degraded billing policy
+        assert out["cost_micros"] == 0
+
+    @pytest.mark.asyncio
+    async def test_item1_consecutive_detail_blocks_trip_circuit_breaker(
+        self, monkeypatch
+    ):
+        """Item 1: Consecutive detail blocks reaching threshold trip circuit breaker."""
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+        monkeypatch.setattr(config, "TOPCV_CIRCUIT_BREAKER_THRESHOLD", 2)
+
+        async def _fake_search(_kw, _page, **_kwargs):
+            return "<html/>"
+
+        # 2 consecutive blocks trip breaker
+        async def _fake_detail(_url, **_kwargs):
+            return None
+
+        def _fake_parse(_html):
+            return [
+                {"source_url": f"https://www.topcv.vn/j/{i}", "salary_raw": ""}
+                for i in range(3)
+            ]
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
+        monkeypatch.setattr(scraper, "_parse_search_page", _fake_parse)
+
+        out = await scraper.scrape_topcv(
+            {"keyword": "test", "max_items": 3, "fetch_details": True}
+        )
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "bot_detected"
+        assert out["cost_micros"] == 0
+
+    @pytest.mark.asyncio
+    async def test_item2_degraded_partial_scrape_has_zero_cost_micros(
+        self, monkeypatch
+    ):
+        """Item 2: Partial items returned during degraded run must have cost_micros=0."""
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+
+        search_call = 0
+
+        async def _fake_search(_kw, _page, **_kwargs):
+            nonlocal search_call
+            search_call += 1
+            if search_call == 1:
+                return "<html/>"
+            raise ValueError("anti-bot challenge ddos-guard")
+
+        def _fake_parse(_html):
+            return [{"source_url": "https://www.topcv.vn/j/1", "salary_raw": ""}]
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_parse_search_page", _fake_parse)
+
+        out = await scraper.scrape_topcv(
+            {"keyword": "test", "max_items": 10, "max_pages": 2, "fetch_details": False}
+        )
+        assert len(out["items"]) == 1
+        assert out["degraded"] is True
+        assert out["cost_micros"] == 0
+
+    @pytest.mark.asyncio
+    async def test_item4_user_agent_rotation_wired_to_detail_fetch(
+        self, monkeypatch
+    ):
+        """Item 4: Rotated User-Agent is passed to connector.crawl_url for detail fetches."""
+        import app.proprietary.platforms.topcv.scraper as scraper
+        from app.proprietary.web_crawler.connector import (
+            CrawlOutcome,
+            CrawlOutcomeStatus,
+        )
+
+        captured_user_agents: list[str | None] = []
+
+        class FakeConnector:
+            async def crawl_url(self, url: str, user_agent: str | None = None):
+                captured_user_agents.append(user_agent)
+                return CrawlOutcome(
+                    status=CrawlOutcomeStatus.SUCCESS,
+                    tier="scrapling-stealthy",
+                    result={
+                        "content": "## Mô tả công việc\nDev Python\n## Yêu cầu ứng viên\nPython",
+                        "metadata": {"description": "kỹ năng Python"},
+                    },
+                )
+
+        fake_conn = FakeConnector()
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            lambda: fake_conn,
+        )
+        monkeypatch.setattr(config, "TOPCV_USER_AGENT", "CustomTopCVUA/1.0")
+
+        res = await scraper._fetch_detail_page("https://www.topcv.vn/brand/j/1")
+        assert res is not None
+        assert len(captured_user_agents) == 1
+        assert captured_user_agents[0] == "CustomTopCVUA/1.0"
+
+    @pytest.mark.asyncio
+    async def test_item6_scoped_circuit_breaker_isolation(self):
+        """Item 6: Scoped TopCVCircuitBreaker instances do not leak state across instances."""
+        from app.proprietary.platforms.topcv.scraper import TopCVCircuitBreaker
+
+        breaker1 = TopCVCircuitBreaker(threshold=2, timeout_s=10.0)
+        breaker2 = TopCVCircuitBreaker(threshold=2, timeout_s=10.0)
+
+        assert not await breaker1.is_open()
+        assert not await breaker2.is_open()
+
+        await breaker1.record_failure()
+        await breaker1.record_failure()
+
+        assert await breaker1.is_open()
+        assert not await breaker2.is_open()
+
+        with pytest.raises(ValueError, match="circuit open"):
+            await breaker1.check()
+
+        # breaker2 check passes without error
+        await breaker2.check()
+
+    @pytest.mark.asyncio
+    async def test_item7_legal_disabled_flag_returns_degraded(self, monkeypatch):
+        """Item 7: When TOPCV_ENABLED is False, scrape returns legal_blocked immediately."""
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_ENABLED", False)
+
+        out = await scraper.scrape_topcv({"keyword": "python"})
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "legal_blocked"
+        assert out["cost_micros"] == 0
+        assert out["items"] == []
+

@@ -87,6 +87,7 @@ from .checkpointed_subagent_middleware.task_description import (
 from .context_editing import build_context_editing_mw
 from .dedup_hitl import build_dedup_hitl_mw
 from .doom_loop import build_doom_loop_mw
+from .jev_router import build_jev_router_mw
 from .kb_persistence import build_kb_persistence_mw
 from .knowledge_tree import build_knowledge_tree_mw
 from .mode_budget import build_mode_budget_mw
@@ -263,6 +264,17 @@ def build_main_agent_deepagent_middleware(
             system_prompt=None,
             task_description=TASK_TOOL_DESCRIPTION,
             workspace_id=workspace_id,
+        ),
+        build_jev_router_mw(
+            flags=flags,
+            subagent_descriptors=[
+                {"name": s["name"], "description": s.get("description", "")}
+                for s in subagents
+            ],
+            workspace_id=workspace_id,
+            user_id=user_id,
+            client_id=client_id,
+            thread_id=thread_id,
         ),
         build_mode_budget_mw(flags),
         resilience.model_call_limit,

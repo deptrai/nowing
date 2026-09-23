@@ -133,6 +133,7 @@ const logStatusConfig = {
 function MessageDetails({
 	message,
 	taskName,
+	metadata,
 	createdAt,
 	children,
 }: {
@@ -142,13 +143,14 @@ function MessageDetails({
 	createdAt?: string;
 	children: React.ReactNode;
 }) {
+	const t = useTranslations("logs");
 	return (
 		<AlertDialog>
 			<AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
 			<AlertDialogContent className="max-w-3xl w-full">
 				<div className="flex items-start justify-between gap-4">
 					<div>
-						<AlertDialogTitle className="text-lg">Log details</AlertDialogTitle>
+						<AlertDialogTitle className="text-lg">{t("log_details")}</AlertDialogTitle>
 						{createdAt && (
 							<p className="text-xs text-muted-foreground mt-1">
 								{new Date(createdAt).toLocaleString()}
@@ -156,7 +158,7 @@ function MessageDetails({
 						)}
 					</div>
 					<div className="shrink-0">
-						<AlertDialogCancel className="text-sm">Close</AlertDialogCancel>
+						<AlertDialogCancel className="text-sm">{t("close")}</AlertDialogCancel>
 					</div>
 				</div>
 
@@ -187,14 +189,14 @@ const createColumns = (t: (key: string) => string): ColumnDef<Log>[] => [
 					table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
 				}
 				onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-				aria-label="Select all"
+				aria-label={t("select_all")}
 			/>
 		),
 		cell: ({ row }) => (
 			<Checkbox
 				checked={row.getIsSelected()}
 				onCheckedChange={(value) => row.toggleSelected(!!value)}
-				aria-label="Select row"
+				aria-label={t("select_row")}
 			/>
 		),
 		size: 28,
@@ -447,7 +449,7 @@ export default function LogsManagePage() {
 		const selectedRows = table.getSelectedRowModel().rows;
 
 		if (selectedRows.length === 0) {
-			toast.error("No rows selected");
+			toast.error(t("no_rows_selected"));
 			return;
 		}
 
@@ -458,16 +460,16 @@ export default function LogsManagePage() {
 			const allSuccessful = results.every((result) => result === true);
 
 			if (allSuccessful) {
-				toast.success(`Successfully deleted ${selectedRows.length} log(s)`);
+				toast.success(t("toast.logs_deleted", { count: selectedRows.length }));
 			} else {
-				toast.error("Some logs could not be deleted");
+				toast.error(t("some_logs_delete_failed"));
 			}
 
 			await refreshLogs();
 			table.resetRowSelection();
 		} catch (error: any) {
 			console.error("Error deleting logs:", error);
-			toast.error("Error deleting logs");
+			toast.error(t("delete_logs_error"));
 		}
 	};
 
@@ -479,7 +481,7 @@ export default function LogsManagePage() {
 		setIsRefreshing(true);
 		try {
 			await Promise.all([refreshLogs(), refreshSummary()]);
-			toast.success("Logs refreshed");
+			toast.success(t("logs_refreshed"));
 		} finally {
 			setIsRefreshing(false);
 		}
@@ -935,7 +937,7 @@ function LogsTable({
 				<div className="flex h-[400px] w-full items-center justify-center">
 					<div className="flex flex-col items-center gap-2">
 						<div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-						<p className="text-sm text-muted-foreground">Loading logs...</p>
+						<p className="text-sm text-muted-foreground">{t("loading")}</p>
 					</div>
 				</div>
 			</motion.div>
@@ -952,9 +954,9 @@ function LogsTable({
 				<div className="flex h-[400px] w-full items-center justify-center">
 					<div className="flex flex-col items-center gap-2">
 						<AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
-						<p className="text-sm text-destructive">Error loading logs</p>
+						<p className="text-sm text-destructive">{t("error_loading")}</p>
 						<Button variant="outline" size="sm" onClick={onRefresh}>
-							Retry
+							{t("retry")}
 						</Button>
 					</div>
 				</div>

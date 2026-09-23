@@ -1,4 +1,9 @@
 ---
+story_key: 18-2-newchatrequest-extension
+status: done
+---
+
+---
 baseline_commit: "a247f8448"
 status: done
 ---

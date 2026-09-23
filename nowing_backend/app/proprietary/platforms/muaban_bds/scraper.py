@@ -77,10 +77,20 @@ def _normalize_text(text: str) -> str:
 
 
 def _resolve_city_slug(name: str) -> str | None:
-    """Resolve a city name or slug to a Muaban city slug."""
+    """Resolve a city name or slug to a Muaban city slug, expanding across all provinces."""
     if all(c == "-" or c.isalnum() for c in name) and "-" in name:
         return name.strip().lower()
-    return _CITY_ALIASES.get(_normalize_text(name))
+    norm = _normalize_text(name)
+    if norm in _CITY_ALIASES:
+        return _CITY_ALIASES[norm]
+    try:
+        from app.services.location_normalize import _CITY_SLUGS, resolve_city_code
+        code = resolve_city_code(name)
+        if code and code in _CITY_SLUGS:
+            return _CITY_SLUGS[code]
+    except Exception as exc:  # location normalization lookup failure; fallback to None
+        logger.debug("Suppressed %r", exc)
+    return None
 
 
 def _property_slug(listing_type: str, property_type: str) -> str:
@@ -298,7 +308,7 @@ async def scrape_muaban_bds(
                 seen_ids.add(listing_id)
                 try:
                     listing = parse_listing(raw)
-                except Exception:
+                except Exception:  # per-item parse failure; skip listing and continue batch
                     logger.exception("failed to parse Muaban item id=%s", listing_id)
                     continue
                 if not _item_passes_filters(listing, input_model):
@@ -327,7 +337,7 @@ async def scrape_muaban_bds(
                         listing.phone = phone_display
                     listing.phone_display = phone_display
                     listing.phone_enc = phone_enc
-                except Exception:
+                except Exception:  # per-item detail phone fetch failure; continue batch
                     logger.exception(
                         "failed to fetch detail phone for listing_id=%s",
                         listing.listing_id,
@@ -347,7 +357,7 @@ async def scrape_muaban_bds(
             total_items=len(listings),
             degraded=False,
         )
-    except Exception as exc:
+    except Exception as exc:  # top-level scrape failure; return degraded scraper_error
         logger.exception("muaban_bds scraper failed: %s", exc)
         return MuabanBdsScrapeOutput(
             degraded=True,
@@ -357,5 +367,5 @@ async def scrape_muaban_bds(
         if session is not None and hasattr(session, "close"):
             try:
                 await session.close()
-            except Exception as close_exc:
+            except Exception as close_exc:  # best-effort browser session close; suppress error
                 logger.warning("Muaban session close failed: %s", close_exc)

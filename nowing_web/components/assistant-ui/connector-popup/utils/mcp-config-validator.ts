@@ -208,7 +208,7 @@ export const testMCPConnection = async (
 		if (result.status === "success") {
 			return {
 				status: "success",
-				message: `Successfully connected. Found ${result.tools.length} tool${result.tools.length !== 1 ? "s" : ""}.`,
+				message: `Successfully connected. Found ${result.tools.length} tool${result.tools.length !== 1 ? "s" : "s"}.`,
 				tools: result.tools,
 			};
 		}

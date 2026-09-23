@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,6 +14,7 @@ export interface JiraConfigProps extends ConnectorConfigProps {
 }
 
 export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onNameChange }) => {
+	const t = useTranslations("assistant");
 	// Check if this is an OAuth connector (has access_token or _token_encrypted flag)
 	const isOAuth = !!(connector.config?.access_token || connector.config?._token_encrypted);
 
@@ -68,13 +70,13 @@ export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onN
 				{/* OAuth Info */}
 				<Alert>
 					<Info />
-					<AlertTitle>Connected via OAuth</AlertTitle>
+					<AlertTitle>{t("connected_via_oauth")}</AlertTitle>
 					<AlertDescription>
-						<p>This connector is authenticated using OAuth 2.0. Your Jira instance is:</p>
+						<p>{t("jira_oauth_desc")}</p>
 						<p>
 							<code className="bg-muted px-1 py-0.5 rounded text-inherit">{baseUrl}</code>
 						</p>
-						<p>To update your connection, reconnect this connector.</p>
+						<p>{t("update_connection_reconnect")}</p>
 					</AlertDescription>
 				</Alert>
 			</div>
@@ -87,28 +89,26 @@ export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onN
 			{/* Connector Name */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-2">
-					<Label className="text-xs sm:text-sm">Connector Name</Label>
+					<Label className="text-xs sm:text-sm">{t("connector_name")}</Label>
 					<Input
 						value={name}
 						onChange={(e) => handleNameChange(e.target.value)}
-						placeholder="My Jira Connector"
+						placeholder={t("my_jira_connector")}
 						className="border-slate-400/20 focus-visible:border-slate-400/40"
 					/>
-					<p className="text-[10px] sm:text-xs text-muted-foreground">
-						A friendly name to identify this connector.
-					</p>
+					<p className="text-[10px] sm:text-xs text-muted-foreground">{t("friendly_name")}</p>
 				</div>
 			</div>
 
 			{/* Configuration */}
 			<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6 space-y-3 sm:space-y-4">
 				<div className="space-y-1 sm:space-y-2">
-					<h3 className="font-medium text-sm sm:text-base">Configuration</h3>
+					<h3 className="font-medium text-sm sm:text-base">{t("configuration")}</h3>
 				</div>
 
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label className="text-xs sm:text-sm">Jira Base URL</Label>
+						<Label className="text-xs sm:text-sm">{t("jira_base_url")}</Label>
 						<Input
 							type="url"
 							value={baseUrl}
@@ -117,12 +117,12 @@ export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onN
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							The base URL of your Jira instance.
+							{t("jira_base_url_desc")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
-						<Label className="text-xs sm:text-sm">Email Address</Label>
+						<Label className="text-xs sm:text-sm">{t("email_address")}</Label>
 						<Input
 							type="email"
 							value={email}
@@ -131,25 +131,23 @@ export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onN
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
 						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							The email address associated with your Atlassian account.
+							{t("atlassian_email_desc")}
 						</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2 text-xs sm:text-sm">
 							<KeyRound className="h-4 w-4" aria-hidden="true" />
-							API Token
+							{t("api_token")}
 						</Label>
 						<Input
 							type="password"
 							value={apiToken}
 							onChange={(e) => handleApiTokenChange(e.target.value)}
-							placeholder="Your API Token"
+							placeholder={t("your_api_token")}
 							className="border-slate-400/20 focus-visible:border-slate-400/40"
 						/>
-						<p className="text-[10px] sm:text-xs text-muted-foreground">
-							Update your Jira API Token if needed.
-						</p>
+						<p className="text-[10px] sm:text-xs text-muted-foreground">{t("update_jira_token")}</p>
 					</div>
 				</div>
 			</div>

@@ -54,6 +54,8 @@ class ScrapeOutput(BaseModel):
     degraded: bool = False
     degradation_reason: str | None = None
     next_action: str | None = None
+    chainlens_ingest_job_id: str | None = None
+    chainlens_ingest_status: str | None = None
 
     @computed_field
     @property

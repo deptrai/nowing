@@ -33,7 +33,7 @@ async def _process_inbox_forever() -> None:
             else:
                 logger.exception("Gateway inbox processor failed one iteration")
             await asyncio.sleep(1)
-        except Exception:
+        except Exception:  # inbox event loop failure; backoff and continue worker
             logger.exception("Gateway inbox processor failed one iteration")
             await asyncio.sleep(1)
 

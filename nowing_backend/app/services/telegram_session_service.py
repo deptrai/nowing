@@ -81,7 +81,7 @@ class TelegramSessionLock:
             )
             self._is_locked = bool(res)
             return self._is_locked
-        except Exception as exc:
+        except Exception as exc:  # lock acquisition failure → treated as unlocked, caller proceeds cautiously
             logger.warning(
                 "Failed to acquire Telegram session lock %s: %s", self.key, exc
             )
@@ -99,7 +99,7 @@ class TelegramSessionLock:
             )
             self._is_locked = False
             return bool(res)
-        except Exception as exc:
+        except Exception as exc:  # best-effort lock release; TTL still bounds the lock
             logger.warning(
                 "Failed to release Telegram session lock %s: %s", self.key, exc
             )

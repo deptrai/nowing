@@ -114,7 +114,7 @@ class IndexingPipelineService:
                     p.document_type.value, p.unique_id, p.workspace_id
                 )
                 uid_hashes.setdefault(uid_hash, p)
-            except Exception:
+            except Exception:  # identifier hash calculation failure; skip placeholder and continue
                 _logger.debug(
                     "Skipping placeholder hash for %s", p.unique_id, exc_info=True
                 )
@@ -153,7 +153,7 @@ class IndexingPipelineService:
                 )
                 self.session.add(document)
                 created += 1
-            except Exception:
+            except Exception:  # document placeholder construction failure; skip placeholder and continue
                 _logger.debug("Skipping placeholder for %s", p.unique_id, exc_info=True)
 
         if created > 0:
@@ -329,7 +329,7 @@ class IndexingPipelineService:
                 documents.append(document)
                 log_document_queued(ctx)
 
-            except Exception as e:
+            except Exception as e:  # per-document queue preparation failure; log and skip document
                 log_doc_skipped_unknown(ctx, e)
 
         try:
@@ -345,7 +345,7 @@ class IndexingPipelineService:
             log_race_condition(batch_ctx)
             await self.session.rollback()
             return []
-        except Exception as e:
+        except Exception as e:  # batch persistence commit error; rollback and abort batch
             log_batch_aborted(batch_ctx, e)
             await self.session.rollback()
             return []
@@ -456,7 +456,7 @@ class IndexingPipelineService:
                 self.session, document, embedding_message(e)
             )
 
-        except Exception as e:
+        except Exception as e:  # unexpected indexing error; record telemetry, rollback and persist failure
             ot.record_error(persist_span, e)
             log_unexpected_error(ctx, e)
             await rollback_and_persist_failure(
@@ -636,7 +636,7 @@ class IndexingPipelineService:
                                     last_heartbeat = now
 
                         return result
-                    except Exception as exc:
+                    except Exception as exc:  # parallel indexing worker failure; track failed count and return error
                         logger.error(
                             "Parallel index failed for doc %s: %s",
                             document.id,

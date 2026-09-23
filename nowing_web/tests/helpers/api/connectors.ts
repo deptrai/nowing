@@ -154,7 +154,7 @@ export async function triggerIndexExpectDisabled(
 /**
  * Drives the OAuth flow for a Composio toolkit programmatically.
  *
- * Steps mirror what the UI does (see use-connector-dialog.ts):
+ * Steps mirror what the UI does (see use-connector-dialog/index.ts):
  *   1) GET /api/v1/auth/composio/connector/add?space_id=&toolkit_id=  -> { auth_url }
  *   2) Follow the auth_url (which the E2E fake makes same-origin so it
  *      lands on the callback directly with ?connectedAccountId=...).

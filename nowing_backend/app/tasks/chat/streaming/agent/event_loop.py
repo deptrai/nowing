@@ -116,7 +116,7 @@ async def stream_agent_events(
                     delta,
                     as_node="KnowledgeBasePersistenceMiddleware.after_agent",
                 )
-        except Exception as exc:
+        except Exception as exc:  # safety-net staged filesystem commit failure; log warning and continue
             _perf_log.warning("[stream_agent_events] safety-net commit failed: %s", exc)
 
     contract_state = state_values.get("file_operation_contract") or {}

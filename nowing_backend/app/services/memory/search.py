@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import Memory, MemoryType
+from app.services.memory.encryption import DecryptionError, MemoryEncryptionService
 from app.services.memory.vector import VectorValidationError, validate_embedding_vector
 from app.tenant_context import set_request_tenant_context
 
@@ -61,6 +62,7 @@ class MemoryHybridSearch:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self._encryption = MemoryEncryptionService.from_env()
 
     @staticmethod
     def _scope_conditions(
@@ -168,9 +170,15 @@ class MemoryHybridSearch:
                 .limit(output_limit)
             )
             result = await self.session.execute(stmt)
+            memories = result.scalars().all()
+            if self._encryption.is_enabled():
+                for memory in memories:
+                    self._encryption.reencrypt_if_needed(memory)
+                    # Return plaintext to callers; re-encrypt on write only.
+                    self._encryption.decrypt_memory(memory)
             return [
                 ScoredMemory(memory=memory, score=None, similarity=None)
-                for memory in result.scalars().all()
+                for memory in memories
             ]
         elif not query_blank and not query_embedding_missing:
             # D6: ranked = nonblank query + valid embedding.
@@ -186,7 +194,13 @@ class MemoryHybridSearch:
         )
         candidate_limit = min(top_k * 3, _MAX_CANDIDATES)
 
-        tsvector = func.to_tsvector("english", Memory.content)
+        # When encryption is enabled, ``content`` holds ciphertext and the
+        # derived ``content_search`` column holds the plaintext token stream.
+        # Otherwise fall back to the plaintext column directly.
+        if self._encryption.is_enabled():
+            tsvector = func.to_tsvector("english", Memory.content_search)
+        else:
+            tsvector = func.to_tsvector("english", Memory.content)
         tsquery = func.plainto_tsquery("english", query)
         distance = Memory.embedding.op("<=>", return_type=Float)(embedding)
 
@@ -251,6 +265,10 @@ class MemoryHybridSearch:
         result = await self.session.execute(final)
         candidates = result.all()
 
+        # AC-7: ``content_search`` carries the tokenized plaintext stream so
+        # keyword ranking works over ciphertext rows without a second
+        # decryption pass.
+
         valid: list[ScoredMemory] = []
         for memory, score, similarity in candidates:
             if len(valid) >= output_limit:
@@ -275,6 +293,18 @@ class MemoryHybridSearch:
                     metadata_reason,
                 )
                 continue
+            if self._encryption.is_enabled():
+                try:
+                    self._encryption.reencrypt_if_needed(memory)
+                    self._encryption.decrypt_memory(memory)
+                except DecryptionError:
+                    # A single corrupted or undecryptable row must not abort
+                    # the whole search; skip it like invalid embeddings do.
+                    logger.warning(
+                        "skipping memory %s because decryption failed",
+                        memory.id,
+                    )
+                    continue
             valid.append(
                 ScoredMemory(
                     memory=memory, score=float(score), similarity=float(similarity)

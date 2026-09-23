@@ -2,6 +2,7 @@
 
 import { useEquationElement, useEquationInput } from "@platejs/math/react";
 import { RadicalIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { TEquationElement } from "platejs";
 import { PlateElement, type PlateElementProps, useSelected } from "platejs/react";
 import * as React from "react";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function EquationElement({ children, ...props }: PlateElementProps<TEquationElement>) {
+	const t = useTranslations("ui");
 	const element = props.element;
 	const selected = useSelected();
 	const katexRef = React.useRef<HTMLDivElement | null>(null);
@@ -60,7 +62,7 @@ export function EquationElement({ children, ...props }: PlateElementProps<TEquat
 				) : (
 					<div className="flex items-center gap-2 text-sm text-muted-foreground">
 						<RadicalIcon className="size-4" aria-hidden="true" />
-						<span>Add an equation</span>
+						<span>{t("ui_add_an_equation")}</span>
 					</div>
 				)}
 			</div>

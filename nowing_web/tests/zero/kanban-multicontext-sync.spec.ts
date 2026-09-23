@@ -17,6 +17,11 @@ import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
 const AUTH_FILE = path.resolve(__dirname, "..", "..", "playwright", ".auth", "user.json");
 
 test.describe("Story 24.3 — Zero Sync Kanban Multi-Context & OCC Conflict", () => {
+	test.beforeAll(async ({ request }) => {
+		const health = await request.get(`${BACKEND_URL}/health`).catch(() => null);
+		test.skip(!health || !health.ok(), "Backend not running — skipping Zero Kanban sync test");
+	});
+
 	test("two clients dragging lead cards on Kanban pipeline sync via Zero and handle OCC 409 collision", async ({
 		browser,
 		request,

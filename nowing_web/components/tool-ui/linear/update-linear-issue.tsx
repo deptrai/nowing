@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -152,6 +153,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<LinearUpdateIssueContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 
 	const actionArgs = interruptData.action_requests[0]?.args ?? {};
@@ -289,26 +291,26 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-							? "Linear Issue Update Rejected"
+							? t("linear_update_rejected")
 							: phase === "processing" || phase === "complete"
-								? "Linear Issue Update Approved"
-								: "Update Linear Issue"}
+								? t("linear_update_approved")
+								: t("linear_update_title")}
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={hasPanelEdits ? "Updating issue with your changes" : "Updating issue"}
+							text={
+								hasPanelEdits ? t("linear_updating_issue_with_changes") : t("linear_updating_issue")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{hasPanelEdits ? "Issue updated with your changes" : "Issue updated"}
+							{hasPanelEdits ? t("linear_issue_updated_with_changes") : t("linear_issue_updated")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Issue update was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("linear_update_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -336,7 +338,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -352,7 +354,9 @@ function ApprovalCard({
 							<>
 								{context?.workspace && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Linear Account</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("linear_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{context.workspace.organization_name}
 										</div>
@@ -361,7 +365,9 @@ function ApprovalCard({
 
 								{issue && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Current Issue</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("linear_current_issue")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 											<div className="font-medium">
 												{issue.identifier}: {issue.title}
@@ -408,7 +414,7 @@ function ApprovalCard({
 													rel="noopener noreferrer"
 													className="text-xs text-primary hover:underline"
 												>
-													Open in Linear ↗
+													{t("linear_open_in_linear")} ↗
 												</a>
 											)}
 										</div>
@@ -424,7 +430,7 @@ function ApprovalCard({
 												onValueChange={(v) => setEditedArgs({ ...editedArgs, stateId: v })}
 											>
 												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select state" />
+													<SelectValue placeholder={t("linear_select_state")} />
 												</SelectTrigger>
 												<SelectContent>
 													{team.states.map((s) => (
@@ -437,16 +443,18 @@ function ApprovalCard({
 										</div>
 
 										<div className="space-y-2">
-											<p className="text-xs font-medium text-muted-foreground">Assignee</p>
+											<p className="text-xs font-medium text-muted-foreground">
+												{t("common_assignee")}
+											</p>
 											<Select
 												value={editedArgs.assigneeId}
 												onValueChange={(v) => setEditedArgs({ ...editedArgs, assigneeId: v })}
 											>
 												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select assignee" />
+													<SelectValue placeholder={t("linear_select_assignee")} />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="__none__">Unassigned</SelectItem>
+													<SelectItem value="__none__">{t("common_unassigned")}</SelectItem>
 													{team.members
 														.filter((m) => m.active)
 														.map((m) => (
@@ -459,13 +467,15 @@ function ApprovalCard({
 										</div>
 
 										<div className="space-y-2">
-											<p className="text-xs font-medium text-muted-foreground">Priority</p>
+											<p className="text-xs font-medium text-muted-foreground">
+												{t("common_priority")}
+											</p>
 											<Select
 												value={editedArgs.priority}
 												onValueChange={(v) => setEditedArgs({ ...editedArgs, priority: v })}
 											>
 												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select priority" />
+													<SelectValue placeholder={t("linear_select_priority")} />
 												</SelectTrigger>
 												<SelectContent>
 													{priorities.map((p) => (
@@ -567,19 +577,19 @@ function ApprovalCard({
 						)}
 						{proposedStateName && (
 							<div className="mt-2">
-								<span className="text-xs text-muted-foreground">State → </span>
+								<span className="text-xs text-muted-foreground">{t("linear_select_state")} → </span>
 								<span className="text-xs font-medium">{proposedStateName}</span>
 							</div>
 						)}
 						{proposedAssigneeName && (
 							<div className="mt-1">
-								<span className="text-xs text-muted-foreground">Assignee → </span>
+								<span className="text-xs text-muted-foreground">{t("common_assignee")} → </span>
 								<span className="text-xs font-medium">{proposedAssigneeName}</span>
 							</div>
 						)}
 						{proposedPriorityLabel && (
 							<div className="mt-1">
-								<span className="text-xs text-muted-foreground">Priority → </span>
+								<span className="text-xs text-muted-foreground">{t("common_priority")} → </span>
 								<span className="text-xs font-medium">{proposedPriorityLabel}</span>
 							</div>
 						)}
@@ -601,7 +611,9 @@ function ApprovalCard({
 						)}
 					</>
 				) : (
-					<p className="text-sm text-muted-foreground italic pb-3">No changes proposed</p>
+					<p className="text-sm text-muted-foreground italic pb-3">
+						{t("common_no_changes_proposed")}
+					</p>
 				)}
 			</div>
 
@@ -617,7 +629,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -632,7 +644,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -643,10 +655,11 @@ function ApprovalCard({
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Linear authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("linear_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -657,10 +670,11 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to update Linear issue</p>
+				<p className="text-sm font-semibold text-destructive">{t("linear_update_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -671,10 +685,13 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function NotFoundCard({ result }: { result: NotFoundResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Issue not found</p>
+				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+					{t("common_issue_not_found")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -685,17 +702,18 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Linear issue updated successfully"}
+					{result.message || t("linear_updated_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4 space-y-2 text-xs">
 				<div>
-					<span className="font-medium text-muted-foreground">Identifier: </span>
+					<span className="font-medium text-muted-foreground">{t("linear_identifier")} </span>
 					<span>{result.identifier}</span>
 				</div>
 				{result.url && (
@@ -706,7 +724,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Linear
+							{t("linear_open_in_linear")}
 						</a>
 					</div>
 				)}

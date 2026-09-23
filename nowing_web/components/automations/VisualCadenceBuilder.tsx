@@ -10,8 +10,10 @@ import {
 	Save,
 	Send,
 	ShieldCheck,
+	Sparkles,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo, useState } from "react";
 import type { SequenceCreate, SequenceStep } from "../../contracts/types/sequence.types";
@@ -31,6 +33,7 @@ const TEMPLATE_VARIABLES = [
 	{ label: "{company}", desc: "Tên công ty / doanh nghiệp" },
 	{ label: "{property_title}", desc: "Tiêu đề BĐS / bài đăng" },
 	{ label: "{consultant_phone}", desc: "Hotline chuyên viên" },
+	{ label: "{pitch_portal_url}", desc: "Link mini-pitch portal cá nhân hoá (Story 37.5)" },
 ];
 
 const PARSE_MODES = [
@@ -39,7 +42,13 @@ const PARSE_MODES = [
 	{ value: "HTML", label: "HTML" },
 ];
 
-type StepType = "send_email" | "send_zalo" | "send_telegram" | "wait" | "condition";
+type StepType =
+	| "send_email"
+	| "send_zalo"
+	| "send_telegram"
+	| "wait"
+	| "condition"
+	| "generate_pitch_portal";
 type Channel = "email" | "zalo" | "telegram";
 
 export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
@@ -49,6 +58,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 	ad41Reactivated = false,
 	outboundChannels = ["email"],
 }) => {
+	const t = useTranslations();
 	const [name, setName] = useState(initialSequence?.name || "Chiến dịch tiếp cận tự động");
 	const [description, setDescription] = useState(initialSequence?.description || "");
 
@@ -141,6 +151,15 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 				condition_config: {},
 				is_enabled: true,
 			};
+		} else if (type === "generate_pitch_portal") {
+			newStep = {
+				step_order: nextOrder,
+				step_type: "generate_pitch_portal",
+				channel: "email", // no outbound dispatch; channel is unused
+				template: {},
+				condition_config: {},
+				is_enabled: true,
+			};
 		} else {
 			newStep = {
 				step_order: nextOrder,
@@ -195,10 +214,12 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		// Sanitize: wait/condition steps should not carry a real channel.
+		// Sanitize: non-dispatch steps should not carry a real channel.
 		const cleanSteps = steps.map((step) => ({
 			...step,
-			channel: step.step_type === "wait" || step.step_type === "condition" ? "email" : step.channel,
+			channel: ["wait", "condition", "generate_pitch_portal"].includes(step.step_type)
+				? "email"
+				: step.channel,
 		}));
 		const payload: SequenceCreate = {
 			name,
@@ -221,7 +242,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					<div>
 						<div className="flex items-center gap-2">
 							<h2 className="text-xl font-semibold text-foreground">
-								Visual Multi-Channel Cadence Sequence Builder
+								{t("automations.cadence_builder_title")}
 							</h2>
 							<span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
 								<ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" /> Story 24.7 Multi-Channel
@@ -287,23 +308,23 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 						Kênh tiếp cận được bật (Outbound Channels)
 					</span>
 					<div className="flex flex-wrap gap-3">
-						<ChannelChip channel="email" allowed={isChannelAllowed("email")} />
-						<ChannelChip
+						<ChannelChipInternal channel="email" allowed={isChannelAllowed("email")} />
+						<ChannelChipInternal
 							channel="zalo"
 							allowed={isChannelAllowed("zalo") && ad41Reactivated}
 							disabledReason={
 								!ad41Reactivated
 									? "Deferred — AD-41 / DEF-102"
 									: !isChannelAllowed("zalo")
-										? "Not enabled for this workspace"
+										? t("automations.not_enabled_workspace")
 										: undefined
 							}
 						/>
-						<ChannelChip
+						<ChannelChipInternal
 							channel="telegram"
 							allowed={isChannelAllowed("telegram")}
 							disabledReason={
-								!isChannelAllowed("telegram") ? "Not enabled for this workspace" : undefined
+								!isChannelAllowed("telegram") ? t("automations.not_enabled_workspace") : undefined
 							}
 						/>
 					</div>
@@ -354,6 +375,12 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 											<>
 												<GitBranch className="w-4 h-4 text-purple-500" aria-hidden="true" />
 												Điều kiện rẽ nhánh (if replied)
+											</>
+										)}
+										{step.step_type === "generate_pitch_portal" && (
+											<>
+												<Sparkles className="w-4 h-4 text-fuchsia-500" aria-hidden="true" />
+												Tạo Mini-Pitch Portal
 											</>
 										)}
 									</h3>
@@ -434,7 +461,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 											htmlFor={`zalo-template-data-${step.step_order}`}
 											className="block text-xs font-medium text-muted-foreground mb-1"
 										>
-											Template Data (JSON mapping cho ZNS)
+											{t("automations.template_data_label")}
 										</label>
 										<textarea
 											id={`zalo-template-data-${step.step_order}`}
@@ -490,7 +517,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 											htmlFor={`telegram-parse-mode-${step.step_order}`}
 											className="block text-xs font-medium text-muted-foreground mb-1"
 										>
-											Parse Mode
+											{t("automations.parse_mode")}
 										</label>
 										<select
 											id={`telegram-parse-mode-${step.step_order}`}
@@ -550,7 +577,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 														}`}
 													>
 														{isChecked ? "✓ " : "+ "}
-														{ch.toUpperCase()} Fallback
+														{ch.toUpperCase()} {t("automations.fallback")}
 													</button>
 												);
 											})}
@@ -580,10 +607,28 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 										}
 										className="w-24 px-3 py-1.5 border rounded-lg bg-background text-foreground text-sm focus:ring-2 focus:ring-primary focus:outline-none"
 									/>
-									<span className="text-sm text-foreground">Giờ (Hours)</span>
+									<span className="text-sm text-foreground">{t("automations.hours_label")}</span>
 									<span className="text-xs text-muted-foreground">
 										(Tự động điều chỉnh theo khung giờ hợp pháp 08:00 – 21:30 VN Time)
 									</span>
+								</div>
+							)}
+
+							{step.step_type === "generate_pitch_portal" && (
+								<div className="space-y-2">
+									<p className="text-sm text-muted-foreground">
+										Tự động tạo mini-pitch portal cá nhân hoá (logo, tóm tắt 30 giây, máy tính ROI,
+										CTA đặt lịch) cho prospect ở bước này.
+									</p>
+									<div className="p-3 bg-accent/40 rounded-lg text-xs space-y-1">
+										<div className="font-semibold text-foreground">
+											Dùng {"{pitch_portal_url}"} trong các bước gửi phía sau để chèn link portal.
+										</div>
+										<div className="text-muted-foreground">
+											Portal được cache theo lead — chạy lại không tạo trùng; link đi kèm nút
+											Opt-out tuân thủ Nghị định 13.
+										</div>
+									</div>
 								</div>
 							)}
 
@@ -594,7 +639,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 									</p>
 									<div className="p-3 bg-accent/40 rounded-lg text-xs space-y-1">
 										<div className="font-semibold text-foreground">
-											Condition: if replied then exit, else continue to next step.
+											{t("automations.condition_desc")}
 										</div>
 										<div className="text-muted-foreground">
 											Nếu khách hàng trả lời hoặc yêu cầu dừng, chuỗi sẽ tự động dừng và cập nhật
@@ -629,7 +674,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 						!ad41Reactivated
 							? "Deferred — AD-41 / DEF-102"
 							: !isChannelAllowed("zalo")
-								? "Not enabled for this workspace"
+								? t("automations.not_enabled_workspace")
 								: undefined
 					}
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 text-blue-600 text-xs font-semibold rounded-lg border border-blue-500/20 hover:bg-blue-500/20 transition-colors shadow-sm disabled:opacity-50"
@@ -643,7 +688,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					onClick={() => handleAddStep("send_telegram")}
 					data-testid="add-step-send_telegram"
 					disabled={!isChannelAllowed("telegram")}
-					title={!isChannelAllowed("telegram") ? "Not enabled for this workspace" : undefined}
+					title={!isChannelAllowed("telegram") ? t("automations.not_enabled_workspace") : undefined}
 					className="inline-flex items-center gap-1.5 px-3 py-2 bg-sky-500/10 text-sky-600 text-xs font-semibold rounded-lg border border-sky-500/20 hover:bg-sky-500/20 transition-colors shadow-sm disabled:opacity-50"
 				>
 					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -669,12 +714,22 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					Thêm điều kiện rẽ nhánh (Condition)
 				</button>
+
+				<button
+					type="button"
+					onClick={() => handleAddStep("generate_pitch_portal")}
+					data-testid="add-step-generate_pitch_portal"
+					className="inline-flex items-center gap-1.5 px-3 py-2 bg-fuchsia-500/10 text-fuchsia-600 text-xs font-semibold rounded-lg border border-fuchsia-500/20 hover:bg-fuchsia-500/20 transition-colors shadow-sm"
+				>
+					<Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+					Thêm bước Mini-Pitch Portal
+				</button>
 			</div>
 		</div>
 	);
 };
 
-function ChannelChip({
+function ChannelChipInternal({
 	channel,
 	allowed,
 	disabledReason,
@@ -683,6 +738,8 @@ function ChannelChip({
 	allowed: boolean;
 	disabledReason?: string;
 }) {
+	const testId = `channel-option-${channel}`;
+	const isDeferred = disabledReason?.includes("Deferred") ?? false;
 	const icon =
 		channel === "email" ? (
 			<Mail className="w-4 h-4 text-blue-500" aria-hidden="true" />
@@ -697,6 +754,9 @@ function ChannelChip({
 
 	return (
 		<div
+			data-testid={testId}
+			data-deferred={isDeferred ? "true" : undefined}
+			aria-disabled={!allowed}
 			className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${
 				allowed
 					? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"

@@ -15,6 +15,7 @@ per-unit biller (ETL, crawl, platform scrape) shares one "out of credit" type â€
 the capability doors already catch exactly that one.
 """
 
+import logging
 from uuid import UUID
 
 from sqlalchemy import select
@@ -22,12 +23,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.etl_credit_service import InsufficientCreditsError
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "InsufficientCreditsError",
     "apply_credit",
     "apply_debit",
     "check_balance",
     "spendable_micros",
+    "reserve_credit",
+    "release_credit",
+    "commit_reserved_credit",
 ]
 
 
@@ -117,8 +123,8 @@ async def apply_debit(
         from app.services.auto_reload_service import maybe_trigger_auto_reload
 
         await maybe_trigger_auto_reload(user_id)
-    except Exception:
-        pass
+    except Exception as exc:  # best-effort post-commit hook; never fail the debit
+        logger.debug("Suppressed %r", exc)
 
     return user.credit_micros_balance
 
@@ -146,4 +152,105 @@ async def apply_credit(
     user.credit_micros_balance += amount_micros
     await session.commit()
     await session.refresh(user)
+    return user.credit_micros_balance
+
+
+
+async def reserve_credit(
+    session: AsyncSession, user_id: str | UUID, amount_micros: int
+) -> int:
+    """Reserve credit before starting an operation (2-phase commit).
+
+    Atomically increases ``credit_micros_reserved`` if spendable balance is sufficient.
+    Returns the new reserved balance.
+    """
+    if amount_micros <= 0:
+        return 0
+
+    from app.db import User
+
+    result = await session.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
+    user = result.unique().scalar_one_or_none()
+    if not user:
+        raise ValueError(f"User with ID {user_id} not found")
+
+    available = user.credit_micros_balance - user.credit_micros_reserved
+    if amount_micros > available:
+        raise InsufficientCreditsError(
+            message=(
+                "Insufficient credits to reserve. "
+                f"Available: ${available / 1_000_000:.2f}, "
+                f"needed: ${amount_micros / 1_000_000:.2f}."
+            ),
+            balance_micros=available,
+            required_micros=amount_micros,
+        )
+
+    user.credit_micros_reserved += amount_micros
+    await session.commit()
+    await session.refresh(user)
+    return user.credit_micros_reserved
+
+
+async def release_credit(
+    session: AsyncSession, user_id: str | UUID, amount_micros: int
+) -> int:
+    """Release previously reserved credit on failure/cancellation.
+
+    Atomically decreases ``credit_micros_reserved`` without modifying balance.
+    Returns the new reserved balance.
+    """
+    if amount_micros <= 0:
+        return 0
+
+    from app.db import User
+
+    result = await session.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
+    user = result.unique().scalar_one_or_none()
+    if not user:
+        raise ValueError(f"User with ID {user_id} not found")
+
+    user.credit_micros_reserved = max(0, user.credit_micros_reserved - amount_micros)
+    await session.commit()
+    await session.refresh(user)
+    return user.credit_micros_reserved
+
+
+async def commit_reserved_credit(
+    session: AsyncSession, user_id: str | UUID, amount_micros: int
+) -> int:
+    """Commit previously reserved credit on successful operation.
+
+    Deducts from both balance and reserved atomically.
+    Returns the new credit balance.
+    """
+    if amount_micros <= 0:
+        return 0
+
+    from app.db import User
+
+    result = await session.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
+    user = result.unique().scalar_one_or_none()
+    if not user:
+        raise ValueError(f"User with ID {user_id} not found")
+
+    user.credit_micros_balance -= amount_micros
+    user.credit_micros_reserved = max(0, user.credit_micros_reserved - amount_micros)
+    await session.commit()
+    await session.refresh(user)
+
+    # Best-effort auto-reload check
+    try:
+        from app.services.auto_reload_service import maybe_trigger_auto_reload
+
+        await maybe_trigger_auto_reload(user_id)
+    except Exception as exc:
+        logger.debug("Suppressed %r", exc)
+
     return user.credit_micros_balance

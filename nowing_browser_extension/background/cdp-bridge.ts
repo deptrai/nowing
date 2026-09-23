@@ -30,6 +30,7 @@ type CdpCommand = {
 	mission_id: string;
 	command_id: string;
 	user_id?: string;
+	session_token?: string;
 	url?: string;
 	selector?: string;
 	text?: string;
@@ -46,6 +47,12 @@ class CdpBridge {
 	private static instance: CdpBridge | null = null;
 	private fetchAbortController: AbortController | null = null;
 	private activeDebuggeeTabId: number | null = null;
+	private intentionalDetachTabIds = new Set<number>();
+	private currentCommand: {
+		cmd: CdpCommand;
+		alreadyHandled: boolean;
+	} | null = null;
+	private activeSessionToken: string | null = null;
 	private processing = false;
 	private queued: CdpCommand[] = [];
 	private reconnectDelay = 1000;
@@ -62,6 +69,13 @@ class CdpBridge {
 					if (area === "local" && (changes.token?.newValue || changes.backend_base_url?.newValue)) {
 						CdpBridge.getInstance().startListening();
 					}
+				});
+			}
+			if (typeof chrome !== "undefined" && chrome.debugger?.onDetach) {
+				chrome.debugger.onDetach.addListener((source, reason) => {
+					CdpBridge.getInstance()
+						._handleOnDetach(source, reason)
+						.catch((err) => console.error("CdpBridge: onDetach unhandled error:", err));
 				});
 			}
 		}
@@ -206,7 +220,87 @@ class CdpBridge {
 	}
 
 	private async _processCommand(cmd: CdpCommand): Promise<void> {
-		await this.handleCdpCommand(cmd);
+		this.currentCommand = { cmd, alreadyHandled: false };
+		if (cmd.session_token) {
+			this.activeSessionToken = cmd.session_token;
+		}
+		try {
+			await this.handleCdpCommand(cmd);
+		} finally {
+			this.currentCommand = null;
+			this.activeSessionToken = null;
+		}
+	}
+
+	public async _handleOnDetach(
+		source: chrome.debugger.Debuggee,
+		reason: string
+	): Promise<void> {
+		const tabId = source.tabId;
+		if (!tabId) {
+			return;
+		}
+
+		if (this.intentionalDetachTabIds.has(tabId)) {
+			console.debug("CdpBridge: onDetach ignored for intentional detach on tab", tabId);
+			this.intentionalDetachTabIds.delete(tabId);
+			return;
+		}
+
+		if (this.activeDebuggeeTabId === null || tabId !== this.activeDebuggeeTabId) {
+			console.debug(
+				"CdpBridge: onDetach ignored for non-active tab",
+				tabId,
+				"active is",
+				this.activeDebuggeeTabId
+			);
+			return;
+		}
+
+		console.warn(`CdpBridge: debugger detached unexpectedly on tab ${tabId}, reason: ${reason}`);
+		this.activeDebuggeeTabId = null;
+		const droppedCommands = this.queued;
+		this.queued = [];
+
+		const detachReason = reason || "unknown";
+		const errorMessage = `DEBUGGER_DETACHED: ${detachReason}`;
+
+		if (this.currentCommand && !this.currentCommand.alreadyHandled) {
+			const cmd = this.currentCommand.cmd;
+			await this._sendGuardedResult(
+				cmd.mission_id,
+				null,
+				errorMessage,
+				cmd.command_id
+			);
+		}
+
+		// Also fail-fast any queued commands waiting on this debugger session.
+		// Each dropped command carries its own session token, not the shared active one.
+		for (const cmd of droppedCommands) {
+			await this.sendResultWithToken(
+				cmd.mission_id, null, errorMessage, cmd.command_id,
+				false, undefined, cmd.session_token ?? null
+			);
+		}
+	}
+
+	private async _sendGuardedResult(
+		missionId: string,
+		result: Record<string, any> | null,
+		error: string | null,
+		commandId: string,
+		requiresHuman = false,
+		challenge?: string
+	): Promise<void> {
+		if (this.currentCommand && this.currentCommand.cmd.command_id === commandId) {
+			if (this.currentCommand.alreadyHandled) {
+				console.warn(`CdpBridge: result for command ${commandId} already handled; suppressing`);
+				return;
+			}
+			this.currentCommand.alreadyHandled = true;
+		}
+		await this.sendResult(missionId, result, error, commandId, requiresHuman, challenge);
 	}
 
 	private async _requireToken(): Promise<string | null> {
@@ -252,18 +346,24 @@ class CdpBridge {
 	private async _attachDebugger(tabId: number): Promise<void> {
 		if (this.activeDebuggeeTabId === tabId) return;
 		await this.detachDebugger();
+		this.intentionalDetachTabIds.delete(tabId);
 		await chrome.debugger.attach({ tabId }, "1.3");
 		this.activeDebuggeeTabId = tabId;
 	}
 
 	private async detachDebugger(): Promise<void> {
 		if (this.activeDebuggeeTabId !== null) {
+			const tabId = this.activeDebuggeeTabId;
+			this.intentionalDetachTabIds.add(tabId);
+			this.activeDebuggeeTabId = null;
 			try {
-				await chrome.debugger.detach({ tabId: this.activeDebuggeeTabId });
+				await chrome.debugger.detach({ tabId });
 			} catch (err) {
 				console.warn("Debugger detach warning:", err);
 			} finally {
-				this.activeDebuggeeTabId = null;
+				setTimeout(() => {
+					this.intentionalDetachTabIds.delete(tabId);
+				}, 2000);
 			}
 		}
 	}
@@ -431,7 +531,7 @@ class CdpBridge {
 		const targetUrl = action === "navigate" ? url : cmd.url;
 		const targetTab = await this._findMatchingTab(targetUrl);
 		if (!targetTab?.id) {
-			await this.sendResult(
+			await this._sendGuardedResult(
 				mission_id,
 				null,
 				"No active tab available for CDP takeover",
@@ -448,7 +548,7 @@ class CdpBridge {
 			try {
 				const parsed = new URL(target);
 				if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-					await this.sendResult(
+					await this._sendGuardedResult(
 						mission_id,
 						null,
 						`Unsupported URL scheme: ${parsed.protocol}`,
@@ -457,7 +557,7 @@ class CdpBridge {
 					return;
 				}
 			} catch {
-				await this.sendResult(mission_id, null, "Invalid URL", command_id);
+				await this._sendGuardedResult(mission_id, null, "Invalid URL", command_id);
 				return;
 			}
 		}
@@ -471,7 +571,7 @@ class CdpBridge {
 			switch (action) {
 				case "navigate": {
 					if (!targetUrl) {
-						await this.sendResult(mission_id, null, "navigate requires url", command_id);
+						await this._sendGuardedResult(mission_id, null, "navigate requires url", command_id);
 						return;
 					}
 					try {
@@ -615,7 +715,7 @@ class CdpBridge {
 				}
 
 				default:
-					await this.sendResult(mission_id, null, `Unsupported action: ${action}`, command_id);
+					await this._sendGuardedResult(mission_id, null, `Unsupported action: ${action}`, command_id);
 					return;
 			}
 
@@ -625,15 +725,15 @@ class CdpBridge {
 				if (challenge) {
 					// Store the active mission so the popup can offer a Release Control button.
 					await storage.set("activeMissionId", mission_id);
-					await this.sendResult(mission_id, null, challenge, command_id, true, challenge);
+					await this._sendGuardedResult(mission_id, null, challenge, command_id, true, challenge);
 					return;
 				}
 			}
 
-			await this.sendResult(mission_id, resultPayload, null, command_id);
+			await this._sendGuardedResult(mission_id, resultPayload, null, command_id);
 		} catch (err: any) {
 			console.error("CDP execution error:", err);
-			await this.sendResult(mission_id, null, err.message || String(err), command_id);
+			await this._sendGuardedResult(mission_id, null, err.message || String(err), command_id);
 		} finally {
 			await this.detachDebugger();
 		}
@@ -654,6 +754,21 @@ class CdpBridge {
 		requiresHuman = false,
 		challenge?: string
 	): Promise<void> {
+		await this.sendResultWithToken(
+			missionId, result, error, commandId, requiresHuman, challenge,
+			this.activeSessionToken
+		);
+	}
+
+	private async sendResultWithToken(
+		missionId: string,
+		result: Record<string, any> | null,
+		error: string | null,
+		commandId: string,
+		requiresHuman: boolean,
+		challenge: string | undefined,
+		sessionToken: string | null
+	): Promise<void> {
 		const token = await this._requireToken();
 		if (!token) {
 			console.error("CdpBridge: cannot send result without auth token");
@@ -664,10 +779,12 @@ class CdpBridge {
 
 		const body = {
 			mission_id: missionId,
+			command_id: commandId,
 			result: result ? { ...result, command_id: commandId } : null,
 			error,
 			requires_human: requiresHuman,
 			challenge,
+			session_token: sessionToken,
 		};
 
 		const isRetryableStatus = (status: number) => status >= 500 || status === 429;

@@ -9,11 +9,12 @@ from typing import Any
 from uuid import uuid4
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import (
+    Lead,
     Memory,
     MemorySourceType,
     MemoryType,
@@ -27,10 +28,18 @@ from app.lead_intelligence.signals.schemas import (
 from app.services import pii, wallet_credit
 from app.services.billing_event_service import record_signal_scan
 from app.services.jobs_aggregator.schemas import VnJobAggregateInput
+from app.services.memory.encryption import MemoryEncryptionService
 
 logger = logging.getLogger(__name__)
 
-SIGNAL_TYPES = {"funding", "hiring", "tech_stack", "executive_move", "news"}
+SIGNAL_TYPES = {
+    "funding",
+    "hiring",
+    "tech_stack",
+    "executive_move",
+    "news",
+    "incorporation",
+}
 
 
 class SignalDetectionService:
@@ -79,6 +88,9 @@ class SignalDetectionService:
                 degradation_reasons.extend(reasons)
             elif signal_type == "executive_move":
                 raw_items, reasons = await self._detect_executive_move(input)
+                degradation_reasons.extend(reasons)
+            elif signal_type == "incorporation":
+                raw_items, reasons = await self._detect_incorporation(input)
                 degradation_reasons.extend(reasons)
         except wallet_credit.InsufficientCreditsError:
             return SignalOutput(
@@ -174,7 +186,7 @@ class SignalDetectionService:
                         user_id=ctx.user_id,
                         cost_micros=cost_per_item,
                     )
-                except Exception as exc:
+                except Exception as exc:  # lead intelligence operation fallback
                     logger.exception("Billing event failed for signal %s", signal.id)
                     degradation_reasons.append(str(exc))
 
@@ -218,6 +230,21 @@ class SignalDetectionService:
 
         company_name = str(raw.get("company_name", input.company_name)).strip()
 
+        # Soft-link the owning lead so a later company rename doesn't orphan
+        # the signal from the CRM timeline (review 37.4). Earliest-created
+        # lead wins when the name is ambiguous; None when no lead exists yet.
+        lead_id = (
+            await session.execute(
+                select(Lead.id)
+                .where(
+                    Lead.workspace_id == workspace_id,
+                    func.lower(Lead.company_name) == company_name.lower(),
+                )
+                .order_by(Lead.created_at)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
         # Idempotency: if the exact same signal already exists, skip it.
         existing = (
             await session.execute(
@@ -240,6 +267,7 @@ class SignalDetectionService:
             workspace_id=workspace_id,
             client_id=client_id,
             company_name=company_name,
+            lead_id=lead_id,
             signal_type=signal_type,
             source_url=source_url,
             chunk_id=raw.get("chunk_id"),
@@ -269,6 +297,7 @@ class SignalDetectionService:
             tags=["lead_signal"],
             confidence=signal.confidence,
         )
+        MemoryEncryptionService.from_env().encrypt_memory(memory)
         session.add(memory)
 
         # For now signal scans do not use a separate LLM charge.
@@ -300,7 +329,40 @@ class SignalDetectionService:
                 raw.get("summary")
                 or f"{signal.company_name} executive change detected."
             )
+        if signal.signal_type == "incorporation":
+            tax_code = raw.get("tax_code")
+            mst = f" (MST {tax_code})" if tax_code else ""
+            return f"{signal.company_name}{mst} newly incorporated."
         return f"{signal.company_name} {signal.signal_type} signal."
+
+    async def persist_signal(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: int,
+        client_id: str | None,
+        company_name: str,
+        signal_type: str,
+        raw: dict[str, Any],
+        confidence_threshold: float = 0.0,
+    ) -> SignalEvent | None:
+        """Persist an externally-detected signal (Story 37.1 radar producers).
+
+        Thin public wrapper over ``_persist_signal`` so background scanners do
+        not reach into a private method.
+        """
+        input = SignalInput(
+            company_name=company_name,
+            confidence_threshold=confidence_threshold,
+        )
+        return await self._persist_signal(
+            session,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            input=input,
+            signal_type=signal_type,
+            raw=raw,
+        )
 
     async def _detect_funding(
         self, input: SignalInput
@@ -330,7 +392,7 @@ class SignalDetectionService:
         except httpx.TimeoutException:
             reasons.append("crunchbase.timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"crunchbase.error: {exc}")
             return [], reasons
 
@@ -343,7 +405,7 @@ class SignalDetectionService:
 
         try:
             data = resp.json()
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"crunchbase.json_error: {exc}")
             return [], reasons
 
@@ -386,7 +448,7 @@ class SignalDetectionService:
         except TimeoutError:
             reasons.append("hiring.aggregate_timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.exception("hiring detection failed for %s", input.company_name)
             reasons.append(f"hiring.aggregate_error: {exc}")
             return [], reasons
@@ -447,7 +509,7 @@ class SignalDetectionService:
         except httpx.TimeoutException:
             reasons.append("website.timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"website.error: {exc}")
             return [], reasons
 
@@ -521,7 +583,7 @@ class SignalDetectionService:
         except httpx.TimeoutException:
             reasons.append("newsapi.timeout")
             return [], reasons
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"newsapi.error: {exc}")
             return [], reasons
 
@@ -534,7 +596,7 @@ class SignalDetectionService:
 
         try:
             data = resp.json()
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             reasons.append(f"newsapi.json_error: {exc}")
             return [], reasons
 
@@ -569,3 +631,61 @@ class SignalDetectionService:
                 "source_url": None,
             }
         ], []
+
+    async def _detect_incorporation(
+        self, input: SignalInput
+    ) -> tuple[list[dict[str, Any]], list[str]]:
+        """Check masothue.com whether the company was recently incorporated."""
+        reasons: list[str] = []
+        try:
+            from app.proprietary.platforms.masothue.schemas import (
+                MasothueSearchInput,
+            )
+            from app.proprietary.platforms.masothue.scraper import scrape_masothue
+
+            output = await scrape_masothue(
+                MasothueSearchInput(
+                    query=input.company_name,
+                    max_pages=1,
+                    max_items=5,
+                )
+            )
+        except Exception as exc:  # lead intelligence operation fallback
+            reasons.append(f"masothue.error: {exc}")
+            return [], reasons
+
+        if getattr(output, "degraded", False):
+            reasons.append(
+                f"masothue.{getattr(output, 'degradation_reason', None) or 'degraded'}"
+            )
+
+        items = getattr(output, "items", []) or []
+        results: list[dict[str, Any]] = []
+        lookback_days = input.lookback_days if input.lookback_days is not None else 30
+        cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
+        for company in items:
+            raw_date = getattr(company, "active_date", None) or getattr(
+                company, "founding_date", None
+            )
+            detected_at = datetime.now(UTC)
+            is_recent = False
+            if raw_date:
+                for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+                    try:
+                        parsed = datetime.strptime(str(raw_date).strip(), fmt)
+                        detected_at = parsed.replace(tzinfo=UTC)
+                        is_recent = detected_at >= cutoff
+                        break
+                    except ValueError:
+                        continue
+            results.append(
+                {
+                    "company_name": getattr(company, "name", None)
+                    or input.company_name,
+                    "tax_code": getattr(company, "tax_code", None),
+                    "source_url": getattr(company, "detail_url", None),
+                    "confidence": 80.0 if is_recent else 40.0,
+                    "detected_at": detected_at,
+                }
+            )
+        return results, reasons

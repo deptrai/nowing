@@ -1,3 +1,8 @@
+---
+story_key: 16-5-national-public-procurement-tender-intelligence
+status: done
+---
+
 # Story 16.5: National Public Procurement & Tender Intelligence (muasamcong.mpi.gov.vn)
 
 Status: done

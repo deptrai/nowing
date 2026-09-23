@@ -28,8 +28,24 @@ from app.services.presentation.schemas import (
 )
 from app.services.token_tracking_service import UsageType, record_token_usage
 from app.services.web_builder.deploy_service import disambiguate_slug
+from app.services.workspace_limits.service import WorkspaceLimitService
 
 logger = logging.getLogger(__name__)
+
+
+class PlanLimitedError(Exception):
+    """Raised when PPTX generation is requested on a non-entitled plan.
+
+    Domain-layer exception (not FastAPI) so CLI/workers/LangGraph callers
+    can catch it without depending on HTTP transport. Routes translate it
+    to HTTP 403; the chat tool translates it to status="plan_limited".
+    """
+
+    def __init__(self, detail: str = "PPTX format generation is not enabled on this workspace plan; use Marp or upgrade"):
+        super().__init__(detail)
+        self.detail = detail
+        self.status_code = 403
+
 
 
 def _llm_content_to_text(raw: Any) -> str:
@@ -154,7 +170,7 @@ class PresentationStudioService:
                     "status": status,
                 },
             )
-        except Exception:
+        except Exception:  # best-effort usage recording; never fail generation on metering
             logger.exception(
                 "[PresentationStudio] Failed to record presentation_generate usage"
             )
@@ -222,7 +238,7 @@ class PresentationStudioService:
                 return None, _extract_token_usage(response, llm)
 
             return spec, _extract_token_usage(response, llm)
-        except Exception as e:
+        except Exception as e:  # LLM spec generation failure → (None, {}) triggers validation-failed path
             logger.warning("[PresentationStudio] LLM call failed: %s", e)
             return None, {}
 
@@ -237,11 +253,26 @@ class PresentationStudioService:
 
         output_format = build_input.output_format.lower().strip()
         if output_format not in ("pptx", "marp"):
-            logger.warning(
-                "[PresentationStudio] Invalid output_format %r; coercing to pptx",
-                output_format,
+            # Invalid format is a validation error, not an entitlement issue —
+            # surface it before the plan gate so free users get a 4xx validation
+            # result rather than a misleading 403 paywall.
+            return GeneratePresentationOutput(
+                status="validation_failed",
+                error="output_format must be 'pptx' or 'marp'",
+                workspace_id=build_input.workspace_id,
             )
-            output_format = "pptx"
+
+        # Validate only clearly-invalid (non-null) workspace ids early so the
+        # marp path does not reach a downstream foreign-key crash. A None
+        # workspace_id is handled by the spec's fail-closed rule (treated as
+        # free: pptx blocked, marp allowed) — do NOT reject it here.
+        ws_id = getattr(build_input, "workspace_id", None)
+        if ws_id is not None and ws_id <= 0:
+            return GeneratePresentationOutput(
+                status="validation_failed",
+                error="workspace_id is invalid",
+                workspace_id=build_input.workspace_id,
+            )
 
         prompt = build_input.prompt.strip()
         if not prompt:
@@ -250,6 +281,29 @@ class PresentationStudioService:
                 error="Prompt must not be empty.",
                 workspace_id=build_input.workspace_id,
             )
+
+        # Plan-tier entitlement gate (story 31.4): PPTX requires a paid tier.
+        # Placed after input validation so bad input fails with a validation
+        # result, and before generation so neither the capability executor nor
+        # the REST route can bypass it.
+        # Fail-closed: apply the SaaS paywall unless the deployment is
+        # *explicitly* self-hosted. A cloud SaaS env that forgets to set
+        # NOWING_DEPLOYMENT_MODE would otherwise default to self-hosted and
+        # silently bypass the entitlement gate.
+        if output_format == "pptx" and not app_config.SELF_HOSTED_EXPLICIT:
+            # Self-hosted deployments have unlimited licensing — skip the
+            # SaaS plan-tier paywall so a local free-tier workspace can
+            # still generate PPTX (story 31.4 deferred item).
+            tier = "free"
+            workspace_id = getattr(build_input, "workspace_id", None)
+            if workspace_id:
+                limits = await WorkspaceLimitService.get_effective_limits(
+                    session, workspace_id
+                )
+                tier = (limits.plan_tier or "free").strip().lower()
+            if tier not in {"team", "growth", "enterprise"}:
+                raise PlanLimitedError()
+
 
         if len(prompt) > app_config.PRESENTATION_MAX_PROMPT_CHARS:
             prompt = prompt[: app_config.PRESENTATION_MAX_PROMPT_CHARS]
@@ -272,7 +326,7 @@ class PresentationStudioService:
             )
             try:
                 await session.commit()
-            except Exception:
+            except Exception:  # best-effort usage commit on failure path; row loss is acceptable
                 logger.exception(
                     "[PresentationStudio] Failed to commit usage for validation_failed"
                 )
@@ -299,7 +353,7 @@ class PresentationStudioService:
 
         try:
             spec = DeckSpec(**spec_dict)
-        except Exception as e:
+        except Exception as e:  # spec schema mismatch → structured validation failure, not a crash
             logger.warning("[PresentationStudio] DeckSpec validation failed: %s", e)
             return await _fail_validation("Deck spec validation failed.")
 
@@ -334,7 +388,7 @@ class PresentationStudioService:
                 pptx_file = storage_dir / "output.pptx"
                 pptx_file.write_bytes(pptx_bytes)
                 file_path = str(pptx_file)
-        except Exception:
+        except Exception:  # artifact write failure → cleanup temp dir then propagate via caller
             logger.exception("[PresentationStudio] File write failed")
             if storage_dir is not None and storage_dir.exists():
                 shutil.rmtree(storage_dir, ignore_errors=True)
@@ -355,13 +409,17 @@ class PresentationStudioService:
         slug = base_slug
         last_error: Exception | None = None
         for _attempt in range(3):
-            existing_slugs_result = await session.scalars(
-                select(SlidePresentation.slug).where(
-                    SlidePresentation.workspace_id == build_input.workspace_id
+            # Existence-check: probe only the candidate slug instead of loading every slug
+            slug_exists = await session.scalar(
+                select(SlidePresentation.id).where(
+                    SlidePresentation.workspace_id == build_input.workspace_id,
+                    SlidePresentation.slug == slug,
                 )
             )
-            existing_slugs = set(existing_slugs_result.all())
-            slug = disambiguate_slug(base_slug, existing_slugs)
+            if slug_exists:
+                # Generate a new candidate and re-check on the next attempt
+                slug = disambiguate_slug(base_slug, {slug})
+                continue
 
             entity = SlidePresentation(
                 id=presentation_id,
@@ -397,7 +455,7 @@ class PresentationStudioService:
                     "[PresentationStudio] Slug collision for %r; retrying", slug
                 )
                 continue
-            except Exception as exc:
+            except Exception as exc:  # DB insert failure after slug retries → rollback and surface last error
                 last_error = exc
                 await session.rollback()
                 break

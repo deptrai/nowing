@@ -134,8 +134,13 @@ async def test_cross_workspace_presentation_returns_404(
 
 
 @pytest.mark.integration
-async def test_generate_download_presentation(client_as_regular_user, db_workspace):
+async def test_generate_download_presentation(
+    client_as_regular_user, db_workspace, db_session
+):
     """AC-2/AC-5: generate a PPTX and download it for the owner workspace."""
+    # PPTX requires a paid tier (story 31.4); the default workspace is free.
+    db_workspace.plan_tier = "team"
+    await db_session.commit()
     res = await client_as_regular_user.post(
         "/api/v1/presentations/generate",
         json={
@@ -198,9 +203,11 @@ async def test_list_scoped_to_workspace(
 
 @pytest.mark.integration
 async def test_delete_presentation_204_after_member_check(
-    client_as_regular_user, db_workspace
+    client_as_regular_user, db_workspace, db_session
 ):
     """AC-5: DELETE returns 204 and the row is gone."""
+    db_workspace.plan_tier = "team"
+    await db_session.commit()
     res = await client_as_regular_user.post(
         "/api/v1/presentations/generate",
         json={
@@ -251,3 +258,93 @@ async def test_unique_slug_per_workspace_enforced_by_db(
     with pytest.raises(IntegrityError):
         await db_session.flush()
     await db_session.rollback()
+
+
+@pytest.mark.integration
+async def test_list_presentations_pagination_limit_and_offset(
+    client_as_regular_user,
+    db_session,
+    db_user,
+    db_workspace,
+):
+    """Verify limit and offset pagination on GET /api/v1/presentations."""
+    for i in range(5):
+        pres = SlidePresentation(
+            workspace_id=db_workspace.id,
+            user_id=db_user.id,
+            title=f"Deck {i}",
+            slug=f"deck-page-{i}",
+            format="pptx",
+            status="ready",
+        )
+        db_session.add(pres)
+    await db_session.flush()
+
+    # Limit = 2, offset = 0
+    resp = await client_as_regular_user.get(
+        f"/api/v1/presentations?workspace_id={db_workspace.id}&limit=2&offset=0",
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+
+    # Limit = 2, offset = 2
+    resp2 = await client_as_regular_user.get(
+        f"/api/v1/presentations?workspace_id={db_workspace.id}&limit=2&offset=2",
+    )
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert len(data2) == 2
+    # Ensure disjoint items
+    ids1 = {d["id"] for d in data}
+    ids2 = {d["id"] for d in data2}
+    assert ids1.isdisjoint(ids2)
+
+
+@pytest.mark.integration
+async def test_generate_pptx_free_tier_returns_403(
+    client_as_regular_user, db_workspace, monkeypatch
+):
+    """Story 31.4: free-tier workspace cannot generate PPTX via the REST route.
+
+    The gate lives in PresentationStudioService.generate, so the direct
+    POST /presentations/generate route (which bypasses the capability
+    executor) is also covered. Force cloud deployment mode so the SaaS
+    paywall is exercised even when the local test env defaults to
+    self-hosted (which would otherwise skip the gate).
+    """
+    # is_self_hosted() is a classmethod reading the package-level
+    # DEPLOYMENT_MODE constant (bound at import via `from .core import *`),
+    # so patching the value won't reach it — patch the predicate instead.
+    from app.config import config as app_config
+
+    # The gate keys off SELF_HOSTED_EXPLICIT (env explicitly = self-hosted).
+    # Patch it to exercise the cloud paywall path in CI.
+    monkeypatch.setattr(app_config, "SELF_HOSTED_EXPLICIT", False)
+    res = await client_as_regular_user.post(
+        "/api/v1/presentations/generate",
+        json={
+            "workspace_id": db_workspace.id,
+            "prompt": "Pitch deck",
+            "output_format": "pptx",
+        },
+    )
+    assert res.status_code == 403
+    assert "pptx" in res.json()["detail"].lower()
+
+
+@pytest.mark.integration
+async def test_generate_marp_free_tier_allowed(
+    client_as_regular_user, db_workspace
+):
+    """Story 31.4: free-tier workspace may still generate Marp slides."""
+    res = await client_as_regular_user.post(
+        "/api/v1/presentations/generate",
+        json={
+            "workspace_id": db_workspace.id,
+            "prompt": "Markdown deck",
+            "output_format": "marp",
+        },
+    )
+    assert res.status_code == 200
+    assert res.json()["format"] == "marp"

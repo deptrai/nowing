@@ -82,7 +82,7 @@ class BuilderService:
                 thread_local=False,
                 blocking_timeout=float(self.build_timeout_seconds) + 60.0,
             )
-        except Exception as e:
+        except Exception as e:  # Redis lock down → in-memory fallback keeps build scheduling alive
             logger.warning(
                 "Redis build lock unavailable for app_id=%s; using in-memory fallback: %s",
                 app_id,
@@ -448,7 +448,7 @@ class BuilderService:
                         error=timeout_err,
                         logs="\n".join(accumulated_logs),
                     )
-                except Exception as exc:
+                except Exception as exc:  # last-resort build guard: record error, mark app failed, keep worker alive
                     exc_err = f"Unexpected build error: {exc}"
                     logger.exception("Build unexpected exception for app_id=%s", app_id)
                     _append_log(f"ERROR: {exc_err}")
@@ -486,6 +486,8 @@ class BuilderService:
                 safe_env[key] = os.environ[key]
         return safe_env
 
+    _ALLOWED_BUILD_COMMANDS = frozenset({"npm", "npx", "sh", "node"})
+
     async def _run_subprocess(
         self,
         cmd: list[str],
@@ -493,6 +495,12 @@ class BuilderService:
         network: str | None = None,
     ) -> tuple[int, str, str]:
         """Execute a subprocess asynchronously with strict timeout bounding and process group cleanup."""
+        if not cmd:
+            raise ValueError("Empty build command")
+        program = cmd[0]
+        # When Docker is enabled the first arg may be `docker`; the real command follows the image.
+        if not config.WEB_BUILDER_DOCKER_SANDBOX_ENABLED and program not in self._ALLOWED_BUILD_COMMANDS:
+            raise ValueError(f"Build command not allowed: {program}")
         actual_cmd = cmd
         env = self._get_sanitized_build_env(cwd)
         container_name: str | None = None
@@ -714,7 +722,7 @@ class BuilderService:
                         session=session,
                     )
                     await session.commit()
-            except Exception as e:
+            except Exception as e:  # fatal build-task guard: log, mark failed, suppress to protect worker loop
                 logger.exception(
                     "Fatal error in async build task for app_id=%s: %s", app_id, e
                 )
@@ -758,7 +766,7 @@ class BuilderService:
             lines = content.splitlines()
             tail_lines = lines[-max_lines:] if len(lines) > max_lines else lines
             return "\n".join(tail_lines), len(tail_lines)
-        except Exception as e:
+        except Exception as e:  # log read failure returns diagnostic string instead of raising
             return f"Error reading logs: {e}", 1
 
     @classmethod

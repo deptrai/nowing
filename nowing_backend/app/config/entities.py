@@ -1,0 +1,171 @@
+"""Config domain: entities."""
+
+from __future__ import annotations
+
+import os
+
+from app.config._helpers import (
+    _env_int,
+)
+
+# Canonical entity settings
+CANONICAL_EMBEDDING_OUTBOX_FAILURE_THRESHOLD = _env_int(
+    "CANONICAL_EMBEDDING_OUTBOX_FAILURE_THRESHOLD", 5
+)
+
+# Signal detection (Story 21.1)
+SIGNAL_SCAN_MICROS_PER_SIGNAL = max(0, _env_int("SIGNAL_SCAN_MICROS_PER_SIGNAL", 0))
+LEAD_SCORING_MICROS_PER_CALL = max(0, _env_int("LEAD_SCORING_MICROS_PER_CALL", 0))
+CRUNCHBASE_API_KEY = os.getenv("CRUNCHBASE_API_KEY", "")
+NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
+SIGNAL_EXECUTIVE_MOVE_ENABLED = (
+    os.getenv("SIGNAL_EXECUTIVE_MOVE_ENABLED", "FALSE").upper() == "TRUE"
+)
+SIGNAL_EVENT_RETENTION_DAYS = max(1, _env_int("SIGNAL_EVENT_RETENTION_DAYS", 90))
+
+# Contact enrichment (Story 21.3)
+CLEANLIST_API_KEY = os.getenv("CLEANLIST_API_KEY", "")
+BETTERCONTACT_API_KEY = os.getenv("BETTERCONTACT_API_KEY", "")
+CONTACT_ENRICHMENT_MICROS_PER_CONTACT = max(
+    0, _env_int("CONTACT_ENRICHMENT_MICROS_PER_CONTACT", 0)
+)
+CONTACT_ENRICHMENT_CACHE_TTL_SECONDS = max(
+    1, _env_int("CONTACT_ENRICHMENT_CACHE_TTL_SECONDS", 30 * 24 * 60 * 60)
+)
+CONTACT_ENRICHMENT_PRIMARY_PROVIDER = (
+    os.getenv("CONTACT_ENRICHMENT_PRIMARY_PROVIDER", "cleanlist").strip().lower()
+)
+CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD = max(
+    1, _env_int("CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD", 5)
+)
+CONTACT_ENRICHMENT_REQUEST_TIMEOUT_SECONDS = max(
+    1, _env_int("CONTACT_ENRICHMENT_REQUEST_TIMEOUT_SECONDS", 30)
+)
+CONTACT_ENRICHMENT_RETRY_ATTEMPTS = max(
+    1, _env_int("CONTACT_ENRICHMENT_RETRY_ATTEMPTS", 3)
+)
+
+# CRM (Story 21.5)
+SALESFORCE_CLIENT_ID = os.getenv("SALESFORCE_CLIENT_ID", "")
+SALESFORCE_CLIENT_SECRET = os.getenv("SALESFORCE_CLIENT_SECRET", "")
+SALESFORCE_REDIRECT_URI = os.getenv("SALESFORCE_REDIRECT_URI", "")
+SALESFORCE_WEBHOOK_SECRET = os.getenv("SALESFORCE_WEBHOOK_SECRET", "")
+HUBSPOT_WEBHOOK_SECRET = os.getenv("HUBSPOT_WEBHOOK_SECRET", "")
+HUBSPOT_CLIENT_ID = os.getenv("HUBSPOT_CLIENT_ID", "")
+HUBSPOT_CLIENT_SECRET = os.getenv("HUBSPOT_CLIENT_SECRET", "")
+HUBSPOT_REDIRECT_URI = os.getenv("HUBSPOT_REDIRECT_URI", "")
+PIPEDRIVE_CLIENT_ID = os.getenv("PIPEDRIVE_CLIENT_ID", "")
+PIPEDRIVE_CLIENT_SECRET = os.getenv("PIPEDRIVE_CLIENT_SECRET", "")
+PIPEDRIVE_REDIRECT_URI = os.getenv("PIPEDRIVE_REDIRECT_URI", "")
+CRM_SYNC_DEDUP_ENABLED = (
+    os.getenv("CRM_SYNC_DEDUP_ENABLED", "TRUE").upper() == "TRUE"
+)
+CRM_SYNC_WRITEBACK_ENABLED = (
+    os.getenv("CRM_SYNC_WRITEBACK_ENABLED", "FALSE").upper() == "TRUE"
+)
+CRM_SYNC_BIDIRECTIONAL_ENABLED = (
+    os.getenv("CRM_SYNC_BIDIRECTIONAL_ENABLED", "FALSE").upper() == "TRUE"
+)
+CRM_SYNC_BATCH_SIZE = max(1, _env_int("CRM_SYNC_BATCH_SIZE", 50))
+CRM_SYNC_TIMEOUT_SECONDS = max(1, _env_int("CRM_SYNC_TIMEOUT_SECONDS", 30))
+CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS = max(
+    0, _env_int("CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS", 300)
+)
+# XActions social ingress (Story 21.8 / 21.8a)
+XACTIONS_PATH = os.getenv("XACTIONS_PATH", "")
+XACTIONS_TIMEOUT_SECONDS = _env_int("XACTIONS_TIMEOUT_SECONDS", 30)
+XACTIONS_MCP_URL = os.getenv("XACTIONS_MCP_URL", "http://xactions:3001/mcp")
+XACTIONS_MCP_API_KEY = os.getenv("XACTIONS_MCP_API_KEY", "")
+XACTIONS_CONSUMER_ID = os.getenv("XACTIONS_CONSUMER_ID", "nowing")
+XACTIONS_ADMIN_TOKEN = os.getenv("XACTIONS_ADMIN_TOKEN", "")
+XACTIONS_FACEBOOK_ACCOUNT_ID = os.getenv("XACTIONS_FACEBOOK_ACCOUNT_ID", "")
+# Deprecated: use XACTIONS_FACEBOOK_ACCOUNT_ID (per-account pool)
+XACTIONS_FACEBOOK_C_USER = os.getenv("XACTIONS_FACEBOOK_C_USER", "")
+XACTIONS_FACEBOOK_XS = os.getenv("XACTIONS_FACEBOOK_XS", "")
+# Transport: "streamable-http" (default) or "stdio" (legacy fallback)
+XACTIONS_TRANSPORT = os.getenv("XACTIONS_TRANSPORT", "streamable-http").strip().lower()
+# Mode: "local" (default, uses local browser pool) or "remote" (uses XActions cloud API)
+XACTIONS_MODE = os.getenv("XACTIONS_MODE", "local").strip().lower()
+# Local root for resolving XActions datasetArtifactPath (must be absolute)
+XACTIONS_ARTIFACT_ROOT = os.getenv("XACTIONS_ARTIFACT_ROOT", "")
+# Single-writer stream gate (Story 36.4 / AD-4)
+XACTIONS_STREAM_SINGLE_WRITER_ENABLED = (
+    os.getenv("XACTIONS_STREAM_SINGLE_WRITER_ENABLED", "false").strip().lower()
+    in ("true", "1", "yes", "t", "on")
+)
+# XActions stream data-plane Redis (Story 36.4 / REQ-X2). The single-writer
+# social raw-posts stream (stream:social:raw_posts) lives on the XActions-side
+# Redis instance, which may differ from the app-level REDIS_APP_URL used for
+# cache/queues. Leave empty to fall back to REDIS_APP_URL (same instance).
+XACTIONS_STREAM_REDIS_URL = os.getenv("XACTIONS_STREAM_REDIS_URL", "").strip()
+# Unified dispatch gate (Story 36.6a / AD-1, AD-2, AD-6)
+# When ON: UniversalScrapeTargetMapper resolves platform+action from the
+# CanonicalActionMatrix (x_actions_list + static fallback) and dispatches
+# x_scrape with the nested {platform, action, args, context} envelope.
+# When OFF: legacy PLATFORM_TOOL_MAP path is used unchanged.
+XACTIONS_USE_UNIFIED_DISPATCH = (
+    os.getenv("XACTIONS_USE_UNIFIED_DISPATCH", "false").strip().lower()
+    in ("true", "1", "yes", "t", "on")
+)
+# Legacy tool deprecation gate (Story 36.6b / AD-1, AD-2)
+# When ON (and XACTIONS_USE_UNIFIED_DISPATCH is also ON): UniversalScrapeTargetMapper
+# routes facebook_group, facebook_page, twitter_keyword, twitter_user through
+# x_scrape with the canonical matrix envelope instead of dedicated legacy tools.
+# When OFF (or XACTIONS_USE_UNIFIED_DISPATCH is OFF): legacy tool calls are preserved.
+XACTIONS_LEGACY_TOOL_DEPRECATION = (
+    os.getenv("XACTIONS_LEGACY_TOOL_DEPRECATION", "false").strip().lower()
+    in ("true", "1", "yes", "t", "on")
+)
+
+
+
+__all__ = [
+    "BETTERCONTACT_API_KEY",
+    "CANONICAL_EMBEDDING_OUTBOX_FAILURE_THRESHOLD",
+    "CLEANLIST_API_KEY",
+    "CONTACT_ENRICHMENT_CACHE_TTL_SECONDS",
+    "CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD",
+    "CONTACT_ENRICHMENT_MICROS_PER_CONTACT",
+    "CONTACT_ENRICHMENT_PRIMARY_PROVIDER",
+    "CONTACT_ENRICHMENT_REQUEST_TIMEOUT_SECONDS",
+    "CONTACT_ENRICHMENT_RETRY_ATTEMPTS",
+    "CRM_SYNC_BATCH_SIZE",
+    "CRM_SYNC_BIDIRECTIONAL_ENABLED",
+    "CRM_SYNC_DEDUP_ENABLED",
+    "CRM_SYNC_TIMEOUT_SECONDS",
+    "CRM_SYNC_TOKEN_REFRESH_LEEWAY_SECONDS",
+    "CRM_SYNC_WRITEBACK_ENABLED",
+    "CRUNCHBASE_API_KEY",
+    "HUBSPOT_CLIENT_ID",
+    "HUBSPOT_CLIENT_SECRET",
+    "HUBSPOT_REDIRECT_URI",
+    "LEAD_SCORING_MICROS_PER_CALL",
+    "NEWSAPI_KEY",
+    "PIPEDRIVE_CLIENT_ID",
+    "PIPEDRIVE_CLIENT_SECRET",
+    "PIPEDRIVE_REDIRECT_URI",
+    "SALESFORCE_CLIENT_ID",
+    "SALESFORCE_CLIENT_SECRET",
+        "SALESFORCE_REDIRECT_URI",
+    "SALESFORCE_WEBHOOK_SECRET",
+    "HUBSPOT_WEBHOOK_SECRET",
+    "SIGNAL_EVENT_RETENTION_DAYS",
+    "SIGNAL_EXECUTIVE_MOVE_ENABLED",
+    "SIGNAL_SCAN_MICROS_PER_SIGNAL",
+    "XACTIONS_ADMIN_TOKEN",
+    "XACTIONS_ARTIFACT_ROOT",
+    "XACTIONS_CONSUMER_ID",
+    "XACTIONS_FACEBOOK_ACCOUNT_ID",
+    "XACTIONS_FACEBOOK_C_USER",
+    "XACTIONS_FACEBOOK_XS",
+    "XACTIONS_LEGACY_TOOL_DEPRECATION",
+    "XACTIONS_MCP_API_KEY",
+    "XACTIONS_MCP_URL",
+    "XACTIONS_MODE",
+    "XACTIONS_PATH",
+    "XACTIONS_STREAM_SINGLE_WRITER_ENABLED",
+    "XACTIONS_STREAM_REDIS_URL",
+    "XACTIONS_TIMEOUT_SECONDS",
+    "XACTIONS_TRANSPORT",
+    "XACTIONS_USE_UNIFIED_DISPATCH",
+]

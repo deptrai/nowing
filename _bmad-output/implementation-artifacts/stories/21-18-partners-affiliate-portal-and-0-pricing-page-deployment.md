@@ -1,10 +1,15 @@
 ---
+story_key: 21-18-partners-affiliate-portal-0-pricing-page-deployment
+status: done
+---
+
+---
 baseline_commit: 591bc6a1672e5ec1f8ffe0afdfdcbb35f8f1a24d
 ---
 
 # Story 21.18: Partners Affiliate Portal & $0 Pricing Page Deployment
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Governed by epics.md (FR-88, AD-42, UX-Contract-Landing-Page) & DESIGN.md, EXPERIENCE.md -->
 

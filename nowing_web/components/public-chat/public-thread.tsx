@@ -11,6 +11,7 @@ import {
 import { CheckIcon, CopyIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { type FC, type ReactNode, useState } from "react";
 import { CitationMetadataProvider } from "@/components/assistant-ui/citation-metadata-context";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
@@ -186,6 +187,7 @@ const PublicAssistantMessage: FC = () => {
 };
 
 const PublicAssistantActionBar: FC = () => {
+	const t = useTranslations("public_chat");
 	return (
 		<ActionBarPrimitive.Root
 			autohide="not-last"
@@ -193,7 +195,7 @@ const PublicAssistantActionBar: FC = () => {
 			className="aui-assistant-action-bar-root -ml-1 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
 		>
 			<ActionBarPrimitive.Copy asChild>
-				<TooltipIconButton tooltip="Copy">
+				<TooltipIconButton tooltip={t("copy_tooltip")}>
 					<AuiIf condition={({ message }) => message.isCopied}>
 						<CheckIcon />
 					</AuiIf>

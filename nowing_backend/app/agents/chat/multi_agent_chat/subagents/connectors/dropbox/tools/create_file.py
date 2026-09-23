@@ -149,7 +149,7 @@ def create_create_dropbox_file_tool(
                             for item in items
                             if item.get(".tag") == "folder" and item.get("name")
                         ]
-                except Exception:
+                except Exception:  # connector folder listing failure; fallback to empty list
                     logger.warning(
                         "Error fetching folders for connector %s", cid, exc_info=True
                     )
@@ -251,7 +251,7 @@ def create_create_dropbox_file_tool(
                     kb_message_suffix = " Your knowledge base has also been updated."
                 else:
                     kb_message_suffix = " This file will be added to your knowledge base in the next scheduled sync."
-            except Exception as kb_err:
+            except Exception as kb_err:  # post-create KB sync failure; defer to scheduled sync
                 logger.warning(f"KB sync after create failed: {kb_err}")
                 kb_message_suffix = " This file will be added to your knowledge base in the next scheduled sync."
 
@@ -263,7 +263,7 @@ def create_create_dropbox_file_tool(
                 "message": f"Successfully created '{final_name}' in Dropbox.{kb_message_suffix}",
             }
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

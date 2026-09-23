@@ -1,5 +1,6 @@
 import { useSetAtom } from "jotai";
 import { AudioLines, Contact, FileText, Globe, ImageIcon, Presentation, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ComponentType } from "react";
 import { openReportPanelAtom } from "@/atoms/chat/report-panel.atom";
 import { Button } from "@/components/ui/button";
@@ -8,25 +9,25 @@ import { scrollToArtifact } from "../lib/scroll-to-artifact";
 import type { ArtifactKind, ChatArtifact } from "../model/artifact";
 import { closeArtifactsPanelAtom } from "../state/artifacts-panel.atom";
 
-const KIND_META: Record<
-	ArtifactKind,
-	{ icon: ComponentType<{ className?: string }>; label: string }
-> = {
-	web_app: { icon: Globe, label: "Web App" },
-	report: { icon: FileText, label: "Report" },
-	resume: { icon: Contact, label: "Resume" },
-	podcast: { icon: AudioLines, label: "Podcast" },
-	video: { icon: Presentation, label: "Video Presentation" },
-	presentation: { icon: Presentation, label: "Slide Deck" },
-	meeting_minutes: { icon: Users, label: "Meeting Minutes" },
+const getKindMeta = (
+	t: (k: string) => string
+): Record<ArtifactKind, { icon: ComponentType<{ className?: string }>; label: string }> => ({
+	web_app: { icon: Globe, label: t("x_web_app") },
+	report: { icon: FileText, label: t("x_report") },
+	resume: { icon: Contact, label: t("x_resume") },
+	podcast: { icon: AudioLines, label: t("x_podcast") },
+	video: { icon: Presentation, label: t("x_video_presentation") },
+	presentation: { icon: Presentation, label: t("x_slide_deck") },
+	meeting_minutes: { icon: Users, label: t("x_meeting_minutes") },
 	image: { icon: ImageIcon, label: "Image" },
-};
+});
 
 export function ArtifactRow({ artifact }: { artifact: ChatArtifact }) {
+	const t = useTranslations("artifacts");
 	const openReportPanel = useSetAtom(openReportPanelAtom);
 	const closeArtifactsPanel = useSetAtom(closeArtifactsPanelAtom);
 	const isDesktop = useMediaQuery("(min-width: 1024px)");
-	const meta = KIND_META[artifact.kind];
+	const meta = getKindMeta(t)[artifact.kind];
 	const Icon = meta.icon;
 	const isReportLike = artifact.kind === "report" || artifact.kind === "resume";
 

@@ -1,16 +1,19 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import type React from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface SidebarButtonProps {
 	icon: LucideIcon;
 	label: string;
-	onClick?: () => void;
+	href?: string;
+	prefetch?: boolean;
+	onClick?: (e?: React.MouseEvent) => void;
 	isCollapsed?: boolean;
 	isActive?: boolean;
 	badge?: React.ReactNode;
@@ -25,7 +28,8 @@ interface SidebarButtonProps {
 
 const baseClassName = cn(
 	"group/sidebar-button relative h-7.5 justify-start gap-0 rounded-md mx-1.5 px-2 text-[12px] font-medium text-left",
-	"transition-colors hover:bg-accent hover:text-accent-foreground",
+	"transition-all duration-100 hover:bg-accent hover:text-accent-foreground",
+	"active:scale-[0.98] active:bg-accent/80",
 	"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 );
 
@@ -52,6 +56,8 @@ export function SidebarButtonBadge({
 export function SidebarButton({
 	icon: Icon,
 	label,
+	href,
+	prefetch = true,
 	onClick,
 	isCollapsed = false,
 	isActive = false,
@@ -70,15 +76,8 @@ export function SidebarButton({
 		? (collapsedIconNode ?? <Icon className="h-3.5 w-3.5" />)
 		: (expandedIconNode ?? <Icon className="h-3.5 w-3.5 shrink-0" />);
 
-	const button = (
-		<Button
-			variant="ghost"
-			type="button"
-			onClick={onClick}
-			aria-label={isCollapsed ? label : undefined}
-			className={cn(baseClassName, isActive && activeClassName, className)}
-			{...buttonProps}
-		>
+	const content = (
+		<>
 			<span
 				className={cn(
 					"flex min-w-0 items-center translate-x-0.5 transition-transform duration-200 ease-out",
@@ -120,18 +119,54 @@ export function SidebarButton({
 				</span>
 			)}
 
-			<span className="sr-only">{label}</span>
-		</Button>
+			{isCollapsed && <span className="sr-only">{label}</span>}
+		</>
 	);
+
+	let triggerElement: React.ReactElement;
+
+	if (href) {
+		const { type: _discardType, ...restProps } = buttonProps ?? {};
+		triggerElement = (
+			<Link
+				href={href}
+				prefetch={prefetch}
+				onClick={onClick}
+				aria-label={isCollapsed ? label : undefined}
+				className={cn(
+					buttonVariants({ variant: "ghost" }),
+					baseClassName,
+					isActive && activeClassName,
+					className
+				)}
+				{...(restProps as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+			>
+				{content}
+			</Link>
+		);
+	} else {
+		triggerElement = (
+			<Button
+				variant="ghost"
+				type="button"
+				onClick={onClick}
+				aria-label={isCollapsed ? label : undefined}
+				className={cn(baseClassName, isActive && activeClassName, className)}
+				{...buttonProps}
+			>
+				{content}
+			</Button>
+		);
+	}
 
 	const renderTooltip = isCollapsed || !!tooltipContent;
 	if (!renderTooltip) {
-		return button;
+		return triggerElement;
 	}
 
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>{button}</TooltipTrigger>
+			<TooltipTrigger asChild>{triggerElement}</TooltipTrigger>
 			<TooltipContent side="right" className="max-w-xs">
 				{isCollapsed
 					? (tooltipContent ?? (

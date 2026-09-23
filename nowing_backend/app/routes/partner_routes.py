@@ -178,7 +178,7 @@ async def handle_payout_webhook(
 
     try:
         payload = await request.json()
-    except Exception as e:
+    except Exception as e:  # malformed input → typed 400 error
         logger.error("Failed to parse JSON payload in payout webhook: %s", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

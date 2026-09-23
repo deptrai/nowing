@@ -61,6 +61,7 @@ AUTOMATION_COLS = [
 NEW_CHAT_THREAD_COLS = [
     "id",
     "workspace_id",
+    "project_id",
 ]
 
 # Enough to drive the lifecycle UI by push: status, the reviewable brief, and

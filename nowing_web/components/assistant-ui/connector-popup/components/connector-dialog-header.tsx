@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +23,7 @@ export const ConnectorDialogHeader: FC<ConnectorDialogHeaderProps> = ({
 	onSearchChange,
 	isScrolled,
 }) => {
+	const t = useTranslations("assistant");
 	return (
 		<div
 			className={cn(
@@ -31,10 +33,10 @@ export const ConnectorDialogHeader: FC<ConnectorDialogHeaderProps> = ({
 		>
 			<DialogHeader>
 				<DialogTitle className="text-xl sm:text-3xl font-semibold tracking-tight">
-					MCP Connectors
+					{t("mcp_connectors")}
 				</DialogTitle>
 				<DialogDescription className="text-xs sm:text-base text-muted-foreground/80 mt-1 sm:mt-1.5">
-					Connect external tools and services through MCP.
+					{t("mcp_connectors_desc")}
 				</DialogDescription>
 			</DialogHeader>
 
@@ -44,14 +46,14 @@ export const ConnectorDialogHeader: FC<ConnectorDialogHeaderProps> = ({
 						value="all"
 						className="px-0 pb-3 bg-transparent data-[state=active]:bg-transparent shadow-none data-[state=active]:shadow-none rounded-none border-b-[1.5px] border-transparent data-[state=active]:border-foreground dark:data-[state=active]:border-white transition-all text-base font-medium text-muted-foreground data-[state=active]:text-foreground"
 					>
-						All Connectors
+						{t("all_connectors")}
 					</TabsTrigger>
 					<TabsTrigger
 						value="active"
 						className="group px-0 pb-3 bg-transparent data-[state=active]:bg-transparent shadow-none data-[state=active]:shadow-none rounded-none border-b-[1.5px] border-transparent transition-all text-base font-medium flex items-center gap-2 text-muted-foreground data-[state=active]:text-foreground relative"
 					>
 						<span className="relative">
-							Active
+							{t("active")}
 							<span className="absolute bottom-[-13.5px] left-1/2 -translate-x-1/2 w-12 h-[1.5px] bg-foreground dark:bg-white opacity-0 group-data-[state=active]:opacity-100 transition-all duration-200" />
 						</span>
 						{totalSourceCount > 0 && (
@@ -71,7 +73,7 @@ export const ConnectorDialogHeader: FC<ConnectorDialogHeaderProps> = ({
 						<input
 							type="text"
 							autoComplete="off"
-							placeholder="Search"
+							placeholder={t("search")}
 							className={cn(
 								"w-full bg-slate-400/5 dark:bg-white/5 hover:bg-accent hover:text-accent-foreground focus:bg-slate-400/10 dark:focus:bg-white/10 border border-border rounded-xl pl-9 py-2 text-sm transition-all outline-none placeholder:text-muted-foreground/50",
 								searchQuery ? "pr-9" : "pr-4"
@@ -86,7 +88,7 @@ export const ConnectorDialogHeader: FC<ConnectorDialogHeaderProps> = ({
 								type="button"
 								onClick={() => onSearchChange("")}
 								className="absolute right-1.5 top-1/2 size-7 -translate-y-1/2 text-muted-foreground transition-colors hover:bg-transparent hover:text-accent-foreground"
-								aria-label="Clear search"
+								aria-label={t("clear_search")}
 							>
 								<X data-icon="inline-start" />
 							</Button>

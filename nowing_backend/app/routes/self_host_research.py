@@ -83,7 +83,7 @@ def _incr(key: str, window_seconds: int) -> int:
         if count == 1:
             client.expire(key, window_seconds)
         return count
-    except Exception:
+    except Exception:  # redis counter failure → fallback to in-memory counter
         return _incr_memory(key, window_seconds)
 
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRuntimeConfig } from "@/components/providers/runtime-config";
@@ -45,6 +46,7 @@ export function FolderWatchDialog({
 	onSuccess,
 	initialFolder,
 }: FolderWatchDialogProps) {
+	const t = useTranslations("sources");
 	const [selectedFolder, setSelectedFolder] = useState<SelectedFolder | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const [progress, setProgress] = useState<FolderSyncProgress | null>(null);
@@ -108,16 +110,16 @@ export function FolderWatchDialog({
 				active: true,
 			});
 
-			toast.success(`Watching folder: ${selectedFolder.name}`);
+			toast.success(t("watching_folder", { name: selectedFolder.name }));
 			setSelectedFolder(null);
 			setProgress(null);
 			onOpenChange(false);
 			onSuccess?.();
 		} catch (err) {
 			if ((err as Error)?.name === "AbortError") {
-				toast.info("Folder sync cancelled. Partial progress was saved.");
+				toast.info(t("sync_cancelled"));
 			} else {
-				toast.error((err as Error)?.message || "Failed to watch folder");
+				toast.error((err as Error)?.message || t("watch_failed"));
 			}
 		} finally {
 			abortRef.current = null;
@@ -141,13 +143,13 @@ export function FolderWatchDialog({
 		if (!progress) return null;
 		switch (progress.phase) {
 			case "listing":
-				return "Scanning folder...";
+				return t("scanning");
 			case "checking":
-				return `Checking ${progress.total} file(s)...`;
+				return t("checking", { count: progress.total });
 			case "uploading":
-				return `Uploading ${progress.uploaded}/${progress.total} file(s)...`;
+				return t("uploading", { done: progress.uploaded, total: progress.total });
 			case "finalizing":
-				return "Finalizing...";
+				return t("finalizing");
 			case "done":
 				return "Done!";
 			default:
@@ -160,10 +162,10 @@ export function FolderWatchDialog({
 			<DialogContent className="sm:max-w-md select-none p-0 gap-0 overflow-hidden [&>button]:opacity-80 [&>button]:hover:opacity-100 [&>button]:hover:bg-accent [&>button]:hover:text-accent-foreground">
 				<DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3">
 					<DialogTitle className="text-lg sm:text-xl font-semibold tracking-tight">
-						Watch Local Folder
+						{t("watch_local_folder")}
 					</DialogTitle>
 					<DialogDescription className="text-xs sm:text-sm text-muted-foreground/80">
-						Select a folder to sync and watch for changes
+						{t("watch_desc")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -193,7 +195,7 @@ export function FolderWatchDialog({
 							onClick={handleSelectFolder}
 							className="h-auto flex-1 w-full gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-transparent text-sm text-muted-foreground transition-colors hover:border-foreground/50 hover:bg-transparent hover:text-accent-foreground"
 						>
-							Browse for a folder
+							{t("browse_folder")}
 						</Button>
 					)}
 
@@ -219,10 +221,10 @@ export function FolderWatchDialog({
 								{submitting ? (
 									<>
 										<Button variant="secondary" className="flex-1" onClick={handleCancel}>
-											Cancel
+											{t("cancel")}
 										</Button>
 										<Button className="flex-1 relative" disabled>
-											<span className="invisible">Syncing...</span>
+											<span className="invisible">{t("syncing")}</span>
 											<span className="absolute inset-0 flex items-center justify-center">
 												<Spinner size="sm" />
 											</span>
@@ -230,7 +232,7 @@ export function FolderWatchDialog({
 									</>
 								) : (
 									<Button className="w-full" onClick={handleSubmit}>
-										Start Folder Sync
+										{t("start_sync")}
 									</Button>
 								)}
 							</div>

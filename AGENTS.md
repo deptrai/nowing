@@ -303,3 +303,29 @@ pnpm dev
 2. Register or log in with `e2e-test@nowing.net` / `E2eTestPassword123!`
 3. Navigate to `/dashboard/1/new-chat` — console should be clean (0 errors)
 4. Navigate to `/dashboard/1/usage` — console should be clean
+
+## Epic 39 verification commands (Jev typed-decision layer)
+
+Backend (from `nowing_backend/`):
+
+```bash
+ruff check app/services/decision app/services/entity_resolution app/services/content_guardrails app/services/connectors/search app/services/chainlens app/tasks/chat
+pytest tests/unit/services/decision tests/unit/services/entity_resolution tests/unit/services/content_guardrails tests/unit/services/connectors tests/unit/services/chainlens tests/unit/tasks/chat -m unit -q
+```
+
+Live verification against the real TypeSafe backend + real scrapes (requires `TYPESAFE_API_KEY`; exits early if flags/key missing so runs can't silently fail-open):
+
+```bash
+# Story 39.3 — entity resolution (bds fan-out dedup + corp verify band rescore)
+TYPESAFE_API_KEY=... DECISION_ENABLED=true DECISION_ENTITY_ENABLED=true DECISION_BACKEND=jev \
+  uv run python scripts/verify_entity_resolution_39_3.py --mode all --district "Quận 7" --max-items 10
+
+# Story 39.4 — content guardrails (battery cases / real listings / ingest / rag)
+TYPESAFE_API_KEY=... DECISION_ENABLED=true DECISION_FILTER_ENABLED=true DECISION_BACKEND=jev \
+  uv run python scripts/verify_content_guardrails_39_4.py --mode all --district "Quận 7" --max-items 8
+```
+
+Notes:
+- `.env` has no `TYPESAFE_API_KEY` / `DECISION_*` flags by default — the decision layer is fail-open (zero-cost no-op) until explicitly enabled.
+- Story 39.4 live finding: `is_relevant` over-drops VN passages lacking literal geo terms — rag surfaces demote relevance-negative results to the tail instead of dropping (commit `64eef5446`). Injection/mask_failed still hard-drop.
+- Known pre-existing unit failures unrelated to Epic 39: `tests/unit/services/test_phone_waterfall_service.py` (AsyncMock `scalar_one_or_none`), `tests/unit/test_pat_fail_closed_static.py` (route allowlist drift `workspaces_routes.py`→`workspaces/core.py`).

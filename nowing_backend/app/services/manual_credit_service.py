@@ -137,7 +137,7 @@ class ManualCreditAdjustmentService:
                         ex=WORKSPACE_WALLET_LOCK_TTL,
                     )
                 )
-            except Exception as exc:
+            except Exception as exc:  # lock acquire failure falls back to no-lock path
                 logger.warning(
                     "Redis workspace wallet lock unavailable for %s: %s", key, exc
                 )
@@ -148,7 +148,7 @@ class ManualCreditAdjustmentService:
             if acquired and redis_client is not None:
                 try:
                     await redis_client.eval(RELEASE_LOCK_LUA, 1, key, token)
-                except Exception as exc:
+                except Exception as exc:  # lock release is best-effort; TTL expiry is the safety net
                     logger.warning(
                         "Failed to release workspace wallet lock %s: %s", key, exc
                     )

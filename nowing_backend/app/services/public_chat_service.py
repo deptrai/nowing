@@ -11,6 +11,7 @@ Key concepts:
 import contextlib
 import hashlib
 import json
+import logging
 import re
 import secrets
 from datetime import UTC, datetime
@@ -37,6 +38,8 @@ from app.db import (
     WorkspaceMembership,
 )
 from app.utils.rbac import check_permission
+
+logger = logging.getLogger(__name__)
 
 UI_TOOLS = {
     "generate_image",
@@ -701,8 +704,8 @@ async def clone_from_snapshot(
                 parsed_id = UUID(author_str)
                 if parsed_id in existing_authors:
                     author_id = parsed_id
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as exc:
+                logger.debug("Suppressed %r", exc)
 
         content = copy.deepcopy(msg_data.get("content", []))
 

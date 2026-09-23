@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, get_async_session
+from app.db import Permission, WorkspaceMembership, get_async_session
+from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
 from app.schemas.outcome_pricing import (
     OutcomeEventCreate,
     OutcomeEventRead,
@@ -16,7 +17,6 @@ from app.schemas.outcome_pricing import (
 from app.services.etl_credit_service import InsufficientCreditsError
 from app.services.outcome_pricing_service import OutcomePricingService
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, check_workspace_access
 
 router = APIRouter(tags=["outcome-pricing"])
 
@@ -29,9 +29,9 @@ async def get_workspace_pricing_plan(
     workspace_id: int,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> PricingPlanRead:
     """Retrieve active pricing plan and outcome rate card for workspace."""
-    await check_workspace_access(session, auth, workspace_id)
     service = OutcomePricingService(session)
     plan = await service.get_or_create_workspace_plan(workspace_id)
     return PricingPlanRead.model_validate(plan)
@@ -46,15 +46,14 @@ async def update_workspace_pricing_plan(
     payload: PricingPlanUpdate,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.SETTINGS_UPDATE.value,
+            "Only workspace admins or owners can modify pricing plans.",
+        )
+    ),
 ) -> PricingPlanRead:
     """Update workspace pricing plan configuration (Admin/Owner only)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.SETTINGS_UPDATE.value,
-        error_message="Only workspace admins or owners can modify pricing plans.",
-    )
     service = OutcomePricingService(session)
     plan = await service.update_workspace_plan(workspace_id, payload)
     return PricingPlanRead.model_validate(plan)
@@ -69,9 +68,9 @@ async def record_meeting_booked(
     payload: OutcomeEventCreate,
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
 ) -> OutcomeEventRead:
     """Record a qualified meeting booked outcome, debit wallet, and write BillingEvent."""
-    await check_workspace_access(session, auth, workspace_id)
     if not auth.user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

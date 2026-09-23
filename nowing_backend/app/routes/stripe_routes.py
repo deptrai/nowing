@@ -175,7 +175,7 @@ def _get_metadata(checkout_session: Any) -> dict[str, str]:
             d = to_dict(recursive=False)
             if isinstance(d, dict):
                 return {str(k): str(v) for k, v in d.items()}
-        except Exception:
+        except Exception:  # metadata extraction failure → fallback to attribute access
             logger.exception(
                 "Stripe metadata.to_dict() failed for session %s",
                 getattr(checkout_session, "id", "?"),
@@ -652,7 +652,7 @@ async def stripe_webhook(
                     db_session, str(checkout_session.id)
                 )
             return StripeWebhookResponse()
-    except Exception:
+    except Exception:  # log webhook handling failure and re-raise for Stripe retry
         logger.exception(
             "Stripe webhook handler failed for event id=%s type=%s — Stripe will retry",
             getattr(event, "id", "?"),

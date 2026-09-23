@@ -62,14 +62,14 @@ def process_meeting_minutes(
                 celery_task_id=str(self.request.id or ""),
             )
         )
-    except Exception as exc:
+    except Exception as exc:  # task-level guard: log, mark meeting minutes failed, and return failed dict
         error = str(exc)
         logger.error("Error processing meeting minutes %s: %s", meeting_minutes_id, error)
         try:
             run_async_celery_task(
                 lambda: _mark_meeting_minutes_failed(meeting_minutes_id, error)
             )
-        except Exception:
+        except Exception:  # best-effort mark meeting minutes failed; log exception
             logger.exception(
                 "Failed to mark meeting minutes %s as failed", meeting_minutes_id
             )

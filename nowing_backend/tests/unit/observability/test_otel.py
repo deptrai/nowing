@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+import app.observability.metrics.base as base_metrics
+import app.observability.metrics.runtime as runtime_metrics
 from app.observability import bootstrap, metrics, otel
 
 pytestmark = pytest.mark.unit
@@ -202,16 +204,16 @@ class TestMetricHelpers:
                 self.names.append(name)
 
         fake_meter = FakeMeter()
-        monkeypatch.setattr(metrics, "_OBSERVABLES_REGISTERED", False)
-        monkeypatch.setattr(metrics, "_is_enabled", lambda: True)
-        monkeypatch.setattr(metrics, "_get_meter", lambda: fake_meter)
+        monkeypatch.setattr(runtime_metrics, "_OBSERVABLES_REGISTERED", False)
+        monkeypatch.setattr(base_metrics, "_is_enabled", lambda: True)
+        monkeypatch.setattr(base_metrics, "_get_meter", lambda: fake_meter)
 
         metrics.register_runtime_observables()
         metrics.register_runtime_observables()
 
         assert len(fake_meter.names) == 6
         assert fake_meter.names.count("python.asyncio.tasks") == 1
-        monkeypatch.setattr(metrics, "_OBSERVABLES_REGISTERED", False)
+        monkeypatch.setattr(runtime_metrics, "_OBSERVABLES_REGISTERED", False)
 
 
 def test_log_record_factory_provides_zero_otel_fields() -> None:
@@ -294,14 +296,14 @@ class TestPackageVersionResilience:
         def _raise_key_error(_name: str) -> str:
             raise KeyError("Version")
 
-        monkeypatch.setattr(metrics.metadata, "version", _raise_key_error)
-        assert metrics._package_version() == "unknown"
+        monkeypatch.setattr(base_metrics.metadata, "version", _raise_key_error)
+        assert base_metrics._package_version() == "unknown"
 
     def test_package_not_found_falls_back(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         def _raise_not_found(_name: str) -> str:
-            raise metrics.metadata.PackageNotFoundError("surf-new-backend")
+            raise base_metrics.metadata.PackageNotFoundError("surf-new-backend")
 
-        monkeypatch.setattr(metrics.metadata, "version", _raise_not_found)
-        assert metrics._package_version() == "unknown"
+        monkeypatch.setattr(base_metrics.metadata, "version", _raise_not_found)
+        assert base_metrics._package_version() == "unknown"

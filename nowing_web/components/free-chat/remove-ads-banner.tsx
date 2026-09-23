@@ -2,6 +2,7 @@
 
 import { Sparkles, X } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ const DISMISS_KEY = "nowing:remove-ads-banner-dismissed:v1";
  * no ads to remove in that case.
  */
 export function RemoveAdsBanner({ className }: { className?: string }) {
+	const t = useTranslations("free");
 	// Default hidden so dismissed users never see a flash before the stored
 	// value is read on the client (avoids a hydration/flicker mismatch).
 	const [dismissed, setDismissed] = useState(true);
@@ -51,14 +53,14 @@ export function RemoveAdsBanner({ className }: { className?: string }) {
 		<div className={cn("shrink-0 border-b bg-muted/30 px-4 py-3", className)}>
 			<Alert className="relative mx-auto w-full max-w-2xl pr-10">
 				<Sparkles />
-				<AlertTitle>Go ad-free with a free account</AlertTitle>
+				<AlertTitle>{t("adfree_title")}</AlertTitle>
 				<AlertDescription>
 					<p>
 						Create a free Nowing account to remove ads, unlock $5 of premium credit, and save your
 						chat history. You can keep chatting for free either way.
 					</p>
 					<Button asChild size="sm" className="mt-1">
-						<Link href="/login">Create Free Account</Link>
+						<Link href="/login">{t("create_account")}</Link>
 					</Button>
 				</AlertDescription>
 				<Button
@@ -66,7 +68,7 @@ export function RemoveAdsBanner({ className }: { className?: string }) {
 					variant="ghost"
 					size="icon"
 					onClick={handleDismiss}
-					aria-label="Dismiss"
+					aria-label={t("dismiss")}
 					className="absolute top-2 right-2 size-6"
 				>
 					<X />

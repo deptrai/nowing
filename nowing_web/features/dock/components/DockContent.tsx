@@ -9,6 +9,7 @@ import {
 	Presentation,
 	Wrench,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { MarkdownCodeBlock } from "@/components/assistant-ui/markdown-code-block";
 import { MermaidDiagram } from "@/components/assistant-ui/mermaid-diagram";
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 import type { DockTabPayload, ToolCallContentPart } from "../lib/parse-dock-content";
 
 function buildToolCallProps(part: ToolCallContentPart) {
+	const t = useTranslations("dock");
 	return {
 		type: part.type,
 		toolCallId: part.toolCallId,
@@ -120,8 +122,9 @@ function ResearchDockContent({
 	payload: Extract<DockTabPayload, { kind: "research" }>;
 	workspaceId: string | number;
 }) {
+	const t = useTranslations("layout");
 	if (!payload.report) {
-		return <Placeholder icon={FileText} title="No research data available" />;
+		return <Placeholder icon={FileText} title={t("x_no_research_data_available")} />;
 	}
 	return (
 		<div className="h-full overflow-hidden">
@@ -199,8 +202,9 @@ function SlidesDockContent({
 	payload: Extract<DockTabPayload, { kind: "slides" }>;
 	workspaceId: string | number;
 }) {
+	const t = useTranslations("layout");
 	const result = parseSlidesResult(payload.result);
-	const title = typeof result?.title === "string" ? result.title : "Slide deck";
+	const title = typeof result?.title === "string" ? result.title : t("x_slide_deck_2");
 	const format = typeof result?.format === "string" ? result.format : "pptx";
 	const fileExt = presentationFileExtension(format);
 	const slideCount = typeof result?.slide_count === "number" ? result.slide_count : 0;
@@ -239,7 +243,7 @@ function SlidesDockContent({
 					<Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
 						<a href={previewUrl} target="_blank" rel="noopener noreferrer">
 							<ExternalLink className="size-3.5" aria-hidden="true" />
-							Preview
+							{t("x_preview")}
 						</a>
 					</Button>
 				)}
@@ -326,6 +330,7 @@ export interface DockContentProps {
 }
 
 export function DockContent({ activeTab, payload, workspaceId, className }: DockContentProps) {
+	const t = useTranslations("dock");
 	if (!payload) {
 		return <Placeholder icon={ImageIcon} title={`No content for ${activeTab}`} />;
 	}
@@ -365,7 +370,7 @@ export function DockContent({ activeTab, payload, workspaceId, className }: Dock
 			content = <Placeholder icon={Music} title={`${activeTab} tab`} />;
 			break;
 		default:
-			content = <Placeholder icon={ImageIcon} title={`Unsupported tab: ${activeTab}`} />;
+			content = <Placeholder icon={ImageIcon} title={t("unsupported_tab", { tab: activeTab })} />;
 	}
 
 	return <div className={cn("h-full w-full overflow-hidden", className)}>{content}</div>;

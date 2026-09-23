@@ -2,16 +2,18 @@
 
 import { useLinkToolbarButton, useLinkToolbarButtonState } from "@platejs/link/react";
 import { Link } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type * as React from "react";
 
 import { ToolbarButton } from "./toolbar";
 
 export function LinkToolbarButton(props: React.ComponentProps<typeof ToolbarButton>) {
+	const t = useTranslations("ui");
 	const state = useLinkToolbarButtonState();
 	const { props: buttonProps } = useLinkToolbarButton(state);
 
 	return (
-		<ToolbarButton tooltip="Link" {...props} {...buttonProps} data-plate-focus>
+		<ToolbarButton tooltip={t("ui_link")} {...props} {...buttonProps} data-plate-focus>
 			<Link />
 		</ToolbarButton>
 	);

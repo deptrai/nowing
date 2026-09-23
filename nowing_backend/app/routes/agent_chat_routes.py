@@ -289,7 +289,7 @@ async def _stream_response(
             # AC-7: emit a single degraded SSE frame so clients get a partial,
             # parseable response instead of a connection drop.
             yield b'data: {"type":"error","degraded":true}\n\n'
-        except Exception:
+        except Exception:  # chat-runtime failure → yield degraded SSE frame
             # AC-7: any other chat-runtime failure is also treated as degraded;
             # do not return a 500 mid-stream.
             yield b'data: {"type":"error","degraded":true}\n\n'

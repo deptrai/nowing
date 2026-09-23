@@ -47,7 +47,7 @@ def _as_registry(raw: Any) -> CitationRegistry | None:  # pragma: no mutate
     if isinstance(raw, dict):
         try:
             return CitationRegistry.model_validate(raw)
-        except Exception:
+        except Exception:  # malformed citation registry dict; fallback to None
             return None
     return None
 
@@ -209,7 +209,7 @@ async def finalize_assistant_message(
                 skip_enqueue = True
             elif not (await check_workspace_gates(ws, workspace=workspace)).allowed:
                 skip_enqueue = True
-    except Exception:
+    except Exception:  # pre-check failure; log and fall through to enqueue extraction
         # Fall through and enqueue on purpose. This pre-check is an
         # optimisation; the authoritative gate in `extract_from_turn` is the one
         # allowed to decide. Returning here would let a fast-path failure
@@ -234,7 +234,7 @@ async def finalize_assistant_message(
             client_id=client_id,
             research_thread_id=research_thread_id,
         )
-    except Exception:
+    except Exception:  # celery enqueue failure; best-effort memory extraction task dispatch
         logger.exception(
             "Failed to enqueue memory extraction for message %s",
             stream_result.assistant_message_id,

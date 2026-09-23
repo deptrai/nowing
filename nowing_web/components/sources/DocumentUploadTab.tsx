@@ -385,7 +385,7 @@ export function DocumentUploadTab({
 			setFolderUpload(null);
 			onSuccess?.();
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Upload failed";
+			const message = error instanceof Error ? error.message : t("upload_failed");
 			trackDocumentUploadFailure(Number(workspaceId), message);
 			toast(t("upload_error"), {
 				description: `${t("upload_error_desc")}: ${message}`,
@@ -428,7 +428,7 @@ export function DocumentUploadTab({
 				onError: (error: unknown) => {
 					if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
 					setUploadProgress(0);
-					const message = error instanceof Error ? error.message : "Upload failed";
+					const message = error instanceof Error ? error.message : t("upload_failed");
 					trackDocumentUploadFailure(Number(workspaceId), message);
 					toast(t("upload_error"), {
 						description: `${t("upload_error_desc")}: ${message}`,
@@ -452,7 +452,7 @@ export function DocumentUploadTab({
 							size="sm"
 							className={`text-xs gap-1 bg-neutral-700/50 hover:bg-accent hover:text-accent-foreground ${sizeClass} ${widthClass}`}
 						>
-							Browse
+							{t("browse")}
 							<ChevronDown className="h-3 w-3 opacity-60" />
 						</Button>
 					</DropdownMenuTrigger>
@@ -463,11 +463,11 @@ export function DocumentUploadTab({
 					>
 						<DropdownMenuItem onClick={handleBrowseFiles}>
 							<FileIcon className="h-4 w-4 mr-2" />
-							Files
+							{t("browse_files")}
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={() => folderInputRef.current?.click()}>
 							<FolderOpen className="h-4 w-4 mr-2" />
-							Folder
+							{t("browse_folder")}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
@@ -482,7 +482,7 @@ export function DocumentUploadTab({
 						size="sm"
 						className={`text-xs gap-1 bg-neutral-700/50 hover:bg-accent hover:text-accent-foreground ${sizeClass} ${widthClass}`}
 					>
-						Browse
+						{t("browse")}
 						<ChevronDown className="h-3 w-3 opacity-60" />
 					</Button>
 				</DropdownMenuTrigger>
@@ -538,7 +538,7 @@ export function DocumentUploadTab({
 							className="h-8 w-full gap-1.5 rounded-md border border-dashed border-muted-foreground/30 px-0 text-xs text-muted-foreground transition-colors hover:border-foreground/50 hover:bg-transparent hover:text-accent-foreground"
 							onClick={() => fileInputRef.current?.click()}
 						>
-							Add more files
+							{t("add_more_files")}
 						</Button>
 					)
 				) : (
@@ -612,8 +612,7 @@ export function DocumentUploadTab({
 									<FolderOpen className="inline h-4 w-4 mr-1 -mt-0.5" />
 									{folderUpload.folderName}
 									<Dot className="inline h-4 w-4" />
-									{folderUpload.entries.length}{" "}
-									{folderUpload.entries.length === 1 ? "file" : "files"}
+									{t("folder_files_count", { count: folderUpload.entries.length })}
 									<Dot className="inline h-4 w-4" />
 									{formatFileSize(totalFileSize)}
 								</>
@@ -697,10 +696,8 @@ export function DocumentUploadTab({
 
 					<div className={toggleRowClass}>
 						<div className="space-y-0.5">
-							<p className="font-medium text-sm">Enable Vision LLM</p>
-							<p className="text-xs text-muted-foreground">
-								Describes images using AI vision (costly, slower)
-							</p>
+							<p className="font-medium text-sm">{t("enable_vision_llm")}</p>
+							<p className="text-xs text-muted-foreground">{t("vision_llm_desc")}</p>
 						</div>
 						<Switch checked={useVisionLlm} onCheckedChange={setUseVisionLlm} />
 					</div>

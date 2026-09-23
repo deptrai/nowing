@@ -77,7 +77,7 @@ async def run_stream_loop(
                     first_event_logged = True
                 yield sse
             return
-        except Exception as exc:
+        except Exception as exc:  # stream event loop failure; attempt recovery callback or re-raise
             new_agent = await recover(exc, first_event_logged)
             if new_agent is None:
                 raise

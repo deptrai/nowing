@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -143,6 +144,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<UpdateJiraIssueInterruptContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 
 	const actionArgs = interruptData.action_requests[0]?.args ?? {};
@@ -230,26 +232,26 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-							? "Jira Issue Update Rejected"
+							? t("jira_update_rejected")
 							: phase === "processing" || phase === "complete"
-								? "Jira Issue Update Approved"
-								: "Update Jira Issue"}
+								? t("jira_update_approved")
+								: t("jira_update_title")}
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={hasPanelEdits ? "Updating issue with your changes" : "Updating issue"}
+							text={
+								hasPanelEdits ? t("jira_updating_issue_with_changes") : t("jira_updating_issue")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{hasPanelEdits ? "Issue updated with your changes" : "Issue updated"}
+							{hasPanelEdits ? t("jira_issue_updated_with_changes") : t("jira_issue_updated")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Issue update was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("jira_update_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -277,7 +279,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -293,7 +295,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Jira Account</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("jira_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.name}
 										</div>
@@ -302,7 +306,9 @@ function ApprovalCard({
 
 								{issue && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Current Issue</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("jira_current_issue")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-1.5">
 											<div className="font-medium">
 												{issue.issue_identifier}: {issue.issue_title}
@@ -315,11 +321,15 @@ function ApprovalCard({
 												)}
 												{issue.issue_type && <span>{issue.issue_type}</span>}
 												{issue.assignee && <span>{issue.assignee}</span>}
-												{issue.priority && <span>Priority: {issue.priority}</span>}
+												{issue.priority && (
+													<span>
+														{t("jira_priority_label")} {issue.priority}
+													</span>
+												)}
 											</div>
 											{issue.project && (
 												<div className="text-xs text-muted-foreground">
-													Project: {issue.project}
+													{t("jira_project")}: {issue.project}
 												</div>
 											)}
 										</div>
@@ -328,16 +338,18 @@ function ApprovalCard({
 
 								{priorities.length > 0 && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Priority</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("common_priority")}
+										</p>
 										<Select
 											value={editedArgs.priority}
 											onValueChange={(v) => setEditedArgs({ ...editedArgs, priority: v })}
 										>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select priority" />
+												<SelectValue placeholder={t("jira_select_priority")} />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="__none__">No change</SelectItem>
+												<SelectItem value="__none__">{t("common_no_change")}</SelectItem>
 												{priorities.map((p) => (
 													<SelectItem key={p.id} value={p.name}>
 														{p.name}
@@ -392,7 +404,7 @@ function ApprovalCard({
 						)}
 						{(actionArgs.new_priority ?? args.new_priority) && (
 							<div className="mt-2">
-								<span className="text-xs text-muted-foreground">Priority → </span>
+								<span className="text-xs text-muted-foreground">{t("common_priority")} → </span>
 								<span className="text-xs font-medium">
 									{String(actionArgs.new_priority ?? args.new_priority)}
 								</span>
@@ -400,7 +412,9 @@ function ApprovalCard({
 						)}
 					</>
 				) : (
-					<p className="text-sm text-muted-foreground italic pb-3">No changes proposed</p>
+					<p className="text-sm text-muted-foreground italic pb-3">
+						{t("common_no_changes_proposed")}
+					</p>
 				)}
 			</div>
 
@@ -416,7 +430,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -431,7 +445,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -442,10 +456,11 @@ function ApprovalCard({
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Jira authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("jira_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -456,12 +471,11 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">
-					Additional Jira permissions required
-				</p>
+				<p className="text-sm font-semibold text-destructive">{t("jira_insufficient_perms")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -472,10 +486,11 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to update Jira issue</p>
+				<p className="text-sm font-semibold text-destructive">{t("jira_update_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -486,10 +501,13 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function NotFoundCard({ result }: { result: NotFoundResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Issue not found</p>
+				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+					{t("common_issue_not_found")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -500,11 +518,12 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Jira issue updated successfully"}
+					{result.message || t("jira_updated_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
@@ -516,11 +535,11 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 						rel="noopener noreferrer"
 						className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
 					>
-						Open in Jira
+						{t("jira_open_in_jira")}
 					</a>
 				) : (
 					<div>
-						<span className="font-medium text-muted-foreground">Issue Key: </span>
+						<span className="font-medium text-muted-foreground">{t("jira_issue_key")} </span>
 						<span>{result.issue_key}</span>
 					</div>
 				)}

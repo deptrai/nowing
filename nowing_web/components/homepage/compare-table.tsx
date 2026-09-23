@@ -1,74 +1,81 @@
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
 
-const COLUMNS = [
-	{ label: "Browser agents", examples: "Browserbase, Browser Use" },
-	{ label: "Scraping APIs", examples: "Firecrawl" },
-	{ label: "Search APIs", examples: "Exa, Tavily, Parallel" },
-	{ label: "Scraper marketplaces", examples: "Apify" },
-];
+function getColumns(t: (k: string) => string) {
+	return [
+		{ label: t("col_browser"), examples: "Browserbase, Browser Use" },
+		{ label: t("col_scraping"), examples: "Firecrawl" },
+		{ label: t("col_search"), examples: "Exa, Tavily, Parallel" },
+		{ label: t("col_marketplace"), examples: "Apify" },
+	];
+}
 
-const ROWS = [
-	{
-		feature: "Built for",
-		browser: "Web tasks that need clicking, logins, and forms",
-		scraping: "Turning individual pages into LLM-ready content",
-		search: "Finding and reading pages about a topic",
-		marketplace: "Thousands of community-built scrapers, one per site",
-		nowing: "Live platform data as research primitives for agents",
-	},
-	{
-		feature: "How retrieval works",
-		browser: "An LLM drives a real browser, page by page",
-		scraping: "Fetch a URL, get markdown or schema-extracted JSON",
-		search: "Query an index, get ranked results and page content",
-		marketplace: "Pick an actor per site, learn its input, run it",
-		nowing: "One typed REST call per platform, no LLM in the retrieval loop",
-	},
-	{
-		feature: "Platform data (comment trees, transcripts, reviews)",
-		browser: "Whatever the LLM extracts from rendered pages",
-		scraping: "Page-level extraction; social platforms aren't the focus",
-		search: "Page text and snippets, not structured platform items",
-		marketplace: "Yes, but schema and quality vary per actor",
-		nowing: "Native items: posts, comment trees, transcripts, reviews, SERPs",
-	},
-	{
-		feature: "Consistency",
-		browser: "Depends on the model and the page",
-		scraping: "One API, you define schemas per page type",
-		search: "One API, snippet and page-content shapes",
-		marketplace: "A different schema and quality bar per actor",
-		nowing: "One API and one schema style across every connector",
-	},
-	{
-		feature: "Research workspace & knowledge base",
-		browser: "No",
-		scraping: "No",
-		search: "No",
-		marketplace: "No",
-		nowing: "Cited briefs, knowledge base, scheduled automations, deliverables",
-	},
-	{
-		feature: "Pricing",
-		browser: "Per browser minute (1-minute session minimum) plus the LLM tokens driving it",
-		scraping: "Credits per page; schema extraction costs extra credits",
-		search: "Per search request",
-		marketplace: "Per event or result, set by each actor",
-		nowing: "Per item returned; failed calls never billed",
-	},
-];
+function getRows(t: (k: string) => string) {
+	return [
+		{
+			feature: t("r1_feature"),
+			browser: t("r1_browser"),
+			scraping: t("r1_scraping"),
+			search: t("r1_search"),
+			marketplace: t("r1_marketplace"),
+			nowing: t("r1_nowing"),
+		},
+		{
+			feature: t("r2_feature"),
+			browser: t("r2_browser"),
+			scraping: t("r2_scraping"),
+			search: t("r2_search"),
+			marketplace: t("r2_marketplace"),
+			nowing: t("r2_nowing"),
+		},
+		{
+			feature: t("r3_feature"),
+			browser: t("r3_browser"),
+			scraping: t("r3_scraping"),
+			search: t("r3_search"),
+			marketplace: t("r3_marketplace"),
+			nowing: t("r3_nowing"),
+		},
+		{
+			feature: t("r4_feature"),
+			browser: t("r4_browser"),
+			scraping: t("r4_scraping"),
+			search: t("r4_search"),
+			marketplace: t("r4_marketplace"),
+			nowing: t("r4_nowing"),
+		},
+		{
+			feature: t("r5_feature"),
+			browser: t("r5_browser"),
+			scraping: t("r5_scraping"),
+			search: t("r5_search"),
+			marketplace: t("r5_marketplace"),
+			nowing: t("r5_nowing"),
+		},
+		{
+			feature: t("r6_feature"),
+			browser: t("r6_browser"),
+			scraping: t("r6_scraping"),
+			search: t("r6_search"),
+			marketplace: t("r6_marketplace"),
+			nowing: t("r6_nowing"),
+		},
+	];
+}
 
 export function CompareTable() {
+	const t = useTranslations("homepage");
+	const COLUMNS = getColumns(t);
+	const ROWS = getRows(t);
 	return (
 		<MarketingSection>
 			<Reveal>
 				<h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight">
-					How Nowing compares
+					{t("home_how_nowing_compares")}
 				</h2>
 				<p className="mt-2.5 max-w-2xl text-sm sm:text-[15px] text-muted-foreground font-sans leading-relaxed">
-					Nowing is the only open-core product that combines long-term research memory with
-					live-data primitives for agents. Here is how that stacks up against each class of tool.
+					{t("compare_lede")}
 				</p>
 			</Reveal>
 			<Reveal>
@@ -76,7 +83,7 @@ export function CompareTable() {
 					<table className="w-full min-w-4xl text-xs sm:text-[13px]">
 						<thead>
 							<tr className="border-b bg-muted/40 text-left">
-								<th className="p-4 font-medium">Feature</th>
+								<th className="p-4 font-medium">{t("feature")}</th>
 								{COLUMNS.map((col) => (
 									<th key={col.label} className="p-4 font-medium text-muted-foreground">
 										{col.label}

@@ -1,6 +1,7 @@
 "use client";
 import { useAtomValue } from "jotai";
 import { AlertCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { updateTriggerMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -95,6 +96,7 @@ function clampInt(raw: string, min: number, max: number): number {
  * ``enabled`` stays on the Switch so the two surfaces don't fight.
  */
 export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: TriggerCardProps) {
+	const t = useTranslations("automations");
 	const { mutateAsync: updateTrigger, isPending: updating } =
 		useAtomValue(updateTriggerMutationAtom);
 	const [deleteOpen, setDeleteOpen] = useState(false);
@@ -158,7 +160,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 			});
 			setIsEditing(false);
 		} catch (err) {
-			setIssues([(err as Error).message ?? "Update failed"]);
+			setIssues([(err as Error).message ?? t("auto_update_failed")]);
 		}
 	}
 
@@ -187,7 +189,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 										size="icon"
 										className="h-6 w-6 hover:bg-transparent"
 										disabled={isEditing}
-										aria-label="Trigger actions"
+										aria-label={t("auto_trigger_actions")}
 									>
 										<MoreHorizontal
 											className="h-3.5 w-3.5 text-muted-foreground"
@@ -217,7 +219,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 				{!isEditing && trigger.next_fire_at ? (
 					<div className="flex items-center gap-3 border-t border-border/60 px-4 py-3 text-sm">
 						<div className="inline-flex items-center gap-1.5 text-muted-foreground">
-							<span>Next fire:</span>
+							<span>{t("auto_next_fire")}</span>
 						</div>
 						<div
 							className={
@@ -249,10 +251,10 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="hourly">Every hour</SelectItem>
-										<SelectItem value="daily">Daily</SelectItem>
-										<SelectItem value="weekdays">Weekdays</SelectItem>
-										<SelectItem value="custom">Custom cron</SelectItem>
+										<SelectItem value="hourly">{t("auto_every_hour")}</SelectItem>
+										<SelectItem value="daily">{t("daily")}</SelectItem>
+										<SelectItem value="weekdays">{t("auto_weekdays")}</SelectItem>
+										<SelectItem value="custom">{t("auto_custom_cron")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
@@ -263,7 +265,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 										className="text-xs font-medium text-muted-foreground"
 										htmlFor="trigger-minute"
 									>
-										At minute
+										{t("auto_at_minute")}
 									</label>
 									<Input
 										id="trigger-minute"
@@ -307,7 +309,7 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 										className="text-xs font-medium text-muted-foreground"
 										htmlFor="trigger-cron"
 									>
-										Schedule expression
+										{t("auto_schedule_expression")}
 									</label>
 									<Input
 										id="trigger-cron"
@@ -322,7 +324,9 @@ export function TriggerCard({ trigger, automationId, canUpdate, canDelete }: Tri
 							)}
 
 							<div className="space-y-1.5 sm:col-span-2">
-								<div className="text-xs font-medium text-muted-foreground">Timezone</div>
+								<div className="text-xs font-medium text-muted-foreground">
+									{t("auto_timezone")}
+								</div>
 								<TimezoneCombobox
 									value={draft.timezone}
 									onChange={(timezone) => setDraft((prev) => ({ ...prev, timezone }))}

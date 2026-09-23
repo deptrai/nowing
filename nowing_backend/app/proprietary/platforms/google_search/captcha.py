@@ -110,7 +110,7 @@ async def solve_sorry(page: Any, proxy_url: str | None, cfg: CaptchaConfig) -> b
         return False
     try:
         html = await page.content()
-    except Exception:
+    except Exception:  # page content read failure on captcha page; cannot solve
         return False
     sk = _SITEKEY_RE.search(html)
     ds = _DATA_S_RE.search(html)
@@ -121,7 +121,7 @@ async def solve_sorry(page: Any, proxy_url: str | None, cfg: CaptchaConfig) -> b
     page_url = getattr(page, "url", "") or ""
     try:
         user_agent = await page.evaluate("() => navigator.userAgent")
-    except Exception:
+    except Exception:  # navigator.userAgent evaluation failure; fallback to None
         user_agent = None
 
     logger.info("%s solving Enterprise reCAPTCHA site=%s", _LOG, sk.group(1)[:12])
@@ -152,7 +152,7 @@ async def solve_sorry(page: Any, proxy_url: str | None, cfg: CaptchaConfig) -> b
     harvest_ms = (time.perf_counter() - _t0) * 1000
     try:
         await page.evaluate(_INJECT_JS, token)
-    except Exception as e:
+    except Exception as e:  # token injection script evaluation failure; cannot submit
         logger.warning("%s token injection failed: %s", _LOG, e)
         return False
     with contextlib.suppress(Exception):
@@ -173,5 +173,5 @@ async def exemption_cookies(page: Any) -> list[dict]:
     """Snapshot the context's google.com cookies (for the per-proxy jar)."""
     try:
         return await page.context.cookies("https://www.google.com")
-    except Exception:
+    except Exception:  # context cookies snapshot failure; return empty list
         return []

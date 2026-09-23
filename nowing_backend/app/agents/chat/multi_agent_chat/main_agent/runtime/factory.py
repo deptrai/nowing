@@ -108,7 +108,7 @@ async def create_multi_agent_chat_deep_agent(
             workspace_id
         )
 
-    except Exception as e:
+    except Exception as e:  # connector discovery failure; exclude connector subagents this turn
         logging.warning(
             "Connector/doc-type discovery failed; excluding connector subagents this turn: %s",
             e,
@@ -155,7 +155,7 @@ async def create_multi_agent_chat_deep_agent(
     _t0 = time.perf_counter()
     try:
         mcp_tools_by_agent = await load_mcp_tools_by_connector(db_session, workspace_id)
-    except Exception as e:
+    except Exception as e:  # MCP tool discovery failure; degrade to builtins-only subagents
         # Degrade to builtins-only rather than aborting the turn: a transient
         # DB or MCP-server hiccup should not deny the user a response.
         logging.warning(
@@ -192,7 +192,7 @@ async def create_multi_agent_chat_deep_agent(
                     user_id=user_uuid,
                     workspace_id=workspace_id,
                 )
-            except Exception as e:
+            except Exception as e:  # user allowlist ruleset fetch failure; run without user trust rules
                 logging.warning(
                     "User allow-list fetch failed; subagents will run without user trust rules this turn: %s",
                     e,

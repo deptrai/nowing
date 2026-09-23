@@ -3,6 +3,7 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import { CornerDownLeftIcon, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
@@ -100,6 +101,7 @@ function ApprovalCard({
 	interruptData: InterruptResult<NotionUpdatePageContext>;
 	onDecision: (decision: HitlDecision) => void;
 }) {
+	const t = useTranslations("toolUi");
 	const { phase, setProcessing, setRejected } = useHitlPhase(interruptData);
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
 	const openHitlEditPanel = useSetAtom(openHitlEditPanelAtom);
@@ -158,26 +160,26 @@ function ApprovalCard({
 				<div>
 					<p className="text-sm font-semibold text-foreground">
 						{phase === "rejected"
-							? "Notion Page Update Rejected"
+							? t("notion_update_rejected")
 							: phase === "processing" || phase === "complete"
-								? "Notion Page Update Approved"
-								: "Update Notion Page"}
+								? t("notion_update_approved")
+								: t("notion_update_title")}
 					</p>
 					{phase === "processing" ? (
 						<TextShimmerLoader
-							text={pendingEdits ? "Updating page with your changes" : "Updating page"}
+							text={
+								pendingEdits ? t("notion_updating_page_with_changes") : t("notion_updating_page")
+							}
 							size="sm"
 						/>
 					) : phase === "complete" ? (
 						<p className="text-xs text-muted-foreground mt-0.5">
-							{pendingEdits ? "Page updated with your changes" : "Page updated"}
+							{pendingEdits ? t("common_page_updated_with_changes") : t("common_page_updated")}
 						</p>
 					) : phase === "rejected" ? (
-						<p className="text-xs text-muted-foreground mt-0.5">Page update was cancelled</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("notion_update_cancelled")}</p>
 					) : (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							Requires your approval to proceed
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">{t("common_requires_approval")}</p>
 					)}
 				</div>
 				{phase === "pending" && canEdit && (
@@ -200,7 +202,7 @@ function ApprovalCard({
 						}}
 					>
 						<Pencil className="size-3.5" aria-hidden="true" />
-						Edit
+						{t("common_edit")}
 					</Button>
 				)}
 			</div>
@@ -216,7 +218,9 @@ function ApprovalCard({
 							<>
 								{account && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Notion Account</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("notion_account_label")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{account.workspace_name}
 										</div>
@@ -225,7 +229,9 @@ function ApprovalCard({
 
 								{currentTitle && (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Current Page</p>
+										<p className="text-xs font-medium text-muted-foreground">
+											{t("notion_current_page")}
+										</p>
 										<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
 											{currentTitle}
 										</div>
@@ -257,7 +263,9 @@ function ApprovalCard({
 						/>
 					</div>
 				) : (
-					<p className="text-sm text-muted-foreground italic pb-3">No content update specified</p>
+					<p className="text-sm text-muted-foreground italic pb-3">
+						{t("notion_no_content_update")}
+					</p>
 				)}
 			</div>
 
@@ -273,7 +281,7 @@ function ApprovalCard({
 								onClick={handleApprove}
 								disabled={isPanelOpen}
 							>
-								Approve
+								{t("common_approve")}
 								<CornerDownLeftIcon className="size-3 opacity-60" aria-hidden="true" />
 							</Button>
 						)}
@@ -288,7 +296,7 @@ function ApprovalCard({
 									onDecision({ type: "reject", message: "User rejected the action." });
 								}}
 							>
-								Reject
+								{t("common_reject")}
 							</Button>
 						)}
 					</div>
@@ -299,10 +307,11 @@ function ApprovalCard({
 }
 
 function AuthErrorCard({ result }: { result: AuthErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Notion authentication expired</p>
+				<p className="text-sm font-semibold text-destructive">{t("notion_auth_expired")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -313,10 +322,11 @@ function AuthErrorCard({ result }: { result: AuthErrorResult }) {
 }
 
 function ErrorCard({ result }: { result: ErrorResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-destructive">Failed to update Notion page</p>
+				<p className="text-sm font-semibold text-destructive">{t("notion_update_failed")}</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -327,10 +337,13 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 }
 
 function InfoCard({ result }: { result: InfoResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
-				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Page not found</p>
+				<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+					{t("notion_page_not_found")}
+				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4">
@@ -341,17 +354,18 @@ function InfoCard({ result }: { result: InfoResult }) {
 }
 
 function SuccessCard({ result }: { result: SuccessResult }) {
+	const t = useTranslations("toolUi");
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="px-5 pt-5 pb-4">
 				<p className="text-sm font-semibold text-foreground">
-					{result.message || "Notion page updated successfully"}
+					{result.message || t("notion_updated_success")}
 				</p>
 			</div>
 			<div className="mx-5 h-px bg-border/50" />
 			<div className="px-5 py-4 space-y-2 text-xs">
 				<div>
-					<span className="font-medium text-muted-foreground">Title: </span>
+					<span className="font-medium text-muted-foreground">{t("notion_title_label")} </span>
 					<span>{result.title}</span>
 				</div>
 				{result.url && (
@@ -362,7 +376,7 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline"
 						>
-							Open in Notion
+							{t("notion_open_in_notion")}
 						</a>
 					</div>
 				)}

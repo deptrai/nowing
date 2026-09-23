@@ -1,5 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "../fixtures";
+import { fulfillJson } from "../helpers/cors";
+import { mockAdminAuth } from "../helpers/admin-auth";
 
 /**
  * Story 25.5: Dynamic Scraper Rule Engine & ReDoS Sandbox.
@@ -79,61 +81,9 @@ const mockRedosError = {
 	detail: "REDOS_TIMEOUT: Regex exceeds 50ms ReDoS limit",
 };
 
-const CORS_HEADERS = {
-	"Access-Control-Allow-Origin": "http://localhost:3000",
-	"Access-Control-Allow-Credentials": "true",
-	"Access-Control-Allow-Headers":
-		"Content-Type, Authorization, X-Requested-With, X-E2E-Mint-Secret, x-playwright-test",
-	"Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-};
-
-async function fulfillJson(route: Route, status: number, body: unknown) {
-	if (route.request().method() === "OPTIONS") {
-		await route.fulfill({
-			status: 204,
-			headers: CORS_HEADERS,
-		});
-		return;
-	}
-	await route.fulfill({
-		status,
-		contentType: "application/json",
-		headers: CORS_HEADERS,
-		body: JSON.stringify(body),
-	});
-}
 
 async function setupApiMocks(page: Page) {
-	await page.route("**/auth/session*", async (route: Route) => {
-		await fulfillJson(route, 200, {
-			authenticated: true,
-			access_expires_at: Date.now() / 1000 + 3_600,
-			is_impersonation: false,
-			impersonated_by: null,
-			target_user: null,
-		});
-	});
-
-	await page.route("**/users/me*", async (route: Route) => {
-		await fulfillJson(route, 200, {
-			id: "11111111-1111-4111-8111-111111111111",
-			email: "admin-test@nowing.net",
-			is_active: true,
-			is_superuser: true,
-			is_verified: true,
-			credit_micros_balance: 0,
-			display_name: "Admin Test",
-			avatar_url: null,
-			notification_preferences: null,
-		});
-	});
-
-	await page.route("**/zero/context*", async (route: Route) => {
-		await fulfillJson(route, 200, {
-			userId: "11111111-1111-4111-8111-111111111111",
-			allowedSpaceIds: [1],
-		});
-	});
+	await mockAdminAuth(page);
 
 	await page.route("**/api/v1/admin/scraper-rules", async (route: Route) => {
 		await fulfillJson(route, 200, mockRulesList);

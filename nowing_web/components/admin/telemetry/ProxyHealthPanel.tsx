@@ -1,6 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+
 import {
 	adminTelemetryApiService,
 	type ProxyHealthResponse,
@@ -24,6 +26,7 @@ interface ProxyHealthPanelProps {
 }
 
 export default function ProxyHealthPanel({ tick }: ProxyHealthPanelProps) {
+	const t = useTranslations("telemetry");
 	const [data, setData] = useState<ProxyHealthResponse | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export default function ProxyHealthPanel({ tick }: ProxyHealthPanelProps) {
 			const d = await adminTelemetryApiService.proxyHealth();
 			setData(d);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to load proxy health");
+			setError(err instanceof Error ? err.message : t("failed_load_proxy"));
 		} finally {
 			setLoading(false);
 		}
@@ -49,17 +52,17 @@ export default function ProxyHealthPanel({ tick }: ProxyHealthPanelProps) {
 	return (
 		<div className="space-y-4 rounded border p-4">
 			<div className="flex items-center justify-between">
-				<h3 className="text-lg font-semibold">Proxy Health</h3>
+				<h3 className="text-lg font-semibold">{t("proxy_health")}</h3>
 				<button
 					type="button"
 					onClick={load}
 					className="h-9 rounded border bg-slate-100 px-3 text-sm hover:bg-slate-200"
 				>
-					Refresh
+					{t("refresh")}
 				</button>
 			</div>
 
-			{loading && <div className="text-sm text-slate-500">Loading...</div>}
+			{loading && <div className="text-sm text-slate-500">{t("loading")}</div>}
 			{error && (
 				<div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
 					{error}
@@ -70,7 +73,7 @@ export default function ProxyHealthPanel({ tick }: ProxyHealthPanelProps) {
 				<>
 					<div className="grid grid-cols-4 gap-4">
 						<div className="rounded border p-3">
-							<div className="text-xs text-slate-500">Status</div>
+							<div className="text-xs text-slate-500">{t("status")}</div>
 							<div
 								className={`inline-flex rounded px-2 py-0.5 text-sm font-medium ${statusBadgeClass(data.status)}`}
 							>
@@ -78,17 +81,17 @@ export default function ProxyHealthPanel({ tick }: ProxyHealthPanelProps) {
 							</div>
 						</div>
 						<div className="rounded border p-3">
-							<div className="text-xs text-slate-500">Provider</div>
+							<div className="text-xs text-slate-500">{t("provider")}</div>
 							<div className="font-mono text-sm">{data.provider}</div>
 						</div>
 						<div className="rounded border p-3">
-							<div className="text-xs text-slate-500">Healthy / Degraded / Dead</div>
+							<div className="text-xs text-slate-500">{t("healthy_degraded_dead")}</div>
 							<div className="font-mono text-sm">
 								{data.healthy} / {data.degraded} / {data.dead}
 							</div>
 						</div>
 						<div className="rounded border p-3">
-							<div className="text-xs text-slate-500">Total</div>
+							<div className="text-xs text-slate-500">{t("total")}</div>
 							<div className="font-mono text-sm">{data.total}</div>
 						</div>
 					</div>
@@ -96,11 +99,11 @@ export default function ProxyHealthPanel({ tick }: ProxyHealthPanelProps) {
 					<table className="w-full text-sm">
 						<thead className="bg-slate-50 text-left dark:bg-slate-800">
 							<tr>
-								<th className="h-9 px-2 font-medium">Provider</th>
-								<th className="h-9 px-2 font-medium">Status</th>
-								<th className="h-9 px-2 text-right font-medium">Latency (ms)</th>
-								<th className="h-9 px-2 text-right font-medium">Success %</th>
-								<th className="h-9 px-2 font-medium">Last Error</th>
+								<th className="h-9 px-2 font-medium">{t("provider")}</th>
+								<th className="h-9 px-2 font-medium">{t("status")}</th>
+								<th className="h-9 px-2 text-right font-medium">{t("latency_ms")}</th>
+								<th className="h-9 px-2 text-right font-medium">{t("success_pct")}</th>
+								<th className="h-9 px-2 font-medium">{t("last_error")}</th>
 							</tr>
 						</thead>
 						<tbody>

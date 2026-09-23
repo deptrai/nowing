@@ -44,7 +44,7 @@ def process_zalo_inbox_event(
                     event_data=event_dict,
                     workspace_id=workspace_id,
                 )
-            except Exception as exc:
+            except Exception as exc:  # Zalo event processing failure; rollback and re-raise for retry
                 logger.error(
                     "[process_zalo_inbox_event] Error processing event for workspace %s: %s",
                     workspace_id,
@@ -55,7 +55,7 @@ def process_zalo_inbox_event(
 
     try:
         return run_async_celery_task(_process())
-    except Exception as exc:
+    except Exception as exc:  # Celery runner failure; retry task
         logger.warning(
             "[process_zalo_inbox_event] Retrying event for workspace %s (attempt %s): %s",
             workspace_id,

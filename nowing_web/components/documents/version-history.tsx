@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronRight, Clock, Copy, RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ const DIALOG_CLASSES =
 	"select-none max-w-[900px] w-[95vw] md:w-[90vw] h-[90vh] md:h-[80vh] max-h-[640px] flex flex-col md:flex-row p-0 gap-0 overflow-hidden [--card:var(--popover)]";
 
 export function VersionHistoryButton({ documentId, documentType }: VersionHistoryProps) {
+	const t = useTranslations("documents");
 	if (!isVersionableType(documentType)) return null;
 
 	return (
@@ -39,11 +41,11 @@ export function VersionHistoryButton({ documentId, documentType }: VersionHistor
 			<DialogTrigger asChild>
 				<Button variant="ghost" size="sm" className="gap-1.5 text-xs">
 					<Clock className="h-3.5 w-3.5" />
-					Versions
+					{t("versions")}
 				</Button>
 			</DialogTrigger>
 			<DialogContent className={DIALOG_CLASSES}>
-				<DialogTitle className="sr-only">Version History</DialogTitle>
+				<DialogTitle className="sr-only">{t("version_history")}</DialogTitle>
 				<VersionHistoryPanel documentId={documentId} />
 			</DialogContent>
 		</Dialog>
@@ -59,25 +61,29 @@ export function VersionHistoryDialog({
 	onOpenChange: (open: boolean) => void;
 	documentId: number;
 }) {
+	const t = useTranslations("documents");
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className={DIALOG_CLASSES}>
-				<DialogTitle className="sr-only">Version History</DialogTitle>
+				<DialogTitle className="sr-only">{t("version_history")}</DialogTitle>
 				{open && <VersionHistoryPanel documentId={documentId} />}
 			</DialogContent>
 		</Dialog>
 	);
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(
+	t: (k: string, o?: Record<string, string | number | Date>) => string,
+	dateStr: string
+): string {
 	const now = Date.now();
 	const then = new Date(dateStr).getTime();
 	const diffMs = now - then;
 	const diffMin = Math.floor(diffMs / 60_000);
-	if (diffMin < 1) return "Just now";
-	if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? "s" : ""} ago`;
+	if (diffMin < 1) return t("just_now");
+	if (diffMin < 60) return t("minutes_ago", { count: diffMin });
 	const diffHr = Math.floor(diffMin / 60);
-	if (diffHr < 24) return `${diffHr} hour${diffHr !== 1 ? "s" : ""} ago`;
+	if (diffHr < 24) return t("hours_ago", { count: diffHr });
 	return new Date(dateStr).toLocaleDateString(undefined, {
 		weekday: "short",
 		month: "short",
@@ -89,6 +95,7 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 function VersionHistoryPanel({ documentId }: { documentId: number }) {
+	const t = useTranslations("documents");
 	const [versions, setVersions] = useState<DocumentVersionSummary[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
@@ -103,7 +110,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 			const data = await documentsApiService.listDocumentVersions(documentId);
 			setVersions(data as DocumentVersionSummary[]);
 		} catch {
-			toast.error("Failed to load version history");
+			toast.error(t("hist_load_failed"));
 		} finally {
 			setLoading(false);
 		}
@@ -123,7 +130,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 			};
 			setVersionContent(data.source_markdown || "");
 		} catch {
-			toast.error("Failed to load version content");
+			toast.error(t("hist_content_failed"));
 		} finally {
 			setContentLoading(false);
 		}
@@ -133,10 +140,10 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 		setRestoring(true);
 		try {
 			await documentsApiService.restoreDocumentVersion(documentId, versionNumber);
-			toast.success(`Restored version ${versionNumber}`);
+			toast.success(t("hist_restored", { n: versionNumber }));
 			await loadVersions();
 		} catch {
-			toast.error("Failed to restore version");
+			toast.error(t("hist_restore_failed"));
 		} finally {
 			setRestoring(false);
 		}
@@ -159,8 +166,8 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 	if (versions.length === 0) {
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
-				<p className="text-sm">No version history available yet</p>
-				<p className="text-xs mt-1">Versions are created when file content changes</p>
+				<p className="text-sm">{t("no_history")}</p>
+				<p className="text-xs mt-1">{t("versions_desc")}</p>
 			</div>
 		);
 	}
@@ -172,7 +179,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 			{/* Left panel — version list */}
 			<nav className="w-full md:w-[260px] shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
 				<div className="px-4 pr-12 md:pr-4 pt-5 pb-2">
-					<h2 className="text-sm font-semibold text-foreground">Version History</h2>
+					<h2 className="text-sm font-semibold text-foreground">{t("version_history")}</h2>
 				</div>
 				<div className="flex-1 overflow-y-auto p-2">
 					<div className="flex flex-col gap-0.5">
@@ -192,8 +199,8 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 								<div className="flex-1 min-w-0 space-y-0.5">
 									<p className="text-sm font-medium truncate">
 										{v.created_at
-											? formatRelativeTime(v.created_at)
-											: `Version ${v.version_number}`}
+											? formatRelativeTime(t, v.created_at)
+											: t("version_n", { n: v.version_number })}
 									</p>
 									{v.title && <p className="text-xs text-muted-foreground truncate">{v.title}</p>}
 								</div>
@@ -210,7 +217,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 					<>
 						<div className="flex items-center justify-between pl-6 pr-14 pt-5 pb-2">
 							<h2 className="text-sm font-semibold truncate">
-								{selectedVersionData.title || `Version ${selectedVersion}`}
+								{selectedVersionData.title || t("version_n", { n: selectedVersion })}
 							</h2>
 							<div className="flex items-center gap-1.5 shrink-0">
 								<Button
@@ -221,7 +228,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 									disabled={contentLoading || copied}
 								>
 									{copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-									{copied ? "Copied" : "Copy"}
+									{copied ? t("copied") : t("copy")}
 								</Button>
 								<Button
 									variant="outline"
@@ -243,14 +250,14 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 								</div>
 							) : (
 								<pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground/90">
-									{versionContent || "(empty)"}
+									{versionContent || t("empty")}
 								</pre>
 							)}
 						</div>
 					</>
 				) : (
 					<div className="flex flex-1 items-center justify-center text-muted-foreground">
-						<p className="text-sm">Select a version to preview</p>
+						<p className="text-sm">{t("select_version")}</p>
 					</div>
 				)}
 			</div>

@@ -13,8 +13,10 @@ from app.config import config
 from app.db import (
     Permission,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.enrichment.schemas import (
     BulkEnrichmentInput,
     EnrichmentCostOutput,
@@ -76,16 +78,14 @@ async def enrich_leads_bulk(
     body: BulkEnrichmentInput,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_ENRICH.value,
+            "You don't have permission to enrich leads in this workspace",
+        )
+    ),
 ) -> list[EnrichmentOutput]:
     """Enrich many leads at once (AC-8); one EnrichmentOutput per lead."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_ENRICH.value,
-        error_message="You don't have permission to enrich leads in this workspace",
-    )
-
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
         raise HTTPException(
@@ -119,16 +119,14 @@ async def enrich_cost(
     lead_ids: list[UUID] = Query(default=[]),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_ENRICH.value,
+            "You don't have permission to enrich leads in this workspace",
+        )
+    ),
 ) -> EnrichmentCostOutput:
     """Project the cost of enriching a set of leads (AC-8)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_ENRICH.value,
-        error_message="You don't have permission to enrich leads in this workspace",
-    )
-
     per_contact = int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0)
     per_lead = per_contact * config.CONTACT_ENRICHMENT_MAX_CONTACTS_PER_LEAD
     return EnrichmentCostOutput(
@@ -149,16 +147,14 @@ async def enrich_lead(
     body: EnrichmentInput | None = None,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_ENRICH.value,
+            "You don't have permission to enrich leads in this workspace",
+        )
+    ),
 ) -> EnrichmentOutput:
     """Enrich one lead with verified contacts (AC-1, returns 202 Accepted)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_ENRICH.value,
-        error_message="You don't have permission to enrich leads in this workspace",
-    )
-
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
         raise HTTPException(

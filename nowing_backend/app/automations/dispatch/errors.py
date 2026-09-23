@@ -5,3 +5,7 @@ from __future__ import annotations
 
 class DispatchError(Exception):
     """A dispatch could not proceed (missing trigger, invalid inputs, ...)."""
+
+
+class DispatchNotFoundError(DispatchError):
+    """The requested automation, trigger, or dependency was not found."""

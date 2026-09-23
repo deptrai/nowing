@@ -13,11 +13,12 @@ from typing import Any, Literal
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.config.decision as decision_config
 from app.capabilities.core.store import get_capability
 from app.config import config
 from app.services.scraper_chunks.serializer import to_chunks
 
-from .dedupe import deduplicate
+from .dedupe import deduplicate, find_match_candidates, merge_group
 from .normalize import normalize_listing, to_batdongsan_city_code
 from .schemas import VnBdsAggregatedListing, VnBdsAggregateInput, VnBdsAggregateOutput
 from .scoring import score_listing
@@ -205,7 +206,7 @@ async def _persist_bds_aggregates(
     for listing in listings:
         try:
             chunks.extend(_bds_to_chunk(listing, fetched_at))
-        except Exception:
+        except Exception:  # per-listing chunk serialization failure; continue remaining listings
             logger.exception(
                 "BDS listing %s chunk serialization failed", listing.canonical_id
             )
@@ -228,7 +229,7 @@ async def _persist_bds_aggregates(
         if result.status == "partial":
             return "partial", result.error
         return "failed", result.error
-    except Exception as exc:
+    except Exception as exc:  # ingest failure → report ("failed", reason) to caller, not a crash
         logger.exception("BDS aggregate chainlens ingest failed")
         return "failed", str(exc)
 
@@ -254,7 +255,7 @@ async def _execute_source(
     except ValidationError as exc:
         logger.warning("vn_bds.aggregate validation error for %s: %s", source, exc)
         return [], 0, True, "invalid_input"
-    except Exception as exc:
+    except Exception as exc:  # per-source failure → degraded empty result; other sources still run
         logger.exception("vn_bds.aggregate source %s failed: %s", source, exc)
         return [], 0, True, "api_error"
 
@@ -268,6 +269,87 @@ async def _execute_source(
         cost = 0
 
     return items, cost, degraded, reason
+
+
+def _entity_state(listing: VnBdsAggregatedListing) -> dict[str, Any]:
+    """Compact entity state Jev sees for one canonical listing."""
+    return {
+        "name": listing.title,
+        "address": " ".join(
+            part
+            for part in (
+                listing.ward,
+                listing.district,
+                listing.city,
+                listing.location,
+            )
+            if part
+        ),
+        "price": listing.price,
+        "project": listing.project,
+        "area": listing.area,
+    }
+
+
+def _entity_description(listing: VnBdsAggregatedListing) -> str:
+    """Short criteria label for a fan-out candidate option."""
+    parts = [listing.title, listing.district, listing.price]
+    return " | ".join(part for part in parts if part) or listing.canonical_id
+
+
+async def _refine_dedup_with_jev(
+    deduped: list[VnBdsAggregatedListing],
+    *,
+    session: AsyncSession | None,
+    workspace_id: int | None,
+) -> list[VnBdsAggregatedListing]:
+    """Advisory stage-2 dedup: Jev confirms heuristic candidate pairs.
+
+    Spec (Story 39.3): stage-1 ``find_match_candidates`` narrows pairs,
+    ONE ``decide()`` per anchor confirms or rejects; confirmed edges go
+    through the existing union-find + ``merge_group``. Runs ONLY when
+    both decision flags are on — otherwise zero extra work — and ANY
+    failure returns the heuristic result unchanged (fail-open).
+    """
+    if not (
+        decision_config.decision_enabled()
+        and decision_config.decision_task_enabled("entity")
+    ):
+        return deduped
+
+    try:
+        from app.services.entity_resolution import refine_entity_groups
+
+        candidate_pairs = find_match_candidates(deduped)
+        if not candidate_pairs:
+            return deduped
+
+        refined, stats = await refine_entity_groups(
+            deduped,
+            candidate_pairs,
+            id_of=lambda listing: listing.canonical_id,
+            state_of=_entity_state,
+            describe=_entity_description,
+            merge_group=merge_group,
+            session=session,
+            workspace_id=workspace_id,
+        )
+        logger.info(
+            "[entity_match] bds refine: calls=%d confirmed=%d no_match=%d "
+            "errors=%d skipped_cap=%d aborted=%s",
+            stats.calls,
+            stats.confirmed,
+            stats.no_match,
+            stats.errors,
+            stats.skipped_cap,
+            stats.aborted,
+        )
+        return refined
+    except Exception:
+        logger.exception(
+            "[entity_match] bds refine failed — keeping heuristic dedup result"
+        )
+        return deduped
 
 
 async def aggregate(
@@ -315,10 +397,13 @@ async def aggregate(
                 listing = normalize_listing(source, raw)
                 listing.provenance.source_input = provenance_input
                 normalized.append(listing)
-            except Exception:
+            except Exception:  # per-listing normalize failure; continue remaining listings
                 logger.exception("vn_bds.aggregate normalize failed for %s", source)
 
     deduped = deduplicate(normalized)
+    deduped = await _refine_dedup_with_jev(
+        deduped, session=session, workspace_id=workspace_id
+    )
     scored = [score_listing(listing) for listing in deduped]
     filtered = _filter_by_confidence(scored, payload.min_confidence)
     filtered.sort(key=lambda listing: listing.confidence_score, reverse=True)

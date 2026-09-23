@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ type UpdateToastState = {
 };
 
 export function DesktopUpdateToast() {
+	const t = useTranslations("desktopUpdate");
 	const [update, setUpdate] = useState<UpdateToastState | null>(null);
 
 	useEffect(() => {
@@ -41,9 +43,9 @@ export function DesktopUpdateToast() {
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<div className="pr-8 text-sm font-semibold tracking-tight">Update available</div>
+					<div className="pr-8 text-sm font-semibold tracking-tight">{t("title")}</div>
 					<p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-						A new version of Nowing ({update.version}) is now available to install.
+						{t("desc", { version: update.version })}
 					</p>
 
 					<div className="mt-3 flex items-center gap-4">
@@ -53,7 +55,7 @@ export function DesktopUpdateToast() {
 							className="h-auto px-0 text-sm font-semibold hover:bg-transparent hover:text-foreground"
 							onClick={installAndRestart}
 						>
-							Install and restart
+							{t("install")}
 						</Button>
 						<Button
 							type="button"
@@ -61,7 +63,7 @@ export function DesktopUpdateToast() {
 							className="h-auto px-0 text-sm font-semibold text-muted-foreground hover:bg-transparent hover:text-foreground"
 							onClick={() => setUpdate(null)}
 						>
-							Not now
+							{t("not_now")}
 						</Button>
 					</div>
 				</div>
@@ -71,7 +73,7 @@ export function DesktopUpdateToast() {
 					variant="ghost"
 					size="icon"
 					className="absolute right-2 top-2 size-7 text-muted-foreground hover:bg-transparent hover:text-foreground"
-					aria-label="Dismiss update toast"
+					aria-label={t("dismiss")}
 					onClick={() => setUpdate(null)}
 				>
 					<X className="size-4" strokeWidth={1.8} />

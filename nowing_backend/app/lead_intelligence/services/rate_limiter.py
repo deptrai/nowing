@@ -120,7 +120,7 @@ class PlatformRateLimiter:
                 remaining_tokens=remaining,
                 retry_after_ms=retry_after_ms,
             )
-        except Exception as exc:
+        except Exception as exc:  # lead intelligence operation fallback
             logger.warning(
                 "Redis Lua rate limiter failed for %s: %s, allowing request",
                 platform,

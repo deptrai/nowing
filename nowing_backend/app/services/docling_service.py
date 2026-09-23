@@ -36,11 +36,11 @@ class DoclingService:
 
                     os.environ["SSL_CERT_FILE"] = certifi.where()
                     os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
-                except ImportError:
-                    pass
+                except ImportError as exc:
+                    logger.debug("Suppressed %r", exc)
 
             logger.info("🔐 SSL environment configured for model downloads")
-        except Exception as e:
+        except Exception as e:  # best-effort SSL env setup for model downloads; HTTP fallback still works
             logger.warning(f"⚠️ SSL configuration warning: {e}")
 
     def _check_wsl2_gpu_support(self):
@@ -60,7 +60,7 @@ class DoclingService:
         except ImportError:
             logger.info("⚠️ PyTorch not found, falling back to CPU")
             self.use_gpu = False
-        except Exception as e:
+        except Exception as e:  # GPU probe failure → CPU fallback keeps docling functional
             logger.warning(f"⚠️ GPU detection failed: {e}, falling back to CPU")
             self.use_gpu = False
 
@@ -101,7 +101,7 @@ class DoclingService:
                     try:
                         pipeline_options.accelerator_device = "cuda"
                         logger.info("🚀 GPU acceleration enabled (CUDA)")
-                    except Exception as e:
+                    except Exception as e:  # CUDA device init failure → CPU fallback keeps pipeline functional
                         logger.warning(f"⚠️ GPU acceleration failed, using CPU: {e}")
                         pipeline_options.accelerator_device = "cpu"
                 else:
@@ -129,7 +129,7 @@ class DoclingService:
         except ImportError as e:
             logger.error(f"❌ Docling not installed: {e}")
             raise RuntimeError(f"Docling not available: {e}") from e
-        except Exception as e:
+        except Exception as e:  # init raises broadly (model download, backend); wrap as RuntimeError
             logger.error(f"❌ Docling initialization failed: {e}")
             raise RuntimeError(f"Docling initialization failed: {e}") from e
 
@@ -183,7 +183,7 @@ class DoclingService:
             else:
                 raise ValueError("No document object returned by Docling")
 
-        except Exception as e:
+        except Exception as e:  # conversion failure per document → wrapped/re-raised by caller path
             logger.error(f"❌ Docling processing failed for {filename}: {e}")
             # Log the full error for debugging
             import traceback

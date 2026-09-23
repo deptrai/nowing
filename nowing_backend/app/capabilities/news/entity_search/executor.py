@@ -83,7 +83,7 @@ def _parse_entity_sources(raw_data: Any) -> list[Source]:
                 if content is not None
                 else None
             )
-        except Exception:
+        except Exception:  # PII redaction error; fallback to unredacted content and continue
             logger.warning("news_entity_search_source_redaction_failed")
 
         sources.append(
@@ -346,7 +346,7 @@ class EntitySearchExecutor:
                 degraded=True,
                 message="Hết thời gian chờ phản hồi từ dịch vụ tìm kiếm thực thể.",
             )
-        except Exception:
+        except Exception:  # entity search execution error → structured degraded failure response
             logger.exception(
                 "news_entity_search_failed",
                 extra={"entity": log_entity},

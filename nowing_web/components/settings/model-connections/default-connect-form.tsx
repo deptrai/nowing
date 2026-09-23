@@ -1,18 +1,19 @@
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ApiBaseUrlField, ApiKeyField } from "./connect-fields";
 import type { ProviderConnectFormProps } from "./provider-metadata";
 
 const OPTIONAL_API_KEY_PROVIDERS = new Set(["ollama_chat", "lm_studio", "openai_compatible"]);
 
-function baseUrlHint(provider: string) {
+function baseUrlHint(t: (k: string) => string, provider: string) {
 	if (provider === "ollama_chat" || provider === "lm_studio") {
-		return "For local servers, use host.docker.internal instead of localhost.";
+		return t("mc_hint_local");
 	}
 	if (provider === "openai_compatible") {
-		return "Enter the full endpoint URL. This provider expects a /v1-compatible endpoint.";
+		return t("mc_hint_v1");
 	}
 	if (provider === "openai_compatible_raw") {
-		return "Enter the exact chat-completions API base URL. Nowing will not append /v1.";
+		return t("mc_hint_exact");
 	}
 	if (
 		provider === "openai" ||
@@ -20,7 +21,7 @@ function baseUrlHint(provider: string) {
 		provider === "openrouter" ||
 		provider === "requesty"
 	) {
-		return "Override only if you route through a proxy or gateway.";
+		return t("mc_hint_proxy");
 	}
 	return undefined;
 }
@@ -36,10 +37,11 @@ export function DefaultConnectForm({
 	baseUrlRequired,
 	onDraftChange,
 }: ProviderConnectFormProps) {
+	const t = useTranslations("settings");
 	const [baseUrl, setBaseUrl] = useState(defaultBaseUrl);
 	const [apiKey, setApiKey] = useState("");
 	const isApiKeyOptional = OPTIONAL_API_KEY_PROVIDERS.has(provider);
-	const hint = baseUrlHint(provider);
+	const hint = baseUrlHint(t, provider);
 	const apiKeyValue = apiKey.trim();
 	const canSubmit =
 		!(baseUrlRequired && !baseUrl.trim()) && (isApiKeyOptional || Boolean(apiKeyValue));
@@ -62,8 +64,8 @@ export function DefaultConnectForm({
 			<ApiKeyField
 				value={apiKey}
 				onChange={setApiKey}
-				label={isApiKeyOptional ? "API Key (optional)" : "API Key"}
-				placeholder="Enter your API key"
+				label={isApiKeyOptional ? t("mc_api_key_opt") : t("mc_api_key")}
+				placeholder={t("mc_enter_key")}
 			/>
 		</div>
 	);

@@ -1,5 +1,6 @@
 import { ArrowRight, Code2, Megaphone } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { UseCaseArt, type UseCaseArtVariant } from "@/components/homepage/use-case-art";
 import { MarketingSection } from "@/components/marketing/section";
@@ -9,45 +10,47 @@ import { MarketingSection } from "@/components/marketing/section";
  * Revenue persona (founders / marketing teams) first, growth persona
  * (developers / agent builders) second.
  */
-const PATHS: {
+function getPaths(t: (k: string) => string): {
 	icon: typeof Megaphone;
 	art: UseCaseArtVariant;
 	eyebrow: string;
 	title: string;
 	description: string;
 	links: { label: string; href: string }[];
-}[] = [
-	{
-		icon: Megaphone,
-		art: "chat",
-		eyebrow: "For founders & marketing teams",
-		title: "Live web research without the enterprise price tag",
-		description:
-			"Ask for a research brief, a lead list, or a competitor teardown in plain English. The agent gathers live data, cites its sources, and automations keep watch so you hear about changes first. Start free, pay only for what you use.",
-		links: [
-			{ label: "See what teams build", href: "/connectors" },
-			{ label: "Pricing", href: "/pricing" },
-		],
-	},
-	{
-		icon: Code2,
-		art: "api",
-		eyebrow: "For developers & agents",
-		title: "The whole platform is programmable",
-		description:
-			"Everything Nowing agents can do is a typed REST API: scrape Reddit, YouTube, TikTok, Amazon, Google Maps, Google Search, and the open web, search the knowledge base, run automations. One key, JSON in and out, $5 free credit, pay as you go. Already running agents in Claude, Cursor, or your own harness? The Nowing MCP server hands them the same tools natively.",
-		links: [
-			{ label: "Read the docs", href: "/docs" },
-			{ label: "Nowing MCP server", href: "/mcp-server" },
-		],
-	},
-];
+}[] {
+	return [
+		{
+			icon: Megaphone,
+			art: "chat",
+			eyebrow: t("founders_eyebrow"),
+			title: t("founders_title"),
+			description: t("founders_desc"),
+			links: [
+				{ label: t("see_what_teams_build"), href: "/connectors" },
+				{ label: t("pricing"), href: "/pricing" },
+			],
+		},
+		{
+			icon: Code2,
+			art: "api",
+			eyebrow: t("devs_eyebrow"),
+			title: t("devs_title"),
+			description: t("devs_desc"),
+			links: [
+				{ label: t("read_docs"), href: "/docs" },
+				{ label: t("mcp_server"), href: "/mcp-server" },
+			],
+		},
+	];
+}
 
 export function PersonaPaths() {
+	const t = useTranslations("homepage");
+	const PATHS = getPaths(t);
 	return (
 		<MarketingSection>
 			<Reveal>
-				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Who Nowing is for</h2>
+				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("who_nowing_is_for")}</h2>
 			</Reveal>
 			<div className="mt-8 grid gap-6 md:grid-cols-2">
 				{PATHS.map((path) => {

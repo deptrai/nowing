@@ -24,6 +24,12 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
 
     source_name = "enterprise"
     category = LeadSourceCategory.ENTERPRISE
+    supported_provinces = ["*"]
+    coverage_quality_by_location = {
+        "HN": "medium",
+        "SG": "medium",
+        "DN": "low",
+    }
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"
@@ -96,7 +102,7 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
                     )
                     for idx, item in enumerate(items)
                 ]
-            except Exception as exc:
+            except Exception as exc:  # lead intelligence operation fallback
                 last_exc = exc
                 logger.warning("Enterprise search attempt %d failed: %s", attempt, exc)
 

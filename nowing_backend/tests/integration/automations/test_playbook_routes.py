@@ -346,3 +346,84 @@ async def test_list_playbooks_switches_vertical(
     )
     assert resp_auto.status_code == 200
     assert not any(p["name"] == "Real estate only" for p in resp_auto.json()["items"])
+
+
+async def test_instantiate_playbook_with_explicit_global_models(
+    client: httpx.AsyncClient,
+    sample_automation: dict,
+    billable_workspace,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Explicitly selecting global models (free or premium) is allowed in playbook instantiation."""
+    from app.config import config as app_config
+
+    monkeypatch.setattr(
+        app_config,
+        "GLOBAL_MODELS",
+        [
+            {"id": -10, "billing_tier": "free", "model_id": "free-chat", "supports_chat": True},
+            {"id": -11, "billing_tier": "free", "model_id": "free-img", "supports_image_generation": True},
+            {"id": -12, "billing_tier": "premium", "model_id": "premium-vision", "supports_image_input": True},
+        ],
+        raising=False,
+    )
+
+    create = await client.post(
+        "/api/v1/playbooks",
+        json={
+            "source_automation_id": sample_automation["id"],
+            "name": "Global Models Playbook",
+        },
+    )
+    assert create.status_code == 201
+    playbook = create.json()
+
+    resp = await client.post(
+        f"/api/v1/playbooks/{playbook['id']}/instantiate",
+        json={
+            "workspace_id": billable_workspace.id,
+            "inputs": {"query": "test"},
+            "models": {
+                "chat_model_id": -10,
+                "image_gen_model_id": -11,
+                "vision_model_id": -12,
+            },
+        },
+    )
+    assert resp.status_code == 201
+    automation = resp.json()
+    assert automation["definition"]["models"]["chat_model_id"] == -10
+    assert automation["definition"]["models"]["image_gen_model_id"] == -11
+    assert automation["definition"]["models"]["vision_model_id"] == -12
+
+
+async def test_instantiate_playbook_rejects_auto_mode(
+    client: httpx.AsyncClient,
+    sample_automation: dict,
+    billable_workspace,
+):
+    """Auto mode (id == 0) is blocked even with explicit model selection."""
+    create = await client.post(
+        "/api/v1/playbooks",
+        json={
+            "source_automation_id": sample_automation["id"],
+            "name": "Auto Reject Playbook",
+        },
+    )
+    assert create.status_code == 201
+    playbook = create.json()
+
+    resp = await client.post(
+        f"/api/v1/playbooks/{playbook['id']}/instantiate",
+        json={
+            "workspace_id": billable_workspace.id,
+            "inputs": {"query": "test"},
+            "models": {
+                "chat_model_id": 0,
+                "image_gen_model_id": 1,
+                "vision_model_id": 1,
+            },
+        },
+    )
+    assert resp.status_code == 422
+

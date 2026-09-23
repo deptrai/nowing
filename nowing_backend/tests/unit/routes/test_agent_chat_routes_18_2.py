@@ -389,3 +389,17 @@ class TestSendMessage182:
         )
         assert resp.status_code == 404, resp.text
         acr.audit.assert_called()
+
+
+def test_rejects_whitespace_only_client_id_and_agent_id():
+    """Verify whitespace-only client_id or agent_id raises clear ValueError."""
+    from app.schemas.agent_chat import AgentChatThreadCreate
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError) as exc:
+        AgentChatThreadCreate(client_id="   ")
+    assert "cannot be empty or whitespace-only" in str(exc.value)
+
+    with pytest.raises(ValidationError) as exc2:
+        AgentChatThreadCreate(agent_id="   ")
+    assert "cannot be empty or whitespace-only" in str(exc2.value)

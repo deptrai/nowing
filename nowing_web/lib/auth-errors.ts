@@ -1,128 +1,126 @@
 /**
- * Authentication error messages and handling utilities
+ * Authentication error messages and handling utilities.
+ *
+ * Error messages are i18n keys resolved via next-intl's `t` from the "auth"
+ * namespace, so callers must pass their `t` function.
  */
 
-interface AuthErrorMapping {
+export interface AuthErrorMapping {
 	[key: string]: {
-		title: string;
-		description?: string;
+		titleKey: string;
+		descriptionKey?: string;
 	};
 }
 
 const AUTH_ERROR_MESSAGES: AuthErrorMapping = {
 	// Common HTTP errors
 	"401": {
-		title: "Invalid credentials",
-		description: "Please check your email and password",
+		titleKey: "error_invalid_credentials_title",
+		descriptionKey: "error_invalid_credentials_desc",
 	},
 	"403": {
-		title: "Access denied",
-		description: "Your account may be suspended or restricted",
+		titleKey: "error_access_denied_title",
+		descriptionKey: "error_access_denied_desc",
 	},
 	"404": {
-		title: "Not found",
-		description: "The requested resource was not found",
+		titleKey: "error_not_found_title",
+		descriptionKey: "error_not_found_desc",
 	},
 	"409": {
-		title: "Account conflict",
-		description: "An account with this email already exists",
+		titleKey: "error_account_conflict_title",
+		descriptionKey: "error_account_conflict_desc",
 	},
 	"429": {
-		title: "Too many attempts",
-		description: "Please wait before trying again",
+		titleKey: "error_too_many_attempts_title",
+		descriptionKey: "error_too_many_attempts_desc",
 	},
 	RATE_LIMIT_EXCEEDED: {
-		title: "Too many attempts",
-		description: "You've made too many requests. Please wait a minute and try again.",
+		titleKey: "error_too_many_attempts_title",
+		descriptionKey: "error_too_many_requests_desc",
 	},
 	"500": {
-		title: "Server error",
-		description: "Something went wrong on our end. Please try again",
+		titleKey: "error_server_title",
+		descriptionKey: "error_server_desc",
 	},
 	"503": {
-		title: "Service unavailable",
-		description: "Login service is temporarily down",
+		titleKey: "error_unavailable_title",
+		descriptionKey: "error_unavailable_desc",
 	},
 
 	// FastAPI specific errors
 	LOGIN_BAD_CREDENTIALS: {
-		title: "Login failed",
-		description: "Invalid email or password. If you don't have an account, please sign up.",
+		titleKey: "error_login_failed_title",
+		descriptionKey: "error_login_failed_desc",
 	},
 	LOGIN_USER_NOT_VERIFIED: {
-		title: "Account not verified",
-		description: "Please verify your email address before signing in",
+		titleKey: "error_not_verified_title",
+		descriptionKey: "error_not_verified_desc",
 	},
 	USER_INACTIVE: {
-		title: "Account inactive",
-		description: "Your account has been deactivated. Contact support for assistance",
+		titleKey: "error_inactive_title",
+		descriptionKey: "error_inactive_desc",
 	},
 	REGISTER_USER_ALREADY_EXISTS: {
-		title: "Account already exists",
-		description: "An account with this email address already exists",
+		titleKey: "error_already_exists_title",
+		descriptionKey: "error_already_exists_desc",
 	},
 	REGISTER_INVALID_PASSWORD: {
-		title: "Invalid password",
-		description: "Password must meet security requirements",
+		titleKey: "error_invalid_password_title",
+		descriptionKey: "error_invalid_password_desc",
 	},
 
 	// OAuth errors
 	access_denied: {
-		title: "Access denied",
-		description: "You denied access or cancelled the login process",
+		titleKey: "error_oauth_denied_title",
+		descriptionKey: "error_oauth_denied_desc",
 	},
 	invalid_request: {
-		title: "Invalid request",
-		description: "The login request was malformed",
+		titleKey: "error_invalid_request_title",
+		descriptionKey: "error_invalid_request_desc",
 	},
 	unauthorized_client: {
-		title: "Authentication failed",
-		description: "The application is not authorized to perform this action",
+		titleKey: "error_auth_failed_title",
+		descriptionKey: "error_auth_failed_desc",
 	},
 	unsupported_response_type: {
-		title: "Login method not supported",
-		description: "This login method is not currently available",
+		titleKey: "error_method_unsupported_title",
+		descriptionKey: "error_method_unsupported_desc",
 	},
 	invalid_scope: {
-		title: "Invalid permissions",
-		description: "The requested permissions are not valid",
+		titleKey: "error_invalid_perms_title",
+		descriptionKey: "error_invalid_perms_desc",
 	},
 	server_error: {
-		title: "Server error",
-		description: "An error occurred on the authentication server",
+		titleKey: "error_server_title",
+		descriptionKey: "error_auth_server_desc",
 	},
 	temporarily_unavailable: {
-		title: "Service unavailable",
-		description: "Login is temporarily unavailable. Please try again later",
+		titleKey: "error_unavailable_title",
+		descriptionKey: "error_login_unavailable_desc",
 	},
 
 	// Network errors
 	NETWORK_ERROR: {
-		title: "Connection failed",
-		description: "Please check your internet connection and try again",
+		titleKey: "error_connection_failed_title",
+		descriptionKey: "error_connection_failed_desc",
 	},
 	TIMEOUT: {
-		title: "Request timeout",
-		description: "The login request took too long. Please try again",
+		titleKey: "error_timeout_title",
+		descriptionKey: "error_timeout_desc",
 	},
 
 	// Generic fallbacks
 	UNKNOWN_ERROR: {
-		title: "Login failed",
-		description: "An unexpected error occurred. Please try again",
+		titleKey: "error_generic_title",
+		descriptionKey: "error_generic_desc",
 	},
 };
 
-/**
- * Get a user-friendly error message for authentication errors
- * @param errorCode - The error code or message from the API
- * @param returnTitle - Whether to return just the title or full description
- * @returns Formatted error message
- */
-export function getAuthErrorMessage(errorCode: string, returnTitle: boolean = false): string {
+type AuthTranslator = (key: string) => string;
+
+function resolveErrorInfo(errorCode: string): { titleKey: string; descriptionKey?: string } {
 	if (!errorCode) {
-		const fallback = AUTH_ERROR_MESSAGES.UNKNOWN_ERROR;
-		return returnTitle ? fallback.title : fallback.description || fallback.title;
+		return AUTH_ERROR_MESSAGES.UNKNOWN_ERROR;
 	}
 
 	// Clean up the error code
@@ -164,17 +162,37 @@ export function getAuthErrorMessage(errorCode: string, returnTitle: boolean = fa
 		errorInfo = AUTH_ERROR_MESSAGES.UNKNOWN_ERROR;
 	}
 
-	return returnTitle ? errorInfo.title : errorInfo.description || errorInfo.title;
+	return errorInfo;
+}
+
+/**
+ * Get a user-friendly error message for authentication errors
+ * @param t - Translation function from useTranslations("auth")
+ * @param errorCode - The error code or message from the API
+ * @param returnTitle - Whether to return just the title or full description
+ * @returns Formatted error message
+ */
+export function getAuthErrorMessage(
+	t: AuthTranslator,
+	errorCode: string,
+	returnTitle: boolean = false
+): string {
+	const errorInfo = resolveErrorInfo(errorCode);
+	return returnTitle ? t(errorInfo.titleKey) : t(errorInfo.descriptionKey || errorInfo.titleKey);
 }
 
 /**
  * Get both title and description for an error
+ * @param t - Translation function from useTranslations("auth")
  * @param errorCode - The error code or message from the API
  * @returns Object with title and description
  */
-export function getAuthErrorDetails(errorCode: string): { title: string; description: string } {
-	const title = getAuthErrorMessage(errorCode, true);
-	const description = getAuthErrorMessage(errorCode, false);
+export function getAuthErrorDetails(
+	t: AuthTranslator,
+	errorCode: string
+): { title: string; description: string } {
+	const title = getAuthErrorMessage(t, errorCode, true);
+	const description = getAuthErrorMessage(t, errorCode, false);
 
 	return { title, description };
 }

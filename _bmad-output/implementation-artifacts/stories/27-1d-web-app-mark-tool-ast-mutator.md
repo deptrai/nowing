@@ -1,10 +1,10 @@
 ---
 baseline_commit: d06d121a0
-story_key: 27-1d
+story_key: 27-1d-web-app-mark-tool-jsx-ast-mutator
 epic: epic-27
 story: "27.1d"
 title: "Web App Mark Tool & JSX AST Mutator"
-status: "done"
+status: done
 ---
 
 # Story 27.1d: Web App Mark Tool & JSX AST Mutator

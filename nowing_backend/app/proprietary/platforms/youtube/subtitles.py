@@ -56,7 +56,7 @@ def _select_transcript(transcript_list, language: str, prefer_generated: bool):
     if prefer_generated:
         try:
             return transcript_list.find_generated_transcript(codes)
-        except Exception:
+        except Exception:  # generated transcript missing; fallback to manual transcript
             return transcript_list.find_transcript(codes)
     return transcript_list.find_transcript(codes)
 
@@ -114,6 +114,6 @@ async def fetch_subtitles(
             _fetch_subtitles_sync, video_id, language, fmt, prefer_generated
         )
         return [track]
-    except Exception as e:
+    except Exception as e:  # subtitles fetch failure; return None so caller degrades gracefully
         logger.info("No subtitles for video %s (%s): %s", video_id, language, e)
         return None

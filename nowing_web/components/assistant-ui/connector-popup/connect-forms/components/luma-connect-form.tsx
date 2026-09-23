@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -31,27 +32,31 @@ import { DateRangeSelector } from "../../components/date-range-selector";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const lumaConnectorFormSchema = z.object({
-	name: z.string().min(3, {
-		message: "Connector name must be at least 3 characters.",
-	}),
-	api_key: z.string().min(10, {
-		message: "Luma API Key is required and must be valid.",
-	}),
-});
+const createLumaConnectorFormSchema = (
+	t: (k: string, o?: Record<string, string | number | Date>) => string
+) =>
+	z.object({
+		name: z.string().min(3, {
+			message: t("connector_name_min"),
+		}),
+		api_key: z.string().min(10, {
+			message: t("luma_api_key_required"),
+		}),
+	});
 
-type LumaConnectorFormValues = z.infer<typeof lumaConnectorFormSchema>;
+type LumaConnectorFormValues = z.infer<ReturnType<typeof createLumaConnectorFormSchema>>;
 
 export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
+	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
 	const [startDate, setStartDate] = useState<Date | undefined>(undefined);
 	const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 	const [periodicEnabled, setPeriodicEnabled] = useState(false);
 	const [frequencyMinutes, setFrequencyMinutes] = useState("1440");
 	const form = useForm<LumaConnectorFormValues>({
-		resolver: zodResolver(lumaConnectorFormSchema),
+		resolver: zodResolver(createLumaConnectorFormSchema(t)),
 		defaultValues: {
-			name: "Luma Connector",
+			name: t("luma_name_default"),
 			api_key: "",
 		},
 	});
@@ -90,7 +95,7 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 		<div className="space-y-6 pb-6">
 			<Alert>
 				<Info />
-				<AlertTitle>API Key Required</AlertTitle>
+				<AlertTitle>{t("api_key_required")}</AlertTitle>
 				<AlertDescription>
 					<p>
 						You'll need a Luma API Key to use this connector. You can create one from{" "}
@@ -100,7 +105,7 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 							rel="noopener noreferrer"
 							className="font-medium underline underline-offset-4"
 						>
-							Luma API Settings
+							{t("luma_api_settings")}
 						</a>
 					</p>
 				</AlertDescription>
@@ -118,17 +123,17 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Connector Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("connector_name")}</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="My Luma Connector"
+											placeholder={t("luma_name_placeholder")}
 											className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										A friendly name to identify this connector.
+										{t("connector_name_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -140,27 +145,27 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 							name="api_key"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Luma API Key</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("luma_api_key")}</FormLabel>
 									<FormControl>
 										<Input
 											type="password"
-											placeholder="Your API Key"
+											placeholder={t("luma_api_key_placeholder")}
 											className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-slate-400/20 focus-visible:border-slate-400/40"
 											disabled={isSubmitting}
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										Your Luma API Key will be encrypted and stored securely.
+										{t("luma_api_key_desc")}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
 
-						{/* Indexing Configuration */}
+						{/* {t("indexing_config")} */}
 						<div className="space-y-4 pt-4 border-t border-slate-400/20">
-							<h3 className="text-sm sm:text-base font-medium">Indexing Configuration</h3>
+							<h3 className="text-sm sm:text-base font-medium">{t("indexing_config")}</h3>
 
 							{/* Date Range Selector */}
 							<DateRangeSelector
@@ -175,9 +180,11 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 							<div className="rounded-xl bg-slate-400/5 dark:bg-white/5 p-3 sm:p-6">
 								<div className="flex items-center justify-between">
 									<div className="space-y-1">
-										<h3 className="font-medium text-sm sm:text-base">Enable Periodic Sync</h3>
+										<h3 className="font-medium text-sm sm:text-base">
+											{t("enable_periodic_sync")}
+										</h3>
 										<p className="text-xs sm:text-sm text-muted-foreground">
-											Automatically re-index at regular intervals
+											{t("periodic_sync_desc")}
 										</p>
 									</div>
 									<Switch
@@ -191,7 +198,7 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 									<div className="mt-4 pt-4 border-t border-slate-400/20 space-y-3">
 										<div className="space-y-2">
 											<Label htmlFor="frequency" className="text-xs sm:text-sm">
-												Sync Frequency
+												{t("sync_frequency")}
 											</Label>
 											<Select
 												value={frequencyMinutes}
@@ -202,29 +209,29 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 													id="frequency"
 													className="w-full bg-slate-400/5 dark:bg-slate-400/5 border-slate-400/20 text-xs sm:text-sm"
 												>
-													<SelectValue placeholder="Select frequency" />
+													<SelectValue placeholder={t("select_frequency")} />
 												</SelectTrigger>
 												<SelectContent className="z-[100]">
 													<SelectItem value="5" className="text-xs sm:text-sm">
-														Every 5 minutes
+														{t("every_5_minutes")}
 													</SelectItem>
 													<SelectItem value="15" className="text-xs sm:text-sm">
-														Every 15 minutes
+														{t("every_15_minutes")}
 													</SelectItem>
 													<SelectItem value="60" className="text-xs sm:text-sm">
-														Every hour
+														{t("every_hour")}
 													</SelectItem>
 													<SelectItem value="360" className="text-xs sm:text-sm">
-														Every 6 hours
+														{t("every_6_hours")}
 													</SelectItem>
 													<SelectItem value="720" className="text-xs sm:text-sm">
-														Every 12 hours
+														{t("every_12_hours")}
 													</SelectItem>
 													<SelectItem value="1440" className="text-xs sm:text-sm">
-														Daily
+														{t("daily")}
 													</SelectItem>
 													<SelectItem value="10080" className="text-xs sm:text-sm">
-														Weekly
+														{t("weekly")}
 													</SelectItem>
 												</SelectContent>
 											</Select>
@@ -240,7 +247,7 @@ export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }
 			{/* What you get section */}
 			{getConnectorBenefits(EnumConnectorName.LUMA_CONNECTOR) && (
 				<div className="rounded-xl border border-border bg-slate-400/5 dark:bg-white/5 px-3 sm:px-6 py-4 space-y-2">
-					<h4 className="text-xs sm:text-sm font-medium">What you get with Luma integration:</h4>
+					<h4 className="text-xs sm:text-sm font-medium">{t("luma_what_you_get")}</h4>
 					<ul className="list-disc pl-5 text-[10px] sm:text-xs text-muted-foreground space-y-1">
 						{getConnectorBenefits(EnumConnectorName.LUMA_CONNECTOR)?.map((benefit) => (
 							<li key={benefit}>{benefit}</li>

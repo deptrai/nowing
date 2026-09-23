@@ -68,7 +68,7 @@ async def _run_case(
     bar = f"SUCCESS + contains {len(case.must_contain)} marker(s)"
     try:
         outcome = await connector.crawl_url(case.url)
-    except Exception as exc:
+    except Exception as exc:  # testbench crawl error -> return CheckResult with ERROR status
         return CheckResult(
             suite="E",
             name=case.name,

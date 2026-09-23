@@ -24,6 +24,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
+from app.dependencies.auth import RequirePermissionFromEntity
 from app.schemas import VideoPresentationRead
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
@@ -91,6 +92,14 @@ async def read_video_presentation(
     video_presentation_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "VideoPresentation",
+            "video_presentation_id",
+            Permission.VIDEO_PRESENTATIONS_READ.value,
+            "You don't have permission to read video presentations in this workspace",
+        )
+    ),
 ):
     """
     Get a specific video presentation by ID.
@@ -111,14 +120,6 @@ async def read_video_presentation(
         if not video_pres:
             raise HTTPException(status_code=404, detail="Video presentation not found")
 
-        await check_permission(
-            session,
-            auth,
-            video_pres.workspace_id,
-            Permission.VIDEO_PRESENTATIONS_READ.value,
-            "You don't have permission to read video presentations in this workspace",
-        )
-
         return VideoPresentationRead.from_orm_with_slides(video_pres)
     except HTTPException as he:
         raise he
@@ -134,6 +135,14 @@ async def delete_video_presentation(
     video_presentation_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "VideoPresentation",
+            "video_presentation_id",
+            Permission.VIDEO_PRESENTATIONS_DELETE.value,
+            "You don't have permission to delete video presentations in this workspace",
+        )
+    ),
 ):
     """
     Delete a video presentation.
@@ -149,14 +158,6 @@ async def delete_video_presentation(
 
         if not db_video_pres:
             raise HTTPException(status_code=404, detail="Video presentation not found")
-
-        await check_permission(
-            session,
-            auth,
-            db_video_pres.workspace_id,
-            Permission.VIDEO_PRESENTATIONS_DELETE.value,
-            "You don't have permission to delete video presentations in this workspace",
-        )
 
         await session.delete(db_video_pres)
         await session.commit()
@@ -177,6 +178,14 @@ async def stream_slide_audio(
     slide_number: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermissionFromEntity(
+            "VideoPresentation",
+            "video_presentation_id",
+            Permission.VIDEO_PRESENTATIONS_READ.value,
+            "You don't have permission to access video presentations in this workspace",
+        )
+    ),
 ):
     """
     Stream the audio file for a specific slide in a video presentation.
@@ -192,14 +201,6 @@ async def stream_slide_audio(
 
         if not video_pres:
             raise HTTPException(status_code=404, detail="Video presentation not found")
-
-        await check_permission(
-            session,
-            auth,
-            video_pres.workspace_id,
-            Permission.VIDEO_PRESENTATIONS_READ.value,
-            "You don't have permission to access video presentations in this workspace",
-        )
 
         slides = video_pres.slides or []
         slide_data = None
@@ -236,7 +237,7 @@ async def stream_slide_audio(
 
     except HTTPException as he:
         raise he
-    except Exception as e:
+    except Exception as e:  # stream audio failure → surface as typed HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"Error streaming slide audio: {e!s}",

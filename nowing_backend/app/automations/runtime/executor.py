@@ -29,7 +29,7 @@ def _maybe_enqueue_run_notification(run_id: int) -> None:
         )
 
         notify_telegram_run_complete.apply_async(args=(run_id,), expires=3600)
-    except Exception:
+    except Exception:  # notification dispatch best-effort; log and continue
         logger.exception("Failed to enqueue run notification for run %s", run_id)
 
 
@@ -44,7 +44,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
 
     try:
         definition = AutomationDefinition.model_validate(run.definition_snapshot)
-    except Exception as exc:
+    except Exception as exc:  # validation error → mark run failed and raise
         await repository.mark_failed(
             session,
             run,
@@ -198,6 +198,11 @@ def _build_action_ctx(
 ) -> ActionContext:
     automation = run.automation
     models = definition.models
+    # Playbook-instantiated automations may carry non-premium global model
+    # snapshots because the user explicitly selected them at instantiation time.
+    # Thread that permission through so the runtime backstop does not reject
+    # a captured model that was deliberately chosen.
+    allow_global = automation.derived_from_playbook_id is not None
     return ActionContext(
         session=session,
         run_id=run.id,
@@ -208,4 +213,5 @@ def _build_action_ctx(
         image_gen_model_id=models.image_gen_model_id if models else None,
         vision_model_id=models.vision_model_id if models else None,
         schema_version=definition.schema_version,
+        allow_global_model_selection=allow_global,
     )

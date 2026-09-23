@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -14,31 +15,32 @@ interface PermissionsStatus {
 	screenRecording: PermissionStatus;
 }
 
-const STEPS = [
-	{
-		id: "screen-recording",
-		title: "Screen Recording",
-		description:
-			"Lets Nowing capture a region of your screen, full display, or browser (where supported) to attach to chat in Screenshot Assist, or to capture the full display from the composer.",
-		action: "requestScreenRecording",
-		field: "screenRecording" as const,
-	},
-	{
-		id: "accessibility",
-		title: "Accessibility",
-		description:
-			"Lets Nowing bring the app to the foreground and work with the active application (for example Quick Assist) when you use desktop shortcuts.",
-		action: "requestAccessibility",
-		field: "accessibility" as const,
-	},
-];
+function useSteps(t: ReturnType<typeof useTranslations>) {
+	return [
+		{
+			id: "screen-recording",
+			title: t("screen_recording_title"),
+			description: t("screen_recording_desc"),
+			action: "requestScreenRecording",
+			field: "screenRecording" as const,
+		},
+		{
+			id: "accessibility",
+			title: t("accessibility_title"),
+			description: t("accessibility_desc"),
+			action: "requestAccessibility",
+			field: "accessibility" as const,
+		},
+	];
+}
 
 function StatusBadge({ status }: { status: PermissionStatus }) {
+	const t = useTranslations("desktopPerms");
 	if (status === "authorized") {
 		return (
 			<span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400">
 				<span className="h-2 w-2 rounded-full bg-green-500" />
-				Granted
+				{t("granted")}
 			</span>
 		);
 	}
@@ -46,20 +48,22 @@ function StatusBadge({ status }: { status: PermissionStatus }) {
 		return (
 			<span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
 				<span className="h-2 w-2 rounded-full bg-amber-500" />
-				Denied
+				{t("denied")}
 			</span>
 		);
 	}
 	return (
 		<span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
 			<span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
-			Pending
+			{t("pending")}
 		</span>
 	);
 }
 
 export default function DesktopPermissionsPage() {
 	const router = useRouter();
+	const t = useTranslations("desktopPerms");
+	const STEPS = useSteps(t);
 	const api = useElectronAPI();
 	const [permissions, setPermissions] = useState<PermissionsStatus | null>(null);
 
@@ -89,7 +93,7 @@ export default function DesktopPermissionsPage() {
 	if (!api) {
 		return (
 			<div className="h-screen flex items-center justify-center bg-background">
-				<p className="text-muted-foreground">This page is only available in the desktop app.</p>
+				<p className="text-muted-foreground">{t("desktop_only")}</p>
 			</div>
 		);
 	}
@@ -130,11 +134,8 @@ export default function DesktopPermissionsPage() {
 				<div className="text-center space-y-3 shrink-0">
 					<Logo className="w-12 h-12 mx-auto" aria-hidden="true" />
 					<div className="space-y-1">
-						<h1 className="text-2xl font-semibold tracking-tight">System Permissions</h1>
-						<p className="text-sm text-muted-foreground">
-							Nowing needs two macOS permissions for Screenshot Assist and for desktop features that
-							require focusing the app or the active application.
-						</p>
+						<h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+						<p className="text-sm text-muted-foreground">{t("subtitle")}</p>
 					</div>
 				</div>
 
@@ -173,16 +174,13 @@ export default function DesktopPermissionsPage() {
 											onClick={() => handleRequest(step.action)}
 											className="text-xs"
 										>
-											Open System Settings
+											{t("open_settings")}
 										</Button>
 										{status === "denied" && (
-											<p className="text-xs text-amber-700 dark:text-amber-400">
-												Toggle Nowing on in System Settings to continue.
-											</p>
+											<p className="text-xs text-amber-700 dark:text-amber-400">{t("toggle_on")}</p>
 										)}
 										<p className="text-xs text-muted-foreground">
-											If Nowing doesn&apos;t appear in the list, click <strong>+</strong> and select
-											it from Applications.
+											{t("not_in_list_1")} <strong>+</strong> {t("not_in_list_2")}
 										</p>
 									</div>
 								)}
@@ -196,16 +194,14 @@ export default function DesktopPermissionsPage() {
 					{allGranted ? (
 						<>
 							<Button onClick={handleContinue} className="text-sm h-9 min-w-[180px]">
-								Restart &amp; Get Started
+								{t("restart_cta")}
 							</Button>
-							<p className="text-xs text-muted-foreground">
-								A restart is needed for permissions to take effect.
-							</p>
+							<p className="text-xs text-muted-foreground">{t("restart_needed")}</p>
 						</>
 					) : (
 						<>
 							<Button disabled className="text-sm h-9 min-w-[180px]">
-								Grant permissions to continue
+								{t("grant_cta")}
 							</Button>
 							<Button
 								type="button"
@@ -213,7 +209,7 @@ export default function DesktopPermissionsPage() {
 								onClick={handleSkip}
 								className="mx-auto h-auto px-0 py-0 text-xs text-muted-foreground hover:text-foreground"
 							>
-								Skip for now
+								{t("skip")}
 							</Button>
 						</>
 					)}

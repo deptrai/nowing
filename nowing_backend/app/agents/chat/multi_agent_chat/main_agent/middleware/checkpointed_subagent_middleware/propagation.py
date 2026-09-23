@@ -13,7 +13,7 @@ the stamp, parallel HITL across siblings would collapse into an ambiguous
 bucket and resume would fail.
 
 This module hosts only the stamping helper; the catch/re-raise lives in
-``task_tool.py`` since that's the single chokepoint where the raw exception
+``task_tool/`` since that's the single chokepoint where the raw exception
 is in our hands.
 """
 

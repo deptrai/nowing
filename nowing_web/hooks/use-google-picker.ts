@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { connectorsApiService } from "@/lib/apis/connectors-api.service";
 
@@ -66,6 +67,7 @@ function loadPickerApi(): Promise<void> {
 }
 
 export function useGooglePicker({ connectorId, onPicked }: UseGooglePickerOptions) {
+	const t = useTranslations();
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const onPickedRef = useRef(onPicked);
@@ -121,7 +123,7 @@ export function useGooglePicker({ connectorId, onPicked }: UseGooglePickerOption
 				.enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
 				.setOAuthToken(access_token)
 				.setOrigin(window.location.protocol + "//" + window.location.host)
-				.setTitle("Select files and folders to index");
+				.setTitle(t("googlePicker.select_files_title"));
 
 			if (picker_api_key) {
 				builder.setDeveloperKey(picker_api_key);
@@ -162,7 +164,7 @@ export function useGooglePicker({ connectorId, onPicked }: UseGooglePickerOption
 					if (action === google.picker.Action.ERROR) {
 						const msg = "Google Drive encountered an error. Please try again.";
 						setError(msg);
-						toast.error("Google Drive Picker failed", { description: msg });
+						toast.error(t("toast.google_picker_failed"), { description: msg });
 					}
 
 					if (
@@ -183,7 +185,7 @@ export function useGooglePicker({ connectorId, onPicked }: UseGooglePickerOption
 			openingRef.current = false;
 			const msg = err instanceof Error ? err.message : "Failed to open Google Picker";
 			setError(msg);
-			toast.error("Google Drive Picker failed", { description: msg });
+			toast.error(t("toast.google_picker_failed"), { description: msg });
 			console.error("Google Picker error:", err);
 		} finally {
 			setLoading(false);

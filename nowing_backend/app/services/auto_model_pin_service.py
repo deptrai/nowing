@@ -122,7 +122,7 @@ def _mark_shared_runtime_cooldown(
             reason,
             ex=int(cooldown_seconds),
         )
-    except Exception:
+    except Exception:  # best-effort Redis write for model cooldown; continue on error
         logger.warning(
             "auto_pin_runtime_cooldown_redis_write_failed config_id=%s",
             config_id,
@@ -138,7 +138,7 @@ def _shared_runtime_cooled_down_ids(config_ids: list[int]) -> set[int]:
         values = _get_runtime_cooldown_redis().mget(
             [_runtime_cooldown_redis_key(cid) for cid in unique_ids]
         )
-    except Exception:
+    except Exception:  # Redis read failure → cooldown list empty; pin evaluation still runs
         logger.warning(
             "auto_pin_runtime_cooldown_redis_read_failed count=%s",
             len(unique_ids),
@@ -159,7 +159,7 @@ def _clear_shared_runtime_cooldown(config_id: int | None = None) -> None:
         keys = list(client.scan_iter(f"{_RUNTIME_COOLDOWN_REDIS_KEY_PREFIX}*"))
         if keys:
             client.delete(*keys)
-    except Exception:
+    except Exception:  # best-effort Redis cooldown cache purge
         logger.warning(
             "auto_pin_runtime_cooldown_redis_clear_failed config_id=%s",
             config_id,
@@ -503,7 +503,7 @@ def _to_uuid(user_id: str | UUID | None) -> UUID | None:
         return user_id
     try:
         return UUID(str(user_id))
-    except Exception:
+    except (ValueError, TypeError, AttributeError, Exception):  # UUID parse failure; return None for invalid input
         return None
 
 

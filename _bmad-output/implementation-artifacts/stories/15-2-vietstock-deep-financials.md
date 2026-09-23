@@ -1,3 +1,8 @@
+---
+story_key: 15-2-vietstock-deep-financials
+status: done
+---
+
 # Story 15.2: Vietstock Deep Financials
 
 **Status:** done

@@ -129,12 +129,12 @@ def mock_tables():
 
 @pytest.fixture
 def client(monkeypatch, mock_tables):
-    import app.routes.workspace_tables_routes as wt_routes
+    import app.dependencies.auth as auth_deps
 
     async def _mock_check_perm(*args: Any, **kwargs: Any) -> None:
         return None
 
-    monkeypatch.setattr(wt_routes, "check_permission", _mock_check_perm)
+    monkeypatch.setattr(auth_deps, "check_permission", _mock_check_perm)
 
     from app.routes.workspace_tables_routes import router
 

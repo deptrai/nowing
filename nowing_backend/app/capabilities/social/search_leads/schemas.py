@@ -2,21 +2,42 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+SocialPlatform = Literal[
+    "facebook",
+    "twitter",
+    "linkedin",
+    "tiktok",
+    "instagram",
+    "chotot",
+    "shopee",
+    "topcv",
+    "vietnamworks",
+    "batdongsan",
+    "masothue",
+    "b2b",
+]
+
+SocialIntent = Literal["sell", "buy", "hiring", "seeking"]
 
 
 class SocialSearchLeadsInput(BaseModel):
     """Input payload for searching social leads."""
 
-    platform: str | None = Field(
+    platform: SocialPlatform | None = Field(
         default=None,
-        description="Platform filter: 'facebook', 'twitter', or None for all",
+        description="Platform filter: 'facebook', 'twitter', 'linkedin', etc., or None for all",
     )
-    intent: str | None = Field(
+    intent: SocialIntent | None = Field(
         default=None, description="Intent tag: 'sell', 'buy', 'hiring', 'seeking'"
     )
     keyword: str | None = Field(
-        default=None, description="Search keyword in post content or author"
+        default=None,
+        max_length=500,
+        description="Search keyword in post content or author",
     )
     min_fit_score: float = Field(
         default=0.0, ge=0.0, le=1.0, description="Minimum lead fit score (0.0 to 1.0)"
@@ -25,7 +46,7 @@ class SocialSearchLeadsInput(BaseModel):
         default=20, ge=1, le=100, description="Max number of items to return"
     )
     offset: int = Field(
-        default=0, ge=0, description="Number of items to skip for pagination"
+        default=0, ge=0, le=10000, description="Number of items to skip for pagination"
     )
 
     @property

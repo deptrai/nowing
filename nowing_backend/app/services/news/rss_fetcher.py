@@ -74,16 +74,16 @@ def _parse_pub_date(raw: str | None, *, tz_hint: timezone | None = None) -> str:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
         return dt.astimezone(UTC).isoformat()
-    except ValueError:
-        pass
+    except ValueError as exc:
+        logger.debug("Suppressed %r", exc)
 
     try:
         dt = parsedate_to_datetime(normalized)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
         return dt.astimezone(UTC).isoformat()
-    except (TypeError, ValueError):
-        pass
+    except (TypeError, ValueError) as exc:
+        logger.debug("Suppressed %r", exc)
 
     # Tuổi Trẻ emits "M/d/yyyy h:mm:ss AM/PM" (naive local VN time, with a
     # U+202F narrow no-break space before the meridiem). Try a few US-format
@@ -99,7 +99,8 @@ def _parse_pub_date(raw: str | None, *, tz_hint: timezone | None = None) -> str:
         try:
             dt = datetime.strptime(normalized, fmt)
             return dt.replace(tzinfo=tz).astimezone(UTC).isoformat()
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     logger.debug("Could not parse pubDate %r; using epoch sentinel", raw)
@@ -255,7 +256,8 @@ async def _check_dns_ssrf(url: str) -> None:
     for address in addresses:
         try:
             ip = ipaddress.ip_address(address)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
         if not ip.is_global:
             raise ValueError(

@@ -165,7 +165,7 @@ def build_scrape_executor(
                 category=payload.category,
                 total=0,
             )
-        except Exception as exc:
+        except Exception as exc:  # unexpected actor failure → structured degraded failure response
             logger.exception("chotot.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],

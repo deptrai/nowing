@@ -169,7 +169,7 @@ export const VerticalsMegaGrid: React.FC = () => {
 						href="/dashboard"
 						className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all"
 					>
-						<span>Launch Lead Search</span>
+						<span>{t("btn_launch_search")}</span>
 						<ArrowRight className="w-4 h-4" aria-hidden="true" />
 					</Link>
 				</div>

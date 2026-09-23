@@ -1,4 +1,9 @@
 ---
+story_key: 12-3-itviec-scraper
+status: done
+---
+
+---
 title: Story 12.3 — ITviec Scraper
 epic: 12
 story: 3

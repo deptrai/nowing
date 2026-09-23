@@ -47,6 +47,6 @@ async def verify_turnstile_token(token: str, remote_ip: str | None = None) -> bo
                     data.get("error-codes", []),
                 )
             return bool(success)
-    except Exception:
+    except Exception:  # verification request failure → fail-closed False so bot check never passes silently
         logger.exception("Turnstile verification request failed")
         return False

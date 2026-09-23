@@ -21,7 +21,6 @@ from app.lead_intelligence.campaign.planner import LeadGenPlanner
 from app.lead_intelligence.campaign.schemas import (
     CampaignSpec,
     ICPCriteria,
-    ScheduleConfig,
     SourceBudget,
 )
 from app.lead_intelligence.confidence.gate import ConfidenceGate
@@ -51,7 +50,7 @@ class TestSignalFirstCampaignPlanning:
                 target_industries=["Information Technology", "Software"],
             ),
         )
-        adapters = registry.resolve_adapters_for_campaign(hiring_spec)
+        adapters, _ = registry.resolve_adapters_for_campaign(hiring_spec)
         categories = {a.category for a in adapters}
         assert LeadSourceCategory.JOB_MARKET in categories
         assert all(a.category == LeadSourceCategory.JOB_MARKET for a in adapters)
@@ -62,7 +61,7 @@ class TestSignalFirstCampaignPlanning:
             workspace_id=1,
             signal_triggers=["tender", "procurement"],
         )
-        tender_adapters = registry.resolve_adapters_for_campaign(tender_spec)
+        tender_adapters, _ = registry.resolve_adapters_for_campaign(tender_spec)
         assert any(a.source_name == "muasamcong" for a in tender_adapters)
 
         # Case 3: Real estate signal
@@ -75,7 +74,7 @@ class TestSignalFirstCampaignPlanning:
                 target_keywords=["chung cư"],
             ),
         )
-        bds_adapters = registry.resolve_adapters_for_campaign(bds_spec)
+        bds_adapters, _ = registry.resolve_adapters_for_campaign(bds_spec)
         assert any(a.source_name == "batdongsan" for a in bds_adapters)
         assert any(a.source_name == "chotot" for a in bds_adapters)
 
@@ -234,7 +233,7 @@ class TestSignalFirstCampaignPlanning:
             raw_data=raw.data,
         )
 
-        with patch.object(orchestrator.registry, "resolve_adapters_for_campaign", return_value=[mock_adapter]):
+        with patch.object(orchestrator.registry, "resolve_adapters_for_campaign", return_value=([mock_adapter], False)):
             result = await orchestrator.execute_multi_source_lead_gen(
                 workspace_id=42,
                 campaign_spec=spec,
@@ -342,3 +341,42 @@ class TestSignalFirstCampaignPlanning:
             cipher = VerifiedContactEncryption()
             phones = [cipher.decrypt(c.phone) for c in contacts if c.phone]
             assert "0919887766" in phones
+
+
+def test_resolve_adapters_for_campaign_end_to_end_fallback() -> None:
+    """AC-2 & AC-5: CampaignSpec with uncovered location triggers fallback warning."""
+    from app.lead_intelligence.adapters.base import LeadSourceCategory
+    from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+    from app.lead_intelligence.campaign.schemas import CampaignSpec
+    from app.lead_intelligence.schemas import LocationProfilePayload
+
+    class OnlyHanoiAdapter(LeadSourceAdapter):
+        source_name = "only_hanoi"
+        category = LeadSourceCategory.REAL_ESTATE
+        supported_provinces = ["HN"]
+        coverage_quality_by_location = {"HN": "high"}
+
+        async def search_leads(self, workspace_id, query, filters=None, limit=50):
+            return []
+
+        def normalize_lead(self, raw_record):
+            raise NotImplementedError
+
+        def extract_contact_candidates(self, raw_record):
+            return []
+
+    registry = LeadSourceAdapterRegistry()
+    registry._adapters.clear()
+    registry.register(OnlyHanoiAdapter())
+
+    spec = CampaignSpec(
+        name="test",
+        workspace_id=1,
+        query="nhà đất",
+        location_profile=LocationProfilePayload(province_code="SG", province_name="TP. Hồ Chí Minh"),
+    )
+
+    adapters, fallback = registry.resolve_adapters_for_campaign(spec)
+    assert len(adapters) == 1
+    assert fallback is True
+

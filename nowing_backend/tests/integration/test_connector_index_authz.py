@@ -30,13 +30,13 @@ from app.db import (
     User,
     Workspace,
 )
-from app.routes.search_source_connectors_routes import index_connector_content
+from app.routes.connectors.indexing import index_connector_content
 from app.routes.workspaces_routes import create_default_roles_and_membership
 
 pytestmark = pytest.mark.integration
 
 # The handler imports ``check_permission`` into its own module namespace.
-_CHECK_PERMISSION = "app.routes.search_source_connectors_routes.check_permission"
+_CHECK_PERMISSION = "app.routes.connectors.indexing.check_permission"
 
 
 async def _make_user_with_space(session: AsyncSession) -> tuple[User, Workspace]:

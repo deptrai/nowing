@@ -45,7 +45,7 @@ async def list_folders(
 
         return folders, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return empty folders and error
         logger.error(f"Error listing folders: {e!s}", exc_info=True)
         return [], f"Error listing folders: {e!s}"
 
@@ -88,7 +88,7 @@ async def get_folder_hierarchy(
 
         return hierarchy, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return empty hierarchy and error
         logger.error(f"Error getting folder hierarchy: {e!s}", exc_info=True)
         return [], f"Error getting folder hierarchy: {e!s}"
 
@@ -135,7 +135,7 @@ async def get_files_in_folder(
 
         return files, next_token, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return empty files and error
         logger.error(f"Error getting files in folder: {e!s}", exc_info=True)
         return [], None, f"Error getting files in folder: {e!s}"
 
@@ -168,7 +168,7 @@ async def get_file_by_id(
 
         return file, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return None and error
         logger.error(f"Error getting file by ID: {e!s}", exc_info=True)
         return None, f"Error getting file by ID: {e!s}"
 
@@ -258,6 +258,6 @@ async def list_folder_contents(
 
         return all_items, None
 
-    except Exception as e:
+    except Exception as e:  # upstream API failure; return empty items and error
         logger.error(f"Error listing folder contents: {e!s}", exc_info=True)
         return [], f"Error listing folder contents: {e!s}"

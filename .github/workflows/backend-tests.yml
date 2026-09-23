@@ -118,17 +118,70 @@ jobs:
           ETL_SERVICE: DOCLING
         run: uv run pytest -m integration
 
+  migration-downgrade-smoke:
+    name: Migration Downgrade Smoke
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nowing_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nowing_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Alembic downgrade roundtrip (head → -1 → head)
+        working-directory: nowing_backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test
+          SECRET_KEY: ci-test-secret-key-not-for-production
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+
   test-gate:
     name: Test Gate
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests]
+    needs: [unit-tests, integration-tests, migration-downgrade-smoke]
     if: always()
 
     steps:
       - name: Check all test jobs
         run: |
           if [[ "${{ needs.unit-tests.result }}" == "failure" ||
-                "${{ needs.integration-tests.result }}" == "failure" ]]; then
+                "${{ needs.integration-tests.result }}" == "failure" ||
+                "${{ needs.migration-downgrade-smoke.result }}" == "failure" ]]; then
             echo "Backend tests failed"
             exit 1
           else

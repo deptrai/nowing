@@ -109,6 +109,7 @@ async def test_build_dependencies_validates_captured_ids(
         "chat_model_id": -7,
         "image_gen_model_id": 5,
         "vision_model_id": -1,
+        "allow_global_model_selection": False,
     }
 
 
@@ -170,3 +171,36 @@ async def test_build_dependencies_raises_when_workspace_missing(
     """A missing workspace (fallback path) surfaces as a ``DependencyError``."""
     with pytest.raises(DependencyError):
         await build_dependencies(session=_FakeSession(None), workspace_id=999)
+
+
+async def test_build_dependencies_allows_free_global_models_for_playbooks(
+    monkeypatch: pytest.MonkeyPatch, patched_side_effects
+) -> None:
+    """Playbook-derived runs pass ``allow_global_model_selection`` to the policy."""
+    seen: dict[str, Any] = {}
+
+    def _capture(**kwargs):
+        seen.update(kwargs)
+
+    monkeypatch.setattr(deps_mod, "assert_models_billable", _capture)
+
+    async def _fake_load(_session, *, config_id, workspace_id):
+        return (SimpleNamespace(name="llm"), SimpleNamespace(name="agent_config"), None)
+
+    monkeypatch.setattr(deps_mod, "load_llm_bundle", _fake_load)
+
+    await build_dependencies(
+        session=_FakeSession(SimpleNamespace(chat_model_id=0)),
+        workspace_id=42,
+        chat_model_id=-10,
+        image_gen_model_id=-11,
+        vision_model_id=5,
+        allow_global_model_selection=True,
+    )
+
+    assert seen == {
+        "chat_model_id": -10,
+        "image_gen_model_id": -11,
+        "vision_model_id": 5,
+        "allow_global_model_selection": True,
+    }

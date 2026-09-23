@@ -151,6 +151,12 @@ class ConfidenceGate:
         if not has_criteria:
             return 70.0
 
+        # Blend location match score if available (AC-4)
+        location_match_score = getattr(normalized, "location_match_score", None)
+        if location_match_score is not None:
+            from app.lead_intelligence.scoring.rubric import blend_location_fit_score
+            score = blend_location_fit_score(score, float(location_match_score))
+
         return max(0.0, min(100.0, round(score, 2)))
 
     @classmethod

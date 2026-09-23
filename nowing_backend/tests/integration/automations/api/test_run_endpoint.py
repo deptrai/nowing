@@ -181,3 +181,69 @@ async def test_manual_run_requires_execute_permission(
 
     assert resp.status_code == 403, resp.text
     assert enqueue_spy == []
+
+
+async def test_manual_run_with_idempotency_key_returns_same_run(
+    client, db_session, db_user, db_workspace, enqueue_spy
+):
+    """Calling POST /automations/{id}/run twice with the same Idempotency-Key returns the existing run."""
+    automation = await _make_automation(db_session, db_workspace, db_user)
+    idempotency_header = {"Idempotency-Key": "client-uuid-12345"}
+
+    resp1 = await client.post(
+        f"/api/v1/automations/{automation.id}/run",
+        headers=idempotency_header,
+    )
+    assert resp1.status_code == 200, resp1.text
+    run_1 = resp1.json()
+    assert run_1["idempotency_key"] == "client-uuid-12345"
+
+    resp2 = await client.post(
+        f"/api/v1/automations/{automation.id}/run",
+        headers=idempotency_header,
+    )
+    assert resp2.status_code == 200, resp2.text
+    run_2 = resp2.json()
+
+    # Must return the identical run ID
+    assert run_1["id"] == run_2["id"]
+    # Only 1 run was actually created and enqueued
+    assert len(enqueue_spy) == 1
+
+    # Database-level idempotency must persist the key.
+    from app.automations.persistence.models.run import AutomationRun
+
+    row = await db_session.get(AutomationRun, run_1["id"])
+    assert row.idempotency_key == "client-uuid-12345"
+
+
+async def test_manual_run_without_idempotency_key_allows_subsequent_runs(
+    client, db_session, db_user, db_workspace, enqueue_spy
+):
+    """Sequential manual runs without Idempotency-Key create distinct runs."""
+    automation = await _make_automation(db_session, db_workspace, db_user)
+
+    resp1 = await client.post(f"/api/v1/automations/{automation.id}/run")
+    assert resp1.status_code == 200
+    run_1 = resp1.json()
+
+    resp2 = await client.post(f"/api/v1/automations/{automation.id}/run")
+    assert resp2.status_code == 200
+    run_2 = resp2.json()
+
+    assert run_1["id"] != run_2["id"]
+    assert len(enqueue_spy) == 2
+
+
+async def test_manual_run_with_whitespace_idempotency_key_handled_gracefully(
+    client, db_session, db_user, db_workspace, enqueue_spy
+):
+    """Whitespace-only Idempotency-Key header is stripped and treated as absent."""
+    automation = await _make_automation(db_session, db_workspace, db_user)
+
+    resp = await client.post(
+        f"/api/v1/automations/{automation.id}/run",
+        headers={"Idempotency-Key": "   "},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["automation_id"] == automation.id

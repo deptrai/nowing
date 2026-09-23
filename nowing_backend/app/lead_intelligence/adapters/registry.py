@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from app.lead_intelligence.adapters.base import (
     LeadSourceAdapter,
@@ -80,8 +80,11 @@ class LeadSourceAdapterRegistry:
         from app.lead_intelligence.adapters.job_market import JobMarketLeadAdapter
         from app.lead_intelligence.adapters.muaban_bds import MuabanBdsLeadAdapter
         from app.lead_intelligence.adapters.muasamcong import MuaSamCongLeadAdapter
+        from app.lead_intelligence.adapters.news import NewsLeadAdapter
+        from app.lead_intelligence.adapters.shopee import ShopeeLeadAdapter
         from app.lead_intelligence.adapters.social import SocialLeadAdapter
         from app.lead_intelligence.adapters.telegram import TelegramLeadAdapter
+        from app.lead_intelligence.adapters.tiktok_shop import TiktokShopLeadAdapter
         from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
         from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
 
@@ -95,6 +98,10 @@ class LeadSourceAdapterRegistry:
         self.register(MuaSamCongLeadAdapter())
         self.register(SocialLeadAdapter())
         self.register(TelegramLeadAdapter())
+        # Epic 26 retro item-4: expose additional adapters with location metadata.
+        self.register(ShopeeLeadAdapter())
+        self.register(TiktokShopLeadAdapter())
+        self.register(NewsLeadAdapter())
 
     def register(self, adapter: LeadSourceAdapter) -> None:
         """Register a concrete adapter."""
@@ -125,7 +132,7 @@ class LeadSourceAdapterRegistry:
         """Find adapters matching a specific domain category."""
         return [a for a in self._adapters.values() if a.category == category]
 
-    def resolve_adapters_for_campaign(self, campaign_spec: Any) -> list[LeadSourceAdapter]:
+    def resolve_adapters_for_spec(self, campaign_spec: Any) -> list[LeadSourceAdapter]:
         """
         Dynamically route and select scraper adapters for a structured CampaignSpec.
         Considers explicit target sources, ICP vertical criteria, buying signal triggers,
@@ -404,6 +411,44 @@ class LeadSourceAdapterRegistry:
                 if a not in matched:
                     matched.append(a)
 
+        # E-Commerce keywords (Shopee / TikTok Shop / Lazada-style listings)
+        ecommerce_keywords = [
+            "shopee",
+            "sàn thương mại",
+            "san thuong mai",
+            "tiktok shop",
+            "tiktokshop",
+            "lazada",
+            "e-commerce",
+            "ecommerce",
+            "sản phẩm",
+            "san pham",
+            "shop bán",
+            "shop ban",
+        ]
+        if any(k in raw_lower or k in plain_lower for k in ecommerce_keywords):
+            for a in self.find_by_category(LeadSourceCategory.E_COMMERCE):
+                if a not in matched:
+                    matched.append(a)
+
+        # News / press keywords
+        news_keywords = [
+            "tin tức",
+            "tin tuc",
+            "báo chí",
+            "bao chi",
+            "press release",
+            "news",
+            "báo",
+            "bao",
+            "article",
+            "article",
+        ]
+        if any(k in raw_lower or k in plain_lower for k in news_keywords):
+            for a in self.find_by_category(LeadSourceCategory.NEWS):
+                if a not in matched:
+                    matched.append(a)
+
         # ponytail: job-market category now has multiple overlapping adapters
         # (vn_jobs aggregate, job_market direct, vietnamworks direct). For a
         # generic job query we want one call; for an explicit source keyword we
@@ -438,3 +483,195 @@ class LeadSourceAdapterRegistry:
                 deduped.extend(adapters)
 
         return deduped
+
+    @classmethod
+    def calculate_location_coverage_score(
+        cls,
+        adapter: LeadSourceAdapter,
+        location_profile: Any | None,
+    ) -> float:
+        """Calculate a 0.0 - 1.0 coverage score for an adapter based on location targeting (AC-2)."""
+        if location_profile is None:
+            return 1.0
+
+        p_code = (
+            getattr(location_profile, "province_code", None)
+            or (
+                location_profile.get("province_code")
+                if isinstance(location_profile, dict)
+                else None
+            )
+            or ""
+        ).upper().strip()
+
+        if not p_code:
+            return 1.0
+
+        supported = getattr(adapter, "supported_provinces", ["*"]) or ["*"]
+        coverage_map = getattr(adapter, "coverage_quality_by_location", {}) or {}
+
+        quality_scores = {
+            "high": 1.0,
+            "medium": 0.7,
+            "low": 0.4,
+            "none": 0.0,
+        }
+
+        # Check district override if present
+        d_codes = (
+            getattr(location_profile, "district_codes", [])
+            or (
+                location_profile.get("district_codes")
+                if isinstance(location_profile, dict)
+                else []
+            )
+            or []
+        )
+        district_score = None
+        for dc in d_codes:
+            if dc in coverage_map:
+                q = coverage_map[dc]
+                score = (
+                    quality_scores.get(str(q).lower(), 0.7)
+                    if isinstance(q, str)
+                    else float(q)
+                )
+                if district_score is None or score > district_score:
+                    district_score = score
+        if district_score is not None:
+            return district_score
+
+        # Check province in coverage map
+        if p_code in coverage_map:
+            q = coverage_map[p_code]
+            return (
+                quality_scores.get(str(q).lower(), 0.7)
+                if isinstance(q, str)
+                else float(q)
+            )
+
+        # Check if province is supported directly
+        if p_code in supported:
+            return 0.7
+
+        # Check if nationwide adapter
+        if "*" in supported:
+            return 0.6
+
+        return 0.0
+
+    def resolve_adapters_for_campaign(
+        self,
+        prompt: Any = "",
+        category: LeadSourceCategory | None = None,
+        location_profile: Any | None = None,
+    ) -> tuple[list[LeadSourceAdapter], bool]:
+        """Resolve, composite-rank, and return candidate adapters with fallback warning (AC-2).
+
+        Accepts either a ``CampaignSpec`` object or a (prompt, category, location_profile)
+        keyword argument set. Always returns a tuple of (ranked adapters, location_fallback).
+        """
+        campaign_spec = None
+        if not isinstance(prompt, str) and (hasattr(prompt, "__dict__") or isinstance(prompt, dict)):
+            campaign_spec = prompt
+            query_text = str(getattr(campaign_spec, "query", "") or "")
+            icp_criteria = getattr(campaign_spec, "icp_criteria", None)
+            if icp_criteria is not None:
+                category = category or getattr(icp_criteria, "target_categories", [None])[0] if getattr(icp_criteria, "target_categories", []) else category
+            location_profile = location_profile or getattr(campaign_spec, "location_profile", None)
+        else:
+            query_text = str(prompt or "")
+
+        candidates = self.resolve_adapters_for_spec(campaign_spec) if campaign_spec is not None else []
+        if not candidates:
+            if category:
+                candidates = self.find_by_category(category)
+            if not candidates:
+                candidates = self.resolve_adapters_for_intent(query_text)
+        if not candidates:
+            candidates = self.list_all()
+
+        # Compute composite scores (0.4 location + 0.4 vertical + 0.2 cost)
+        ranked: list[tuple[float, LeadSourceAdapter]] = []
+        any_location_match = False
+
+        for a in candidates:
+            loc_score = self.calculate_location_coverage_score(a, location_profile)
+            if loc_score > 0.0:
+                any_location_match = True
+
+            # Vertical relevance score (1.0 if category matches exactly, 0.8 otherwise)
+            vert_score = 1.0 if (category and a.category == category) else 0.8
+
+            # Cost efficiency score (default baseline 0.8 for internal scrapers)
+            cost_score = 0.8
+
+            composite = (loc_score * 0.4) + (vert_score * 0.4) + (cost_score * 0.2)
+            ranked.append((composite, a))
+
+        # Re-order candidate adapters descending by composite score
+        ranked.sort(key=lambda x: x[0], reverse=True)
+
+        location_fallback = bool(location_profile and not any_location_match)
+
+        # Apply priority/quota hints based on composite score bands
+        for idx, (_, a) in enumerate(ranked):
+            a.priority = max(1, min(10, 10 - idx))
+            a.lead_quota = max(10, 100 - idx * 10)
+
+        return [a for _, a in ranked], location_fallback
+
+
+    def get_all_source_statuses(
+        self, location_profile: Any | None = None
+    ) -> list[Any]:
+        """Compute status, latency, and location coverage across all registered adapters (AC-4)."""
+        from app.lead_intelligence.campaign.schemas import SourcePlanAllocation
+
+        results: list[SourcePlanAllocation] = []
+        for adapter in self._adapters.values():
+            src_name = adapter.source_name
+            coverage_score = self.calculate_location_coverage_score(adapter, location_profile)
+
+            # Map score to tier
+            if coverage_score >= 0.9:
+                coverage_quality = "high"
+            elif coverage_score >= 0.6:
+                coverage_quality = "medium"
+            elif coverage_score >= 0.3:
+                coverage_quality = "low"
+            else:
+                coverage_quality = "none"
+
+            exec_status = getattr(adapter, "last_execution_status", "ok")
+            if exec_status == "offline":
+                status = "offline"
+                degraded_reason = f"Adapter {src_name} đang ngoại tuyến (offline)"
+            elif exec_status != "ok":
+                status = "degraded"
+                degraded_reason = f"Adapter {src_name} báo cáo lỗi: {exec_status}"
+            elif coverage_quality in ("low", "none") and location_profile:
+                status = "degraded"
+                degraded_reason = f"Độ phủ địa bàn thấp ({coverage_quality}) tại khu vực mục tiêu"
+            else:
+                status = "ready"
+                degraded_reason = None
+
+            supported_provinces = list(getattr(adapter, "supported_provinces", ["*"]) or ["*"])
+            category_val = adapter.category.value if hasattr(adapter.category, "value") else str(adapter.category)
+
+            results.append(
+                SourcePlanAllocation(
+                    source_name=src_name,
+                    category=category_val,
+                    allocated_limit=getattr(adapter, "lead_quota", 50),
+                    priority=getattr(adapter, "priority", 1),
+                    location_coverage_quality=coverage_quality,
+                    location_coverage_score=round(coverage_score, 4),
+                    supported_provinces=supported_provinces,
+                    status=status,
+                    degraded_reason=degraded_reason,
+                )
+            )
+
+        return results

@@ -2,6 +2,7 @@
 
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown, ChevronRight, ChevronUp, Code2, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useId, useMemo, useState } from "react";
 import { SchemaForm } from "@/components/schema-form/schema-form";
 import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
@@ -61,6 +62,7 @@ export function TaskItem({
 	onMoveDown,
 	onRemove,
 }: TaskItemProps) {
+	const t = useTranslations("automations");
 	const { catalog, isLoading } = useActionsCatalog();
 	const workspaceVertical = useWorkspaceVertical(workspaceId);
 	const [rawJson, setRawJson] = useState(false);
@@ -124,7 +126,10 @@ export function TaskItem({
 	);
 
 	return (
-		<div className="rounded-md border border-border/60 bg-transparent p-3 space-y-3">
+		<div
+			data-testid={`task-item-${index}`}
+			className="rounded-md border border-border/60 bg-transparent p-3 space-y-3"
+		>
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -134,14 +139,14 @@ export function TaskItem({
 						Task {index + 1}
 					</span>
 					<Select value={task.action} onValueChange={handleActionChange} disabled={isLoading}>
-						<SelectTrigger className="h-7 text-xs" aria-label="Task action">
+						<SelectTrigger className="h-7 text-xs" aria-label={t("auto_task_action")}>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
 							{groupedOptions.length === 0 && (
 								<SelectGroup>
-									<SelectLabel>Agent task</SelectLabel>
-									<SelectItem value="agent_task">Agent task</SelectItem>
+									<SelectLabel>{t("auto_agent_task")}</SelectLabel>
+									<SelectItem value="agent_task">{t("auto_agent_task")}</SelectItem>
 								</SelectGroup>
 							)}
 							{groupedOptions.map((group) => (
@@ -166,7 +171,7 @@ export function TaskItem({
 						size="icon"
 						className="h-7 w-7 text-muted-foreground"
 						disabled={index === 0}
-						aria-label="Move task up"
+						aria-label={t("auto_move_task_up")}
 						onClick={onMoveUp}
 					>
 						<ChevronUp className="h-4 w-4" aria-hidden="true" />
@@ -177,7 +182,7 @@ export function TaskItem({
 						size="icon"
 						className="h-7 w-7 text-muted-foreground"
 						disabled={index === total - 1}
-						aria-label="Move task down"
+						aria-label={t("auto_move_task_down")}
 						onClick={onMoveDown}
 					>
 						<ChevronDown className="h-4 w-4" aria-hidden="true" />
@@ -188,7 +193,7 @@ export function TaskItem({
 						size="icon"
 						className="h-7 w-7 text-muted-foreground hover:text-destructive"
 						disabled={total === 1}
-						aria-label="Remove task"
+						aria-label={t("auto_remove_task")}
 						onClick={onRemove}
 					>
 						<Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -204,7 +209,7 @@ export function TaskItem({
 						workspaceId={workspaceId}
 						value={task.query ?? ""}
 						mentions={task.mentions}
-						placeholder="What should the agent do? e.g. Summarize new docs in @Marketing since the last run."
+						placeholder={t("auto_what_should_the_agent")}
 						onChange={(query, mentions) => onChange({ query, mentions })}
 					/>
 				</Field>
@@ -218,7 +223,7 @@ export function TaskItem({
 									className="flex items-center gap-1.5 text-xs text-muted-foreground"
 								>
 									<Code2 className="h-3.5 w-3.5" aria-hidden="true" />
-									<span>Raw JSON</span>
+									<span>{t("auto_raw_json")}</span>
 									<Switch id={rawJsonId} checked={rawJson} onCheckedChange={setRawJson} />
 								</label>
 							</div>
@@ -252,7 +257,7 @@ export function TaskItem({
 				<AccordionItem value="advanced" className="border-b-0">
 					<AccordionPrimitive.Header className="flex">
 						<AccordionPrimitive.Trigger className="group flex flex-1 items-center justify-between rounded-md py-1.5 text-left text-xs font-medium text-muted-foreground outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50">
-							Advanced
+							{t("auto_advanced")}
 							<ChevronRight
 								className="pointer-events-none size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90"
 								aria-hidden="true"
@@ -261,22 +266,22 @@ export function TaskItem({
 					</AccordionPrimitive.Header>
 					<AccordionContent className="pb-1">
 						<div className="grid grid-cols-2 gap-3">
-							<Field label="Max retries">
+							<Field label={t("auto_max_retries")}>
 								<Input
 									type="number"
 									min={0}
 									max={10}
 									value={task.maxRetries ?? ""}
-									placeholder="2 retries"
+									placeholder={t("auto_2_retries")}
 									onChange={(e) => onChange({ maxRetries: parseOptionalInt(e.target.value) })}
 								/>
 							</Field>
-							<Field label="Timeout (seconds)">
+							<Field label={t("auto_timeout_seconds")}>
 								<Input
 									type="number"
 									min={1}
 									value={task.timeoutSeconds ?? ""}
-									placeholder="600 seconds"
+									placeholder={t("auto_600_seconds")}
 									onChange={(e) => onChange({ timeoutSeconds: parseOptionalInt(e.target.value) })}
 								/>
 							</Field>

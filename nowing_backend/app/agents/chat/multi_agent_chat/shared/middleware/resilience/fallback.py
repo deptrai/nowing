@@ -22,6 +22,6 @@ def build_fallback_mw(
             "openai:gpt-4o-mini",
             "anthropic:claude-3-5-haiku-20241022",
         )
-    except Exception:
+    except Exception:  # fallback middleware initialization failure; skip middleware
         logging.warning("ScopedModelFallbackMiddleware init failed; skipping.")
         return None

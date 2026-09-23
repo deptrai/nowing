@@ -91,11 +91,11 @@ async def _after_rule_change(
             circuit_breaker_tripped=circuit_breaker_tripped,
             updated_at=rule.updated_at.isoformat() if rule.updated_at else None,
         )
-    except Exception:
+    except Exception:  # best-effort rule-change pubsub publish; DB write already committed
         logger.exception("Failed to publish scraper rule update")
     try:
         _rule_cache_module.set(rule.platform, _rule_schema_copy(rule))
-    except Exception:
+    except Exception:  # best-effort cache warm; next read repopulates on miss
         logger.exception("Failed to warm scraper rule cache")
 
 
@@ -103,7 +103,7 @@ async def _redis_client_silent() -> Any:
     """Return a Redis client, or None if Redis is not reachable."""
     try:
         return await get_redis_client()
-    except Exception:
+    except Exception:  # Redis down → return None so caller uses DB-only path
         logger.warning("Redis unavailable for scraper rule operation")
         return None
 
@@ -230,7 +230,7 @@ async def activate_rule(
         # read falls back to the default (or a newly active rule).
         try:
             _rule_cache_module.invalidate(platform)
-        except Exception:
+        except Exception:  # best-effort cache invalidation; TTL expiry still bounds staleness
             logger.exception("Failed to invalidate scraper rule cache")
         await _after_rule_change(
             rule,
@@ -359,7 +359,7 @@ async def trip_circuit_breaker(
     breaker = PlatformCircuitBreaker(redis_client=redis, cooldown_seconds=trip_duration)
     try:
         await breaker.trip(platform)
-    except Exception:
+    except Exception:  # best-effort Redis breaker write; DB flag already marks breaker tripped
         logger.exception("Failed to write OPEN state to Redis circuit breaker")
 
     await _after_rule_change(rule, redis, is_active=True, circuit_breaker_tripped=True)
@@ -401,7 +401,7 @@ async def reset_circuit_breaker(
     breaker = PlatformCircuitBreaker(redis_client=redis)
     try:
         await breaker.reset(platform)
-    except Exception:
+    except Exception:  # best-effort Redis breaker reset; DB flag already cleared
         logger.exception("Failed to reset Redis circuit breaker")
 
     await _after_rule_change(rule, redis, is_active=True, circuit_breaker_tripped=False)

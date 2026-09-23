@@ -1,3 +1,8 @@
+---
+story_key: 18-4-agentconfig-prompt-injection
+status: done
+---
+
 # Story 18.4: `AgentConfig` Prompt Injection
 
 Status: done

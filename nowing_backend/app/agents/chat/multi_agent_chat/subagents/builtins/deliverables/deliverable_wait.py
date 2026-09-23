@@ -109,7 +109,7 @@ async def wait_for_deliverable(
                     select(*columns).where(model.id == row_id)
                 )
                 row = result.first()
-        except Exception as exc:
+        except Exception as exc:  # deliverable status poll failure; retry loop until timeout
             logger.warning(
                 "[deliverable_wait] poll failed model=%s id=%s err=%r",
                 getattr(model, "__name__", str(model)),

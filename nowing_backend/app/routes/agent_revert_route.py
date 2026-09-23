@@ -119,7 +119,7 @@ async def revert_agent_action(
             status_code=409,
             detail="This action has already been reverted.",
         ) from None
-    except Exception as err:
+    except Exception as err:  # rollback + re-raise as typed HTTP error
         logger.exception("Revert dispatch raised for action_id=%s", action_id)
         await session.rollback()
         raise HTTPException(

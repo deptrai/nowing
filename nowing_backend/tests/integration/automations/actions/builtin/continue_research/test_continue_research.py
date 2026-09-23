@@ -23,9 +23,16 @@ from __future__ import annotations
 
 import pytest
 
+# Embedding width follows the configured model (pgvector column is declared as
+# Vector(config.embedding_model_instance.dimension)); hardcoding 384 breaks the
+# insert whenever the deployment switches to a 768-dim embedder such as
+# nomic-embed-text.
+from app.config import config as _cfg
+
 pytestmark = pytest.mark.integration
 
-_EMBEDDING = [0.1] * 384
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
+_EMBEDDING = [0.1] * _EMBEDDING_DIM
 
 
 async def _make_research_thread(session, workspace, user, *, title="Q3 research"):
@@ -299,7 +306,7 @@ async def test_continue_research_top_k_limits_recall(db_session, db_workspace, d
             Memory(
                 workspace_id=db_workspace.id,
                 content=f"Thread-scoped fact number {i}.",
-                embedding=[0.1 * (i + 1)] * 384,
+                embedding=[0.1 * (i + 1)] * _EMBEDDING_DIM,
                 type=MemoryType.SEMANTIC,
                 source_type=MemorySourceType.MANUAL,
                 research_thread_id=thread.id,
@@ -361,7 +368,7 @@ async def test_continue_research_legacy_schema_clamps_top_k_with_warning(
             Memory(
                 workspace_id=db_workspace.id,
                 content=f"Legacy fact {i}.",
-                embedding=[0.1 * (i + 1)] * 384,
+                embedding=[0.1 * (i + 1)] * _EMBEDDING_DIM,
                 type=MemoryType.SEMANTIC,
                 source_type=MemorySourceType.MANUAL,
                 research_thread_id=thread.id,

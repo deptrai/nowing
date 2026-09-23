@@ -18,6 +18,33 @@ const nextConfig: NextConfig = {
 			{ source: "/mcp-connector", destination: "/external-mcp-connectors", permanent: true },
 		];
 	},
+	async rewrites() {
+		// Story 37.6 (AD-119): pitch.nowing.ai/{workspace_slug}/{lead_id} serves
+		// the unified SSR mini-pitch portal. Only the two-segment portal path is
+		// rewritten so /api/* and other routes on the host are untouched.
+		const pitchHost = process.env.PITCH_PORTAL_HOST || "pitch.nowing.ai";
+		// Story 37.5: the portal's client-side calls (beacon, opt-out, favicon
+		// proxy) use same-origin /api/v1/* URLs, so on the pitch host those are
+		// proxied to the backend — no CORS preflight, no cross-origin fetch.
+		// Must be registered BEFORE the two-segment portal rewrite or /api/v1/*
+		// would match it (workspace_slug="api").
+		const backendUrl =
+			process.env.NOWING_BACKEND_INTERNAL_URL ||
+			process.env.FASTAPI_BACKEND_INTERNAL_URL ||
+			"http://backend:8000";
+		return [
+			{
+				source: "/api/:path*",
+				has: [{ type: "host" as const, value: pitchHost }],
+				destination: `${backendUrl}/api/:path*`,
+			},
+			{
+				source: "/:workspace_slug/:lead_id",
+				has: [{ type: "host" as const, value: pitchHost }],
+				destination: "/pitch/:workspace_slug/:lead_id",
+			},
+		];
+	},
 	outputFileTracingRoot: path.join(__dirname, ".."),
 	reactStrictMode: false,
 	typescript: {
@@ -70,6 +97,29 @@ const nextConfig: NextConfig = {
 			"@assistant-ui/react",
 			"@assistant-ui/react-markdown",
 			"motion",
+			"recharts",
+			"@radix-ui/react-accordion",
+			"@radix-ui/react-alert-dialog",
+			"@radix-ui/react-avatar",
+			"@radix-ui/react-checkbox",
+			"@radix-ui/react-collapsible",
+			"@radix-ui/react-context-menu",
+			"@radix-ui/react-dialog",
+			"@radix-ui/react-dropdown-menu",
+			"@radix-ui/react-label",
+			"@radix-ui/react-popover",
+			"@radix-ui/react-radio-group",
+			"@radix-ui/react-scroll-area",
+			"@radix-ui/react-select",
+			"@radix-ui/react-separator",
+			"@radix-ui/react-slider",
+			"@radix-ui/react-slot",
+			"@radix-ui/react-switch",
+			"@radix-ui/react-tabs",
+			"@radix-ui/react-toggle",
+			"@radix-ui/react-toggle-group",
+			"@radix-ui/react-toolbar",
+			"@radix-ui/react-tooltip",
 		],
 	},
 	// Turbopack config (used during `next dev --turbopack`)

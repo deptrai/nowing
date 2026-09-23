@@ -165,7 +165,7 @@ def make_trusted_tool_saver(user_id: uuid.UUID) -> TrustedToolSaver:
                 await session.commit()
         except LookupError as exc:
             logger.warning("trusted-tool save skipped: %s", exc)
-        except Exception:
+        except Exception:  # unexpected save failure → logged; LookupError above handles known miss
             logger.exception(
                 "trusted-tool save failed for connector=%s tool=%s",
                 connector_id,

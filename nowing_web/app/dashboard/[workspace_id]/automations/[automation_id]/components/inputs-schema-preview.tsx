@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import type { Inputs } from "@/contracts/types/automation.types";
 
 interface InputsSchemaPreviewProps {
@@ -12,10 +13,11 @@ interface InputsSchemaPreviewProps {
  * is null.
  */
 export function InputsSchemaPreview({ inputs }: InputsSchemaPreviewProps) {
+	const t = useTranslations("automations");
 	const fields = getInputFields(inputs.schema);
 
 	if (fields.length === 0) {
-		return <p className="text-sm text-muted-foreground">No extra inputs are required.</p>;
+		return <p className="text-sm text-muted-foreground">{t("auto_no_extra_inputs_are")}</p>;
 	}
 
 	return (

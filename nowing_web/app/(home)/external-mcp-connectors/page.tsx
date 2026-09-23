@@ -2,6 +2,7 @@ import { IconBrandGithub } from "@tabler/icons-react";
 import { ArrowRight, Check, Plug, ShieldCheck, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { ConnectorFaq } from "@/components/connectors-marketing/connector-faq";
 import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
@@ -14,39 +15,39 @@ import type { FaqItem } from "@/lib/connectors-marketing/types";
 
 const canonicalUrl = "https://www.nowing.com/external-mcp-connectors";
 
-const metaDescription =
-	"External MCP connectors let your Nowing agents use any MCP server. Paste a config, tools are auto-discovered, and every call runs with per-tool approval. Try it free.";
-
-export const metadata: Metadata = {
-	title: "External MCP Connectors: Add Any MCP Server | Nowing",
-	description: metaDescription,
-	keywords: [
-		"mcp connector",
-		"external mcp connectors",
-		"what is an mcp connector",
-		"mcp client",
-		"add mcp server",
-		"connect mcp server",
-		"mcp integrations",
-	],
-	alternates: { canonical: canonicalUrl },
-	openGraph: {
-		title: "External MCP Connectors: Add Any MCP Server | Nowing",
-		description: metaDescription,
-		url: canonicalUrl,
-		siteName: "Nowing",
-		type: "website",
-		images: [
-			{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing external MCP connectors" },
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("extMcp");
+	return {
+		title: t("meta_title"),
+		description: t("meta_description"),
+		keywords: [
+			"mcp connector",
+			"external mcp connectors",
+			"what is an mcp connector",
+			"mcp client",
+			"add mcp server",
+			"connect mcp server",
+			"mcp integrations",
 		],
-	},
-	twitter: {
-		card: "summary_large_image",
-		title: "External MCP Connectors: Add Any MCP Server | Nowing",
-		description: metaDescription,
-		images: ["/og-image.png"],
-	},
-};
+		alternates: { canonical: canonicalUrl },
+		openGraph: {
+			title: t("meta_title"),
+			description: t("meta_description"),
+			url: canonicalUrl,
+			siteName: "Nowing",
+			type: "website",
+			images: [
+				{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing external MCP connectors" },
+			],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: t("meta_title"),
+			description: t("meta_description"),
+			images: ["/og-image.png"],
+		},
+	};
+}
 
 /* Mirrors the real server_config contract (stdio + HTTP transports). */
 const STDIO_CONFIG = `{
@@ -62,26 +63,13 @@ const HTTP_CONFIG = `{
   "transport": "streamable-http"
 }`;
 
-const STEPS = [
-	{
-		icon: Plug,
-		title: "Paste a server config",
-		description:
-			"Add any MCP server the same way you would in Cursor: a local command for stdio servers, or a URL and headers for remote HTTP and SSE servers.",
-	},
-	{
-		icon: Wrench,
-		title: "Tools are auto-discovered",
-		description:
-			"Nowing tests the connection and pulls the full tool list from the server. No manual tool configuration, no schema files to maintain.",
-	},
-	{
-		icon: ShieldCheck,
-		title: "Your agent uses them, safely",
-		description:
-			"Read-only tools run automatically. Anything that writes asks for your approval first, and you can trust a tool once to always allow it.",
-	},
-] as const;
+function useSteps(t: (k: string) => string) {
+	return [
+		{ icon: Plug, title: t("step1_title"), description: t("step1_desc") },
+		{ icon: Wrench, title: t("step2_title"), description: t("step2_desc") },
+		{ icon: ShieldCheck, title: t("step3_title"), description: t("step3_desc") },
+	];
+}
 
 /** Hosted MCP apps with one-click OAuth (mirrors the backend MCP service registry). */
 const ONE_CLICK_APPS = [
@@ -94,54 +82,39 @@ const ONE_CLICK_APPS = [
 	"Airtable",
 ] as const;
 
-const FAQ: FaqItem[] = [
-	{
-		question: "What is an external MCP connector?",
-		answer:
-			"An external MCP connector links Nowing to an outside MCP (Model Context Protocol) server, so your agents can call that server's tools. You add a server config once, its tools are auto-discovered, and every agent in your workspace can use them with per-tool approval.",
-	},
-	{
-		question: "How is this different from the Nowing MCP server?",
-		answer:
-			"Direction. External MCP connectors make Nowing the client: outside tools flow into your Nowing agents. The Nowing MCP server is the reverse: it exposes your workspace and the scraper APIs as tools inside Claude, Cursor, or any MCP client you already run.",
-	},
-	{
-		question: "Which MCP transports are supported?",
-		answer:
-			"All the common ones. Local stdio servers run as a process with a command, args, and environment variables. Remote servers connect over streamable HTTP, plain HTTP, or SSE with a URL and optional headers, which covers hosted MCP servers that require an auth token.",
-	},
-	{
-		question: "Is it safe to give an agent MCP tools?",
-		answer:
-			"Every MCP tool runs through Nowing's permission layer. Read-only tools are allowed automatically, while any tool that can write or act asks for your approval before it executes. You can mark tools you rely on as trusted so they skip the prompt on later calls.",
-	},
-	{
-		question: "Can I connect Notion or Slack without writing a config?",
-		answer:
-			"Yes. Notion, Slack, Jira, Confluence, Linear, ClickUp, and Airtable connect through their official hosted MCP servers with one-click OAuth. Nowing handles the token exchange and curates each app's tool list, so you sign in once and your agents can use them immediately.",
-	},
-];
+function useFaq(t: (k: string) => string): FaqItem[] {
+	return [1, 2, 3, 4, 5].map((n) => ({
+		question: t(`faq${n}_q`),
+		answer: t(`faq${n}_a`),
+	}));
+}
 
-function ConfigCard() {
+function ConfigCard({ t }: { t: (k: string) => string }) {
 	return (
 		<div className="rounded-xl border bg-card p-5 shadow-sm">
-			<p className="font-mono text-xs text-muted-foreground">Local server (stdio)</p>
+			<p className="font-mono text-xs text-muted-foreground">{t("cfg_local")}</p>
 			<pre className="mt-2 overflow-x-auto rounded-lg bg-muted/50 p-4 font-mono text-xs leading-relaxed">
 				{STDIO_CONFIG}
 			</pre>
-			<p className="mt-4 font-mono text-xs text-muted-foreground">Remote server (HTTP / SSE)</p>
+			<p className="mt-4 font-mono text-xs text-muted-foreground">{t("cfg_remote")}</p>
 			<pre className="mt-2 overflow-x-auto rounded-lg bg-muted/50 p-4 font-mono text-xs leading-relaxed">
 				{HTTP_CONFIG}
 			</pre>
 			<p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
 				<Check className="size-3.5 text-brand" aria-hidden />
-				Tools auto-discovered on connect
+				{t("cfg_auto")}
 			</p>
 		</div>
 	);
 }
 
-export default function ExternalMcpConnectorsPage() {
+// Rendered per-request so the NEXT_LOCALE cookie can switch the language.
+export const dynamic = "force-dynamic";
+
+export default async function ExternalMcpConnectorsPage() {
+	const t = await getTranslations("extMcp");
+	const STEPS = useSteps(t);
+	const FAQ = useFaq(t);
 	return (
 		<>
 			<JsonLd
@@ -151,13 +124,13 @@ export default function ExternalMcpConnectorsPage() {
 					name: "Nowing External MCP Connectors",
 					applicationCategory: "DeveloperApplication",
 					operatingSystem: "Web",
-					description: metaDescription,
+					description: t("meta_description"),
 					url: canonicalUrl,
 					offers: {
 						"@type": "Offer",
 						price: "0",
 						priceCurrency: "USD",
-						description: "Free tier included",
+						description: t("free_tier"),
 					},
 					provider: {
 						"@type": "Organization",
@@ -177,32 +150,29 @@ export default function ExternalMcpConnectorsPage() {
 							<BreadcrumbNav
 								className="mb-6"
 								items={[
-									{ name: "Connectors", href: "/connectors" },
-									{ name: "External MCP Connectors", href: "/external-mcp-connectors" },
+									{ name: t("bc_connectors"), href: "/connectors" },
+									{ name: t("bc_external"), href: "/external-mcp-connectors" },
 								]}
 							/>
 							<Badge variant="outline" className="mb-5 gap-1.5 py-1">
 								<Plug className="size-3.5" aria-hidden="true" />
-								External MCP connectors
+								{t("badge")}
 							</Badge>
 							<h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-balance">
-								Bring any external MCP server to your agents
+								{t("hero_title")}
 							</h1>
 							<p className="mt-4 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground font-sans">
-								External MCP connectors turn your Nowing workspace into an MCP client. Add any MCP
-								server with the same config you'd use in Cursor, and its tools are auto-discovered
-								and handed to your agents, guarded by per-tool approval. Notion, Slack, Jira, and
-								more connect with one-click OAuth.
+								{t("hero_desc")}
 							</p>
 							<div className="mt-8 flex flex-wrap items-center gap-3">
 								<Button asChild size="lg">
 									<Link href="/register">
-										Start for free
+										{t("start_free")}
 										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">
-									<Link href="/docs">Read the docs</Link>
+									<Link href="/docs">{t("read_docs")}</Link>
 								</Button>
 								<Button asChild variant="ghost" size="lg">
 									<Link
@@ -216,16 +186,14 @@ export default function ExternalMcpConnectorsPage() {
 								</Button>
 							</div>
 						</div>
-						<ConfigCard />
+						<ConfigCard t={t} />
 					</div>
 				</MarketingSection>
 
 				{/* How it works */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							From config to agent tool in three steps
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("how_title")}</h2>
 					</Reveal>
 					<div className="mt-8 grid gap-4 sm:grid-cols-3">
 						{STEPS.map((step) => (
@@ -247,14 +215,8 @@ export default function ExternalMcpConnectorsPage() {
 				{/* One-click apps */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							Your work apps, no config required
-						</h2>
-						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-							These apps run on their official hosted MCP servers. Sign in once with OAuth and
-							Nowing manages the tokens and curates each tool list, so your agents can search
-							Notion, read Slack threads, or file Jira issues alongside your live web research.
-						</p>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("apps_title")}</h2>
+						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">{t("apps_desc")}</p>
 					</Reveal>
 					<Reveal>
 						<div className="mt-8 flex flex-wrap gap-2">
@@ -274,34 +236,30 @@ export default function ExternalMcpConnectorsPage() {
 				{/* Connector vs server */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							External MCP connectors vs the Nowing MCP server
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("vs_title")}</h2>
 						<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-							They are two sides of the same protocol. The external MCP connectors on this page make
-							Nowing a <em>client</em>: they consume tools from outside MCP servers. The{" "}
+							{t("vs_desc_1")} <em>{t("vs_client")}</em>: {t("vs_desc_2")}{" "}
 							<Link
 								href="/mcp-server"
 								className="font-medium text-foreground underline underline-offset-4"
 							>
-								Nowing MCP server
+								{t("vs_server")}
 							</Link>{" "}
-							does the reverse, exposing your workspace and scraper APIs like{" "}
+							{t("vs_desc_3")}{" "}
 							<Link
 								href="/reddit"
 								className="font-medium text-foreground underline underline-offset-4"
 							>
 								Reddit
 							</Link>{" "}
-							and{" "}
+							{t("vs_and")}{" "}
 							<Link
 								href="/google-maps"
 								className="font-medium text-foreground underline underline-offset-4"
 							>
 								Google Maps
 							</Link>{" "}
-							as native tools inside Claude, Cursor, or any agent you already run. Use both and data
-							flows in either direction.
+							{t("vs_desc_4")}
 						</p>
 					</Reveal>
 				</MarketingSection>
@@ -309,9 +267,7 @@ export default function ExternalMcpConnectorsPage() {
 				{/* FAQ */}
 				<MarketingSection>
 					<Reveal>
-						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-							External MCP connectors: frequently asked questions
-						</h2>
+						<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("faq_title")}</h2>
 					</Reveal>
 					<Reveal>
 						<div className="mt-6 max-w-3xl">
@@ -324,33 +280,31 @@ export default function ExternalMcpConnectorsPage() {
 				<MarketingSection>
 					<Reveal>
 						<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
-							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-								Give your agents every tool they need
-							</h2>
+							<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("cta_title")}</h2>
 							<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
-								External MCP connectors are part of the Nowing{" "}
+								{t("cta_desc_1")}{" "}
 								<Link href="/" className="font-medium text-foreground underline underline-offset-4">
-									open web research platform
+									{t("cta_platform")}
 								</Link>
-								. Start free, no credit card required.
+								. {t("cta_desc_2")}
 							</p>
 							<div className="mt-7 flex flex-wrap justify-center gap-3">
 								<Button asChild size="lg">
 									<Link href="/register">
-										Start for free
+										{t("start_free")}
 										<ArrowRight className="size-4" aria-hidden="true" />
 									</Link>
 								</Button>
 								<Button asChild variant="outline" size="lg">
-									<Link href="/pricing">See pricing</Link>
+									<Link href="/pricing">{t("see_pricing")}</Link>
 								</Button>
 							</div>
 
 							<Separator className="my-8" />
 
-							<nav aria-label="Other connectors" className="flex flex-wrap justify-center gap-2">
+							<nav aria-label={t("nav_other")} className="flex flex-wrap justify-center gap-2">
 								<Button asChild variant="ghost" size="sm">
-									<Link href="/connectors">All connectors</Link>
+									<Link href="/connectors">{t("nav_all")}</Link>
 								</Button>
 								<Button asChild variant="ghost" size="sm">
 									<Link href="/mcp-server">Nowing MCP Server</Link>

@@ -11,7 +11,8 @@ import type { APIRequestContext } from "@playwright/test";
 
 export const BACKEND_URL = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
 
-const FRONTEND_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+const FRONTEND_ORIGIN =
+	process.env.PLAYWRIGHT_AUTH_ORIGIN || process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 
 const TEST_USER_EMAIL = process.env.PLAYWRIGHT_TEST_EMAIL || "e2e-test@nowing.net";
 const TEST_USER_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD || "E2eTestPassword123!";
@@ -95,21 +96,38 @@ export async function registerUser(
  * Get a bearer token by trying the rate-limit-free mint endpoint first
  * and falling back to /auth/desktop/login if the e2e endpoint isn't mounted
  * (e.g. running against a non-e2e backend in local dev).
+ *
+ * Successful tokens are cached per-process so a spec file that calls this for
+ * every test does not trip the 5/minute login rate limit on the fallback path.
  */
+const _tokenCache = new Map<string, Promise<string>>();
+
 export async function acquireTestToken(request: APIRequestContext): Promise<string> {
-	try {
-		return await mintTestToken(request);
-	} catch {
+	const cached = _tokenCache.get("default");
+	if (cached) return cached;
+	const pending = (async () => {
 		try {
-			return await loginAsTestUser(request);
+			return await mintTestToken(request);
 		} catch {
 			try {
-				await registerUser(request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
+				return await loginAsTestUser(request);
 			} catch {
-				// User might already exist, continue to login
+				try {
+					await registerUser(request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
+				} catch {
+					// User might already exist, continue to login
+				}
+				return await loginAsTestUser(request);
 			}
-			return await loginAsTestUser(request);
 		}
+	})();
+	_tokenCache.set("default", pending);
+	try {
+		return await pending;
+	} catch (err) {
+		// Do not cache rejections — a later test should be able to retry.
+		_tokenCache.delete("default");
+		throw err;
 	}
 }
 

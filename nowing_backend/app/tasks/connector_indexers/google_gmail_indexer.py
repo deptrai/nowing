@@ -251,7 +251,7 @@ async def index_google_gmail_messages(
                     logger.info(
                         f"Decrypted Google Gmail credentials for connector {connector_id}"
                     )
-                except Exception as e:
+                except Exception as e:  # credential decryption failure; log task failure and return error
                     await task_logger.log_task_failure(
                         log_entry,
                         f"Failed to decrypt Google Gmail credentials for connector {connector_id}: {e!s}",
@@ -463,7 +463,7 @@ async def index_google_gmail_messages(
 
                 connector_docs.append(doc)
 
-            except Exception as e:
+            except Exception as e:  # per-message document build failure; skip message and continue
                 logger.error(
                     f"Error building ConnectorDocument for message: {e!s}",
                     exc_info=True,
@@ -506,7 +506,7 @@ async def index_google_gmail_messages(
             logger.info(
                 "Successfully committed all Google Gmail document changes to database"
             )
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
                 or "uniqueviolationerror" in str(e).lower()
@@ -557,7 +557,7 @@ async def index_google_gmail_messages(
         )
         logger.error(f"Database error: {db_error!s}", exc_info=True)
         return 0, 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

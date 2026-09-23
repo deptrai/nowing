@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 from uuid import UUID
@@ -12,6 +11,7 @@ from celery import shared_task
 from app.db import async_session_maker
 from app.services.billing_service import BillingService
 from app.services.phone_waterfall_service import PhoneWaterfallService
+from app.tasks.celery_tasks import run_async_celery_task
 from app.tenant_context import set_request_tenant_context
 
 logger = logging.getLogger(__name__)
@@ -63,11 +63,13 @@ def resolve_phone_waterfall_task(
                 "contact_id": str(res.contact_id) if res.contact_id else None,
                 "degraded": res.degraded,
                 "degradation_reason": res.degradation_reason,
+                # AD-121: refunded | refund_review | refund_error | None
+                "refund_status": res.refund_status,
             }
 
     try:
-        return asyncio.run(_run())
-    except Exception as exc:
+        return run_async_celery_task(_run)
+    except Exception as exc:  # task-level guard: log, retry if budget remaining, else return failed dict
         logger.exception("resolve_phone_waterfall_task failed for lead %s", lead_id)
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc) from exc
@@ -106,9 +108,11 @@ def auto_refund_lead_task(
             )
 
     try:
-        return asyncio.run(_run())
-    except Exception as exc:
+        return run_async_celery_task(_run)
+    except Exception as exc:  # task-level guard: log, retry if budget remaining, else return not-refunded dict
         logger.exception("auto_refund_lead_task failed for lead %s", lead_id)
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc) from exc
         return {
             "lead_id": lead_id,
             "refunded": False,

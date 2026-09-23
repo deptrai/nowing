@@ -28,7 +28,7 @@ def _vertex_count(geom: Any) -> int:
     try:
         # shapely 2.0+
         return int(geom.get_num_coordinates())
-    except Exception:
+    except Exception:  # fallback: coordinate inspection error -> assume 0 vertices
         return 0
 
 
@@ -47,7 +47,7 @@ def normalize_to_multipolygon(geom: Any) -> MultiPolygon:
     try:
         if not geom.is_valid:
             geom = make_valid(geom)
-    except Exception as exc:
+    except Exception as exc:  # shapely topology repair failure -> surface typed ValueError
         raise ValueError(f"Could not make geometry valid: {exc}") from exc
 
     if isinstance(geom, MultiPolygon):

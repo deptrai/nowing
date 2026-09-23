@@ -717,3 +717,47 @@ class TestLeadSourceAdapterStateRecovery:
             )
             assert records
             assert adapter.last_execution_status == "ok"
+
+
+@pytest.mark.unit
+async def test_vietnamworks_adapter_location_filtering(monkeypatch):
+    """Verify VietnamWorksLeadAdapter forwards location filter to search params."""
+    from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
+
+    captured_params = {}
+
+    async def fake_scrape(params):
+        captured_params.update(params)
+        return {
+            "items": [
+                {"id": "1", "title": "Dev", "company": "A", "location": "Hà Nội"},
+                {"id": "2", "title": "Dev", "company": "B", "location": "Đà Nẵng"},
+            ],
+            "degraded": False,
+        }
+
+    monkeypatch.setattr(
+        "app.lead_intelligence.adapters.vietnamworks.scrape_vietnamworks",
+        fake_scrape,
+    )
+
+    adapter = VietnamWorksLeadAdapter()
+    leads = await adapter.search_leads(
+        workspace_id=1,
+        query="python",
+        filters={"location": "Hà Nội"},
+    )
+    assert captured_params.get("locationId") == 24
+    assert len(leads) == 1
+    assert leads[0].data["location"] == "Hà Nội"
+
+
+@pytest.mark.unit
+def test_muaban_bds_resolve_city_slug_expanded():
+    """Verify MuabanBds _resolve_city_slug resolves provinces outside the initial 5 cities."""
+    from app.proprietary.platforms.muaban_bds.scraper import _resolve_city_slug
+
+    assert _resolve_city_slug("Bình Dương") == "binh-duong"
+    assert _resolve_city_slug("Đồng Nai") == "dong-nai"
+    assert _resolve_city_slug("Khánh Hòa") == "khanh-hoa"
+    assert _resolve_city_slug("Lâm Đồng") == "lam-dong"

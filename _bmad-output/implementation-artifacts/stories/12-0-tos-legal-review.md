@@ -1,8 +1,13 @@
 ---
+story_key: 12-0-tos-legal-review
+status: done
+---
+
+---
 title: Story 12.0 — ToS & Legal Review
 epic: 12
 story: 0
-status: proposed
+status: done
 priority: P0
 ---
 

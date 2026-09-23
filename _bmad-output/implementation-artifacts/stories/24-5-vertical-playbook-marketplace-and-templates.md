@@ -1,9 +1,9 @@
 ---
-story_key: "24-5"
+story_key: 24-5-vertical-playbook-marketplace-community-workflow-templates
 epic: "epic-24"
 story: "24.5"
 title: "Vertical Playbook Marketplace & Community Workflow Templates"
-status: "done"
+status: done
 baseline_commit: "6ac305274"
 ---
 

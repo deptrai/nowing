@@ -169,7 +169,8 @@ def _extract_salary_numbers(
             token = token[:-1].strip()
         try:
             numbers.append(float(token) * unit)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
     if not numbers:
@@ -398,7 +399,7 @@ def _parse_detail_html(html: str) -> dict[str, Any]:
     """Fallback HTML parser for Indeed detail pages."""
     try:
         root = lxml_html.fromstring(html)
-    except Exception:
+    except Exception:  # HTML parse failure on detail page; return empty dict
         return {}
 
     section_div = root.xpath('//div[@id="jobDescriptionText"]')
@@ -466,7 +467,7 @@ def _apply_detail(item: dict[str, Any], detail: dict[str, Any]) -> None:
 def _parse_search_page(html: str) -> list[dict[str, Any]]:
     try:
         root = lxml_html.fromstring(html)
-    except Exception:
+    except Exception:  # HTML parse failure on search page; return empty list
         return []
 
     cards = root.xpath('//div[contains(@class,"job_seen_beacon")]')
@@ -705,7 +706,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             "indeed.scrape timed out after %ss", _INDEED_FETCH_TIMEOUT_SECONDS
         )
         return _degraded("timeout", cost_micros=cost_micros)
-    except Exception as exc:
+    except Exception as exc:  # scrape loop unexpected failure; degrade to anti_bot_block if empty
         logger.warning("indeed.scrape failed: %s", exc)
         if not items:
             return _degraded("anti_bot_block", cost_micros=cost_micros)
@@ -728,6 +729,6 @@ async def scrape_indeed(params: dict[str, Any]) -> dict[str, Any]:
         return await _scrape(params)
     except TimeoutError:
         return _degraded("timeout")
-    except Exception as exc:
+    except Exception as exc:  # top-level scrape unexpected failure; degrade to anti_bot_block
         logger.warning("indeed.scrape failed: %s", exc)
         return _degraded("anti_bot_block")

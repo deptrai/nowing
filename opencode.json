@@ -1,15 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "knowns": {
-      "command": [
-        "knowns",
-        "mcp",
-        "--stdio"
-      ],
-      "enabled": true,
-      "type": "local"
-    },
     "nowing": {
       "command": [
         "uv",

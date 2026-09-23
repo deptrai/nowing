@@ -2,6 +2,7 @@
 
 import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { ArrowUpIcon, Paperclip, SquareIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
@@ -66,6 +67,7 @@ const ANON_ALLOWED_EXTENSIONS = new Set([
 const ACCEPT_EXTENSIONS = Array.from(ANON_ALLOWED_EXTENSIONS).join(",");
 
 export const FreeComposer: FC = () => {
+	const t = useTranslations("freeChat");
 	const aui = useAui();
 	const isRunning = useAuiState(({ thread }) => thread.isRunning);
 	const { gate } = useLoginGate();
@@ -144,7 +146,7 @@ export const FreeComposer: FC = () => {
 				toast.success(`Uploaded "${data.filename}"`);
 			} catch (err) {
 				console.error("Upload failed:", err);
-				toast.error(err instanceof Error ? err.message : "Upload failed");
+				toast.error(err instanceof Error ? err.message : t("upload_failed"));
 			}
 		},
 		[gate, anonMode]
@@ -163,7 +165,7 @@ export const FreeComposer: FC = () => {
 			)}
 
 			<textarea
-				placeholder="Ask anything..."
+				placeholder={t("ask_anything")}
 				value={text}
 				onChange={handleTextChange}
 				onKeyDown={handleKeyDown}
@@ -210,14 +212,18 @@ export const FreeComposer: FC = () => {
 					<FreeModelSelector className="h-8 max-w-[44vw] px-2 sm:max-w-[220px] sm:px-3" />
 					{!isRunning ? (
 						<ComposerPrimitive.Send asChild>
-							<TooltipIconButton tooltip="Send" variant="default" className="size-8 rounded-full">
+							<TooltipIconButton
+								tooltip={t("send")}
+								variant="default"
+								className="size-8 rounded-full"
+							>
 								<ArrowUpIcon />
 							</TooltipIconButton>
 						</ComposerPrimitive.Send>
 					) : (
 						<ComposerPrimitive.Cancel asChild>
 							<TooltipIconButton
-								tooltip="Cancel"
+								tooltip={t("cancel")}
 								variant="destructive"
 								className="size-8 rounded-full"
 							>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ export function CreateFolderDialog({
 	parentFolderName,
 	onConfirm,
 }: CreateFolderDialogProps) {
+	const t = useTranslations("documents");
 	const [name, setName] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
 
@@ -60,12 +62,12 @@ export function CreateFolderDialog({
 					<div className="flex items-center gap-2 sm:gap-3">
 						<div className="flex-1 min-w-0">
 							<DialogTitle className="text-base sm:text-lg">
-								{isSubfolder ? "New subfolder" : "New folder"}
+								{isSubfolder ? t("new_subfolder") : t("new_folder")}
 							</DialogTitle>
 							<DialogDescription className="text-xs sm:text-sm mt-0.5">
 								{isSubfolder
-									? `Create a new folder inside "${parentFolderName}".`
-									: "Create a new folder at the root level."}
+									? t("create_inside_folder", { parentFolderName })
+									: t("create_at_root")}
 							</DialogDescription>
 						</div>
 					</div>
@@ -74,12 +76,12 @@ export function CreateFolderDialog({
 				<form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:gap-4">
 					<div className="flex flex-col gap-2">
 						<Label htmlFor="folder-name" className="text-sm">
-							Folder name
+							{t("folder_name")}
 						</Label>
 						<Input
 							ref={inputRef}
 							id="folder-name"
-							placeholder="e.g. Research, Notes, Archive…"
+							placeholder={t("folder_name_placeholder")}
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							maxLength={255}
@@ -95,10 +97,10 @@ export function CreateFolderDialog({
 							onClick={() => onOpenChange(false)}
 							className="h-8 sm:h-9 text-xs sm:text-sm"
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button type="submit" disabled={!name.trim()} className="h-8 sm:h-9 text-xs sm:text-sm">
-							Create
+							{t("create")}
 						</Button>
 					</DialogFooter>
 				</form>

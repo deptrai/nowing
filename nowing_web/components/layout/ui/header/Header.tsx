@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { currentThreadAtom } from "@/atoms/chat/current-thread.atom";
 import { activeTabAtom } from "@/atoms/tabs/tabs.atom";
 import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms";
@@ -15,6 +16,7 @@ interface HeaderProps {
 }
 
 export function Header({ mobileMenuTrigger }: HeaderProps) {
+	const t = useTranslations("layout");
 	const pathname = usePathname();
 	const workspaceId = useAtomValue(activeWorkspaceIdAtom);
 	const activeTab = useAtomValue(activeTabAtom);

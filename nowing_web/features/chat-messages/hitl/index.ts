@@ -7,7 +7,14 @@ export {
 	useHitlApproval,
 	usePendingInterrupt,
 } from "./approval";
-export { DoomLoopApproval, GenericHitlApproval, isDoomLoopInterrupt } from "./approval-cards";
+export {
+	DoomLoopApproval,
+	GenericHitlApproval,
+	isDoomLoopInterrupt,
+	isQuestionInterrupt,
+	QuestionChoiceApproval,
+	type QuestionOptionItem,
+} from "./approval-cards";
 export {
 	closeHitlEditPanelAtom,
 	type ExtraField,

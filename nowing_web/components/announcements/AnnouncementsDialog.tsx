@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { announcementsDialogAtom } from "@/atoms/layout/dialogs.atom";
 import { AnnouncementCard } from "@/components/announcements/AnnouncementCard";
@@ -10,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAnnouncements } from "@/hooks/use-announcements";
 
 export function AnnouncementsDialog() {
+	const t = useTranslations("announcements");
 	const [open, setOpen] = useAtom(announcementsDialogAtom);
 	const { announcements, markAllRead } = useAnnouncements({ includeExpired: true });
 
@@ -23,11 +25,11 @@ export function AnnouncementsDialog() {
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent className="select-none max-w-[900px] w-[95vw] md:w-[90vw] h-[90vh] md:h-[80vh] max-h-[640px] flex flex-col p-0 gap-0 overflow-hidden bg-popover text-popover-foreground">
-				<DialogTitle className="sr-only">What's New</DialogTitle>
+				<DialogTitle className="sr-only">{t("whats_new")}</DialogTitle>
 
 				<div className="flex flex-1 flex-col overflow-hidden min-w-0">
 					<div className="px-6 md:px-8 pt-6 pb-2 shrink-0">
-						<h2 className="text-lg font-semibold">What's New</h2>
+						<h2 className="text-lg font-semibold">{t("whats_new")}</h2>
 						<Separator className="mt-4" />
 					</div>
 					<div className="flex-1 overflow-y-auto overflow-x-hidden">

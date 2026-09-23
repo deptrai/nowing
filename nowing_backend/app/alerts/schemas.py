@@ -94,3 +94,16 @@ class AlertSubscriptionRead(AlertSubscriptionCreate):
 
     id: UUID
     alert_rule_id: UUID
+
+
+class CreateAlertFromTemplateRequest(BaseModel):
+    """Request payload to instantiate an alert rule from a vertical template (Story 6.11)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    template_id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=200)
+    parameters: dict = Field(default_factory=dict)
+    schedule: str | None = Field(default=None, pattern="^(none|daily|weekly)$")
+    notification_channels: list[str] = Field(default_factory=lambda: ["in_app"])
+

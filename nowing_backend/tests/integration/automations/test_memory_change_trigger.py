@@ -29,6 +29,10 @@ from __future__ import annotations
 
 import pytest
 
+from app.config import config as _cfg
+
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
+
 pytestmark = pytest.mark.integration
 
 
@@ -493,7 +497,7 @@ async def test_memory_writing_automation_does_not_refire(
             source_type=MemorySourceType.CHAT_MESSAGE,
             tags=["competitor"],
             created_by_id=ctx.creator_user_id,
-            embedding=[0.1] * 384,
+            embedding=[0.1] * _EMBEDDING_DIM,
             commit=True,
         )
         written.append(mem.id)
@@ -556,7 +560,7 @@ async def test_memory_writing_automation_does_not_refire(
         source_type=MemorySourceType.MANUAL,
         tags=["competitor"],
         created_by_id=db_user.id,
-        embedding=[0.2] * 384,
+        embedding=[0.2] * _EMBEDDING_DIM,
         commit=True,
     )
     assert len(memory_events) == 1

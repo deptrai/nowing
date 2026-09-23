@@ -1,0 +1,93 @@
+---
+title: Automations & Playbooks
+description: Memory-driven automations, schema-driven forms, and reusable playbook templates
+---
+
+# Automations & Playbooks
+
+Nowing's **Automations** engine lets you build long-running, event-driven workflows that combine triggers, actions, and AI steps. **Playbooks** are reusable workflow templates you can share across workspaces or publish to a marketplace.
+
+## What is an Automation?
+
+An automation is a multi-step workflow with:
+
+- **Triggers** — what starts the workflow (webhook, schedule, connector event, API call).
+- **Actions** — the steps the workflow performs (write back to a connector, send a message, run an agent, wait, branch).
+- **Memory integration** — automations can read from and write to workspace memory, so each run is context-aware.
+- **Campaign support** — sequence-style automations for drip outreach, onboarding, and follow-ups.
+
+## What is a Playbook?
+
+A playbook is a reusable automation template. Workspaces can:
+
+- Use built-in playbooks.
+- Create their own from scratch.
+- Import playbooks from the **Playbook Marketplace** (community and vertical templates).
+- Define schema-driven UI forms for playbook actions, so non-technical users can configure them safely.
+
+## Key concepts
+
+| Concept | Description |
+|---------|-------------|
+| Trigger | Event that starts an automation run |
+| Task / Action | A single step in the workflow |
+| Write-back | Push data or decisions back to a connected service |
+| Schema-driven form | A form generated from a JSON Schema for playbook configuration |
+| Memory-driven step | A step that reads prior workspace context or writes new findings |
+| Campaign | A sequence of timed actions, often used for outreach |
+
+## How to build an automation
+
+1. Open **Automations** in your workspace sidebar.
+2. Click **New Automation**.
+3. Choose a trigger type (webhook, schedule, connector event, manual).
+4. Add actions from the library.
+5. Configure each action — many expose schema-driven forms.
+6. Save and enable the automation.
+7. Trigger a test run and inspect the output.
+
+## Inbound mail gateway
+
+Nowing can receive emails at `task@nowing.ai` and process attachments as automation triggers. This is useful for:
+
+- Invoice processing
+- Support ticket ingestion
+- Document intake workflows
+- Scheduled reports
+
+## Campaigns
+
+Campaigns are a special automation pattern for outreach:
+
+- Define a sequence of messages and delays.
+- Branch on reply, open, or click signals.
+- Track per-recipient state and credit spend.
+- Pause or resume individual contacts.
+
+## Playbook marketplace
+
+The marketplace contains vertical and community templates:
+
+- Sales outreach sequences
+- Real estate listing alerts
+- Job market monitoring
+- Financial news tracking
+- Data enrichment playbooks
+
+You can fork a marketplace playbook into your workspace and customize it.
+
+## Monitoring
+
+Each automation run is logged with:
+
+- Start and end time
+- Status (pending, running, completed, failed)
+- Per-step output and errors
+- Credit consumption
+
+Open an automation to view its run history and retry failed steps.
+
+## Learn more
+
+- [Lead Intelligence & Outbound](/docs/how-to/lead-intelligence)
+- [Usage & Credits](/docs/how-to/usage-credits)

@@ -174,7 +174,7 @@ async def _start_one(
             trigger.automation_id,
             run.id,
         )
-    except Exception:
+    except Exception:  # trigger evaluation failure; skip trigger and retry next interval
         logger.exception(
             "scheduled fire failed for trigger %d (next attempt at next match)",
             claim.trigger_id,

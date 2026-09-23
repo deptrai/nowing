@@ -22,7 +22,7 @@ _ERROR_KEY = "scraper_rule:metrics:{platform}:error"
 async def _redis() -> Any | None:
     try:
         return await get_redis_client()
-    except Exception:
+    except Exception:  # Redis down → None so caller skips metrics recording
         logger.warning("Redis unavailable for scraper rule metrics")
         return None
 
@@ -36,7 +36,7 @@ async def record_success(platform: str) -> None:
         await redis.expire(
             _SUCCESS_KEY.format(platform=platform.lower()), _METRICS_WINDOW_SECONDS
         )
-    except Exception:
+    except Exception:  # best-effort metric write; never fail scrape pipeline on telemetry
         logger.exception("Failed to record scraper rule success metric")
 
 
@@ -49,7 +49,7 @@ async def record_failure(platform: str) -> None:
         await redis.expire(
             _ERROR_KEY.format(platform=platform.lower()), _METRICS_WINDOW_SECONDS
         )
-    except Exception:
+    except Exception:  # best-effort metric write; never fail scrape pipeline on telemetry
         logger.exception("Failed to record scraper rule error metric")
 
 
@@ -69,7 +69,7 @@ async def get_error_rate(platform: str) -> dict[str, Any]:
                 "error_rate_pct": 0.0,
             }
         success, error = await redis.mget(success_key, error_key)
-    except Exception:
+    except Exception:  # Redis read failure → zeroed metrics payload keeps API shape stable
         logger.exception("Failed to read scraper rule metrics")
         return {
             "platform": platform,

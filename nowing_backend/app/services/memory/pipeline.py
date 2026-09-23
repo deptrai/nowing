@@ -189,7 +189,7 @@ async def invoke_extraction_llm(llm: Any, prompt: str) -> str:
     except TRANSIENT_LLM_ERRORS as exc:
         logger.warning("Memory extraction LLM transient error (will retry): %s", exc)
         raise
-    except Exception as exc:
+    except Exception as exc:  # unexpected LLM failure → log with traceback then re-raise for retry policy
         logger.exception("Memory extraction LLM call failed unexpectedly: %s", exc)
         raise
 

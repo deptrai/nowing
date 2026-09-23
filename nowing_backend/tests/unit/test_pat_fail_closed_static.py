@@ -12,7 +12,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 APP_ROOT = BACKEND_ROOT / "app"
 
 ALLOW_ANY_EXPECTED = {
-    "app.py": "auth: AuthContext = Depends(allow_any_principal)",
+    "app/factory.py": "auth: AuthContext = Depends(allow_any_principal)",
     "routes/obsidian_plugin_routes.py": (
         "_auth: AuthContext = Depends(allow_any_principal)"
     ),

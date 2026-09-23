@@ -13,6 +13,7 @@ from app.lead_intelligence.confidence import (
     SchemaCompletenessResult,
     SchemaField,
 )
+from app.lead_intelligence.confidence.prompts import build_batch_prompt
 
 pytestmark = pytest.mark.unit
 
@@ -121,6 +122,7 @@ class TestGoldenConfidenceGate:
     def test_golden_fixture_scores_and_routes(self) -> None:
         fixture = Path(__file__).with_name("fixtures") / "golden_confidence_gate.json"
         cases = json.loads(fixture.read_text())
+        assert len(cases) == 100, f"Expected 100 golden records, got {len(cases)}"
         for case in cases:
             lead = NormalizedLead(**case)
             result = ConfidenceGate.score(lead)
@@ -132,3 +134,34 @@ class TestGoldenConfidenceGate:
                 f"{case['source_id']}: expected route {case['expected_route']}, "
                 f"got {_route(result)} (score={result.score})"
             )
+
+    def test_golden_100_records_token_budget_and_leakage_benchmark(self) -> None:
+        """AC-5: 100 records token budget and zero-leakage benchmark."""
+        fixture = Path(__file__).with_name("fixtures") / "golden_confidence_gate.json"
+        cases = json.loads(fixture.read_text())
+        leads = [NormalizedLead(**c) for c in cases]
+
+        micro_leads = [
+            lead for lead in leads
+            if _route(ConfidenceGate.score(lead)) == "micro"
+            and lead.raw_data.get("description")
+        ]
+        assert len(micro_leads) >= 10, f"Expected >= 10 micro candidates, got {len(micro_leads)}"
+
+        total_prompt_chars = 0
+        prompt_count = 0
+        for lead in micro_leads:
+            prompt, indices = build_batch_prompt([lead])
+            if prompt:
+                prompt_count += 1
+                total_prompt_chars += len(prompt)
+                # Bounded prompt length per record
+                assert len(prompt) <= 450, f"Prompt exceeded 450 chars: {len(prompt)}"
+                # Zero phone number leakage in prompt
+                if lead.primary_phone:
+                    assert lead.primary_phone not in prompt
+
+        assert prompt_count > 0
+        avg_prompt_chars = total_prompt_chars / prompt_count
+        # Token budget benchmark: average prompt length <= 350 chars
+        assert avg_prompt_chars <= 350, f"Average prompt chars {avg_prompt_chars} exceeded 350 bound"

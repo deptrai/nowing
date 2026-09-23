@@ -84,7 +84,7 @@ def _estimate_pages_safe(etl_credit_service, file_path: str) -> int:
     """Estimate page count with a file-size fallback."""
     try:
         return etl_credit_service.estimate_pages_before_processing(file_path)
-    except Exception:
+    except Exception:  # page estimate failure; fallback to file-size heuristic
         file_size = os.path.getsize(file_path)
         return max(1, file_size // (80 * 1024))
 
@@ -338,7 +338,7 @@ async def process_file_in_background(
             return await _process_document_upload(ctx)
         return await _process_non_document_upload(ctx)
 
-    except Exception as e:
+    except Exception as e:  # file upload processing failure; rollback session, log failure, and re-raise
         await session.rollback()
 
         from app.services.etl_credit_service import InsufficientCreditsError
@@ -548,7 +548,7 @@ async def process_file_in_background_with_document(
         )
         return document
 
-    except Exception as e:
+    except Exception as e:  # file processing with document failure; rollback session, log failure, and re-raise
         await session.rollback()
 
         from app.services.etl_credit_service import InsufficientCreditsError

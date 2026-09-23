@@ -14,13 +14,14 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+import app.config.decision as decision_config
 from app.db import (
     NATIVE_TO_LEGACY_DOCTYPE,
     Document,
     SearchSourceConnector,
     Workspace,
 )
-from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
+from app.retriever.chunks_hybrid_search import ChunksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
 from app.services.chainlens.schemas import (
     PrivateDataSearchRequest,
@@ -28,6 +29,7 @@ from app.services.chainlens.schemas import (
     PrivateProviderChunk,
     PrivateProviderChunkMetadata,
 )
+from app.services.content_guardrails import GuardrailAction, filter_passages
 from app.services.memory.search import MemoryHybridSearch, ScoredMemory
 from app.services.token_tracking_service import UsageType, record_token_usage
 from app.tenant_context import set_request_tenant_context
@@ -112,7 +114,7 @@ class PrivateProviderService:
 
     def __init__(self, session):
         self.session = session
-        self._chunk_retriever = ChucksHybridSearchRetriever(session)
+        self._chunk_retriever = ChunksHybridSearchRetriever(session)
         self._document_retriever = DocumentHybridSearchRetriever(session)
 
     async def search(
@@ -216,6 +218,48 @@ class PrivateProviderService:
         # Respect caller's topK while guaranteeing a stable shape.
         if len(chunks) > request.topK:
             chunks = chunks[: request.topK]
+
+        # Jev content guardrails (Story 39.4) — separate entry point from
+        # connectors/search, so this is not a second pass over already-
+        # filtered content. Flag-off is a no-op before any work happens.
+        # user_id forwarded without a session — DecisionService opens its
+        # own per call, so FILTER_CONCURRENCY concurrent decide() calls
+        # never share one AsyncSession (asyncpg single-connection rule).
+        if decision_config.decision_enabled() and decision_config.decision_task_enabled(
+            "filter"
+        ):
+            try:
+                pairs = [(chunk, chunk.content) for chunk in chunks]
+                filtered, _stats = await filter_passages(
+                    pairs,
+                    query=request.query,
+                    surface="rag",
+                    workspace_id=workspace_id,
+                    user_id=effective_user_id,
+                )
+                kept_chunks: list[PrivateProviderChunk] = []
+                demoted: list[PrivateProviderChunk] = []
+                for chunk, verdict in filtered:
+                    if verdict.action is GuardrailAction.DROP:
+                        # Relevance-negative demotes to the tail instead of
+                        # dropping (same recall-safe rule as connector RAG).
+                        if "irrelevant" in verdict.reasons:
+                            demoted.append(chunk)
+                        continue
+                    if verdict.action is GuardrailAction.MASK:
+                        # MASK without usable masked text can't pass through
+                        # unmasked — drop the chunk (mask_failed parity).
+                        if not verdict.masked_text:
+                            continue
+                        chunk.content = verdict.masked_text
+                    kept_chunks.append(chunk)
+                chunks = kept_chunks + demoted
+            except Exception:
+                logger.warning(
+                    "[content_filter] private_provider filter failed — "
+                    "returning unfiltered chunks",
+                    exc_info=True,
+                )
 
         await self._record_usage(
             workspace_id=workspace_id,
@@ -424,7 +468,7 @@ class PrivateProviderService:
                 query_embedding=query_embedding,
                 top_k=memory_top_k,
             )
-        except Exception:
+        except Exception:  # best-effort memory search; continue with empty memory results
             logger.warning(
                 "Memory search failed for workspace %d", workspace_id, exc_info=True
             )
@@ -439,7 +483,7 @@ class PrivateProviderService:
                     query_embedding=query_embedding,
                     top_k=memory_top_k,
                 )
-            except Exception:
+            except Exception:  # best-effort user memory search; continue with empty results
                 logger.warning(
                     "User-scoped memory search failed for user %s in workspace %d",
                     user_id,

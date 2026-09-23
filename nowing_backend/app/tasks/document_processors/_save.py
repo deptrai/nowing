@@ -133,7 +133,7 @@ async def save_file_document(
             )
             return None
         raise db_error
-    except Exception as e:
+    except Exception as e:  # document save failure; rollback session and wrap in RuntimeError
         await session.rollback()
         raise RuntimeError(
             f"Failed to process file document using {etl_service}: {e!s}"

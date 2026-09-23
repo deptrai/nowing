@@ -103,7 +103,7 @@ class RerankerService:
 
             return serialized_results
 
-        except Exception as e:
+        except Exception as e:  # reranker failure → fall back to original document order
             # Log the error
             logging.error(f"Error during reranking: {e!s}")
             # Fall back to original documents without reranking

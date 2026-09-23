@@ -9,7 +9,9 @@ import { Logo } from "@/components/Logo";
 import { useRuntimeConfig } from "@/components/providers/runtime-config";
 import { Button } from "@/components/ui/button";
 import { getAuthErrorDetails, shouldRetry } from "@/lib/auth-errors";
-import { setRedirectPath } from "@/lib/auth-utils";
+import { authenticatedFetch } from "@/lib/auth-fetch";
+import { getPostLoginRedirectPath, setRedirectPath } from "@/lib/auth-utils";
+import { buildBackendUrl } from "@/lib/env-config";
 import { AmbientBackground } from "./AmbientBackground";
 import { GoogleLoginButton } from "./GoogleLoginButton";
 import { LocalLoginForm } from "./LocalLoginForm";
@@ -21,6 +23,35 @@ function LoginContent() {
 	const { authType } = useRuntimeConfig();
 	const [urlError, setUrlError] = useState<{ title: string; message: string } | null>(null);
 	const searchParams = useSearchParams();
+
+	useEffect(() => {
+		// If the user is already signed in, don't show the form — send them to
+		// the dashboard (or the page they originally wanted). Skip the check when
+		// the URL carries an OAuth error or a just-logged-out flag so those toasts
+		// still render.
+		const error = searchParams.get("error");
+		const logout = searchParams.get("logout");
+		if (error || logout === "true") return;
+
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await authenticatedFetch(buildBackendUrl("/auth/session"), {
+					skipAuthRedirect: true,
+				});
+				if (!res.ok) return;
+				const data = (await res.json()) as { authenticated?: boolean };
+				if (!cancelled && data.authenticated) {
+					router.replace(getPostLoginRedirectPath());
+				}
+			} catch {
+				// Session probe failed — stay on the login form.
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [router, searchParams]);
 
 	useEffect(() => {
 		// Check for various URL parameters that might indicate success or error states
@@ -46,7 +77,7 @@ function LoginContent() {
 		// Show logout confirmation
 		if (logout === "true") {
 			toast.success(tCommon("success"), {
-				description: "You have been securely logged out",
+				description: t("home_you_have_been_securely"),
 				duration: 3000,
 			});
 		}
@@ -54,7 +85,7 @@ function LoginContent() {
 		// Show error messages from OAuth or other flows using auth-errors utility
 		if (error) {
 			// Use the auth-errors utility to get proper error details
-			const errorDetails = getAuthErrorDetails(error);
+			const errorDetails = getAuthErrorDetails(t, error);
 
 			// If we have a custom message from URL params, use it as description
 			const errorDescription = message ? decodeURIComponent(message) : errorDetails.description;
@@ -78,7 +109,7 @@ function LoginContent() {
 			// Add retry action if the error is retryable
 			if (shouldRetry(error)) {
 				toastOptions.action = {
-					label: "Retry",
+					label: t("home_retry"),
 					onClick: () => router.refresh(),
 				};
 			}
@@ -88,7 +119,7 @@ function LoginContent() {
 
 		// Show general messages
 		if (message && !error && !registered && !logout) {
-			toast.info("Notice", {
+			toast.info(t("notice"), {
 				description: decodeURIComponent(message),
 				duration: 4000,
 			});
@@ -136,7 +167,7 @@ function LoginContent() {
 									className="flex-shrink-0 mt-0.5 text-red-500 dark:text-red-400"
 									aria-hidden="true"
 								>
-									<title>Error Icon</title>
+									<title>{t("home_error_icon")}</title>
 									<circle cx="12" cy="12" r="10" />
 									<line x1="15" y1="9" x2="9" y2="15" />
 									<line x1="9" y1="9" x2="15" y2="15" />
@@ -151,7 +182,7 @@ function LoginContent() {
 									size="icon"
 									onClick={() => setUrlError(null)}
 									className="size-6 flex-shrink-0 text-red-500 hover:bg-transparent hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
-									aria-label="Dismiss error"
+									aria-label={t("home_dismiss_error")}
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"

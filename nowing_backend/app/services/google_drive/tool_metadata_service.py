@@ -256,7 +256,7 @@ class GoogleDriveToolMetadataService:
                 query="trashed = false", page_size=1, fields="files(id)"
             )
             return False
-        except Exception as e:
+        except Exception as e:  # catch connector health check failure, log and proceed to flag expired
             logger.warning(
                 "Google Drive connector %s health check failed: %s",
                 connector_id,
@@ -278,7 +278,7 @@ class GoogleDriveToolMetadataService:
                 flag_modified(db_connector, "config")
                 await self._db_session.commit()
                 await self._db_session.refresh(db_connector)
-        except Exception:
+        except Exception:  # best-effort persistence of auth_expired flag to DB
             logger.warning(
                 "Failed to persist auth_expired for connector %s",
                 connector_id,
@@ -366,7 +366,7 @@ class GoogleDriveToolMetadataService:
                         for f in folders
                         if f.get("id") and f.get("name")
                     ]
-            except Exception:
+            except Exception:  # best-effort folders fetch; continue with partial context
                 logger.warning(
                     "Error fetching folders for connector %s",
                     connector_id,

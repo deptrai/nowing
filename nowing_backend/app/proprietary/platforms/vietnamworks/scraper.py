@@ -73,13 +73,13 @@ def _parse_date(value: Any) -> str | None:
         try:
             dt = datetime.fromisoformat(text)
             return dt.date().isoformat()
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
         # Fallback to date-only ISO.
         try:
             return date.fromisoformat(text)
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
         # Numeric timestamp passed as a string.
         try:
             ts = float(text)
@@ -116,8 +116,8 @@ def _to_int(value: Any) -> int | None:
         if cleaned.count(".") == 1:
             try:
                 return int(float(cleaned))
-            except ValueError:
-                pass
+            except ValueError as exc:
+                logger.debug("Suppressed %r", exc)
 
         # Otherwise treat any remaining dots as thousands separators.
         try:
@@ -265,7 +265,7 @@ def _extract_items(envelope: dict[str, Any]) -> list[dict[str, Any]]:
     for index, job in enumerate(data):
         try:
             items.append(_normalize_job(job))
-        except Exception as exc:
+        except Exception as exc:  # per-item normalization failure; skip malformed job and continue
             logger.warning(
                 "vietnamworks: skipping malformed job at index %d: %s", index, exc
             )
@@ -386,7 +386,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
 
                 try:
                     envelope = resp.json()
-                except Exception as exc:
+                except Exception as exc:  # JSON parse failure on API response; return degraded decode_error
                     logger.warning("vietnamworks response decode failed: %s", exc)
                     return _degraded("decode_error", items=items)
 
@@ -420,7 +420,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
     except ValueError as exc:
         logger.warning("vietnamworks response schema drift: %s", exc)
         return _degraded("schema_drift", items=items)
-    except Exception as exc:
+    except Exception as exc:  # unexpected scrape loop failure; return degraded api_error with partial items
         logger.warning("vietnamworks.scrape failed: %s", exc)
         return _degraded("api_error", items=items)
 
@@ -444,6 +444,6 @@ async def scrape_vietnamworks(params: dict[str, Any]) -> dict[str, Any]:
     except ValueError as exc:
         logger.warning("vietnamworks response schema drift: %s", exc)
         return _degraded("schema_drift")
-    except Exception as exc:
+    except Exception as exc:  # top-level unexpected scraper failure; return degraded api_error
         logger.warning("vietnamworks.scrape failed: %s", exc)
         return _degraded("api_error")

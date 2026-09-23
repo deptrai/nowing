@@ -1,44 +1,48 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import PricingBasic from "@/components/pricing/pricing-section";
 import { JsonLd } from "@/components/seo/json-ld";
 
 const canonicalUrl = "https://www.nowing.com/pricing";
 
-const metaTitle = "Nowing Pricing: Self-Host Free or Pay As You Go";
-const metaDescription =
-	"Self-host Nowing for free from our open-core repo, or use the cloud with $5 of free credit and pay as you go at provider cost. No subscription.";
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("home");
+	const metaTitle = t("pricing_meta_title");
+	const metaDescription = t("pricing_meta_description");
 
-export const metadata: Metadata = {
-	title: metaTitle,
-	description: metaDescription,
-	keywords: [
-		"nowing pricing",
-		"pay as you go ai platform",
-		"open core ai agent platform",
-		"self-hosted ai workspace",
-		"ai automation pricing",
-		"web scraping api pricing",
-	],
-	alternates: {
-		canonical: canonicalUrl,
-	},
-	openGraph: {
+	return {
 		title: metaTitle,
 		description: metaDescription,
-		url: canonicalUrl,
-		siteName: "Nowing",
-		type: "website",
-		images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing pricing" }],
-	},
-	twitter: {
-		card: "summary_large_image",
-		title: metaTitle,
-		description: metaDescription,
-		images: ["/og-image.png"],
-	},
-};
+		keywords: [
+			"nowing pricing",
+			"pay as you go ai platform",
+			"open core ai agent platform",
+			"self-hosted ai workspace",
+			"ai automation pricing",
+			"web scraping api pricing",
+		],
+		alternates: {
+			canonical: canonicalUrl,
+		},
+		openGraph: {
+			title: metaTitle,
+			description: metaDescription,
+			url: canonicalUrl,
+			siteName: "Nowing",
+			type: "website",
+			images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Nowing pricing" }],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: metaTitle,
+			description: metaDescription,
+			images: ["/og-image.png"],
+		},
+	};
+}
 
-const page = () => {
+const page = async () => {
+	const t = await getTranslations("home");
 	return (
 		<div>
 			<JsonLd
@@ -52,19 +56,17 @@ const page = () => {
 					offers: [
 						{
 							"@type": "Offer",
-							name: "Free (Self-Hosted)",
+							name: t("pricing_offer_free_name"),
 							price: "0",
 							priceCurrency: "USD",
-							description:
-								"Open-core and self-hostable with unlimited usage. Bring your own model keys.",
+							description: t("pricing_offer_free_desc"),
 						},
 						{
 							"@type": "Offer",
-							name: "Pay As You Go",
+							name: t("pricing_offer_payg_name"),
 							price: "0",
 							priceCurrency: "USD",
-							description:
-								"Cloud accounts start with $5 of free credit. Top up any amount after that; $1 buys $1 of credit at provider cost with no subscription.",
+							description: t("pricing_offer_payg_desc"),
 						},
 					],
 				}}

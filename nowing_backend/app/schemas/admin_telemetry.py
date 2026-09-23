@@ -138,3 +138,88 @@ class PurgeDeadQueueResponse(BaseModel):
     idempotency_key: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionDailyBucket(BaseModel):
+    """One (period, task) bucket of decision calls (story 39.7)."""
+
+    period: str
+    task: str
+    calls: int = 0
+    median_latency_ms: float | None = None
+    cost_micros: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionTaskBucket(BaseModel):
+    """Aggregate decision calls for one task label."""
+
+    task: str
+    calls: int = 0
+    median_latency_ms: float | None = None
+    cost_micros: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionModelBucket(BaseModel):
+    """One distinct (model, backend) pair seen in decision calls."""
+
+    model: str
+    backend: str
+    calls: int = 0
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionCostAlert(BaseModel):
+    """Daily decision-cost alert evaluation (on-read, deduped)."""
+
+    threshold_usd: float
+    today_cost_micros: int = 0
+    exceeded: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionTelemetryResponse(BaseModel):
+    """Decision-call telemetry: volume, latency, accuracy, cost, drift."""
+
+    window_hours: int
+    workspace_id: int | None = None
+    total_calls: int = 0
+    total_cost_micros: int = 0
+    median_latency_ms: float | None = None
+    labeled: int = 0
+    correct: int = 0
+    accuracy: float | None = None
+    pinned_model: str
+    drift_detected: bool = False
+    daily: list[DecisionDailyBucket] = Field(default_factory=list)
+    by_task: list[DecisionTaskBucket] = Field(default_factory=list)
+    models: list[DecisionModelBucket] = Field(default_factory=list)
+    cost_alert: DecisionCostAlert
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionLabelRequest(BaseModel):
+    """Ground-truth label for one decision usage row."""
+
+    correct: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionLabelResponse(BaseModel):
+    """Result of a ground-truth label write."""
+
+    usage_id: int
+    correct: bool
+
+    model_config = ConfigDict(from_attributes=True)

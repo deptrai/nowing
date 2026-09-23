@@ -1,4 +1,6 @@
 import { expect, test } from "../fixtures";
+import { fulfillJson } from "../helpers/cors";
+import { mockAdminAuth } from "../helpers/admin-auth";
 
 /**
  * Story 22.3 (AC-5): Admin Scraper UI Telegram Tab & Live Cooldown Countdown.
@@ -11,6 +13,13 @@ import { expect, test } from "../fixtures";
  */
 
 test.describe("Admin Scraper Accounts - Telegram Tab", () => {
+	test.beforeEach(async ({ page }) => {
+		await mockAdminAuth(page);
+
+		await page.route("**/api/v1/admin/scraper-platform-accounts*", async (route) => {
+			await fulfillJson(route, 200, []);
+		});
+	});
 	test("[P0] should render Telegram account tab with status pills and token quota", async ({
 		page,
 	}) => {
@@ -54,8 +63,8 @@ test.describe("Admin Scraper Accounts - Telegram Tab", () => {
 
 		// Click "Add Telegram Account" button
 		const addAccountBtn = page.getByRole("button", {
-			name: /add telegram account|connect telegram/i,
-		});
+			name: "Add Telegram Account",
+		}).first();
 		await addAccountBtn.click();
 
 		// Step 1: Credentials

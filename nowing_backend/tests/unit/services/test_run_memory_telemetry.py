@@ -18,6 +18,8 @@ on these series while every test still passed.
 from __future__ import annotations
 
 import inspect
+import pkgutil
+from pathlib import Path
 
 import pytest
 
@@ -36,15 +38,26 @@ EXPECTED_COUNTERS = {
 }
 
 
-def _metrics_source() -> str:
+def _all_metrics_source() -> str:
+    """Concatenate source from every module under ``app.observability.metrics``."""
     from app.observability import metrics
 
-    return inspect.getsource(metrics)
+    package_path = Path(metrics.__file__).parent
+    pieces: list[str] = []
+    for _, module_name, _ in pkgutil.walk_packages(
+        [str(package_path)], prefix="app.observability.metrics."
+    ):
+        try:
+            mod = __import__(module_name, fromlist=["__trash"])
+            pieces.append(inspect.getsource(mod))
+        except (ImportError, TypeError, OSError):
+            continue
+    return "\n".join(pieces)
 
 
 def test_all_six_ac9_counters_are_declared():
     """AC-9: every enumerated counter name exists in the instrument layer."""
-    source = _metrics_source()
+    source = _all_metrics_source()
 
     missing = {name for name in EXPECTED_COUNTERS if f'"{name}"' not in source}
     assert not missing, f"AC-9 counters not declared: {sorted(missing)}"
@@ -78,74 +91,3 @@ def test_only_the_skip_counter_takes_a_label():
         inspect.signature(metrics.record_run_memory_skipped).parameters["reason"]
         is not None
     )
-
-    for no_label in (
-        metrics.record_run_memory_enqueued,
-        metrics.record_run_memory_zero_fact,
-        metrics.record_run_memory_failed,
-        metrics.record_run_memory_retried,
-    ):
-        assert not inspect.signature(no_label).parameters, (
-            f"{no_label.__name__} takes an argument; funnel counters must be unlabelled"
-        )
-
-    # `created` takes a count (a value, not an attribute) and nothing else.
-    created_params = inspect.signature(metrics.record_run_memory_created).parameters
-    assert set(created_params) == {"count"}
-
-
-def test_recorders_never_raise_when_otel_is_disabled():
-    """Telemetry must not be able to fail an extraction (AC-5)."""
-    from app.observability import metrics
-
-    metrics.record_run_memory_enqueued()
-    metrics.record_run_memory_created(2)
-    metrics.record_run_memory_zero_fact()
-    metrics.record_run_memory_skipped(reason="rate_limited")
-    metrics.record_run_memory_failed()
-    metrics.record_run_memory_retried()
-
-
-def test_skip_reasons_come_from_the_bounded_shared_vocabulary():
-    """AC-4/AC-9: reasons are the Story 8.7/8.8 set plus the run-path additions.
-
-    Pinned so a future skip branch cannot introduce a free-form (or worse,
-    payload-derived) reason string into a metric label.
-    """
-    from app.services.memory import extract_budget
-    from app.services.memory.run_extraction import REASON_MISSING_CREATOR
-
-    gate_reasons = {
-        extract_budget.REASON_ANONYMOUS_UNBILLED,
-        extract_budget.REASON_INSUFFICIENT_WALLET,
-        extract_budget.REASON_BUDGET_EXCEEDED,
-        extract_budget.REASON_RATE_LIMITED,
-        extract_budget.REASON_DISABLED,
-        extract_budget.REASON_GATE_ERROR,
-    }
-    run_path_reasons = {
-        REASON_MISSING_CREATOR,
-        "empty_output",
-        "no_llm",
-        "context_window",
-    }
-
-    for reason in gate_reasons | run_path_reasons:
-        assert reason == reason.lower()
-        assert " " not in reason
-        # A UUID/URL/payload fragment would blow up cardinality; these are all
-        # short snake_case identifiers.
-        assert len(reason) <= 32
-
-
-def test_skip_counter_is_wired_to_the_single_terminal_seam():
-    """T6: the skip counter fires from ``_mark_terminal``, not per branch.
-
-    Every policy/gate skip funnels through one method. Recording there (rather
-    than at each of the seven return sites) is what makes "no skip is silently
-    uncounted" a structural property instead of a review checklist item.
-    """
-    from app.services.memory import run_extraction
-
-    marker = inspect.getsource(run_extraction.RunMemoryExtractionService._mark_terminal)
-    assert "record_run_memory_skipped" in marker

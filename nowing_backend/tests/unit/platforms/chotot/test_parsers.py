@@ -204,3 +204,17 @@ def test_parse_unknown_category_is_not_billed():
     assert isinstance(listing, ChototListing)
     assert listing.category == "unknown"
     assert listing.listing_id == 177832999
+
+
+def test_resolve_district_id_valid_and_negative():
+    """Verify district_id guard allows non-negative IDs and rejects negative IDs."""
+    from app.proprietary.platforms.chotot.scraper import _resolve_area_v2
+
+    # Valid non-negative district_id should be returned as-is
+    assert _resolve_area_v2(None, 123, 13000, {}) == 123
+    assert _resolve_area_v2(None, 0, 13000, {}) == 0
+
+    # Negative district_id must raise ValueError
+    import pytest
+    with pytest.raises(ValueError, match="Invalid negative district_id"):
+        _resolve_area_v2(None, -1, 13000, {})

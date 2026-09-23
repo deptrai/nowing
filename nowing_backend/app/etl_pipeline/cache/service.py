@@ -27,7 +27,7 @@ class EtlCacheService:
 
         try:
             markdown = await self._store.load(row.storage_key)
-        except Exception:
+        except Exception:  # cache store load failure; treat as miss and re-parse
             # Index points at a blob that is gone; treat as a miss and re-parse.
             logger.warning("Cache blob missing: %s", row.storage_key, exc_info=True)
             return None

@@ -210,7 +210,7 @@ class GoogleCalendarToolMetadataService:
                 ),
             )
             return False
-        except Exception as e:
+        except Exception as e:  # catch connector health check failure, log and proceed to flag expired
             logger.warning(
                 "Google Calendar connector %s health check failed: %s",
                 connector_id,
@@ -232,7 +232,7 @@ class GoogleCalendarToolMetadataService:
                 flag_modified(db_connector, "config")
                 await self._db_session.commit()
                 await self._db_session.refresh(db_connector)
-        except Exception:
+        except Exception:  # best-effort persistence of auth_expired flag to DB
             logger.warning(
                 "Failed to persist auth_expired for connector %s",
                 connector_id,
@@ -346,7 +346,7 @@ class GoogleCalendarToolMetadataService:
                             "primary": cal.get("primary", False),
                         }
                     )
-            except Exception:
+            except Exception:  # best-effort calendar metadata fetch; continue with partial context
                 logger.warning(
                     "Failed to fetch calendars/timezone for connector %s",
                     connector_id,
@@ -436,7 +436,7 @@ class GoogleCalendarToolMetadataService:
                 }
                 for a in live_event.get("attendees", [])
             ]
-        except Exception:
+        except Exception:  # best-effort live event fetch; fall back to KB metadata on error
             logger.warning(
                 "Failed to fetch live event data for event %s, using KB metadata",
                 event.event_id,
@@ -544,7 +544,7 @@ class GoogleCalendarToolMetadataService:
         for connector in connectors:
             try:
                 events = await self._search_live_events(connector, event_ref)
-            except Exception:
+            except Exception:  # best-effort live event search; continue trying other connectors
                 logger.warning(
                     "Failed to search live calendar events for connector %s",
                     connector.id,

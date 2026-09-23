@@ -147,7 +147,7 @@ def _extract_pdf_images(file_path: str) -> list[tuple[int, int, str, bytes]]:
     out: list[tuple[int, int, str, bytes]] = []
     try:
         reader = PdfReader(file_path)
-    except Exception:
+    except Exception:  # document processing failure; skip and continue batch
         logger.warning(
             "pypdf failed to open %s for image extraction",
             file_path,
@@ -158,7 +158,7 @@ def _extract_pdf_images(file_path: str) -> list[tuple[int, int, str, bytes]]:
     for page_idx, page in enumerate(reader.pages):
         try:
             images = list(page.images)
-        except Exception:
+        except Exception:  # document processing failure; skip and continue batch
             logger.warning(
                 "pypdf failed to enumerate images on page %d of %s",
                 page_idx + 1,
@@ -170,7 +170,7 @@ def _extract_pdf_images(file_path: str) -> list[tuple[int, int, str, bytes]]:
             try:
                 name = getattr(img, "name", None) or f"page{page_idx + 1}_img{img_idx}"
                 data = img.data
-            except Exception:
+            except Exception:  # document processing failure; skip and continue batch
                 logger.warning(
                     "pypdf failed to read image %d on page %d of %s",
                     img_idx,

@@ -231,7 +231,7 @@ def create_trash_gmail_email_tool(
                             .execute()
                         ),
                     )
-                except Exception as api_err:
+                except Exception as api_err:  # Gmail API call failure; inspect permission/auth error
                     from googleapiclient.errors import HttpError
 
                     if isinstance(api_err, HttpError) and api_err.resp.status == 403:
@@ -248,7 +248,7 @@ def create_trash_gmail_email_tool(
                                 }
                                 flag_modified(connector, "config")
                                 await db_session.commit()
-                        except Exception:
+                        except Exception:  # best-effort auth_expired flag persistence; continue execution
                             logger.warning(
                                 "Failed to persist auth_expired for connector %s",
                                 connector.id,
@@ -287,7 +287,7 @@ def create_trash_gmail_email_tool(
                         )
                     else:
                         logger.warning(f"Document {document_id} not found in KB")
-                except Exception as e:
+                except Exception as e:  # KB document cleanup failure; rollback and attach warning
                     logger.error(f"Failed to delete document from KB: {e}")
                     await db_session.rollback()
                     trash_result["warning"] = (
@@ -302,7 +302,7 @@ def create_trash_gmail_email_tool(
 
             return trash_result
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

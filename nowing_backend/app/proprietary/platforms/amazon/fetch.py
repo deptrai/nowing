@@ -176,7 +176,7 @@ async def fetch_page(
             if method == "POST":
                 kwargs["data"] = data or {}
             page = await request(url, **kwargs)
-        except Exception as exc:
+        except Exception as exc:  # request/proxy failure; retry or abort on dedicated proxy
             logger.warning("Amazon request failed for %s: %s", url, exc)
             if proxy is not None:
                 return None

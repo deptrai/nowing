@@ -316,7 +316,7 @@ def create_update_calendar_event_tool(
                             .execute()
                         ),
                     )
-                except Exception as api_err:
+                except Exception as api_err:  # Google Calendar API call failure; inspect permission/auth error
                     from googleapiclient.errors import HttpError
 
                     if isinstance(api_err, HttpError) and api_err.resp.status == 403:
@@ -336,7 +336,7 @@ def create_update_calendar_event_tool(
                                 _conn.config = {**_conn.config, "auth_expired": True}
                                 flag_modified(_conn, "config")
                                 await db_session.commit()
-                        except Exception:
+                        except Exception:  # best-effort auth_expired flag persistence; continue execution
                             logger.warning(
                                 "Failed to persist auth_expired for connector %s",
                                 actual_connector_id,
@@ -372,7 +372,7 @@ def create_update_calendar_event_tool(
                         )
                     else:
                         kb_message_suffix = " The knowledge base will be updated in the next scheduled sync."
-                except Exception as kb_err:
+                except Exception as kb_err:  # post-update KB sync failure; defer to scheduled sync
                     logger.warning(f"KB sync after update failed: {kb_err}")
                     kb_message_suffix = " The knowledge base will be updated in the next scheduled sync."
 
@@ -383,7 +383,7 @@ def create_update_calendar_event_tool(
                 "message": f"Successfully updated the calendar event.{kb_message_suffix}",
             }
 
-        except Exception as e:
+        except Exception as e:  # tool execution failure → return error result
             from langgraph.errors import GraphInterrupt
 
             if isinstance(e, GraphInterrupt):

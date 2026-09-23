@@ -37,7 +37,7 @@ async def list_available_models(
     """
     try:
         return await get_model_list()
-    except Exception as e:
+    except Exception as e:  # model catalog fetch failure → surface as typed HTTP error
         logger.exception("Failed to fetch model list")
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch model list: {e!s}"

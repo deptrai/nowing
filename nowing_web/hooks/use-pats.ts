@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type {
 	CreatedPat,
@@ -10,6 +11,7 @@ import type {
 import { patsApiService } from "@/lib/apis/pats-api.service";
 
 export function usePats() {
+	const t = useTranslations();
 	const [tokens, setTokens] = useState<PersonalAccessToken[]>([]);
 	const [createdToken, setCreatedToken] = useState<CreatedPat | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +24,7 @@ export function usePats() {
 			setTokens(data);
 		} catch (error) {
 			console.error("Failed to load personal access tokens:", error);
-			toast.error("Failed to load personal access tokens");
+			toast.error(t("toast.pats_load_failed"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -39,11 +41,11 @@ export function usePats() {
 				const data = await patsApiService.createPat(request);
 				setCreatedToken(data);
 				await refresh();
-				toast.success("Personal access token created");
+				toast.success(t("toast.pats_created"));
 				return data;
 			} catch (error) {
 				console.error("Failed to create personal access token:", error);
-				toast.error("Failed to create personal access token");
+				toast.error(t("toast.pats_create_failed"));
 				throw error;
 			} finally {
 				setIsMutating(false);
@@ -58,10 +60,10 @@ export function usePats() {
 			try {
 				await patsApiService.deletePat(id);
 				await refresh();
-				toast.success("Personal access token deleted");
+				toast.success(t("toast.pats_deleted"));
 			} catch (error) {
 				console.error("Failed to delete personal access token:", error);
-				toast.error("Failed to delete personal access token");
+				toast.error(t("toast.pats_delete_failed"));
 				throw error;
 			} finally {
 				setIsMutating(false);

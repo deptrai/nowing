@@ -13,6 +13,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -127,6 +128,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 			activateChatThread({
 				id: thread.id,
 				workspaceId,
+				navigate: false,
 			});
 		},
 		[activateChatThread, workspaceId]
@@ -239,7 +241,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 									variant="secondary"
 									className="h-7 gap-1.5 rounded-md px-2.5 text-xs font-medium"
 								>
-									<span className="font-semibold text-muted-foreground">Filter by</span>
+									<span className="font-semibold text-muted-foreground">{t("x_filter_by")}</span>
 									<span>{selectedFilterLabel}</span>
 									<ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
 								</Button>
@@ -255,7 +257,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 									/>
 								</DropdownMenuItem>
 								<DropdownMenuItem onClick={() => setShowArchived(true)}>
-									<span className="flex-1">Archived</span>
+									<span className="flex-1">{t("x_archived")}</span>
 									<Check
 										className={cn(
 											"h-4 w-4 text-primary",
@@ -315,6 +317,17 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 							const isArchiving = archivingThreadId === thread.id;
 							const isBusy = isDeleting || isArchiving;
 							const isActive = currentChatId === thread.id;
+							const threadUrl = `/dashboard/${workspaceId}/new-chat/${thread.id}`;
+
+							const itemClassName = cn(
+								"h-auto w-full justify-start gap-2.5 overflow-hidden px-3 py-2.5 text-left text-base font-normal",
+								"active:scale-[0.98] active:bg-accent/80 transition-all duration-100",
+								"group-hover/item:bg-accent group-hover/item:text-accent-foreground",
+								"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+								thread.visibility === "SEARCH_SPACE" && "pr-16",
+								isActive && "bg-accent text-accent-foreground",
+								isBusy && "opacity-50 pointer-events-none"
+							);
 
 							return (
 								<div
@@ -325,11 +338,14 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 									)}
 								>
 									{isMobile ? (
-										<Button
-											type="button"
-											variant="ghost"
-											onClick={() => {
-												if (wasLongPress()) return;
+										<Link
+											href={threadUrl}
+											prefetch={true}
+											onClick={(e) => {
+												if (wasLongPress()) {
+													e.preventDefault();
+													return;
+												}
 												handleThreadClick(thread);
 											}}
 											onMouseEnter={() => prefetchChatThread(thread.id)}
@@ -340,41 +356,27 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 											}}
 											onTouchEnd={longPressHandlers.onTouchEnd}
 											onTouchMove={longPressHandlers.onTouchMove}
-											disabled={isBusy}
-											className={cn(
-												"h-auto w-full justify-start gap-2.5 overflow-hidden px-3 py-2.5 text-left text-base font-normal",
-												"group-hover/item:bg-accent group-hover/item:text-accent-foreground",
-												"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-												thread.visibility === "SEARCH_SPACE" && "pr-16",
-												isActive && "bg-accent text-accent-foreground",
-												isBusy && "opacity-50 pointer-events-none"
-											)}
+											className={itemClassName}
 										>
-											<span className="min-w-0 flex-1 truncate">{thread.title || "New Chat"}</span>
-										</Button>
+											<span className="min-w-0 flex-1 truncate">
+												{thread.title || t("new_chat")}
+											</span>
+										</Link>
 									) : (
 										<Tooltip delayDuration={600}>
 											<TooltipTrigger asChild>
-												<Button
-													type="button"
-													variant="ghost"
+												<Link
+													href={threadUrl}
+													prefetch={true}
 													onClick={() => handleThreadClick(thread)}
 													onMouseEnter={() => prefetchChatThread(thread.id)}
 													onFocus={() => prefetchChatThread(thread.id)}
-													disabled={isBusy}
-													className={cn(
-														"h-auto w-full justify-start gap-2.5 overflow-hidden px-3 py-2.5 text-left text-base font-normal",
-														"group-hover/item:bg-accent group-hover/item:text-accent-foreground",
-														"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-														thread.visibility === "SEARCH_SPACE" && "pr-16",
-														isActive && "bg-accent text-accent-foreground",
-														isBusy && "opacity-50 pointer-events-none"
-													)}
+													className={itemClassName}
 												>
 													<span className="min-w-0 flex-1 truncate">
-														{thread.title || "New Chat"}
+														{thread.title || t("new_chat")}
 													</span>
-												</Button>
+												</Link>
 											</TooltipTrigger>
 											<TooltipContent side="bottom" align="start">
 												<p>
@@ -444,7 +446,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 													{!thread.archived && (
 														<DropdownMenuItem
 															onClick={() =>
-																handleStartRename(thread.id, thread.title || "New Chat")
+																handleStartRename(thread.id, thread.title || t("new_chat"))
 															}
 														>
 															<Pencil className="mr-2 h-4 w-4" />

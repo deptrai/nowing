@@ -24,7 +24,11 @@ pytestmark = pytest.mark.unit
 def _run() -> SimpleNamespace:
     return SimpleNamespace(
         id=1,
-        automation=SimpleNamespace(workspace_id=42, created_by_user_id="u-1"),
+        automation=SimpleNamespace(
+            workspace_id=42,
+            created_by_user_id="u-1",
+            derived_from_playbook_id=None,
+        ),
     )
 
 

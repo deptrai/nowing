@@ -11,5 +11,9 @@ export default function PlaygroundLayout({
 }) {
 	const { workspace_id } = use(params);
 
-	return <PlaygroundLayoutShell workspaceId={workspace_id}>{children}</PlaygroundLayoutShell>;
+	return (
+		<div className="mx-auto w-full max-w-6xl px-4 py-6">
+			<PlaygroundLayoutShell workspaceId={workspace_id}>{children}</PlaygroundLayoutShell>
+		</div>
+	);
 }

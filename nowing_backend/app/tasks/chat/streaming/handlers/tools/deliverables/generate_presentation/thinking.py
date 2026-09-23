@@ -23,7 +23,7 @@ def resolve_start_thinking(tool_name: str, tool_input: Any) -> ToolStartThinking
     )
 
 
-_FAILURE_STATUSES = frozenset({"failed", "error", "validation_failed"})
+_FAILURE_STATUSES = frozenset({"failed", "error", "validation_failed", "plan_limited"})
 
 
 def resolve_completed_thinking(

@@ -22,6 +22,10 @@ caller that sees both halves.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 # Tunables (constants, not flags)
 # ---------------------------------------------------------------------------
@@ -293,9 +297,9 @@ def static_score_yaml(cfg: dict) -> int:
         ctx = int(info.get("max_input_tokens") or info.get("max_tokens") or 0)
         p_cost = float(info.get("input_cost_per_token") or 0.0)
         c_cost = float(info.get("output_cost_per_token") or 0.0)
-    except Exception:
+    except Exception as exc:  # litellm model-info lookup failure → zero costs still yield a prestige score
         # Unknown to litellm — that's fine for prestige+operator-bonus weighting.
-        pass
+        logger.debug("Suppressed %r", exc)
 
     score = (
         base

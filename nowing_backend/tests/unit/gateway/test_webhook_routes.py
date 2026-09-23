@@ -12,6 +12,7 @@ import pytest
 from app.auth.context import AuthContext
 from app.db import ExternalChatAccount, ExternalChatAccountMode, ExternalChatPlatform
 from app.routes import gateway_webhook_routes as routes
+from app.routes.gateway_webhook import webhooks as webhook_routes
 
 
 @pytest.fixture(autouse=True)
@@ -136,7 +137,7 @@ async def test_telegram_webhook_returns_200_on_null_update_id(mocker):
 @pytest.mark.asyncio
 async def test_telegram_webhook_returns_200_on_bad_json(mocker, monkeypatch):
     parse_metric = mocker.Mock()
-    monkeypatch.setattr(routes, "record_gateway_webhook_parse_error", parse_metric)
+    monkeypatch.setattr(webhook_routes, "record_gateway_webhook_parse_error", parse_metric)
     request = RequestStub(json_exc=ValueError("bad json"))
 
     response = await _call_webhook(
@@ -176,7 +177,7 @@ async def test_telegram_webhook_persists_for_fastapi_inbox_worker(mocker, monkey
     session = mocker.AsyncMock()
     session.get.return_value = _account()
     persist = mocker.AsyncMock(return_value=99)
-    monkeypatch.setattr(routes, "persist_inbound_event", persist)
+    monkeypatch.setattr(webhook_routes, "persist_inbound_event", persist)
 
     request = RequestStub(
         {
@@ -203,7 +204,7 @@ async def test_telegram_webhook_commits_dedup_without_enqueue(mocker, monkeypatc
     session = mocker.AsyncMock()
     session.get.return_value = _account()
     monkeypatch.setattr(
-        routes, "persist_inbound_event", mocker.AsyncMock(return_value=None)
+        webhook_routes, "persist_inbound_event", mocker.AsyncMock(return_value=None)
     )
 
     request = RequestStub(
@@ -260,12 +261,11 @@ async def test_slack_webhook_persists_event(monkeypatch, mocker):
     _enable_slack_gateway(monkeypatch)
     session = mocker.AsyncMock()
     monkeypatch.setattr(
-        routes,
-        "get_slack_account_by_team",
+        webhook_routes, "get_slack_account_by_team",
         mocker.AsyncMock(return_value=_slack_account()),
     )
     persist = mocker.AsyncMock(return_value=100)
-    monkeypatch.setattr(routes, "persist_inbound_event", persist)
+    monkeypatch.setattr(webhook_routes, "persist_inbound_event", persist)
     payload = {
         "type": "event_callback",
         "team_id": "T123",
@@ -294,12 +294,11 @@ async def test_slack_webhook_ignores_self_event(monkeypatch, mocker):
     _enable_slack_gateway(monkeypatch)
     session = mocker.AsyncMock()
     monkeypatch.setattr(
-        routes,
-        "get_slack_account_by_team",
+        webhook_routes, "get_slack_account_by_team",
         mocker.AsyncMock(return_value=_slack_account()),
     )
     persist = mocker.AsyncMock(return_value=100)
-    monkeypatch.setattr(routes, "persist_inbound_event", persist)
+    monkeypatch.setattr(webhook_routes, "persist_inbound_event", persist)
     request = _signed_slack_request(
         {
             "type": "event_callback",
@@ -330,7 +329,9 @@ async def test_discord_gateway_install_returns_oauth_url(monkeypatch, mocker):
         "http://localhost:8000/api/v1/gateway/discord/callback",
     )
     monkeypatch.setattr(routes.config, "SECRET_KEY", "test-secret")
-    monkeypatch.setattr(routes, "check_workspace_access", mocker.AsyncMock())
+    monkeypatch.setattr(
+        "app.dependencies.auth.check_workspace_access", mocker.AsyncMock()
+    )
 
     response = await routes.install_discord_gateway(
         workspace_id=123,
@@ -404,11 +405,11 @@ async def test_send_message_to_binding_pauses_auto_reply(mocker, monkeypatch):
     adapter.send_message = mocker.AsyncMock(return_value=SimpleNamespace(external_message_id="msg-1"))
     bundle = SimpleNamespace(adapter=adapter)
     mocker.patch(
-        "app.routes.gateway_webhook_routes.resolve_platform_bundle",
+        "app.routes.gateway_webhook.bindings.resolve_platform_bundle",
         return_value=bundle,
     )
     pause_mock = mocker.patch(
-        "app.routes.gateway_webhook_routes.pause_auto_reply",
+        "app.routes.gateway_webhook.bindings.pause_auto_reply",
         new=mocker.AsyncMock(),
     )
 

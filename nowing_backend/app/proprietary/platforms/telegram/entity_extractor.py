@@ -9,11 +9,14 @@ Extracts and normalizes:
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from typing import Any
 
 from app.proprietary.platforms.telegram.schemas import ExtractedEntities
+
+logger = logging.getLogger(__name__)
 
 # Vietnamese word-to-digit dictionary
 _WORD_TO_DIGIT_MAP = {
@@ -306,7 +309,8 @@ def _extract_prices(text: str) -> list[dict[str, Any]]:
 
         try:
             num = float(clean_num)
-        except ValueError:
+        except ValueError as exc:
+            logger.debug("Suppressed %r", exc)
             continue
 
         if unit in ("tỷ", "ty"):

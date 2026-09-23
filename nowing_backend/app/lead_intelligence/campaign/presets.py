@@ -6,6 +6,7 @@ import re
 import urllib.parse
 from enum import StrEnum
 from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.lead_intelligence.adapters.base import LeadSourceCategory

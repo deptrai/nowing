@@ -123,7 +123,7 @@ class GmailKBSyncService:
             )
             return {"status": "success"}
 
-        except Exception as e:
+        except Exception as e:  # catch DB duplicate key violation or unexpected error during document sync
             error_str = str(e).lower()
             if (
                 "duplicate key value violates unique constraint" in error_str

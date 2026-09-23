@@ -26,6 +26,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import config as _cfg
 from scripts.backfill_legacy_memory import backfill
 
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
@@ -40,7 +41,7 @@ WORKSPACE_MEMORY_MD = """## Team norms
 - 2026-02-01: The team ships to production only on Tuesdays and Thursdays.
 """
 
-_EMBEDDING_DIM = 384
+_EMBEDDING_DIM = _cfg.embedding_model_instance.dimension
 
 _MIGRATION_178_PATH = (
     Path(__file__).resolve().parents[3]

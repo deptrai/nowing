@@ -8,6 +8,7 @@ background run. Both the REST async door and the agent tool door call
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 import uuid as _uuid
@@ -141,7 +142,7 @@ async def _execute_async_run(
                 try:
                     if output.billable_units > 0:
                         cost_micros = await charge_capability(output, unit, ctx)
-                except Exception:
+                except Exception:  # billing debit error; log failure and continue async finalize
                     logger.exception("charge failed for async run %s", run_id)
 
                 # Story 20.2: async research runs that request gap-fill indexing
@@ -171,7 +172,7 @@ async def _execute_async_run(
                                 "ts": _now_ms(),
                             },
                         )
-                    except Exception:
+                    except Exception:  # gap-fill trigger error; log failure and proceed with output
                         logger.exception(
                             "gap-fill trigger failed for async run %s", run_id
                         )
@@ -183,7 +184,7 @@ async def _execute_async_run(
         except (NowingError, HTTPException) as exc:
             final_status = "error"
             final_error = str(exc)
-        except Exception:
+        except Exception:  # capability execution error; mark async run error with upstream message
             logger.exception("async run %s failed with an upstream error", run_id)
             final_status = "error"
             final_error = (
@@ -267,18 +268,37 @@ async def _notify_terminal(run_id: str, status: str) -> None:
     """Best-effort inbox notification when a deep-research run reaches a terminal status.
 
     Falls back to the workspace owner when the run has no recorded user_id.
+    Includes DB-level row-lock and idempotency check to prevent duplicate notifications.
     """
     try:
+        from sqlalchemy import text
+
         from app.db import Run, Workspace
+        from app.notifications.persistence import Notification
         from app.notifications.service.facade import NotificationService
 
         async with async_session_maker() as notify_session:
             # AC-18.8: set the run-id token for the RLS-protected Run read.
             bare_run_id = run_id[len("run_") :] if run_id.startswith("run_") else run_id
+            run_tag = f"run_{bare_run_id}"
             await set_request_tenant_context(
                 notify_session, workspace_id=0, run_id=bare_run_id
             )
-            run = await notify_session.get(Run, _uuid.UUID(bare_run_id))
+
+            # Optional advisory lock for PostgreSQL transactions to serialize concurrent calls
+            with contextlib.suppress(Exception):
+                await notify_session.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+                    {"lock_key": f"notify_terminal:{bare_run_id}"},
+                )
+
+            # Acquire row-level lock on the parent Run to serialize concurrent notify calls
+            stmt = (
+                select(Run)
+                .where(Run.id == _uuid.UUID(bare_run_id))
+                .with_for_update()
+            )
+            run = (await notify_session.execute(stmt)).scalar_one_or_none()
             if run is None or run.capability != "chainlens.research":
                 return
 
@@ -293,6 +313,21 @@ async def _notify_terminal(run_id: str, status: str) -> None:
             if isinstance(user_id, str):
                 user_id = _uuid.UUID(user_id)
 
+            # Idempotency guard: check if a notification for this run was already persisted
+            existing_stmt = select(Notification).where(
+                Notification.user_id == user_id,
+                Notification.type == "deep_research_complete",
+                Notification.notification_metadata["run_id"].as_string() == run_tag,
+            )
+            existing = (await notify_session.execute(existing_stmt)).scalars().first()
+            if existing is not None:
+                logger.info(
+                    "Notification for run %s already exists (id=%s); skipping duplicate",
+                    run_tag,
+                    existing.id,
+                )
+                return
+
             title_map = {
                 "success": "Deep research complete",
                 "error": "Deep research failed",
@@ -300,7 +335,7 @@ async def _notify_terminal(run_id: str, status: str) -> None:
             }
             title = title_map.get(status, f"Deep research {status}")
             message = (
-                f"Your deep research run run_{run_id} finished with status: {status}."
+                f"Your deep research run {run_tag} finished with status: {status}."
             )
             await NotificationService.create_notification(
                 session=notify_session,
@@ -310,12 +345,12 @@ async def _notify_terminal(run_id: str, status: str) -> None:
                 message=message,
                 workspace_id=run.workspace_id,
                 notification_metadata={
-                    "run_id": f"run_{run_id}",
+                    "run_id": run_tag,
                     "status": status,
                     "capability": run.capability,
                 },
             )
-    except Exception:
+    except Exception:  # notification dispatch best-effort; log and continue
         logger.exception("failed to create terminal notification for run %s", run_id)
 
 

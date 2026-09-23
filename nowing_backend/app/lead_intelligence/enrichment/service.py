@@ -203,7 +203,7 @@ class EnrichmentService:
                     workspace_id=request.workspace_id,
                     lead_id=request.lead_id,
                 )
-            except Exception as exc:
+            except Exception as exc:  # lead processing failure; continue batch
                 logger.warning("[Enrichment] Corporate verification failed: %s", exc)
 
         workspace = await session.get(Workspace, request.workspace_id)

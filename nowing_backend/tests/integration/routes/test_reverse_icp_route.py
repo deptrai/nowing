@@ -75,7 +75,7 @@ class TestReverseIcpRoute:
         from fastapi import HTTPException
 
         with patch(
-            "app.routes.leads_routes.check_permission",
+            "app.dependencies.auth.check_permission",
             AsyncMock(
                 side_effect=HTTPException(status_code=403, detail="Permission denied")
             ),
@@ -94,7 +94,7 @@ class TestReverseIcpRoute:
     ) -> None:
         """Should return 400 Bad Request on SSRF target or malformed URL."""
         with patch(
-            "app.routes.leads_routes.check_permission", AsyncMock(return_value=True)
+            "app.dependencies.auth.check_permission", AsyncMock(return_value=True)
         ):
             test_app.dependency_overrides[get_auth_context] = lambda: mock_auth
             client = TestClient(test_app)
@@ -115,7 +115,7 @@ class TestReverseIcpRoute:
 
         with (
             patch(
-                "app.routes.leads_routes.check_permission", AsyncMock(return_value=True)
+                "app.dependencies.auth.check_permission", AsyncMock(return_value=True)
             ),
             patch(
                 "app.routes.leads_routes.ReverseIcpService",

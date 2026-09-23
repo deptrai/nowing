@@ -1,6 +1,7 @@
 "use client";
 
 import { ArchiveIcon, MoreHorizontal, Pencil, RotateCcwIcon, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,8 @@ import { sidebarListItemClassName } from "./SidebarListItem";
 
 interface ChatListItemProps {
 	name: string;
+	href?: string;
+	prefetch?: boolean;
 	isActive?: boolean;
 	archived?: boolean;
 	dropdownOpen?: boolean;
@@ -31,6 +34,8 @@ interface ChatListItemProps {
 
 export function ChatListItem({
 	name,
+	href,
+	prefetch = true,
 	isActive,
 	archived,
 	dropdownOpen: controlledOpen,
@@ -53,28 +58,50 @@ export function ChatListItem({
 		useCallback(() => setDropdownOpen(true), [setDropdownOpen])
 	);
 
-	const handleClick = useCallback(() => {
-		if (wasLongPress()) return;
-		onClick?.();
-	}, [onClick, wasLongPress]);
+	const handleClick = useCallback(
+		(e: React.MouseEvent) => {
+			if (wasLongPress()) {
+				e.preventDefault();
+				return;
+			}
+			onClick?.();
+		},
+		[onClick, wasLongPress]
+	);
+
+	const linkOrButtonClassName = sidebarListItemClassName({
+		active: isHighlighted,
+		className:
+			"justify-start gap-2 overflow-hidden px-2 py-1.5 font-normal active:scale-[0.98] active:bg-accent/80 group-hover/item:bg-accent group-hover/item:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+	});
 
 	return (
 		<div className="group/item relative w-full">
-			<Button
-				type="button"
-				variant="ghost"
-				onClick={handleClick}
-				onMouseEnter={onPrefetch}
-				onFocus={onPrefetch}
-				{...(isMobile ? longPressHandlers : {})}
-				className={sidebarListItemClassName({
-					active: isHighlighted,
-					className:
-						"justify-start gap-2 overflow-hidden px-2 py-1.5 font-normal group-hover/item:bg-accent group-hover/item:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-				})}
-			>
-				<span className="min-w-0 flex-1 truncate">{animatedName}</span>
-			</Button>
+			{href ? (
+				<Link
+					href={href}
+					prefetch={prefetch}
+					onClick={handleClick}
+					onMouseEnter={onPrefetch}
+					onFocus={onPrefetch}
+					{...(isMobile ? longPressHandlers : {})}
+					className={linkOrButtonClassName}
+				>
+					<span className="min-w-0 flex-1 truncate">{animatedName}</span>
+				</Link>
+			) : (
+				<Button
+					type="button"
+					variant="ghost"
+					onClick={handleClick}
+					onMouseEnter={onPrefetch}
+					onFocus={onPrefetch}
+					{...(isMobile ? longPressHandlers : {})}
+					className={linkOrButtonClassName}
+				>
+					<span className="min-w-0 flex-1 truncate">{animatedName}</span>
+				</Button>
+			)}
 
 			{/* Actions dropdown - trigger hidden on mobile, long-press opens it instead */}
 			<div

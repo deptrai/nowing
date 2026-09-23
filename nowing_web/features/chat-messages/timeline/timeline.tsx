@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRightIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type FC, useEffect, useMemo, useState } from "react";
 import { TextShimmerLoader } from "@/components/prompt-kit/loader";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export const Timeline: FC<{
 	items: readonly TimelineItem[];
 	isThreadRunning?: boolean;
 }> = ({ items, isThreadRunning = true }) => {
+	const t = useTranslations("chatMessages");
 	const pendingValue = usePendingInterrupt();
 	const pendingInterrupts = pendingValue?.pendingInterrupts ?? [];
 	const onSubmit = pendingValue?.onSubmit;
@@ -96,17 +98,17 @@ export const Timeline: FC<{
 			);
 			if (degraded) {
 				const status = degraded.result?.status;
-				if (status === "engine_unavailable") return "Engine unavailable — fallback";
-				if (status === "partial") return "Partial result";
-				if (status === "insufficient_evidence") return "No sources found";
-				return "Degraded";
+				if (status === "engine_unavailable") return t("engine_unavailable_fallback");
+				if (status === "partial") return t("partial_result");
+				if (status === "insufficient_evidence") return t("no_sources_found");
+				return t("degraded");
 			}
-			return "Reviewed";
+			return t("reviewed");
 		}
-		if (hasPending) return "Awaiting your decision";
+		if (hasPending) return t("awaiting_decision");
 		if (inProgressTitle) return inProgressTitle;
-		if (isProcessing) return "Processing";
-		return "Reviewed";
+		if (isProcessing) return t("processing");
+		return t("reviewed");
 	})();
 
 	return (

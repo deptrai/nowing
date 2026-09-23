@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Component, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -40,7 +41,7 @@ export class PlanErrorBoundary extends Component<PlanErrorBoundaryProps, PlanErr
 				<Card className="w-full max-w-xl border-destructive/50">
 					<CardContent className="pt-6">
 						<div className="flex items-center gap-2 text-destructive">
-							<span className="text-sm">Failed to render plan</span>
+							<PlanErrorText />
 						</div>
 					</CardContent>
 				</Card>
@@ -49,4 +50,9 @@ export class PlanErrorBoundary extends Component<PlanErrorBoundaryProps, PlanErr
 
 		return this.props.children;
 	}
+}
+
+function PlanErrorText() {
+	const t = useTranslations("toolUi");
+	return <span className="text-sm">{t("tu_failed_to_render_plan")}</span>;
 }

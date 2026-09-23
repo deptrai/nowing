@@ -236,7 +236,7 @@ async def index_teams_messages(
         # Get all teams
         try:
             teams = await teams_client.get_all_teams()
-        except Exception as e:
+        except Exception as e:  # upstream Teams API call failure; log task failure and return error
             await task_logger.log_task_failure(
                 log_entry,
                 f"Failed to get Teams for connector {connector_id}",
@@ -535,7 +535,7 @@ async def index_teams_messages(
                             // TEAMS_BATCH_SIZE,
                         )
 
-                    except Exception as e:
+                    except Exception as e:  # per-channel processing failure; log error, record skipped, and continue
                         logger.error(
                             "Error processing channel %s in team %s: %s",
                             channel_name,
@@ -547,7 +547,7 @@ async def index_teams_messages(
                         )
                         continue
 
-            except Exception as e:
+            except Exception as e:  # per-team processing failure; log error and continue
                 logger.error("Error processing team %s: %s", team_name, str(e))
                 continue
 
@@ -621,7 +621,7 @@ async def index_teams_messages(
                     )
                     await session.commit()
 
-            except Exception as e:
+            except Exception as e:  # per-batch indexing failure; mark failed, increment count, and continue
                 logger.error(
                     "Error processing Teams batch document: %s",
                     str(e),
@@ -634,7 +634,7 @@ async def index_teams_messages(
                     # Commit now so the failed status survives a later rollback or
                     # crash; otherwise the doc stays stuck in pending/processing.
                     await session.commit()
-                except Exception as status_error:
+                except Exception as status_error:  # failure updating document status; rollback and continue
                     logger.error(
                         "Failed to update document status to failed: %s",
                         str(status_error),
@@ -656,7 +656,7 @@ async def index_teams_messages(
         try:
             await session.commit()
             logger.info("Successfully committed all Teams document changes to database")
-        except Exception as e:
+        except Exception as e:  # DB final commit failure (e.g. duplicate key constraint); rollback or re-raise
             # Handle any remaining integrity errors gracefully (race conditions, etc.)
             if (
                 "duplicate key value violates unique constraint" in str(e).lower()
@@ -717,7 +717,7 @@ async def index_teams_messages(
         )
         logger.error("Database error: %s", str(db_error))
         return 0, f"Database error: {db_error!s}"
-    except Exception as e:
+    except Exception as e:  # connector task-level guard: rollback, log failure, and return error
         await session.rollback()
         await task_logger.log_task_failure(
             log_entry,

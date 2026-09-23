@@ -2,6 +2,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { MessageCircleReply } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { clearTargetCommentIdAtom, targetCommentIdAtom } from "@/atoms/chat/current-thread.atom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -111,6 +112,7 @@ export function CommentItem({
 	members = [],
 	membersLoading = false,
 }: CommentItemProps) {
+	const t = useTranslations("chatMessages");
 	const commentRef = useRef<HTMLDivElement>(null);
 	const [isHighlighted, setIsHighlighted] = useState(false);
 
@@ -194,7 +196,7 @@ export function CommentItem({
 						<CommentComposer
 							members={members}
 							membersLoading={membersLoading}
-							placeholder="Edit your comment"
+							placeholder={t("x_edit_your_comment")}
 							submitLabel="Save"
 							isSubmitting={isSubmitting}
 							onSubmit={handleEditSubmit}

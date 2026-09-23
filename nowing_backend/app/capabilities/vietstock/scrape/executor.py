@@ -99,7 +99,7 @@ def _build_vietstock_chunks(
                     category="quote",
                 )
             )
-        except Exception as exc:
+        except Exception as exc:  # quote chunk serialization error; mark failure and continue
             logger.exception("vietstock quote chunk serialization failed")
             failures.append(f"quote serialization failed: {exc}")
 
@@ -115,7 +115,7 @@ def _build_vietstock_chunks(
                         category="financial_statement",
                     )
                 )
-            except Exception as exc:
+            except Exception as exc:  # financial chunk serialization error; mark failure and continue
                 logger.exception(
                     "vietstock financial chunk serialization failed",
                     extra={
@@ -157,7 +157,7 @@ async def _ingest_vietstock_output(
             ingest_result.ingest_job_id or ingest_result.parent_ingest_job_id
         )
         output.ingest_status = ingest_result.status
-    except Exception as exc:
+    except Exception as exc:  # chainlens ingest failure; mark output degraded and record status
         logger.exception("vietstock.scrape chainlens ingest failed")
         output.ingest_status = "failed"
         output.degraded = True

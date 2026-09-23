@@ -20,11 +20,9 @@ import { useElectronAPI } from "@/hooks/use-platform";
 export function DashboardClientLayout({
 	children,
 	workspaceId,
-	initialPlaygroundSidebarCollapsed,
 }: {
 	children: React.ReactNode;
 	workspaceId: string;
-	initialPlaygroundSidebarCollapsed: boolean;
 }) {
 	const t = useTranslations("dashboard");
 	const router = useRouter();
@@ -166,10 +164,7 @@ export function DashboardClientLayout({
 	return (
 		<DocumentUploadDialogProvider>
 			<OnboardingTour />
-			<LayoutDataProvider
-				workspaceId={workspaceId}
-				initialPlaygroundSidebarCollapsed={initialPlaygroundSidebarCollapsed}
-			>
+			<LayoutDataProvider workspaceId={workspaceId}>
 				{children}
 				{!isConnectorsPage && <ConnectorIndicator showTrigger={false} />}
 			</LayoutDataProvider>

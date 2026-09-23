@@ -194,7 +194,7 @@ async def fetch_html(url: str, *, cookies: dict[str, str] | None = None) -> str 
         if page.status == 200:
             return page.html_content
         logger.warning("Maps HTML GET %s returned %s", url, page.status)
-    except Exception as e:
+    except Exception as e:  # HTML GET request failure; fallback to stealthy browser tier
         logger.warning("Maps HTML GET %s failed: %s", url, e)
     return await _fetch_html_stealthy(url, merged)
 
@@ -223,7 +223,7 @@ async def _fetch_html_stealthy(url: str, cookies: dict[str, str]) -> str | None:
         if page.status == 200:
             return page.html_content
         logger.warning("Maps HTML GET %s tier=stealthy returned %s", url, page.status)
-    except Exception as e:
+    except Exception as e:  # stealthy browser fetch failure; return None
         logger.warning("Maps HTML GET %s tier=stealthy failed: %s", url, e)
     return None
 
@@ -292,7 +292,7 @@ async def _mint_nid() -> str | None:
             stealthy_headers=True,
         )
         return (page.cookies or {}).get("NID")
-    except Exception as e:
+    except Exception as e:  # NID cookie minting failure; return None
         logger.warning("NID mint failed: %s", e)
         return None
 
@@ -585,7 +585,7 @@ async def fetch_rpc_json(
         # brace_match_json is a pure-Python scan and review payloads reach
         # ~1MB; decode off-loop so it can't stall concurrent requests.
         return await asyncio.to_thread(_decode_rpc_body, text)
-    except Exception as e:
+    except Exception as e:  # RPC GET request or decode failure; return None
         logger.warning("Maps RPC GET %s failed: %s", url, e)
         return None
 

@@ -1,3 +1,8 @@
+---
+story_key: 25-1-multi-tenant-user-workspace-hub-scoped-impersonation
+status: done
+---
+
 story_key: 25-1-multitenant-user-workspace-hub-scoped-impersonation
 status: done
 baseline_commit: 13f09ce60057422f281e263d90f2ca76db9e54a3

@@ -28,7 +28,7 @@ def _patch_base_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.delenv("GLOBAL_LLM_CONFIG_B64", raising=False)
 
 
-def test_legacy_billing_tier_emits_warning(monkeypatch, tmp_path, capsys):
+def test_legacy_billing_tier_emits_warning(monkeypatch, tmp_path, caplog):
     _write_yaml(
         tmp_path,
         """
@@ -43,12 +43,11 @@ openrouter_integration:
     from app.config import load_openrouter_integration_settings
 
     settings = load_openrouter_integration_settings()
-    captured = capsys.readouterr().out
     assert settings is not None
-    assert "billing_tier is deprecated" in captured
+    assert any("billing_tier is deprecated" in rec.message for rec in caplog.records)
 
 
-def test_legacy_anonymous_enabled_back_compat(monkeypatch, tmp_path, capsys):
+def test_legacy_anonymous_enabled_back_compat(monkeypatch, tmp_path, caplog):
     _write_yaml(
         tmp_path,
         """
@@ -63,12 +62,11 @@ openrouter_integration:
     from app.config import load_openrouter_integration_settings
 
     settings = load_openrouter_integration_settings()
-    captured = capsys.readouterr().out
     assert settings is not None
     assert settings["anonymous_enabled_paid"] is True
     assert settings["anonymous_enabled_free"] is True
-    assert "anonymous_enabled is" in captured
-    assert "deprecated" in captured
+    assert any("anonymous_enabled is" in rec.message for rec in caplog.records)
+    assert any("deprecated" in rec.message for rec in caplog.records)
 
 
 def test_new_keys_take_priority_over_legacy_back_compat(monkeypatch, tmp_path, capsys):

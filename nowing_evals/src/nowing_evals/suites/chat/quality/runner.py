@@ -279,15 +279,21 @@ def _evaluate_gate(metrics: dict[str, Any], gate_path: Path) -> list[str]:
     """Evaluate gate.yaml thresholds against the quality metrics."""
 
     if not gate_path.is_file():
-        return []
+        return [f"Gate config file not found: {gate_path}"]
 
     try:
         with gate_path.open("r", encoding="utf-8") as fh:
-            config = yaml.safe_load(fh) or {}
+            config = yaml.safe_load(fh)
     except (OSError, yaml.YAMLError) as exc:
         return [f"Failed to load gate config: {exc}"]
 
-    thresholds = config.get("thresholds", {})
+    if not isinstance(config, dict):
+        return [f"Failed to load gate config: expected mapping, got {type(config).__name__}"]
+
+    thresholds = config.get("thresholds")
+    if not isinstance(thresholds, dict):
+        return ["Failed to load gate config: 'thresholds' must be a mapping"]
+
     baseline_ratified = bool(config.get("baseline_ratified", False))
     violations: list[str] = []
 

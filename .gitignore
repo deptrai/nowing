@@ -65,4 +65,11 @@ nowing_backend/_bmad-output/
 # Git worktrees & dumps
 .worktrees/
 *.rdb
+*.bak
 
+
+# Local search/tooling indexes
+.tgrep/
+
+# Local env files with real secrets (never commit)
+nowing_backend/.env.local.pre-chainlens-prod-bak

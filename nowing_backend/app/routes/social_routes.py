@@ -3,33 +3,172 @@
 from __future__ import annotations
 
 import logging
+import re
+from typing import Literal
+from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, SocialMonitoredTarget, Workspace, get_async_session
+from app.config import config
+from app.db import (
+    Permission,
+    SocialMonitoredTarget,
+    Workspace,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
+from app.proprietary.platforms.xactions.action_matrix import (
+    CanonicalActionMatrix,
+    derive_platform_action,
+)
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/social-monitored-targets")
 
 
+SUPPORTED_PLATFORMS = [
+    "facebook_group",
+    "facebook_page",
+    "twitter_keyword",
+    "twitter_user",
+    "tiktok_hashtag",
+    "chotot_category",
+    "shopee_keyword",
+    "topcv_search",
+    "vietnamworks_search",
+    "linkedin_company",
+    "batdongsan_category",
+    "masothue_lookup",
+    "b2b_registry_search",
+]
+
+_PLATFORM_PATTERN = f"^({'|'.join(SUPPORTED_PLATFORMS)})$"
+
+SocialTargetStatus = Literal["active", "paused", "error", "disabled", "unsupported"]
+
+
+def _matrix_supported_platform_kinds(
+    matrix: dict[str, dict[str, dict]],
+) -> list[str]:
+    """Derive the list of accepted ``platform_kind`` values from the matrix.
+
+    Each ``{platform, action}`` pair contributes ``{platform}_{target_kind}``
+    when the descriptor carries a ``match.target_kind`` hint; platforms with a
+    single unambiguous action also accept the bare ``{platform}`` form.
+    """
+    kinds: set[str] = set()
+    for platform, actions in matrix.items():
+        for meta in actions.values():
+            kind = (meta.get("match") or {}).get("target_kind")
+            if kind:
+                kinds.add(f"{platform}_{kind}")
+        if len(actions) == 1:
+            # Single-action platform also accepts the bare platform_kind.
+            kinds.add(platform)
+    return sorted(kinds)
+
+
+def _validate_platform_against_matrix(platform: str) -> None:
+    """Raise HTTP 422 when ``platform`` isn't in the canonical action matrix.
+
+    Only consulted when ``XACTIONS_USE_UNIFIED_DISPATCH`` is ON — the flag-OFF
+    path keeps the legacy ``_PLATFORM_PATTERN`` regex check on the Pydantic
+    schema. Uses the cached/static matrix only (never fetches the network).
+    """
+    if not getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+        return
+
+    matrix = CanonicalActionMatrix.get_sync()
+    try:
+        derive_platform_action(platform, matrix)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": f"Unsupported platform: {platform}",
+                "supported_platforms": _matrix_supported_platform_kinds(matrix),
+            },
+        )
+
+
 class SocialTargetCreate(BaseModel):
-    platform: str = Field(..., pattern=r"^(facebook_group|facebook_page|twitter_keyword|twitter_user)$")
+    # Pattern enforced via field_validator so it can relax when
+    # XACTIONS_USE_UNIFIED_DISPATCH is ON — the route then validates the
+    # platform against CanonicalActionMatrix and returns a 422 carrying
+    # ``supported_platforms``.
+    platform: str = Field(..., min_length=1, max_length=100)
     target_id: str = Field(..., min_length=1, max_length=255)
     target_name: str = Field(..., min_length=1, max_length=1000)
     target_url: str | None = None
-    category: str = Field(default="general", max_length=50)
+    category: str = Field(default="general", min_length=1, max_length=50)
     is_active: bool = True
     realtime_stream: bool = False
-    scrape_interval_minutes: int = Field(default=15, ge=1)
-    status: str = Field(default="active", max_length=50)
+    scrape_interval_minutes: int = Field(default=15, ge=1, le=10080)
+    status: SocialTargetStatus = Field(default="active")
     proxy_url: str | None = None
+    account_id: str | None = None
+
+    @field_validator("platform")
+    @classmethod
+    def validate_platform_format(cls, v: str) -> str:
+        """When the unified dispatch flag is OFF, keep the legacy whitelist.
+
+        When ON, defer to the matrix check in the route handler so it can
+        return a 422 with the ``supported_platforms`` list.
+        """
+        if getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+            return v
+
+        if not re.match(_PLATFORM_PATTERN, v):
+            raise ValueError(
+                f"platform must be one of: {', '.join(SUPPORTED_PLATFORMS)}"
+            )
+        return v
+
+    @field_validator("target_url", "proxy_url")
+    @classmethod
+    def validate_url_scheme(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must use http:// or https:// scheme")
+        return v
+
+
+class SocialTargetUpdate(BaseModel):
+    target_name: str | None = Field(None, min_length=1, max_length=1000)
+    target_url: str | None = None
+    category: str | None = Field(None, min_length=1, max_length=50)
+    is_active: bool | None = None
+    realtime_stream: bool | None = None
+    scrape_interval_minutes: int | None = Field(None, ge=1, le=10080)
+    status: SocialTargetStatus | None = Field(None)
+    proxy_url: str | None = None
+    account_id: str | None = None
+
+    @field_validator("target_url", "proxy_url")
+    @classmethod
+    def validate_url_scheme(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must use http:// or https:// scheme")
+        return v
 
 
 class SocialTargetRead(BaseModel):
@@ -45,8 +184,23 @@ class SocialTargetRead(BaseModel):
     scrape_interval_minutes: int
     status: str
     proxy_url: str | None
+    account_id: str | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+async def _get_target(
+    session: AsyncSession,
+    workspace_id: int,
+    target_id: int,
+) -> SocialMonitoredTarget:
+    target = await session.get(SocialMonitoredTarget, target_id)
+    if target is None or target.workspace_id != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target not found",
+        )
+    return target
 
 
 @router.post(
@@ -59,15 +213,15 @@ async def create_social_target(
     payload: SocialTargetCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to create social targets in this workspace",
+        )
+    ),
 ) -> SocialTargetRead:
     """Create a new social monitored target."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.LEADS_WRITE.value,
-        "You don't have permission to create social targets in this workspace",
-    )
+    _validate_platform_against_matrix(payload.platform)
 
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
@@ -88,6 +242,7 @@ async def create_social_target(
         scrape_interval_minutes=payload.scrape_interval_minutes,
         status=payload.status,
         proxy_url=payload.proxy_url,
+        account_id=payload.account_id,
     )
     session.add(target)
     try:
@@ -101,3 +256,119 @@ async def create_social_target(
         ) from exc
 
     return SocialTargetRead.model_validate(target)
+
+
+@router.get(
+    "",
+    response_model=list[SocialTargetRead],
+)
+async def list_social_targets(
+    workspace_id: int,
+    platform: str | None = None,
+    is_active: bool | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view social targets in this workspace",
+        )
+    ),
+) -> list[SocialTargetRead]:
+    """List social monitored targets for a workspace.
+
+    Results are paginated and ordered by id for determinism.
+    """
+    from sqlalchemy import select
+    stmt = select(SocialMonitoredTarget).where(
+        SocialMonitoredTarget.workspace_id == workspace_id
+    )
+    if platform:
+        stmt = stmt.where(SocialMonitoredTarget.platform == platform)
+    if is_active is not None:
+        stmt = stmt.where(SocialMonitoredTarget.is_active.is_(is_active))
+    stmt = stmt.order_by(SocialMonitoredTarget.id).limit(limit).offset(offset)
+
+    result = await session.execute(stmt)
+    targets = result.scalars().all()
+    return [SocialTargetRead.model_validate(t) for t in targets]
+
+
+@router.get(
+    "/{target_id}",
+    response_model=SocialTargetRead,
+)
+async def get_social_target(
+    workspace_id: int,
+    target_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_READ.value,
+            "You don't have permission to view social targets in this workspace",
+        )
+    ),
+) -> SocialTargetRead:
+    """Get a social monitored target."""
+    target = await _get_target(session, workspace_id, target_id)
+    return SocialTargetRead.model_validate(target)
+
+
+@router.patch(
+    "/{target_id}",
+    response_model=SocialTargetRead,
+)
+async def update_social_target(
+    workspace_id: int,
+    target_id: int,
+    payload: SocialTargetUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to update social targets in this workspace",
+        )
+    ),
+) -> SocialTargetRead:
+    """Update a social monitored target."""
+    target = await _get_target(session, workspace_id, target_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(target, field, value)
+
+    try:
+        await session.commit()
+        await session.refresh(target)
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Target update conflicts with an existing target",
+        ) from exc
+
+    return SocialTargetRead.model_validate(target)
+
+
+@router.delete(
+    "/{target_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_social_target(
+    workspace_id: int,
+    target_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.LEADS_WRITE.value,
+            "You don't have permission to delete social targets in this workspace",
+        )
+    ),
+) -> None:
+    """Delete a social monitored target and its posts."""
+    target = await _get_target(session, workspace_id, target_id)
+    await session.delete(target)
+    await session.commit()

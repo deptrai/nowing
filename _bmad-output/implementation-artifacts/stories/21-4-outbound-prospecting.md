@@ -1,6 +1,11 @@
+---
+story_key: 21-4-outbound-prospecting-automation-panel
+status: done
+---
+
 # Story 21.4: Outbound Prospecting Automation
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

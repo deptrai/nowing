@@ -80,7 +80,7 @@ class InboundDebounceService:
                         args=(channel, sender_id, workspace_id, thread_id, account_id, binding_id),
                         countdown=self.debounce_window,
                     )
-            except Exception as e:
+            except Exception as e:  # best-effort worker schedule; buffered messages already stored in Redis
                 logger.warning("Failed to schedule auto-reply buffer worker: %s", e)
         return True
 
@@ -105,7 +105,7 @@ class InboundDebounceService:
             """
             try:
                 res = await redis.eval(lua_script, 1, key)
-            except Exception as e:
+            except Exception as e:  # Lua eval failure → empty buffer returned, no messages lost silently
                 logger.error("Lua eval failed for debounce buffer %s: %s", key, e)
                 return ""
 
@@ -128,7 +128,7 @@ class InboundDebounceService:
                         txt = decoded
                     if txt:
                         messages.append(txt)
-                except Exception as e:
+                except Exception as e:  # per-message decode failure; continue decoding remaining buffered messages
                     logger.warning("Failed to decode buffered inbound message: %s", e)
                     with contextlib.suppress(Exception):
                         if isinstance(raw, (bytes, bytearray)):

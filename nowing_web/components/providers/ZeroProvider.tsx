@@ -1,6 +1,6 @@
 "use client";
 
-import type { LogSink } from "@rocicorp/logger";
+import type { LogLevel, LogSink } from "@rocicorp/logger";
 import {
 	useConnectionState,
 	useZero,
@@ -34,6 +34,39 @@ function getCacheURL() {
 		return `${window.location.origin}/zero`;
 	}
 	return "http://localhost:4848";
+}
+
+const ZERO_CACHE_PROBE_TIMEOUT_MS = 1_500;
+
+/**
+ * Probe whether the zero-cache sync service is reachable before mounting the
+ * Zero provider. The browser logs a native "WebSocket connection to ... failed"
+ * console error for every failed WS handshake — a log sink cannot suppress it.
+ * Skipping the mount entirely when the cache is down keeps the console clean;
+ * the app already renders fine without live sync (REST fallback).
+ */
+async function probeZeroCache(cacheURL: string): Promise<boolean> {
+	if (typeof window === "undefined") return true;
+	try {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), ZERO_CACHE_PROBE_TIMEOUT_MS);
+		try {
+			// zero-cache answers GET/HEAD on its base URL (or the /zero proxy path)
+			// with anything other than a network failure. Any HTTP response — even
+			// 4xx — means the service is up and the WS upgrade is worth attempting.
+			const res = await fetch(cacheURL, {
+				method: "GET",
+				signal: controller.signal,
+				cache: "no-store",
+			});
+			// 404 from the Next proxy means it could not reach zero-cache upstream.
+			return res.status !== 404;
+		} finally {
+			clearTimeout(timer);
+		}
+	} catch {
+		return false;
+	}
 }
 
 async function fetchZeroContext(isDesktop: boolean): Promise<LoadedZeroContext | null> {
@@ -115,6 +148,8 @@ function throttledLog(level: "error" | "warn", args: unknown[]) {
 		);
 	}
 }
+
+type ConnectionState = ReturnType<typeof useConnectionState>;
 
 function ZeroConnectionBanner({ state, failures }: { state: ConnectionState; failures: number }) {
 	if (state.name === "connected" || failures < OFFLINE_BANNER_THRESHOLD) return null;
@@ -225,6 +260,9 @@ function AuthenticatedZeroProvider({
 	isDesktop: boolean;
 }) {
 	const [loadedContext, setLoadedContext] = useState<ZeroContextState>(undefined);
+	// null = probing, false = cache unreachable (render children without Zero),
+	// true = reachable (mount Zero provider).
+	const [cacheReachable, setCacheReachable] = useState<boolean | null>(null);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -258,7 +296,25 @@ function AuthenticatedZeroProvider({
 		};
 	}, [isDesktop]);
 
+	useEffect(() => {
+		if (!loadedContext || cacheReachable !== null) return;
+		let isMounted = true;
+		void probeZeroCache(getCacheURL()).then((reachable) => {
+			if (isMounted) setCacheReachable(reachable);
+		});
+		return () => {
+			isMounted = false;
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [loadedContext]);
+
 	if (!loadedContext) return null;
+
+	// Wait for the reachability probe before constructing a Zero instance.
+	// Children (and their useZero()/useQuery() calls) are not mounted yet, so
+	// nothing throws while we resolve. This prevents even the single initial
+	// WS handshake error when the cache is down.
+	if (cacheReachable === null) return null;
 
 	return (
 		<ZeroClientProvider
@@ -266,6 +322,7 @@ function AuthenticatedZeroProvider({
 			context={loadedContext.context}
 			isDesktop={isDesktop}
 			initialDesktopAuth={loadedContext.desktopAuth}
+			cacheDown={cacheReachable === false}
 		>
 			{children}
 		</ZeroClientProvider>
@@ -278,12 +335,16 @@ function ZeroClientProvider({
 	context,
 	isDesktop,
 	initialDesktopAuth,
+	cacheDown = false,
 }: {
 	children: React.ReactNode;
 	userID: string;
 	context: ZeroContext;
 	isDesktop: boolean;
 	initialDesktopAuth?: string;
+	// When true, the zero-cache sync service is unreachable — take the instance
+	// offline immediately in init() so it never enters the WS retry loop.
+	cacheDown?: boolean;
 }) {
 	const cacheURL = useMemo(() => getCacheURL(), []);
 	const [desktopAuth, setDesktopAuth] = useState<string | undefined>(initialDesktopAuth);
@@ -314,9 +375,21 @@ function ZeroClientProvider({
 			// Route Zero's internal logs through our throttled sink so a missing
 			// zero-cache does not spam the browser console.
 			logSink: zeroLogSink,
-			logLevel: isDev ? "info" : "error",
+			logLevel: (isDev ? "info" : "error") as LogLevel,
+			// init runs right after `new Zero()` — before the first reconnect
+			// tick. Going offline here stops the WS retry loop while keeping a
+			// valid Zero in context (so useZero()/useQuery() callers don't throw).
+			init: cacheDown
+				? (z: { close: () => Promise<void> }) => {
+						// Close immediately: zero-cache is unreachable. A closed
+						// instance still satisfies useZero() and useQuery() (empty
+						// snapshot), but never opens the WebSocket — so the browser
+						// console stays free of the native ws:// connect errors.
+						void z.close();
+					}
+				: undefined,
 		}),
-		[userID, context, cacheURL, isDesktop, desktopAuth]
+		[userID, context, cacheURL, isDesktop, desktopAuth, cacheDown]
 	);
 
 	return (

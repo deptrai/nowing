@@ -19,7 +19,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Chunk, Document, DocumentType, Permission, get_async_session
+from app.db import (
+    Chunk,
+    Document,
+    DocumentType,
+    Permission,
+    WorkspaceMembership,
+    get_async_session,
+)
+from app.dependencies.auth import RequirePermission
 from app.routes.reports_routes import (
     _FILE_EXTENSIONS,
     _MEDIA_TYPES,
@@ -34,7 +42,6 @@ from app.templates.export_helpers import (
     get_typst_template_path,
 )
 from app.users import get_auth_context
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +57,12 @@ async def get_editor_content(
     document_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """
     Get document content for editing.
@@ -59,15 +72,6 @@ async def get_editor_content(
 
     Requires DOCUMENTS_READ permission.
     """
-    # Check RBAC permission
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_READ.value,
-        "You don't have permission to read documents in this workspace",
-    )
-
     result = await session.execute(
         select(Document).filter(
             Document.id == document_id,
@@ -180,19 +184,17 @@ async def download_document_markdown(
     document_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """
     Download the full document content as a .md file.
     Reconstructs markdown from source_markdown or chunks.
     """
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_READ.value,
-        "You don't have permission to read documents in this workspace",
-    )
-
     result = await session.execute(
         select(Document).filter(
             Document.id == document_id,
@@ -247,6 +249,12 @@ async def save_document(
     data: dict[str, Any],
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_UPDATE.value,
+            "You don't have permission to update documents in this workspace",
+        )
+    ),
 ):
     user = auth.user
     """
@@ -258,15 +266,6 @@ async def save_document(
     Requires DOCUMENTS_UPDATE permission.
     """
     from app.tasks.celery_tasks.document_reindex_tasks import reindex_document_task
-
-    # Check RBAC permission
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_UPDATE.value,
-        "You don't have permission to update documents in this workspace",
-    )
 
     result = await session.execute(
         select(Document).filter(
@@ -336,16 +335,14 @@ async def export_document(
     ),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(
+            Permission.DOCUMENTS_READ.value,
+            "You don't have permission to read documents in this workspace",
+        )
+    ),
 ):
     """Export a document in the requested format (reuses the report export pipeline)."""
-    await check_permission(
-        session,
-        auth,
-        workspace_id,
-        Permission.DOCUMENTS_READ.value,
-        "You don't have permission to read documents in this workspace",
-    )
-
     result = await session.execute(
         select(Document).filter(
             Document.id == document_id,
@@ -486,7 +483,7 @@ async def export_document(
     try:
         loop = asyncio.get_running_loop()
         output = await loop.run_in_executor(None, _convert_and_read)
-    except Exception as e:
+    except Exception as e:  # document export conversion failure → surface as typed HTTP error
         logger.exception("Document export failed")
         raise HTTPException(status_code=500, detail=f"Export failed: {e!s}") from e
 

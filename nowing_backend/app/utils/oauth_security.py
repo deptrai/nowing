@@ -112,7 +112,7 @@ class OAuthStateManager:
         try:
             decoded = base64.urlsafe_b64decode(state.encode()).decode()
             data = json.loads(decoded)
-        except Exception as e:
+        except Exception as e:  # malformed base64/JSON state payload → 400 HTTPException
             raise HTTPException(
                 status_code=400, detail=f"Invalid state format: {e!s}"
             ) from e
@@ -169,7 +169,7 @@ class TokenEncryption:
         key = base64.urlsafe_b64encode(hashlib.sha256(secret_key.encode()).digest())
         try:
             self.cipher = Fernet(key)
-        except Exception as e:
+        except Exception as e:  # Fernet cipher init failure → wrap as ValueError
             raise ValueError(f"Failed to initialize encryption cipher: {e!s}") from e
 
     def encrypt_token(self, token: str) -> str:
@@ -186,7 +186,7 @@ class TokenEncryption:
             return token
         try:
             return self.cipher.encrypt(token.encode()).decode()
-        except Exception as e:
+        except Exception as e:  # token encryption failure → wrap as ValueError
             logger.error(f"Failed to encrypt token: {e!s}")
             raise ValueError(f"Token encryption failed: {e!s}") from e
 
@@ -204,7 +204,7 @@ class TokenEncryption:
             return encrypted_token
         try:
             return self.cipher.decrypt(encrypted_token.encode()).decode()
-        except Exception as e:
+        except Exception as e:  # token decryption failure → wrap as ValueError
             logger.error(f"Failed to decrypt token: {e!s}")
             raise ValueError(f"Token decryption failed: {e!s}") from e
 
@@ -227,5 +227,5 @@ class TokenEncryption:
             base64.urlsafe_b64decode(token.encode())
             # If it's base64 and reasonably long, likely encrypted
             return len(token) > 20
-        except Exception:
+        except Exception:  # non-base64 token → return False for encryption heuristic
             return False

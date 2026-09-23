@@ -2,6 +2,7 @@
 
 import { AlertTriangle, RefreshCw, ShieldAlert } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -79,6 +80,7 @@ type BaileysHealth = {
 };
 
 export function MessagingChannelsContent() {
+	const t = useTranslations("userSettings");
 	const params = useParams<{ workspace_id: string }>();
 	const workspaceId = Number(params.workspace_id);
 	const [gatewayConfig, setGatewayConfig] = useState<GatewayConfigState>(null);
@@ -222,15 +224,13 @@ export function MessagingChannelsContent() {
 			});
 			if (!res.ok) {
 				setTelegramNotificationsEnabled(!enabled);
-				toast.error("Failed to update Telegram notification preference");
+				toast.error(t("tg_notif_failed"));
 				return;
 			}
-			toast.success(
-				enabled ? "Telegram run notifications enabled" : "Telegram run notifications disabled"
-			);
+			toast.success(enabled ? t("tg_notif_on") : t("tg_notif_off"));
 		} catch {
 			setTelegramNotificationsEnabled(!enabled);
-			toast.error("Failed to update Telegram notification preference");
+			toast.error(t("tg_notif_failed"));
 		} finally {
 			setIsSavingNotifications(false);
 		}
@@ -244,11 +244,11 @@ export function MessagingChannelsContent() {
 				data: partial,
 			});
 			setWorkspace(updated);
-			toast.success("Auto-reply settings saved");
+			toast.success(t("autoreply_saved"));
 			return updated;
 		} catch {
-			toast.error("Failed to update auto-reply settings");
-			throw new Error("Failed to update auto-reply settings");
+			toast.error(t("autoreply_failed"));
+			throw new Error(t("autoreply_failed"));
 		} finally {
 			setIsSavingAutoReply(false);
 		}
@@ -339,10 +339,10 @@ export function MessagingChannelsContent() {
 		});
 		if (!res.ok) {
 			setConnections(previousConnections);
-			toast.error("Failed to update messaging route");
+			toast.error(t("route_update_failed"));
 			return;
 		}
-		toast.success("Messaging route updated");
+		toast.success(t("route_updated"));
 		await refreshPlatform(connection.platform as GatewayPlatform);
 	}
 
@@ -395,7 +395,7 @@ export function MessagingChannelsContent() {
 			: connection.workspace_name ||
 				connection.display_name ||
 				connection.external_username ||
-				`${platformLabel(connection.platform)} connection`;
+				`${platformLabel(connection.platform)} ${t("connection")}`;
 	const renderConnectionRows = (platform: GatewayConnection["platform"], emptyText: string) => {
 		const platformConnections = connections.filter(
 			(connection) => connection.platform === platform && isConnectionInActiveMode(connection)
@@ -411,7 +411,7 @@ export function MessagingChannelsContent() {
 
 		return (
 			<div className="space-y-2">
-				<p className="text-xs font-medium text-muted-foreground">Connected accounts</p>
+				<p className="text-xs font-medium text-muted-foreground">{t("connected_accounts")}</p>
 				{platformConnections.map((connection, index) => (
 					<div key={connectionKey(connection)} className="space-y-2">
 						{index > 0 ? <Separator className="bg-accent" /> : null}
@@ -432,7 +432,7 @@ export function MessagingChannelsContent() {
 									disabled={workspaces.length === 0}
 								>
 									<SelectTrigger className="h-8 min-w-[180px] flex-1 text-xs">
-										<SelectValue placeholder="Select workspace" />
+										<SelectValue placeholder={t("select_workspace")} />
 									</SelectTrigger>
 									<SelectContent>
 										{workspaces.map((space) => (
@@ -449,7 +449,7 @@ export function MessagingChannelsContent() {
 										className="h-8"
 										onClick={() => resume(connection)}
 									>
-										Resume
+										{t("resume")}
 									</Button>
 								) : null}
 								<Button
@@ -458,7 +458,7 @@ export function MessagingChannelsContent() {
 									className="text-xs sm:text-sm flex-1 sm:flex-initial h-12 sm:h-auto py-3 sm:py-2"
 									onClick={() => revoke(connection)}
 								>
-									Disconnect
+									{t("disconnect")}
 								</Button>
 							</div>
 						</div>
@@ -472,14 +472,13 @@ export function MessagingChannelsContent() {
 
 		return (
 			<div className="rounded-lg border border-accent bg-accent/20 p-3">
-				<p className="text-xs font-medium">Pairing code</p>
+				<p className="text-xs font-medium">{t("pairing_code")}</p>
 				<p className="mt-2 font-mono text-lg">{pairing.code}</p>
 				<a className="mt-2 block text-sm text-primary underline" href={pairing.deep_link}>
-					Open {platform === "whatsapp" ? "WhatsApp" : "Telegram"} pairing link
+					{t("open_pairing_link", { platform: platform === "whatsapp" ? "WhatsApp" : "Telegram" })}
 				</a>
 				<p className="mt-2 text-xs text-muted-foreground">
-					Expires at {new Date(pairing.expires_at).toLocaleString()}. Nowing stores this channel's
-					messages for agent memory and operational debugging.
+					{t("pairing_expires", { time: new Date(pairing.expires_at).toLocaleString() })}
 				</p>
 			</div>
 		);
@@ -509,13 +508,9 @@ export function MessagingChannelsContent() {
 			{!isGatewayConfigLoading && gatewayDisabled ? (
 				<Alert className="col-span-full" variant="warning">
 					<AlertTriangle aria-hidden />
-					<AlertTitle>Messaging Channels coming soon</AlertTitle>
+					<AlertTitle>{t("channels_coming_soon")}</AlertTitle>
 					<AlertDescription>
-						<p>
-							Soon you'll be able to connect WhatsApp, Telegram, Slack, and Discord to your Nowing
-							agent so you can ask questions, route messages to workspaces, and get answers from
-							your knowledge base without leaving your chat app.
-						</p>
+						<p>{t("channels_coming_soon_desc")}</p>
 					</AlertDescription>
 				</Alert>
 			) : null}
@@ -523,7 +518,7 @@ export function MessagingChannelsContent() {
 			{!isGatewayConfigLoading && !gatewayDisabled && !hasEnabledGateway ? (
 				<Card className="col-span-full border-accent bg-accent/20">
 					<CardHeader className="space-y-1.5 p-4">
-						<CardTitle className="text-sm">No messaging gateways enabled</CardTitle>
+						<CardTitle className="text-sm">{t("no_gateways")}</CardTitle>
 					</CardHeader>
 				</Card>
 			) : null}
@@ -534,13 +529,13 @@ export function MessagingChannelsContent() {
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle className="flex items-center gap-2 text-sm">Telegram</CardTitle>
 						</div>
-						<p className="text-xs text-muted-foreground">Connect Telegram to chat with Nowing.</p>
+						<p className="text-xs text-muted-foreground">{t("telegram_desc")}</p>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
 						<div className="flex flex-wrap gap-2">
 							{hasTelegramConnection ? null : (
 								<Button size="sm" onClick={() => startPairing("telegram")}>
-									Pair Telegram Chat
+									{t("pair_telegram")}
 								</Button>
 							)}
 							<Button
@@ -551,7 +546,7 @@ export function MessagingChannelsContent() {
 								disabled={isRefreshing("telegram")}
 							>
 								<RefreshCw className={refreshIconClassName("telegram")} />
-								Refresh
+								{t("refresh")}
 							</Button>
 						</div>
 
@@ -559,21 +554,21 @@ export function MessagingChannelsContent() {
 						{hasTelegramConnection ? (
 							<div className="flex items-center justify-between gap-3 rounded-md border border-accent/50 bg-accent/10 p-3">
 								<div className="space-y-0.5">
-									<p className="text-sm font-medium">Automation run notifications</p>
+									<p className="text-sm font-medium">{t("automation_notifications")}</p>
 									<p className="text-xs text-muted-foreground">
-										Notify me on Telegram when an automation run completes
+										{t("automation_notifications_desc")}
 									</p>
 								</div>
 								<Switch
 									checked={telegramNotificationsEnabled}
 									onCheckedChange={toggleTelegramNotifications}
 									disabled={isLoadingUserProfile || isSavingNotifications}
-									aria-label="Notify me on Telegram when an automation run completes"
+									aria-label={t("automation_notifications_desc")}
 								/>
 							</div>
 						) : null}
 						<Separator className="bg-accent" />
-						{renderConnectionRows("telegram", "No Telegram chats connected yet.")}
+						{renderConnectionRows("telegram", t("no_telegram"))}
 					</CardContent>
 				</Card>
 			) : null}
@@ -584,14 +579,12 @@ export function MessagingChannelsContent() {
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle className="flex items-center gap-2 text-sm">Slack</CardTitle>
 						</div>
-						<p className="text-xs text-muted-foreground">
-							Enable the Nowing Slack bot so teammates can mention it in Slack.
-						</p>
+						<p className="text-xs text-muted-foreground">{t("slack_desc")}</p>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
 						<div className="flex flex-wrap gap-2">
 							<Button size="sm" onClick={installSlackGateway}>
-								Add Slack Workspace
+								{t("add_slack")}
 							</Button>
 							<Button
 								size="sm"
@@ -601,11 +594,11 @@ export function MessagingChannelsContent() {
 								disabled={isRefreshing("slack")}
 							>
 								<RefreshCw className={refreshIconClassName("slack")} />
-								Refresh
+								{t("refresh")}
 							</Button>
 						</div>
 						<Separator className="bg-accent" />
-						{renderConnectionRows("slack", "No Slack workspaces connected yet.")}
+						{renderConnectionRows("slack", t("no_slack"))}
 					</CardContent>
 				</Card>
 			) : null}
@@ -616,14 +609,12 @@ export function MessagingChannelsContent() {
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle className="flex items-center gap-2 text-sm">Discord</CardTitle>
 						</div>
-						<p className="text-xs text-muted-foreground">
-							Enable the Nowing Discord bot so teammates can mention it in Discord.
-						</p>
+						<p className="text-xs text-muted-foreground">{t("discord_desc")}</p>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
 						<div className="flex flex-wrap gap-2">
 							<Button size="sm" onClick={installDiscordGateway}>
-								Add Discord Server
+								{t("add_discord")}
 							</Button>
 							<Button
 								size="sm"
@@ -633,11 +624,11 @@ export function MessagingChannelsContent() {
 								disabled={isRefreshing("discord")}
 							>
 								<RefreshCw className={refreshIconClassName("discord")} />
-								Refresh
+								{t("refresh")}
 							</Button>
 						</div>
 						<Separator className="bg-accent" />
-						{renderConnectionRows("discord", "No Discord servers connected yet.")}
+						{renderConnectionRows("discord", t("no_discord"))}
 					</CardContent>
 				</Card>
 			) : null}
@@ -649,9 +640,7 @@ export function MessagingChannelsContent() {
 							<CardTitle className="flex items-center gap-2 text-sm">WhatsApp</CardTitle>
 						</div>
 						<p className="text-xs text-muted-foreground">
-							{whatsappMode === "baileys"
-								? 'Use "Message Yourself". Other chats are ignored.'
-								: "Connect WhatsApp to chat with Nowing."}
+							{whatsappMode === "baileys" ? t("whatsapp_baileys_desc") : t("whatsapp_desc")}
 						</p>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4 pt-0">
@@ -660,7 +649,7 @@ export function MessagingChannelsContent() {
 								<div className="flex flex-wrap gap-2">
 									{hasWhatsAppConnection ? null : (
 										<Button size="sm" onClick={() => startPairing("whatsapp")}>
-											Pair WhatsApp
+											{t("pair_whatsapp")}
 										</Button>
 									)}
 									<Button
@@ -671,7 +660,7 @@ export function MessagingChannelsContent() {
 										disabled={isRefreshing("whatsapp")}
 									>
 										<RefreshCw className={refreshIconClassName("whatsapp")} />
-										Refresh
+										{t("refresh")}
 									</Button>
 								</div>
 								{hasWhatsAppConnection ? null : renderPairingPanel("whatsapp")}
@@ -687,14 +676,12 @@ export function MessagingChannelsContent() {
 									disabled={isRefreshing("whatsapp")}
 								>
 									<RefreshCw className={refreshIconClassName("whatsapp")} />
-									Refresh
+									{t("refresh")}
 								</Button>
 								{baileysQr ? (
 									<div className="rounded-lg border border-accent bg-accent/20 p-3">
-										<p className="text-sm font-medium">WhatsApp QR pairing</p>
-										<p className="mt-1 text-xs text-muted-foreground">
-											Scan this QR from WhatsApp &gt; Linked Devices &gt; Link a Device.
-										</p>
+										<p className="text-sm font-medium">{t("whatsapp_qr")}</p>
+										<p className="mt-1 text-xs text-muted-foreground">{t("whatsapp_qr_desc")}</p>
 										<div className="mt-3 inline-block rounded-md bg-white p-3">
 											<QRCodeSVG value={baileysQr} size={192} />
 										</div>
@@ -702,16 +689,16 @@ export function MessagingChannelsContent() {
 								) : null}
 								{baileysHealth ? (
 									<p className="text-xs text-muted-foreground">
-										Bridge status: {baileysHealth.status}
+										{t("bridge_status", { status: baileysHealth.status })}
 										{typeof baileysHealth.queueDepth === "number"
-											? `, queue: ${baileysHealth.queueDepth}`
+											? `, ${t("queue")}: ${baileysHealth.queueDepth}`
 											: ""}
 									</p>
 								) : null}
 							</div>
 						) : null}
 						<Separator className="bg-accent" />
-						{renderConnectionRows("whatsapp", "No WhatsApp chats connected yet.")}
+						{renderConnectionRows("whatsapp", t("no_whatsapp"))}
 					</CardContent>
 				</Card>
 			) : null}
@@ -721,7 +708,7 @@ export function MessagingChannelsContent() {
 					<div className="flex items-center justify-between gap-3">
 						<CardTitle className="flex items-center gap-2 text-sm">
 							<span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-							AI Tự Động Trả Lời Tin Nhắn 24/7 (Two-Way Auto-Reply Agent)
+							{t("autoreply_title")}
 						</CardTitle>
 						<Switch
 							data-testid="auto-reply-toggle"
@@ -730,29 +717,27 @@ export function MessagingChannelsContent() {
 							disabled={isSavingAutoReply}
 						/>
 					</div>
-					<p className="text-xs text-muted-foreground">
-						Tự động trả lời thắc mắc của khách hàng trên Zalo OA / Telegram dựa trên tài liệu
-						Knowledge Base của workspace. Phát hiện ý định mua hàng (Buying Signals) và bắn alert
-						Telegram cho nhân viên nhận tư vấn (tự động khóa AI 24h khi con người can thiệp).
-					</p>
+					<p className="text-xs text-muted-foreground">{t("autoreply_desc")}</p>
 				</CardHeader>
 				<CardContent className="space-y-3 p-4 pt-2">
 					<div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
 						<span className="rounded bg-background/80 px-2 py-0.5 border">
-							RAG Cosine &ge; 0.75 Grounding
+							{t("badge_grounding")}
 						</span>
 						<span className="rounded bg-background/80 px-2 py-0.5 border">
-							Anti-Hallucination Safe Fallback
+							{t("badge_fallback")}
 						</span>
-						<span className="rounded bg-background/80 px-2 py-0.5 border">3s Debounce Buffer</span>
 						<span className="rounded bg-background/80 px-2 py-0.5 border">
-							24h Human Takeover Pause
+							{t("badge_debounce")}
+						</span>
+						<span className="rounded bg-background/80 px-2 py-0.5 border">
+							{t("badge_takeover")}
 						</span>
 					</div>
 					<div className="grid gap-3">
 						<div className="space-y-1">
 							<label htmlFor="autoReplyCollections" className="text-xs font-medium">
-								KB Collections
+								{t("kb_collections")}
 							</label>
 							<Select
 								disabled={isSavingAutoReply}
@@ -764,16 +749,16 @@ export function MessagingChannelsContent() {
 								}}
 							>
 								<SelectTrigger id="autoReplyCollections" className="h-8 text-xs">
-									<SelectValue placeholder="Chọn KB collections (coming soon)" />
+									<SelectValue placeholder={t("kb_placeholder")} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="none">Chưa có collection nào</SelectItem>
+									<SelectItem value="none">{t("kb_none")}</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
 						<div className="space-y-1">
 							<label htmlFor="autoReplyFallback" className="text-xs font-medium">
-								Fallback Message
+								{t("fallback_message")}
 							</label>
 							<Textarea
 								id="autoReplyFallback"
@@ -782,13 +767,13 @@ export function MessagingChannelsContent() {
 								value={autoReplyFallback}
 								onChange={(e) => setAutoReplyFallback(e.target.value)}
 								onBlur={() => void saveAutoReply({ auto_reply_fallback: autoReplyFallback })}
-								placeholder="Tin nhắn dự phòng khi không có tài liệu liên quan..."
+								placeholder={t("fallback_placeholder")}
 								className="min-h-[60px] text-xs"
 							/>
 						</div>
 						<div className="space-y-1">
 							<label htmlFor="autoReplyRecipientChatId" className="text-xs font-medium">
-								Hot-Lead Recipient Chat ID
+								{t("hotlead_chat_id")}
 							</label>
 							<Input
 								id="autoReplyRecipientChatId"
@@ -801,7 +786,7 @@ export function MessagingChannelsContent() {
 										auto_reply_recipient_chat_id: autoReplyRecipientChatId,
 									})
 								}
-								placeholder="e.g. @sales_channel hoặc Telegram chat id"
+								placeholder={t("hotlead_placeholder")}
 								className="h-8 text-xs"
 							/>
 						</div>

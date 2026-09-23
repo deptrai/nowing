@@ -3,6 +3,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHandle, DrawerTitle } from "@/components/ui/drawer";
@@ -39,6 +40,7 @@ export function HitlEditPanelContent({
 	onClose?: () => void;
 	showCloseButton?: boolean;
 }) {
+	const t = useTranslations("chatMessages");
 	const [editedTitle, setEditedTitle] = useState(initialTitle);
 	const contentRef = useRef(initialContent);
 	const [isSaving, setIsSaving] = useState(false);
@@ -73,14 +75,14 @@ export function HitlEditPanelContent({
 				<input
 					value={editedTitle}
 					onChange={(e) => setEditedTitle(e.target.value)}
-					placeholder="Untitled"
+					placeholder={t("x_untitled")}
 					className="flex-1 min-w-0 bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
-					aria-label="Page title"
+					aria-label={t("x_page_title")}
 				/>
 				{onClose && showCloseButton && (
 					<Button variant="ghost" size="icon" onClick={onClose} className="size-7 shrink-0">
 						<XIcon className="size-4" aria-hidden="true" />
-						<span className="sr-only">Close panel</span>
+						<span className="sr-only">{t("x_close_panel")}</span>
 					</Button>
 				)}
 			</div>
@@ -100,7 +102,7 @@ export function HitlEditPanelContent({
 						: { markdown: initialContent, onMarkdownChange: handleContentChange })}
 					readOnly={false}
 					preset="full"
-					placeholder="Start writing..."
+					placeholder={t("x_start_writing")}
 					editorVariant="default"
 					defaultEditing
 					onSave={handleSave}

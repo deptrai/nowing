@@ -23,6 +23,15 @@ def load_statuses() -> dict[str, str]:
     return data.get("development_status", {})
 
 
+def get_status_for_key(key: str, statuses: dict[str, str]) -> str | None:
+    if key in statuses:
+        return statuses[key]
+    # Try prefix matching, e.g. '25-4' matches '25-4-realtime-llm-token-cost...'
+    for k, v in statuses.items():
+        if k == key or k.startswith(f"{key}-") or (key.endswith("-followup") and k.startswith(key)):
+            return v
+    return None
+
 def load_priority_keys() -> list[str]:
     text = PRIORITY_FILE.read_text()
     keys: list[str] = []
@@ -44,7 +53,7 @@ def main() -> int:
     next_item: str | None = None
     upcoming: list[str] = []
     for key in priority_keys:
-        status = statuses.get(key)
+        status = get_status_for_key(key, statuses)
         if status == "done":
             continue
         if next_item is None:
@@ -55,7 +64,7 @@ def main() -> int:
             break
 
     if next_item:
-        status = statuses.get(next_item, "unknown")
+        status = get_status_for_key(next_item, statuses) or "unknown"
         print(f"Next by dependency priority: `{next_item}` ({status})")
         if upcoming:
             print(f"Upcoming: {', '.join(upcoming)}")

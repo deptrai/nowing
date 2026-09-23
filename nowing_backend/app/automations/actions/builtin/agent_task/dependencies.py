@@ -41,6 +41,7 @@ async def build_dependencies(
     chat_model_id: int | None = None,
     image_gen_model_id: int | None = None,
     vision_model_id: int | None = None,
+    allow_global_model_selection: bool = False,
 ) -> AgentDependencies:
     """Load the LLM bundle, connector service, and a per-invoke in-memory checkpointer.
 
@@ -59,6 +60,7 @@ async def build_dependencies(
                 chat_model_id=chat_model_id,
                 image_gen_model_id=image_gen_model_id,
                 vision_model_id=vision_model_id,
+                allow_global_model_selection=allow_global_model_selection,
             )
         except AutomationModelPolicyError as exc:
             raise DependencyError(str(exc)) from exc
