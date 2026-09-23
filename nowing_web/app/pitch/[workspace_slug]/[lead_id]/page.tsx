@@ -60,20 +60,17 @@ async function getPitchMeta(
 	}
 	const url = `${SERVER_BACKEND_URL}/api/v1/public/pitch/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(leadId)}/meta`;
 
-	const attempt = (cached: boolean) =>
-		fetch(
-			url,
-			cached
-				? // Edge/ISR cache keeps TTFB low per AD-119; meta rarely changes.
-					{ next: { revalidate: 60 }, headers: forwardHeaders }
-				: { cache: "no-store", headers: forwardHeaders }
-		).catch(() => null);
+	// never cached: opt-out (AC-5) must take the portal down immediately, and a
+	// stale 200 in the fetch cache would keep serving personalized content
+	// after withdrawal.
+	const attempt = () =>
+		fetch(url, { cache: "no-store", headers: forwardHeaders }).catch(() => null);
 
-	let res = await attempt(true);
+	let res = await attempt();
 	// 404 is a definitive invalid link; anything else may be transient, so
-	// retry once uncached before giving up.
+	// retry once before giving up.
 	if (res?.status !== 404 && !res?.ok) {
-		res = await attempt(false);
+		res = await attempt();
 	}
 	if (!res || !res.ok) return null;
 	return (await res.json().catch(() => null)) as PitchMeta | null;
