@@ -59,4 +59,38 @@ export type ExtensionMessage =
   | { action: 'GET_OFFLINE_COUNT' }
   | { action: 'SYNC_OFFLINE_QUEUE' }
   | { action: 'DETECTED_LEAD_INFO'; payload: LeadClipPayload | null }
+  | { action: 'GET_ZALO_CONTEXT'; phone: string }
   | { action: 'PING' };
+
+// --- Story 37.4: Zalo Co-pilot overlay (AD-118) ---
+
+export interface ZaloCopilotSignal {
+  signal_type: string;
+  confidence: number;
+  detected_at: string;
+  source_url: string | null;
+}
+
+export interface ZaloCopilotLead {
+  lead_id: string;
+  company_name: string;
+  contact_name: string | null;
+  contact_title: string | null;
+  industry: string | null;
+  location: string | null;
+  domain: string | null;
+  status: string;
+  intent_score: number | null;
+}
+
+export interface ZaloCopilotContext {
+  matched: boolean;
+  phone_e164: string | null;
+  dnc_blocked: boolean;
+  dnc_reason: string | null;
+  lead: ZaloCopilotLead | null;
+  signals: ZaloCopilotSignal[];
+  pitch_short: string | null;
+  pitch_with_link: string | null;
+  pitch_portal_url: string | null;
+}

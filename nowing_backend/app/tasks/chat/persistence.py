@@ -50,6 +50,7 @@ Defensive contract
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from datetime import UTC, datetime
@@ -178,6 +179,7 @@ async def persist_user_turn(
     user_image_data_urls: list[str] | None = None,
     mentioned_documents: list[dict[str, Any]] | None = None,
     platform_metadata: dict[str, Any] | None = None,
+    workspace_id: int | None = None,
 ) -> int | None:
     """Persist the user-side row for a chat turn and return its ``id``.
 
@@ -226,9 +228,22 @@ async def persist_user_turn(
     # platform_metadata["intent"]. Both already fail-open; the extra
     # guards keep an advisory bug from ever breaking persistence.
 
+    # Advisory calls get billing context so their decide() calls reach the
+    # decision dashboard — DecisionService opens its own session when none
+    # is passed, so the concurrent gather stays asyncpg-safe.
+    user_uuid: UUID | None = None
+    if user_id:
+        with contextlib.suppress(ValueError):
+            user_uuid = UUID(str(user_id))
+
     async def _run_guardrail() -> None:
         try:
-            await check_passage(user_query, surface="user_input")
+            await check_passage(
+                user_query,
+                surface="user_input",
+                workspace_id=workspace_id,
+                user_id=user_uuid,
+            )
         except Exception:
             logger.warning(
                 "[content_filter] user_input check raised — continuing",
@@ -237,7 +252,11 @@ async def persist_user_turn(
 
     async def _run_intent() -> dict[str, Any] | None:
         try:
-            return await classify_intent(user_query)
+            return await classify_intent(
+                user_query,
+                workspace_id=workspace_id,
+                user_id=user_uuid,
+            )
         except Exception:
             logger.warning(
                 "[intent_classify] classify raised — continuing",

@@ -19,6 +19,8 @@ NATIVE_TO_LEGACY_DOCTYPE: dict[str, str] = {
 def _enum_values(enum_cls):
     """Return enum values as a list for SQLAlchemy ENUM values_callable."""
     return [item.value for item in enum_cls]
+
+
 class DocumentType(StrEnum):
     EXTENSION = "EXTENSION"
     CRAWLED_URL = "CRAWLED_URL"
@@ -87,6 +89,7 @@ class SearchSourceConnectorType(StrEnum):
     COMPOSIO_GOOGLE_DRIVE_CONNECTOR = "COMPOSIO_GOOGLE_DRIVE_CONNECTOR"
     COMPOSIO_GMAIL_CONNECTOR = "COMPOSIO_GMAIL_CONNECTOR"
     COMPOSIO_GOOGLE_CALENDAR_CONNECTOR = "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR"
+    LARK_CALENDAR_CONNECTOR = "LARK_CALENDAR_CONNECTOR"  # Story 37.3
     RSS_FEED = "RSS_FEED"
 
 
@@ -252,6 +255,9 @@ class CreditPurchaseStatus(StrEnum):
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
+    # Story 37.7: transfer window lapsed. Not terminal — a late-arriving Napas
+    # webhook still credits the wallet because the funds did arrive.
+    EXPIRED = "expired"
 
 
 INCENTIVE_TASKS_CONFIG = {

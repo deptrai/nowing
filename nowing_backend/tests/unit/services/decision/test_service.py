@@ -345,6 +345,44 @@ async def test_decide_skips_telemetry_without_session(_enabled, monkeypatch):
 
 
 @pytest.mark.unit
+async def test_decide_no_session_opens_own_for_telemetry(
+    _enabled, monkeypatch
+):
+    """Fan-out callers (filter_passages, persist_user_turn) pass
+    workspace/user context but no session — sharing one AsyncSession across
+    concurrent asyncio.gather calls would break asyncpg. The service opens
+    a dedicated session and commits it itself."""
+    import app.db
+
+    recorded = _patch_record(monkeypatch)
+    committed = False
+
+    class _OwnSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_exc):
+            return None
+
+        async def commit(self):
+            nonlocal committed
+            committed = True
+
+    monkeypatch.setattr(app.db, "async_session_maker", lambda: _OwnSession())
+    service = DecisionService(_StubBackend(_result()))
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        session=None,
+        workspace_id=9,
+        user_id=UUID(int=2),
+    )
+    assert committed is True
+    assert recorded["workspace_id"] == 9
+    assert recorded["user_id"] == UUID(int=2)
+
+
+@pytest.mark.unit
 async def test_decide_telemetry_failure_is_fail_open(_enabled, monkeypatch):
     async def _boom(session, **kwargs):
         raise RuntimeError("db down")
@@ -577,6 +615,36 @@ async def test_decide_no_fallback_when_configured_none(_enabled, monkeypatch):
     with pytest.raises(DecisionError) as exc_info:
         await service.decide({}, {"q": NOUL_Q})
     assert exc_info.value.code == "timeout"
+
+
+@pytest.mark.unit
+async def test_decide_use_fallback_false_skips_retry_leg(_enabled, monkeypatch):
+    """use_fallback=False: a trigger-code primary failure propagates —
+    the fallback backend is never invoked (story 39.6 voice)."""
+    primary = _StubBackend(exc=DecisionError("down", code="timeout"))
+    fallback = _StubBackend(_llm_result(), name="llm_json")
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService(primary)
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide({}, {"q": NOUL_Q}, use_fallback=False)
+    assert exc_info.value.code == "timeout"
+    assert fallback.calls == []
+
+
+@pytest.mark.unit
+async def test_decide_use_fallback_false_skips_resolution_fallback(
+    _enabled, monkeypatch
+):
+    """use_fallback=False: a backend-resolution failure (trigger code)
+    propagates — no fallback leg replaces it."""
+    monkeypatch.setattr(decision_config, "DECISION_BACKEND", "bogus")
+    fallback = _StubBackend(_llm_result(), name="llm_json")
+    _patch_fallback(monkeypatch, fallback)
+    service = DecisionService()
+    with pytest.raises(DecisionError) as exc_info:
+        await service.decide({}, {"q": NOUL_Q}, use_fallback=False)
+    assert exc_info.value.code == "backend_unavailable"
+    assert fallback.calls == []
 
 
 # ---------------------------------------------------------------------------

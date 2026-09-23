@@ -18,17 +18,29 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Lead, Permission, VerifiedContact, get_async_session
+from app.db import (
+    Lead,
+    Permission,
+    SignalEvent,
+    VerifiedContact,
+    get_async_session,
+)
+from app.lead_intelligence.dnc.normalizer import (
+    compute_phone_hmac,
+    normalize_phone_e164,
+)
+from app.lead_intelligence.dnc.service import DncComplianceService
 from app.redis_client import get_redis_client
 from app.services.lead_assignment_service import LeadAssignmentService
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
+from app.services.pitch_portal import ensure_pitch_portal, sanitize_text
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
@@ -147,8 +159,9 @@ async def _verify_clipper_auth(
     auth: AuthContext,
     workspace_id: int,
     session: AsyncSession,
+    session_permission: str = Permission.LEADS_WRITE.value,
 ) -> None:
-    """Verify PAT scope or session membership permissions for clipping leads."""
+    """Verify PAT scope or session membership permissions for clipper endpoints."""
     if auth.method == "pat":
         if auth.pat is None or not getattr(auth.pat, "is_valid", True):
             raise HTTPException(
@@ -172,8 +185,8 @@ async def _verify_clipper_auth(
             session,
             auth,
             workspace_id,
-            Permission.LEADS_WRITE.value,
-            error_message="You don't have permission to create leads in this workspace",
+            session_permission,
+            error_message="You don't have permission to access leads in this workspace",
         )
     else:
         raise HTTPException(
@@ -362,5 +375,235 @@ async def clip_lead(
 
     return await _commit_or_recover_duplicate(
         session, new_lead, workspace_id, dedupe_hash, body
+    )
+
+
+# ---------------------------------------------------------------------------
+# Story 37.4: Zalo Co-pilot overlay context (AC-1/AC-2/AC-4)
+# ---------------------------------------------------------------------------
+
+COPILOT_MAX_SIGNALS = 5
+
+
+class ZaloCopilotSignal(BaseModel):
+    """A recent intent signal attached to the matched prospect company."""
+
+    signal_type: str
+    confidence: float
+    detected_at: datetime
+    source_url: str | None = None
+
+
+class ZaloCopilotLead(BaseModel):
+    """Prospect company context rendered inside the Zalo drawer (AC-2)."""
+
+    lead_id: UUID
+    company_name: str
+    contact_name: str | None = None
+    contact_title: str | None = None
+    industry: str | None = None
+    location: str | None = None
+    domain: str | None = None
+    status: str
+    intent_score: float | None = None
+
+
+class ZaloCopilotContextResponse(BaseModel):
+    """Context payload for the Zalo co-pilot drawer.
+
+    ``matched=False`` means no *unlocked* lead owns this phone in the
+    workspace — the extension hides the pill but still honours ``dnc_blocked``
+    so a blacklisted number surfaces the red banner either way (AC-4).
+    """
+
+    matched: bool
+    phone_e164: str | None = None
+    dnc_blocked: bool = False
+    dnc_reason: str | None = None
+    lead: ZaloCopilotLead | None = None
+    signals: list[ZaloCopilotSignal] = Field(default_factory=list)
+    pitch_short: str | None = None
+    pitch_with_link: str | None = None
+    pitch_portal_url: str | None = None
+
+
+def _decrypt_contact_field(value: str | None) -> str | None:
+    """Best-effort PII decrypt for an unlocked contact; None on failure."""
+    if not value:
+        return None
+    enc = VerifiedContactEncryption()
+    if not enc.is_encrypted(value):
+        return value
+    try:
+        return enc.decrypt(value)
+    except Exception:  # corrupt ciphertext must not break the drawer
+        return None
+
+
+def _build_zalo_pitch_copy(
+    lead: Lead,
+    contact_name: str | None,
+    portal_url: str | None,
+) -> tuple[str, str]:
+    """Deterministic Vietnamese pitch copy for the two drawer tabs (AC-2).
+
+    ponytail: template-generated, not LLM-generated — the overlay must render
+    instantly and deterministic copy keeps the endpoint idempotent. Upgrade
+    path: LLM personalization keyed on lead content hash.
+    """
+    company = sanitize_text(getattr(lead, "company_name", None), 200) or (
+        "doanh nghiệp mình"
+    )
+    industry = sanitize_text(getattr(lead, "industry", None), 100)
+    ind_clause = f" trong lĩnh vực {industry}" if industry else ""
+    name = sanitize_text(contact_name, 100)
+    greeting = f"Chào anh/chị {name}" if name else "Chào anh/chị"
+
+    short = (
+        f"{greeting}, em bên Nowing ạ. "
+        f"Em thấy {company} đang hoạt động{ind_clause}. "
+        "Bên em giúp đội sales B2B tự động hoá tiếp cận khách hàng và bắt "
+        "tín hiệu mua hàng theo thời gian thực — anh/chị cho em xin 10 phút "
+        "trao đổi nhanh để xem có phù hợp không ạ?"
+    )
+    if portal_url:
+        return short, (
+            f"{short}\n\nEm gửi kèm mini-pitch cá nhân hoá cho {company} "
+            f"tại đây ạ: {portal_url}"
+        )
+    return short, short
+
+
+@router.get(
+    "/workspaces/{workspace_id}/leads/copilot-context",
+    response_model=ZaloCopilotContextResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_zalo_copilot_context(
+    workspace_id: int,
+    phone: str = Query(..., min_length=5, max_length=32),
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    redis_client: Any = Depends(get_redis_client),
+) -> ZaloCopilotContextResponse:
+    """Resolve an open Zalo chat phone to an unlocked lead + pitch context.
+
+    AC-1: match on ``verified_contacts.phone_hmac`` restricted to
+    ``is_unlocked`` contacts. AC-4: DNC is checked against the raw phone even
+    when no lead matches so the extension can still block insertion.
+    """
+    await _verify_clipper_auth(
+        auth, workspace_id, session, session_permission=Permission.LEADS_READ.value
+    )
+
+    e164 = normalize_phone_e164(phone)
+    if not e164:
+        return ZaloCopilotContextResponse(matched=False)
+
+    dnc = await DncComplianceService().is_blocked(
+        workspace_id, phone=e164, session=session
+    )
+    base = {
+        "matched": False,
+        "phone_e164": e164,
+        "dnc_blocked": dnc.is_blocked,
+        "dnc_reason": dnc.reason,
+    }
+
+    phone_hmac = compute_phone_hmac(e164)
+    if not phone_hmac:
+        return ZaloCopilotContextResponse(**base)
+
+    contact_stmt = (
+        select(VerifiedContact)
+        .where(
+            VerifiedContact.workspace_id == workspace_id,
+            VerifiedContact.phone_hmac == phone_hmac,
+            VerifiedContact.is_unlocked.is_(True),
+            VerifiedContact.is_valid.is_(True),
+        )
+        .order_by(desc(VerifiedContact.created_at))
+        .limit(1)
+    )
+    contact = (await session.execute(contact_stmt)).scalars().first()
+    if contact is None:
+        return ZaloCopilotContextResponse(**base)
+
+    lead = await session.get(Lead, (contact.lead_id, workspace_id))
+    if lead is None:
+        return ZaloCopilotContextResponse(**base)
+
+    signals_stmt = (
+        select(SignalEvent)
+        .where(
+            SignalEvent.workspace_id == workspace_id,
+            # Prefer the stable lead link (survives company renames); fall
+            # back to case-insensitive name equality for rows written before
+            # lead_id existed. Plain ==, not ilike, so %/_ in the company
+            # name can't act as wildcards and leak other companies' signals.
+            (SignalEvent.lead_id == lead.id)
+            | (
+                SignalEvent.lead_id.is_(None)
+                & (
+                    func.lower(SignalEvent.company_name)
+                    == func.lower(lead.company_name or "\x00")
+                )
+            ),
+        )
+        .order_by(desc(SignalEvent.detected_at))
+        .limit(COPILOT_MAX_SIGNALS)
+    )
+    signal_rows = (await session.execute(signals_stmt)).scalars().all()
+
+    contact_name = _decrypt_contact_field(getattr(contact, "name", None))
+    contact_title = _decrypt_contact_field(getattr(contact, "title", None))
+
+    # Portal link is best-effort: drawer still works when pitch infra is
+    # down. Skipped entirely when DNC-blocked — insertion is disabled, so
+    # generating a portal would be pointless work (AC-4).
+    portal_url: str | None = None
+    if not dnc.is_blocked:
+        try:
+            portal = await ensure_pitch_portal(session, redis_client, lead)
+            portal_url = portal.get("url")
+        except Exception:  # pitch portal build must not fail the whole lookup
+            logger.warning(
+                "copilot-context: pitch portal build failed for lead %s",
+                lead.id,
+                exc_info=True,
+            )
+
+    pitch_short, pitch_with_link = _build_zalo_pitch_copy(
+        lead, contact_name, portal_url
+    )
+
+    return ZaloCopilotContextResponse(
+        matched=True,
+        phone_e164=e164,
+        dnc_blocked=dnc.is_blocked,
+        dnc_reason=dnc.reason,
+        lead=ZaloCopilotLead(
+            lead_id=lead.id,
+            company_name=lead.company_name,
+            contact_name=contact_name,
+            contact_title=contact_title,
+            industry=lead.industry,
+            location=lead.location,
+            domain=lead.domain,
+            status=lead.status,
+            intent_score=lead.intent_score,
+        ),
+        signals=[
+            ZaloCopilotSignal(
+                signal_type=s.signal_type,
+                confidence=s.confidence,
+                detected_at=s.detected_at,
+                source_url=s.source_url,
+            )
+            for s in signal_rows
+        ],
+        pitch_short=pitch_short,
+        pitch_with_link=pitch_with_link,
+        pitch_portal_url=portal_url,
     )
 

@@ -15,13 +15,14 @@ import pytest
         (7, 59, False),   # Before 08:00 VN Time -> Rejected
         (8, 0, True),     # 08:00 VN Time -> Allowed
         (12, 30, True),   # Mid-day -> Allowed
-        (21, 30, True),   # 21:30 VN Time -> Allowed
-        (21, 31, False),  # After 21:30 VN Time -> Rejected
+        (20, 59, True),   # Last sendable minute before curfew -> Allowed
+        (21, 0, False),   # 21:00 boundary -> Rejected (Decree 91)
+        (21, 30, False),  # After 21:00 -> Rejected
         (23, 0, False),   # Night -> Rejected
     ],
 )
 def test_zns_sending_window_time_gate(hour: int, minute: int, expected_allowed: bool):
-    """Verify Nghị định 91/2020/NĐ-CP sending window compliance (08:00 to 21:30 VN time)."""
+    """Verify Nghị định 91/2020/NĐ-CP sending window compliance (08:00 to 21:00 VN time)."""
     from app.gateway.zalo.zns_client import (
         is_zns_sending_window_open,  # Red-phase import
     )

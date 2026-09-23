@@ -10,6 +10,7 @@ import {
 	Save,
 	Send,
 	ShieldCheck,
+	Sparkles,
 	Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -32,6 +33,7 @@ const TEMPLATE_VARIABLES = [
 	{ label: "{company}", desc: "Tên công ty / doanh nghiệp" },
 	{ label: "{property_title}", desc: "Tiêu đề BĐS / bài đăng" },
 	{ label: "{consultant_phone}", desc: "Hotline chuyên viên" },
+	{ label: "{pitch_portal_url}", desc: "Link mini-pitch portal cá nhân hoá (Story 37.5)" },
 ];
 
 const PARSE_MODES = [
@@ -40,7 +42,13 @@ const PARSE_MODES = [
 	{ value: "HTML", label: "HTML" },
 ];
 
-type StepType = "send_email" | "send_zalo" | "send_telegram" | "wait" | "condition";
+type StepType =
+	| "send_email"
+	| "send_zalo"
+	| "send_telegram"
+	| "wait"
+	| "condition"
+	| "generate_pitch_portal";
 type Channel = "email" | "zalo" | "telegram";
 
 export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
@@ -143,6 +151,15 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 				condition_config: {},
 				is_enabled: true,
 			};
+		} else if (type === "generate_pitch_portal") {
+			newStep = {
+				step_order: nextOrder,
+				step_type: "generate_pitch_portal",
+				channel: "email", // no outbound dispatch; channel is unused
+				template: {},
+				condition_config: {},
+				is_enabled: true,
+			};
 		} else {
 			newStep = {
 				step_order: nextOrder,
@@ -197,10 +214,12 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		// Sanitize: wait/condition steps should not carry a real channel.
+		// Sanitize: non-dispatch steps should not carry a real channel.
 		const cleanSteps = steps.map((step) => ({
 			...step,
-			channel: step.step_type === "wait" || step.step_type === "condition" ? "email" : step.channel,
+			channel: ["wait", "condition", "generate_pitch_portal"].includes(step.step_type)
+				? "email"
+				: step.channel,
 		}));
 		const payload: SequenceCreate = {
 			name,
@@ -356,6 +375,12 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 											<>
 												<GitBranch className="w-4 h-4 text-purple-500" aria-hidden="true" />
 												Điều kiện rẽ nhánh (if replied)
+											</>
+										)}
+										{step.step_type === "generate_pitch_portal" && (
+											<>
+												<Sparkles className="w-4 h-4 text-fuchsia-500" aria-hidden="true" />
+												Tạo Mini-Pitch Portal
 											</>
 										)}
 									</h3>
@@ -589,6 +614,24 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 								</div>
 							)}
 
+							{step.step_type === "generate_pitch_portal" && (
+								<div className="space-y-2">
+									<p className="text-sm text-muted-foreground">
+										Tự động tạo mini-pitch portal cá nhân hoá (logo, tóm tắt 30 giây, máy tính ROI,
+										CTA đặt lịch) cho prospect ở bước này.
+									</p>
+									<div className="p-3 bg-accent/40 rounded-lg text-xs space-y-1">
+										<div className="font-semibold text-foreground">
+											Dùng {"{pitch_portal_url}"} trong các bước gửi phía sau để chèn link portal.
+										</div>
+										<div className="text-muted-foreground">
+											Portal được cache theo lead — chạy lại không tạo trùng; link đi kèm nút
+											Opt-out tuân thủ Nghị định 13.
+										</div>
+									</div>
+								</div>
+							)}
+
 							{step.step_type === "condition" && (
 								<div className="space-y-2">
 									<p className="text-sm text-muted-foreground">
@@ -670,6 +713,16 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 				>
 					<Plus className="w-3.5 h-3.5" aria-hidden="true" />
 					Thêm điều kiện rẽ nhánh (Condition)
+				</button>
+
+				<button
+					type="button"
+					onClick={() => handleAddStep("generate_pitch_portal")}
+					data-testid="add-step-generate_pitch_portal"
+					className="inline-flex items-center gap-1.5 px-3 py-2 bg-fuchsia-500/10 text-fuchsia-600 text-xs font-semibold rounded-lg border border-fuchsia-500/20 hover:bg-fuchsia-500/20 transition-colors shadow-sm"
+				>
+					<Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+					Thêm bước Mini-Pitch Portal
 				</button>
 			</div>
 		</div>

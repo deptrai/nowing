@@ -53,6 +53,7 @@ from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
 from .admin_latency_routes import router as admin_latency_router
+from .admin_refund_desk_routes import router as admin_refund_desk_router
 from .admin_saas_routes import router as admin_saas_router
 from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
@@ -96,7 +97,6 @@ from .gateway_webhook_routes import (
     config_router as gateway_config_router,
     router as gateway_router,
 )
-from .governance_routes import router as governance_router
 from .gateway_whatsapp_baileys_routes import router as gateway_whatsapp_baileys_router
 from .gateway_whatsapp_webhook_routes import router as gateway_whatsapp_webhook_router
 from .google_calendar_add_connector_route import (
@@ -108,6 +108,7 @@ from .google_drive_add_connector_route import (
 from .google_gmail_add_connector_route import (
     router as google_gmail_add_connector_router,
 )
+from .governance_routes import router as governance_router
 from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
@@ -138,7 +139,9 @@ from .presentation_routes import router as presentation_router
 from .projects_routes import router as projects_router
 from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
+from .public_booking_routes import router as public_booking_router
 from .public_chat_routes import router as public_chat_router
+from .public_pitch_routes import router as public_pitch_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
@@ -154,6 +157,7 @@ from .team_memory_routes import router as team_memory_router
 from .teams_add_connector_route import router as teams_add_connector_router
 from .usage_routes import router as usage_router, workspace_usage_router
 from .video_presentations_routes import router as video_presentations_router
+from .vietqr_routes import router as vietqr_router
 from .web_builder_routes import router as web_builder_router
 from .workspace_health_routes import router as workspace_health_router
 from .workspace_tables_routes import router as workspace_tables_router
@@ -173,9 +177,15 @@ router.include_router(outcome_pricing_router)
 router.include_router(promo_code_router)
 router.include_router(partner_router)
 router.include_router(lead_scoring_router)
-router.include_router(leads_router)
+# lead_clipper_router must precede leads_router: its GET
+# /workspaces/{id}/leads/copilot-context would otherwise be shadowed by
+# GET /workspaces/{id}/leads/{lead_id} (UUID parse → 422). Clipper routes
+# are POST-only otherwise, so no reverse collision exists.
 router.include_router(lead_clipper_router)
+router.include_router(leads_router)
 router.include_router(lead_pipeline_router)
+router.include_router(public_booking_router)  # Prospect-facing /book/{ws}/{lead} (Story 37.3)
+router.include_router(public_pitch_router)  # pitch.nowing.ai beacon + meta (Story 37.6)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(zns_router)
@@ -261,6 +271,9 @@ router.include_router(admin_users_router)  # Admin users and impersonation
 router.include_router(admin_affiliates_router)  # Admin affiliate partner payout desk
 router.include_router(admin_credits_router)  # Manual credit adjustments
 router.include_router(
+    admin_refund_desk_router
+)  # Admin Desk for cap-exceeded invalid-contact refunds (Story 37.7)
+router.include_router(
     admin_audit_logs_router
 )  # Platform admin audit trail logs (Story 25.6)
 router.include_router(
@@ -293,6 +306,7 @@ router.include_router(composio_router)  # Composio OAuth and toolkit management
 router.include_router(public_chat_router)  # Public chat sharing and cloning
 router.include_router(incentive_tasks_router)  # Incentive tasks for earning free pages
 router.include_router(stripe_router)  # Stripe checkout for additional page packs
+router.include_router(vietqr_router)  # VietQR/Napas dynamic top-up checkout (Story 37.7)
 router.include_router(usage_router)  # Usage and credit dashboard
 router.include_router(workspace_usage_router)
 router.include_router(youtube_router)  # YouTube playlist resolution

@@ -84,6 +84,12 @@ class TestSequencerMultiChannelPipelineIntegration:
                 return_value=MagicMock(is_blocked=False),
             ),
             patch("app.services.wallet_credit.check_balance", new_callable=AsyncMock),
+            # Story 37.2 AC-4: pin curfew OFF so dispatch isn't time-dependent
+            # (test may run during the 21:00-08:00 ICT halt window).
+            patch(
+                "app.services.sequencer.dispatch.is_dispatch_curfew",
+                return_value=False,
+            ),
             patch.object(
                 service, "_send_zns_dispatch", new_callable=AsyncMock, side_effect=Exception("phone_not_registered")
             ),

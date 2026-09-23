@@ -298,6 +298,7 @@ async def stream_new_chat(
             mentioned_documents=mentioned_documents,
             background_tasks=turn_background_tasks,
             platform_metadata=platform_metadata,
+            workspace_id=workspace_id,
         )
 
         _t0 = time.perf_counter()

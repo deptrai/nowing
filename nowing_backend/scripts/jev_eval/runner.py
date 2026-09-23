@@ -746,12 +746,91 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=0.90,
         help="Per-task accuracy floor for --gate (default: 0.90)",
     )
+    p.add_argument(
+        "--persist",
+        action="store_true",
+        help=(
+            "Write each non-mock result as a TokenUsage row "
+            "(usage_type='decision_eval', call_details.correct set) so the "
+            "admin dashboard's accuracy metric sees eval ground truth "
+            "without manual labeling"
+        ),
+    )
+    p.add_argument(
+        "--workspace-id",
+        type=int,
+        default=None,
+        help="Workspace id to attribute persisted eval rows to (required with --persist)",
+    )
+    p.add_argument(
+        "--user-id",
+        default=None,
+        help="User UUID to attribute persisted eval rows to (required with --persist)",
+    )
     args = p.parse_args(argv)
     if args.dry_run and args.live:
         p.error("--dry-run cannot be combined with --live")
     if args.live and args.backend:
         p.error("--live cannot be combined with --backend (use --backend all)")
+    if args.persist and (args.workspace_id is None or not args.user_id):
+        p.error("--persist requires --workspace-id and --user-id")
     return args
+
+
+async def persist_eval_rows(
+    results: list[EvalResult], workspace_id: int, user_id: str
+) -> int:
+    """Write eval results as ``decision_eval`` TokenUsage rows.
+
+    The dashboard's volume/cost metrics filter ``usage_type == 'decision'``
+    so eval rows never pollute prod spend; accuracy counts labeled rows
+    across both usage types so eval ground truth shows up without manual
+    labeling. Mock rows are harness noise — skipped.
+    """
+    from app.db import async_session_maker
+    from app.services.token_tracking_service import record_token_usage
+
+    rows = [r for r in results if r.backend != "mock"]
+    async with async_session_maker() as session:
+        written = 0
+        for r in rows:
+            cost_micros = 0
+            if r.backend == "jev" and r.input_tokens:
+                cost_micros = int(
+                    r.input_tokens * JEV_PRICE_PER_BTOK_INPUT / 1_000_000_000
+                    * 1_000_000
+                )
+            rec = await record_token_usage(
+                session,
+                usage_type="decision_eval",
+                workspace_id=workspace_id,
+                user_id=user_id,
+                prompt_tokens=r.input_tokens or 0,
+                completion_tokens=r.output_tokens or 0,
+                total_tokens=(r.input_tokens or 0) + (r.output_tokens or 0),
+                cost_micros=cost_micros,
+                e2e_ms=int(r.latency_ms),
+                call_details={
+                    "task": r.task,
+                    "backend": r.backend,
+                    "model": r.model,
+                    "case_id": r.case_id,
+                    "correct": bool(r.correct),
+                    "eval_run": True,
+                    **({"error": r.error} if r.error else {}),
+                },
+            )
+            written += int(rec is not None)
+        await session.commit()
+    logger.info(
+        "Persisted %d/%d eval rows as decision_eval TokenUsage "
+        "(workspace=%s user=%s)",
+        written,
+        len(rows),
+        workspace_id,
+        user_id,
+    )
+    return written
 
 
 async def main(argv: list[str] | None = None) -> int:
@@ -773,6 +852,9 @@ async def main(argv: list[str] | None = None) -> int:
         backends, task_filter=args.task, limit=args.limit, model=args.model
     )
     write_results(results)
+
+    if args.persist:
+        await persist_eval_rows(results, args.workspace_id, args.user_id)
 
     gate_report: list[str] | None = None
     exit_code = 0

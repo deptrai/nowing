@@ -36,7 +36,7 @@ from app.app.shared import (
     registration_allowed,
 )
 from app.auth.context import AuthContext
-from app.auth.csrf import CsrfOriginMiddleware
+from app.auth.csrf import CsrfOriginMiddleware, _origin_from_url
 from app.auth.impersonation import ImpersonationGuardMiddleware
 from app.config import (
     config,
@@ -61,9 +61,9 @@ from app.routes.hybrid_llm_routes import (
     hybrid_public_router,
 )
 from app.routes.lead_batch_routes import router as lead_batch_router
-from app.routes.telegram_channel_routes import router as telegram_channel_router
 from app.routes.narrative_reports_routes import router as narrative_reports_router
 from app.routes.self_host_research import router as self_host_research_router
+from app.routes.telegram_channel_routes import router as telegram_channel_router
 from app.routes.users_routes import router as users_router
 from app.routes.web_builder_routes import host_router as web_builder_host_router
 from app.routes.zero_context_routes import router as zero_context_router
@@ -201,6 +201,14 @@ allowed_origins.extend(
         "http://127.0.0.1:3000",
     ]
 )
+
+# Story 37.5 (AD-119): the pitch portal host serves client-side calls to the
+# public beacon/opt-out endpoints. When the same-origin Next rewrite is not
+# in play (packaged/direct-backend deployments) the browser needs the pitch
+# origin in the allowlist.
+_pitch_origin = _origin_from_url(getattr(config, "PITCH_PORTAL_BASE_URL", None))
+if _pitch_origin and _pitch_origin not in allowed_origins:
+    allowed_origins.append(_pitch_origin)
 
 app.add_middleware(CsrfOriginMiddleware)
 app.add_middleware(

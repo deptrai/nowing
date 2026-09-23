@@ -64,6 +64,7 @@ class DecisionService:
         task: str | None = None,
         model: str | None = None,
         timeout: float | None = None,
+        use_fallback: bool = True,
         question_set: str | None = None,
         required_state_keys: Iterable[str] | None = None,
         session: AsyncSession | None = None,
@@ -111,6 +112,12 @@ class DecisionService:
         ``wait_for`` with the same clamped timeout, so worst-case
         latency is 2 x ``DECISION_TIMEOUT_SECONDS``; the result and
         telemetry always describe the leg that actually answered.
+
+        ``use_fallback=False`` (story 39.6 voice) disables the whole
+        fallback chain for this call — both the backend-resolution
+        fallback and the failed-primary retry leg — so latency-critical
+        callers bound worst case at one leg. A fallback-trigger failure
+        then just propagates its ``DecisionError``.
         """
         if not decision_config.decision_enabled():
             raise DecisionError(
@@ -143,7 +150,7 @@ class DecisionService:
             # fallback trigger set as a failed primary call — the
             # fallback leg then becomes THE backend for this call.
             backend = None
-            if exc.code in _FALLBACK_TRIGGER_CODES:
+            if use_fallback and exc.code in _FALLBACK_TRIGGER_CODES:
                 logger.warning(
                     "Decision backend resolution failed (code=%s) — "
                     "trying the fallback backend",
@@ -200,7 +207,7 @@ class DecisionService:
                     "outcome": exc.code,
                 }
             )
-            if exc.code not in _FALLBACK_TRIGGER_CODES:
+            if not use_fallback or exc.code not in _FALLBACK_TRIGGER_CODES:
                 raise
             fallback = _try_build_fallback(backend.name)
             if fallback is None:
@@ -389,11 +396,77 @@ class DecisionService:
         ``extra_call_details`` is merged over the standard call_details
         keys — callers use it for per-leg traces and failure markers.
         """
-        if session is None or workspace_id is None or user_id is None:
+        if workspace_id is None or user_id is None:
             logger.debug(
-                "Decision usage not persisted — missing session/workspace_id/user_id"
+                "Decision usage not persisted — missing workspace_id/user_id"
             )
             return
+        if session is None:
+            # Caller has billing context but no session — fan-out paths
+            # (filter_passages, persist_user_turn) can't share one
+            # AsyncSession across concurrent calls (asyncpg
+            # single-connection), so open a dedicated session the same
+            # way jev_router does and commit it here.
+            try:
+                from app.db import async_session_maker
+
+                async with async_session_maker() as own_session:
+                    await self._write_usage(
+                        own_session,
+                        backend_result,
+                        backend_name=backend_name,
+                        task=task,
+                        question_set=question_set,
+                        questions=questions,
+                        workspace_id=workspace_id,
+                        user_id=user_id,
+                        client_id=client_id,
+                        thread_id=thread_id,
+                        extra_call_details=extra_call_details,
+                    )
+                    await own_session.commit()
+            except Exception:  # best-effort telemetry; never abort a decision
+                logger.warning(
+                    "Failed to record decision token usage; continuing",
+                    exc_info=True,
+                )
+            return
+        try:
+            await self._write_usage(
+                session,
+                backend_result,
+                backend_name=backend_name,
+                task=task,
+                question_set=question_set,
+                questions=questions,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                client_id=client_id,
+                thread_id=thread_id,
+                extra_call_details=extra_call_details,
+            )
+        except Exception:  # best-effort telemetry; never abort a decision
+            logger.warning(
+                "Failed to record decision token usage; continuing",
+                exc_info=True,
+            )
+
+    async def _write_usage(
+        self,
+        session: AsyncSession,
+        backend_result: BackendResult,
+        *,
+        backend_name: str,
+        task: str,
+        question_set: str | None,
+        questions: dict[str, Question],
+        workspace_id: int,
+        user_id: UUID,
+        client_id: str | None,
+        thread_id: int | None = None,
+        extra_call_details: dict[str, Any] | None = None,
+    ) -> None:
+        """Stage the ``TokenUsage`` row on ``session`` (commit is caller's)."""
         try:
             from app.services.token_tracking_service import (
                 UsageType,

@@ -28,6 +28,7 @@ class LeadStatusUpdate(BaseModel):
             "converted",
             "lost",
             "pending",
+            "pending_enrichment",
         }
         if cleaned not in allowed:
             raise ValueError(
@@ -222,6 +223,8 @@ class PhoneResolutionResponse(BaseModel):
     contact_id: UUID | None = None
     degraded: bool = False
     degradation_reason: str | None = None
+    # AD-121: invalid-contact auto-refund outcome (refunded | refund_review | refund_error)
+    refund_status: str | None = None
     task_id: str | None = None
 
 
@@ -244,6 +247,42 @@ class PhoneRefundResponse(BaseModel):
     refunded_at: str
     status: str
     reason: str | None = None
+    message: str
+
+
+class PhoneVerificationResultRequest(BaseModel):
+    """Programmatic telco/Zalo verification result for an unlocked phone (AD-121).
+
+    Auto-refund fires only when ``error_code`` is one of the objective
+    invalid-contact codes (ZALO_USER_NOT_FOUND, TELCO_NUMBER_UNALLOCATED);
+    anything else is ignored.
+    """
+
+    error_code: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Provider error code, e.g. ZALO_USER_NOT_FOUND or TELCO_NUMBER_UNALLOCATED",
+    )
+    provider: str | None = Field(
+        default=None, max_length=50, description="Verification provider name"
+    )
+    detail: str | None = Field(
+        default=None, max_length=500, description="Optional provider detail"
+    )
+
+
+class InvalidContactRefundResponse(BaseModel):
+    """Result of the objective invalid-contact refund SLA (Story 37.7)."""
+
+    lead_id: UUID
+    refunded: bool
+    refund_amount_credits: float = 0.0
+    refund_micros: int = 0
+    refunded_at: str | None = None
+    status: str
+    reason: str | None = None
+    routed_to_admin_desk: bool = False
     message: str
 
 

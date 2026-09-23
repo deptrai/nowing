@@ -37,6 +37,11 @@ class SignalEvent(Base, TimestampMixin):
             "signal_type",
             "detected_at",
         ),
+        Index(
+            "ix_signal_events_lead_lookup",
+            "workspace_id",
+            "lead_id",
+        ),
         UniqueConstraint(
             "workspace_id",
             "client_id",
@@ -57,6 +62,11 @@ class SignalEvent(Base, TimestampMixin):
     )
     client_id = Column(CITEXT, nullable=True, index=True)
     company_name = Column(String(200), nullable=False, index=True)
+    # Soft link to the owning lead when one exists at write time — survives
+    # company renames that would orphan the company_name join (review 37.4).
+    # Plain indexed UUID, not an FK: leads uses a composite (id, workspace_id)
+    # PK so no single-column FK can reference it.
+    lead_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     signal_type = Column(String(50), nullable=False, index=True)
     source_url = Column(Text, nullable=True)
     chunk_id = Column(UUID(as_uuid=True), nullable=True, index=True)

@@ -216,6 +216,8 @@ celery_app = Celery(
         "app.tasks.celery_tasks.schedule_checker_task",
         "app.tasks.celery_tasks.social_xactions_ingest",
         "app.tasks.celery_tasks.social_stream_worker",
+        "app.tasks.celery_tasks.signal_radar_tasks",
+        "app.tasks.celery_tasks.decision_telemetry_task",
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
         "app.tasks.celery_tasks.stale_meeting_minutes_cleanup_task",
@@ -359,6 +361,27 @@ celery_app.conf.beat_schedule = {
         "task": "process_social_stream",
         "schedule": 30.0,
         "options": {"expires": 25},
+    },
+    # Consume `stream:telegram:raw_events` for purchase intent via the
+    # Aho-Corasick pre-filter (Story 37.1 / AD-115, AC-2/AC-3).
+    "process-telegram-intent-stream": {
+        "task": "process_telegram_intent_stream",
+        "schedule": 30.0,
+        "options": {"expires": 25},
+    },
+    # Every-six-hours high-intent company scan: hiring surges + newly
+    # incorporated tax codes -> SignalEvent at intent_score >= 0.75 (AC-1).
+    "scan-high-intent-companies": {
+        "task": "scan_high_intent_companies_periodic",
+        "schedule": crontab(hour="*/6", minute="23"),
+        "options": {"expires": 3600},
+    },
+    # Decision daily-cost alert check (Story 39.7) — fires the deduped
+    # AdminHealthAlert even when nobody is viewing the admin dashboard.
+    "evaluate-decision-daily-cost-alert": {
+        "task": "evaluate_decision_daily_cost_alert",
+        "schedule": crontab(minute="*/15"),
+        "options": {"expires": 300},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup
