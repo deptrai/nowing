@@ -96,7 +96,6 @@ from .gateway_webhook_routes import (
     config_router as gateway_config_router,
     router as gateway_router,
 )
-from .governance_routes import router as governance_router
 from .gateway_whatsapp_baileys_routes import router as gateway_whatsapp_baileys_router
 from .gateway_whatsapp_webhook_routes import router as gateway_whatsapp_webhook_router
 from .google_calendar_add_connector_route import (
@@ -108,6 +107,7 @@ from .google_drive_add_connector_route import (
 from .google_gmail_add_connector_route import (
     router as google_gmail_add_connector_router,
 )
+from .governance_routes import router as governance_router
 from .image_generation_routes import router as image_generation_router
 from .incentive_tasks_routes import router as incentive_tasks_router
 from .jira_add_connector_route import router as jira_add_connector_router
@@ -138,6 +138,7 @@ from .presentation_routes import router as presentation_router
 from .projects_routes import router as projects_router
 from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
+from .public_booking_routes import router as public_booking_router
 from .public_chat_routes import router as public_chat_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
@@ -176,6 +177,7 @@ router.include_router(lead_scoring_router)
 router.include_router(leads_router)
 router.include_router(lead_clipper_router)
 router.include_router(lead_pipeline_router)
+router.include_router(public_booking_router)  # Prospect-facing /book/{ws}/{lead} (Story 37.3)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(zns_router)
