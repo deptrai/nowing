@@ -207,6 +207,8 @@ class PhoneResolutionResult:
     contact_id: UUID | None = None
     degraded: bool = False
     degradation_reason: str | None = None
+    # AD-121 invalid-contact refund outcome: refunded | refund_review | None
+    refund_status: str | None = None
 
 
 class PhoneWaterfallService:
@@ -297,7 +299,9 @@ class PhoneWaterfallService:
                 )
             if account:
                 await rotator.record_use(account, success=False, error_type="no_phone")
-        except Exception as exc:  # Tier 1 Batdongsan scrape failure; fall through to Tier 2
+        except (
+            Exception
+        ) as exc:  # Tier 1 Batdongsan scrape failure; fall through to Tier 2
             logger.warning("Tier 1 Batdongsan error for %s: %s", source_url, exc)
             if account:
                 await rotator.record_use(account, success=False, error_type="exception")
@@ -375,7 +379,9 @@ class PhoneWaterfallService:
                         "source": "chotot_rsa_api",
                     },
                 )
-        except Exception as exc:  # Tier 2 Cho Tot scrape failure; fall through to Tier 3
+        except (
+            Exception
+        ) as exc:  # Tier 2 Cho Tot scrape failure; fall through to Tier 3
             logger.warning(
                 "Tier 2 Chợ Tốt phone fetch error for %s: %s", listing_id, exc
             )
@@ -487,7 +493,9 @@ class PhoneWaterfallService:
                                 "legal_representative": corp_res.legal_representative,
                             },
                         )
-            except Exception as exc:  # Tier 3 Masothue lookup failure; fall through to Tier 4
+            except (
+                Exception
+            ) as exc:  # Tier 3 Masothue lookup failure; fall through to Tier 4
                 logger.warning(
                     "Tier 3 Masothue rep phone lookup error for %s: %s",
                     lead.company_name,
@@ -533,7 +541,9 @@ class PhoneWaterfallService:
         lock_key = f"{REDIS_PHONE_CACHE_PREFIX}lock:{lead_id}"
         try:
             acquired = await redis.set(lock_key, "1", nx=True, ex=30)
-        except Exception as exc:  # Redis resolution lock acquisition error; treat as unacquired
+        except (
+            Exception
+        ) as exc:  # Redis resolution lock acquisition error; treat as unacquired
             logger.warning("[PhoneWaterfall] Failed acquiring resolution lock: %s", exc)
             acquired = None
         if not acquired:
@@ -626,7 +636,9 @@ class PhoneWaterfallService:
                                     lead_id,
                                 )
                                 cached_phone = None
-                        except Exception as exc:  # cache decrypt failure; treat as cache miss
+                        except (
+                            Exception
+                        ) as exc:  # cache decrypt failure; treat as cache miss
                             logger.warning(
                                 "Failed decrypting cached phone; treating as miss: %s",
                                 exc,
@@ -722,7 +734,9 @@ class PhoneWaterfallService:
                             if payload.get("contact_id")
                             else None,
                         )
-            except Exception as e:  # best-effort cache read; fall through to live waterfall resolution
+            except (
+                Exception
+            ) as e:  # best-effort cache read; fall through to live waterfall resolution
                 logger.warning("Failed reading Redis phone cache: %s", e)
 
         # 3. Two-Phase Credit Locking: Phase 1 - Reserve Credits (Story 33.3)
@@ -833,7 +847,9 @@ class PhoneWaterfallService:
                     degraded=True,
                     degradation_reason=dnc_result.reason or "blocked_by_dnc",
                 )
-        except Exception as exc:  # fail-closed: treat DNC compliance check error as blocked
+        except (
+            Exception
+        ) as exc:  # fail-closed: treat DNC compliance check error as blocked
             logger.warning(
                 "DNC compliance check failed with exception: %s. Failing closed.", exc
             )
@@ -932,7 +948,10 @@ class PhoneWaterfallService:
         await self.session.flush()
 
         # 7. Two-Phase Credit Locking: Phase 2 - Commit or Release (Story 33.3)
-        if phone_res.status == "success":
+        # ponytail: this branch is only reached when res.phone resolved (every
+        # failure path returned early), so the charge commits unconditionally.
+        charge_committed = False
+        if res.phone:
             billing_event = BillingEvent(
                 workspace_id=workspace_id,
                 client_id=client_id,
@@ -951,10 +970,12 @@ class PhoneWaterfallService:
                     await wallet_credit.commit_reserved_credit(
                         self.session, user_id, PHONE_RESOLUTION_COST_MICROS
                     )
+                    charge_committed = True
                 except Exception as exc:
                     logger.warning("Failed to commit reserved credit: %s", exc)
             else:
                 await self.session.commit()
+                charge_committed = True
         else:
             # Resolution failed: release the reserved credit atomically
             if user_id is not None and credit_reserved:
@@ -965,8 +986,53 @@ class PhoneWaterfallService:
                 except Exception as exc:
                     logger.warning("Failed to release reserved credit: %s", exc)
 
-        # 8. Set 30-Day Redis Cache
-        if redis:
+        # 7.5 Objective invalid-contact auto-refund (Story 37.7 / AD-121):
+        # if the winning provider programmatically reported the number dead
+        # (ZALO_USER_NOT_FOUND / TELCO_NUMBER_UNALLOCATED) the just-charged
+        # credits are refunded immediately, or routed to the Admin Desk once
+        # the 15% monthly circuit breaker (AD-110) trips.
+        refund_status: str | None = None
+        from app.services.billing_service import (
+            BillingService,
+            extract_invalid_contact_error_code,
+        )
+
+        invalid_error_code = extract_invalid_contact_error_code(sanitized_raw_response)
+        # Refund only if the charge actually committed — a failed commit means
+        # no deduction exists to reverse (and the reservation stays held for
+        # reconciliation), so skipping avoids a phantom payout.
+        if invalid_error_code is not None and charge_committed:
+            try:
+                refund_result = await BillingService(
+                    self.session
+                ).auto_refund_invalid_contact(
+                    workspace_id=workspace_id,
+                    lead_id=lead_id,
+                    user_id=user_id,
+                    error_code=invalid_error_code,
+                    waterfall_log_id=log_entry.id,
+                )
+                refund_status = (
+                    "refunded"
+                    if refund_result.get("refunded")
+                    else refund_result.get("status", "refund_review")
+                )
+            except Exception as exc:  # refund must never break resolution result
+                logger.warning(
+                    "Invalid-contact auto-refund failed for lead %s: %s",
+                    lead_id,
+                    exc,
+                )
+                refund_status = "refund_error"
+
+        # 8. Set 30-Day Redis Cache — skipped whenever the number reported
+        # dead (refunded, queued for review, or refund attempt errored):
+        # caching a known-dead contact would re-serve it for 24h.
+        if redis and refund_status not in (
+            "refunded",
+            "refund_review",
+            "refund_error",
+        ):
             try:
                 cache_payload = json.dumps(
                     {
@@ -990,7 +1056,9 @@ class PhoneWaterfallService:
                         cache_payload,
                         ex=PHONE_CACHE_TTL_SECONDS,
                     )
-            except Exception as e:  # best-effort cache write; resolution already successful
+            except (
+                Exception
+            ) as e:  # best-effort cache write; resolution already successful
                 logger.warning("Failed setting Redis phone cache: %s", e)
 
         return PhoneResolutionResult(
@@ -1000,10 +1068,13 @@ class PhoneWaterfallService:
             phone_hash=p_hash,
             tier_reached=res.tier,
             provider_used=res.provider,
+            # AD-121: refund outcome lives on refund_status — status stays
+            # "success" so existing consumers matching on it keep working.
             status="success",
             cost_micros=PHONE_RESOLUTION_COST_MICROS,
             confidence=res.confidence,
             carrier=res.carrier,
             is_cached=False,
             contact_id=contact.id,
+            refund_status=refund_status,
         )

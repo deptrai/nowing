@@ -53,6 +53,7 @@ from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
 from .admin_latency_routes import router as admin_latency_router
+from .admin_refund_desk_routes import router as admin_refund_desk_router
 from .admin_saas_routes import router as admin_saas_router
 from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
@@ -156,6 +157,7 @@ from .team_memory_routes import router as team_memory_router
 from .teams_add_connector_route import router as teams_add_connector_router
 from .usage_routes import router as usage_router, workspace_usage_router
 from .video_presentations_routes import router as video_presentations_router
+from .vietqr_routes import router as vietqr_router
 from .web_builder_routes import router as web_builder_router
 from .workspace_health_routes import router as workspace_health_router
 from .workspace_tables_routes import router as workspace_tables_router
@@ -269,6 +271,9 @@ router.include_router(admin_users_router)  # Admin users and impersonation
 router.include_router(admin_affiliates_router)  # Admin affiliate partner payout desk
 router.include_router(admin_credits_router)  # Manual credit adjustments
 router.include_router(
+    admin_refund_desk_router
+)  # Admin Desk for cap-exceeded invalid-contact refunds (Story 37.7)
+router.include_router(
     admin_audit_logs_router
 )  # Platform admin audit trail logs (Story 25.6)
 router.include_router(
@@ -301,6 +306,7 @@ router.include_router(composio_router)  # Composio OAuth and toolkit management
 router.include_router(public_chat_router)  # Public chat sharing and cloning
 router.include_router(incentive_tasks_router)  # Incentive tasks for earning free pages
 router.include_router(stripe_router)  # Stripe checkout for additional page packs
+router.include_router(vietqr_router)  # VietQR/Napas dynamic top-up checkout (Story 37.7)
 router.include_router(usage_router)  # Usage and credit dashboard
 router.include_router(workspace_usage_router)
 router.include_router(youtube_router)  # YouTube playlist resolution

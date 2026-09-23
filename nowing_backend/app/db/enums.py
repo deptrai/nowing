@@ -19,6 +19,8 @@ NATIVE_TO_LEGACY_DOCTYPE: dict[str, str] = {
 def _enum_values(enum_cls):
     """Return enum values as a list for SQLAlchemy ENUM values_callable."""
     return [item.value for item in enum_cls]
+
+
 class DocumentType(StrEnum):
     EXTENSION = "EXTENSION"
     CRAWLED_URL = "CRAWLED_URL"
@@ -253,6 +255,9 @@ class CreditPurchaseStatus(StrEnum):
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
+    # Story 37.7: transfer window lapsed. Not terminal — a late-arriving Napas
+    # webhook still credits the wallet because the funds did arrive.
+    EXPIRED = "expired"
 
 
 INCENTIVE_TASKS_CONFIG = {

@@ -263,3 +263,30 @@ def test_update_lead_status_permission_denied(monkeypatch, mock_leads):
         json={"status": "qualified"},
     )
     assert response.status_code == 403
+
+
+def test_phone_verification_result_requires_superuser():
+    """AD-121 verification endpoint is programmatic-only (Story 37.7).
+
+    Ordinary workspace members must not self-assert invalid-contact codes to
+    trigger refunds — the route is gated by ``require_superuser``.
+    """
+    from app.routes.leads_routes import router
+    from app.users import require_superuser
+
+    async def _deny() -> AuthContext:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=403, detail="platform admin only")
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_async_session] = lambda: _FakeSession()
+    app.dependency_overrides[require_superuser] = _deny
+
+    client = TestClient(app)
+    response = client.post(
+        f"/workspaces/1/leads/{uuid4()}/phone-verification-result",
+        json={"error_code": "ZALO_USER_NOT_FOUND"},
+    )
+    assert response.status_code == 403

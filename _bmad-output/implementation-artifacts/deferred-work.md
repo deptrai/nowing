@@ -1939,3 +1939,17 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper.md`
   summary: Zalo overlay not verified against real chat.zalo.me DOM — phone detection heuristics (URL/anchor/header), composer selectors, and insertText path untested live.
   evidence: no Zalo web session available during dev+review; detection fails safe (no phone → no pill). Needs a manual pass on a real Zalo account before rollout.
+
+## Story 37.7 deferrals (hybrid pricing + auto-refund SLA)
+
+- **Manual-path cap semantics**: `auto_refund_lead` (24h user-report SLA)
+  is uncapped but its `lead_refund` events count toward the AD-110 15%
+  auto-refund budget. Global cap across all refund paths is a product
+  decision.
+- **AC-3 wording vs implementation**: spec says "the 10 credits deducted";
+  actual charge is `PHONE_RESOLUTION_COST_MICROS` (150 credits). Code
+  refunds the real deducted amount — reconcile the spec number.
+- **Napas webhook E2E**: HMAC contract + payload field mapping verified in
+  unit tests only; needs aggregator sandbox credentials for a live pass.
+- **Browser verification**: `/buy-tokens` tier cards, credit slider, VietQR
+  modal countdown/poll need a real-browser pass (authed workspace session).

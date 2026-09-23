@@ -66,9 +66,7 @@ MICROS_PER_PAGE = int(os.getenv("MICROS_PER_PAGE", "1000"))
 WEB_CRAWL_CREDIT_BILLING_ENABLED = (
     os.getenv("WEB_CRAWL_CREDIT_BILLING_ENABLED", "FALSE").upper() == "TRUE"
 )
-WEB_CRAWL_MICROS_PER_SUCCESS = int(
-    os.getenv("WEB_CRAWL_MICROS_PER_SUCCESS", "2000")
-)
+WEB_CRAWL_MICROS_PER_SUCCESS = int(os.getenv("WEB_CRAWL_MICROS_PER_SUCCESS", "2000"))
 
 # Phase 3d captcha-solve billing. Captcha can't ride the per-success crawl
 # meter above: the solver charges per *attempt* regardless of whether the
@@ -91,6 +89,25 @@ CREDIT_LOW_BALANCE_WARNING_MICROS = int(
     os.getenv("CREDIT_LOW_BALANCE_WARNING_MICROS", "500000")
 )
 
+# VietQR / Napas 24/7 dynamic top-up checkout (Story 37.7 / AC-2).
+# The beneficiary account the dynamic QR encodes; the webhook credits the
+# wallet when a matching Napas transfer arrives. These are account
+# identifiers, not secrets — safe defaults mirror the checkout UI.
+# Off by default like the Stripe flags — money-crediting endpoints are opt-in.
+VIETQR_TOPUP_ENABLED = os.getenv("VIETQR_TOPUP_ENABLED", "FALSE").upper() == "TRUE"
+VIETQR_BANK_BIN = os.getenv("VIETQR_BANK_BIN", "970436")  # Vietcombank
+VIETQR_BANK_NAME = os.getenv("VIETQR_BANK_NAME", "Vietcombank (VCB)")
+VIETQR_ACCOUNT_NUMBER = os.getenv("VIETQR_ACCOUNT_NUMBER", "1028384950")
+VIETQR_ACCOUNT_NAME = os.getenv("VIETQR_ACCOUNT_NAME", "NOWING VIETNAM")
+# Dynamic QR / transfer memo validity window (10-minute countdown on the modal).
+VIETQR_TOPUP_EXPIRES_MINUTES = int(os.getenv("VIETQR_TOPUP_EXPIRES_MINUTES", "10"))
+# VND per USD conversion for ad-hoc VietQR top-ups (mirrors the buy-credits UI).
+VIETQR_VND_PER_USD = int(os.getenv("VIETQR_VND_PER_USD", "25400"))
+# Monthly auto-refund circuit breaker (AD-110 / AD-121): auto-refunds are
+# capped at this fraction of total unlocked leads per workspace per calendar
+# month; excess requests are routed to the manual Admin Desk.
+AUTO_REFUND_MONTHLY_CAP_PCT = float(os.getenv("AUTO_REFUND_MONTHLY_CAP_PCT", "0.15"))
+
 # Auto-reload (off-session Stripe top-up) feature flag and guards.
 AUTO_RELOAD_ENABLED = os.getenv("AUTO_RELOAD_ENABLED", "FALSE").upper() == "TRUE"
 # Minimum configurable reload amount (micro-USD). $1.00 to match pack pricing.
@@ -111,28 +128,63 @@ QUOTA_MAX_RESERVE_MICROS = int(os.getenv("QUOTA_MAX_RESERVE_MICROS", "1000000"))
 if (
     os.getenv("PREMIUM_TOKEN_LIMIT") or os.getenv("PREMIUM_CREDIT_MICROS_LIMIT")
 ) and not os.getenv("DEFAULT_CREDIT_MICROS_BALANCE"):
-    logger.warning("Warning: PREMIUM_TOKEN_LIMIT / PREMIUM_CREDIT_MICROS_LIMIT are "
+    logger.warning(
+        "Warning: PREMIUM_TOKEN_LIMIT / PREMIUM_CREDIT_MICROS_LIMIT are "
         "deprecated; rename to DEFAULT_CREDIT_MICROS_BALANCE. The old keys "
-        "will be removed in a future release.")
+        "will be removed in a future release."
+    )
 if os.getenv("STRIPE_TOKENS_PER_UNIT") and not os.getenv(
     "STRIPE_CREDIT_MICROS_PER_UNIT"
 ):
-    logger.warning("Warning: STRIPE_TOKENS_PER_UNIT is deprecated; rename to "
+    logger.warning(
+        "Warning: STRIPE_TOKENS_PER_UNIT is deprecated; rename to "
         "STRIPE_CREDIT_MICROS_PER_UNIT (1:1 numerical mapping). "
-        "The old key will be removed in a future release.")
+        "The old key will be removed in a future release."
+    )
 if os.getenv("STRIPE_PREMIUM_TOKEN_PRICE_ID") and not os.getenv(
     "STRIPE_CREDIT_PRICE_ID"
 ):
-    logger.warning("Warning: STRIPE_PREMIUM_TOKEN_PRICE_ID is deprecated; rename to "
+    logger.warning(
+        "Warning: STRIPE_PREMIUM_TOKEN_PRICE_ID is deprecated; rename to "
         "STRIPE_CREDIT_PRICE_ID. The old key will be removed in a future "
-        "release.")
+        "release."
+    )
 if os.getenv("STRIPE_TOKEN_BUYING_ENABLED") and not os.getenv(
     "STRIPE_CREDIT_BUYING_ENABLED"
 ):
-    logger.warning("Warning: STRIPE_TOKEN_BUYING_ENABLED is deprecated; rename to "
+    logger.warning(
+        "Warning: STRIPE_TOKEN_BUYING_ENABLED is deprecated; rename to "
         "STRIPE_CREDIT_BUYING_ENABLED. The old key will be removed in a "
-        "future release.")
+        "future release."
+    )
 
 
-
-__all__ = ['AUTO_RELOAD_COOLDOWN_MINUTES', 'AUTO_RELOAD_ENABLED', 'AUTO_RELOAD_MIN_AMOUNT_MICROS', 'CREDIT_LOW_BALANCE_WARNING_MICROS', 'DEFAULT_CREDIT_MICROS_BALANCE', 'ETL_CREDIT_BILLING_ENABLED', 'MICROS_PER_PAGE', 'QUOTA_MAX_RESERVE_MICROS', 'STRIPE_CREDIT_BUYING_ENABLED', 'STRIPE_CREDIT_MICROS_PER_UNIT', 'STRIPE_CREDIT_PRICE_ID', 'STRIPE_RECONCILIATION_BATCH_SIZE', 'STRIPE_RECONCILIATION_LOOKBACK_MINUTES', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'WEB_CRAWL_CAPTCHA_BILLING_ENABLED', 'WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE', 'WEB_CRAWL_CREDIT_BILLING_ENABLED', 'WEB_CRAWL_MICROS_PER_SUCCESS']
+__all__ = [
+    "AUTO_REFUND_MONTHLY_CAP_PCT",
+    "AUTO_RELOAD_COOLDOWN_MINUTES",
+    "AUTO_RELOAD_ENABLED",
+    "AUTO_RELOAD_MIN_AMOUNT_MICROS",
+    "CREDIT_LOW_BALANCE_WARNING_MICROS",
+    "DEFAULT_CREDIT_MICROS_BALANCE",
+    "ETL_CREDIT_BILLING_ENABLED",
+    "MICROS_PER_PAGE",
+    "QUOTA_MAX_RESERVE_MICROS",
+    "STRIPE_CREDIT_BUYING_ENABLED",
+    "STRIPE_CREDIT_MICROS_PER_UNIT",
+    "STRIPE_CREDIT_PRICE_ID",
+    "STRIPE_RECONCILIATION_BATCH_SIZE",
+    "STRIPE_RECONCILIATION_LOOKBACK_MINUTES",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "VIETQR_ACCOUNT_NAME",
+    "VIETQR_ACCOUNT_NUMBER",
+    "VIETQR_BANK_BIN",
+    "VIETQR_BANK_NAME",
+    "VIETQR_TOPUP_ENABLED",
+    "VIETQR_TOPUP_EXPIRES_MINUTES",
+    "VIETQR_VND_PER_USD",
+    "WEB_CRAWL_CAPTCHA_BILLING_ENABLED",
+    "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE",
+    "WEB_CRAWL_CREDIT_BILLING_ENABLED",
+    "WEB_CRAWL_MICROS_PER_SUCCESS",
+]

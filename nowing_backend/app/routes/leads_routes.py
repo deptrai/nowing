@@ -29,6 +29,7 @@ from app.lead_intelligence.schemas import (
     CompanyGraphRead,
     DecisionMakerRead,
     HiringSignalRead,
+    InvalidContactRefundResponse,
     InvalidPhoneReportRequest,
     LeadListResponse,
     LeadRead,
@@ -37,6 +38,7 @@ from app.lead_intelligence.schemas import (
     PhoneRefundResponse,
     PhoneResolutionRequest,
     PhoneResolutionResponse,
+    PhoneVerificationResultRequest,
     ReverseIcpRequest,
     ReverseIcpResponse,
     TenderSummaryRead,
@@ -49,7 +51,7 @@ from app.services.billing_service import BillingService
 from app.services.phone_waterfall_service import PhoneWaterfallService
 from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
 from app.tenant_context import set_request_tenant_context
-from app.users import get_auth_context
+from app.users import get_auth_context, require_superuser
 from app.utils.rbac import get_user_permissions, has_permission
 
 logger = logging.getLogger(__name__)
@@ -533,7 +535,9 @@ async def get_company_graph(
         .distinct()
     )
     if membership and not _can_view_all_leads(membership):
-        contacts_stmt = contacts_stmt.where(Lead.assigned_to_user_id == membership.user_id)
+        contacts_stmt = contacts_stmt.where(
+            Lead.assigned_to_user_id == membership.user_id
+        )
     contacts_result = await session.execute(contacts_stmt)
     db_contacts = contacts_result.scalars().all()
 
@@ -780,6 +784,7 @@ async def resolve_lead_phone_endpoint(
         contact_id=res.contact_id,
         degraded=res.degraded,
         degradation_reason=res.degradation_reason,
+        refund_status=res.refund_status,
     )
 
 
@@ -820,4 +825,74 @@ async def report_invalid_phone_endpoint(
         status=result["status"],
         reason=result["reason"],
         message="Auto-refund SLA processed successfully. 100% credits reverted to wallet.",
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/leads/{lead_id}/phone-verification-result",
+    response_model=InvalidContactRefundResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def phone_verification_result_endpoint(
+    workspace_id: int,
+    lead_id: UUID,
+    body: PhoneVerificationResultRequest,
+    session: AsyncSession = Depends(get_async_session),
+    # Programmatic-only trigger: ordinary workspace members must not be able
+    # to self-assert invalid-contact codes and drain their own refunds.
+    auth: AuthContext = Depends(require_superuser),
+) -> InvalidContactRefundResponse:
+    """Objective technical refund trigger (Story 37.7 / AD-121).
+
+    Called by the programmatic telco/Zalo verification pipeline when an
+    unlocked phone number returns ``ZALO_USER_NOT_FOUND`` or
+    ``TELCO_NUMBER_UNALLOCATED`` — the deducted credits are refunded
+    immediately with a ``credit_refund_invalid_contact`` ledger entry, unless
+    the 15% monthly circuit breaker routes it to the Admin Desk (AD-110).
+    Other error codes are ignored — manual claims are not eligible.
+    """
+    from app.services.billing_service import INVALID_CONTACT_ERROR_CODES
+
+    if (body.error_code or "").strip().upper() not in INVALID_CONTACT_ERROR_CODES:
+        return InvalidContactRefundResponse(
+            lead_id=lead_id,
+            refunded=False,
+            status="ignored",
+            reason=body.error_code,
+            message=(
+                "error_code is not a programmatic invalid-contact code; "
+                "no auto-refund triggered."
+            ),
+        )
+
+    billing = BillingService(session)
+    result = await billing.auto_refund_invalid_contact(
+        workspace_id=workspace_id,
+        lead_id=lead_id,
+        user_id=auth.user_id,
+        error_code=body.error_code,
+    )
+
+    if result.get("routed_to_admin_desk"):
+        message = (
+            "Monthly auto-refund cap reached (15% of unlocked leads); "
+            "request routed to the Admin Desk for manual review."
+        )
+    elif result.get("refunded"):
+        message = (
+            "Invalid-contact auto-refund processed. 100% credits reverted to wallet."
+        )
+    else:
+        message = "Verification result processed."
+
+    return InvalidContactRefundResponse(
+        lead_id=UUID(result["lead_id"]),
+        refunded=result["refunded"],
+        refund_amount_credits=result.get("refund_credits", 0.0),
+        refund_micros=result.get("refund_micros", 0),
+        refunded_at=result.get("refunded_at"),
+        status=result["status"],
+        reason=result.get("reason"),
+        routed_to_admin_desk=bool(result.get("routed_to_admin_desk")),
+        message=message,
     )
