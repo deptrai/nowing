@@ -15,6 +15,10 @@ import pytest
 from app.services.pitch_engagement import (
     MIN_DWELL_SECONDS,
     PITCH_BEACON_LOCK_TTL_SECONDS,
+    _dispatch_telegram_alert,
+    _format_alert_message,
+    _resolve_alert_recipient_id,
+    _resolve_zalo_deep_link,
     build_zalo_deep_link,
     classify_device_type,
     is_crawler_user_agent,
@@ -44,13 +48,21 @@ def _lead(**overrides):
 def _redis(set_result=True):
     redis = MagicMock()
     redis.set = AsyncMock(return_value=set_result)
+    redis.delete = AsyncMock()
     return redis
 
 
-def _session():
-    """AsyncSession stand-in; ``add`` stays sync like the real session."""
+def _session(execute_scalar=None):
+    """AsyncSession stand-in; ``add`` stays sync like the real session.
+
+    ``execute()`` returns a result whose ``scalar_one_or_none`` yields
+    ``execute_scalar`` (default None = "no existing timeline row").
+    """
     session = AsyncMock()
     session.add = MagicMock()
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = execute_scalar
+    session.execute = AsyncMock(return_value=result)
     return session
 
 
@@ -66,7 +78,7 @@ class TestCrawlerFilter:
             "Mozilla/5.0 (compatible; Googlebot/2.1)",
             "TelegramBot (like TwitterBot)",
             "Slackbot-LinkExpanding 1.0",
-            "WhatsApp/2.23",
+            "WhatsApp/2.23.20.0",  # bare product token = link-preview fetcher
             "Mozilla/5.0 HeadlessChrome/120.0",
         ],
     )
@@ -78,6 +90,10 @@ class TestCrawlerFilter:
         [
             CHROME_UA,
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1",
+            # Zalo/WhatsApp in-app browsers keep the product token inside a
+            # full Mozilla UA — real prospects, not preview pings.
+            "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Zalo/24.0 Mobile",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605.1.15 WhatsApp/2.24",
             None,
             "",
         ],
@@ -284,3 +300,308 @@ class TestWorkspaceRefResolution:
         result.scalar_one_or_none.return_value = None
         session.execute.return_value = result
         assert await resolve_pitch_workspace_id(session, "nope") is None
+
+
+@pytest.mark.unit
+class TestDispatchGuardAndLockRelease:
+    """record_pitch_beacon: dispatch failures stay silent + release the lock."""
+
+    @pytest.mark.asyncio
+    async def test_dispatch_exception_still_logs_and_releases_lock(self):
+        session = _session()
+        redis = _redis(set_result=True)
+        lead = _lead()
+        with patch(
+            "app.services.pitch_engagement._dispatch_telegram_alert",
+            new=AsyncMock(side_effect=RuntimeError("boom")),
+        ):
+            outcome = await record_pitch_beacon(
+                session,
+                redis,
+                lead=lead,
+                dwell_seconds=10.0,
+                sections_viewed=[],
+                device_type=None,
+                session_id=None,
+                event="open",
+                user_agent=CHROME_UA,
+            )
+        assert outcome == "recorded_silent"
+        redis.delete.assert_awaited_once_with(pitch_beacon_lock_key(lead.id))
+        session.add.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_unsent_alert_releases_lock(self):
+        session = _session()
+        redis = _redis(set_result=True)
+        lead = _lead()
+        with patch(
+            "app.services.pitch_engagement._dispatch_telegram_alert",
+            new=AsyncMock(return_value=False),  # e.g. no Telegram binding
+        ):
+            outcome = await record_pitch_beacon(
+                session,
+                redis,
+                lead=lead,
+                dwell_seconds=10.0,
+                sections_viewed=[],
+                device_type=None,
+                session_id=None,
+                event="open",
+                user_agent=CHROME_UA,
+            )
+        assert outcome == "recorded_silent"
+        redis.delete.assert_awaited_once_with(pitch_beacon_lock_key(lead.id))
+
+    @pytest.mark.asyncio
+    async def test_sent_alert_keeps_lock(self):
+        session = _session()
+        redis = _redis(set_result=True)
+        lead = _lead()
+        with patch(
+            "app.services.pitch_engagement._dispatch_telegram_alert",
+            new=AsyncMock(return_value=True),
+        ):
+            outcome = await record_pitch_beacon(
+                session,
+                redis,
+                lead=lead,
+                dwell_seconds=10.0,
+                sections_viewed=[],
+                device_type=None,
+                session_id=None,
+                event="open",
+                user_agent=CHROME_UA,
+            )
+        assert outcome == "recorded_alerted"
+        redis.delete.assert_not_called()
+
+
+@pytest.mark.unit
+class TestSessionDedupe:
+    """Repeat beacons in one session update the same timeline row."""
+
+    @pytest.mark.asyncio
+    async def test_heartbeat_updates_existing_row(self):
+        existing = SimpleNamespace(
+            details={
+                "dwell_seconds": 4.0,
+                "sections_viewed": ["hero"],
+                "telegram_alerted": True,
+            },
+            title="Xem mini-pitch portal (4s)",
+        )
+        session = _session(execute_scalar=existing)
+        redis = _redis(set_result=None)  # inside cooldown
+        with patch(
+            "app.services.pitch_engagement._dispatch_telegram_alert",
+            new=AsyncMock(),
+        ):
+            outcome = await record_pitch_beacon(
+                session,
+                redis,
+                lead=_lead(),
+                dwell_seconds=34.0,
+                sections_viewed=["hero", "roi"],
+                device_type="mobile",
+                session_id="sess-1",
+                event="heartbeat",
+                user_agent=CHROME_UA,
+            )
+        assert outcome == "recorded_silent"
+        session.add.assert_not_called()
+        assert existing.details["dwell_seconds"] == 34.0
+        assert existing.details["sections_viewed"] == ["hero", "roi"]
+        assert existing.details["event"] == "heartbeat"
+        assert existing.details["telegram_alerted"] is True  # OR-ed, not reset
+        assert existing.title == "Xem mini-pitch portal (34s)"
+
+    @pytest.mark.asyncio
+    async def test_first_event_of_session_inserts(self):
+        session = _session(execute_scalar=None)  # no prior row for session
+        redis = _redis(set_result=None)
+        outcome = await record_pitch_beacon(
+            session,
+            redis,
+            lead=_lead(),
+            dwell_seconds=5.0,
+            sections_viewed=["hero"],
+            device_type="desktop",
+            session_id="sess-new",
+            event="open",
+            user_agent=CHROME_UA,
+        )
+        assert outcome == "recorded_silent"
+        session.add.assert_called_once()
+
+
+@pytest.mark.unit
+class TestDispatchTelegramAlert:
+    """AC-4: real dispatch chain (Telegram adapter mocked at boundary)."""
+
+    def _binding(self):
+        return SimpleNamespace(
+            external_peer_id="peer-123",
+            account_id=5,
+            account=SimpleNamespace(),
+        )
+
+    @pytest.mark.asyncio
+    async def test_sends_markdown_v2_to_resolved_peer(self):
+        session = _session(execute_scalar=None)  # no verified phone
+        lead = _lead(assigned_to_user_id=uuid4())
+        adapter_cls = MagicMock()
+        adapter_cls.return_value.send_message = AsyncMock()
+        with (
+            patch(
+                "app.automations.services.telegram_notifications."
+                "resolve_telegram_binding_for_run",
+                new=AsyncMock(return_value=self._binding()),
+            ),
+            patch("app.gateway.accounts.account_token", return_value="tok"),
+            patch("app.gateway.telegram.adapter.TelegramAdapter", adapter_cls),
+        ):
+            sent = await _dispatch_telegram_alert(
+                session,
+                lead,
+                dwell_seconds=42.0,
+                sections_viewed=["hero"],
+                device_type="mobile",
+            )
+        assert sent is True
+        kwargs = adapter_cls.return_value.send_message.await_args.kwargs
+        assert kwargs["external_peer_id"] == "peer-123"
+        assert kwargs["parse_mode"] == "MarkdownV2"
+        assert "42s" in kwargs["text"]
+
+    @pytest.mark.asyncio
+    async def test_no_binding_returns_false(self):
+        session = _session()
+        lead = _lead(assigned_to_user_id=uuid4())
+        with patch(
+            "app.automations.services.telegram_notifications."
+            "resolve_telegram_binding_for_run",
+            new=AsyncMock(return_value=None),
+        ):
+            sent = await _dispatch_telegram_alert(
+                session,
+                lead,
+                dwell_seconds=10.0,
+                sections_viewed=[],
+                device_type="desktop",
+            )
+        assert sent is False
+
+    @pytest.mark.asyncio
+    async def test_no_recipient_returns_false(self):
+        session = _session(execute_scalar=None)
+        session.get = AsyncMock(return_value=None)  # no workspace owner either
+        lead = _lead(assigned_to_user_id=None)
+        with patch(
+            "app.automations.services.telegram_notifications."
+            "resolve_telegram_binding_for_run",
+            new=AsyncMock(),
+        ) as resolve:
+            sent = await _dispatch_telegram_alert(
+                session,
+                lead,
+                dwell_seconds=10.0,
+                sections_viewed=[],
+                device_type="desktop",
+            )
+        assert sent is False
+        resolve.assert_not_called()
+
+
+@pytest.mark.unit
+class TestZaloLinkResolution:
+    @pytest.mark.asyncio
+    async def test_encrypted_phone_is_decrypted(self):
+        from app.services.pii.verified_contact_encryption import (
+            VerifiedContactEncryption,
+        )
+
+        enc = VerifiedContactEncryption(secret_key="unit-test-key")
+        ciphertext = enc.encrypt("0901234567")
+        assert ciphertext != "0901234567"
+
+        session = _session(execute_scalar=ciphertext)
+        with patch(
+            "app.services.pii.verified_contact_encryption."
+            "VerifiedContactEncryption",
+            return_value=enc,
+        ):
+            link = await _resolve_zalo_deep_link(session, _lead())
+        assert link == "https://zalo.me/84901234567"
+
+    @pytest.mark.asyncio
+    async def test_plaintext_phone_still_works(self):
+        session = _session(execute_scalar="+84 912 345 678")
+        with patch(
+            "app.services.pii.verified_contact_encryption."
+            "VerifiedContactEncryption",
+        ) as enc_cls:
+            enc_cls.return_value.is_encrypted.return_value = False
+            link = await _resolve_zalo_deep_link(session, _lead())
+        enc_cls.return_value.is_encrypted.assert_called_once()
+        assert link == "https://zalo.me/84912345678"
+
+    @pytest.mark.asyncio
+    async def test_no_contact_returns_none(self):
+        session = _session(execute_scalar=None)
+        assert await _resolve_zalo_deep_link(session, _lead()) is None
+
+
+@pytest.mark.unit
+class TestRecipientFallback:
+    """AC-4: assigned rep → latest assignment → workspace owner."""
+
+    @pytest.mark.asyncio
+    async def test_assigned_to_user_wins(self):
+        owner = uuid4()
+        session = _session()
+        result = await _resolve_alert_recipient_id(
+            session, _lead(assigned_to_user_id=owner)
+        )
+        assert result == owner
+        session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_latest_assignment(self):
+        assignee = uuid4()
+        session = _session(execute_scalar=assignee)
+        result = await _resolve_alert_recipient_id(session, _lead())
+        assert result == assignee
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_workspace_owner(self):
+        owner = uuid4()
+        session = _session(execute_scalar=None)
+        session.get = AsyncMock(
+            return_value=SimpleNamespace(user_id=owner)
+        )
+        result = await _resolve_alert_recipient_id(session, _lead())
+        assert result == owner
+
+
+@pytest.mark.unit
+class TestAlertMessageFormat:
+    def test_markdown_v2_escapes_dynamic_fields(self):
+        lead = _lead(company_name="Công ty *ABC* (VN).")
+        with patch(
+            "app.services.pitch_engagement.config",
+            SimpleNamespace(NEXT_FRONTEND_URL="https://app.test"),
+        ):
+            text = _format_alert_message(
+                lead=lead,
+                dwell_seconds=42.0,
+                sections_viewed=["hero"],
+                device_type="mobile",
+                zalo_link="https://zalo.me/84901234567",
+            )
+        # Reserved MarkdownV2 chars in the company name are escaped…
+        assert "\\*ABC\\*" in text
+        assert "\\(VN\\)\\." in text
+        # …while generated markdown links stay raw.
+        assert "[💬 Chat Zalo ngay](https://zalo.me/84901234567)" in text
+        assert f"/dashboard/{lead.workspace_id}/leads/pipeline" in text

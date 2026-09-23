@@ -1,5 +1,6 @@
 import { CalendarCheck, ShieldCheck, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PitchEngagementBeacon } from "@/components/pitch/engagement-beacon";
@@ -24,18 +25,37 @@ interface PitchMeta {
 	booking_path: string;
 }
 
-async function getPitchMeta(workspaceSlug: string, leadId: string): Promise<PitchMeta | null> {
-	try {
-		const res = await fetch(
-			`${SERVER_BACKEND_URL}/api/v1/public/pitch/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(leadId)}/meta`,
-			// Edge/ISR cache keeps TTFB low per AD-119; meta rarely changes.
-			{ next: { revalidate: 60 } }
-		);
-		if (!res.ok) return null;
-		return (await res.json()) as PitchMeta;
-	} catch {
-		return null;
+async function getPitchMeta(
+	workspaceSlug: string,
+	leadId: string,
+	clientIp: string | null
+): Promise<PitchMeta | null> {
+	// The backend rate-limits per client IP; forward the real visitor's IP so
+	// server-side fetches don't all share (and exhaust) the Next.js server's IP.
+	const forwardHeaders: Record<string, string> = {};
+	if (clientIp) {
+		forwardHeaders["x-real-ip"] = clientIp;
+		forwardHeaders["x-forwarded-for"] = clientIp;
 	}
+	const url = `${SERVER_BACKEND_URL}/api/v1/public/pitch/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(leadId)}/meta`;
+
+	const attempt = (cached: boolean) =>
+		fetch(
+			url,
+			cached
+				? // Edge/ISR cache keeps TTFB low per AD-119; meta rarely changes.
+					{ next: { revalidate: 60 }, headers: forwardHeaders }
+				: { cache: "no-store", headers: forwardHeaders }
+		).catch(() => null);
+
+	let res = await attempt(true);
+	// 404 is a definitive invalid link; anything else may be transient, so
+	// retry once uncached before giving up.
+	if (res?.status !== 404 && !res?.ok) {
+		res = await attempt(false);
+	}
+	if (!res || !res.ok) return null;
+	return (await res.json().catch(() => null)) as PitchMeta | null;
 }
 
 export const metadata: Metadata = {
@@ -49,7 +69,10 @@ export default async function PitchPortalPage({
 	params: Promise<{ workspace_slug: string; lead_id: string }>;
 }) {
 	const { workspace_slug: workspaceSlug, lead_id: leadId } = await params;
-	const meta = await getPitchMeta(workspaceSlug, leadId);
+	const requestHeaders = await headers();
+	const clientIp =
+		requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip");
+	const meta = await getPitchMeta(workspaceSlug, leadId, clientIp);
 	if (!meta) notFound();
 
 	return (

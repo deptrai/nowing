@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -19,8 +19,7 @@ class PitchBeaconPayload(BaseModel):
     sections_viewed: list[str] = Field(default_factory=list, max_length=20)
     device_type: str | None = Field(default=None, max_length=20)
     session_id: str | None = Field(default=None, max_length=64)
-    event: str | None = Field(default=None, max_length=20)  # open/heartbeat/close
-    extra: dict[str, Any] | None = None
+    event: Literal["open", "heartbeat", "close"] | None = None
 
 
 class PitchPortalMetaResponse(BaseModel):

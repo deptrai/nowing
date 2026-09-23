@@ -32,11 +32,12 @@ MIN_DWELL_SECONDS = 3.0
 
 # Crawler / link-preview user-agent markers.  Matched case-insensitively as
 # substrings; keep specific markers (facebookexternalhit, ZaloPC-crawler)
-# alongside the generic bot/preview family.
+# alongside the generic bot/preview family.  NOTE: no bare "zalo"/"whatsapp"
+# here — the Zalo/WhatsApp in-app browsers keep those tokens in the UA, and
+# Zalo is the product's primary outbound channel.
 CRAWLER_UA_MARKERS: tuple[str, ...] = (
     "facebookexternalhit",
     "zalopc-crawler",
-    "zalo",
     "bot",
     "crawler",
     "spider",
@@ -46,12 +47,16 @@ CRAWLER_UA_MARKERS: tuple[str, ...] = (
     "discordbot",
     "twitterbot",
     "linkedinbot",
-    "whatsapp",
     "headless",
     "lighthouse",
     "pingdom",
     "uptime",
 )
+
+# Link-preview fetchers whose UA is the bare product token (e.g.
+# "WhatsApp/2.24.x"), unlike the in-app browser which keeps a full
+# "Mozilla/5.0 …" UA.  Matched as a prefix on the lowercased UA.
+CRAWLER_UA_PREFIXES: tuple[str, ...] = ("whatsapp/",)
 
 _UA_MAX_LEN = 300
 _SECTION_ID_RE = re.compile(r"^[a-z0-9_-]{1,64}$")
@@ -67,6 +72,8 @@ def is_crawler_user_agent(user_agent: str | None) -> bool:
     if not user_agent:
         return False
     ua = user_agent.lower()
+    if any(ua.startswith(prefix) for prefix in CRAWLER_UA_PREFIXES):
+        return True
     return any(marker in ua for marker in CRAWLER_UA_MARKERS)
 
 
@@ -178,6 +185,22 @@ async def _resolve_zalo_deep_link(
         .limit(1)
     )
     phone = result.scalar_one_or_none()
+    if phone:
+        # PII is Fernet-encrypted at rest (AD-42/49); decrypt before linking —
+        # same pattern as sequencer dispatch.
+        from app.services.pii.verified_contact_encryption import (
+            VerifiedContactEncryption,
+        )
+
+        encryption = VerifiedContactEncryption()
+        try:
+            if encryption.is_encrypted(phone):
+                phone = encryption.decrypt(phone)
+        except Exception:  # decrypt failure → no link beats a garbage link
+            logger.warning(
+                "pitch beacon: phone decrypt failed for lead %s", lead.id
+            )
+            return None
     return build_zalo_deep_link(phone)
 
 
@@ -308,11 +331,12 @@ async def record_pitch_beacon(
 
     # AD-120 cooldown: the lock is acquired before writing so concurrent
     # beacons for the same lead cannot both trigger an alert.
+    lock_key = pitch_beacon_lock_key(lead.id)
     alert_due = False
     try:
         alert_due = bool(
             await redis_client.set(
-                pitch_beacon_lock_key(lead.id),
+                lock_key,
                 "1",
                 nx=True,
                 ex=PITCH_BEACON_LOCK_TTL_SECONDS,
@@ -325,34 +349,86 @@ async def record_pitch_beacon(
             exc_info=True,
         )
 
-    from app.db import LeadActivityLog
-
     alerted = False
     if alert_due:
-        alerted = await _dispatch_telegram_alert(
-            session,
-            lead,
-            dwell_seconds=dwell_seconds,
-            sections_viewed=sections,
-            device_type=device,
-        )
+        try:
+            alerted = await _dispatch_telegram_alert(
+                session,
+                lead,
+                dwell_seconds=dwell_seconds,
+                sections_viewed=sections,
+                device_type=device,
+            )
+        except Exception:  # dispatch must never lose the timeline row
+            logger.exception(
+                "pitch beacon: alert dispatch raised for lead %s", lead.id
+            )
+        if not alerted:
+            # Release the cooldown so a transient failure doesn't suppress
+            # retries for the full 30 minutes.
+            try:
+                await redis_client.delete(lock_key)
+            except Exception:
+                logger.warning(
+                    "pitch beacon: failed to release lock %s", lock_key
+                )
 
-    session.add(
-        LeadActivityLog(
-            workspace_id=lead.workspace_id,
-            lead_id=lead.id,
-            actor_user_id=None,
-            activity_type="pitch_portal_view",
-            title=f"Xem mini-pitch portal ({int(dwell_seconds)}s)",
-            details={
+    from app.db import LeadActivityLog
+
+    title = f"Xem mini-pitch portal ({int(dwell_seconds)}s)"
+    # Dedupe by session_id: heartbeats/close events update the session's
+    # existing row instead of stacking duplicates.
+    existing = None
+    if session_id:
+        result = await session.execute(
+            select(LeadActivityLog)
+            .where(
+                LeadActivityLog.workspace_id == lead.workspace_id,
+                LeadActivityLog.lead_id == lead.id,
+                LeadActivityLog.activity_type == "pitch_portal_view",
+                LeadActivityLog.details["session_id"].astext == session_id,
+            )
+            .order_by(LeadActivityLog.created_at.desc())
+            .limit(1)
+        )
+        existing = result.scalar_one_or_none()
+
+    if existing is not None:
+        details = dict(existing.details or {})
+        merged_sections = list(
+            dict.fromkeys((details.get("sections_viewed") or []) + sections)
+        )
+        details.update(
+            {
                 "dwell_seconds": dwell_seconds,
-                "sections_viewed": sections,
+                "sections_viewed": merged_sections,
                 "device_type": device,
                 "session_id": session_id,
                 "event": event,
-                "telegram_alerted": alerted,
+                "telegram_alerted": bool(details.get("telegram_alerted"))
+                or alerted,
                 "user_agent": (user_agent or "")[:_UA_MAX_LEN],
-            },
+            }
         )
-    )
+        existing.details = details
+        existing.title = title
+    else:
+        session.add(
+            LeadActivityLog(
+                workspace_id=lead.workspace_id,
+                lead_id=lead.id,
+                actor_user_id=None,
+                activity_type="pitch_portal_view",
+                title=title,
+                details={
+                    "dwell_seconds": dwell_seconds,
+                    "sections_viewed": sections,
+                    "device_type": device,
+                    "session_id": session_id,
+                    "event": event,
+                    "telegram_alerted": alerted,
+                    "user_agent": (user_agent or "")[:_UA_MAX_LEN],
+                },
+            )
+        )
     return "recorded_alerted" if alerted else "recorded_silent"

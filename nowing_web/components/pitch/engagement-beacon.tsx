@@ -31,12 +31,18 @@ interface PitchEngagementBeaconProps {
 
 export function PitchEngagementBeacon({ workspaceRef, leadId }: PitchEngagementBeaconProps) {
 	useEffect(() => {
-		const sessionId = crypto.randomUUID();
+		// crypto.randomUUID throws on non-secure contexts/older browsers —
+		// fall back so telemetry still works there.
+		const sessionId =
+			typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+				? crypto.randomUUID()
+				: `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 		const sections = new Set<string>();
 		let accumulatedMs = 0;
 		let visibleSince: number | null =
 			document.visibilityState === "visible" ? performance.now() : null;
 		let opened = false;
+		let closed = false;
 		let lastSentDwellMs = 0;
 
 		const endpoint = buildBackendUrl(
@@ -72,20 +78,27 @@ export function PitchEngagementBeacon({ workspaceRef, leadId }: PitchEngagementB
 			observer.observe(el);
 		}
 
+		// Hidden only pauses dwell accumulation; pagehide sends the single
+		// close beacon (the `closed` guard prevents duplicates).
+		const sendClose = () => {
+			if (closed || !opened) return;
+			closed = true;
+			send("close");
+		};
+
 		const onVisibility = () => {
 			if (document.visibilityState === "hidden") {
 				if (visibleSince !== null) {
 					accumulatedMs += performance.now() - visibleSince;
 					visibleSince = null;
 				}
-				if (opened) send("close");
 			} else if (visibleSince === null) {
 				visibleSince = performance.now();
 			}
 		};
 
 		const onPageHide = () => {
-			if (opened) send("close");
+			sendClose();
 		};
 
 		const tick = window.setInterval(() => {

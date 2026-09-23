@@ -54,7 +54,7 @@ async def _get_public_lead(
     "/{workspace_ref}/{lead_id}/meta",
     response_model=PitchPortalMetaResponse,
 )
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 async def get_pitch_meta(
     request: Request,
     workspace_ref: str,
@@ -95,6 +95,26 @@ async def pitch_beacon(
     redis_client: Any = Depends(get_redis_client),
 ) -> Response:
     """Ingest a ``sendBeacon`` payload; always 204 for well-formed beacons."""
+    from app.services.pitch_engagement import (
+        is_crawler_user_agent,
+        record_pitch_beacon,
+    )
+
+    # AC-3: drop preview pings before touching the DB — they are nearly free.
+    user_agent = request.headers.get("user-agent")
+    if is_crawler_user_agent(user_agent):
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # Reject oversized bodies via Content-Length before buffering; the body
+    # read below is the fallback for chunked/missing headers.
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > _MAX_BEACON_BODY_BYTES:
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
+        except ValueError:
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     body = await request.body()
     if len(body) > _MAX_BEACON_BODY_BYTES:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -110,8 +130,6 @@ async def pitch_beacon(
     if lead is None:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    from app.services.pitch_engagement import record_pitch_beacon
-
     outcome = await record_pitch_beacon(
         session,
         redis_client,
@@ -121,7 +139,7 @@ async def pitch_beacon(
         device_type=payload.device_type,
         session_id=payload.session_id,
         event=payload.event,
-        user_agent=request.headers.get("user-agent"),
+        user_agent=user_agent,
     )
     if outcome.startswith("recorded"):
         await session.commit()
