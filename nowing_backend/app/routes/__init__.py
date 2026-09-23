@@ -140,6 +140,7 @@ from .promo_code_routes import router as promo_code_router
 from .prompts_routes import router as prompts_router
 from .public_booking_routes import router as public_booking_router
 from .public_chat_routes import router as public_chat_router
+from .public_pitch_routes import router as public_pitch_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
@@ -178,6 +179,7 @@ router.include_router(leads_router)
 router.include_router(lead_clipper_router)
 router.include_router(lead_pipeline_router)
 router.include_router(public_booking_router)  # Prospect-facing /book/{ws}/{lead} (Story 37.3)
+router.include_router(public_pitch_router)  # pitch.nowing.ai beacon + meta (Story 37.6)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(zns_router)

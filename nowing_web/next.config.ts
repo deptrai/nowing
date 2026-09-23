@@ -18,6 +18,19 @@ const nextConfig: NextConfig = {
 			{ source: "/mcp-connector", destination: "/external-mcp-connectors", permanent: true },
 		];
 	},
+	async rewrites() {
+		// Story 37.6 (AD-119): pitch.nowing.ai/{workspace_slug}/{lead_id} serves
+		// the unified SSR mini-pitch portal. Only the two-segment portal path is
+		// rewritten so /api/* and other routes on the host are untouched.
+		const pitchHost = process.env.PITCH_PORTAL_HOST || "pitch.nowing.ai";
+		return [
+			{
+				source: "/:workspace_slug/:lead_id",
+				has: [{ type: "host" as const, value: pitchHost }],
+				destination: "/pitch/:workspace_slug/:lead_id",
+			},
+		];
+	},
 	outputFileTracingRoot: path.join(__dirname, ".."),
 	reactStrictMode: false,
 	typescript: {

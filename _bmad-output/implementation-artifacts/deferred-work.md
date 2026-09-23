@@ -1914,3 +1914,9 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-3-smart-meeting-booking-engine-for-auto-reply-google-lark.md`
   summary: Lark calendar path is unverified end-to-end — `LARK_CALENDAR_CONNECTOR` rows have no OAuth/connect route (manual provisioning only), and `freebusy/list` + `create_event` were fixed per docs but never called against real Lark.
   evidence: no in-repo Lark OAuth flow; review fixed `calendar_id` requirement and freebusy body shape (`user_id` top-level, `items=[{calendar_id}]`) but correctness needs a live Lark tenant. Settle by adding a Lark connect flow + verifying busy/create against real credentials.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-6-realtime-prospect-engagement-tracker-and-telegram-alert-bot.md`
+  summary: Telegram `send_message` chạy trong open DB transaction — network call giữ connection/tx. Đã mitigate (dispatch wrapped, lock released on failure, row vẫn ghi) nhưng reorder "commit → dispatch → flag update" là structural change ngoài scope 37.6.
+  evidence: `record_pitch_beacon` dispatch trước khi route commit; settle nếu Telegram latency thật gây pool pressure.
+- source_spec: `_bmad-output/implementation-artifacts/stories/37-6-realtime-prospect-engagement-tracker-and-telegram-alert-bot.md`
+  summary: Live Telegram delivery end-to-end chưa verify (cần bound rep account thật) và `pitch.nowing.ai` DNS/edge cutover chưa có — portal host rewrite trong `next.config.ts` chỉ có tác dụng khi domain trỏ tới.
+  evidence: dispatch logic unit-covered (54 tests) nhưng `TelegramAdapter.send_message` tới bot thật chưa chạy; settle khi có Telegram binding thật + DNS `pitch.nowing.ai` → web.
