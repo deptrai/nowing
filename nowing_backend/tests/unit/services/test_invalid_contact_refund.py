@@ -191,6 +191,13 @@ class TestExtractInvalidContactErrorCode:
 
 
 class TestAutoRefundInvalidContact:
+    def test_cap_counts_only_auto_refund_events(self) -> None:
+        # AD-110 bounds THIS path's monthly refund volume. Manual-report
+        # refunds (24h SLA) must not consume the programmatic budget.
+        from app.services.billing_service import _AUTO_REFUND_EVENT_TYPES
+
+        assert _AUTO_REFUND_EVENT_TYPES == (REFUND_INVALID_CONTACT_EVENT,)
+
     @pytest.mark.asyncio
     async def test_rejects_manual_claim_codes(self) -> None:
         session = _RefundSession()

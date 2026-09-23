@@ -1940,16 +1940,19 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   summary: Zalo overlay not verified against real chat.zalo.me DOM — phone detection heuristics (URL/anchor/header), composer selectors, and insertText path untested live.
   evidence: no Zalo web session available during dev+review; detection fails safe (no phone → no pill). Needs a manual pass on a real Zalo account before rollout.
 
-## Story 37.7 deferrals (hybrid pricing + auto-refund SLA)
+## Story 37.7 deferrals (hybrid pricing + auto-refund SLA) — resolved 2026-09-23
 
-- **Manual-path cap semantics**: `auto_refund_lead` (24h user-report SLA)
-  is uncapped but its `lead_refund` events count toward the AD-110 15%
-  auto-refund budget. Global cap across all refund paths is a product
-  decision.
-- **AC-3 wording vs implementation**: spec says "the 10 credits deducted";
-  actual charge is `PHONE_RESOLUTION_COST_MICROS` (150 credits). Code
-  refunds the real deducted amount — reconcile the spec number.
-- **Napas webhook E2E**: HMAC contract + payload field mapping verified in
-  unit tests only; needs aggregator sandbox credentials for a live pass.
-- **Browser verification**: `/buy-tokens` tier cards, credit slider, VietQR
-  modal countdown/poll need a real-browser pass (authed workspace session).
+- ~~Manual-path cap semantics~~ RESOLVED: `_AUTO_REFUND_EVENT_TYPES` now
+  counts only `credit_refund_invalid_contact`; manual `lead_refund` /
+  `contact_unlock_refund` (24h SLA) no longer consume the AD-110 budget.
+  Pinned by `test_cap_counts_only_auto_refund_events`.
+- ~~AC-3 wording vs implementation~~ RESOLVED: spec updated — refund covers
+  the full deducted amount (`PHONE_RESOLUTION_COST_MICROS` = 150 credits).
+- ~~Napas webhook E2E~~ RESOLVED via synthetic live E2E (dev backend,
+  `VIETQR_WEBHOOK_SECRET=e2e-live-secret-377`): signed webhook → 200
+  `credited`, wallet +35,000,000 micros (tier grant), intent COMPLETED;
+  replay → `already_completed` (no double credit); bad signature → 401;
+  placeholder secret → 503. Real-aggregator field mapping still needs
+  production credentials but the contract path is verified end-to-end.
+- ~~Browser verification~~ DONE 2026-09-23 (Chrome MCP, ws 46): tiers,
+  slider, modal, countdown tick, fail-closed 503s all verified live.

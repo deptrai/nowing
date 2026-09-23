@@ -54,13 +54,12 @@ REFUND_INVALID_CONTACT_EVENT = "credit_refund_invalid_contact"
 REFUND_ADMIN_DESK_EVENT = "credit_refund_admin_desk"
 
 # Event types counted for the 15% monthly circuit breaker: everything that
-# represents a paid lead unlock vs every automatic credit return.
+# represents a paid lead unlock vs every automatic credit return issued by
+# THIS path. Manual-report refunds ("lead_refund", "contact_unlock_refund")
+# are governed by their own 24h SLA, not AD-110 — counting them here would
+# let unrelated refund activity silently disable the programmatic SLA.
 _UNLOCK_EVENT_TYPES = ("contact_enrichment", "contact_unlock")
-_AUTO_REFUND_EVENT_TYPES = (
-    REFUND_INVALID_CONTACT_EVENT,
-    "contact_unlock_refund",
-    "lead_refund",
-)
+_AUTO_REFUND_EVENT_TYPES = (REFUND_INVALID_CONTACT_EVENT,)
 
 
 def extract_invalid_contact_error_code(payload: Any) -> str | None:
