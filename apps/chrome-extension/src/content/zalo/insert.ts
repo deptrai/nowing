@@ -6,7 +6,11 @@
  * nothing here ever dispatches keystrokes for Enter or clicks the send button.
  */
 
-const ZALO_INPUT_SELECTOR = 'div[contenteditable="true"], div[role="textbox"]';
+// Real Zalo Web keeps the composer as `div#richInput` with
+// contenteditable="false" until it is focused — it flips to "true" on
+// focus. Include it explicitly so the composer is found even before focus.
+const ZALO_INPUT_SELECTOR =
+  'div[contenteditable="true"], div[role="textbox"], div#richInput';
 
 export function findZaloInput(): HTMLElement | null {
   // Prefer the composer closest to the bottom of the viewport — the reply

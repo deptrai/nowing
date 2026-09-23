@@ -1937,8 +1937,8 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   summary: signal_events has no lead_id/domain FK — copilot joins on company_name, so a company rename drops signal history and same-name leads share signals.
   evidence: verified `app/models/leads/signals.py` — only workspace_id/client_id/company_name keys exist; adding a stable FK requires a schema migration beyond this story.
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper.md`
-  summary: Zalo overlay not verified against real chat.zalo.me DOM — phone detection heuristics (URL/anchor/header), composer selectors, and insertText path untested live.
-  evidence: no Zalo web session available during dev+review; detection fails safe (no phone → no pill). Needs a manual pass on a real Zalo account before rollout.
+  summary: ~~Zalo overlay not verified against real chat.zalo.me DOM~~ RESOLVED 2026-09-23 — live-verified on authenticated Zalo Web session with unpacked extension.
+  evidence: real-DOM pass found two production bugs, both patched: (1) Zalo renders chat links as `a.text-is-link` with href=null or plain `SPAN.inline` text — detector now scans anchor text + XPath leaf nodes containing `zalo.me/`; (2) composer `div#richInput` starts `contenteditable="false"` until focus — selector now includes `#richInput` explicitly. Verified live: phone detect from plain-text message → pill → drawer → `GET /workspaces/46/leads/copilot-context?phone=0905555005` → 200 → lead context (name/location/status/intent), pitch tabs Ngắn gọn/Kèm link Pitch (portal URL embedded), insert into real composer, draft-conflict Ghi đè/Nối tiếp/Huỷ, append grew composer 286→742 chars, overwrite replaced draft, text sits unsent (human-send boundary intact).
 
 ## Story 37.7 deferrals (hybrid pricing + auto-refund SLA) — resolved 2026-09-23
 

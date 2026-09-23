@@ -25,11 +25,12 @@ function extractPhone(text: string | null | undefined): string | null {
   return phones.length > 0 ? phones[0] : null;
 }
 
-function phoneFromZaloLink(href: string): string | null {
+function phoneFromZaloLink(href: string | null): string | null {
   // Assisted links look like https://zalo.me/0912345678. Parse the URL so
   // `notzalo.me/0912…` or `zalo.me.evil.com/…` can't spoof a match.
+  if (!href) return null;
   try {
-    const url = new URL(href);
+    const url = new URL(href.trim());
     const host = url.hostname.toLowerCase();
     if (host !== 'zalo.me' && !host.endsWith('.zalo.me')) return null;
     return extractPhone(url.pathname.slice(1));
@@ -51,9 +52,27 @@ export function detectActiveZaloPhone(): string | null {
     extractPhone(window.location.search);
   if (fromUrl) return fromUrl;
 
-  // 2. zalo.me/{phone} anchors inside the open conversation/profile card.
-  for (const anchor of Array.from(document.querySelectorAll('a[href*="zalo.me/"]'))) {
-    const phone = phoneFromZaloLink((anchor as HTMLAnchorElement).href);
+  // 2. zalo.me/{phone} links inside the open conversation/profile card.
+  // Real Zalo Web renders chat links either as `<a class="text-is-link">`
+  // with no href (URL lives in the anchor text) or as plain text inside
+  // the message bubble — so scan anchors first, then leaf text nodes.
+  for (const anchor of Array.from(document.querySelectorAll('a'))) {
+    const phone =
+      phoneFromZaloLink(anchor.getAttribute('href')) ||
+      phoneFromZaloLink(anchor.textContent);
+    if (phone) return phone;
+  }
+  const linkTexts = document.evaluate(
+    "//*[contains(text(), 'zalo.me/')]",
+    document,
+    null,
+    XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+    null
+  );
+  for (let i = 0; i < linkTexts.snapshotLength; i++) {
+    const phone = phoneFromZaloLink(
+      (linkTexts.snapshotItem(i) as HTMLElement).textContent
+    );
     if (phone) return phone;
   }
 
