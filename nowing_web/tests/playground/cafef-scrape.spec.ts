@@ -82,7 +82,7 @@ test.describe("Playground CafeF scrape", () => {
 		await expect(symbolInput).toBeVisible();
 		await symbolInput.fill("VCB");
 
-		const runButton = page.getByRole("button", { name: /run/i });
+		const runButton = page.getByRole("button", { name: /run|chạy/i });
 		await runButton.click();
 
 		await expect(page.getByText(/application error/i)).toHaveCount(0);
@@ -132,7 +132,7 @@ test.describe("Playground CafeF scrape", () => {
 		const symbolInput = page.locator("#field-symbol");
 		await symbolInput.fill("VCB");
 
-		const runButton = page.getByRole("button", { name: /run/i });
+		const runButton = page.getByRole("button", { name: /run|chạy/i });
 		await runButton.click();
 
 		await expect(page.getByText(/application error/i)).toHaveCount(0);

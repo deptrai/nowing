@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-08-23T04:18:00Z'
+updatedAt: '2026-09-24T00:00:00Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -29,6 +29,7 @@ inputDocuments:
   - "_bmad-output/specs/spec-xactions-connection/SPEC.md (Epic 36 source)"
   - "_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md (Epic 36 ADs)"
   - "_bmad-output/planning-artifacts/ux-spec-epic37-revenue-engine-mobile-responsive-2026-09-17.md (Epic 37 UX spec)"
+  - "_bmad-output/planning-artifacts/MASTER-INTEGRATION-PLAN-TRINITY-2026-09-24.md (Epic 40 Trinity Master Integration)"
 ---
 
 # Nowing - Epic Breakdown
@@ -5433,3 +5434,84 @@ So that model upgrades (new `jev-x.y.z`) are validated against the 80-case Vietn
 - **Not in billing path** — money decisions are exact arithmetic (per research recommendation).
 - **Not in VAD path** — voice activity detection stays on Silero (frame-level, <10ms); Jev operates on transcripts.
 - **No streaming** — Jev API is single-request; no streaming surface exists.
+
+---
+
+## Epic 40: Unified Scraper Gateway & Trinity Pipeline Optimization `[new]`
+
+**Source:** `_bmad-output/planning-artifacts/MASTER-INTEGRATION-PLAN-TRINITY-2026-09-24.md`
+**Architecture Invariants:** AD-1..11, AD-SOC-1..11 (`architecture-Nowing-2026-09-13`), AD-J1..J8 (`architecture-jev-decision-service-2026-09-21`), AD-101..110 (`architecture-unified-nowing-chainlens-dsh-2026-08-17`).
+
+**Goal:** Chuyển đổi Nowing thành tầng điều phối và gateway cào dữ liệu duy nhất thông qua XActions (`:3001`), đóng gói các endpoint Scraper Playground thành thin proxy có kiểm soát billing, giải phóng 22 scraper cũ trong Nowing để giảm tải bảo trì và thu gọn Docker image; đồng thời cắm tầng quyết định Jev (Epic 39) vào luồng stream ingest để tự động dedup và lọc PII, và gia cố bảo vệ timeout cho kết nối với ChainLens.
+
+### Story 40.1: XActions Gateway Client & Streamable-HTTP Cutover
+
+As a Lead Generation Engine,
+I want the backend scraper subsystem to route all external scraping requests through `XActionsMcpClient` via Streamable-HTTP (`http://xactions:3001/mcp`) using `adapter_v2.py`,
+So that Nowing delegates heavy scraping, anti-bot bypass, and proxy management entirely to XActions with sub-4s fail-fast resilience.
+
+**Acceptance Criteria:**
+- **Given** `NOWING_XACTIONS_USE_V2=true` and an active XActions daemon on port 3001, **When** any subagent calls `task(scraper)` or a background ingest job runs, **Then** `adapter_v2.py` dispatches the command via `XActionsMcpClient.call_tool("x_scrape", ...)` with payload `{platform, action, args, context}` per AD-2.
+- **And** `XActionsMcpClient` implements an active Circuit Breaker: calls timeout after 4.0 seconds; 3 consecutive timeouts/5xx errors trip the breaker into `OPEN` state for 60 seconds.
+- **And** when the circuit breaker is `OPEN`, requests fail-fast with a typed `PlatformError(XACT_4001, "scraper_temporarily_unavailable")` without holding worker threads.
+- **And** for single queries, the client parses the synchronous preview envelope ($\le 30$ records) and returns a typed `PaginatedResponse` to the caller.
+- **And** for bulk requests, XActions emits thin events to Redis Stream `stream:social:raw_posts`, and `adapter_v2.py` returns immediately with `stream: true` and stream pointer metadata.
+
+### Story 40.2: Scraper Playground Thin Proxy & Workspace Billing Gate
+
+As a Workspace Member or Developer,
+I want the API Playground in Nowing Web (`/dashboard/[workspace_id]/playground`) to execute platform scrapes through XActions via a backend thin proxy while preserving credit metering,
+So that I can test live data scraping and verify extracted contact/listing fields without running scraper engines locally in Nowing.
+
+**Acceptance Criteria:**
+- **Given** an authenticated request to `POST /api/v1/scrapers/{platform}/{verb}` from Playground UI, **When** the workspace has sufficient credit balance (e.g. 1.5 credits per lead check), **Then** the endpoint soft-locks credits via `wallet_credit.check_balance`.
+- **And** the backend forwards the scrape parameters directly to `XActionsMcpClient.call_tool("x_scrape", ...)` without executing any local browser or crawler logic.
+- **And** upon receiving a successful preview response from XActions, the endpoint debits the wallet, records a `BillingEvent`, and formats the output into the Playground JSON preview.
+- **And** if XActions returns an anti-bot or session failure, credits are released/refunded immediately, and a structured error envelope is returned to the UI.
+- **And** the navigation, platform icons, and verb list in `nowing_web/lib/playground/catalog.ts` remain 100% functional with zero UI regressions.
+
+### Story 40.3: Decommission 22 Internal Platform Crawlers & Docker Image Slimming
+
+As a System Maintainer,
+I want to remove crawler execution code, headless browser scripts, and web-driver dependencies from `app/proprietary/platforms/` while preserving data schemas,
+So that Nowing eliminates dual-maintenance overhead and reduces Docker image size by $\ge 400\text{MB}$.
+
+**Acceptance Criteria:**
+- **Given** the 22 legacy platform directories in `app/proprietary/platforms/` (batdongsan, chotot, topcv, itviec, etc.), **When** decommissioned, **Then** all raw crawling scripts, browser automations (`fetch.py`, `crawler.py`, `client.py`), and anti-bot bypass routines are deleted.
+- **And** all schema definitions, Pydantic models, and normalization parsers (`schemas.py`, `models.py`, `parsers.py`) are strictly preserved and tested for data serialization compatibility.
+- **And** unused crawling dependencies (`playwright`, `selenium`, `lxml` extra binaries) are pruned from `pyproject.toml` and Docker build layers.
+- **And** the production Docker image size of `nowing_backend` is measured and verified to be at least 400MB smaller than the baseline.
+- **And** existing unit and integration tests for lead normalization and phone extraction continue to pass 100%.
+
+### Story 40.4: Jev Stream Dedup & PII Guardrail Pipeline
+
+As a Data Ingestion Worker,
+I want `social_stream_worker.py` to process bulk records from `stream:social:raw_posts` through the Jev Decision Layer (`DecisionService`),
+So that scraped listings and posts are automatically deduplicated and sanitized from sensitive PII before persistence.
+
+**Acceptance Criteria:**
+- **Given** incoming batch events read via `XREADGROUP` from `stream:social:raw_posts`, **When** candidate leads are extracted, **Then** `social_stream_worker` evaluates entity pairs using `DecisionService.decide(entity_match)` (Story 39.3).
+- **And** listings with Jev match score $\ge 1.5$ are automatically merged into the canonical entity; scores between $0.5$ and $1.5$ are marked `needs_curation=true`; scores $< 0.5$ are stored as distinct entities.
+- **And** candidate text is passed through `DecisionService.decide(content_filter)` (Story 39.4): prompt injections and sensitive personal identification (CMND/CCCD numbers) are redacted or discarded per AD-J4.
+- **And** the consumer acknowledges processed messages via `XACK` only after successful database commit, ensuring zero data loss.
+- **And** decision latency and token usage are logged to `TokenUsage` metrics per AD-J7.
+
+### Story 40.5: ChainLens S2S Circuit Breaker & Timeout Hardening
+
+As a Platform Reliability Engineer,
+I want strict 5.0-second timeouts and bidirectional circuit breakers on the service-to-service links between Nowing and ChainLens,
+So that private knowledge base searches and deep web research never trigger distributed deadlocks or cascade failures.
+
+**Acceptance Criteria:**
+- **Given** an outbound deep research query to ChainLens `POST /api/v1/search`, **When** the SSE stream takes longer than 900 seconds or fails to establish connection within 10 seconds, **Then** Nowing gracefully falls back to workspace local knowledge search per AD-101.
+- **And** for incoming private data requests from ChainLens to `POST /v1/private-data/search` (`chainlens_internal.py`), Nowing enforces a hard execution deadline of 5.0 seconds.
+- **And** if Nowing private search times out or errors, ChainLens fails-fast, logs the degraded state, and continues its public web synthesis without hanging the user's research session.
+- **And** service-to-service authentication via `ChainLensServiceAuth` rejects unauthenticated or expired tokens with HTTP 401 without entering database query logic.
+
+---
+
+### Epic 40 Non-Goals
+
+- **No New Custom Crawlers in Nowing:** Nowing will never implement platform-specific web scraping logic again; any new data source must be authored as a crawler inside `XActions`.
+- **No Direct Raw Scraping in Chat Hot-Path:** Subagent chat turns will not synchronously wait $>5$s for live web scraping; scraping is either served from indexed cache or dispatched asynchronously via Redis Streams.
+- **No Modification to Billing Ledger Primitives:** Credit wallet pricing (1.5 credits/lead) and soft-lock deduction semantics remain unchanged.

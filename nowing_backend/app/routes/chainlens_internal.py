@@ -6,6 +6,7 @@ service-to-service callbacks authenticated with ``ChainLensServiceAuth``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -297,11 +298,23 @@ async def search_private_data(
         )
 
     service = PrivateProviderService(session)
-    return await service.search(
-        request=body,
-        workspace=workspace,
-        correlation_id=auth_ctx.correlation_id,
-    )
+    # Story 40.5: Enforce hard execution deadline of 5.0 seconds
+    try:
+        async with asyncio.timeout(5.0):
+            return await service.search(
+                request=body,
+                workspace=workspace,
+                correlation_id=auth_ctx.correlation_id,
+            )
+    except (TimeoutError, asyncio.TimeoutError) as exc:
+        logger.warning(
+            "Private data search exceeded 5.0s hard execution deadline for workspace %s",
+            body.workspaceId,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Private data search deadline exceeded (5.0s)",
+        ) from exc
 
 
 @router.post("/chainlens/ingest", response_model=ChainLensIngestResponse)

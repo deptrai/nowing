@@ -86,7 +86,7 @@ test.describe("Playground ITviec scrape", () => {
 		const keywordInput = page.locator("#field-keyword");
 		await keywordInput.fill("data engineer");
 
-		const runButton = page.getByRole("button", { name: /run/i });
+		const runButton = page.getByRole("button", { name: /run|chạy/i });
 		await runButton.click();
 
 		await expect(page.getByText(/application error/i)).toHaveCount(0);
