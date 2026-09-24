@@ -45,6 +45,8 @@ _DOMAIN_CANONICAL = {
     "vietnamworks": "vietnamworks.com",
     "vietstock": "vietstock.com",
     "cafef": "cafef.vn",
+    "vn_jobs": "nowing.net",
+    "batdongsan": "batdongsan.com.vn",
 }
 
 
@@ -614,16 +616,17 @@ def to_chunks(
             message=f"{layout_domain}: serialized content is empty",
         )
 
-    if _is_job_domain(layout_domain):
-        metadata_content_type = "job"
-    elif (
-        _is_news_domain(layout_domain)
-        or category in ("news", "news_article")
-        or content_type == "news"
-    ):
-        metadata_content_type = "news"
-    else:
-        metadata_content_type = content_type
+    # Map domain to canonical MIME content-type accepted by ChainLens Zod schema
+    # ('text/markdown', 'text/plain', 'text/html', 'application/json').
+    # Domain semantic tag (job, news) stays in `category`.
+    metadata_content_type = content_type if content_type in (
+        "text/markdown", "text/plain", "text/html", "application/json"
+    ) else "text/markdown"
+    if not category:
+        if _is_job_domain(layout_domain):
+            category = "job"
+        elif _is_news_domain(layout_domain):
+            category = "news" 
 
     pieces = _split_tokens(full_content, max_tokens=8000)
     total = len(pieces)
