@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.capabilities import (
     topcv,  # noqa: F401
@@ -24,7 +25,8 @@ def test_topcv_scrape_is_registered_and_billable():
 
 
 class TestTopCVExecutorEscalation:
-    """Story 12-2, Item 5: anti-bot escalation un-gated on None run_id / ctx."""
+    """Story 12-2, Item 5: anti-bot escalation un-gated on None run_id / ctx.
+    Story 40.2: Uses XActions proxy instead of local scrape_topcv."""
 
     @pytest.mark.asyncio
     async def test_escalation_triggers_with_fallback_uuid_when_ctx_is_none(
@@ -36,18 +38,19 @@ class TestTopCVExecutorEscalation:
 
         captured_delay: list[dict] = []
 
-        async def _mock_scrape(_params):
-            return {
-                "items": [],
-                "cost_micros": 0,
-                "degraded": True,
-                "degradation_reason": "bot_detected",
-                "total_items": 0,
-            }
+        # Mock the XActions proxy to return degraded response
+        mock_proxy = AsyncMock(return_value={
+            "items": [],
+            "cost_micros": 0,
+            "degraded": True,
+            "degradation_reason": "bot_detected",
+            "total_items": 0,
+            "stream": False,
+        })
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.scrape_topcv",
-            _mock_scrape,
+            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            lambda **kwargs: mock_proxy,
         )
         monkeypatch.setattr(
             "app.capabilities.topcv.scrape.executor.capture_platform_anti_bot_screenshot_task.delay",
@@ -64,7 +67,6 @@ class TestTopCVExecutorEscalation:
         assert call_args["domain"] == "topcv.vn"
         assert call_args["block_type"] == "bot_detected"
         assert call_args["workspace_id"] == 0
-        # Must be valid UUID string so celery task won't crash on UUID(run_id)
         assert UUID(call_args["run_id"]) is not None
 
     @pytest.mark.asyncio
@@ -74,18 +76,18 @@ class TestTopCVExecutorEscalation:
 
         captured_delay: list[dict] = []
 
-        async def _mock_scrape(_params):
-            return {
-                "items": [],
-                "cost_micros": 0,
-                "degraded": True,
-                "degradation_reason": "access_blocked",
-                "total_items": 0,
-            }
+        mock_proxy = AsyncMock(return_value={
+            "items": [],
+            "cost_micros": 0,
+            "degraded": True,
+            "degradation_reason": "access_blocked",
+            "total_items": 0,
+            "stream": False,
+        })
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.scrape_topcv",
-            _mock_scrape,
+            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            lambda **kwargs: mock_proxy,
         )
         monkeypatch.setattr(
             "app.capabilities.topcv.scrape.executor.capture_platform_anti_bot_screenshot_task.delay",
@@ -93,7 +95,7 @@ class TestTopCVExecutorEscalation:
         )
 
         ctx = CapabilityContext(
-            session=None,  # type: ignore[arg-type]
+            session=None,
             run_id="11111111-2222-3333-4444-555555555555",
             workspace_id=42,
         )
@@ -112,18 +114,18 @@ class TestTopCVExecutorEscalation:
 
         captured_delay: list[dict] = []
 
-        async def _mock_scrape(_params):
-            return {
-                "items": [{"id": "topcv:1", "title": "Dev"}],
-                "cost_micros": 1000,
-                "degraded": False,
-                "degradation_reason": None,
-                "total_items": 1,
-            }
+        mock_proxy = AsyncMock(return_value={
+            "items": [{"id": "topcv:1", "title": "Dev"}],
+            "cost_micros": 1000,
+            "degraded": False,
+            "degradation_reason": None,
+            "total_items": 1,
+            "stream": False,
+        })
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.scrape_topcv",
-            _mock_scrape,
+            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            lambda **kwargs: mock_proxy,
         )
         monkeypatch.setattr(
             "app.capabilities.topcv.scrape.executor.capture_platform_anti_bot_screenshot_task.delay",
@@ -135,4 +137,3 @@ class TestTopCVExecutorEscalation:
 
         assert output.degraded is False
         assert len(captured_delay) == 0
-

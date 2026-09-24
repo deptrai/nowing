@@ -422,6 +422,13 @@ development_status:
   38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: backlog
   38-8-voice-billing-realtime-metering-qa-scorecard: backlog
   epic-38-retrospective: optional
+  epic-40: done
+  40-1-xactions-gateway-client-streamable-http-cutover: done
+  40-2-scraper-playground-thin-proxy-workspace-billing-gate: done
+  40-3-decommission-22-internal-platform-crawlers-docker-image-slim: done
+  40-4-jev-stream-dedup-pii-guardrail-pipeline: done
+  40-5-chainlens-s2s-circuit-breaker-timeout-hardening: done
+  epic-40-retrospective: optional
 validation_reports:
   - story: "3.18"
     type: "code-review"

@@ -49,6 +49,7 @@ from app.proprietary.platforms.xactions.constants import (
     STREAM_SOCIAL_RAW_POSTS,
 )
 from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
+from app.tasks.jev_guardrails import sanitize_pii_content
 
 logger = logging.getLogger(__name__)
 
@@ -462,8 +463,9 @@ async def process_social_post_event(
             logger.warning("Invalid social post event: %s", exc)
             return None
 
+    sanitized_content = sanitize_pii_content(event.content)
     extractor = SocialEntityExtractor()
-    extracted = extractor.extract_all(event.content)
+    extracted = extractor.extract_all(sanitized_content)
     intent_tag = extracted["intent"]
     fit_score = compute_fit_score(
         extracted, intent_tag, event.reactions_count, event.comments_count
@@ -484,7 +486,7 @@ async def process_social_post_event(
         "author_name": event.author_name,
         "author_url": event.author_url,
         "post_url": event.post_url,
-        "content": event.content,
+        "content": sanitized_content,
         "intent_tag": intent_tag,
         "fit_score": fit_score,
         "reactions_count": event.reactions_count,
