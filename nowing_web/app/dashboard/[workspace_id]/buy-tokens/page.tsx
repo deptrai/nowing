@@ -1,16 +1,11 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { HybridPricingTiers } from "@/components/settings/hybrid-pricing-tiers";
 
 export default function BuyTokensPage() {
-	const router = useRouter();
-	const params = useParams();
-	const workspaceId = params?.workspace_id ?? "";
-
-	useEffect(() => {
-		router.replace(`/dashboard/${workspaceId}/buy-more`);
-	}, [router, workspaceId]);
-
-	return null;
+	return (
+		<div className="mx-auto w-full max-w-3xl px-4 py-6">
+			<HybridPricingTiers />
+		</div>
+	);
 }

@@ -222,10 +222,9 @@ class PrivateProviderService:
         # Jev content guardrails (Story 39.4) — separate entry point from
         # connectors/search, so this is not a second pass over already-
         # filtered content. Flag-off is a no-op before any work happens.
-        # NOTE: no session/user_id is forwarded — filter_passages fans out
-        # to FILTER_CONCURRENCY concurrent decide() calls, and concurrent
-        # session.execute on one AsyncSession violates asyncpg's
-        # single-connection rule. Decision telemetry here is log-only.
+        # user_id forwarded without a session — DecisionService opens its
+        # own per call, so FILTER_CONCURRENCY concurrent decide() calls
+        # never share one AsyncSession (asyncpg single-connection rule).
         if decision_config.decision_enabled() and decision_config.decision_task_enabled(
             "filter"
         ):
@@ -236,6 +235,7 @@ class PrivateProviderService:
                     query=request.query,
                     surface="rag",
                     workspace_id=workspace_id,
+                    user_id=effective_user_id,
                 )
                 kept_chunks: list[PrivateProviderChunk] = []
                 demoted: list[PrivateProviderChunk] = []

@@ -84,8 +84,10 @@ def _results(
     exceeded: bool = False,
 ) -> list[_MockResult]:
     """Build the execute() side_effect sequence for one telemetry read."""
+    t = totals or _totals()
     results = [
-        _MockResult([totals or _totals()]),
+        _MockResult([_Row(labeled=t.labeled, correct=t.correct)]),  # accuracy
+        _MockResult([t]),
         _MockResult(daily or []),
         _MockResult(by_task or []),
         _MockResult(models or []),
@@ -400,7 +402,7 @@ async def test_cost_alert_dedupes_acknowledged(
 async def test_cost_alert_not_exceeded_skips_dedupe_query(
     service: AdminTelemetryService, monkeypatch
 ) -> None:
-    """Below threshold → no lock/dedupe SELECT at all (5 executes total)."""
+    """Below threshold → no lock/dedupe SELECT at all (6 executes total)."""
     monkeypatch.setattr(
         decision_config, "DECISION_DAILY_COST_ALERT_USD", 10.0
     )
@@ -409,7 +411,7 @@ async def test_cost_alert_not_exceeded_skips_dedupe_query(
     )
     result = await service.get_decision_telemetry(24)
     assert result["cost_alert"]["exceeded"] is False
-    assert service.session.execute.await_count == 5
+    assert service.session.execute.await_count == 6
     service.session.add.assert_not_called()
 
 
@@ -467,6 +469,80 @@ async def test_compiled_sql_carries_decision_filter_and_dedupe_statuses(
     assert "admin_health_alerts.status IN" in dedupe_sql
     assert "open" in dedupe_sql
     assert "acknowledged" in dedupe_sql
+
+
+# ---------------------------------------------------------------------------
+# Periodic cost-alert entry point (Celery beat) — fires without a dashboard
+# read. Same deduped insert path as the read-time check.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_check_daily_cost_alert_inserts_on_breach(
+    service: AdminTelemetryService, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        decision_config, "DECISION_DAILY_COST_ALERT_USD", 10.0
+    )
+    service.session.execute = AsyncMock(
+        side_effect=[
+            _MockResult([_Row(cost_micros=12_000_000)]),  # today cost
+            _MockResult(),  # pg_advisory_xact_lock
+            _MockResult([]),  # dedupe: no existing alert
+        ]
+    )
+    result = await service.check_daily_cost_alert()
+    assert result["exceeded"] is True
+    assert result["alert_inserted"] is True
+    service.session.add.assert_called_once()
+    service.session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_check_daily_cost_alert_dedupes_existing(
+    service: AdminTelemetryService, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        decision_config, "DECISION_DAILY_COST_ALERT_USD", 10.0
+    )
+    service.session.execute = AsyncMock(
+        side_effect=[
+            _MockResult([_Row(cost_micros=12_000_000)]),
+            _MockResult(),  # lock
+            _MockResult([_Row(id=9)]),  # existing open alert
+        ]
+    )
+    result = await service.check_daily_cost_alert()
+    assert result["exceeded"] is True
+    assert result["alert_inserted"] is False
+    service.session.add.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_check_daily_cost_alert_below_threshold(
+    service: AdminTelemetryService, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        decision_config, "DECISION_DAILY_COST_ALERT_USD", 10.0
+    )
+    service.session.execute = AsyncMock(
+        side_effect=[_MockResult([_Row(cost_micros=5_000_000)])]
+    )
+    result = await service.check_daily_cost_alert()
+    assert result["exceeded"] is False
+    assert result["alert_inserted"] is False
+    assert service.session.execute.await_count == 1  # no lock/dedupe
+
+
+def test_decision_cost_alert_task_registered() -> None:
+    """Beat schedule + task registration — the check must run without a
+    dashboard read."""
+    import app.tasks.celery_tasks.decision_telemetry_task  # noqa: F401
+    from app.celery_app import celery_app
+
+    assert "evaluate_decision_daily_cost_alert" in celery_app.tasks
+    entry = celery_app.conf.beat_schedule["evaluate-decision-daily-cost-alert"]
+    assert entry["task"] == "evaluate_decision_daily_cost_alert"
 
 
 # ---------------------------------------------------------------------------

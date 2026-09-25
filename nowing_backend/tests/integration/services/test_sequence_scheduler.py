@@ -226,6 +226,9 @@ class TestSequenceExecutionIntegration:
             patch.object(sequencer, "_resolve_verified_contact", new_callable=AsyncMock, return_value=contact),
             patch("app.services.sequencer_service.DncComplianceService.is_blocked", new_callable=AsyncMock, return_value=MagicMock(is_blocked=False)),
             patch("app.services.wallet_credit.check_balance", new_callable=AsyncMock),
+            # Story 37.2 AC-4: pin curfew OFF so send execution isn't
+            # time-dependent (test may run during 21:00-08:00 ICT).
+            patch("app.services.sequencer.dispatch.is_dispatch_curfew", return_value=False),
             patch.object(sequencer, "_send_email_async", new_callable=AsyncMock, return_value="msg_12345"),
             patch.object(sequencer.billing_service, "record_sequence_send", new_callable=AsyncMock) as mock_record_send,
         ):

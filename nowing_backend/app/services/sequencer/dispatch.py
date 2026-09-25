@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
+
+from sqlalchemy import update
 
 from app.alerts.engine.notify import _send_email_smtp
 from app.config import config
@@ -28,7 +31,16 @@ from app.lead_intelligence.dnc.service import DncComplianceService
 from app.services import wallet_credit
 from app.services.billing_event_service import BillingEventService
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
-from app.services.sequencer.templates import interpolate_template_variables
+from app.services.sequencer.honorifics import (
+    NEUTRAL_RESOLUTION,
+    VietnamHonorificResolver,
+    workspace_sender_demographics,
+)
+from app.services.sequencer.scheduling import calculate_step_eta, is_dispatch_curfew
+from app.services.sequencer.templates import (
+    interpolate_template_data,
+    interpolate_template_variables,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +52,86 @@ class SequencerDispatchMixin:
         super().__init__()
         self.encryption: VerifiedContactEncryption
         self.billing_service: BillingEventService
+
+    def _decrypt_field(self, value: Any) -> str | None:
+        """Best-effort decrypt of an encrypted-at-rest contact field."""
+        if not isinstance(value, str) or not value:
+            return None
+        try:
+            if self.encryption.is_encrypted(value):
+                return self.encryption.decrypt(value)
+        except Exception:  # decrypt failure → omit field; never emit ciphertext
+            return None
+        return value
+
+    async def _defer_step_for_curfew(
+        self,
+        session: Any,
+        sequence: Sequence,
+        step: SequenceStep,
+        enrollment: SequenceEnrollment,
+        *,
+        channel: str,
+    ) -> SequenceEvent:
+        """Decree 91 curfew: re-schedule the step to the next 08:05 ICT window.
+
+        OCC-guarded: only reschedules while the enrollment is still in an
+        active/scheduled state owned by this path — a concurrent opt-out or
+        version bump must not be overwritten.
+        """
+        next_eta = calculate_step_eta(0)
+        current_version = enrollment.version or 0
+        res = await session.execute(
+            update(SequenceEnrollment)
+            .where(
+                SequenceEnrollment.id == enrollment.id,
+                SequenceEnrollment.workspace_id == enrollment.workspace_id,
+                SequenceEnrollment.version == current_version,
+                SequenceEnrollment.status.in_(
+                    ["scheduled", "executing", "paused"]
+                ),
+            )
+            .values(
+                status="scheduled",
+                scheduled_at=next_eta,
+                version=current_version + 1,
+                updated_at=datetime.now(UTC),
+            )
+        )
+        deferred = getattr(res, "rowcount", 0) != 0
+        if deferred:
+            enrollment.status = "scheduled"
+            enrollment.scheduled_at = next_eta
+            enrollment.version = current_version + 1
+        else:
+            # Another path (e.g. inbound opt-out CAS) owns the enrollment —
+            # skip the update rather than clobber its state.
+            logger.info(
+                "Curfew deferral skipped for enrollment %s: state/version "
+                "changed concurrently",
+                enrollment.id,
+            )
+            next_eta = None
+
+        event = SequenceEvent(
+            workspace_id=enrollment.workspace_id,
+            client_id=enrollment.client_id,
+            enrollment_id=enrollment.id,
+            sequence_id=sequence.id,
+            step_id=step.id,
+            event_type="skipped",
+            event_subtype="curfew_decree91",
+            channel=channel,
+            cost_micros=0,
+            event_metadata={
+                "reason": "curfew_decree91",
+                "detail": "Dispatch halted 21:00-08:00 ICT per Decree 91/2020/NĐ-CP",
+                "rescheduled_at": next_eta.isoformat() if next_eta else None,
+            },
+        )
+        session.add(event)
+        await session.commit()
+        return event
 
     async def _send_email_dispatch(
         self,
@@ -253,6 +345,29 @@ class SequencerDispatchMixin:
 
         # 5. Template interpolation
         template_data = step.template or {}
+
+        # AC-1/AC-2 (Story 37.2 / AD-116): deterministic honorific resolution,
+        # injected under the {salutation} token for template interpolation.
+        # Per-workspace sender profile (icp_criteria) overrides the global
+        # SEQUENCER_SENDER_* env defaults.
+        try:
+            sender_birth_year, sender_gender = await workspace_sender_demographics(
+                session, enrollment.workspace_id
+            )
+            honorific = VietnamHonorificResolver().resolve(
+                lead=lead,
+                contact=contact,
+                profile={
+                    "name": self._decrypt_field(getattr(contact, "name", None)),
+                    "title": self._decrypt_field(getattr(contact, "title", None)),
+                },
+                sender_birth_year=sender_birth_year,
+                sender_gender=sender_gender,
+            )
+        except Exception:  # honorific resolution must never block dispatch
+            logger.exception("Honorific resolution failed for lead %s", lead.id)
+            honorific = NEUTRAL_RESOLUTION
+
         context_vars = {
             "customer_name": getattr(lead, "contact_name", None)
             or getattr(lead, "company_name", None)
@@ -262,7 +377,31 @@ class SequencerDispatchMixin:
             if lead.custom_fields
             else "",
             "consultant_phone": getattr(config, "CONSULTANT_PHONE", "0901234567"),
+            **honorific.to_context_vars(),
         }
+
+        # AC-5 (Story 37.5): inject the mini-pitch portal URL when the cadence
+        # copy references {pitch_portal_url}. The build is idempotent — the
+        # per-lead artifact is Redis-cached so repeat sends never rebuild.
+        try:
+            portal_url = await self._resolve_pitch_portal_url(
+                session, lead, template_data
+            )
+            if portal_url:
+                context_vars["pitch_portal_url"] = portal_url
+        except Exception:  # portal injection must never block dispatch
+            logger.exception(
+                "pitch portal injection failed for lead %s", lead.id
+            )
+
+        # AC-4 (Story 37.2 / Decree 91/2020/NĐ-CP): hard halt 21:00-08:00 ICT.
+        # Checked after consent/DNC/billing gates so those skip/fail outcomes
+        # still take precedence; placed before any provider call so nothing is
+        # dispatched during curfew.
+        if is_dispatch_curfew():
+            return await self._defer_step_for_curfew(
+                session, sequence, step, enrollment, channel=step.channel
+            )
 
         # 6. Dispatch with fallback
         primary_channel = step.channel
@@ -276,6 +415,12 @@ class SequencerDispatchMixin:
 
         last_error: str | None = None
         for channel in channels_to_try:
+            # AC-4: re-check per attempt — a step that started before 21:00
+            # must not dispatch a fallback channel after the boundary.
+            if is_dispatch_curfew():
+                return await self._defer_step_for_curfew(
+                    session, sequence, step, enrollment, channel=channel
+                )
             try:
                 await self.validate_step_channel(channel)
                 msg_id, used_channel = await self._dispatch_single_channel(
@@ -440,6 +585,9 @@ class SequencerDispatchMixin:
                 or template_data.get("zalo_template_data")
                 or {}
             )
+            # Inject {salutation} & other context vars into ZNS template data —
+            # recursively, so nested dicts/lists carry no literal tokens.
+            zalo_data = interpolate_template_data(zalo_data, context_vars)
             if not zalo_template:
                 raise ValueError("missing_zalo_template_id")
 
@@ -506,6 +654,34 @@ class SequencerDispatchMixin:
             return msg_id, "telegram"
 
         raise ValueError(f"unsupported_channel:{channel}")
+
+    async def _resolve_pitch_portal_url(
+        self,
+        session: Any,
+        lead: Lead,
+        template_data: dict[str, Any],
+    ) -> str | None:
+        """Story 37.5 / AC-5: lazily build the lead's mini-pitch portal and
+        return its public URL — only when the template actually references
+        ``{pitch_portal_url}``.  None when the token is absent."""
+        from app.services.pitch_portal import (
+            ensure_pitch_portal,
+            template_requests_pitch_portal,
+        )
+
+        if not template_requests_pitch_portal(template_data):
+            return None
+        # _get_redis_async lives on SequencerInboundMixin (combined on
+        # SequencerService); fall back to the raw client for isolated use.
+        get_redis = getattr(self, "_get_redis_async", None)
+        if get_redis is not None:
+            redis_client = await get_redis()
+        else:
+            from app.redis_client import get_redis_client
+
+            redis_client = await get_redis_client()
+        portal = await ensure_pitch_portal(session, redis_client, lead)
+        return portal["url"]
 
     async def _send_email_async(self, to_email: str, subject: str, body: str) -> str:
         """Asynchronous wrapper around synchronous SMTP sender."""

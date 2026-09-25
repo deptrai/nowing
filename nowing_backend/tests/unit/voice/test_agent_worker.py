@@ -10,8 +10,10 @@ Hermetic tests covering:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -428,3 +430,513 @@ class TestVoiceSDRAgentLifecycle:
         assert frames[0].sample_rate == 24000
         assert frames[0].num_channels == 1
         assert frames[0].samples_per_channel > 0
+
+
+# ---------------------------------------------------------------------------
+# Story 39.6: Post-STT semantic decisions in on_user_turn_completed
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestVoiceSDRAgentSemanticGate:
+    """Semantic gating: suppress / transfer / frustration / fail-open."""
+
+    @staticmethod
+    def _msg(text: str) -> MagicMock:
+        msg = MagicMock()
+        msg.text_content = text
+        return msg
+
+    @staticmethod
+    def _session_with_say() -> MagicMock:
+        session = MagicMock()
+        handle = MagicMock()
+        handle.wait_for_playout = AsyncMock()
+        session.say = MagicMock(return_value=handle)
+        return session
+
+    @staticmethod
+    async def _cleanup(agent) -> None:
+        """Release the filler watchdog task so tests don't leak it."""
+        await agent.on_exit()
+
+    @pytest.mark.asyncio
+    async def test_suppress_raises_stop_response_and_cancels_filler(self):
+        """Confident no-response → filler cancelled, StopResponse, no say()."""
+        from livekit.agents.llm import StopResponse
+
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import (
+            VoiceSDRAgent,
+            VoiceTurnAssessment,
+        )
+
+        agent = VoiceSDRAgent()
+        session = self._session_with_say()
+        assessment = VoiceTurnAssessment(suppress_response=True)
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            agent_worker,
+            "evaluate_voice_turn",
+            AsyncMock(return_value=assessment),
+        ) as mock_eval, pytest.raises(StopResponse):
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("vâng ạ")
+            )
+
+        mock_eval.assert_awaited_once()
+        assert agent._first_token_event.is_set()
+        session.interrupt.assert_called_once()  # cut any in-flight filler
+        session.say.assert_not_called()  # no dangling filler, no line
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_transfer_says_line_waits_and_ends_call(self):
+        """Confident transfer → say → wait_for_playout → end_call → stop."""
+        from livekit.agents.llm import StopResponse
+
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import (
+            VoiceSDRAgent,
+            VoiceTurnAssessment,
+        )
+
+        user_id = uuid4()
+        agent = VoiceSDRAgent(
+            workspace_id=7,
+            user_id=user_id,
+            call_session_id="sess-1",
+            room_name="call_sess-1",
+        )
+        session = self._session_with_say()
+        assessment = VoiceTurnAssessment(transfer=True)
+
+        telephony_client = MagicMock()
+        telephony_client.__aenter__.return_value.end_call = AsyncMock()
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            agent_worker,
+            "evaluate_voice_turn",
+            AsyncMock(return_value=assessment),
+        ) as mock_eval, patch.object(
+            agent_worker,
+            "LiveKitTelephonyClient",
+            return_value=telephony_client,
+        ) as client_cls, pytest.raises(StopResponse):
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("cho tôi nói chuyện với người thật")
+            )
+
+        mock_eval.assert_awaited_once_with(
+            "cho tôi nói chuyện với người thật",
+            workspace_id=7,
+            user_id=user_id,
+            client_id="sess-1",
+        )
+        client_cls.assert_called_once_with()
+        session.interrupt.assert_called_once()  # no filler overlapping line
+        session.say.assert_called_once()
+        say_kwargs = session.say.call_args
+        assert say_kwargs.args[0] == agent_worker._VOICE_TRANSFER_LINE
+        assert say_kwargs.kwargs["allow_interruptions"] is False
+        assert say_kwargs.kwargs["add_to_chat_ctx"] is False
+        session.say.return_value.wait_for_playout.assert_awaited_once()
+        telephony_client.__aenter__.return_value.end_call.assert_awaited_once_with(
+            room_name="call_sess-1"
+        )
+        assert agent._first_token_event.is_set()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_transfer_wins_over_suppress(self):
+        """Both flags set → escalation path runs, suppression ignored."""
+        from livekit.agents.llm import StopResponse
+
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import (
+            VoiceSDRAgent,
+            VoiceTurnAssessment,
+        )
+
+        agent = VoiceSDRAgent(room_name="call_x")
+        session = self._session_with_say()
+        assessment = VoiceTurnAssessment(suppress_response=True, transfer=True)
+
+        telephony_client = MagicMock()
+        telephony_client.__aenter__.return_value.end_call = AsyncMock()
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            agent_worker,
+            "evaluate_voice_turn",
+            AsyncMock(return_value=assessment),
+        ), patch.object(
+            agent_worker,
+            "LiveKitTelephonyClient",
+            return_value=telephony_client,
+        ), pytest.raises(StopResponse):
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("gặp người thật")
+            )
+
+        # Escalation ran — the canned line was played, not just silence.
+        session.say.assert_called_once()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_transfer_without_room_name_fails_open(self):
+        """Transfer intent but no room_name → cannot end_call → generate."""
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import (
+            VoiceSDRAgent,
+            VoiceTurnAssessment,
+        )
+
+        agent = VoiceSDRAgent()  # no room_name
+        session = self._session_with_say()
+        assessment = VoiceTurnAssessment(transfer=True)
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            agent_worker,
+            "evaluate_voice_turn",
+            AsyncMock(return_value=assessment),
+        ):
+            # Returns normally — no StopResponse, no say(), no end_call.
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("gặp người thật")
+            )
+
+        session.say.assert_not_called()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_transfer_end_call_failure_fails_open(self):
+        """end_call raising → fail-open, turn generates normally."""
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import (
+            VoiceSDRAgent,
+            VoiceTurnAssessment,
+        )
+
+        agent = VoiceSDRAgent(room_name="call_y")
+        session = self._session_with_say()
+        assessment = VoiceTurnAssessment(transfer=True)
+
+        telephony_client = MagicMock()
+        telephony_client.__aenter__.return_value.end_call = AsyncMock(
+            side_effect=RuntimeError("livekit down")
+        )
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            agent_worker,
+            "evaluate_voice_turn",
+            AsyncMock(return_value=assessment),
+        ), patch.object(
+            agent_worker,
+            "LiveKitTelephonyClient",
+            return_value=telephony_client,
+        ):
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("gặp người thật")
+            )
+
+        session.say.assert_called_once()  # line played, teardown failed
+        # Fail-open re-arms the filler watchdog for the generation path —
+        # a dead watchdog would mean dead air on a slow LLM first token.
+        assert agent._filler_task is not None
+        assert not agent._filler_task.done()
+        assert not agent._first_token_event.is_set()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_frustration_logs_and_continues(self, monkeypatch, caplog):
+        """Frustration score → structured [voice_turn] log; generation proceeds."""
+        monkeypatch.setenv("DECISION_ENABLED", "true")
+        monkeypatch.setenv("DECISION_VOICE_ENABLED", "true")
+        from app.services.decision.types import Answer, DecisionResult
+        from app.services.voice import semantic_gate
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent()
+        session = self._session_with_say()
+        service = MagicMock()
+        service.decide = AsyncMock(
+            return_value=DecisionResult(
+                answers={
+                    "should_respond": Answer(
+                        kind="noul", value=0.9, confidence=0.9
+                    ),
+                    "caller_frustration": Answer(
+                        kind="score", value=2.5, confidence=0.8
+                    ),
+                    "transfer_to_human": Answer(
+                        kind="noul", value=0.1, confidence=0.1
+                    ),
+                },
+                model="jev-1.13.0",
+                backend="jev",
+                latency_ms=100.0,
+            )
+        )
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            semantic_gate, "get_decision_service", return_value=service
+        ), caplog.at_level("INFO", logger="app.services.voice.semantic_gate"):
+            # Returns normally — generation proceeds.
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("sao gọi hoài vậy, phiền quá")
+            )
+
+        assert "[voice_turn] frustration=2.5" in caplog.text
+        service.decide.assert_awaited_once()
+        session.say.assert_not_called()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_local_backchannel_suppresses_without_jev(self, monkeypatch):
+        """'ừ' suppresses via LOCAL_BACKCHANNELS — StopResponse, zero decide."""
+        from livekit.agents.llm import StopResponse
+
+        monkeypatch.setenv("DECISION_ENABLED", "true")
+        monkeypatch.setenv("DECISION_VOICE_ENABLED", "true")
+        from app.services.voice import semantic_gate
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent()
+        session = self._session_with_say()
+        service = MagicMock()
+        service.decide = AsyncMock()
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            semantic_gate, "get_decision_service", return_value=service
+        ), pytest.raises(StopResponse):
+            await agent.on_user_turn_completed(MagicMock(), self._msg("ừ"))
+
+        service.decide.assert_not_called()
+        session.interrupt.assert_called_once()
+        session.say.assert_not_called()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_evaluation_exception_fails_open(self):
+        """decide() exploding (timeout/error) → normal generation."""
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent()
+        session = self._session_with_say()
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            agent_worker,
+            "evaluate_voice_turn",
+            AsyncMock(side_effect=RuntimeError("decide timeout")),
+        ):
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("cho tôi hỏi giá nhà")
+            )
+
+        session.say.assert_not_called()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_flags_off_means_zero_decide_calls(self, monkeypatch):
+        """DECISION_ENABLED=false → real gate short-circuits, no call."""
+        monkeypatch.setenv("DECISION_ENABLED", "false")
+        from app.services.voice import semantic_gate
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent()
+        session = self._session_with_say()
+        service = MagicMock()
+        service.decide = AsyncMock()
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            semantic_gate, "get_decision_service", return_value=service
+        ):
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("vâng ạ")
+            )
+
+        service.decide.assert_not_called()
+        session.say.assert_not_called()
+        await self._cleanup(agent)
+
+    @pytest.mark.asyncio
+    async def test_empty_transcript_skips_decide(self, monkeypatch):
+        """Whitespace transcript → gate early-returns, no paid call."""
+        monkeypatch.setenv("DECISION_ENABLED", "true")
+        monkeypatch.setenv("DECISION_VOICE_ENABLED", "true")
+        from app.services.voice import semantic_gate
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent()
+        session = self._session_with_say()
+        service = MagicMock()
+        service.decide = AsyncMock()
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ), patch.object(
+            semantic_gate, "get_decision_service", return_value=service
+        ):
+            await agent.on_user_turn_completed(
+                MagicMock(), self._msg("   ")
+            )
+
+        service.decide.assert_not_called()
+        await self._cleanup(agent)
+
+
+@pytest.mark.unit
+class TestEntrypointMetadataPlumbing:
+    """entrypoint parses ctx.room.metadata into VoiceSDRAgent context."""
+
+    @pytest.mark.asyncio
+    async def test_entrypoint_passes_metadata_context(self):
+        """workspace_id/user_id/session_id/room_name reach the agent."""
+        from app.services.voice import agent_worker
+
+        user_id = uuid4()
+        ctx = MagicMock()
+        ctx.room.name = "call_sess-9"
+        ctx.room.metadata = json.dumps(
+            {
+                "session_id": "sess-9",
+                "workspace_id": 7,
+                "user_id": str(user_id),
+            }
+        )
+        ctx.connect = AsyncMock()
+
+        # Fire "disconnected" immediately on registration so the
+        # entrypoint's wait loop exits right after session.start.
+        def _on(_event: str):
+            def _deco(fn):
+                fn()
+                return fn
+
+            return _deco
+
+        ctx.room.on = MagicMock(side_effect=_on)
+        session = MagicMock()
+        session.start = AsyncMock()
+        session.aclose = AsyncMock()
+
+        with patch.object(
+            agent_worker, "SEQUENCER_VOICE_ENABLED", True
+        ), patch.object(
+            agent_worker, "AgentSession", return_value=session
+        ), patch.object(agent_worker, "_build_stt"), patch.object(
+            agent_worker, "_build_llm"
+        ), patch.object(agent_worker, "_build_tts"), patch.object(
+            agent_worker, "_build_vad"
+        ), patch.object(
+            agent_worker, "VoiceSDRAgent"
+        ) as agent_cls:
+            await agent_worker.entrypoint(ctx)
+
+        kwargs = agent_cls.call_args.kwargs
+        assert kwargs["workspace_id"] == 7
+        assert kwargs["user_id"] == user_id
+        assert kwargs["call_session_id"] == "sess-9"
+        assert kwargs["room_name"] == "call_sess-9"
+        session.start.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_entrypoint_missing_metadata_is_log_only(self):
+        """No/malformed metadata → Nones, call still proceeds."""
+        from app.services.voice import agent_worker
+
+        ctx = MagicMock()
+        ctx.room.name = "call_plain"
+        ctx.room.metadata = "not-json{"
+        ctx.connect = AsyncMock()
+
+        def _on(_event: str):
+            def _deco(fn):
+                fn()
+                return fn
+
+            return _deco
+
+        ctx.room.on = MagicMock(side_effect=_on)
+        session = MagicMock()
+        session.start = AsyncMock()
+        session.aclose = AsyncMock()
+
+        with patch.object(
+            agent_worker, "SEQUENCER_VOICE_ENABLED", True
+        ), patch.object(
+            agent_worker, "AgentSession", return_value=session
+        ), patch.object(agent_worker, "_build_stt"), patch.object(
+            agent_worker, "_build_llm"
+        ), patch.object(agent_worker, "_build_tts"), patch.object(
+            agent_worker, "_build_vad"
+        ), patch.object(
+            agent_worker, "VoiceSDRAgent"
+        ) as agent_cls:
+            await agent_worker.entrypoint(ctx)
+
+        kwargs = agent_cls.call_args.kwargs
+        assert kwargs["workspace_id"] is None
+        assert kwargs["user_id"] is None
+        assert kwargs["call_session_id"] is None
+        assert kwargs["room_name"] == "call_plain"
+
+    @pytest.mark.asyncio
+    async def test_entrypoint_inf_workspace_id_does_not_crash(self):
+        """JSON ``1e999`` parses to float inf → int() would OverflowError;
+        _coerce_int must swallow it so the call still starts."""
+        from app.services.voice import agent_worker
+
+        ctx = MagicMock()
+        ctx.room.name = "call_inf"
+        ctx.room.metadata = '{"session_id": "s1", "workspace_id": 1e999}'
+        ctx.connect = AsyncMock()
+
+        def _on(_event: str):
+            def _deco(fn):
+                fn()
+                return fn
+
+            return _deco
+
+        ctx.room.on = MagicMock(side_effect=_on)
+        session = MagicMock()
+        session.start = AsyncMock()
+        session.aclose = AsyncMock()
+
+        with patch.object(
+            agent_worker, "SEQUENCER_VOICE_ENABLED", True
+        ), patch.object(
+            agent_worker, "AgentSession", return_value=session
+        ), patch.object(agent_worker, "_build_stt"), patch.object(
+            agent_worker, "_build_llm"
+        ), patch.object(agent_worker, "_build_tts"), patch.object(
+            agent_worker, "_build_vad"
+        ), patch.object(
+            agent_worker, "VoiceSDRAgent"
+        ) as agent_cls:
+            await agent_worker.entrypoint(ctx)
+
+        kwargs = agent_cls.call_args.kwargs
+        assert kwargs["workspace_id"] is None
+        assert kwargs["call_session_id"] == "s1"
+        session.start.assert_awaited_once()

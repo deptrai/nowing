@@ -166,3 +166,14 @@ Review pass 1 (3 reviewers: backend-correctness, spec-compliance+tests, frontend
 
 **Manual checks:**
 - `GET /admin/telemetry/decisions` as superuser → JSON shape matches schema; POST label on a decision row → `correct` appears in next GET accuracy.
+
+## Live Verification (2026-09-23)
+
+Real Jev call qua `score_entity_pair(session, workspace_id=1, user_id=<ws1-owner>)` → `TokenUsage` row đầu tiên `backend='jev'`:
+
+```
+('jev','jev-1.13.0','entity','entity_match@1.0.0', prompt=445, completion=18,
+ e2e_ms=726, cost_micros=19, workspace_id=1, user_id=✓)
+```
+
+Plus 2 rows `task='routing'` từ jev_router middleware test (subagent_routing@1.0.0, 457+71 tok, 1114ms / 450+69 tok, 294ms, cost 19µs mỗi cái). `_record_usage` session path + commit hoạt động E2E.

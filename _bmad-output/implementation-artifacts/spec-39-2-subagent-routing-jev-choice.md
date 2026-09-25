@@ -127,3 +127,12 @@ Pass 1 (3 layers: blind-hunter 12, edge-case 4, verification-gap 2 — deduped i
 - `cd nowing_backend && ruff check app/agents/chat/multi_agent_chat/main_agent/middleware/ tests/unit/agents/multi_agent_chat/middleware/ tests/unit/services/decision/` — expected: clean
 - `cd nowing_backend && uv run pytest tests/unit/agents/multi_agent_chat/middleware/test_jev_router.py tests/unit/services/decision -m unit -q` — expected: all pass
 - `cd nowing_backend && grep -n "typesafe_sdk\|AsyncTypeSafeClient\|JEV_ROUTER_CONFIDENCE\|JEV_MODEL\|TYPESAFE_API_KEY" app/agents/chat/multi_agent_chat/main_agent/middleware/jev_router.py` — expected: no output
+
+## Live Verification (2026-09-23)
+
+`JevRouterMiddleware` instance thật (roster 6 subagents, ws=1, uid thật), `abefore_model` trên 2 message Việt:
+
+- "Tìm giúp tôi nhà bán ở Quận 7 dưới 5 tỷ" → hint `batdongsan` conf=1.00 (1114ms, 457 tok) → `<jev_routing_hint>` SystemMessage injected
+- "chào bạn, hôm nay thế nào?" → hint `none_needed` conf=1.00 (294ms) → hint "answer directly"
+
+Cả 2 ghi `token_usage` rows `task='routing', backend='jev'`. Chưa verify trong full chat traffic (cần backend + `NOWING_ENABLE_JEV_ROUTER=true` trong deploy).

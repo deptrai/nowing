@@ -17,6 +17,10 @@ from ._helpers import _clamp_window, _make_time_bucket_expr
 logger = logging.getLogger(__name__)
 
 _DECISION_USAGE_TYPE = "decision"
+# Eval-harness rows (`runner.py --persist`) carry ground truth in
+# call_details.correct — they count toward accuracy/labeled but never
+# toward prod volume/cost/latency.
+_DECISION_EVAL_USAGE_TYPE = "decision_eval"
 _COST_ALERT_SERVICE_ID = "decision.jev_daily_cost"
 
 
@@ -79,9 +83,20 @@ class DecisionTelemetryMixin:
             func.count(TokenUsage.id).label("calls"),
             func.coalesce(func.sum(TokenUsage.cost_micros), 0).label("cost_micros"),
             self._median_ms_expr().label("median_ms"),
+        ).where(*filters)
+        # Accuracy counts labeled rows from prod (decision) AND eval harness
+        # (decision_eval) — eval runs persist ground truth via --persist.
+        label_filters = [
+            *self._token_filters(cutoff, workspace_id),
+            TokenUsage.usage_type.in_(
+                [_DECISION_USAGE_TYPE, _DECISION_EVAL_USAGE_TYPE]
+            ),
+        ]
+        accuracy_stmt = select(
             func.count(TokenUsage.id).filter(has_correct).label("labeled"),
             func.count(TokenUsage.id).filter(is_correct).label("correct"),
-        ).where(*filters)
+        ).where(*label_filters)
+        accuracy_row = (await self.session.execute(accuracy_stmt)).one()
         totals = (await self.session.execute(totals_stmt)).one()
 
         bucket_expr = _make_time_bucket_expr(granularity)
@@ -141,30 +156,17 @@ class DecisionTelemetryMixin:
         model_rows = (await self.session.execute(models_stmt)).all()
 
         # Today's UTC decision spend — evaluated on read so the first
-        # dashboard view after a breach fires the (deduped) alert; no
-        # Celery beat needed (see spec Design Notes).
-        today_start = datetime.now(UTC).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        today_filters = [
-            TokenUsage.created_at >= today_start,
-            TokenUsage.usage_type == _DECISION_USAGE_TYPE,
-        ]
-        if workspace_id is not None:
-            today_filters.append(TokenUsage.workspace_id == workspace_id)
-        today_stmt = select(
-            func.coalesce(func.sum(TokenUsage.cost_micros), 0).label("cost_micros")
-        ).where(*today_filters)
-        today_row = (await self.session.execute(today_stmt)).one()
-        today_cost_micros = int(today_row.cost_micros)
-
+        # dashboard view after a breach fires the (deduped) alert; a Celery
+        # beat task also runs this periodically so the alert fires even when
+        # nobody opens the dashboard (see check_daily_cost_alert).
+        today_cost_micros = await self._today_decision_cost_micros(workspace_id)
         threshold_usd = decision_config.DECISION_DAILY_COST_ALERT_USD
         exceeded = today_cost_micros > threshold_usd * 1_000_000
         if exceeded:
             await self._maybe_insert_cost_alert(today_cost_micros, threshold_usd)
 
-        labeled = int(totals.labeled)
-        correct = int(totals.correct)
+        labeled = int(accuracy_row.labeled)
+        correct = int(accuracy_row.correct)
         pinned_model = decision_config.DECISION_JEV_MODEL
         jev_models = {row.model for row in model_rows if row.backend == "jev"}
         drift_detected = len(jev_models) > 1 or any(
@@ -228,6 +230,45 @@ class DecisionTelemetryMixin:
                 "today_cost_micros": today_cost_micros,
                 "exceeded": exceeded,
             },
+        }
+
+    async def _today_decision_cost_micros(
+        self, workspace_id: int | None = None
+    ) -> int:
+        """Sum of today's UTC ``decision`` TokenUsage cost in micros."""
+        today_start = datetime.now(UTC).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        today_filters = [
+            TokenUsage.created_at >= today_start,
+            TokenUsage.usage_type == _DECISION_USAGE_TYPE,
+        ]
+        if workspace_id is not None:
+            today_filters.append(TokenUsage.workspace_id == workspace_id)
+        today_stmt = select(
+            func.coalesce(func.sum(TokenUsage.cost_micros), 0).label("cost_micros")
+        ).where(*today_filters)
+        today_row = (await self.session.execute(today_stmt)).one()
+        return int(today_row.cost_micros)
+
+    async def check_daily_cost_alert(self) -> dict[str, Any]:
+        """Periodic entry point (Celery beat): evaluate today's UTC decision
+        spend and insert the deduped ``AdminHealthAlert`` on breach — fires
+        even when no admin is viewing the dashboard.
+        """
+        today_cost_micros = await self._today_decision_cost_micros()
+        threshold_usd = decision_config.DECISION_DAILY_COST_ALERT_USD
+        exceeded = today_cost_micros > threshold_usd * 1_000_000
+        inserted = False
+        if exceeded:
+            inserted = await self._maybe_insert_cost_alert(
+                today_cost_micros, threshold_usd
+            )
+        return {
+            "today_cost_micros": today_cost_micros,
+            "threshold_usd": threshold_usd,
+            "exceeded": exceeded,
+            "alert_inserted": inserted,
         }
 
     async def _maybe_insert_cost_alert(

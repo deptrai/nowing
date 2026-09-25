@@ -368,6 +368,30 @@ async def test_refine_candidate_cap_per_anchor(_enabled, monkeypatch):
     assert seen["candidates"] == ["b", "c"]
 
 
+async def test_refine_wall_clock_deadline_aborts(_enabled, monkeypatch):
+    """max_seconds bounds wall-clock: expired deadline stops further paid
+    decisions, keeps heuristic results, and flags stats.aborted."""
+    backend = _StubBackend(
+        lambda s, q: _result(
+            {
+                "match_decision": _choice_answer(
+                    "no_match", list(q["match_decision"].criteria.keys())
+                )
+            }
+        )
+    )
+    _patch_service(monkeypatch, DecisionService(backend))
+    items = [_item(c) for c in "abcde"]
+    pairs = {0: [4], 1: [4], 2: [4], 3: [4]}
+    refined, stats = await refine_entity_groups(
+        items, pairs, max_seconds=0, **_kwargs()
+    )
+    assert refined == items  # heuristic grouping untouched
+    assert stats.calls == 0  # deadline hit before the first paid call
+    assert stats.aborted is True
+    assert backend.calls == 0
+
+
 async def test_refine_single_pass_no_reeval_after_merge(
     _enabled, monkeypatch
 ):

@@ -664,7 +664,9 @@ class CorporateVerificationService:
                             prof.city,
                             prof.district,
                         )
-                        is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+                        is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD or bool(
+                            data.get("_jev_verdict")
+                        )
                         return CorporateMatchResult(
                             tax_id=prof.tax_id,
                             is_verified=is_ver,
@@ -699,7 +701,11 @@ class CorporateVerificationService:
                         prof.city,
                         prof.district,
                     )
-                    is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+                    # Story 39.3: a cached payload Jev already promoted must
+                    # stay verified — re-fuzzying would flip the verdict back.
+                    is_ver = score >= AUTO_LINK_CONFIDENCE_THRESHOLD or bool(
+                        data.get("_jev_verdict")
+                    )
                     return CorporateMatchResult(
                         tax_id=prof.tax_id,
                         is_verified=is_ver,
@@ -763,6 +769,25 @@ class CorporateVerificationService:
 
         prof = self._dict_to_profile(best_cand)
 
+        is_verified = best_score >= AUTO_LINK_CONFIDENCE_THRESHOLD
+        requires_manual = not is_verified
+        # Advisory Jev rescore (Story 39.3): only the uncertain fuzzy band
+        # pays a decide() call, and Jev can only PROMOTE a match to
+        # verified — a reject/review verdict keeps the fuzzy outcome
+        # (manual queue). Exact-ID, cached, and breaker-degraded paths
+        # above return earlier and never reach this point. Runs BEFORE the
+        # cache write so the verdict persists with the payload — a later
+        # cached read must not flip a Jev-verified company back to manual.
+        if (
+            0 < best_score < AUTO_LINK_CONFIDENCE_THRESHOLD
+            and await self._jev_rescore_match(
+                company_name, city, district, tax_id, best_cand, workspace_id
+            )
+        ):
+            is_verified = True
+            requires_manual = False
+            best_cand = {**best_cand, "_jev_verdict": True}
+
         # Cache best candidate (encrypted at rest in Redis, INV-21.3)
         if redis is not None:
             try:
@@ -783,21 +808,6 @@ class CorporateVerificationService:
                     "[CorporateVerification] Redis cache write failed: %s", exc
                 )
 
-        is_verified = best_score >= AUTO_LINK_CONFIDENCE_THRESHOLD
-        requires_manual = not is_verified
-        # Advisory Jev rescore (Story 39.3): only the uncertain fuzzy band
-        # pays a decide() call, and Jev can only PROMOTE a match to
-        # verified — a reject/review verdict keeps the fuzzy outcome
-        # (manual queue). Exact-ID, cached, and breaker-degraded paths
-        # above return earlier and never reach this point.
-        if (
-            0 < best_score < AUTO_LINK_CONFIDENCE_THRESHOLD
-            and await self._jev_rescore_match(
-                company_name, city, district, tax_id, best_cand, workspace_id
-            )
-        ):
-            is_verified = True
-            requires_manual = False
         return CorporateMatchResult(
             tax_id=prof.tax_id,
             is_verified=is_verified,

@@ -1,4 +1,4 @@
-"""StreamableHTTP MCP client for XActions (Story 21.8a).
+"""StreamableHTTP MCP client for XActions (Story 21.8a, updated for Story 40.1).
 
 Reuses the existing `mcp` SDK transport and `ClientSession`, but is tailored
 for the XActions daemon running at `http://xactions:3001/mcp` with Bearer auth
@@ -7,6 +7,11 @@ and the `X-Consumer-Id` header required by AD-20 / Trinity contract.
 Usage:
     async with XActionsMcpClient() as client:
         result = await client.call_tool("x_facebook_group_posts", {...})
+
+Story 40.1 additions:
+    - Circuit breaker integration (3 consecutive failures → OPEN for 60s)
+    - Fail-fast with XACT_4001 code when circuit is open
+    - 4.0s connectivity timeout for health probes
 """
 
 from __future__ import annotations
@@ -28,10 +33,18 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
 from app.config import config
+from app.proprietary.platforms.xactions.circuit_breaker import (
+    XACTIONS_CIRCUIT_BREAKER,
+    CircuitBreakerOpenError,
+)
 
 logger = logging.getLogger(__name__)
 
 XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS = float(os.environ.get("XACTIONS_MCP_TIMEOUT", "60.0"))
+# Story 40.1: Fast timeout for connectivity/health checks (4.0s)
+XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS = float(
+    os.environ.get("XACTIONS_CONNECTIVITY_TIMEOUT", "4.0")
+)
 
 
 class _LoopClientEntry:
@@ -238,7 +251,29 @@ class XActionsMcpClient:
         tool_name: str,
         arguments: dict[str, Any],
     ) -> dict[str, Any]:
-        """Call an XActions tool and parse its 3-layer JSON envelope."""
+        """Call an XActions tool and parse its 3-layer JSON envelope.
+
+        Story 40.1: Wrapped in circuit breaker for fail-fast on XActions outage.
+        """
+        # Story 40.1: wrap the actual call through the circuit breaker
+        try:
+            return await XACTIONS_CIRCUIT_BREAKER.call(
+                self._call_tool_inner, tool_name, arguments
+            )
+        except CircuitBreakerOpenError as exc:
+            # Map circuit-open to XACT_4001 error envelope for upstream handling
+            logger.warning("XActions circuit breaker OPEN: %s", exc)
+            raise XActionsMcpError(
+                message="scraper_temporarily_unavailable",
+                code="XACT_4001",
+            ) from exc
+
+    async def _call_tool_inner(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Inner implementation of call_tool (pre-Story-40.1 logic)."""
         async with self.serialize_lock:
             if not self._session or getattr(self, "_tainted", False):
                 raise RuntimeError(
@@ -364,12 +399,22 @@ class XActionsMcpClient:
             return []
 
     async def health_check(self) -> dict[str, Any]:
-        """Check XActions daemon health by calling a lightweight tool."""
+        """Check XActions daemon health by calling a lightweight tool.
+
+        Story 40.1: Uses XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS (4s) for a fast
+        connectivity probe — distinct from the 60s default for real tool calls.
+        """
         try:
-            result = await self.call_tool("x_governor_status", {})
+            async with asyncio.timeout(XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS):
+                result = await self.call_tool("x_governor_status", {})
             return {
                 "status": "healthy" if result.get("success") else "degraded",
                 "data": result.get("data", {}),
+            }
+        except asyncio.TimeoutError:
+            return {
+                "status": "unavailable",
+                "error": f"connectivity check timed out after {XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS}s",
             }
         except Exception as exc:  # health check tool failure; mark unavailable
             return {"status": "unavailable", "error": str(exc)}

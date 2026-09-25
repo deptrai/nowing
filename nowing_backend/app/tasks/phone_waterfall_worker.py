@@ -63,6 +63,8 @@ def resolve_phone_waterfall_task(
                 "contact_id": str(res.contact_id) if res.contact_id else None,
                 "degraded": res.degraded,
                 "degradation_reason": res.degradation_reason,
+                # AD-121: refunded | refund_review | refund_error | None
+                "refund_status": res.refund_status,
             }
 
     try:

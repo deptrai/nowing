@@ -1,24 +1,73 @@
 import { defineConfig, devices } from "@playwright/test";
 
+/**
+ * Environment profile presets for E2E testing:
+ *   - local: Runs against local dev/Docker stack with Next.js webServer auto-started.
+ *   - staging: Targets pre-production / staging environment (no local webServer).
+ *   - production: Targets production environment (no local webServer).
+ *
+ * Switch modes via `PLAYWRIGHT_ENV=staging pnpm test:e2e` or use dedicated scripts.
+ * Direct environment variables (PLAYWRIGHT_BASE_URL, etc.) always take precedence.
+ */
+type TargetEnvironment = "local" | "staging" | "production";
+const targetEnv = (process.env.PLAYWRIGHT_ENV || "local").toLowerCase() as TargetEnvironment;
+
+interface EnvPreset {
+	baseURL: string;
+	backendURL: string;
+	zeroCacheURL: string;
+	noWebServer: boolean;
+	authType: string;
+}
+
+const PRESETS: Record<TargetEnvironment, EnvPreset> = {
+	local: {
+		baseURL: `http://localhost:${process.env.PORT || "3000"}`,
+		backendURL: `http://localhost:${process.env.BACKEND_PORT || "8000"}`,
+		zeroCacheURL: `http://localhost:${process.env.ZERO_CACHE_PORT || "4848"}`,
+		noWebServer: false,
+		authType: "LOCAL",
+	},
+	staging: {
+		baseURL: "https://staging.nowing.net",
+		backendURL: "https://api-staging.nowing.net",
+		zeroCacheURL: "https://zero-staging.nowing.net",
+		noWebServer: true,
+		authType: "LOCAL",
+	},
+	production: {
+		baseURL: "https://app.nowing.net",
+		backendURL: "https://api.nowing.net",
+		zeroCacheURL: "https://zero.nowing.net",
+		noWebServer: true,
+		authType: "LOCAL",
+	},
+};
+
+const activePreset = PRESETS[targetEnv] || PRESETS.local;
+
 const PORT = process.env.PORT || "3000";
-const BACKEND_PORT = process.env.BACKEND_PORT || "8000";
-const ZERO_CACHE_PORT = process.env.ZERO_CACHE_PORT || "4848";
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${PORT}`;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || activePreset.baseURL;
 const useProxyOrigin = process.env.PLAYWRIGHT_USE_PROXY_ORIGIN === "true";
-const backendURL = useProxyOrigin ? baseURL : `http://localhost:${BACKEND_PORT}`;
-const zeroCacheURL = useProxyOrigin ? `${baseURL}/zero` : `http://localhost:${ZERO_CACHE_PORT}`;
+const backendURL =
+	process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ||
+	(useProxyOrigin ? baseURL : activePreset.backendURL);
+const zeroCacheURL =
+	process.env.NEXT_PUBLIC_ZERO_CACHE_URL ||
+	(useProxyOrigin ? `${baseURL}/zero` : activePreset.zeroCacheURL);
 
 const workersEnv = process.env.PLAYWRIGHT_WORKERS
 	? parseInt(process.env.PLAYWRIGHT_WORKERS, 10)
 	: null;
 const workersValue = workersEnv && workersEnv > 0 ? workersEnv : process.env.CI ? 2 : 1;
 
+process.env.PLAYWRIGHT_ENV = targetEnv;
 process.env.PLAYWRIGHT_TEST_EMAIL ??= "e2e-test@nowing.net";
 process.env.PLAYWRIGHT_TEST_PASSWORD ??= "E2eTestPassword123!";
-process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ??= backendURL;
-process.env.NOWING_BACKEND_INTERNAL_URL ??= backendURL;
-process.env.AUTH_TYPE ??= "LOCAL";
-process.env.NEXT_PUBLIC_ZERO_CACHE_URL ??= zeroCacheURL;
+process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL = backendURL;
+process.env.NOWING_BACKEND_INTERNAL_URL = backendURL;
+process.env.AUTH_TYPE = process.env.AUTH_TYPE || activePreset.authType;
+process.env.NEXT_PUBLIC_ZERO_CACHE_URL = zeroCacheURL;
 
 /**
  * Playwright configuration for Nowing web E2E tests.
@@ -79,9 +128,12 @@ export default defineConfig({
 			},
 		},
 	],
-	webServer: process.env.PLAYWRIGHT_NO_WEB_SERVER
-		? undefined
-		: {
+	webServer:
+		process.env.PLAYWRIGHT_NO_WEB_SERVER === "true" ||
+		process.env.PLAYWRIGHT_NO_WEB_SERVER === "1" ||
+		activePreset.noWebServer
+			? undefined
+			: {
 				// Local stays on webpack dev (Turbopack caused stale-lock panics in E2E).
 				command: process.env.CI ? "pnpm build && pnpm start" : "pnpm exec next dev",
 				url: `http://localhost:${PORT}`,

@@ -7,15 +7,21 @@ Fail-open everywhere: empty messages, disabled flags, backend errors,
 timeouts, and malformed answers all resolve to ``None`` (logged, never
 raised) so a dead backend silently disables labeling instead of breaking
 chat persistence. The label is advisory storage only — nothing blocks,
-reroutes, or answers based on it. Telemetry is log-only
-(``[intent_classify]``): the persist context carries no request
-``session``/``workspace_id``, so no TokenUsage row is written.
+reroutes, or answers based on it. Callers that pass
+``workspace_id``/``user_id`` get TokenUsage telemetry (DecisionService
+opens its own session — safe under ``asyncio.gather``); without them the
+call is log-only.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.config.decision as decision_config
 from app.services.decision.gate import ConfidenceGate
@@ -29,7 +35,14 @@ logger = logging.getLogger(__name__)
 _MAX_MESSAGE_CHARS = 4000
 
 
-async def classify_intent(user_message: str) -> dict[str, Any] | None:
+async def classify_intent(
+    user_message: str,
+    *,
+    session: AsyncSession | None = None,
+    workspace_id: int | None = None,
+    user_id: UUID | None = None,
+    client_id: str | None = None,
+) -> dict[str, Any] | None:
     """Classify ``user_message`` via the ``intent_classify@1.0.0`` set.
 
     Returns ``{"label", "confidence", "model", "backend"}`` when the
@@ -63,6 +76,10 @@ async def classify_intent(user_message: str) -> dict[str, Any] | None:
             task="intent",
             question_set=f"{qs.name}@{qs.version}",
             required_state_keys=qs.required_state_keys,
+            session=session,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            client_id=client_id,
         )
         answer = result.answers.get("intent")
         gate = ConfidenceGate.for_task("intent")

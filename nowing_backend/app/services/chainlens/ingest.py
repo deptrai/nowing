@@ -46,11 +46,18 @@ class IngestResult(BaseModel):
     error: str | None = None
 
 
+def _clean_none(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _clean_none(v) for k, v in obj.items() if v is not None}
+    if isinstance(obj, list):
+        return [_clean_none(v) for v in obj]
+    return obj
+
+
 def _chunk_to_dict(chunk: Any) -> dict[str, Any]:
-    """Serialize a Chunk model or dict for JSON transport."""
-    if isinstance(chunk, BaseModel):
-        return chunk.model_dump()
-    return dict(chunk)
+    """Serialize a Chunk model or dict for JSON transport, stripping None fields for Zod compat."""
+    d = chunk.model_dump() if isinstance(chunk, BaseModel) else dict(chunk)
+    return _clean_none(d)
 
 
 def _chunk_text(chunk: Any) -> str:
@@ -90,10 +97,10 @@ async def _guardrail_filter_chunks(
     A sensitive chunk whose content cannot be rewritten is dropped —
     storing it unmasked is the worst outcome.
 
-    No session/user_id is forwarded: filter_passages fans out to
-    FILTER_CONCURRENCY concurrent decide() calls, and concurrent
-    session.execute on one AsyncSession violates asyncpg's
-    single-connection rule. Decision telemetry here is log-only.
+    Only ``workspace_id`` is forwarded — ingest runs in background tasks
+    with no attributable user, and TokenUsage.user_id is NOT NULL, so
+    telemetry stays log-only here (a session is never shared across the
+    FILTER_CONCURRENCY fan-out regardless).
     """
     if not chunks or not (
         decision_config.decision_enabled()
@@ -246,9 +253,6 @@ async def _post_batch_core(
     )
 
     body: dict[str, Any] = {
-        "source": "nowing_scraper",
-        "scraperId": scraper_id,
-        "workspaceId": workspace_id,
         "chunks": [_chunk_to_dict(chunk) for chunk in batch],
     }
 

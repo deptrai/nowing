@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
@@ -224,6 +225,7 @@ async def refine_entity_groups[T](
     user_id: UUID | None = None,
     client_id: str | None = None,
     max_calls: int = MAX_DECISION_CALLS_PER_RUN,
+    max_seconds: float | None = None,
 ) -> tuple[list[T], RefineStats]:
     """Stage-2 executor: per-anchor Jev confirm → union-find → merge.
 
@@ -232,6 +234,9 @@ async def refine_entity_groups[T](
     in descending candidate-count order, capped at ``max_calls``; the
     remainder keeps the heuristic result. A ``DecisionError`` skips that
     anchor; ``MAX_CONSECUTIVE_ERRORS`` in a row aborts the rest.
+    ``max_seconds`` bounds wall-clock: once exceeded the remaining
+    anchors keep the heuristic result and ``stats.aborted`` is set
+    (``None`` = no deadline).
     Confirmed edges are unioned, then each multi-item component is
     reduced through ``merge_group``. Single pass — merged entities are
     not re-evaluated.
@@ -266,8 +271,18 @@ async def refine_entity_groups[T](
         if ri != rj:
             parent[ri] = rj
 
+    deadline = None if max_seconds is None else time.monotonic() + max_seconds
     consecutive_errors = 0
     for pos, anchor_idx in enumerate(anchors):
+        if deadline is not None and time.monotonic() >= deadline:
+            stats.aborted = True
+            logger.warning(
+                "[entity_match] wall-clock deadline %.1fs exceeded — "
+                "aborting %d remaining anchors",
+                max_seconds,
+                len(anchors) - pos,
+            )
+            break
         cand_indices = list(candidate_pairs[anchor_idx])[
             :MAX_CANDIDATES_PER_ANCHOR
         ]

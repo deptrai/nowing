@@ -545,7 +545,18 @@
 		"complete_role_assignments": "完成所有角色分配以启用完整功能。每个角色在您的工作流中都有不同的用途。",
 		"all_roles_saved": "所有角色已分配并保存！",
 		"progress": "进度",
-		"roles_assigned_count": "{assigned} / {total} 个角色已分配"
+		"roles_assigned_count": "{assigned} / {total} 个角色已分配",
+		"mcp_tools": "MCP 工具",
+		"mcp_tools_desc": "为此工作区启用或禁用 MCP 工具。",
+		"mcp_always_enabled": "始终启用",
+		"mcp_load_failed": "加载 MCP 工具失败。",
+		"mcp_update_failed": "更新工具失败",
+		"mcp_only_owners": "只有工作区所有者才能更改 MCP 工具设置",
+		"mcp_group_workspace": "工作区",
+		"mcp_group_scraper": "数据抓取工具",
+		"mcp_group_run_history": "运行历史",
+		"mcp_group_knowledge_base": "知识库",
+		"mcp_group_fallback": "{group}"
 	},
 	"logs": {
 		"title": "任务日志",
