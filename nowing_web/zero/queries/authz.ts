@@ -17,16 +17,10 @@ export function constrainToAllowedSpaces<T extends SpaceScopedQuery>(query: T, c
 	if (allowedSpaceIds.length === 0) {
 		return denySpace(query);
 	}
-	if (allowedSpaceIds.length === 1) {
-		return query.where("workspaceId", allowedSpaceIds[0]) as T;
-	}
-	return query.where(
-		({
-			cmp,
-			or,
-		}: {
-			cmp: (column: string, value: number) => unknown;
-			or: (...args: unknown[]) => unknown;
-		}) => or(...allowedSpaceIds.map((id) => cmp("workspaceId", id)))
-	) as T;
+	// Use a single IN clause instead of chaining or(cmp(workspaceId, id), ...).
+	// An OR of N comparisons nests N-deep; for users who belong to many
+	// workspaces (or a broad allowedSpaceIds list) that exceeds SQLite's
+	// 1000-node expression depth limit and the query returns an empty replica.
+	// `where(col, "IN", ids)` emits one flat expression regardless of N.
+	return query.where("workspaceId", "IN", allowedSpaceIds) as T;
 }

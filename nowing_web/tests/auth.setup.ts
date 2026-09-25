@@ -61,11 +61,24 @@ setup("authenticate", async ({ page, request }) => {
 			httpOnly: true,
 			sameSite: "Lax",
 		},
+		// Pin English for SSR: i18n/request.ts reads the NEXT_LOCALE cookie
+		// before falling back to timezone detection (Vietnam hosts → "vi"),
+		// which would otherwise render the whole suite in Vietnamese and break
+		// every English string assertion. Persistent across specs via cookies.
+		{
+			name: "NEXT_LOCALE",
+			value: "en",
+			url: BASE_URL,
+			sameSite: "Lax",
+		},
 	]);
 
 	await page.addInitScript(
 		({ announcementsKey, state, uid }) => {
 			localStorage.setItem(announcementsKey, JSON.stringify(state));
+			// Client-side locale read (some components read localStorage before
+			// the cookie round-trips). Mirrors the NEXT_LOCALE cookie above.
+			localStorage.setItem("nowing-locale", "en");
 			if (uid) {
 				localStorage.setItem(`nowing-tour-${uid}`, "true");
 			}

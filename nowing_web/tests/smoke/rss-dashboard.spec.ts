@@ -7,6 +7,17 @@ import { expect, test } from "../fixtures";
  * connector type was added to the backend enums and connector catalog.
  */
 test.describe("Smoke", () => {
+	// Pin English: seeded state may carry nowing-locale=vi from the host
+	// timezone, which renders "Integration đã kết nối" instead of the English
+	// "Connected integrations" this test asserts on.
+	test.use({ locale: "en-US", timezoneId: "America/New_York" });
+
+	test.beforeEach(async ({ page }) => {
+		await page.addInitScript(() => {
+			localStorage.setItem("nowing-locale", "en");
+		});
+	});
+
 	test("RSS connector catalog renders on connectors page", async ({ page, workspace }) => {
 		await page.goto(`/dashboard/${workspace.id}/connectors`);
 

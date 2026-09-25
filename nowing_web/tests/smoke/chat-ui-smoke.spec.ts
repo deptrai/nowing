@@ -3,6 +3,16 @@ import { expect, test } from "../fixtures";
 test.describe("Chat UI smoke", () => {
 	test.setTimeout(120_000);
 
+	// Pin English so the "Send message" aria-label matches; seeded state may
+	// carry nowing-locale=vi which renders "Gửi tin nhắn" instead.
+	test.use({ locale: "en-US", timezoneId: "America/New_York" });
+
+	test.beforeEach(async ({ page }) => {
+		await page.addInitScript(() => {
+			localStorage.setItem("nowing-locale", "en");
+		});
+	});
+
 	test("seed account can send a message and receive an assistant response", async ({
 		page,
 		workspace,

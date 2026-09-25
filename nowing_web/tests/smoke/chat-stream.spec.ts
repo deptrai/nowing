@@ -1,8 +1,19 @@
 import { expect, test } from "../fixtures";
-import { authHeaders, BACKEND_URL } from "../helpers/api/auth";
+import { authHeaders, BACKEND_URL, isE2eBackend } from "../helpers/api/auth";
 import { streamChatToCompletion } from "../helpers/api/chat";
 
 test.describe("Smoke", () => {
+	// This spec asserts on the deterministic fake-LLM stream ("No relevant
+	// indexed content found.") emitted only by tests/e2e/run_backend.py. On a
+	// plain `main.py` or production backend the real LLM answers differently,
+	// so skip instead of timing out.
+	test.beforeEach(async ({ request }) => {
+		test.skip(
+			!(await isE2eBackend(request)),
+			"requires the e2e backend (tests/e2e/run_backend.py) with fake LLM stream"
+		);
+	});
+
 	test("chat stream completes for an unrelated query", async ({ request, apiToken, workspace }) => {
 		const threadResponse = await request.post(`${BACKEND_URL}/api/v1/threads`, {
 			headers: authHeaders(apiToken),
