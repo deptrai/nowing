@@ -37,6 +37,34 @@ function decodeUserId(token: string): string | null {
 }
 
 setup("authenticate", async ({ page, request }) => {
+	const isRemoteEnv =
+		process.env.PLAYWRIGHT_ENV === "production" ||
+		process.env.PLAYWRIGHT_ENV === "staging" ||
+		BASE_URL.includes("nowing.net");
+
+	// On remote environments, perform a real browser form login so that all
+	// backend cookies (nowing_session, nowing_refresh) and SameSite/Domain
+	// attributes are set natively by the browser.
+	if (isRemoteEnv) {
+		const email = process.env.PLAYWRIGHT_TEST_EMAIL || "e2e-test@nowing.net";
+		const password = process.env.PLAYWRIGHT_TEST_PASSWORD || "E2eTestPassword123!";
+
+		await page.goto("/login", { waitUntil: "networkidle" });
+		await page.locator('input[type="email"]').fill(email);
+		await page.locator('input[type="password"]').fill(password);
+		await page.locator('button[type="submit"]').click();
+		await page.waitForURL("**/dashboard/**", { timeout: 30_000 });
+
+		// Seed announcement and tour suppressors in localStorage
+		await page.evaluate(() => {
+			localStorage.setItem("nowing_announcements_state", JSON.stringify({ readIds: [], toastedIds: [] }));
+			localStorage.setItem("nowing-locale", "en");
+		});
+
+		await page.context().storageState({ path: authFile });
+		return;
+	}
+
 	let access_token: string | null = null;
 	try {
 		access_token = await acquireTestToken(request);

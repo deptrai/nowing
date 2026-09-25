@@ -36,7 +36,7 @@ const PRESETS: Record<TargetEnvironment, EnvPreset> = {
 		authType: "LOCAL",
 	},
 	production: {
-		baseURL: "https://app.nowing.net",
+		baseURL: "https://nowing.net",
 		backendURL: "https://api.nowing.net",
 		zeroCacheURL: "https://zero.nowing.net",
 		noWebServer: true,
@@ -62,6 +62,7 @@ const workersEnv = process.env.PLAYWRIGHT_WORKERS
 const workersValue = workersEnv && workersEnv > 0 ? workersEnv : process.env.CI ? 2 : 1;
 
 process.env.PLAYWRIGHT_ENV = targetEnv;
+process.env.PLAYWRIGHT_BASE_URL = baseURL;
 process.env.PLAYWRIGHT_TEST_EMAIL ??= "e2e-test@nowing.net";
 process.env.PLAYWRIGHT_TEST_PASSWORD ??= "E2eTestPassword123!";
 process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL = backendURL;
@@ -125,6 +126,18 @@ export default defineConfig({
 				...devices["Desktop Chrome"],
 				channel: "chrome",
 				storageState: "playwright/.auth/user.json",
+			},
+		},
+		// Unauthenticated public surface for remote environments
+		// (staging/production) where no e2e user credentials exist:
+		//   PLAYWRIGHT_ENV=production pnpm exec playwright test --project=production-public
+		{
+			name: "production-public",
+			testMatch: [/.*login-page\.spec\.ts/],
+			use: {
+				...devices["Desktop Chrome"],
+				channel: "chrome",
+				storageState: { cookies: [], origins: [] },
 			},
 		},
 	],
