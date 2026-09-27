@@ -82,19 +82,54 @@ FORBIDDEN_PATTERNS = [
     (re.compile(r"\b(?:eval|Function)\s*\(", re.IGNORECASE), "dynamic code evaluation"),
 ]
 
+# Patterns applied to npm ``node_modules/.bin`` launcher scripts. These are
+# package-managed CLI shims (e.g. ``next``, ``nanoid``, ``semver``) that
+# legitimately call ``process.exit`` and use ``import()`` — the full
+# FORBIDDEN_PATTERNS set would false-positive on every Next.js project. The
+# real supply-chain risks for a bin script are (a) resolving outside the
+# project (checked separately via symlink target) and (b) spawning a shell or
+# reaching the network/fs to run remote code — so we only scan for those.
+_BIN_FORBIDDEN_PATTERNS = [
+    (re.compile(r"\bchild_process\b", re.IGNORECASE), "child_process execution"),
+    (
+        re.compile(r"\bexecSync\b|\bspawnSync\b|\bexecFile\b|\bfork\b", re.IGNORECASE),
+        "subprocess execution",
+    ),
+    (
+        re.compile(
+            r"\b(?:curl|wget|nc|ncat|netcat|bash|sh)\b[^|\n]*(?:\|\s*(?:sh|bash)|\b(?:http|ftp)s?://)",
+            re.IGNORECASE,
+        ),
+        "remote download-and-execute",
+    ),
+    (
+        re.compile(
+            r"\brequire\s*\(\s*['\"](?:net|node:net|dgram|node:dgram|http|node:http|https|node:https|child_process|node:child_process)['\"]\s*\)",
+            re.IGNORECASE,
+        ),
+        "unsafe network/process module import",
+    ),
+]
 
-def _scan_text(text: str, source_name: str, issues: list[str]) -> None:
+
+def _scan_text(
+    text: str, source_name: str, issues: list[str], patterns=None
+) -> None:
     """Apply forbidden patterns to a string and collect issues.
 
     Next.js ``next/dynamic`` and ``dynamic`` lazy-load calls are allowed
     because the ``import()`` inside them is intentional lazy loading, not a
     security vector. They are stripped before pattern matching.
+
+    ``patterns`` defaults to the full FORBIDDEN_PATTERNS set for user-authored
+    source/config; pass _BIN_FORBIDDEN_PATTERNS for npm ``.bin`` launcher
+    scripts, where process.exit / dynamic import() are legitimate.
     """
     # Allowlist standard Next.js dynamic import wrappers.
     text = _strip_balanced_parens(text, r"next/dynamic\s*\(")
     text = _strip_balanced_parens(text, r"\bdynamic\s*\(")
 
-    for pattern, desc in FORBIDDEN_PATTERNS:
+    for pattern, desc in (patterns if patterns is not None else FORBIDDEN_PATTERNS):
         if pattern.search(text):
             issues.append(f"Security violation in {source_name}: forbidden {desc}")
 
@@ -278,6 +313,7 @@ def validate_project_security(project_dir: str | Path) -> tuple[bool, list[str]]
                         _safe_read_text(scan_target),
                         source_label,
                         issues,
+                        patterns=_BIN_FORBIDDEN_PATTERNS,
                     )
         except (OSError, RuntimeError) as exc:
             logger.debug("Suppressed %r", exc)

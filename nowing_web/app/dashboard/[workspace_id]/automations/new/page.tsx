@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { AutomationNewContent } from "./automation-new-content";
 
 export default async function NewAutomationPage({
@@ -6,7 +6,6 @@ export default async function NewAutomationPage({
 }: {
 	params: Promise<{ workspace_id: string }>;
 }) {
-	const t = useTranslations("automations");
 	const { workspace_id } = await params;
 
 	return (

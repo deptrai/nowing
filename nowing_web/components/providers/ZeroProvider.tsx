@@ -54,12 +54,22 @@ async function probeZeroCache(cacheURL: string): Promise<boolean> {
 			// zero-cache answers GET/HEAD on its base URL (or the /zero proxy path)
 			// with anything other than a network failure. Any HTTP response — even
 			// 4xx — means the service is up and the WS upgrade is worth attempting.
+			//
+			// mode:"no-cors": the probe targets the cache's root "/" which is NOT a
+			// CORS-enabled endpoint (only /sync/* are). A default "cors" fetch is
+			// rejected by the browser even when the service is healthy, making the
+			// probe wrongly report the cache as down. With no-cors the response is
+			// opaque (status 0) but still resolves — exactly what we need: resolve
+			// means reachable, reject means unreachable.
 			const res = await fetch(cacheURL, {
 				method: "GET",
+				mode: "no-cors",
 				signal: controller.signal,
 				cache: "no-store",
 			});
-			// 404 from the Next proxy means it could not reach zero-cache upstream.
+			// Opaque responses have status 0; only a literal 404 (same-origin proxy
+			// that couldn't reach upstream) counts as down. In no-cors mode status
+			// is always 0, so this check effectively only fires for same-origin.
 			return res.status !== 404;
 		} finally {
 			clearTimeout(timer);

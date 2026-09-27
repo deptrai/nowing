@@ -109,6 +109,35 @@ docker compose -f docker/docker-compose.e2e.yml down -v --remove-orphans
 This builds the ~9 GB e2e backend image, so the deps-only flow is faster for
 day-to-day work.
 
+## Environment Presets (`PLAYWRIGHT_ENV`)
+
+You can switch the entire test suite between target environments using `PLAYWRIGHT_ENV`:
+
+```bash
+# 1. Local development (default) - auto-starts Next.js webServer if needed
+pnpm test:e2e:local
+# or PLAYWRIGHT_ENV=local pnpm test:e2e
+
+# 2. Staging environment - targets staging endpoints, disables local webServer
+pnpm test:e2e:staging
+# or PLAYWRIGHT_ENV=staging pnpm test:e2e
+
+# 3. Production environment - targets production endpoints, disables local webServer
+pnpm test:e2e:production
+# or PLAYWRIGHT_ENV=production pnpm test:e2e
+```
+
+### Preset Values
+
+| Variable | `local` (Default) | `staging` | `production` |
+|---|---|---|---|
+| `baseURL` | `http://localhost:3000` | `https://staging.nowing.net` | `https://app.nowing.net` |
+| `backendURL` | `http://localhost:8000` | `https://api-staging.nowing.net` | `https://api.nowing.net` |
+| `zeroCacheURL` | `http://localhost:4848` | `https://zero-staging.nowing.net` | `https://zero.nowing.net` |
+| `webServer` | Auto-started (`pnpm exec next dev`) | Disabled (`undefined`) | Disabled (`undefined`) |
+
+*Note: Explicit environment variables (such as `PLAYWRIGHT_BASE_URL` or `NEXT_PUBLIC_FASTAPI_BACKEND_URL`) always override the preset defaults.*
+
 ## Playwright configuration reference
 
 `playwright.config.ts` reads the following environment variables (all have
@@ -116,14 +145,15 @@ sensible defaults, so a fresh checkout works without a `.env` file):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PLAYWRIGHT_BASE_URL` | `http://localhost:${PORT}` | Origin the browser navigates to. |
-| `NEXT_PUBLIC_FASTAPI_BACKEND_URL` | `http://localhost:8000` | Public backend origin used by the Next.js app. |
+| `PLAYWRIGHT_ENV` | `local` | Target profile preset (`local`, `staging`, `production`). |
+| `PLAYWRIGHT_BASE_URL` | Derived from preset (`http://localhost:${PORT}`) | Origin the browser navigates to. |
+| `NEXT_PUBLIC_FASTAPI_BACKEND_URL` | Derived from preset (`http://localhost:8000`) | Public backend origin used by the Next.js app. |
 | `NOWING_BACKEND_INTERNAL_URL` | same as backend | Server-side backend origin. |
 | `PLAYWRIGHT_TEST_EMAIL` | `e2e-test@nowing.net` | E2E user email. |
 | `PLAYWRIGHT_TEST_PASSWORD` | `E2eTestPassword123!` | E2E user password. |
 | `E2E_MINT_SECRET` | `local-e2e-mint-secret-not-for-production` | Shared secret for `/__e2e__/auth/token`. |
 | `PLAYWRIGHT_WORKERS` | `2` in CI, `1` locally | Parallel workers. |
-| `PLAYWRIGHT_NO_WEB_SERVER` | unset | If `true`, Playwright will not start the Next.js dev server. |
+| `PLAYWRIGHT_NO_WEB_SERVER` | Auto-derived from preset | If `true` or `1`, Playwright will not start the Next.js dev server. |
 | `PLAYWRIGHT_USE_PROXY_ORIGIN` | `false` | Route backend calls through the same origin proxy. |
 
 Timeouts are configured in `playwright.config.ts`:

@@ -545,7 +545,18 @@
 		"complete_role_assignments": "Completa todas las asignaciones de roles para habilitar la funcionalidad completa. Cada rol tiene diferentes propósitos en tu flujo de trabajo.",
 		"all_roles_saved": "¡Todos los roles asignados y guardados!",
 		"progress": "Progreso",
-		"roles_assigned_count": "{assigned} de {total} roles asignados"
+		"roles_assigned_count": "{assigned} de {total} roles asignados",
+		"mcp_tools": "Herramientas MCP",
+		"mcp_tools_desc": "Activa o desactiva las herramientas MCP para este espacio de trabajo.",
+		"mcp_always_enabled": "Siempre activada",
+		"mcp_load_failed": "No se pudieron cargar las herramientas MCP.",
+		"mcp_update_failed": "No se pudo actualizar la herramienta",
+		"mcp_only_owners": "Solo los propietarios del espacio de trabajo pueden cambiar la configuración de herramientas MCP",
+		"mcp_group_workspace": "Espacio de trabajo",
+		"mcp_group_scraper": "Scrapers de datos",
+		"mcp_group_run_history": "Historial de ejecuciones",
+		"mcp_group_knowledge_base": "Base de conocimiento",
+		"mcp_group_fallback": "{group}"
 	},
 	"logs": {
 		"title": "Registros de tareas",

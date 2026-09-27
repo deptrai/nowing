@@ -37,6 +37,34 @@ function decodeUserId(token: string): string | null {
 }
 
 setup("authenticate", async ({ page, request }) => {
+	const isRemoteEnv =
+		process.env.PLAYWRIGHT_ENV === "production" ||
+		process.env.PLAYWRIGHT_ENV === "staging" ||
+		BASE_URL.includes("nowing.net");
+
+	// On remote environments, perform a real browser form login so that all
+	// backend cookies (nowing_session, nowing_refresh) and SameSite/Domain
+	// attributes are set natively by the browser.
+	if (isRemoteEnv) {
+		const email = process.env.PLAYWRIGHT_TEST_EMAIL || "e2e-test@nowing.net";
+		const password = process.env.PLAYWRIGHT_TEST_PASSWORD || "E2eTestPassword123!";
+
+		await page.goto("/login", { waitUntil: "networkidle" });
+		await page.locator('input[type="email"]').fill(email);
+		await page.locator('input[type="password"]').fill(password);
+		await page.locator('button[type="submit"]').click();
+		await page.waitForURL("**/dashboard/**", { timeout: 30_000 });
+
+		// Seed announcement and tour suppressors in localStorage
+		await page.evaluate(() => {
+			localStorage.setItem("nowing_announcements_state", JSON.stringify({ readIds: [], toastedIds: [] }));
+			localStorage.setItem("nowing-locale", "en");
+		});
+
+		await page.context().storageState({ path: authFile });
+		return;
+	}
+
 	let access_token: string | null = null;
 	try {
 		access_token = await acquireTestToken(request);
@@ -61,11 +89,24 @@ setup("authenticate", async ({ page, request }) => {
 			httpOnly: true,
 			sameSite: "Lax",
 		},
+		// Pin English for SSR: i18n/request.ts reads the NEXT_LOCALE cookie
+		// before falling back to timezone detection (Vietnam hosts → "vi"),
+		// which would otherwise render the whole suite in Vietnamese and break
+		// every English string assertion. Persistent across specs via cookies.
+		{
+			name: "NEXT_LOCALE",
+			value: "en",
+			url: BASE_URL,
+			sameSite: "Lax",
+		},
 	]);
 
 	await page.addInitScript(
 		({ announcementsKey, state, uid }) => {
 			localStorage.setItem(announcementsKey, JSON.stringify(state));
+			// Client-side locale read (some components read localStorage before
+			// the cookie round-trips). Mirrors the NEXT_LOCALE cookie above.
+			localStorage.setItem("nowing-locale", "en");
 			if (uid) {
 				localStorage.setItem(`nowing-tour-${uid}`, "true");
 			}

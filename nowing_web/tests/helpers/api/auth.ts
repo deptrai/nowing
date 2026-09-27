@@ -143,3 +143,31 @@ export function authHeaders(token: string, extra?: Record<string, string>): Reco
 		...(extra ?? {}),
 	};
 }
+
+/**
+ * Probe whether the configured backend mounts the test-only e2e endpoints
+ * (`nowing_backend/tests/e2e/run_backend.py`). Returns true only when the
+ * /__e2e__/auth/token endpoint exists — i.e. deterministic fake LLM/scenario
+ * middleware is active. Specs that depend on fake-stream or scenario behavior
+ * should call this in test.beforeAll and `test.skip()` when it returns false
+ * (e.g. running against a plain `main.py` or production backend in local dev).
+ */
+let _e2eBackendCache: boolean | null = null;
+export async function isE2eBackend(request: APIRequestContext): Promise<boolean> {
+	if (_e2eBackendCache !== null) return _e2eBackendCache;
+	try {
+		const response = await request.post(`${BACKEND_URL}/__e2e__/auth/token`, {
+			data: { email: TEST_USER_EMAIL },
+			headers: {
+				"Content-Type": "application/json",
+				"X-E2E-Mint-Secret": E2E_MINT_SECRET,
+				Origin: FRONTEND_ORIGIN,
+			},
+		});
+		_e2eBackendCache = response.status() !== 404;
+		return _e2eBackendCache;
+	} catch {
+		_e2eBackendCache = false;
+		return false;
+	}
+}

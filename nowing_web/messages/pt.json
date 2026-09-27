@@ -545,7 +545,18 @@
 		"complete_role_assignments": "Complete todas as atribuições de funções para habilitar a funcionalidade completa. Cada função tem diferentes propósitos no seu fluxo de trabalho.",
 		"all_roles_saved": "Todas as funções atribuídas e salvas!",
 		"progress": "Progresso",
-		"roles_assigned_count": "{assigned} de {total} funções atribuídas"
+		"roles_assigned_count": "{assigned} de {total} funções atribuídas",
+		"mcp_tools": "Ferramentas MCP",
+		"mcp_tools_desc": "Ative ou desative as ferramentas MCP para este espaço de trabalho.",
+		"mcp_always_enabled": "Sempre ativada",
+		"mcp_load_failed": "Falha ao carregar as ferramentas MCP.",
+		"mcp_update_failed": "Falha ao atualizar a ferramenta",
+		"mcp_only_owners": "Apenas proprietários do espaço de trabalho podem alterar as configurações das ferramentas MCP",
+		"mcp_group_workspace": "Espaço de trabalho",
+		"mcp_group_scraper": "Raspadores de dados",
+		"mcp_group_run_history": "Histórico de execuções",
+		"mcp_group_knowledge_base": "Base de conhecimento",
+		"mcp_group_fallback": "{group}"
 	},
 	"logs": {
 		"title": "Logs de tarefas",

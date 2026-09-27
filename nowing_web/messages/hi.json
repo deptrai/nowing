@@ -545,7 +545,18 @@
 		"complete_role_assignments": "पूर्ण कार्यक्षमता सक्षम करने के लिए सभी भूमिका असाइनमेंट पूरे करें। प्रत्येक भूमिका आपके वर्कफ़्लो में अलग-अलग उद्देश्य पूरा करती है।",
 		"all_roles_saved": "सभी भूमिकाएं असाइन और सहेजी गई!",
 		"progress": "प्रगति",
-		"roles_assigned_count": "{total} में से {assigned} भूमिकाएं असाइन की गईं"
+		"roles_assigned_count": "{total} में से {assigned} भूमिकाएं असाइन की गईं",
+		"mcp_tools": "MCP टूल",
+		"mcp_tools_desc": "इस कार्यक्षेत्र के लिए MCP टूल सक्षम या अक्षम करें।",
+		"mcp_always_enabled": "हमेशा सक्षम",
+		"mcp_load_failed": "MCP टूल लोड करने में विफल।",
+		"mcp_update_failed": "टूल अपडेट करने में विफल",
+		"mcp_only_owners": "केवल कार्यक्षेत्र के मालिक ही MCP टूल सेटिंग बदल सकते हैं",
+		"mcp_group_workspace": "कार्यक्षेत्र",
+		"mcp_group_scraper": "डेटा स्क्रैपर",
+		"mcp_group_run_history": "रन इतिहास",
+		"mcp_group_knowledge_base": "नॉलेज बेस",
+		"mcp_group_fallback": "{group}"
 	},
 	"logs": {
 		"title": "कार्य लॉग",
