@@ -55,6 +55,7 @@ from app.config.core import *  # noqa: E402, F403
 from app.config.database import *  # noqa: E402, F403
 from app.config.decision import *  # noqa: E402, F403
 from app.config.dsh import *  # noqa: E402, F403
+from app.config.e2e import *  # noqa: E402, F403
 from app.config.entities import *  # noqa: E402, F403
 from app.config.etl import *  # noqa: E402, F403
 from app.config.events import *  # noqa: E402, F403

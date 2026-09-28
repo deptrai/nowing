@@ -2,10 +2,10 @@
 title: 'No-Mock E2E Phase 0+3 — backend seed script + gated connector provision endpoint'
 type: 'feature'
 created: '2026-09-26'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '3609841652f8bb6083208697b74e118e5f424973'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: []
 deferred: []
@@ -27,7 +27,7 @@ deferred: []
 - Auth gate = `x-playwright-test: true` header + superuser session (không PAT, không impersonation).
 - Không bao giờ trả token/credentials trong response — chỉ `connector_id`.
 - Seed chạy qua SSH `nowing` (167.172.66.16, root, key `~/.ssh/id_nowing`) vào container `nowing-postgres` (user `nowing`, db `nowing`) — script có `--local` mode cho dev.
-- User `e2e-member@nowing.net` password `E2ePassword123!` role **Member** trong workspace 15 (argon2id qua `PasswordHelper` của fastapi-users, không phải argon2 thuần).
+- User `e2e-member@nowing.net` password `E2ePassword123!` role **Viewer** trong workspace 15 (plan nói "member" — repo chỉ có system roles Owner/Editor/Viewer; Viewer = read-only non-owner phù hợp nhất). Hash qua `fastapi_users.password.PasswordHelper`.
 - Seed data dùng canary tokens từ `nowing_web/tests/helpers/canary.ts` (đồng bộ).
 - Workspace 15 đã tồn tại — chỉ update feature flags + insert membership, KHÔNG tạo mới.
 - Tham chiếu user prod `e2e-test@nowing.net` id `e60920ff-bb72-4ae8-8434-f29bc7226afb` (đã là Owner ws15).
@@ -89,10 +89,10 @@ deferred: []
 - `nowing_backend/app/config/__init__.py` -- EDIT -- `from app.config.e2e import *` after `oauth` import; keep `__all__` update minimal.
 - `nowing_backend/app/routes/e2e_provision.py` -- CREATE -- `APIRouter(prefix="/__e2e__", tags=["__e2e__"])` with `POST /connectors/provision`; deps: header check `x-playwright-test: true` → 404 if missing, then `Depends(require_superuser)`; body schema `ProvisionRequest{connector: str, workspace_id: int}`; return `ProvisionResponse{connector_id: int, connector_type: str}`; per-provider config builder fn (private `_build_<provider>_config`) using `TokenEncryption(config.SECRET_KEY)`; reuse `generate_unique_connector_name`; handle IntegrityError→409, missing env→404.
 - `nowing_backend/app/routes/__init__.py` -- EDIT -- import + conditional `router.include_router(e2e_provision_router)` wrapped in `if config.E2E_PROVISION_ENABLED:` (import at top is fine; mount is the gate).
-- `nowing_backend/scripts/seed_e2e_prod.py` -- CREATE -- async main; modes `--local` (default `DATABASE_URL`), `--ssh` (spawn `ssh nowing "docker exec nowing-postgres ..."` shelling into psql via stdin heredoc, OR run python inside the backend container — pick simplest reliable: `docker exec -i nowing-backend python - <<'PY'` so we reuse backend deps + session maker); `--dry-run` flag; `--force` to skip env check; seeds: workspace 15 feature flags ON; user `e2e-member@nowing.net` + WorkspaceMembership role=Member; 10 `Lead` rows `source='e2e-seed'` with canary company names; 1 `WorkspaceTable` "E2E Leads Table"; 5 `WorkspaceDncRecord` `source='e2e-seed'` (phone + domain + email mix); 3 `Document` rows `document_type=FILE`, `document_metadata.source='e2e-seed'`, content embeds `CANARY_TOKENS.driveCanaryFile` + `manualUploadMdCanary` + `manualUploadPdfCanary`; 3 `WorkspaceMcpToolSetting` rows (e.g. `slack_send_message`, `linear_save_issue`, `jira_createJiraIssue`) `enabled=True`.
-- `nowing_backend/scripts/teardown_e2e_prod.py` -- CREATE -- same modes; deletes rows WHERE `source='e2e-seed'` (or `document_metadata->>'source'='e2e-seed'` for documents) on tables: `leads`, `documents`, `workspace_dnc_records`, `workspace_tables` (by name prefix `E2E %`), `workspace_mcp_tool_settings` (by tool_name list). User `e2e-member` row + membership kept (not `source`-tagged; safe).
+- `nowing_backend/scripts/seed_e2e_prod.py` -- CREATE -- async main; modes `--local` (default `DATABASE_URL`), `--ssh` (spawn `ssh nowing "docker exec nowing-postgres ..."` shelling into psql via stdin heredoc, OR run python inside the backend container — pick simplest reliable: `docker exec -i nowing-backend python - <<'PY'` so we reuse backend deps + session maker); `--dry-run` flag; `--force` to skip env check; seeds: workspace 15 feature flags ON (`web_builder_enabled`, `presentation_studio_enabled`); user `e2e-member@nowing.net` + `WorkspaceMembership` role=`Viewer` (hệ thống không có `Member` role — Viewer là non-owner read-only); 10 `Lead` rows `source='e2e-seed'` with canary company names; 1 `WorkspaceTable` "E2E Leads Table"; 5 `WorkspaceDncRecord` `source='e2e-seed'` (phone + domain + email mix); 3 `Document` rows `document_type=FILE`, `document_metadata.source='e2e-seed'`, content embeds `CANARY_TOKENS.driveCanaryFile` + `manualUploadMdCanary` + `manualUploadPdfCanary`; 3 `WorkspaceMcpToolSetting` rows (e.g. `slack_send_message`, `linear_save_issue`, `jira_createJiraIssue`) `enabled=True`.
+- `nowing_backend/scripts/teardown_e2e_prod.py` -- CREATE -- same modes; deletes rows WHERE `source='e2e-seed'` (or `document_metadata->>'source'='e2e-seed'` for documents) on tables: `leads`, `documents`, `workspace_dnc_records`, `workspace_tables` (by name prefix `E2E %`), `workspace_mcp_tool_settings` (by tool_name list). User `e2e-member` row + membership kept (not `source`-tagged; safe — teardown xóa data test, không xóa identity user).
+- `nowing_backend/tests/unit/routes/test_e2e_provision.py` -- CREATE -- unit tests under `tests/unit/routes/` (repo's convention; KHÔNG dùng `tests/routes/` — không tồn tại): disabled→no route; missing header→404; non-superuser→403; missing env→404; happy path creates row + encrypted config; unsupported→422.
 - `nowing_backend/.env.example` -- EDIT -- append `# --- E2E provision endpoint (Phase 0/3 no-mock) ---` section listing all `E2E_*` keys commented out with brief safe comments.
-- `nowing_backend/tests/routes/test_e2e_provision.py` -- CREATE -- unit tests: disabled→no route (404 even w/ header); missing header→404; non-superuser→403; missing env for provider→404; happy path returns connector_id and creates row with encrypted `access_token`; unsupported connector→422.
 
 **Acceptance Criteria:**
 
@@ -108,6 +108,14 @@ deferred: []
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-09-28 — Review pass
+- verdicts: 4 findings — high 1, medium 3, low 0, false 0, maybe-false 0
+- findings:
+  - `[high]` `[patch]` Mount-gate test tautology: `test_provision_disabled_means_route_absent` rebuilt the `if` inside test code instead of driving `app.routes` aggregate — patched: converted to subprocess test asserting `app.routes.router` actually omits/includes the path across both flag states.
+  - `[medium]` `[patch]` Idempotent re-provision broken on default-name path: lookup keyed on `name="E2E <Provider>"` but create used `generate_unique_connector_name` ("Slack (1)") → duplicate row on second call — patched: lookup filters by `(ws, user, connector_type)` directly, only using `name` when caller supplies it explicitly.
+  - `[medium]` `[patch]` DNC seed `value_hmac` mismatch: script computed unkeyed `sha256(value)` whereas runtime matcher computes keyed HMAC-SHA256 over normalized value (`hash_phone_hmac`) — patched: seed imports real normalizers + `hash_phone_hmac` from `app.lead_intelligence.dnc.normalizer`.
+  - `[medium]` `[patch]` Composio builder stored plaintext API key: `_build_composio_config` persisted `composio_api_key` which leaked via `GET /search-source-connectors` — patched: removed `composio_api_key` from stored config to mirror real OAuth callback shape (runtime uses global env).
 
 ## Design Notes
 
@@ -142,14 +150,50 @@ Prefer `ssh nowing 'docker exec -i nowing-backend python - <<PY' < seed_e2e_prod
 ## Verification
 
 **Commands:**
-- `cd nowing_backend && uv run pytest tests/routes/test_e2e_provision.py -v` -- all cases pass
+- `cd nowing_backend && uv run pytest tests/unit/routes/test_e2e_provision.py -v` -- all 10 cases pass (includes subprocess mount-gate test)
 - `cd nowing_backend && uv run python -c "from app.config import config; print(config.E2E_PROVISION_ENABLED)"` -- prints `False` (no env set)
 - `cd nowing_backend && E2E_PROVISION_ENABLED=TRUE uv run python -c "from app.config import config; print(config.E2E_PROVISION_ENABLED)"` -- prints `True`
 - `cd nowing_backend && uv run python scripts/seed_e2e_prod.py --dry-run --local` -- prints intended actions without committing
-- `cd nowing_backend && uv run ruff check app/routes/e2e_provision.py app/config/e2e.py scripts/seed_e2e_prod.py scripts/teardown_e2e_prod.py` -- clean
-- `cd nowing_backend && uv run python -c "from app.routes import router; print([r.path for r in router.routes if 'e2e' in r.path])"` -- `[]` when env unset; `['/api/v1/__e2e__/connectors/provision']` (or whatever prefix) when set
+- `cd nowing_backend && uv run ruff check app/routes/e2e_provision.py app/config/e2e.py scripts/seed_e2e_prod.py scripts/teardown_e2e_prod.py tests/unit/routes/test_e2e_provision.py` -- clean
 - `git diff` -- no secrets in code/.env.example; only env var names
 
-**Manual checks:**
-- `ssh nowing 'docker exec nowing-postgres psql -U nowing -d nowing -c "SELECT count(*) FROM leads WHERE source='"'"'e2e-seed'"'"';"'` after real seed → ≥10
-- `curl -i -X POST https://api.nowing.net/__e2e__/connectors/provision -H 'content-type: application/json' -d '{}'` on prod → 404 (E2E_PROVISION_ENABLED unset on prod by default)
+**Manual checks (if no CLI):**
+- Remote SSH execution (`--ssh nowing`) pending real deployment of Phase 3 credentials into Dokploy vault.
+
+## Auto Run Result
+
+### Summary
+Implemented Phase 0 + 3 backend foundation of `no-mock-e2e-plan.md`:
+1. Gated endpoint `POST /__e2e__/connectors/provision` under `app/routes/e2e_provision.py` with multi-layer gating (`E2E_PROVISION_ENABLED` import-time mount check, `x-playwright-test: true` header check → 404, `require_superuser` session check → 403). Supports 14 provider types with tokens encrypted via Fernet (`TokenEncryption(SECRET_KEY)`). Never returns credentials.
+2. Env wiring in `app/config/e2e.py` loading `E2E_<PROVIDER>_*` vars, wired into `app/config/__init__.py`. Documented safe placeholders in `nowing_backend/.env.example`.
+3. Idempotent seed script `nowing_backend/scripts/seed_e2e_prod.py` (local + `--ssh nowing` inside container) seeding workspace 15 flags, `e2e-member@nowing.net` user (Viewer role), 10 leads with canary names, 5 DNC records (keyed HMAC matching runtime), 1 saved table, 3 documents with CANARY_TOKENS, 3 MCP tool settings.
+4. Companion teardown script `nowing_backend/scripts/teardown_e2e_prod.py` safely deleting all rows tagged `source='e2e-seed'` without touching the test user or workspace flags.
+5. Unit test suite `nowing_backend/tests/unit/routes/test_e2e_provision.py` (10 tests, 100% pass) verifying all gating layers, per-provider encryption, idempotency, and live `app.routes` conditional mounting via subprocess.
+
+### Files Changed
+- `nowing_backend/app/config/e2e.py` (new) — loads `E2E_PROVISION_ENABLED` and per-provider env dictionaries.
+- `nowing_backend/app/config/__init__.py` — imports `app.config.e2e.*`.
+- `nowing_backend/app/routes/e2e_provision.py` (new) — gated provision router with per-provider Fernet encryption and idempotent upsert.
+- `nowing_backend/app/routes/__init__.py` — conditional `router.include_router(e2e_provision_router)` when `_cfg.E2E_PROVISION_ENABLED` is true.
+- `nowing_backend/scripts/seed_e2e_prod.py` (new) — idempotent seed script for workspace 15 with local and SSH modes.
+- `nowing_backend/scripts/teardown_e2e_prod.py` (new) — idempotent teardown script deleting `source='e2e-seed'` rows.
+- `nowing_backend/tests/unit/routes/test_e2e_provision.py` (new) — 10 unit tests covering all matrix rows and gating layers.
+- `nowing_backend/.env.example` — documented all `E2E_*` keys as commented placeholders.
+- `nowing_backend/pyproject.toml` — added `scripts/seed_e2e_prod.py` and `scripts/teardown_e2e_prod.py` to `T201` (print) per-file-ignores.
+
+### Review Findings Breakdown
+- Patches applied (4):
+  - `mount-gate test tautology` (high): test drove actual `app.routes` aggregate via subprocess across flag-on and flag-off states.
+  - `idempotent re-provision on default name` (medium): lookup keyed on `(ws, user, connector_type)` so default-name re-provisions update in place.
+  - `DNC seed value_hmac mismatch` (medium): seed imports runtime normalizers + `hash_phone_hmac` with `SECRET_KEY`.
+  - `composio config stored plaintext key` (medium): removed `composio_api_key` from row config; runtime reads global env.
+- Items deferred: 0.
+- Items rejected: 0.
+
+### Follow-up Review Recommendation
+`followup_review_recommended: true` — 1 high + 3 medium findings patched on first pass.
+- Unverified risk: remote SSH seed execution (`--ssh nowing`) has not been run against the live production host (requires actual Dokploy credentials injected first, which is an ops step in Phase 2).
+
+### Residual Risks
+- The subprocess test for the conditional mount gate is slow (~60s) because it spawns two separate Python processes that import `app.routes` (heavy transitive ML/embedding imports).
+- If `SECRET_KEY` is not set in an environment, token encryption raises 500 — expected defense-in-depth, but operators must ensure `SECRET_KEY` is exported.
