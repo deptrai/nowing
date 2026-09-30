@@ -266,44 +266,66 @@ async def _ensure_workspace_flags(session, dry_run: bool) -> None:
 
 
 async def _seed_leads(session, dry_run: bool) -> int:
-    """Idempotent insert of 10 Lead rows source='e2e-seed'."""
-    from sqlalchemy import select
+    """Idempotent insert of 10 Lead rows source='e2e-seed'.
 
-    from app.db import Lead
+    Uses plain SQL rather than the ORM ``Lead`` entity: older prod schemas lack
+    the ``embedding``/``search_vector`` columns that the current model declares,
+    and an ORM flush would emit them (plus a ``RETURNING search_vector``) →
+    UndefinedColumnError. Writing only the columns that exist keeps the seed
+    portable across schema versions.
+    """
+    from sqlalchemy import text
+
+    exists_sql = text(
+        "SELECT id FROM leads WHERE workspace_id = :ws AND value_hmac = :vh LIMIT 1"
+    )
+    insert_sql = text(
+        """
+        INSERT INTO leads (
+            id, workspace_id, client_id, source, company_name, domain, industry,
+            company_size, location, fit_score, intent_score, composite_score,
+            status, enriched, value_hmac
+        ) VALUES (
+            :id, :ws, :client_id, :source, :company_name, :domain, :industry,
+            :company_size, :location, :fit_score, :intent_score,
+            :composite_score, :status, :enriched, :value_hmac
+        )
+        """
+    )
+
+    base_vals = dict(
+        ws=WORKSPACE_ID,
+        client_id="e2e-prod",
+        source=E2E_SOURCE_TAG,
+        industry="e2e-test",
+        company_size="11-50",
+        location="Ho Chi Minh City",
+        fit_score=0.85,
+        intent_score=0.75,
+        composite_score=0.80,
+        status="new",
+        enriched=False,
+    )
 
     created = 0
     for company, domain in LEAD_COMPANIES:
         hmac = _lead_hmac(WORKSPACE_ID, company, domain)
-        result = await session.execute(
-            select(Lead).where(
-                Lead.workspace_id == WORKSPACE_ID,
-                Lead.value_hmac == hmac,
-            )
-        )
-        if result.scalar_one_or_none() is not None:
+        exists = await session.execute(exists_sql, {"ws": WORKSPACE_ID, "vh": hmac})
+        if exists.first() is not None:
             continue
         if dry_run:
             created += 1
             continue
 
-        session.add(
-            Lead(
-                id=uuid.uuid4(),
-                workspace_id=WORKSPACE_ID,
-                source=E2E_SOURCE_TAG,
-                company_name=company,
-                domain=domain,
-                industry="e2e-test",
-                company_size="11-50",
-                location="Ho Chi Minh City",
-                fit_score=0.85,
-                intent_score=0.75,
-                composite_score=0.80,
-                status="new",
-                enriched=False,
-                value_hmac=hmac,
-                client_id="e2e-prod",
-            )
+        await session.execute(
+            insert_sql,
+            {
+                "id": uuid.uuid4(),
+                "company_name": company,
+                "domain": domain,
+                "value_hmac": hmac,
+                **base_vals,
+            },
         )
         created += 1
 
@@ -552,7 +574,7 @@ async def seed(dry_run: bool = False) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _run_ssh(host: str, dry_run: bool, force: bool) -> int:
+def _run_ssh(host: str, container: str, dry_run: bool, force: bool) -> int:
     """Pipe this file into the backend container over SSH and execute it."""
     extra = []
     if dry_run:
@@ -562,7 +584,7 @@ def _run_ssh(host: str, dry_run: bool, force: bool) -> int:
     cmd = [
         "ssh",
         host,
-        "docker exec -i nowing-backend python - --local-run "
+        f"docker exec -i {container} python - --local-run "
         + " ".join(extra),
     ]
     with open(__file__, "rb") as f:
@@ -590,6 +612,13 @@ def main() -> None:
         help="Run inside the backend container via SSH (e.g. `--ssh nowing`).",
     )
     parser.add_argument(
+        "--container",
+        default="nowing-backend",
+        help="Docker container name for --ssh mode (default: nowing-backend). "
+        "On Swarm the API service is e.g. `nowing-backend-worker-*`; pass the "
+        "resolved name via `docker ps`.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print intended actions without committing.",
@@ -605,7 +634,7 @@ def main() -> None:
     # hits this same `main()` but with --local-run already set.
     if args.ssh and not args.local_run:
         _require_dev_environment(args.force)
-        rc = _run_ssh(args.ssh, args.dry_run, args.force)
+        rc = _run_ssh(args.ssh, args.container, args.dry_run, args.force)
         sys.exit(rc)
 
     # Local path (also reached from inside the container via --local-run).
