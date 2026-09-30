@@ -363,12 +363,16 @@ async def provision_connector(
     body: ProvisionRequest,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(require_superuser),
-    _header: None = Depends(_require_playwright_header),
 ) -> ProvisionResponse:
     """Create a pre-connected ``SearchSourceConnector`` from E2E_* env vars.
 
     Used by Playwright specs to drive real third-party journeys without
     OAuth-in-browser. Never returns tokens — only the connector id.
+
+    The ``x-playwright-test: true`` header gate is attached at the ROUTER
+    level in ``app/routes/__init__.py`` (``include_router(dependencies=...)``)
+    so it runs before ``require_superuser`` — unauthenticated callers without
+    the header see 404, not 401.
     """
     provider = body.connector.lower()
     env = config.E2E_PROVIDER_ENV.get(provider)

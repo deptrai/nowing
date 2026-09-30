@@ -32,6 +32,7 @@ import app.lead_intelligence.enrichment.capability
 import app.lead_intelligence.scoring.capability  # noqa: F401
 from app.automations.api import router as automations_router
 from app.capabilities.core.access.rest import build_capabilities_router
+from app.config import config as _cfg
 from app.file_storage.api import router as file_storage_router
 from app.gateway import require_gateway_enabled
 from app.notifications.api import router as notifications_router
@@ -87,8 +88,11 @@ from .discord_add_connector_route import router as discord_add_connector_router
 from .dnc_routes import router as dnc_router
 from .documents import router as documents_router
 from .dropbox_add_connector_route import router as dropbox_add_connector_router
+from .e2e_provision import (
+    _require_playwright_header,
+    router as e2e_provision_router,
+)
 from .editor_routes import router as editor_router
-from .e2e_provision import router as e2e_provision_router
 from .enrichment_routes import router as enrichment_router
 from .export_routes import router as export_router
 from .extract_entities_routes import router as extract_entities_router
@@ -330,9 +334,13 @@ router.include_router(meeting_minutes_router)  # Meeting Minutes (Story 27.2b)
 
 # E2E connector provision — gated by E2E_PROVISION_ENABLED env. Default off
 # so production returns 404. See app/routes/e2e_provision.py.
-from app.config import config as _cfg
-
 if _cfg.E2E_PROVISION_ENABLED:
-    router.include_router(e2e_provision_router)
+    # Attach the playwright header gate at the ROUTER level so it runs before
+    # any auth dependency in the route — unauthenticated callers without the
+    # header get a 404 (gate invisible) instead of a 401 from auth.
+    router.include_router(
+        e2e_provision_router,
+        dependencies=[Depends(_require_playwright_header)],
+    )
 
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

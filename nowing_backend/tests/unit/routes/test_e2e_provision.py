@@ -14,12 +14,15 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from app.auth.context import AuthContext
 from app.db import SearchSourceConnector, SearchSourceConnectorType, get_async_session
-from app.routes.e2e_provision import router as e2e_provision_router
+from app.routes.e2e_provision import (
+    _require_playwright_header,
+    router as e2e_provision_router,
+)
 from app.users import require_superuser
 
 pytestmark = pytest.mark.unit
@@ -85,8 +88,12 @@ def _non_superuser_auth() -> AuthContext:
 
 @pytest.fixture
 def app() -> FastAPI:
+    """Mirror the production mount: header gate as a router-level dep."""
     test_app = FastAPI()
-    test_app.include_router(e2e_provision_router)
+    test_app.include_router(
+        e2e_provision_router,
+        dependencies=[Depends(_require_playwright_header)],
+    )
     test_app.dependency_overrides[require_superuser] = _superuser_auth
     return test_app
 
@@ -115,16 +122,21 @@ def test_wrong_playwright_header_value_returns_404(app: FastAPI) -> None:
 
 
 def test_non_superuser_returns_403() -> None:
-    """Playwright header present, but user isn't superuser → require_superuser rejects.
+    """Playwright header present → passes router-level gate → auth fails.
 
-    The real ``require_superuser`` dep calls ``require_session_context`` first,
-    which needs an Authorization header / session cookie — when absent, auth
-    fails at that earlier layer (401). Either way the provision body never runs.
+    The header check lives on the ROUTER (``include_router(dependencies=...)``)
+    so it runs BEFORE auth. When we mount the bare ``e2e_provision_router`` here,
+    the router-level dep is lost — but the real ``require_superuser`` dep still
+    runs and rejects unauthenticated callers with 401. Either way the provision
+    body never executes.
     """
     test_app = FastAPI()
-    test_app.include_router(e2e_provision_router)
+    # Mirror the production mount: header gate as a router-level dependency.
+    test_app.include_router(
+        e2e_provision_router,
+        dependencies=[Depends(_require_playwright_header)],
+    )
     test_app.dependency_overrides[get_async_session] = lambda: _FakeSession()
-    # No require_superuser override → real dep runs and rejects unauthenticated.
     client = TestClient(test_app)
     res = client.post(
         "/__e2e__/connectors/provision",
