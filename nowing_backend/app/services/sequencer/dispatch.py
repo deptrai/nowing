@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -205,6 +207,97 @@ class SequencerDispatchMixin:
             cost_micros=cost_micros,
         )
         return res.get("msg_id") or f"zns_{uuid4().hex[:12]}"
+
+    async def _send_voice_dispatch(
+        self,
+        session: Any,
+        *,
+        workspace_id: int,
+        user_id: UUID | None,
+        phone_e164: str,
+        lead_id: UUID | None = None,
+        call_session_id: str | None = None,
+    ) -> str:
+        """Dispatch an outbound Voice AI SDR call (Story 38.7 Action Executor).
+
+        Sequence (all-or-nothing):
+        1. ``TelephonyComplianceGate.evaluate_preflight`` — curfew, DNC 5656,
+           24h frequency lock, and pre-call wallet soft-lock. Rejections raise
+           ``ValueError("compliance_rejected_<verdict>")`` so the Sequencer
+           records a failed step with the compliance reason.
+        2. Resolve the workspace SIP trunk (BYO-SIP with system fallback).
+        3. Dispatch via ``LiveKitTelephonyClient.dispatch_call`` into a fresh
+           ``call_<uuid>`` room carrying workspace/lead metadata for the agent.
+
+        On LiveKit infrastructure failure the 24h frequency lock and the
+        pre-call deposit are released so the step can be retried later.
+        """
+        from app.services.voice.compliance_gate import TelephonyComplianceGate
+        from app.services.voice.sip_manager import SipTrunkManager
+        from app.services.voice.telephony_client import LiveKitTelephonyClient
+
+        gate = TelephonyComplianceGate()
+        result = await gate.evaluate_preflight(
+            session,
+            workspace_id=workspace_id,
+            raw_phone=phone_e164,
+            user_id=user_id,
+        )
+        if not result.allowed:
+            logger.warning(
+                "[voice_dispatch] compliance rejected ws=%s phone=%s verdict=%s",
+                workspace_id,
+                result.phone_e164,
+                result.verdict.value,
+            )
+            raise ValueError(f"compliance_rejected_{result.verdict.value.lower()}")
+
+        trunk = await SipTrunkManager().resolve_workspace_trunk(session, workspace_id)
+
+        room_name = f"call_{uuid4().hex}"
+        room_metadata = json.dumps(
+            {
+                "workspace_id": workspace_id,
+                "user_id": str(user_id) if user_id else None,
+                "session_id": room_name,
+                "phone_e164": result.phone_e164,
+                "lead_id": str(lead_id) if lead_id else None,
+            }
+        )
+
+        try:
+            async with LiveKitTelephonyClient() as telephony:
+                part_info = await telephony.dispatch_call(
+                    phone_number=result.phone_e164,
+                    trunk_id=trunk.trunk_id,
+                    room_name=room_name,
+                    participant_identity=f"sip_{result.phone_e164}",
+                    headers={"X-Nowing-Metadata": room_metadata},
+                )
+            call_id = part_info.sip_call_id or room_name
+            logger.info(
+                "[voice_dispatch] dispatched ws=%s lead=%s room=%s call_id=%s",
+                workspace_id,
+                lead_id,
+                room_name,
+                call_id,
+            )
+            return call_id
+        except Exception as exc:
+            # Infrastructure failure after gate approval: release the 24h
+            # frequency lock and the wallet soft-lock so the step can retry.
+            logger.warning(
+                "[voice_dispatch] dispatch failed after approval — releasing locks: %s",
+                exc,
+            )
+            with contextlib.suppress(Exception):
+                await gate.release_frequency_lock(workspace_id, result.phone_e164)
+            if user_id is not None and result.reserved_micros > 0:
+                with contextlib.suppress(Exception):
+                    await gate.release_deposit(
+                        session, user_id, result.reserved_micros
+                    )
+            raise
 
     async def _handle_send_step(
         self,
@@ -654,6 +747,30 @@ class SequencerDispatchMixin:
                 parse_mode=parse_mode,
             )
             return msg_id, "telegram"
+
+        if channel == "voice":
+            from app.config.voice import SEQUENCER_VOICE_ENABLED
+
+            if not SEQUENCER_VOICE_ENABLED:
+                raise ValueError("voice_channel_disabled")
+
+            raw_phone = contact.phone
+            if not raw_phone:
+                raise ValueError("missing_phone")
+            if self.encryption.is_encrypted(raw_phone):
+                raw_phone = self.encryption.decrypt(raw_phone)
+            phone = normalize_phone_e164(raw_phone)
+            if not phone:
+                raise ValueError("invalid_phone_format")
+
+            call_id = await self._send_voice_dispatch(
+                session=session,
+                workspace_id=enrollment.workspace_id,
+                user_id=attributed_user_id,
+                phone_e164=phone,
+                lead_id=lead.id,
+            )
+            return call_id, "voice"
 
         raise ValueError(f"unsupported_channel:{channel}")
 

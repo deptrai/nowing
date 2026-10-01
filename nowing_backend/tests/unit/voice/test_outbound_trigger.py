@@ -1,0 +1,146 @@
+"""Unit tests for OutboundTriggerEngine (Story 38.7 Speed-to-Lead & Hiring Radar)."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
+
+import pytest
+
+from app.services.voice.outbound_trigger import OutboundTriggerEngine
+
+pytestmark = pytest.mark.unit
+
+
+@pytest.fixture
+def engine():
+    return OutboundTriggerEngine(
+        speed_to_lead_min_seconds=45.0,
+        hiring_radar_min_confidence=0.75,
+    )
+
+
+class TestSpeedToLead:
+    """Prospect engagement on Mini-Pitch portal >= 45s triggers Voice SDR call."""
+
+    async def test_duration_above_45s_triggers_call(self, engine: OutboundTriggerEngine):
+        lead_id = uuid4()
+        event_data = {
+            "workspace_id": 15,
+            "lead_id": str(lead_id),
+            "phone_e164": "+84901234567",
+            "view_duration_seconds": 52.0,
+        }
+
+        mock_celery_task = MagicMock()
+        mock_celery_task.delay.return_value.id = "celery_task_123"
+
+        with patch(
+            "app.tasks.celery_tasks.voice_tasks.dispatch_voice_call_task",
+            mock_celery_task,
+        ):
+            res = await engine.handle_prospect_engagement(event_data)
+
+        assert res.triggered is True
+        assert res.trigger_type == "speed_to_lead"
+        assert res.workspace_id == 15
+        assert res.phone_e164 == "+84901234567"
+        assert res.task_id == "celery_task_123"
+        mock_celery_task.delay.assert_called_once_with(
+            workspace_id=15,
+            phone_e164="+84901234567",
+            lead_id=str(lead_id),
+            user_id=None,
+        )
+
+    async def test_duration_below_45s_is_ignored(self, engine: OutboundTriggerEngine):
+        event_data = {
+            "workspace_id": 15,
+            "phone_e164": "+84901234567",
+            "view_duration_seconds": 20.0,
+        }
+
+        res = await engine.handle_prospect_engagement(event_data)
+        assert res.triggered is False
+        assert "below threshold" in res.reason
+
+    async def test_missing_phone_is_ignored(self, engine: OutboundTriggerEngine):
+        event_data = {
+            "workspace_id": 15,
+            "phone_e164": None,
+            "view_duration_seconds": 60.0,
+        }
+
+        res = await engine.handle_prospect_engagement(event_data)
+        assert res.triggered is False
+        assert "no phone" in res.reason.lower()
+
+    async def test_missing_workspace_id_is_ignored(self, engine: OutboundTriggerEngine):
+        event_data = {
+            "workspace_id": None,
+            "phone_e164": "+84901234567",
+            "view_duration_seconds": 60.0,
+        }
+
+        res = await engine.handle_prospect_engagement(event_data)
+        assert res.triggered is False
+        assert "missing workspace_id" in res.reason
+
+
+class TestHiringRadar:
+    """Intent Radar hiring signal with confidence >= 0.75 triggers Voice SDR call."""
+
+    async def test_high_confidence_hiring_signal_triggers_call(
+        self, engine: OutboundTriggerEngine
+    ):
+        lead_id = uuid4()
+        signal_event = {
+            "workspace_id": 15,
+            "lead_id": str(lead_id),
+            "phone_e164": "+842871099999",
+            "signal_type": "hiring_expansion",
+            "confidence": 0.85,
+        }
+
+        mock_celery_task = MagicMock()
+        mock_celery_task.delay.return_value.id = "celery_hiring_456"
+
+        with patch(
+            "app.tasks.celery_tasks.voice_tasks.dispatch_voice_call_task",
+            mock_celery_task,
+        ):
+            res = await engine.handle_hiring_radar_signal(signal_event)
+
+        assert res.triggered is True
+        assert res.trigger_type == "hiring_radar"
+        assert res.task_id == "celery_hiring_456"
+        assert res.phone_e164 == "+842871099999"
+        mock_celery_task.delay.assert_called_once()
+
+    async def test_low_confidence_hiring_signal_is_ignored(
+        self, engine: OutboundTriggerEngine
+    ):
+        signal_event = {
+            "workspace_id": 15,
+            "phone_e164": "+842871099999",
+            "signal_type": "hiring_expansion",
+            "confidence": 0.60,  # Below 0.75 bar
+        }
+
+        res = await engine.handle_hiring_radar_signal(signal_event)
+        assert res.triggered is False
+        assert "below threshold" in res.reason
+
+    async def test_unsupported_signal_type_is_ignored(
+        self, engine: OutboundTriggerEngine
+    ):
+        signal_event = {
+            "workspace_id": 15,
+            "phone_e164": "+842871099999",
+            "signal_type": "random_newsletter_click",
+            "confidence": 0.99,
+        }
+
+        res = await engine.handle_hiring_radar_signal(signal_event)
+        assert res.triggered is False
+        assert "not an outbound trigger type" in res.reason
