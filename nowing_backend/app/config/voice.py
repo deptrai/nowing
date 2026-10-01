@@ -137,6 +137,20 @@ VOICE_CIRCUIT_BREAKER_SPAM_THRESHOLD = _safe_float_env(
     "VOICE_CIRCUIT_BREAKER_SPAM_THRESHOLD", 0.06
 )
 
+# Voice Billing (Story 38.8)
+# Telecom standard rate: 2,500 VND/minute = 2,500,000 micros/minute
+VOICE_RATE_PER_MINUTE_MICROS = _positive_int_env(
+    "VOICE_RATE_PER_MINUTE_MICROS", 2_500_000
+)
+# Hang-up Protection: 100% free if call duration < 10.0s
+VOICE_HANGUP_PROTECTION_SECONDS = _safe_float_env(
+    "VOICE_HANGUP_PROTECTION_SECONDS", 10.0
+)
+# Hang-up Protection applies to max 15% of campaign calls
+VOICE_HANGUP_PROTECTION_MAX_QUOTA = _safe_float_env(
+    "VOICE_HANGUP_PROTECTION_MAX_QUOTA", 0.15
+)
+
 # Filler audio directory (pre-loaded to RAM at worker startup)
 VOICE_FILLER_DIR = os.path.normpath(
     os.getenv(
@@ -188,9 +202,12 @@ __all__ = [
     "VOICE_DEAD_AIR_PROBE_PROMPT",
     "VOICE_DEAD_AIR_PROBE_SECONDS",
     "VOICE_FILLER_DIR",
+    "VOICE_HANGUP_PROTECTION_MAX_QUOTA",
+    "VOICE_HANGUP_PROTECTION_SECONDS",
     "VOICE_LLM_PROVIDER",
     "VOICE_MAX_CALLS_PER_WORKER",
     "VOICE_PRECALL_SOFT_LOCK_MICROS",
+    "VOICE_RATE_PER_MINUTE_MICROS",
     "VOICE_RECORDING_DISCLOSURE_TEXT",
     "VOICE_STT_PROVIDER",
     "VOICE_TTS_PROVIDER",
