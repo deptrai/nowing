@@ -15,3 +15,4 @@ class TriggerType(StrEnum):
     EVENT = "event"
     MANUAL = "manual"
     MEMORY_CHANGE = "memory_change"
+    CHAINLENS_MONITOR = "chainlens_monitor"

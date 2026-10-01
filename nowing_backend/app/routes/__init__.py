@@ -76,6 +76,7 @@ from .airtable_add_connector_route import (
 )
 from .broadcasts_routes import router as broadcasts_router
 from .campaign_routes import router as campaign_router
+from .chainlens_webhooks import router as chainlens_webhooks_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
@@ -192,6 +193,7 @@ router.include_router(leads_router)
 router.include_router(lead_pipeline_router)
 router.include_router(public_booking_router)  # Prospect-facing /book/{ws}/{lead} (Story 37.3)
 router.include_router(public_pitch_router)  # pitch.nowing.ai beacon + meta (Story 37.6)
+router.include_router(chainlens_webhooks_router)  # ChainLens search monitors webhook (Story 20.8)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
 router.include_router(voice_agent_router)  # BYO-SIP trunk management (Story 38.6)
