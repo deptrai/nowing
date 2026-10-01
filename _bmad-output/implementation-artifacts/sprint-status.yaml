@@ -412,7 +412,7 @@ development_status:
   37-7-hybrid-pricing-packaging-ui-auto-refund-guarantee-sla: review
   epic-37-retrospective: optional
 
-  epic-38: in-progress
+  epic-38: done
   38-1-livekit-sip-gateway-kamailio-media-infrastructure: done
   38-2-voice-agent-worker-runtime-với-silero-vad-micro-clause-strea: done
   38-3-anti-false-interruption-multi-tier-barge-in-engine-ducking-k: done
@@ -420,7 +420,7 @@ development_status:
   38-5-telecom-signal-classifier-amd-dead-air-watchdog-engine: done
   38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip-architectur: done
   38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: done
-  38-8-voice-billing-realtime-metering-qa-scorecard: backlog
+  38-8-voice-billing-realtime-metering-qa-scorecard: done
   epic-38-retrospective: optional
   epic-40: done
   40-1-xactions-gateway-client-streamable-http-cutover: done
