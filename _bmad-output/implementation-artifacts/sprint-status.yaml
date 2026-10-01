@@ -419,7 +419,7 @@ development_status:
   38-4-telephony-compliance-gate-national-dnc-5656-curfew-scheduler: done
   38-5-telecom-signal-classifier-amd-dead-air-watchdog-engine: done
   38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip-architectur: done
-  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: backlog
+  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: done
   38-8-voice-billing-realtime-metering-qa-scorecard: backlog
   epic-38-retrospective: optional
   epic-40: done
