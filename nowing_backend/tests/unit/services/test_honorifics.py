@@ -566,8 +566,8 @@ class TestCurfewDeferralWindow:
         with (
             patch(
                 "app.services.sequencer.dispatch.calculate_step_eta",
-                side_effect=lambda delay, from_dt=None: real_calc(
-                    delay, from_dt or curfew_now
+                side_effect=lambda delay, from_dt=None, **kwargs: real_calc(
+                    delay, from_dt or curfew_now, **kwargs
                 ),
             ),
             patch("random.randint", return_value=0),

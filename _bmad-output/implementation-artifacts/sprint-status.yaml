@@ -350,7 +350,7 @@ development_status:
   29-6-data-governance-retention-policy-console: done
   epic-29-retrospective: done
 
-  epic-30: in-progress
+  epic-30: done
   30-2-redis-event-bus-subscribe-failure-state-leak: done
   30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
   30-8-epic-13-canonical-entity-cleanup: done
@@ -398,19 +398,15 @@ development_status:
   36-6-canonical-action-matrix-legacy-tool-deprecation: done
   epic-36-retrospective: done
 
-  epic-37: in-progress
-  37-1-proactive-intent-signal-radar-background-ingestion-telegram: 
-    review
-  37-2-vietnam-cultural-honorific-relationship-tone-engine: review
-  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark-cale: 
-    review
-  37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper: review
-  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: 
-    review
-  37-6-realtime-prospect-engagement-tracker-telegram-alert-bot-ping: 
-    done
-  37-7-hybrid-pricing-packaging-ui-auto-refund-guarantee-sla: review
-  epic-37-retrospective: optional
+  epic-37: done
+  37-1-proactive-intent-signal-radar-background-ingestion-telegram: done
+  37-2-vietnam-cultural-honorific-relationship-tone-engine: done
+  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark-cale: done
+  37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper: done
+  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: done
+  37-6-realtime-prospect-engagement-tracker-telegram-alert-bot-ping: done
+  37-7-hybrid-pricing-packaging-ui-auto-refund-guarantee-sla: done
+  epic-37-retrospective: done
 
   epic-38: done
   38-1-livekit-sip-gateway-kamailio-media-infrastructure: done
