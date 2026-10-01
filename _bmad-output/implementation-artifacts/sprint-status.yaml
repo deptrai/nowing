@@ -421,7 +421,7 @@ development_status:
   38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip-architectur: done
   38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: done
   38-8-voice-billing-realtime-metering-qa-scorecard: done
-  epic-38-retrospective: optional
+  epic-38-retrospective: done
   epic-40: done
   40-1-xactions-gateway-client-streamable-http-cutover: done
   40-2-scraper-playground-thin-proxy-workspace-billing-gate: done
