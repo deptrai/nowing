@@ -74,6 +74,7 @@ from .agent_revert_route import router as agent_revert_router
 from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
+from .async_research_routes import router as async_research_router
 from .broadcasts_routes import router as broadcasts_router
 from .campaign_routes import router as campaign_router
 from .chainlens_webhooks import router as chainlens_webhooks_router
@@ -228,6 +229,7 @@ router.include_router(
 )  # CRUD for /workspaces/{id}/agent/permissions/rules
 router.include_router(agent_flags_router)  # GET /agent/flags
 router.include_router(agent_chat_router)  # Public agent-chat endpoints
+router.include_router(async_research_router)  # ChainLens async research jobs (Story 20.9)
 router.include_router(sandbox_router)  # Sandbox file downloads (Daytona)
 router.include_router(chat_comments_router)
 router.include_router(podcasts_router)  # Podcast task status and audio
