@@ -142,7 +142,23 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
             (c.value for c in candidates if c.channel == "email"), None
         )
 
-        domain = _extract_domain(data.get("company_website") or data.get("website"))
+        source_url = (
+            data.get("url")
+            or data.get("job_url")
+            or data.get("source_url")
+        )
+        if source_url:
+            data["source_url"] = source_url
+
+        default_domain = "itviec.com" if (raw_record.source_name == "itviec" or (source_url and "itviec" in source_url)) else "topcv.vn"
+        domain = (
+            _extract_domain(
+                data.get("company_website")
+                or data.get("website")
+                or source_url
+            )
+            or default_domain
+        )
 
         location = data.get("location") or data.get("address") or ""
         city: str | None = None
@@ -154,6 +170,14 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
         company = (
             data.get("company") or data.get("company_name") or "Doanh nghiệp tuyển dụng"
         )
+
+        industry = (
+            data.get("industry")
+            or data.get("category")
+            or data.get("job_category")
+            or "Tuyển dụng IT"
+        )
+        data["industry"] = industry
 
         return NormalizedLead(
             source_name=raw_record.source_name,
@@ -167,6 +191,7 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
             contact_name=data.get("hr_name") or data.get("contact_person"),
             city=city,
             address=location or data.get("address"),
+            source_url=source_url,
             confidence_score=85.0 if (primary_phone or primary_email) else 70.0,
             sources=[raw_record.source_name],
             contact_candidates=candidates,

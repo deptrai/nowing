@@ -23,6 +23,16 @@ from app.services.pii.redact import redact_job_pii
 
 logger = logging.getLogger(__name__)
 
+_VN_LOCATION_IDS = {
+    "HN": 24,
+    "SG": 29,
+    "DN": 17,
+    "BD": 71,
+    "DNA": 19,
+    "HP": 2,
+    "CT": 13,
+}
+
 
 def _extract_domain(url: str | None) -> str | None:
     if not url:
@@ -103,15 +113,6 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
         if location:
             from app.services.location_normalize import resolve_city_code
             code = resolve_city_code(str(location))
-            _VN_LOCATION_IDS = {
-                "HN": 24,
-                "SG": 29,
-                "DN": 17,
-                "BD": 71,
-                "DNA": 19,
-                "HP": 2,
-                "CT": 13,
-            }
             if code and code in _VN_LOCATION_IDS:
                 params["locationId"] = _VN_LOCATION_IDS[code]
 
@@ -187,18 +188,35 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
         salary_raw = data.get("salary_raw")
         salary_val = _select_salary_value(salary_min, salary_max, salary_raw)
 
+        industry = (
+            data.get("industry")
+            or data.get("category")
+            or data.get("job_category")
+            or "Tuyển dụng"
+        )
+        data["industry"] = industry
+
+        source_url = data.get("source_url") or data.get("url")
+        if source_url:
+            data["source_url"] = source_url
+
+        domain = (
+            _extract_domain(data.get("company_website") or source_url)
+            or "vietnamworks.com"
+        )
+
         return NormalizedLead(
             source_name=self.source_name,
             source_id=raw_record.source_id,
             title=data.get("title") or "Tuyển dụng nhân sự",
             company_name=data.get("company") or "Doanh nghiệp tuyển dụng",
-            canonical_domain=_extract_domain(data.get("company_website") or data.get("source_url")),
+            canonical_domain=domain,
             primary_phone=primary_phone,
             primary_email=primary_email,
             city=data.get("location"),
             address=data.get("location"),
             price=_to_float(salary_val),
-            source_url=data.get("source_url"),
+            source_url=source_url,
             confidence_score=85.0 if (primary_phone or primary_email) else 70.0,
             sources=[self.source_name],
             contact_candidates=candidates,
