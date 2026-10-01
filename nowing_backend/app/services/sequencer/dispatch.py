@@ -73,13 +73,15 @@ class SequencerDispatchMixin:
         *,
         channel: str,
     ) -> SequenceEvent:
-        """Decree 91 curfew: re-schedule the step to the next 08:05 ICT window.
+        """Decree 91 curfew: re-schedule the step to the next permitted window.
 
         OCC-guarded: only reschedules while the enrollment is still in an
         active/scheduled state owned by this path — a concurrent opt-out or
         version bump must not be overwritten.
         """
-        next_eta = calculate_step_eta(0)
+        # Voice steps must respect the stricter Decree 91 split window
+        # (09:00-11:30 / 13:30-17:00 ICT Mon-Fri), not the email window.
+        next_eta = calculate_step_eta(0, channel=channel)
         current_version = enrollment.version or 0
         res = await session.execute(
             update(SequenceEnrollment)

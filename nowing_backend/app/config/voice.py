@@ -94,6 +94,24 @@ VOICE_BARGE_IN_BACKCHANNEL_WORDS = os.getenv(
     "ừ,dạ,vâng,ờ,ừm,dạ rồi,dạ vâng,vâng ạ,ok,okay,mm",
 )
 
+# Compliance & Pre-call Deposit (Story 38.4)
+# 7,500,000 micros = 7,500 VND = 3-minute buffer at 2,500 VND/min
+VOICE_PRECALL_SOFT_LOCK_MICROS = _positive_int_env(
+    "VOICE_PRECALL_SOFT_LOCK_MICROS", 7_500_000
+)
+# Decree 91: caller must be informed that the call is being recorded in the first 3 seconds
+VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED = os.getenv(
+    "VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED", "true"
+).strip().lower() in {"1", "true", "yes", "on"}
+VOICE_RECORDING_DISCLOSURE_TEXT = os.getenv(
+    "VOICE_RECORDING_DISCLOSURE_TEXT",
+    "Cuộc gọi này được ghi âm để nâng cao chất lượng dịch vụ.",
+)
+# Hard call ceiling: 175s - 180s hangup (Nghị định 91 unit-economics protection)
+VOICE_CALL_HARD_CEILING_SECONDS = _positive_int_env(
+    "VOICE_CALL_HARD_CEILING_SECONDS", 180
+)
+
 # Filler audio directory (pre-loaded to RAM at worker startup)
 VOICE_FILLER_DIR = os.path.normpath(
     os.getenv(
@@ -135,9 +153,13 @@ __all__ = [
     "VOICE_BARGE_IN_KWS_TIMEOUT_MS",
     "VOICE_BARGE_IN_SILENCE_PACKET_MS",
     "VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD",
+    "VOICE_CALL_HARD_CEILING_SECONDS",
+    "VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED",
     "VOICE_FILLER_DIR",
     "VOICE_LLM_PROVIDER",
     "VOICE_MAX_CALLS_PER_WORKER",
+    "VOICE_PRECALL_SOFT_LOCK_MICROS",
+    "VOICE_RECORDING_DISCLOSURE_TEXT",
     "VOICE_STT_PROVIDER",
     "VOICE_TTS_PROVIDER",
     "VOICE_VAD_MIN_SILENCE_MS",

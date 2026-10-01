@@ -9,6 +9,7 @@ from typing import Any
 
 import redis.asyncio as aioredis
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
@@ -479,3 +480,121 @@ class DncComplianceService:
                 }
                 for lead in leads
             ]
+
+
+async def register_contact_opt_out(
+    session: AsyncSession,
+    workspace_id: int,
+    contact_type: str,
+    value: str,
+    *,
+    reason: str = "voice_opt_out",
+    source: str = "opt_out",
+    secret_key: str | None = None,
+) -> WorkspaceDncRecord | None:
+    """Idempotently register an opt-out contact into WorkspaceDncRecord and invalidate cache.
+
+    Shared entry point for both Voice AI SDR and Inbound Sequencer (Story 38.4 /
+    Decree 91 & Decree 13 PDPD). Normalizes the raw value, computes the
+    canonical HMAC, persists the record, and evicts the workspace Redis cache.
+
+    Args:
+        session: Active SQLAlchemy async session.
+        workspace_id: The tenant workspace owning the opt-out.
+        contact_type: One of ``"phone"``, ``"email"``, ``"domain"``.
+        value: Raw contact value (e.g. "+84901234567", "ceo@corp.vn").
+        reason: Audit reason for opt-out (defaults to "voice_opt_out").
+        source: Provenance tag (defaults to "opt_out").
+        secret_key: Optional HMAC key override.
+
+    Returns:
+        The created or existing :class:`WorkspaceDncRecord`, or ``None`` if
+        normalization fails.
+    """
+    if not value or not value.strip():
+        return None
+
+    if not contact_type or not isinstance(contact_type, str):
+        return None
+
+    ct = contact_type.strip().lower()
+    norm_val: str | None = None
+
+    if ct == "phone":
+        norm_val = normalize_phone_e164(value)
+    elif ct == "email":
+        norm_val = normalize_email(value)
+    elif ct == "domain":
+        norm_val = normalize_domain(value)
+    else:
+        norm_val = value.strip().lower()
+
+    if not norm_val:
+        logger.warning(
+            "[DncOptOut] Failed to normalize %s value %r for ws=%s",
+            ct,
+            value,
+            workspace_id,
+        )
+        return None
+
+    key = secret_key or getattr(config, "SECRET_KEY", None) or "default_dnc_secret_key"
+    vh = hash_phone_hmac(norm_val, secret_key=key)
+
+    # Check existence to remain idempotent
+    stmt = select(WorkspaceDncRecord).where(
+        WorkspaceDncRecord.workspace_id == workspace_id,
+        WorkspaceDncRecord.record_type == ct,
+        WorkspaceDncRecord.value_hmac == vh,
+    )
+    res = await session.execute(stmt)
+    existing = res.scalar_one_or_none()
+    if existing is not None:
+        logger.info(
+            "[DncOptOut] Contact already in DNC: ws=%s type=%s hmac=%s...",
+            workspace_id,
+            ct,
+            vh[:8],
+        )
+        return existing
+
+    record = WorkspaceDncRecord(
+        workspace_id=workspace_id,
+        record_type=ct,
+        value=norm_val,
+        value_hmac=vh,
+        reason=reason,
+        source=source,
+    )
+    session.add(record)
+    try:
+        await session.flush()
+    except IntegrityError:
+        # Concurrent opt-out for the same contact raced past the SELECT —
+        # the unique constraint fired first. Roll back and re-read the
+        # winner's row so the caller still gets an idempotent result.
+        await session.rollback()
+        res = await session.execute(stmt)
+        existing = res.scalar_one_or_none()
+        if existing is not None:
+            return existing
+        raise
+
+    # Evict cache so subsequent pre-flight checks observe the opt-out immediately
+    try:
+        svc = DncComplianceService(secret_key=key)
+        await svc.invalidate_workspace_cache(workspace_id)
+    except Exception as exc:
+        logger.warning(
+            "[DncOptOut] Cache eviction failed (DB record saved): %s", exc
+        )
+
+    logger.info(
+        "[DncOptOut] Registered opt-out: ws=%s type=%s reason=%s hmac=%s...",
+        workspace_id,
+        ct,
+        reason,
+        vh[:8],
+    )
+    return record
+

@@ -56,7 +56,9 @@ from app.config import (
     OPENAI_API_KEY,
     SEQUENCER_VOICE_ENABLED,
     VOICE_BARGE_IN_SILENCE_PACKET_MS,
+    VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED,
     VOICE_LLM_PROVIDER,
+    VOICE_RECORDING_DISCLOSURE_TEXT,
     VOICE_STT_PROVIDER,
     VOICE_TTS_PROVIDER,
     VOICE_VAD_MIN_SILENCE_MS,
@@ -66,6 +68,9 @@ from app.services.voice.barge_in import (
     BargeInEngine,
     BargeInState,
     create_silence_frame,
+)
+from app.services.voice.compliance_gate import (
+    is_opt_out_utterance,
 )
 from app.services.voice.filler_audio import FillerAudioBank, get_filler_bank
 from app.services.voice.micro_clause_streamer import MicroClauseStreamer
@@ -347,6 +352,7 @@ class VoiceSDRAgent(Agent):
         user_id: UUID | None = None,
         call_session_id: str | None = None,
         room_name: str | None = None,
+        phone_e164: str | None = None,
         barge_in_engine: BargeInEngine | None = None,
     ) -> None:
         super().__init__(
@@ -367,6 +373,9 @@ class VoiceSDRAgent(Agent):
         self._user_id = user_id
         self._call_session_id = call_session_id
         self._room_name = room_name
+        # Story 38.4: target E.164 number — required to register a permanent
+        # DNC record the moment the customer refuses further contact.
+        self._phone_e164 = phone_e164
 
         # Story 38.3: Multi-tier barge-in engine
         if barge_in_engine is not None:
@@ -396,6 +405,22 @@ class VoiceSDRAgent(Agent):
             )
             if not self._prewarmed:
                 await self._prewarm_stt_tts(session)
+
+            # Story 38.4: Decree 91 / Decree 13 PDPD mandatory recording disclosure
+            # within the first 3 seconds of customer pickup.
+            if VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED and session is not None:
+                try:
+                    session.say(
+                        text=VOICE_RECORDING_DISCLOSURE_TEXT,
+                        allow_interruptions=False,
+                        add_to_chat_ctx=False,
+                    )
+                    logger.info("[compliance] played recording disclosure announcement")
+                except Exception as exc:
+                    logger.warning(
+                        "[compliance] failed to play recording disclosure: %s", exc
+                    )
+
             # Barge-in speech events flow through stt_node — the AgentSession
             # has no "speech_event" emission, so no session-level listener is
             # registered here.
@@ -439,6 +464,16 @@ class VoiceSDRAgent(Agent):
             logger.debug("Failed to start filler watchdog: %s", exc)
 
         assessment = await self._evaluate_turn(new_message)
+
+        # Story 38.4: Decree 91 immediate opt-out. Customer refusal wins over
+        # every other branch — register permanent DNC, apologise, and hang up
+        # within the 2-second legal deadline.
+        if is_opt_out_utterance(
+            getattr(new_message, "text_content", "") or ""
+        ):
+            self._cancel_filler_watchdog()
+            await self._handle_immediate_opt_out(session)
+            raise StopResponse()
 
         if assessment.transfer:
             # Transfer wins over suppression (spec 39.6 precedence) —
@@ -582,6 +617,62 @@ class VoiceSDRAgent(Agent):
             )
         except Exception as exc:
             logger.debug("[barge_in] sending silence packet notice: %s", exc)
+
+    async def _handle_immediate_opt_out(self, session: AgentSession | None) -> None:
+        """Execute Decree 91 immediate opt-out: register DNC and hang up in < 2s."""
+        logger.warning(
+            "[compliance] customer opt-out triggered — room=%s call_session_id=%s ws=%s",
+            self._room_name,
+            self._call_session_id,
+            self._workspace_id,
+        )
+
+        # 1. Apologise politely and hang up without delay
+        if session is not None:
+            # Cut any in-flight LLM/TTS audio immediately
+            with contextlib.suppress(Exception):
+                session.interrupt()
+
+            # Play farewell notice; suppress CancelledError so DNC persistence
+            # still runs even if customer drops the call while we speak.
+            try:
+                handle = session.say(
+                    "Dạ em xin lỗi đã làm phiền, em xin phép dừng cuộc gọi tại đây ạ.",
+                    allow_interruptions=False,
+                    add_to_chat_ctx=False,
+                )
+                if hasattr(handle, "wait_for_playout"):
+                    with contextlib.suppress(Exception, asyncio.CancelledError):
+                        await asyncio.wait_for(handle.wait_for_playout(), timeout=2.0)
+            except (Exception, asyncio.CancelledError):
+                pass
+
+            # Terminate the telephony leg via LiveKit SIP API
+            if self._room_name:
+                try:
+                    async with LiveKitTelephonyClient() as telephony:
+                        await telephony.end_call(room_name=self._room_name)
+                except Exception as exc:
+                    logger.debug("[compliance] end_call notification: %s", exc)
+
+        # 2. Register permanent opt-out in WorkspaceDncRecord (fail-safe)
+        if self._workspace_id and hasattr(self, "_phone_e164") and self._phone_e164:
+            try:
+                from app.db import get_async_session
+                from app.lead_intelligence.dnc.service import register_contact_opt_out
+
+                async for db_session in get_async_session():
+                    await register_contact_opt_out(
+                        db_session,
+                        self._workspace_id,
+                        "phone",
+                        self._phone_e164,
+                        reason="voice_customer_refusal",
+                    )
+                    await db_session.commit()
+                    break
+            except Exception as exc:
+                logger.error("[compliance] failed to persist opt-out DNC: %s", exc)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -807,6 +898,7 @@ async def entrypoint(ctx: JobContext) -> None:
     # log-only telemetry; they never block the call.
     metadata = _parse_room_metadata(getattr(ctx.room, "metadata", None))
     session_id_meta = metadata.get("session_id")
+    phone_meta = metadata.get("phone_e164") or metadata.get("phone")
     agent = VoiceSDRAgent(
         workspace_id=_coerce_int(metadata.get("workspace_id")),
         user_id=_coerce_uuid(metadata.get("user_id")),
@@ -814,6 +906,7 @@ async def entrypoint(ctx: JobContext) -> None:
             session_id_meta if isinstance(session_id_meta, str) else None
         ),
         room_name=ctx.room.name,
+        phone_e164=phone_meta if isinstance(phone_meta, str) else None,
     )
     await session.start(agent=agent, room=ctx.room)
 

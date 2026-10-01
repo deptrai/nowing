@@ -693,9 +693,11 @@ class TestVoiceSDRAgentSemanticGate:
         ), patch.object(
             semantic_gate, "get_decision_service", return_value=service
         ), caplog.at_level("INFO", logger="app.services.voice.semantic_gate"):
-            # Returns normally — generation proceeds.
+            # Returns normally — generation proceeds. (Note: the transcript
+            # must NOT contain a hard opt-out phrase — "phiền quá" now routes
+            # to the Decree 91 opt-out handler before the semantic gate.)
             await agent.on_user_turn_completed(
-                MagicMock(), self._msg("sao gọi hoài vậy, phiền quá")
+                MagicMock(), self._msg("sao gọi hoài vậy, bực mình quá")
             )
 
         assert "[voice_turn] frustration=2.5" in caplog.text
@@ -1323,4 +1325,102 @@ class TestVoiceSDRAgentBargeIn:
                 pass
 
         assert triggered, "expired KWS deadline must trigger a barge-in interrupt"
+
+
+@pytest.mark.unit
+class TestVoiceSDRAgentCompliance:
+    """Story 38.4: Decree 91 / Decree 13 PDPD recording disclosure and opt-out."""
+
+    @staticmethod
+    def _session_with_say() -> MagicMock:
+        session = MagicMock()
+        handle = MagicMock()
+        handle.wait_for_playout = AsyncMock()
+        session.say = MagicMock(return_value=handle)
+        session.interrupt = MagicMock()
+        session.on = MagicMock()
+        return session
+
+    @pytest.mark.asyncio
+    async def test_on_enter_plays_recording_disclosure_when_enabled(self, monkeypatch):
+        """Mandatory recording disclosure plays in the first 3s when enabled."""
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        monkeypatch.setattr(
+            agent_worker, "VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED", True
+        )
+        monkeypatch.setattr(
+            agent_worker,
+            "VOICE_RECORDING_DISCLOSURE_TEXT",
+            "Cuộc gọi này được ghi âm để nâng cao chất lượng dịch vụ.",
+        )
+
+        session = self._session_with_say()
+        agent = VoiceSDRAgent()
+
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(agent, "_prewarm_stt_tts", AsyncMock()),
+        ):
+            await agent.on_enter()
+
+        session.say.assert_called_once_with(
+            text="Cuộc gọi này được ghi âm để nâng cao chất lượng dịch vụ.",
+            allow_interruptions=False,
+            add_to_chat_ctx=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_on_enter_skips_disclosure_when_disabled(self, monkeypatch):
+        """When recording disclosure flag is off, session.say is not called."""
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        # Patch the name as imported into agent_worker (from-import binding).
+        monkeypatch.setattr(
+            agent_worker, "VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED", False
+        )
+
+        session = self._session_with_say()
+        agent = VoiceSDRAgent()
+
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(agent, "_prewarm_stt_tts", AsyncMock()),
+        ):
+            await agent.on_enter()
+
+        session.say.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_opt_out_utterance_cancels_watchdog_and_raises_stop_response(self):
+        """Customer saying 'đừng gọi nữa' cancels watchdog, runs opt-out, and stops."""
+        from livekit.agents.llm import StopResponse
+
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        session = self._session_with_say()
+        agent = VoiceSDRAgent(
+            workspace_id=15,
+            phone_e164="+84901234567",
+            room_name="call_test_opt_out",
+        )
+
+        msg = MagicMock()
+        msg.text_content = "đừng gọi nữa em ơi"
+
+        opt_out_mock = AsyncMock()
+
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(agent, "_handle_immediate_opt_out", opt_out_mock),
+            patch.object(agent, "_cancel_filler_watchdog") as cancel_spy,
+            pytest.raises(StopResponse),
+        ):
+            await agent.on_user_turn_completed(MagicMock(), msg)
+
+        cancel_spy.assert_called_once()
+        opt_out_mock.assert_awaited_once_with(session)
+
 
