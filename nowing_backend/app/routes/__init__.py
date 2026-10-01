@@ -149,6 +149,7 @@ from .prompts_routes import router as prompts_router
 from .public_booking_routes import router as public_booking_router
 from .public_chat_routes import router as public_chat_router
 from .public_pitch_routes import router as public_pitch_router
+from .pulse_routes import router as pulse_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
@@ -197,6 +198,7 @@ router.include_router(public_pitch_router)  # pitch.nowing.ai beacon + meta (Sto
 router.include_router(chainlens_webhooks_router)  # ChainLens search monitors webhook (Story 20.8)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
+router.include_router(pulse_router)  # ChainLens Pulse feed & angles (Story 20.10)
 router.include_router(voice_agent_router)  # BYO-SIP trunk management (Story 38.6)
 router.include_router(zns_router)
 router.include_router(enrichment_router)
