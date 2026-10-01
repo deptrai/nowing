@@ -234,7 +234,7 @@ development_status:
   20-7-chainlens-openai-gateway-model-connections: done
   20-8-chainlens-webhook-monitors-automations: done
   20-9-async-research-jobs-resumption: done
-  20-10-chainlens-pulse_feed-curated-intelligence-feed: ready-for-dev
+  20-10-chainlens-pulse_feed-curated-intelligence-feed: done
   20-11-chainlens-pulse_research-angle-deep-research: ready-for-dev
   epic-20-retrospective: done
 
