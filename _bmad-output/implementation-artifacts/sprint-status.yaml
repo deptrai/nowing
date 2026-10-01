@@ -224,7 +224,7 @@ development_status:
   18-8-rate-limiting-tenant-isolation: done
   epic-18-retrospective: done
 
-  epic-20: in-progress
+  epic-20: done
   20-4-service-to-service-auth-cost-ledger-sync: done
   20-1-nowing-scraper-to_chunks: done
   20-2-gap-fill-caller-cost-allocation: done
@@ -303,7 +303,7 @@ development_status:
   25-7-third-party-health-operations-dashboard: done
   epic-25-retrospective: done
 
-  epic-26: in-progress
+  epic-26: done
   26-25-customer-location-profile-selector-with-progressive-disclosu: done
   26-26-location-aware-adapter-routing-coverage-quality: done
   26-27-pre-flight-lead-plan-summary-plansummarycard: done
@@ -320,7 +320,7 @@ development_status:
   26-11-two-tier-phone-unlock-ux-refinement: done
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
-  26-9c-native-wide_research-matrix-upgrade: ready-for-dev
+  26-9c-native-wide_research-matrix-upgrade: done
   epic-26-retrospective: done
 
   epic-27: done
