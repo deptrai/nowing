@@ -78,6 +78,10 @@ from app.services.voice.semantic_gate import (
     VoiceTurnAssessment,
     evaluate_voice_turn,
 )
+from app.services.voice.telecom_classifier import (
+    AMDDetector,
+    DeadAirWatchdog,
+)
 from app.services.voice.telephony_client import LiveKitTelephonyClient
 
 logger = logging.getLogger(__name__)
@@ -376,6 +380,9 @@ class VoiceSDRAgent(Agent):
         # Story 38.4: target E.164 number — required to register a permanent
         # DNC record the moment the customer refuses further contact.
         self._phone_e164 = phone_e164
+        # Story 38.5: telecom signal classifier (AMD) + dead-air watchdog
+        self._amd_detector = AMDDetector()
+        self._dead_air_watchdog = DeadAirWatchdog()
 
         # Story 38.3: Multi-tier barge-in engine
         if barge_in_engine is not None:
@@ -553,6 +560,10 @@ class VoiceSDRAgent(Agent):
         finally:
             if speech_started and self._barge_in_engine is not None:
                 self._barge_in_engine.on_bot_speech_stopped()
+            # Story 38.5: start the dead-air silence clock once the bot
+            # finishes speaking — the watchdog probes at 3.0s and hangs up
+            # before 8.0s if the customer never responds.
+            self._dead_air_watchdog.on_bot_speech_stopped()
 
     # ------------------------------------------------------------------
     # STT Node & Barge-in Speech Events
@@ -568,7 +579,47 @@ class VoiceSDRAgent(Agent):
             yield event
 
     async def handle_speech_event(self, ev: Any) -> BargeInState:
-        """Handle STT SpeechEvent or transcript event for barge-in logic."""
+        """Handle STT SpeechEvent or transcript event for barge-in and AMD logic."""
+        # Story 38.5: customer made sound -> reset dead-air silence timer
+        self._dead_air_watchdog.on_customer_speech_started()
+
+        # Story 38.5: Answering Machine Detection in the first 3 seconds
+        if not self._amd_detector.is_evaluated:
+            ev_type_str = ""
+            if hasattr(ev, "type"):
+                ev_type_str = getattr(ev.type, "name", str(ev.type)).upper()
+            if "START_OF_SPEECH" in ev_type_str:
+                self._amd_detector.on_speech_started()
+
+            transcript_text = ""
+            if hasattr(ev, "alternatives") and ev.alternatives:
+                first_alt = ev.alternatives[0]
+                transcript_text = getattr(first_alt, "text", "") or ""
+            elif hasattr(ev, "text"):
+                transcript_text = getattr(ev, "text", "") or ""
+
+            if transcript_text:
+                amd_result = self._amd_detector.evaluate(transcript_text)
+                if amd_result.is_machine:
+                    logger.warning(
+                        "[AMD] Machine detected: %s (reason: %s) — terminating call in <= 4s",
+                        amd_result.signal,
+                        amd_result.reason,
+                    )
+                    session: AgentSession | None = None
+                    with contextlib.suppress(Exception):
+                        session = self.session
+                    if session is not None:
+                        with contextlib.suppress(Exception):
+                            session.interrupt()
+                    if self._room_name:
+                        try:
+                            async with LiveKitTelephonyClient() as tel:
+                                await tel.end_call(room_name=self._room_name)
+                        except Exception as exc:
+                            logger.debug("[AMD] end_call notice: %s", exc)
+                    return BargeInState.INTERRUPTED
+
         if self._barge_in_engine is None:
             return BargeInState.IDLE
 

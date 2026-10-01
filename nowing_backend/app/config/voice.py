@@ -112,6 +112,31 @@ VOICE_CALL_HARD_CEILING_SECONDS = _positive_int_env(
     "VOICE_CALL_HARD_CEILING_SECONDS", 180
 )
 
+# AMD & Dead-air Watchdog (Story 38.5)
+# Initial monologue duration above this threshold (seconds) classifies as machine
+VOICE_AMD_INITIAL_SPEECH_DURATION_MAX = _safe_float_env(
+    "VOICE_AMD_INITIAL_SPEECH_DURATION_MAX", 1.8
+)
+# Dead-air: probe after this many seconds of customer silence
+VOICE_DEAD_AIR_PROBE_SECONDS = _safe_float_env("VOICE_DEAD_AIR_PROBE_SECONDS", 3.0)
+# Total silence (from bot speech end) before decisive hangup (before 8.0s)
+VOICE_DEAD_AIR_HANGUP_SECONDS = _safe_float_env("VOICE_DEAD_AIR_HANGUP_SECONDS", 6.5)
+VOICE_DEAD_AIR_PROBE_PROMPT = os.getenv(
+    "VOICE_DEAD_AIR_PROBE_PROMPT",
+    "Alo anh/chị có nghe rõ em nói không ạ?",
+)
+
+# Anti-Spam Circuit Breaker (Story 38.5)
+VOICE_CIRCUIT_BREAKER_MIN_CALLS = _positive_int_env(
+    "VOICE_CIRCUIT_BREAKER_MIN_CALLS", 30
+)
+VOICE_CIRCUIT_BREAKER_SHORT_CALL_THRESHOLD = _safe_float_env(
+    "VOICE_CIRCUIT_BREAKER_SHORT_CALL_THRESHOLD", 0.40
+)
+VOICE_CIRCUIT_BREAKER_SPAM_THRESHOLD = _safe_float_env(
+    "VOICE_CIRCUIT_BREAKER_SPAM_THRESHOLD", 0.06
+)
+
 # Filler audio directory (pre-loaded to RAM at worker startup)
 VOICE_FILLER_DIR = os.path.normpath(
     os.getenv(
@@ -145,6 +170,7 @@ __all__ = [
     "SIP_OUTBOUND_GATEWAY_PORT",
     "SIP_RINGING_TIMEOUT_SECONDS",
     "SIP_ROOM_PREFIX",
+    "VOICE_AMD_INITIAL_SPEECH_DURATION_MAX",
     "VOICE_BARGE_IN_BACKCHANNEL_WORDS",
     "VOICE_BARGE_IN_DUCKING_DB",
     "VOICE_BARGE_IN_DUCKING_RAMP_MS",
@@ -154,7 +180,13 @@ __all__ = [
     "VOICE_BARGE_IN_SILENCE_PACKET_MS",
     "VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD",
     "VOICE_CALL_HARD_CEILING_SECONDS",
+    "VOICE_CIRCUIT_BREAKER_MIN_CALLS",
+    "VOICE_CIRCUIT_BREAKER_SHORT_CALL_THRESHOLD",
+    "VOICE_CIRCUIT_BREAKER_SPAM_THRESHOLD",
     "VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED",
+    "VOICE_DEAD_AIR_HANGUP_SECONDS",
+    "VOICE_DEAD_AIR_PROBE_PROMPT",
+    "VOICE_DEAD_AIR_PROBE_SECONDS",
     "VOICE_FILLER_DIR",
     "VOICE_LLM_PROVIDER",
     "VOICE_MAX_CALLS_PER_WORKER",
