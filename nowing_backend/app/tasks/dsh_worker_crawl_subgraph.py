@@ -66,6 +66,23 @@ def _checkpoint_update(**kwargs: Any) -> dict[str, Any]:
     return result
 
 
+def _coerce_num_entities(raw: Any) -> int | None:
+    """Best-effort int coercion for the wide_research numEntities hint.
+
+    Returns None for missing/invalid values; clamps to 1-50 per the
+    ChainLens wide_research engine contract (Story 26.9c).
+    """
+    if raw is None or isinstance(raw, bool):
+        return None
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if n <= 0:
+        return None
+    return min(n, 50)
+
+
 def _is_valid_matrix(matrix: Any) -> bool:
     """Validate the wide-research matrix shape and dimensions.
 
@@ -150,8 +167,11 @@ class WideResearchCrawlSubgraph:
                 "phase": "reasoning",
             }
 
-        # AC-2: wide research always asks ChainLens for a structured table.
-        output = "table"
+        # Story 26.9c: use ChainLens's native wide_research matrix engine with
+        # numEntities (10-50). Falls back to the legacy output=table contract
+        # when the engine rejects the native output (older deployments).
+        output = "wide_research"
+        num_entities = _coerce_num_entities(extras.get("numEntities") or extras.get("num_entities"))
         output_schema: dict[str, Any] = _DEFAULT_OUTPUT_SCHEMA
         mode = extras.get("mode", "balanced") if isinstance(extras, dict) else "balanced"
         workspace_id = state.get("workspace_id", 0)
@@ -164,6 +184,7 @@ class WideResearchCrawlSubgraph:
                 output=output,
                 output_schema=output_schema,
                 mode=mode,
+                num_entities=num_entities,
             )
         except Exception as exc:  # pragma: no cover - only on network faults
             logger.exception("Wide research chainlens call failed: %s", exc)

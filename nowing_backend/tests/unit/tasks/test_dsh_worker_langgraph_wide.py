@@ -42,6 +42,7 @@ class _FakeDshRestClient:
         output: str | None = None,
         output_schema: dict[str, Any] | None = None,
         mode: str = "balanced",
+        num_entities: int | None = None,
     ) -> dict[str, Any]:
         return self._record(
             "chainlens_research",
@@ -75,7 +76,7 @@ def fake_client() -> _FakeDshRestClient:
 async def test_crawl_node_dispatches_with_output_table_and_schema(
     fake_client: _FakeDshRestClient,
 ) -> None:
-    """AC-2: When research_mode='wide', _crawl_node calls chainlens_research with output='table' + output_schema."""
+    """Story 26.9c: research_mode='wide' dispatches native output='wide_research'."""
     mission_id = uuid4()
     mission = {
         "id": mission_id,
@@ -94,6 +95,6 @@ async def test_crawl_node_dispatches_with_output_table_and_schema(
     research_calls = [c for c in fake_client.calls if c[0] == "chainlens_research"]
     assert len(research_calls) == 1
     _, _, kwargs = research_calls[0]
-    assert kwargs.get("output") == "table"
+    assert kwargs.get("output") == "wide_research"
     assert kwargs.get("output_schema") is not None
     assert kwargs.get("mode") == "balanced"

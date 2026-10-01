@@ -27,6 +27,7 @@ class _FakeDshRestClient:
         output: str | None = None,
         output_schema: dict[str, Any] | None = None,
         mode: str = "balanced",
+        num_entities: int | None = None,
     ) -> dict[str, Any]:
         self.calls.append(("chainlens_research", (workspace_id, query), {
             "output": output,
@@ -78,10 +79,10 @@ async def test_subgraph_builds_and_persists_matrix(sample_matrix: dict[str, Any]
     assert checkpoint.get("sources") == sample_matrix["sources"]
     assert final_state["phase"] == "reasoning"
 
-    # AC-2: verify the call payload
+    # Story 26.9c: native wide_research output replaces the table fallback
     assert len(client.calls) == 1
     _, _, kwargs = client.calls[0]
-    assert kwargs["output"] == "table"
+    assert kwargs["output"] == "wide_research"
     assert kwargs["output_schema"] is not None
     assert kwargs["mode"] == "balanced"
 

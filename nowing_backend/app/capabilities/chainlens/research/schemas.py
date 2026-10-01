@@ -122,9 +122,19 @@ class ResearchInput(BaseModel):
         default=None,
         description="Optional trace id carried as X-Correlation-Id.",
     )
-    output: Literal["answer", "research", "table"] | None = Field(
+    output: Literal["answer", "research", "table", "wide_research"] | None = Field(
         default=None,
-        description="Requested ChainLens output format. None keeps current default (answer).",
+        description=(
+            "Requested ChainLens output format. None keeps current default "
+            "(answer). 'wide_research' is the native multi-entity matrix engine "
+            "(Story 26.9c)."
+        ),
+    )
+    num_entities: int | None = Field(
+        default=None,
+        ge=1,
+        le=50,
+        description="Entity count for wide_research output (10-50 recommended).",
     )
     output_schema: dict[str, Any] | None = Field(
         default=None,
