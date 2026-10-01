@@ -55,11 +55,17 @@ from app.config import (
     LIVEKIT_URL,
     OPENAI_API_KEY,
     SEQUENCER_VOICE_ENABLED,
+    VOICE_BARGE_IN_SILENCE_PACKET_MS,
     VOICE_LLM_PROVIDER,
     VOICE_STT_PROVIDER,
     VOICE_TTS_PROVIDER,
     VOICE_VAD_MIN_SILENCE_MS,
     VOICE_VAD_SPEECH_THRESHOLD,
+)
+from app.services.voice.barge_in import (
+    BargeInEngine,
+    BargeInState,
+    create_silence_frame,
 )
 from app.services.voice.filler_audio import FillerAudioBank, get_filler_bank
 from app.services.voice.micro_clause_streamer import MicroClauseStreamer
@@ -341,6 +347,7 @@ class VoiceSDRAgent(Agent):
         user_id: UUID | None = None,
         call_session_id: str | None = None,
         room_name: str | None = None,
+        barge_in_engine: BargeInEngine | None = None,
     ) -> None:
         super().__init__(
             instructions=(
@@ -361,6 +368,19 @@ class VoiceSDRAgent(Agent):
         self._call_session_id = call_session_id
         self._room_name = room_name
 
+        # Story 38.3: Multi-tier barge-in engine
+        if barge_in_engine is not None:
+            self._barge_in_engine = barge_in_engine
+        elif SEQUENCER_VOICE_ENABLED:
+            self._barge_in_engine = BargeInEngine(enabled=SEQUENCER_VOICE_ENABLED)
+        else:
+            self._barge_in_engine = None
+
+    @property
+    def barge_in_engine(self) -> BargeInEngine | None:
+        """Return the active BargeInEngine instance, if enabled."""
+        return self._barge_in_engine
+
     # ------------------------------------------------------------------
     # LiveKit Agent lifecycle hooks
     # ------------------------------------------------------------------
@@ -370,9 +390,19 @@ class VoiceSDRAgent(Agent):
         self._filler_bank = get_filler_bank()
         try:
             session = self.session
-            logger.info("VoiceSDRAgent entering room: %s", getattr(getattr(session, "room", None), "name", "unknown"))
+            logger.info(
+                "VoiceSDRAgent entering room: %s",
+                getattr(getattr(session, "room", None), "name", "unknown"),
+            )
             if not self._prewarmed:
                 await self._prewarm_stt_tts(session)
+            # Barge-in speech events flow through stt_node — the AgentSession
+            # has no "speech_event" emission, so no session-level listener is
+            # registered here.
+            if self._barge_in_engine is None:
+                logger.debug(
+                    "Barge-in engine not activated (flag disabled or absent)"
+                )
         except Exception as exc:
             logger.debug("on_enter initialization notice: %s", exc)
 
@@ -444,7 +474,7 @@ class VoiceSDRAgent(Agent):
         await super().on_user_turn_completed(turn_ctx, new_message)
 
     # ------------------------------------------------------------------
-    # TTS Node with MicroClauseStreamer pipeline
+    # TTS Node with MicroClauseStreamer pipeline & Ducking Gain
     # ------------------------------------------------------------------
 
     async def tts_node(
@@ -453,7 +483,8 @@ class VoiceSDRAgent(Agent):
         """Custom TTS node intercepting LLM text chunks.
 
         Cuts at Vietnamese punctuation or 5 tokens via MicroClauseStreamer,
-        and signals first-token arrival to stop the filler watchdog.
+        signals first-token arrival to stop the filler watchdog, and
+        applies ducking gain envelope from BargeInEngine to each AudioFrame.
         """
         streamer = MicroClauseStreamer()
 
@@ -464,8 +495,93 @@ class VoiceSDRAgent(Agent):
                 yield chunk
 
         clauses = streamer.stream_clauses(_monitored_text())
-        async for frame in Agent.default.tts_node(self, clauses, model_settings):
-            yield frame
+        speech_started = False
+        try:
+            async for frame in Agent.default.tts_node(self, clauses, model_settings):
+                if not speech_started:
+                    speech_started = True
+                    if self._barge_in_engine is not None:
+                        self._barge_in_engine.on_bot_speech_started()
+
+                if self._barge_in_engine is not None:
+                    # Evaluate the KWS deadline on every frame: a customer who
+                    # speaks but whose STT transcript never arrives would
+                    # otherwise leave the engine pinned in DUCKING at -14dB
+                    # for the rest of the call.
+                    if (
+                        self._barge_in_engine.check_timeouts()
+                        == BargeInState.INTERRUPTED
+                    ):
+                        await self._trigger_barge_in_interruption()
+                    frame = self._barge_in_engine.apply_gain(frame)
+                yield frame
+        finally:
+            if speech_started and self._barge_in_engine is not None:
+                self._barge_in_engine.on_bot_speech_stopped()
+
+    # ------------------------------------------------------------------
+    # STT Node & Barge-in Speech Events
+    # ------------------------------------------------------------------
+
+    async def stt_node(
+        self, audio: AsyncIterable[rtc.AudioFrame], model_settings: Any
+    ) -> AsyncIterable[stt.SpeechEvent | str]:
+        """Custom STT node intercepting SpeechEvents for barge-in engine."""
+        async for event in Agent.default.stt_node(self, audio, model_settings):
+            if isinstance(event, stt.SpeechEvent):
+                await self.handle_speech_event(event)
+            yield event
+
+    async def handle_speech_event(self, ev: Any) -> BargeInState:
+        """Handle STT SpeechEvent or transcript event for barge-in logic."""
+        if self._barge_in_engine is None:
+            return BargeInState.IDLE
+
+        state = self._barge_in_engine.on_speech_event(ev)
+        if state == BargeInState.INTERRUPTED:
+            await self._trigger_barge_in_interruption()
+        return state
+
+    async def on_speech_event(self, ev: Any) -> BargeInState:
+        """Alias for handle_speech_event."""
+        return await self.handle_speech_event(ev)
+
+    async def _trigger_barge_in_interruption(self) -> None:
+        """Execute real barge-in: interrupt LLM/TTS in < 50ms and send 40ms silence."""
+        session: AgentSession | None = None
+        with contextlib.suppress(Exception):
+            session = self.session
+
+        if session is None:
+            return
+
+        try:
+            # Cancel LLM/TTS immediately (< 50ms)
+            session.interrupt()
+            logger.info("[barge_in] real barge-in detected — interrupted bot speech")
+        except Exception as exc:
+            logger.warning("[barge_in] session.interrupt failed (fail-open): %s", exc)
+            return
+
+        # Send 40ms SIP silence packet
+        try:
+            silence_frame = create_silence_frame(
+                duration_ms=VOICE_BARGE_IN_SILENCE_PACKET_MS,
+                sample_rate=24000,
+                num_channels=1,
+            )
+
+            async def _single_frame() -> AsyncIterator[rtc.AudioFrame]:
+                yield silence_frame
+
+            session.say(
+                text="",
+                audio=_single_frame(),
+                allow_interruptions=False,
+                add_to_chat_ctx=False,
+            )
+        except Exception as exc:
+            logger.debug("[barge_in] sending silence packet notice: %s", exc)
 
     # ------------------------------------------------------------------
     # Internal helpers

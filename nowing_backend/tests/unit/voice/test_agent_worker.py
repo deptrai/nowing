@@ -11,6 +11,7 @@ Hermetic tests covering:
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -115,7 +116,6 @@ class TestFillerAudioBank:
 
 def _stub_worker(worker_id: int) -> None:
     """Module-level stub worker — picklable by multiprocessing."""
-    import time
     time.sleep(0.05)  # brief sleep then exit cleanly
 
 
@@ -940,3 +940,387 @@ class TestEntrypointMetadataPlumbing:
         assert kwargs["workspace_id"] is None
         assert kwargs["call_session_id"] == "s1"
         session.start.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Story 38.3: Anti-False-Interruption & Multi-tier Barge-in Integration
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestVoiceSDRAgentBargeIn:
+    """Tests for VoiceSDRAgent barge-in integration in tts_node and speech events."""
+
+    @staticmethod
+    def _session_with_say() -> MagicMock:
+        session = MagicMock()
+        handle = MagicMock()
+        handle.wait_for_playout = AsyncMock()
+        session.say = MagicMock(return_value=handle)
+        session.interrupt = MagicMock()
+        session.on = MagicMock()
+        return session
+
+    @staticmethod
+    def _make_tts_frame() -> object:
+        """A minimal valid TTS output frame (20ms @ 48kHz mono)."""
+        from livekit import rtc
+
+        return rtc.AudioFrame.create(
+            sample_rate=48000, num_channels=1, samples_per_channel=960
+        )
+
+    def test_barge_in_engine_flag_gated(self):
+        """SEQUENCER_VOICE_ENABLED=True enables engine; False leaves it None."""
+        from app.services.voice import agent_worker
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        with patch.object(agent_worker, "SEQUENCER_VOICE_ENABLED", True):
+            agent_enabled = VoiceSDRAgent()
+            assert agent_enabled.barge_in_engine is not None
+            assert agent_enabled.barge_in_engine.enabled is True
+
+        with patch.object(agent_worker, "SEQUENCER_VOICE_ENABLED", False):
+            agent_disabled = VoiceSDRAgent()
+            assert agent_disabled.barge_in_engine is None
+
+    @pytest.mark.asyncio
+    async def test_tts_node_applies_ducking_gain(self):
+        """tts_node applies ducking gain from BargeInEngine to audio frames."""
+        import numpy as np
+        from livekit import rtc
+
+        from app.services.voice.agent_worker import VoiceSDRAgent
+        from app.services.voice.barge_in import BargeInEngine, BargeInState
+
+        engine = BargeInEngine(enabled=True)
+        agent = VoiceSDRAgent(barge_in_engine=engine)
+
+        frame1 = rtc.AudioFrame.create(
+            sample_rate=24000, num_channels=1, samples_per_channel=4
+        )
+        samples = np.array([10000, -10000, 20000, -20000], dtype=np.int16)
+        frame1.data.cast("B")[:] = samples.tobytes()
+
+        frame2 = rtc.AudioFrame.create(
+            sample_rate=24000, num_channels=1, samples_per_channel=4
+        )
+        frame2.data.cast("B")[:] = samples.tobytes()
+
+        async def mock_default_tts_node(self_agent, clauses, model_settings):
+            async for _ in clauses:
+                pass
+            yield frame1
+            # Customer speaks after 450ms lockout -> triggers ducking
+            engine.on_speech_detected(
+                0.95, timestamp=engine._bot_speaking_started_at + 0.45
+            )
+            engine.ducking_controller.get_gain_db = MagicMock(return_value=-14.0)
+            yield frame2
+
+        async def text_stream():
+            yield "Chào bạn, tôi là trợ lý ảo."
+
+        with patch(
+            "livekit.agents.voice.agent.Agent.default.tts_node",
+            mock_default_tts_node,
+        ):
+            frames = [f async for f in agent.tts_node(text_stream(), MagicMock())]
+            assert len(frames) == 2
+
+            # Frame 1: before customer speaks, 0dB gain
+            res1 = np.frombuffer(frames[0].data, dtype=np.int16)
+            np.testing.assert_array_equal(res1, samples)
+
+            # Frame 2: after customer speaks, -14dB gain applied
+            res2 = np.frombuffer(frames[1].data, dtype=np.int16)
+            factor = 10.0 ** (-14.0 / 20.0)
+            expected = np.clip(
+                np.round(samples * factor), -32768, 32767
+            ).astype(np.int16)
+            np.testing.assert_array_equal(res2, expected)
+
+        # After tts_node generator completes, bot speech is stopped
+        assert engine.state == BargeInState.IDLE
+
+    @pytest.mark.asyncio
+    async def test_tts_node_passthrough_when_engine_disabled(self):
+        """When barge-in is disabled, tts_node passes frames through unmodified."""
+        import numpy as np
+        from livekit import rtc
+
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent(barge_in_engine=None)
+
+        frame = rtc.AudioFrame.create(
+            sample_rate=24000, num_channels=1, samples_per_channel=4
+        )
+        samples = np.array([5000, -5000, 10000, -10000], dtype=np.int16)
+        frame.data.cast("B")[:] = samples.tobytes()
+
+        async def mock_default_tts_node(self_agent, clauses, model_settings):
+            async for _ in clauses:
+                pass
+            yield frame
+
+        async def text_stream():
+            yield "Hello"
+
+        with patch(
+            "livekit.agents.voice.agent.Agent.default.tts_node",
+            mock_default_tts_node,
+        ):
+            frames = [f async for f in agent.tts_node(text_stream(), MagicMock())]
+            assert len(frames) == 1
+            res = np.frombuffer(frames[0].data, dtype=np.int16)
+            np.testing.assert_array_equal(res, samples)
+
+    @pytest.mark.asyncio
+    async def test_preflight_transcript_triggers_interrupt_and_silence_packet(self):
+        """PREFLIGHT_TRANSCRIPT for real speech calls session.interrupt and silence."""
+        from livekit.agents import stt
+
+        from app.services.voice.agent_worker import (
+            BargeInEngine,
+            BargeInState,
+            VoiceSDRAgent,
+        )
+
+        session = self._session_with_say()
+        engine = BargeInEngine(enabled=True)
+        agent = VoiceSDRAgent(barge_in_engine=engine)
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ):
+            # Bot speech started 1 second ago
+            t0 = 1000.0
+            engine.on_bot_speech_started(timestamp=t0)
+
+            # Customer interrupts with real speech
+            ev = stt.SpeechEvent(
+                type=stt.SpeechEventType.PREFLIGHT_TRANSCRIPT,
+                alternatives=[
+                    stt.SpeechData(
+                        text="Khoan đã em ơi",
+                        language="vi",
+                        confidence=0.95,
+                    )
+                ],
+            )
+
+            state = await agent.handle_speech_event(ev)
+            assert state == BargeInState.INTERRUPTED
+
+            # session.interrupt() called to kill turn in < 50ms
+            session.interrupt.assert_called_once()
+
+            # 40ms silence packet sent. allow_interruptions=False so the
+            # silence dispatches immediately instead of queueing behind
+            # _user_silence_event (the customer is mid-barge-in, not silent).
+            session.say.assert_called_once()
+            say_kwargs = session.say.call_args
+            text_arg = say_kwargs.kwargs.get("text", say_kwargs.args[0] if say_kwargs.args else "")
+            assert text_arg == ""
+            assert say_kwargs.kwargs["allow_interruptions"] is False
+            assert say_kwargs.kwargs["add_to_chat_ctx"] is False
+
+    @pytest.mark.asyncio
+    async def test_preflight_transcript_filler_does_not_interrupt(self):
+        """PREFLIGHT_TRANSCRIPT with filler ('dạ') recovers gain, no interrupt."""
+        from livekit.agents import stt
+
+        from app.services.voice.agent_worker import (
+            BargeInEngine,
+            BargeInState,
+            VoiceSDRAgent,
+        )
+
+        session = self._session_with_say()
+        engine = BargeInEngine(enabled=True)
+        agent = VoiceSDRAgent(barge_in_engine=engine)
+
+        with patch.object(
+            VoiceSDRAgent, "session", property(lambda self: session)
+        ):
+            t0 = 1000.0
+            engine.on_bot_speech_started(timestamp=t0)
+
+            # Customer says conversational filler
+            ev = stt.SpeechEvent(
+                type=stt.SpeechEventType.PREFLIGHT_TRANSCRIPT,
+                alternatives=[
+                    stt.SpeechData(
+                        text="dạ",
+                        language="vi",
+                        confidence=0.95,
+                    )
+                ],
+            )
+
+            state = await agent.handle_speech_event(ev)
+            assert state == BargeInState.IDLE
+
+            session.interrupt.assert_not_called()
+            session.say.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_stt_node_forwards_speech_events_to_barge_in(self):
+        """stt_node is the in-pipeline hook — it must feed handle_speech_event.
+
+        The AgentSession has no "speech_event" emission, so stt_node is the
+        ONLY path by which STT speech events reach the barge-in engine.
+        """
+        from livekit.agents import stt as livekit_stt
+        from livekit.agents.voice.agent import Agent
+
+        from app.services.voice.agent_worker import (
+            BargeInEngine,
+            VoiceSDRAgent,
+        )
+
+        engine = BargeInEngine(enabled=True)
+        agent = VoiceSDRAgent(barge_in_engine=engine)
+        event = livekit_stt.SpeechEvent(
+            type=livekit_stt.SpeechEventType.INTERIM_TRANSCRIPT,
+            alternatives=[
+                livekit_stt.SpeechData(
+                    language="vi", text="khoan đã", confidence=0.95
+                )
+            ],
+        )
+
+        async def _default_stt_node(agent_inst, audio, model_settings):
+            yield event
+
+        async def _empty_audio():
+            if False:
+                yield None
+
+        with patch.object(Agent.default, "stt_node", _default_stt_node):
+            out = [e async for e in agent.stt_node(_empty_audio(), MagicMock())]
+            assert engine.state is not None
+
+        assert out == [event], "stt_node must forward the event downstream"
+        assert engine.state.name in {"IDLE", "DUCKING", "INTERRUPTED"}
+
+    @pytest.mark.asyncio
+    async def test_stt_node_invokes_handle_speech_event(self):
+        """Regression guard: stt_node must call handle_speech_event per event.
+
+        Removing the `await self.handle_speech_event(event)` line inside
+        stt_node would silently disable the whole barge-in pipeline while
+        every other test still passed.
+        """
+        from livekit.agents import stt as livekit_stt
+        from livekit.agents.voice.agent import Agent
+
+        from app.services.voice.agent_worker import VoiceSDRAgent
+
+        agent = VoiceSDRAgent()
+        event = livekit_stt.SpeechEvent(
+            type=livekit_stt.SpeechEventType.INTERIM_TRANSCRIPT,
+            alternatives=[
+                livekit_stt.SpeechData(language="vi", text="khoan đã")
+            ],
+        )
+
+        async def _default_stt_node(agent_inst, audio, model_settings):
+            yield event
+
+        seen: list[object] = []
+
+        async def _spy(ev: object) -> None:
+            seen.append(ev)
+
+        async def _empty_audio():
+            if False:
+                yield None
+
+        with (
+            patch.object(Agent.default, "stt_node", _default_stt_node),
+            patch.object(agent, "handle_speech_event", _spy),
+        ):
+            out = [e async for e in agent.stt_node(_empty_audio(), MagicMock())]
+
+        assert out == [event]
+        assert seen == [event], "stt_node must route each SpeechEvent to the engine"
+
+    @pytest.mark.asyncio
+    async def test_tts_node_checks_kws_timeout_each_frame(self):
+        """tts_node evaluates check_timeouts per frame so DUCKING cannot stick."""
+        from livekit.agents.voice.agent import Agent
+
+        from app.services.voice.agent_worker import (
+            BargeInEngine,
+            VoiceSDRAgent,
+        )
+
+        engine = BargeInEngine(enabled=True)
+        agent = VoiceSDRAgent(barge_in_engine=engine)
+
+        async def _default_tts_node(agent_inst, text, model_settings):
+            for _ in range(3):
+                yield self._make_tts_frame()
+
+        async def _empty_text():
+            if False:
+                yield ""
+
+        checked: list[int] = []
+        real_check = engine.check_timeouts
+        engine.check_timeouts = lambda *a, **k: (  # type: ignore[method-assign]
+            checked.append(1) or real_check(*a, **k)
+        )
+
+        with patch.object(Agent.default, "tts_node", _default_tts_node):
+            frames = [f async for f in agent.tts_node(_empty_text(), MagicMock())]
+
+        assert len(frames) == 3
+        assert len(checked) == 3, "tts_node must evaluate check_timeouts every frame"
+
+    @pytest.mark.asyncio
+    async def test_tts_node_interrupts_when_kws_deadline_expires(self):
+        """A stuck DUCKING (no transcript) must escalate to a real interrupt."""
+        from livekit.agents.voice.agent import Agent
+
+        from app.services.voice.agent_worker import (
+            BargeInEngine,
+            BargeInState,
+            VoiceSDRAgent,
+        )
+
+        engine = BargeInEngine(enabled=True)
+        agent = VoiceSDRAgent(barge_in_engine=engine)
+        session = self._session_with_say()
+
+        async def _default_tts_node(agent_inst, text, model_settings):
+            for _ in range(4):
+                yield self._make_tts_frame()
+
+        async def _empty_text():
+            if False:
+                yield ""
+
+        # Simulate an already-expired KWS deadline. The deadline arithmetic
+        # itself is covered in test_barge_in.py; this test only asserts the
+        # tts_node → interrupt wiring. (tts_node calls on_bot_speech_started()
+        # on the first frame, which would otherwise reset the engine state.)
+        engine.check_timeouts = lambda *a, **k: BargeInState.INTERRUPTED  # type: ignore[method-assign]
+
+        triggered: list[bool] = []
+
+        async def _fake_interrupt() -> None:
+            triggered.append(True)
+
+        with (
+            patch.object(Agent.default, "tts_node", _default_tts_node),
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(agent, "_trigger_barge_in_interruption", _fake_interrupt),
+        ):
+            async for _ in agent.tts_node(_empty_text(), MagicMock()):
+                pass
+
+        assert triggered, "expired KWS deadline must trigger a barge-in interrupt"
+

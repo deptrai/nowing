@@ -65,6 +65,35 @@ VOICE_MAX_CALLS_PER_WORKER = _positive_int_env("VOICE_MAX_CALLS_PER_WORKER", 12)
 VOICE_VAD_MIN_SILENCE_MS = _positive_int_env("VOICE_VAD_MIN_SILENCE_MS", 180)
 VOICE_VAD_SPEECH_THRESHOLD = _safe_float_env("VOICE_VAD_SPEECH_THRESHOLD", 0.5)
 
+
+def _safe_float_unbounded_env(key: str, default: float) -> float:
+    """Parse a float env var without clamping to [0, 1]."""
+    val = os.getenv(key)
+    if val is None or not val.strip():
+        return default
+    try:
+        return float(val.strip())
+    except (ValueError, TypeError):
+        return default
+
+
+# Barge-in Engine Configuration (Story 38.3)
+VOICE_BARGE_IN_ECHO_LOCKOUT_MS = _positive_int_env("VOICE_BARGE_IN_ECHO_LOCKOUT_MS", 400)
+VOICE_BARGE_IN_DUCKING_DB = _safe_float_unbounded_env("VOICE_BARGE_IN_DUCKING_DB", -14.0)
+VOICE_BARGE_IN_DUCKING_RAMP_MS = _positive_int_env("VOICE_BARGE_IN_DUCKING_RAMP_MS", 30)
+VOICE_BARGE_IN_KWS_TIMEOUT_MS = _positive_int_env("VOICE_BARGE_IN_KWS_TIMEOUT_MS", 280)
+VOICE_BARGE_IN_SILENCE_PACKET_MS = _positive_int_env("VOICE_BARGE_IN_SILENCE_PACKET_MS", 40)
+VOICE_BARGE_IN_INTERRUPT_DEADLINE_MS = _positive_int_env(
+    "VOICE_BARGE_IN_INTERRUPT_DEADLINE_MS", 50
+)
+VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD = _safe_float_env(
+    "VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD", 0.88
+)
+VOICE_BARGE_IN_BACKCHANNEL_WORDS = os.getenv(
+    "VOICE_BARGE_IN_BACKCHANNEL_WORDS",
+    "ừ,dạ,vâng,ờ,ừm,dạ rồi,dạ vâng,vâng ạ,ok,okay,mm",
+)
+
 # Filler audio directory (pre-loaded to RAM at worker startup)
 VOICE_FILLER_DIR = os.path.normpath(
     os.getenv(
@@ -98,6 +127,14 @@ __all__ = [
     "SIP_OUTBOUND_GATEWAY_PORT",
     "SIP_RINGING_TIMEOUT_SECONDS",
     "SIP_ROOM_PREFIX",
+    "VOICE_BARGE_IN_BACKCHANNEL_WORDS",
+    "VOICE_BARGE_IN_DUCKING_DB",
+    "VOICE_BARGE_IN_DUCKING_RAMP_MS",
+    "VOICE_BARGE_IN_ECHO_LOCKOUT_MS",
+    "VOICE_BARGE_IN_INTERRUPT_DEADLINE_MS",
+    "VOICE_BARGE_IN_KWS_TIMEOUT_MS",
+    "VOICE_BARGE_IN_SILENCE_PACKET_MS",
+    "VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD",
     "VOICE_FILLER_DIR",
     "VOICE_LLM_PROVIDER",
     "VOICE_MAX_CALLS_PER_WORKER",
