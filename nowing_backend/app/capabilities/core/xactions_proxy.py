@@ -68,7 +68,10 @@ def make_xactions_executor(
         except XActionsMcpError as exc:
             logger.warning(
                 "XActions error for %s.%s: code=%s message=%s",
-                platform, action, exc.code, exc.message,
+                platform,
+                action,
+                exc.code,
+                exc.message,
             )
             raise _map_xactions_error(exc) from exc
         except Exception as exc:
@@ -177,13 +180,17 @@ async def xactions_scrape_or_local(
         logger.warning(
             "xactions_scrape_or_local: XActions unavailable for %s.%s (%s) — "
             "falling back to local scraper",
-            platform, action, exc,
+            platform,
+            action,
+            exc,
         )
     except Exception as exc:  # gateway down must not break scraping
         logger.warning(
             "xactions_scrape_or_local: XActions call failed for %s.%s (%s) — "
             "falling back to local scraper",
-            platform, action, exc,
+            platform,
+            action,
+            exc,
         )
 
     return await local_fn()

@@ -98,7 +98,9 @@ def build_scrape_executor(scrape_fn: Optional[ScrapeFn] = None) -> Executor:  # 
                     degradation_reason=raw.get("degradation_reason"),
                     next_action=_next_action(raw.get("degradation_reason")),
                 )
-            items = (raw.get("items", []) if isinstance(raw, dict) else raw)[: input.max_items]
+            items = (raw.get("items", []) if isinstance(raw, dict) else raw)[
+                : input.max_items
+            ]
         except httpx.TimeoutException:
             return ScrapeOutput(
                 items=items,
@@ -107,7 +109,9 @@ def build_scrape_executor(scrape_fn: Optional[ScrapeFn] = None) -> Executor:  # 
                 degradation_reason="timeout",
                 next_action=_next_action("timeout"),
             )
-        except Exception:  # unexpected fetch/parse error → structured degraded failure response
+        except (
+            Exception
+        ):  # unexpected fetch/parse error → structured degraded failure response
             return ScrapeOutput(
                 items=items,
                 cost_micros=0,

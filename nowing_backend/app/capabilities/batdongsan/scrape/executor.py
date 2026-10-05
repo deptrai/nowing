@@ -104,6 +104,7 @@ def build_scrape_executor(
             total=payload.max_items,
             unit="item",
         )
+
         async def _local() -> BatdongsanScrapeOutput | dict[str, Any]:
             kwargs: dict[str, Any] = {
                 "limit": payload.max_items,
@@ -153,7 +154,9 @@ def build_scrape_executor(
                 degradation_reason="bot_detected",
                 next_action=_next_action("bot_detected"),
             )
-        except Exception as exc:  # unexpected actor failure → structured degraded failure response
+        except (
+            Exception
+        ) as exc:  # unexpected actor failure → structured degraded failure response
             logger.exception("batdongsan.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],
