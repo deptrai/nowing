@@ -10,6 +10,7 @@ import httpx
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
+from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.config import config
 from app.proprietary.platforms.vietnamworks import scrape_vietnamworks
 
@@ -47,12 +48,12 @@ def build_scrape_executor(scrape_fn: Optional[ScrapeFn] = None) -> Executor:  # 
 
         items: list[dict[str, Any]] = []
 
-        try:
+        async def _local() -> dict[str, Any]:
+            local_items: list[dict[str, Any]] = []
             for page in range(1, input.max_pages + 1):
-                remaining = input.max_items - len(items)
+                remaining = input.max_items - len(local_items)
                 if remaining <= 0:
                     break
-
                 hits_per_page = min(remaining, config.VIETNAMWORKS_MAX_ITEMS)
                 page_params = {
                     **params,
@@ -62,30 +63,42 @@ def build_scrape_executor(scrape_fn: Optional[ScrapeFn] = None) -> Executor:  # 
                     "hitsPerPage": hits_per_page,
                 }
                 raw = await _scrape(page_params)
-
                 if raw.get("degraded"):
-                    return ScrapeOutput(
-                        items=items,
-                        cost_micros=0,
-                        degraded=True,
-                        degradation_reason=raw.get("degradation_reason"),
-                        next_action=_next_action(raw.get("degradation_reason")),
-                    )
-
+                    return raw
                 page_items = raw.get("items", [])
                 if not page_items:
                     break
-
-                items.extend(page_items)
-                if len(items) >= input.max_items:
+                local_items.extend(page_items)
+                if len(local_items) >= input.max_items:
                     break
-
-                # If the scraper already reached the end of the result set, stop early.
                 if raw.get("meta", {}).get("nbPages") is not None and page >= int(
                     raw["meta"]["nbPages"]
                 ):
                     break
+            return {"items": local_items, "degraded": False}
 
+        try:
+            raw = await xactions_scrape_or_local(
+                platform="vietnamworks",
+                action="search_jobs",
+                args={
+                    "keyword": input.keyword,
+                    "location": getattr(input, "location", None),
+                    "maxItems": input.max_items,
+                    "maxPages": input.max_pages,
+                },
+                local_fn=_local,
+                ctx=ctx,
+            )
+            if isinstance(raw, dict) and raw.get("degraded"):
+                return ScrapeOutput(
+                    items=raw.get("items", []),
+                    cost_micros=0,
+                    degraded=True,
+                    degradation_reason=raw.get("degradation_reason"),
+                    next_action=_next_action(raw.get("degradation_reason")),
+                )
+            items = (raw.get("items", []) if isinstance(raw, dict) else raw)[: input.max_items]
         except httpx.TimeoutException:
             return ScrapeOutput(
                 items=items,

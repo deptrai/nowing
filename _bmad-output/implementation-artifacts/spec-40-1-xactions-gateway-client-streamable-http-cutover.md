@@ -18,14 +18,14 @@ deferred: []
 
 **Problem:** Nowing hiện vẫn duy trì một lớp adapter XActions cũ (`adapter.py`) chạy stdio/spawn và một lớp adapter mới (`adapter_v2.py`) chạy Streamable-HTTP, nhưng chưa có cơ chế chuyển đổi thống nhất, fail-fast và circuit breaker khi XActions lỗi — gây treo worker và không ổn định khi proxy/XActions gặp sự cố.
 
-**Approach:** Hoàn thiện và kích hoạt `adapter_v2.py` + `XActionsMcpClient` như đường cào chính thức: thêm timeout 4.0s, Circuit Breaker (3 lỗi liên tiếp → OPEN 60s), giữ fallback sang tool legacy khi `x_scrape` chưa sẵn sàng, và điều khiển toàn bộ bằng feature flag `NOWING_XACTIONS_USE_V2`.
+**Approach:** Hoàn thiện và kích hoạt `adapter_v2.py` + `XActionsMcpClient` như đường cào chính thức: thêm timeout 4.0s, Circuit Breaker (3 lỗi liên tiếp → OPEN 60s), giữ fallback sang tool legacy khi `x_scrape` chưa sẵn sàng, và điều khiển toàn bộ bằng feature flag `XACTIONS_USE_UNIFIED_DISPATCH` (đã tồn tại tại `app/config/entities.py:106`, default `false`; tên `NOWING_XACTIONS_USE_V2` trong bản spec đầu là sai — đã hiệu chỉnh theo AI-40.3).
 
 ## Boundaries & Constraints
 
 **Always:**
 - Chỉ sửa code trong `nowing_backend/app/proprietary/platforms/xactions/` và file config/feature flag liên quan.
 - Mọi call `x_scrape` phải đóng gói payload `{platform, action, args, context}` với `context.targetId`/`workspaceId` đúng AD-2.
-- Circuit Breaker phải fail-fast với `PlatformError(XACT_4001, "scraper_temporarily_unavailable")` khi OPEN; không giữ worker chờ.
+- Circuit Breaker phải fail-fast với `XActionsMcpError(XACT_4001, "scraper_temporarily_unavailable")` khi OPEN; không giữ worker chờ. (AI-40.4: `XActionsMcpError` là error contract chuẩn — `PlatformError` không tồn tại trong codebase Nowing.)
 - Preview response ≤30 records phải trả về đồng bộ; bulk response phải trả `stream: true` và stream pointer `stream:social:raw_posts`.
 - Giữ nguyên backward compatibility: `x_scrape` chưa có trên XActions → fallback sang per-platform tools (`x_get_profile`, `x_crawl_post`, …) và log warning.
 
@@ -40,10 +40,10 @@ deferred: []
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
 | HAPPY_PATH | `x_scrape` available, payload hợp lệ | Preview ≤30 records trả về ngay; `stream=true` + pointer cho bulk | None |
-| XACTIONS_DOWN | `XActionsMcpClient` connect fail / timeout 4s | `PlatformError(XACT_4001)` trả về ngay, circuit breaker OPEN 60s | Log error, không retry trong 60s |
+| XACTIONS_DOWN | `XActionsMcpClient` connect fail / timeout 4s | `XActionsMcpError(XACT_4001)` trả về ngay, circuit breaker OPEN 60s | Log error, không retry trong 60s |
 | TOOL_NOT_FOUND | `x_scrape` trả `tool_not_found` | Fallback sang tool legacy (`x_crawl_post`, `x_get_profile`…) | Log warning, trả kết quả từ fallback |
-| CIRCUIT_OPEN | Circuit breaker đang OPEN | `PlatformError(XACT_4001)` ngay lập tức, không gọi mạng | Trả lỗi ngay, đo latency ~0ms |
-| INVALID_ARGS | `args` thiếu trường bắt buộc | XActions trả `XACT_4002` → propagate error envelope | Map sang `PlatformError` chuẩn |
+| CIRCUIT_OPEN | Circuit breaker đang OPEN | `XActionsMcpError(XACT_4001)` ngay lập tức, không gọi mạng | Trả lỗi ngay, đo latency ~0ms |
+| INVALID_ARGS | `args` thiếu trường bắt buộc | XActions trả `XACT_4002` → propagate error envelope | Map sang `XActionsMcpError` chuẩn |
 
 </intent-contract>
 
@@ -53,7 +53,7 @@ deferred: []
 - `nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py` — `XActionsAdapterV2`, `_legacy_scrape_args`, `derive_platform_action`, fallback logic.
 - `nowing_backend/app/proprietary/platforms/xactions/action_matrix.py` — `CanonicalActionMatrix`, `ActionDescriptor`, `get()`/`get_sync()` fetch `x_actions_list`.
 - `nowing_backend/app/proprietary/platforms/xactions/constants.py` — `STREAM_SOCIAL_RAW_POSTS`, timeout/env defaults.
-- `nowing_backend/app/config/feature_flags.py` — `enable_xactions_v2` (env `NOWING_XACTIONS_USE_V2`), cần verify flag tồn tại và được dùng để chọn adapter.
+- `nowing_backend/app/config/entities.py` — `XACTIONS_USE_UNIFIED_DISPATCH` (env cùng tên, default `false`) — flag thật điều khiển việc chọn adapter (đã tồn tại, không cần thêm `enable_xactions_v2`).
 - `nowing_backend/app/services/circuit_breaker.py` (nếu có) hoặc implement trong `mcp_client.py` — circuit breaker state (in-memory singleton hoặc Redis key `xactions_cb:{platform}`).
 
 ## Tasks & Acceptance
@@ -61,16 +61,16 @@ deferred: []
 **Execution:**
 - `nowing_backend/app/proprietary/platforms/xactions/mcp_client.py` — Add 4.0s timeout per `call_tool` (read from `XACTIONS_MCP_TIMEOUT` env, default 60s cho long-running, nhưng áp 4s cho connectivity/health probe). Thêm `_CircuitBreaker` singleton: đếm lỗi liên tiếp, OPEN 60s khi ≥3 lỗi, trả `XActionsMcpError` với code `XACT_4001`.
 - `nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py` — Đảm bảo `scrape()`/`stream()` gọi `x_scrape` khi `CanonicalActionMatrix` có mapping; fallback sang `PLATFORM_TOOL_MAP` nếu `x_scrape` missing hoặc `tool_not_found`. Log warning khi fallback.
-- `nowing_backend/app/config/feature_flags.py` — Verify `enable_xactions_v2` flag (env `NOWING_XACTIONS_USE_V2`) tồn tại; nếu chưa có thì thêm, default `false` để tránh breaking existing deployments.
+- `nowing_backend/app/config/entities.py` — `XACTIONS_USE_UNIFIED_DISPATCH` đã tồn tại (default `false`) — không cần thêm flag mới.
 - `nowing_backend/tests/unit/proprietary/platforms/xactions/test_mcp_client.py` — Unit test timeout, circuit breaker open/close/half-open.
 - `nowing_backend/tests/unit/proprietary/platforms/xactions/test_adapter_v2.py` — Test `x_scrape` primary path, fallback path, error mapping `XACT_4001`.
 
 **Acceptance Criteria:**
-- Given `NOWING_XACTIONS_USE_V2=true` và XActions daemon chạy trên `:3001`, when adapter_v2 gọi scrape, then request gửi qua `XActionsMcpClient.call_tool("x_scrape", payload)` với `platform`, `action`, `args`, `context` đúng.
-- Given XActions trả lỗi 5xx/timeout 3 lần liên tiếp, when lần gọi thứ 4, then client trả `PlatformError(XACT_4001)` ngay lập tức trong vòng 60s mà không gọi mạng.
+- Given `XACTIONS_USE_UNIFIED_DISPATCH=true` và XActions daemon chạy trên `:3001`, when adapter_v2 gọi scrape, then request gửi qua `XActionsMcpClient.call_tool("x_scrape", payload)` với `platform`, `action`, `args`, `context` đúng.
+- Given XActions trả lỗi 5xx/timeout 3 lần liên tiếp, when lần gọi thứ 4, then client trả `XActionsMcpError(XACT_4001)` ngay lập tức trong vòng 60s mà không gọi mạng.
 - Given `x_scrape` trả `tool_not_found`, when fallback chạy, then `adapter_v2` gọi tool legacy phù hợp và log warning.
 - Given `x_scrape` trả preview ≤30 records, when adapter nhận response, then trả về `PaginatedResponse` với `data` đúng và `stream` metadata nếu có.
-- Given flag `enable_xactions_v2=false`, when ingest job chạy, then hệ thống dùng adapter cũ (`adapter.py`) như hiện tại, không có thay đổi hành vi.
+- Given flag `XACTIONS_USE_UNIFIED_DISPATCH=false`, when ingest job chạy, then hệ thống dùng adapter cũ (`adapter.py`) như hiện tại, không có thay đổi hành vi.
 
 ## Spec Change Log
 
@@ -94,7 +94,8 @@ deferred: []
 
 ## Auto Run Result
 
-**Status**: in-review
+**Status**: done
+*(AI-40.6: cập nhật từ `in-review` — các critical findings đã fix, 85/85 tests pass; metadata lệch được phát hiện trong Epic 40 retrospective 2026-10-06.)*
 
 **Summary of implemented change:**
 - Thêm `XActionsCircuitBreaker` tại `app/proprietary/platforms/xactions/circuit_breaker.py` với 3 states (CLOSED → OPEN → HALF_OPEN), failure_threshold=3, recovery_timeout=60s.
@@ -126,7 +127,7 @@ deferred: []
 
 **Residual risks:**
 - Circuit breaker chỉ in-memory, chưa dùng Redis để share giữa multi-process workers (theo design note trong spec — nâng cấp sau).
-- `XACT_4001` mapping vẫn qua `XActionsMcpError` thay vì `PlatformError` — cần verify xem `PlatformError` có tồn tại trong codebase không, hoặc đây là convention mới cần thêm.
-- Story 40.1 không implement feature flag `NOWING_XACTIONS_USE_V2` (đã có `XACTIONS_USE_UNIFIED_DISPATCH` trong code) — cần follow-up nếu muốn rename.
+- `XACT_4001` mapping qua `XActionsMcpError` — AI-40.4 đã chốt: `XActionsMcpError` là error contract chuẩn vì `PlatformError` không tồn tại trong codebase Nowing.
+- AI-40.3 đã chốt: feature flag chuẩn là `XACTIONS_USE_UNIFIED_DISPATCH` (`app/config/entities.py:106`); tên `NOWING_XACTIONS_USE_V2` trong spec đầu là sai và đã được hiệu chỉnh toàn bộ spec này.
 
 **followup_review_recommended:** false — các critical findings đã được fix và test coverage đầy đủ.

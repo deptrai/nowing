@@ -14,6 +14,7 @@ import logging
 from typing import Any
 
 from app.capabilities.core.types import CapabilityContext
+from app.config import config
 from app.exceptions import ExternalServiceError
 from app.proprietary.platforms.xactions.mcp_client import (
     XActionsMcpError,
@@ -121,3 +122,68 @@ def _map_generic_error(exc: Exception) -> Exception:
         f"XActions scrape failed: {exc}",
         code="XACTIONS_UPSTREAM_ERROR",
     )
+
+
+class _ProxyArgs:
+    """Minimal input shim so the proxy executor can read args without a pydantic model.
+
+    ``make_xactions_executor`` reads ``input.model_dump()`` when no ``args_mapper``
+    is supplied — this shim exposes the raw dict through that interface.
+    """
+
+    def __init__(self, args: dict[str, Any]):
+        self._args = args
+
+    def model_dump(self, **_kwargs: Any) -> dict[str, Any]:
+        return dict(self._args)
+
+
+def _is_tool_not_found(exc: XActionsMcpError) -> bool:
+    """Mirror adapter_v2's tool_not_found detection (Story 40.2 local fallback)."""
+    code_str = str(exc.code) if exc.code is not None else ""
+    if code_str in ("XACT_404", "tool_not_found", "404"):
+        return True
+    msg_lower = (exc.message or "").lower()
+    return "tool_not_found" in msg_lower or "tool not found" in msg_lower
+
+
+async def xactions_scrape_or_local(
+    platform: str,
+    action: str,
+    args: dict[str, Any],
+    local_fn: Any,
+    ctx: CapabilityContext | None = None,
+) -> dict[str, Any]:
+    """Try the XActions gateway first; fall back to the local scraper on
+    tool_not_found / connectivity failure (Story 40.2 residual — local
+    decommission lands when XActions covers every platform action).
+
+    Only attempts the gateway when ``XACTIONS_USE_UNIFIED_DISPATCH`` is enabled;
+    otherwise calls ``local_fn`` directly so scrapes never pay an MCP connect
+    probe when the cutover flag is off (the common case until rollout completes).
+
+    Returns the proxy executor's raw result dict on the XActions path, or the
+    local fallback's result. Raises only when both paths fail.
+    """
+    if not getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+        return await local_fn()
+
+    try:
+        proxy = make_xactions_executor(platform=platform, action=action)
+        return await proxy(_ProxyArgs(args), ctx)
+    except ExternalServiceError as exc:
+        if getattr(exc, "code", None) == "XACT_4001":
+            raise  # circuit open — fail fast, do not hammer the local path
+        logger.warning(
+            "xactions_scrape_or_local: XActions unavailable for %s.%s (%s) — "
+            "falling back to local scraper",
+            platform, action, exc,
+        )
+    except Exception as exc:  # gateway down must not break scraping
+        logger.warning(
+            "xactions_scrape_or_local: XActions call failed for %s.%s (%s) — "
+            "falling back to local scraper",
+            platform, action, exc,
+        )
+
+    return await local_fn()

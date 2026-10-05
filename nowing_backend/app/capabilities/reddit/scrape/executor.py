@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
+from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.capabilities.reddit.scrape.schemas import ScrapeInput, ScrapeOutput
 from app.exceptions import ForbiddenError
 from app.proprietary.platforms.reddit import (
@@ -13,6 +14,7 @@ from app.proprietary.platforms.reddit import (
     RedditScrapeInput,
     scrape_reddit,
 )
+from app.proprietary.platforms.reddit.schemas import StartUrl
 
 ScrapeFn = Callable[..., Awaitable[list[dict]]]
 
@@ -23,7 +25,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
 
     async def execute(payload: ScrapeInput) -> ScrapeOutput:
         actor_input = RedditScrapeInput(
-            startUrls=[{"url": url} for url in payload.urls],
+            startUrls=[StartUrl(url=str(u)) for u in payload.urls],
             searches=payload.search_queries,
             searchCommunityName=payload.community,
             sort=payload.sort,
@@ -39,15 +41,36 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         emit_progress(
             "starting", "Resolving Reddit targets", total=payload.max_items, unit="item"
         )
-        try:
-            items = await scrape_fn(actor_input, limit=payload.max_items)
-        except RedditAccessBlockedError as exc:
-            # Anonymous-only scraper; a hard block can't be retried with creds.
-            # Mirror google_maps' SignInRequiredError -> ForbiddenError mapping.
-            raise ForbiddenError(
-                f"Reddit refused anonymous access: {exc}",
-                code="REDDIT_ACCESS_BLOCKED",
-            ) from exc
+
+        async def _local() -> list[dict]:
+            try:
+                return await scrape_fn(actor_input, limit=payload.max_items)
+            except RedditAccessBlockedError as exc:
+                # Anonymous-only scraper; a hard block can't be retried with creds.
+                # Mirror google_maps' SignInRequiredError -> ForbiddenError mapping.
+                raise ForbiddenError(
+                    f"Reddit refused anonymous access: {exc}",
+                    code="REDDIT_ACCESS_BLOCKED",
+                ) from exc
+
+        raw = await xactions_scrape_or_local(
+            platform="reddit",
+            action="search",
+            args={
+                "urls": [str(u) for u in payload.urls],
+                "searches": payload.search_queries,
+                "searchCommunityName": payload.community,
+                "sort": payload.sort,
+                "time": payload.time_filter,
+                "includeNSFW": payload.include_nsfw,
+                "skipComments": payload.skip_comments,
+                "maxItems": payload.max_items,
+                "maxPostCount": payload.max_posts,
+                "maxComments": payload.max_comments,
+            },
+            local_fn=_local,
+        )
+        items = raw.get("items", []) if isinstance(raw, dict) else raw
         emit_progress(
             "done", f"Scraped {len(items)} item(s)", current=len(items), unit="item"
         )

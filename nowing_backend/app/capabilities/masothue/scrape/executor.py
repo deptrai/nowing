@@ -10,6 +10,7 @@ from typing import Any
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
+from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.config import config
 from app.proprietary.platforms.masothue import (
     MasothueAccessBlockedError,
@@ -69,8 +70,17 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             unit="company",
         )
 
+        async def _local() -> MasothueScrapeOutput | dict[str, Any]:
+            return await scrape(actor_input)
+
         try:
-            raw = await scrape(actor_input)
+            raw = await xactions_scrape_or_local(
+                platform="masothue",
+                action="search",
+                args=payload.model_dump(exclude_unset=True),
+                local_fn=_local,
+                ctx=ctx,
+            )
         except MasothueRateLimitedError:
             logger.exception("masothue.scrape rate limited")
             return ScrapeOutput(

@@ -8,6 +8,7 @@ from typing import Any
 
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
+from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.config import config
 from app.proprietary.platforms.chotot import (
     CategoryConfigError,
@@ -107,8 +108,17 @@ def build_scrape_executor(
             total=payload.max_items,
             unit="item",
         )
+        async def _local() -> ChototScrapeOutput:
+            return await scrape_fn(actor_input, limit=payload.max_items)
+
         try:
-            raw = await scrape_fn(actor_input, limit=payload.max_items)
+            raw = await xactions_scrape_or_local(
+                platform="chotot",
+                action="search_listings",
+                args=payload.model_dump(),
+                local_fn=_local,
+                ctx=ctx,
+            )
         except ChototBdsRateLimitedError:
             logger.exception("chotot.scrape rate limited")
             _maybe_escalate(ctx, "rate_limited")
