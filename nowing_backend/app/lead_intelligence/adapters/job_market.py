@@ -156,20 +156,21 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
             (c.value for c in candidates if c.channel == "email"), None
         )
 
-        source_url = (
-            data.get("url")
-            or data.get("job_url")
-            or data.get("source_url")
-        )
+        source_url = data.get("url") or data.get("job_url") or data.get("source_url")
         if source_url:
             data["source_url"] = source_url
 
-        default_domain = "itviec.com" if (raw_record.source_name == "itviec" or (source_url and "itviec" in source_url)) else "topcv.vn"
+        default_domain = (
+            "itviec.com"
+            if (
+                raw_record.source_name == "itviec"
+                or (source_url and "itviec" in source_url)
+            )
+            else "topcv.vn"
+        )
         domain = (
             _extract_domain(
-                data.get("company_website")
-                or data.get("website")
-                or source_url
+                data.get("company_website") or data.get("website") or source_url
             )
             or default_domain
         )

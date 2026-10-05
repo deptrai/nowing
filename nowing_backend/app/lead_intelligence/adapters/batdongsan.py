@@ -48,9 +48,7 @@ def _derive_bds_company_name(data: dict[str, Any]) -> str:
     Prevents classified ad titles from being treated as company names.
     """
     project_or_agency = (
-        data.get("project_name")
-        or data.get("agency_name")
-        or data.get("company_name")
+        data.get("project_name") or data.get("agency_name") or data.get("company_name")
     )
     if project_or_agency and str(project_or_agency).strip():
         return str(project_or_agency).strip()[:200]
@@ -259,11 +257,7 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
 
         # Ensure raw_data carries industry and source_url
         data["industry"] = data.get("industry") or "Bất động sản"
-        source_url = (
-            data.get("url")
-            or data.get("detail_url")
-            or data.get("source_url")
-        )
+        source_url = data.get("url") or data.get("detail_url") or data.get("source_url")
         if source_url:
             data["source_url"] = source_url
 

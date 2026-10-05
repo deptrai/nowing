@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
+
+from celery import Task
 
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
@@ -54,7 +56,10 @@ def _maybe_escalate(
 ) -> None:
     if ctx is None or ctx.run_id is None:
         return
-    capture_platform_anti_bot_screenshot_task.delay(
+    # celery wraps the task in a PromiseProxy; cast to Task so type checkers
+    # see the runtime-present .delay() API.
+    task = cast(Task, capture_platform_anti_bot_screenshot_task)
+    task.delay(
         url=url or f"https://{_DOMAIN}",
         run_id=ctx.run_id,
         workspace_id=ctx.workspace_id,

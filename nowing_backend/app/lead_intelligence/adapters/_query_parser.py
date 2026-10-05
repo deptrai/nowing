@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Literal
 
 from app.proprietary.platforms.batdongsan.city_codes import (
     CITY_CODES as BDS_CITY_CODES,
@@ -67,7 +67,7 @@ _PROPERTY_TYPE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_PROPERTY_TYPE_MAP: dict[str, str] = {
+_PROPERTY_TYPE_MAP: dict[str, Literal["apartment", "house", "land", "office", "all"]] = {
     "chung cư": "apartment",
     "chung cu": "apartment",
     "căn hộ": "apartment",
@@ -239,17 +239,21 @@ def extract_price_range(query: str) -> tuple[int | None, int | None]:
     return min_price, max_price
 
 
-def extract_listing_type_bds(query: str) -> str:
+def extract_listing_type_bds(query: str) -> Literal["buy", "rent"]:
     """Return 'rent' or 'buy' for Batdongsan."""
     return "rent" if _RENT_RE.search(query or "") else "buy"
 
 
-def extract_listing_type_chotot(query: str) -> str:
+def extract_listing_type_chotot(
+    query: str,
+) -> Literal["buy", "rent", "sell", "want_to_buy"]:
     """Return 'rent' or 'sell' for Chợ Tốt."""
     return "rent" if _RENT_RE.search(query or "") else "sell"
 
 
-def extract_property_type_chotot(query: str) -> str | None:
+def extract_property_type_chotot(
+    query: str,
+) -> Literal["apartment", "house", "land", "office", "all"] | None:
     """Return a Chotot property_type string or None to keep the default 'all'."""
     text = remove_diacritics(query or "")
     match = _PROPERTY_TYPE_RE.search(text)

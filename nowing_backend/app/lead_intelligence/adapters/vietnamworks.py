@@ -113,6 +113,7 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
             params["salary_max"] = max_price
         if location:
             from app.services.location_normalize import resolve_city_code
+
             code = resolve_city_code(str(location))
             if code and code in _VN_LOCATION_IDS:
                 params["locationId"] = _VN_LOCATION_IDS[code]
@@ -143,6 +144,7 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
         if location:
             loc_str = str(location).lower().strip()
             from app.services.location_normalize import resolve_city_code
+
             code = resolve_city_code(loc_str)
             filtered = []
             for it in items:

@@ -96,9 +96,7 @@ class ChototLeadAdapter(LeadSourceAdapter):
         )
 
         if raw.get("degraded"):
-            logger.warning(
-                "Chotot scraper degraded: %s", raw.get("degradation_reason")
-            )
+            logger.warning("Chotot scraper degraded: %s", raw.get("degradation_reason"))
             self.last_execution_status = "degraded"
 
         return raw.get("items", []) or []
