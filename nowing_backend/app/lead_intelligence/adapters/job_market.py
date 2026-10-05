@@ -7,6 +7,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
+from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.lead_intelligence.adapters.base import (
     ContactCandidate,
     LeadSourceAdapter,
@@ -61,8 +62,21 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
             "max_pages": 2,
             "fetch_details": True,
         }
-        raw = await scrape_topcv(params)
-        return raw.get("items", [])
+
+        async def _local() -> dict[str, Any]:
+            return await scrape_topcv(params)
+
+        raw = await xactions_scrape_or_local(
+            platform="topcv",
+            action="search_jobs",
+            args={
+                "keyword": query,
+                "maxItems": min(limit, 20),
+                "maxPages": 2,
+            },
+            local_fn=_local,
+        )
+        return raw.get("items", []) if isinstance(raw, dict) else raw
 
     async def _search_itviec(
         self,

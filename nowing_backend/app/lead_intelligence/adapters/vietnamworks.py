@@ -6,6 +6,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
+from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.lead_intelligence.adapters._query_parser import (
     extract_price_range,
 )
@@ -116,7 +117,20 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
             if code and code in _VN_LOCATION_IDS:
                 params["locationId"] = _VN_LOCATION_IDS[code]
 
-        output = await scrape_vietnamworks(params)
+        async def _local() -> dict[str, Any]:
+            return await scrape_vietnamworks(params)
+
+        output = await xactions_scrape_or_local(
+            platform="vietnamworks",
+            action="search_jobs",
+            args={
+                "keyword": params["keyword"],
+                "location": params.get("locationId"),
+                "maxItems": params.get("max_items"),
+                "maxPages": params.get("max_pages"),
+            },
+            local_fn=_local,
+        )
 
         if output.get("degraded"):
             logger.warning(

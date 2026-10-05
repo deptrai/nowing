@@ -6,6 +6,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
+from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.lead_intelligence.adapters._query_parser import (
     extract_listing_type_bds,
     extract_price_range,
@@ -143,17 +144,36 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
             max_price=max_price,
             max_items=min(limit, 20),
         )
-        output = await scrape_batdongsan(input_model)
 
-        if output.degraded:
+        async def _local() -> dict[str, Any]:
+            output = await scrape_batdongsan(input_model)
+            return {
+                "items": [item.to_output() for item in output.items],
+                "degraded": output.degraded,
+                "degradation_reason": output.degradation_reason,
+            }
+
+        raw = await xactions_scrape_or_local(
+            platform="batdongsan",
+            action="search_listings",
+            args={
+                "city": city,
+                "listing_type": listing_type,
+                "min_price": min_price,
+                "max_price": max_price,
+                "max_items": min(limit, 20),
+            },
+            local_fn=_local,
+        )
+
+        if raw.get("degraded"):
             logger.warning(
-                "Batdongsan scraper degraded: %s", output.degradation_reason
+                "Batdongsan scraper degraded: %s", raw.get("degradation_reason")
             )
             self.last_execution_status = "degraded"
 
         results = []
-        for item in output.items:
-            data = item.to_output()
+        for data in raw.get("items", []) or []:
             detail_url = data.get("detail_url") or data.get("url")
             if not detail_url and data.get("listing_id"):
                 from app.proprietary.platforms.batdongsan.parsers import (
