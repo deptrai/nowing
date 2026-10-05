@@ -424,7 +424,7 @@ development_status:
   40-3-decommission-22-internal-platform-crawlers-docker-image-slim: done
   40-4-jev-stream-dedup-pii-guardrail-pipeline: done
   40-5-chainlens-s2s-circuit-breaker-timeout-hardening: done
-  epic-40-retrospective: optional
+  epic-40-retrospective: done
 validation_reports:
   - story: "3.18"
     type: "code-review"
