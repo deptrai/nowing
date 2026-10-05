@@ -67,7 +67,9 @@ _PROPERTY_TYPE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_PROPERTY_TYPE_MAP: dict[str, Literal["apartment", "house", "land", "office", "all"]] = {
+_PROPERTY_TYPE_MAP: dict[
+    str, Literal["apartment", "house", "land", "office", "all"]
+] = {
     "chung cư": "apartment",
     "chung cu": "apartment",
     "căn hộ": "apartment",
@@ -185,7 +187,9 @@ def resolve_batdongsan_city(query: str, filters: dict[str, Any] | None) -> str:
 
 
 def resolve_chotot_city(
-    query: str, filters: dict[str, Any] | None, default: str | None = _CHOTOT_DEFAULT_CITY
+    query: str,
+    filters: dict[str, Any] | None,
+    default: str | None = _CHOTOT_DEFAULT_CITY,
 ) -> str | None:
     """Return a Chotot-resolvable city string, falling back to the default."""
     loc = _first_location(filters.get("locations") if filters else None)
