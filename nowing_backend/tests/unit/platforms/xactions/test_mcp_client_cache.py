@@ -147,7 +147,9 @@ async def test_concurrent_tool_call_serialization():
 
     with patch_mcp_session(call_tool_side_effect=_mock_call):
         client = await get_shared_client()
-        results = await asyncio.gather(*(client.call_tool("x_test", {}) for _ in range(5)))
+        results = await asyncio.gather(
+            *(client.call_tool("x_test", {}) for _ in range(5))
+        )
         assert len(results) == 5
         assert max_in_flight <= 1
 
@@ -167,7 +169,9 @@ async def test_list_tools_and_call_tool_shared_lock():
         max_in_flight = max(max_in_flight, in_flight)
         await asyncio.sleep(0.02)
         in_flight -= 1
-        return MagicMock(tools=[MagicMock(name="x_tool", description="", inputSchema={})])
+        return MagicMock(
+            tools=[MagicMock(name="x_tool", description="", inputSchema={})]
+        )
 
     async def _mock_call(*args, **kwargs):
         nonlocal in_flight, max_in_flight
@@ -500,6 +504,7 @@ def test_thread_safety_multi_thread_access():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
+
             async def _run():
                 c = await get_shared_client()
                 res = await c.call_tool("x_test", {"thread": thread_id})
@@ -511,10 +516,13 @@ def test_thread_safety_multi_thread_access():
             asyncio.set_event_loop(None)
             loop.close()
 
-    with patch_mcp_session(), concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(_worker, i) for i in range(10)]
-            for f in concurrent.futures.as_completed(futures):
-                f.result()
+    with (
+        patch_mcp_session(),
+        concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor,
+    ):
+        futures = [executor.submit(_worker, i) for i in range(10)]
+        for f in concurrent.futures.as_completed(futures):
+            f.result()
 
 
 # ---------------------------------------------------------------------------

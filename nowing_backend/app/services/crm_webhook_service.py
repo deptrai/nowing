@@ -98,7 +98,11 @@ class CrmWebhookService:
             )
             res = await self.session.execute(stmt)
             contact = res.scalars().first()
-            lead = await self.session.get(Lead, (contact.lead_id, contact.workspace_id)) if contact else None
+            lead = (
+                await self.session.get(Lead, (contact.lead_id, contact.workspace_id))
+                if contact
+                else None
+            )
 
             if not lead:
                 logger.info("No lead found for HubSpot deal %s", deal_id)
@@ -132,12 +136,14 @@ class CrmWebhookService:
                     "lead status updated but sync log not written",
                     lead.workspace_id,
                 )
-            results.append({
-                "deal_id": deal_id,
-                "lead_id": str(lead.id),
-                "status": "updated",
-                "new_lead_status": new_status,
-            })
+            results.append(
+                {
+                    "deal_id": deal_id,
+                    "lead_id": str(lead.id),
+                    "status": "updated",
+                    "new_lead_status": new_status,
+                }
+            )
 
         await self.session.flush()
         return results
@@ -159,20 +165,28 @@ class CrmWebhookService:
         # Try finding by external_chat_ids in VerifiedContact
         if opp_id:
             stmt = select(VerifiedContact).where(
-                VerifiedContact.external_chat_ids.contains({"salesforce_opp_id": opp_id})
+                VerifiedContact.external_chat_ids.contains(
+                    {"salesforce_opp_id": opp_id}
+                )
             )
             res = await self.session.execute(stmt)
             contact = res.scalars().first()
             if contact:
-                lead = await self.session.get(Lead, (contact.lead_id, contact.workspace_id))
+                lead = await self.session.get(
+                    Lead, (contact.lead_id, contact.workspace_id)
+                )
 
         # Fallback: match by email via VerifiedContact
         if not lead and email:
-            c_stmt = select(VerifiedContact).where(VerifiedContact.email == email.lower())
+            c_stmt = select(VerifiedContact).where(
+                VerifiedContact.email == email.lower()
+            )
             c_res = await self.session.execute(c_stmt)
             contact = c_res.scalars().first()
             if contact:
-                lead = await self.session.get(Lead, (contact.lead_id, contact.workspace_id))
+                lead = await self.session.get(
+                    Lead, (contact.lead_id, contact.workspace_id)
+                )
 
         if not lead:
             return {"opportunity_id": opp_id, "status": "lead_not_found"}

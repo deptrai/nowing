@@ -50,16 +50,30 @@ async def evaluate_entity_dedup(
                 "existing": existing,
             }
             # Simple fallback heuristic if service isn't active or LLM times out
-            candidate_name = (candidate.get("company_name") or candidate.get("author_name") or "").lower()
+            candidate_name = (
+                candidate.get("company_name") or candidate.get("author_name") or ""
+            ).lower()
             existing_name = (existing.get("company_name") or "").lower()
 
             if candidate_name and candidate_name == existing_name:
-                return {"action": "merge", "score": 2.0, "matched_id": existing.get("id")}
-            
+                return {
+                    "action": "merge",
+                    "score": 2.0,
+                    "matched_id": existing.get("id"),
+                }
+
             # Fuzzy match
-            if candidate_name and existing_name and (candidate_name in existing_name or existing_name in candidate_name):
-                return {"action": "curate", "score": 1.0, "matched_id": existing.get("id")}
-                
+            if (
+                candidate_name
+                and existing_name
+                and (candidate_name in existing_name or existing_name in candidate_name)
+            ):
+                return {
+                    "action": "curate",
+                    "score": 1.0,
+                    "matched_id": existing.get("id"),
+                }
+
     except Exception as exc:
         logger.warning("Jev entity dedup failed, falling back to create: %s", exc)
 

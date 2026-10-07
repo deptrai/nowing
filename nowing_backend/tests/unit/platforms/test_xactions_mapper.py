@@ -1,4 +1,5 @@
 """Unit tests for UniversalScrapeTargetMapper."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -407,7 +408,9 @@ class TestLegacyToolDeprecation:
             assert args["args"] == {"pageId": "page456", "limit": 20}
 
         def test_twitter_keyword(self):
-            target = _make_target("twitter_keyword", "AI agents", id=12, workspace_id=22)
+            target = _make_target(
+                "twitter_keyword", "AI agents", id=12, workspace_id=22
+            )
             tool, args = UniversalScrapeTargetMapper.map(target)
             assert tool == "x_scrape"
             assert args["platform"] == "twitter"
@@ -432,11 +435,15 @@ class TestLegacyToolDeprecation:
 
         def test_empty_target_id_raises_value_error(self):
             target = _make_target("facebook_group", "")
-            with pytest.raises(ValueError, match="target_id required for action group_posts"):
+            with pytest.raises(
+                ValueError, match="target_id required for action group_posts"
+            ):
                 UniversalScrapeTargetMapper.map(target)
 
             target_none = _make_target("facebook_group", None)  # type: ignore[arg-type]
-            with pytest.raises(ValueError, match="target_id required for action group_posts"):
+            with pytest.raises(
+                ValueError, match="target_id required for action group_posts"
+            ):
                 UniversalScrapeTargetMapper.map(target_none)
 
         async def test_map_async_with_both_flags_on(self):
@@ -499,7 +506,9 @@ class TestLegacyToolDeprecation:
 
         def test_whitespace_target_id_raises_value_error(self):
             target = _make_target("facebook_group", "   ")
-            with pytest.raises(ValueError, match="target_id required for action group_posts"):
+            with pytest.raises(
+                ValueError, match="target_id required for action group_posts"
+            ):
                 UniversalScrapeTargetMapper.map(target)
 
         def test_twitter_user_all_at_signs_rejected(self):
@@ -518,6 +527,7 @@ class TestLegacyToolDeprecation:
             from app.proprietary.platforms.xactions.adapter_v2 import (
                 _build_unified_args,
             )
+
             descriptor = {"requiredArgs": ["url", "format"], "optionalArgs": []}
             with pytest.raises(ValueError, match="requires multiple args"):
                 _build_unified_args("facebook_group", "abc", descriptor, "group_posts")
@@ -540,10 +550,16 @@ class TestLegacyToolDeprecation:
                         {
                             "platform": platform_kind.split("_")[0],
                             "action": expected_action,
-                            "requiredArgs": ["query" if arg_name == "from" else arg_name],
+                            "requiredArgs": [
+                                "query" if arg_name == "from" else arg_name
+                            ],
                             "optionalArgs": ["limit"],
                             "match": {"target_kind": platform_kind.split("_", 1)[1]},
-                            **({"xactions_action": "search", "arg_override": "from"} if arg_name == "from" else {}),
+                            **(
+                                {"xactions_action": "search", "arg_override": "from"}
+                                if arg_name == "from"
+                                else {}
+                            ),
                         }
                     ]
                 }

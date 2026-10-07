@@ -257,9 +257,7 @@ async def _ensure_workspace_flags(session, dry_run: bool) -> None:
             ws.presentation_studio_enabled = True
 
     if dry_run:
-        print(
-            f"  [dry] ws{WORKSPACE_ID} feature flags: would set {updates or '[]'}"
-        )
+        print(f"  [dry] ws{WORKSPACE_ID} feature flags: would set {updates or '[]'}")
     elif updates:
         print(f"  ws{WORKSPACE_ID} enabled flags: {updates}")
     else:
@@ -585,8 +583,7 @@ def _run_ssh(host: str, container: str, dry_run: bool, force: bool) -> int:
     cmd = [
         "ssh",
         host,
-        f"docker exec -i {container} python - --local-run "
-        + " ".join(extra),
+        f"docker exec -i {container} python - --local-run " + " ".join(extra),
     ]
     with Path(__file__).open("rb") as f:
         result = subprocess.run(cmd, stdin=f, check=False)

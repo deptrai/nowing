@@ -75,7 +75,10 @@ async def main():
     # 2. Setup Temporary Test Data in Database
     test_run_id = uuid.uuid4().hex[:6]
     test_user_id = uuid.uuid4()
-    log_step(f"Seeding temporary test workspace and monitored target (run_id={test_run_id})...", "INFO")
+    log_step(
+        f"Seeding temporary test workspace and monitored target (run_id={test_run_id})...",
+        "INFO",
+    )
 
     async with session_maker() as session:
         # Create test user
@@ -114,10 +117,13 @@ async def main():
         workspace_id = workspace.id
         target_db_id = target.id
 
-    log_step(f"Seeded Workspace ID: {workspace_id}, Target DB ID: {target_db_id}", "PASS")
+    log_step(
+        f"Seeded Workspace ID: {workspace_id}, Target DB ID: {target_db_id}", "PASS"
+    )
 
     # Monkeypatch stream_worker session maker to use our database engine
     import app.tasks.social_stream_worker as stream_worker_mod
+
     stream_worker_mod.async_session_maker = session_maker
 
     test_failures = 0
@@ -133,7 +139,9 @@ async def main():
         log_step("Test Case 1: Thin event with content_snippet (empty content)", "INFO")
         post_id_1 = f"live_snippet_{test_run_id}"
         post_url_1 = f"https://facebook.com/groups/test/posts/{post_id_1}"
-        snippet_text_1 = "Cần bán nhà chính chủ mặt tiền Q1 giá 15 tỷ, liên hệ 0903123456 gấp!"
+        snippet_text_1 = (
+            "Cần bán nhà chính chủ mặt tiền Q1 giá 15 tỷ, liên hệ 0903123456 gấp!"
+        )
 
         payload_1 = {
             "platform": "facebook",
@@ -165,25 +173,33 @@ async def main():
         else:
             # Check DB
             async with session_maker() as session:
-                post = (await session.execute(
-                    select(SocialPost).where(
-                        SocialPost.workspace_id == workspace_id,
-                        SocialPost.external_post_id == post_id_1,
+                post = (
+                    await session.execute(
+                        select(SocialPost).where(
+                            SocialPost.workspace_id == workspace_id,
+                            SocialPost.external_post_id == post_id_1,
+                        )
                     )
-                )).scalar_one_or_none()
+                ).scalar_one_or_none()
 
-                lead = (await session.execute(
-                    select(Lead).where(
-                        Lead.workspace_id == workspace_id,
-                        Lead.source_url == post_url_1,
+                lead = (
+                    await session.execute(
+                        select(Lead).where(
+                            Lead.workspace_id == workspace_id,
+                            Lead.source_url == post_url_1,
+                        )
                     )
-                )).scalar_one_or_none()
+                ).scalar_one_or_none()
 
-            pending_info = await redis_client.xpending(STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME)
+            pending_info = await redis_client.xpending(
+                STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME
+            )
             pending_count = pending_info.get("pending", 0)
 
             if not post or post.content != snippet_text_1:
-                log_step("SocialPost not found or content does not match snippet!", "FAIL")
+                log_step(
+                    "SocialPost not found or content does not match snippet!", "FAIL"
+                )
                 test_failures += 1
             elif not lead or lead.company_name != "Nguyễn Văn Test":
                 log_step("Lead not created or company_name mismatch!", "FAIL")
@@ -192,7 +208,10 @@ async def main():
                 log_step(f"Message not ACKed! Pending in PEL: {pending_count}", "FAIL")
                 test_failures += 1
             else:
-                log_step("Case 1: SocialPost saved, Lead created, Phone extracted, XACK verified", "PASS")
+                log_step(
+                    "Case 1: SocialPost saved, Lead created, Phone extracted, XACK verified",
+                    "PASS",
+                )
 
         # -------------------------------------------------------------
         # TEST CASE 2: DLQ on Unsupported Schema Version (e.g. version 99)
@@ -219,26 +238,43 @@ async def main():
         dlq_entries = await redis_client.xrange(STREAM_SOCIAL_DEAD_LETTER)
         found_dlq_2 = False
         for _dlq_id, entry in dlq_entries:
-            if entry.get("original_id") == msg_id_2 and entry.get("dlq_reason") == DLQ_REASON_UNSUPPORTED_SCHEMA_VERSION:
+            if (
+                entry.get("original_id") == msg_id_2
+                and entry.get("dlq_reason") == DLQ_REASON_UNSUPPORTED_SCHEMA_VERSION
+            ):
                 found_dlq_2 = True
                 break
 
-        pending_info = await redis_client.xpending(STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME)
+        pending_info = await redis_client.xpending(
+            STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME
+        )
         pending_count = pending_info.get("pending", 0)
 
         if not found_dlq_2:
-            log_step("Case 2: Message did not land in DLQ with UNSUPPORTED_SCHEMA_VERSION!", "FAIL")
+            log_step(
+                "Case 2: Message did not land in DLQ with UNSUPPORTED_SCHEMA_VERSION!",
+                "FAIL",
+            )
             test_failures += 1
         elif pending_count != 0:
-            log_step(f"Case 2: Failed message not ACKed! Pending in PEL: {pending_count}", "FAIL")
+            log_step(
+                f"Case 2: Failed message not ACKed! Pending in PEL: {pending_count}",
+                "FAIL",
+            )
             test_failures += 1
         else:
-            log_step("Case 2: Routed to DLQ with UNSUPPORTED_SCHEMA_VERSION and XACKed from PEL", "PASS")
+            log_step(
+                "Case 2: Routed to DLQ with UNSUPPORTED_SCHEMA_VERSION and XACKed from PEL",
+                "PASS",
+            )
 
         # -------------------------------------------------------------
         # TEST CASE 3: DLQ on Missing Content
         # -------------------------------------------------------------
-        log_step("Test Case 3: DLQ routing on missing content (content & snippet empty)", "INFO")
+        log_step(
+            "Test Case 3: DLQ routing on missing content (content & snippet empty)",
+            "INFO",
+        )
         post_id_3 = f"live_nocontent_{test_run_id}"
         payload_3 = {
             "platform": "facebook",
@@ -261,20 +297,30 @@ async def main():
         dlq_entries = await redis_client.xrange(STREAM_SOCIAL_DEAD_LETTER)
         found_dlq_3 = False
         for _dlq_id, entry in dlq_entries:
-            if entry.get("original_id") == msg_id_3 and entry.get("dlq_reason") == DLQ_REASON_MISSING_CONTENT:
+            if (
+                entry.get("original_id") == msg_id_3
+                and entry.get("dlq_reason") == DLQ_REASON_MISSING_CONTENT
+            ):
                 found_dlq_3 = True
                 break
 
         if not found_dlq_3:
-            log_step("Case 3: Message did not land in DLQ with MISSING_CONTENT!", "FAIL")
+            log_step(
+                "Case 3: Message did not land in DLQ with MISSING_CONTENT!", "FAIL"
+            )
             test_failures += 1
         else:
-            log_step("Case 3: Routed to DLQ with MISSING_CONTENT and XACKed from PEL", "PASS")
+            log_step(
+                "Case 3: Routed to DLQ with MISSING_CONTENT and XACKed from PEL", "PASS"
+            )
 
         # -------------------------------------------------------------
         # TEST CASE 4: DLQ on Missing target_id
         # -------------------------------------------------------------
-        log_step("Test Case 4: DLQ routing on missing target_id (enforcing DB schema)", "INFO")
+        log_step(
+            "Test Case 4: DLQ routing on missing target_id (enforcing DB schema)",
+            "INFO",
+        )
         post_id_4 = f"live_notarget_{test_run_id}"
         payload_4 = {
             "platform": "facebook",
@@ -295,23 +341,39 @@ async def main():
         dlq_entries = await redis_client.xrange(STREAM_SOCIAL_DEAD_LETTER)
         found_dlq_4 = False
         for _dlq_id, entry in dlq_entries:
-            if entry.get("original_id") == msg_id_4 and entry.get("dlq_reason") == DLQ_REASON_MISSING_TARGET_ID:
+            if (
+                entry.get("original_id") == msg_id_4
+                and entry.get("dlq_reason") == DLQ_REASON_MISSING_TARGET_ID
+            ):
                 found_dlq_4 = True
                 break
 
         if not found_dlq_4:
-            log_step("Case 4: Message did not land in DLQ with MISSING_TARGET_ID!", "FAIL")
+            log_step(
+                "Case 4: Message did not land in DLQ with MISSING_TARGET_ID!", "FAIL"
+            )
             test_failures += 1
         else:
-            log_step("Case 4: Routed to DLQ with MISSING_TARGET_ID and XACKed from PEL", "PASS")
+            log_step(
+                "Case 4: Routed to DLQ with MISSING_TARGET_ID and XACKed from PEL",
+                "PASS",
+            )
 
     finally:
         # Teardown Test Data
-        log_step("Cleaning up temporary test database records and Redis streams...", "INFO")
+        log_step(
+            "Cleaning up temporary test database records and Redis streams...", "INFO"
+        )
         async with session_maker() as session:
             await session.execute(delete(Lead).where(Lead.workspace_id == workspace_id))
-            await session.execute(delete(SocialPost).where(SocialPost.workspace_id == workspace_id))
-            await session.execute(delete(SocialMonitoredTarget).where(SocialMonitoredTarget.workspace_id == workspace_id))
+            await session.execute(
+                delete(SocialPost).where(SocialPost.workspace_id == workspace_id)
+            )
+            await session.execute(
+                delete(SocialMonitoredTarget).where(
+                    SocialMonitoredTarget.workspace_id == workspace_id
+                )
+            )
             await session.execute(delete(Workspace).where(Workspace.id == workspace_id))
             await session.execute(delete(User).where(User.id == test_user_id))
             await session.commit()

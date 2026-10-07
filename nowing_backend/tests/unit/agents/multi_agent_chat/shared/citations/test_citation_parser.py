@@ -23,13 +23,23 @@ pytestmark = pytest.mark.unit
 
 def test_citation_regex_parity_with_frontend_source():
     """Parity guard: CITATION_REGEX must match nowing_web source pattern."""
-    web_ts_path = Path(__file__).resolve().parents[7] / "nowing_web" / "lib" / "citations" / "citation-parser.ts"
+    web_ts_path = (
+        Path(__file__).resolve().parents[7]
+        / "nowing_web"
+        / "lib"
+        / "citations"
+        / "citation-parser.ts"
+    )
     if not web_ts_path.exists():
         pytest.skip(f"Frontend citation parser not found: {web_ts_path}")
 
     lines = web_ts_path.read_text(encoding="utf-8").splitlines()
-    matching_indices = [i for i, line in enumerate(lines) if "export const CITATION_REGEX =" in line]
-    assert matching_indices, "Failed to find CITATION_REGEX export in citation-parser.ts"
+    matching_indices = [
+        i for i, line in enumerate(lines) if "export const CITATION_REGEX =" in line
+    ]
+    assert matching_indices, (
+        "Failed to find CITATION_REGEX export in citation-parser.ts"
+    )
 
     raw_regex_line = lines[matching_indices[0] + 1].strip()
     ts_pattern = raw_regex_line.rstrip(";").rstrip("g")[1:-1]

@@ -105,9 +105,7 @@ class CompliancePurgeService:
         # 2. Check and delete Leads that only have this contact
         for lead_id in lead_ids_to_check:
             # Check remaining contacts for this lead
-            rem_stmt = select(VerifiedContact).where(
-                VerifiedContact.lead_id == lead_id
-            )
+            rem_stmt = select(VerifiedContact).where(VerifiedContact.lead_id == lead_id)
             rem_contacts = list((await session.execute(rem_stmt)).scalars().all())
             if not rem_contacts:
                 lead = await session.get(Lead, lead_id)

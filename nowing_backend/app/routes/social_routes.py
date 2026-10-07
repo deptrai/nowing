@@ -282,6 +282,7 @@ async def list_social_targets(
     Results are paginated and ordered by id for determinism.
     """
     from sqlalchemy import select
+
     stmt = select(SocialMonitoredTarget).where(
         SocialMonitoredTarget.workspace_id == workspace_id
     )

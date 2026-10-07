@@ -142,11 +142,14 @@ class TestGoldenConfidenceGate:
         leads = [NormalizedLead(**c) for c in cases]
 
         micro_leads = [
-            lead for lead in leads
+            lead
+            for lead in leads
             if _route(ConfidenceGate.score(lead)) == "micro"
             and lead.raw_data.get("description")
         ]
-        assert len(micro_leads) >= 10, f"Expected >= 10 micro candidates, got {len(micro_leads)}"
+        assert len(micro_leads) >= 10, (
+            f"Expected >= 10 micro candidates, got {len(micro_leads)}"
+        )
 
         total_prompt_chars = 0
         prompt_count = 0
@@ -164,4 +167,6 @@ class TestGoldenConfidenceGate:
         assert prompt_count > 0
         avg_prompt_chars = total_prompt_chars / prompt_count
         # Token budget benchmark: average prompt length <= 350 chars
-        assert avg_prompt_chars <= 350, f"Average prompt chars {avg_prompt_chars} exceeded 350 bound"
+        assert avg_prompt_chars <= 350, (
+            f"Average prompt chars {avg_prompt_chars} exceeded 350 bound"
+        )

@@ -21,9 +21,7 @@ def audit(*, action: str, **kwargs: Any) -> None:
 
 def _is_valid_email(address: str) -> bool:
     """Loose RFC 5322 email validation."""
-    return bool(
-        re.match(r"^[\w.+-]+@[\w.-]+\.[\w]{2,}$", address, flags=re.IGNORECASE)
-    )
+    return bool(re.match(r"^[\w.+-]+@[\w.-]+\.[\w]{2,}$", address, flags=re.IGNORECASE))
 
 
 def _truncate_reply_body(body: str, max_bytes: int | None = None) -> str:
@@ -148,7 +146,9 @@ def send_email_reply(
             reply_to=reply_to,
             headers=headers,
         )
-    except Exception as exc:  # SMTP email dispatch failure; audit and return failure status
+    except (
+        Exception
+    ) as exc:  # SMTP email dispatch failure; audit and return failure status
         logger.exception("Failed to send email reply to %s", original_from)
         audit(
             action="email_reply_failed",

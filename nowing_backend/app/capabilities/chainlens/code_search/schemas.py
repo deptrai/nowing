@@ -105,9 +105,7 @@ class CodeSnippet(BaseModel):
     content: str = Field(
         description="Code snippet / fenced code block content (non-empty)."
     )
-    score: float | None = Field(
-        default=None, description="Upstream relevance score."
-    )
+    score: float | None = Field(default=None, description="Upstream relevance score.")
 
 
 class CodeSearchOutput(BaseModel):

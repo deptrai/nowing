@@ -209,7 +209,9 @@ def parse_action_descriptors(raw: Any) -> dict[str, dict[str, dict[str, Any]]]:
     return matrix
 
 
-def _merge_with_static(live: dict[str, dict[str, dict[str, Any]]]) -> dict[str, dict[str, dict[str, Any]]]:
+def _merge_with_static(
+    live: dict[str, dict[str, dict[str, Any]]],
+) -> dict[str, dict[str, dict[str, Any]]]:
     """Merge a (possibly partial) live catalog with the static fallback.
 
     Live descriptors win on (platform, action) collisions; missing platforms
@@ -241,7 +243,9 @@ def _merge_with_static(live: dict[str, dict[str, dict[str, Any]]]) -> dict[str, 
             # Inherit match hint from static when live descriptor lacks one.
             if not meta.get("match"):
                 static_match = (
-                    STATIC_FALLBACK_MATRIX.get(platform, {}).get(action, {}).get("match")
+                    STATIC_FALLBACK_MATRIX.get(platform, {})
+                    .get(action, {})
+                    .get("match")
                 )
                 if static_match:
                     meta["match"] = dict(static_match)
@@ -305,7 +309,9 @@ class CanonicalActionMatrix:
         return STATIC_FALLBACK_MATRIX
 
     @classmethod
-    async def get(cls, client: Any | None = None) -> dict[str, dict[str, dict[str, Any]]]:
+    async def get(
+        cls, client: Any | None = None
+    ) -> dict[str, dict[str, dict[str, Any]]]:
         """Async read — refresh via ``x_actions_list`` when cache is stale."""
         if cls._is_cache_fresh():
             assert cls._cache is not None

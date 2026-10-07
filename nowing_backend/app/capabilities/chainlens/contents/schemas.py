@@ -91,9 +91,7 @@ class ContentsInput(BaseModel):
             if not trimmed:
                 raise ValueError("urls cannot contain empty or whitespace entries")
             if not trimmed.lower().startswith(("http://", "https://")):
-                raise ValueError(
-                    "each url must start with http:// or https://"
-                )
+                raise ValueError("each url must start with http:// or https://")
             cleaned.append(trimmed)
         if not cleaned:
             raise ValueError("urls cannot be empty")

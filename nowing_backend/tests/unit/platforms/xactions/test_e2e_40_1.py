@@ -52,12 +52,15 @@ class TestE2E401CircuitBreaker:
             }
 
         with patch.object(client, "_call_tool_inner", side_effect=fake_call):
-            result = await client.call_tool("x_scrape", {
-                "platform": "topcv",
-                "action": "scrape",
-                "args": {"keyword": "test"},
-                "context": {"targetId": "t1", "workspaceId": "w1"},
-            })
+            result = await client.call_tool(
+                "x_scrape",
+                {
+                    "platform": "topcv",
+                    "action": "scrape",
+                    "args": {"keyword": "test"},
+                    "context": {"targetId": "t1", "workspaceId": "w1"},
+                },
+            )
 
         assert result["success"] is True
         assert len(result["data"]) == 1

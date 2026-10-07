@@ -96,64 +96,46 @@ class WorkspaceHealthService:
         wau_start = day_start - timedelta(days=6)
 
         # 1. Active members DAU (target_date)
-        token_users = (
-            select(TokenUsage.user_id)
-            .where(
-                TokenUsage.workspace_id == workspace_id,
-                TokenUsage.created_at >= day_start,
-                TokenUsage.created_at <= day_end,
-                TokenUsage.user_id.is_not(None),
-            )
+        token_users = select(TokenUsage.user_id).where(
+            TokenUsage.workspace_id == workspace_id,
+            TokenUsage.created_at >= day_start,
+            TokenUsage.created_at <= day_end,
+            TokenUsage.user_id.is_not(None),
         )
-        memory_users = (
-            select(Memory.created_by_id)
-            .where(
-                Memory.workspace_id == workspace_id,
-                Memory.created_at >= day_start,
-                Memory.created_at <= day_end,
-                Memory.created_by_id.is_not(None),
-            )
+        memory_users = select(Memory.created_by_id).where(
+            Memory.workspace_id == workspace_id,
+            Memory.created_at >= day_start,
+            Memory.created_at <= day_end,
+            Memory.created_by_id.is_not(None),
         )
-        action_users = (
-            select(AgentActionLog.user_id)
-            .where(
-                AgentActionLog.workspace_id == workspace_id,
-                AgentActionLog.created_at >= day_start,
-                AgentActionLog.created_at <= day_end,
-                AgentActionLog.user_id.is_not(None),
-            )
+        action_users = select(AgentActionLog.user_id).where(
+            AgentActionLog.workspace_id == workspace_id,
+            AgentActionLog.created_at >= day_start,
+            AgentActionLog.created_at <= day_end,
+            AgentActionLog.user_id.is_not(None),
         )
         dau_union = union(token_users, memory_users, action_users).subquery()
         dau_res = await session.execute(select(func.count()).select_from(dau_union))
         active_members_dau = dau_res.scalar() or 0
 
         # 2. Active members WAU (trailing 7 days)
-        token_wau = (
-            select(TokenUsage.user_id)
-            .where(
-                TokenUsage.workspace_id == workspace_id,
-                TokenUsage.created_at >= wau_start,
-                TokenUsage.created_at <= day_end,
-                TokenUsage.user_id.is_not(None),
-            )
+        token_wau = select(TokenUsage.user_id).where(
+            TokenUsage.workspace_id == workspace_id,
+            TokenUsage.created_at >= wau_start,
+            TokenUsage.created_at <= day_end,
+            TokenUsage.user_id.is_not(None),
         )
-        memory_wau = (
-            select(Memory.created_by_id)
-            .where(
-                Memory.workspace_id == workspace_id,
-                Memory.created_at >= wau_start,
-                Memory.created_at <= day_end,
-                Memory.created_by_id.is_not(None),
-            )
+        memory_wau = select(Memory.created_by_id).where(
+            Memory.workspace_id == workspace_id,
+            Memory.created_at >= wau_start,
+            Memory.created_at <= day_end,
+            Memory.created_by_id.is_not(None),
         )
-        action_wau = (
-            select(AgentActionLog.user_id)
-            .where(
-                AgentActionLog.workspace_id == workspace_id,
-                AgentActionLog.created_at >= wau_start,
-                AgentActionLog.created_at <= day_end,
-                AgentActionLog.user_id.is_not(None),
-            )
+        action_wau = select(AgentActionLog.user_id).where(
+            AgentActionLog.workspace_id == workspace_id,
+            AgentActionLog.created_at >= wau_start,
+            AgentActionLog.created_at <= day_end,
+            AgentActionLog.user_id.is_not(None),
         )
         wau_union = union(token_wau, memory_wau, action_wau).subquery()
         wau_res = await session.execute(select(func.count()).select_from(wau_union))
@@ -261,39 +243,43 @@ class WorkspaceHealthService:
 
         if persist:
             # Idempotent upsert for daily rollup.
-            upsert_stmt = pg_insert(WorkspaceHealthDaily).values(
-                workspace_id=record.workspace_id,
-                date=record.date,
-                active_members_dau=record.active_members_dau,
-                active_members_wau=record.active_members_wau,
-                total_members=record.total_members,
-                total_memories=record.total_memories,
-                memory_growth_count=record.memory_growth_count,
-                recall_queries=record.recall_queries,
-                remember_queries=record.remember_queries,
-                research_queries=record.research_queries,
-                credits_consumed_micros=record.credits_consumed_micros,
-                cost_per_turn_micros=record.cost_per_turn_micros,
-                top_sources=record.top_sources,
-                source_coverage_gap_count=record.source_coverage_gap_count,
-                updated_at=datetime.now(UTC),
-            ).on_conflict_do_update(
-                index_elements=["workspace_id", "date"],
-                set_={
-                    "active_members_dau": record.active_members_dau,
-                    "active_members_wau": record.active_members_wau,
-                    "total_members": record.total_members,
-                    "total_memories": record.total_memories,
-                    "memory_growth_count": record.memory_growth_count,
-                    "recall_queries": record.recall_queries,
-                    "remember_queries": record.remember_queries,
-                    "research_queries": record.research_queries,
-                    "credits_consumed_micros": record.credits_consumed_micros,
-                    "cost_per_turn_micros": record.cost_per_turn_micros,
-                    "top_sources": record.top_sources,
-                    "source_coverage_gap_count": record.source_coverage_gap_count,
-                    "updated_at": datetime.now(UTC),
-                },
+            upsert_stmt = (
+                pg_insert(WorkspaceHealthDaily)
+                .values(
+                    workspace_id=record.workspace_id,
+                    date=record.date,
+                    active_members_dau=record.active_members_dau,
+                    active_members_wau=record.active_members_wau,
+                    total_members=record.total_members,
+                    total_memories=record.total_memories,
+                    memory_growth_count=record.memory_growth_count,
+                    recall_queries=record.recall_queries,
+                    remember_queries=record.remember_queries,
+                    research_queries=record.research_queries,
+                    credits_consumed_micros=record.credits_consumed_micros,
+                    cost_per_turn_micros=record.cost_per_turn_micros,
+                    top_sources=record.top_sources,
+                    source_coverage_gap_count=record.source_coverage_gap_count,
+                    updated_at=datetime.now(UTC),
+                )
+                .on_conflict_do_update(
+                    index_elements=["workspace_id", "date"],
+                    set_={
+                        "active_members_dau": record.active_members_dau,
+                        "active_members_wau": record.active_members_wau,
+                        "total_members": record.total_members,
+                        "total_memories": record.total_memories,
+                        "memory_growth_count": record.memory_growth_count,
+                        "recall_queries": record.recall_queries,
+                        "remember_queries": record.remember_queries,
+                        "research_queries": record.research_queries,
+                        "credits_consumed_micros": record.credits_consumed_micros,
+                        "cost_per_turn_micros": record.cost_per_turn_micros,
+                        "top_sources": record.top_sources,
+                        "source_coverage_gap_count": record.source_coverage_gap_count,
+                        "updated_at": datetime.now(UTC),
+                    },
+                )
             )
             await session.execute(upsert_stmt)
             await session.flush()
@@ -309,9 +295,9 @@ class WorkspaceHealthService:
         """Count enabled connectors with zero non-archived documents in trailing 30 days."""
         trailing_30d = reference_time - timedelta(days=30)
 
-        connectors_stmt = select(SearchSourceConnector.id, SearchSourceConnector.connector_type).where(
-            SearchSourceConnector.workspace_id == workspace_id
-        )
+        connectors_stmt = select(
+            SearchSourceConnector.id, SearchSourceConnector.connector_type
+        ).where(SearchSourceConnector.workspace_id == workspace_id)
         connectors_res = await session.execute(connectors_stmt)
         connector_rows = list(connectors_res.all())
 
@@ -557,7 +543,9 @@ class WorkspaceHealthService:
                 wau_spark.append(sr.active_members_wau)
                 mem_spark.append(sr.total_memories)
                 growth_spark.append(sr.memory_growth_count)
-                qv_spark.append(sr.recall_queries + sr.remember_queries + sr.research_queries)
+                qv_spark.append(
+                    sr.recall_queries + sr.remember_queries + sr.research_queries
+                )
                 cred_spark.append(sr.credits_consumed_micros)
                 cpt_spark.append(sr.cost_per_turn_micros)
             else:
@@ -570,7 +558,9 @@ class WorkspaceHealthService:
                 cpt_spark.append(0)
 
         # Calculate 7-day change percentage
-        def _calc_change(current_7d: list[float | int], prev_7d: list[float | int]) -> float | None:
+        def _calc_change(
+            current_7d: list[float | int], prev_7d: list[float | int]
+        ) -> float | None:
             sum_curr = sum(current_7d)
             sum_prev = sum(prev_7d)
             if sum_prev == 0:
@@ -608,7 +598,9 @@ class WorkspaceHealthService:
         # For total_memories cumulative metric, compare current value vs value 7 days ago
         mem_change_pct: float | None = None
         if mem_spark[6] > 0:
-            mem_change_pct = round(((mem_spark[13] - mem_spark[6]) / mem_spark[6]) * 100, 1)
+            mem_change_pct = round(
+                ((mem_spark[13] - mem_spark[6]) / mem_spark[6]) * 100, 1
+            )
         elif mem_spark[13] > 0:
             mem_change_pct = 100.0
         else:
@@ -717,7 +709,9 @@ class WorkspaceHealthService:
             else None,
             cost_per_turn_micros=MetricCardSummary(
                 current_value=avg_cpt,
-                change_pct=_calc_cpt_change(curr_7_qv, curr_7_cred, prev_7_qv, prev_7_cred),
+                change_pct=_calc_cpt_change(
+                    curr_7_qv, curr_7_cred, prev_7_qv, prev_7_cred
+                ),
                 sparkline=cpt_spark,
             )
             if not is_public_snapshot
@@ -747,7 +741,11 @@ class WorkspaceHealthService:
         mem_count = await WorkspaceLimitService.count_memories(session, workspace_id)
         mem_limit = limits.max_memory_count
         mem_util = round((mem_count / mem_limit) * 100, 1) if mem_limit else None
-        mem_status = "alert" if (mem_util and mem_util >= 100) else ("warning" if (mem_util and mem_util >= 80) else "normal")
+        mem_status = (
+            "alert"
+            if (mem_util and mem_util >= 100)
+            else ("warning" if (mem_util and mem_util >= 80) else "normal")
+        )
         items.append(
             QuotaProgressItem(
                 metric="memory_count",
@@ -756,21 +754,35 @@ class WorkspaceHealthService:
                 limit_value=mem_limit,
                 utilization_pct=mem_util,
                 status=mem_status,
-                recommended_tier=next_tier if mem_status in ("warning", "alert") else None,
+                recommended_tier=next_tier
+                if mem_status in ("warning", "alert")
+                else None,
             )
         )
 
         # 2. Monthly credits
-        month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_start = datetime.now(UTC).replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
         credits_stmt = select(func.coalesce(func.sum(TokenUsage.cost_micros), 0)).where(
             TokenUsage.workspace_id == workspace_id,
             TokenUsage.created_at >= month_start,
         )
         credits_res = await session.execute(credits_stmt)
         current_monthly_credits = int(credits_res.scalar() or 0)
-        credits_limit = getattr(limits, "max_monthly_credits", None) or PLAN_DEFAULT_MONTHLY_CREDITS.get(plan_tier.lower())
-        credits_util = round((current_monthly_credits / credits_limit) * 100, 1) if credits_limit else None
-        credits_status = "alert" if (credits_util and credits_util >= 100) else ("warning" if (credits_util and credits_util >= 80) else "normal")
+        credits_limit = getattr(
+            limits, "max_monthly_credits", None
+        ) or PLAN_DEFAULT_MONTHLY_CREDITS.get(plan_tier.lower())
+        credits_util = (
+            round((current_monthly_credits / credits_limit) * 100, 1)
+            if credits_limit
+            else None
+        )
+        credits_status = (
+            "alert"
+            if (credits_util and credits_util >= 100)
+            else ("warning" if (credits_util and credits_util >= 80) else "normal")
+        )
         items.append(
             QuotaProgressItem(
                 metric="monthly_credits",
@@ -779,15 +791,25 @@ class WorkspaceHealthService:
                 limit_value=credits_limit,
                 utilization_pct=credits_util,
                 status=credits_status,
-                recommended_tier=next_tier if credits_status in ("warning", "alert") else None,
+                recommended_tier=next_tier
+                if credits_status in ("warning", "alert")
+                else None,
             )
         )
 
         # 3. Storage bytes
-        storage_bytes = await WorkspaceLimitService.sum_storage_bytes(session, workspace_id)
+        storage_bytes = await WorkspaceLimitService.sum_storage_bytes(
+            session, workspace_id
+        )
         storage_limit = limits.max_storage_bytes
-        storage_util = round((storage_bytes / storage_limit) * 100, 1) if storage_limit else None
-        storage_status = "alert" if (storage_util and storage_util >= 100) else ("warning" if (storage_util and storage_util >= 80) else "normal")
+        storage_util = (
+            round((storage_bytes / storage_limit) * 100, 1) if storage_limit else None
+        )
+        storage_status = (
+            "alert"
+            if (storage_util and storage_util >= 100)
+            else ("warning" if (storage_util and storage_util >= 80) else "normal")
+        )
         items.append(
             QuotaProgressItem(
                 metric="storage_bytes",
@@ -796,7 +818,9 @@ class WorkspaceHealthService:
                 limit_value=storage_limit,
                 utilization_pct=storage_util,
                 status=storage_status,
-                recommended_tier=next_tier if storage_status in ("warning", "alert") else None,
+                recommended_tier=next_tier
+                if storage_status in ("warning", "alert")
+                else None,
             )
         )
 
@@ -841,8 +865,7 @@ class WorkspaceHealthService:
             select(Memory)
             .where(
                 Memory.workspace_id == workspace_id,
-                func.lower(cast(Memory.source_type, String))
-                == source_type.lower(),
+                func.lower(cast(Memory.source_type, String)) == source_type.lower(),
                 Memory.archived_at.is_(None),
             )
             .order_by(Memory.created_at.desc())
