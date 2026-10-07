@@ -46,7 +46,7 @@ def upgrade() -> None:
     # DROP INDEX is a quick catalog update; the brief ACCESS EXCLUSIVE lock
     # is acceptable. CREATE INDEX must be CONCURRENTLY so the build on a hot
     # table does not block writes for the full duration.
-    op.execute(f"DROP INDEX IF EXISTS {INDEX_NAME}")
+    op.execute(f"DROP INDEX IF EXISTS {INDEX_NAME}")  # nosemgrep
     with op.get_context().autocommit_block():
         op.execute(
             f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {INDEX_NAME} "
@@ -57,7 +57,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(f"DROP INDEX IF EXISTS {INDEX_NAME}")
+    op.execute(f"DROP INDEX IF EXISTS {INDEX_NAME}")  # nosemgrep
     with op.get_context().autocommit_block():
         op.execute(
             f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {INDEX_NAME} "

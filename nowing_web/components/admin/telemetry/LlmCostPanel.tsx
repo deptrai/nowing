@@ -40,9 +40,9 @@ interface LlmCostPanelProps {
 
 export default function LlmCostPanel({ tick }: LlmCostPanelProps) {
 	const t = useTranslations("telemetry");
-	const [windowHours, setWindowHours] = useState<number>(24);
-	const [provider, setProvider] = useState<string>("");
-	const [workspaceId, setWorkspaceId] = useState<string>("");
+	const [windowHours, setWindowHours] = useState(24);
+	const [provider, setProvider] = useState("");
+	const [workspaceId, setWorkspaceId] = useState("");
 	const [data, setData] = useState<LlmCostBreakdown | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);

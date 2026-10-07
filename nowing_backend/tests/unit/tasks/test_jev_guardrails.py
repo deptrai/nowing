@@ -1,7 +1,8 @@
 """Unit tests for Jev Guardrails (Story 40.4)."""
 
 import pytest
-from app.tasks.jev_guardrails import sanitize_pii_content, evaluate_entity_dedup
+
+from app.tasks.jev_guardrails import evaluate_entity_dedup, sanitize_pii_content
 
 
 def test_sanitize_pii_content_redacts_cccd():

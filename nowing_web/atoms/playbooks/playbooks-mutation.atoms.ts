@@ -8,10 +8,6 @@ import { playbooksApiService } from "@/lib/apis/playbooks-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { queryClient } from "@/lib/query-client/client";
 
-function _invalidateList(workspaceId: number) {
-	queryClient.invalidateQueries({ queryKey: ["playbooks", "list", workspaceId] });
-}
-
 function invalidateAutomationsList(workspaceId: number) {
 	queryClient.invalidateQueries({ queryKey: ["automations", "list", workspaceId] });
 }

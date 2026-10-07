@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
-import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import (
@@ -119,7 +115,10 @@ async def test_list_dnc_records_marks_superseded_by_global(
 ):
     """AC-5: DNC list marks workspace records superseded by global entries."""
     phone = "+84901234567"
-    from app.lead_intelligence.dnc.normalizer import hash_phone_hmac, normalize_phone_e164
+    from app.lead_intelligence.dnc.normalizer import (
+        hash_phone_hmac,
+        normalize_phone_e164,
+    )
 
     norm = normalize_phone_e164(phone)
     hmac = hash_phone_hmac(norm)

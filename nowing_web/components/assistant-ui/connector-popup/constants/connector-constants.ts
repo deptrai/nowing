@@ -325,10 +325,10 @@ export function getConnectorTitle(connectorType: string): string {
  */
 export type ConnectorCategory = "knowledge_base" | "tools_live";
 
-export const CONNECTOR_CATEGORY_LABELS: Record<ConnectorCategory, string> = {
+export const CONNECTOR_CATEGORY_LABELS = {
 	knowledge_base: "Knowledge Base",
 	tools_live: "Tools & Live Sources",
-};
+} satisfies Record<ConnectorCategory, string>;
 
 const KNOWLEDGE_BASE_CONNECTOR_TYPES = new Set<string>([
 	EnumConnectorName.GOOGLE_DRIVE_CONNECTOR,
@@ -404,7 +404,7 @@ export interface AutoIndexConfig {
 	syncDescription: string;
 }
 
-export const AUTO_INDEX_DEFAULTS: Record<string, AutoIndexConfig> = {
+export const AUTO_INDEX_DEFAULTS = {
 	[EnumConnectorName.NOTION_CONNECTOR]: {
 		daysBack: 365,
 		daysForward: 0,
@@ -417,7 +417,7 @@ export const AUTO_INDEX_DEFAULTS: Record<string, AutoIndexConfig> = {
 		frequencyMinutes: 1440,
 		syncDescription: "Syncing your documentation.",
 	},
-};
+} satisfies Record<string, AutoIndexConfig>;
 
 export const AUTO_INDEX_CONNECTOR_TYPES = new Set<string>(Object.keys(AUTO_INDEX_DEFAULTS));
 

@@ -1,4 +1,6 @@
+// pi-lens-ignore: typescript:80005 -- preload runs in Electron's CJS context; require is the supported pattern
 const { contextBridge, ipcRenderer } = require('electron');
+// pi-lens-ignore: typescript:80005 -- preload runs in Electron's CJS context; require is the supported pattern
 const { IPC_CHANNELS } = require('./ipc/channels');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -44,19 +46,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   restartApp: () => ipcRenderer.invoke(IPC_CHANNELS.RESTART_APP),
   // Folder sync
   selectFolder: () => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_SELECT_FOLDER),
-  addWatchedFolder: (config: any) => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_ADD_FOLDER, config),
+  addWatchedFolder: (config: unknown) => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_ADD_FOLDER, config),
   removeWatchedFolder: (folderPath: string) => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_REMOVE_FOLDER, folderPath),
   getWatchedFolders: () => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_GET_FOLDERS),
   getWatcherStatus: () => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_GET_STATUS),
-  onFileChanged: (callback: (data: any) => void) => {
-    const listener = (_event: unknown, data: any) => callback(data);
+  onFileChanged: (callback: (data: unknown) => void) => {
+    const listener = (_event: unknown, data: unknown) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.FOLDER_SYNC_FILE_CHANGED, listener);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.FOLDER_SYNC_FILE_CHANGED, listener);
     };
   },
-  onWatcherReady: (callback: (data: any) => void) => {
-    const listener = (_event: unknown, data: any) => callback(data);
+  onWatcherReady: (callback: (data: unknown) => void) => {
+    const listener = (_event: unknown, data: unknown) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.FOLDER_SYNC_WATCHER_READY, listener);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.FOLDER_SYNC_WATCHER_READY, listener);
@@ -67,7 +69,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   signalRendererReady: () => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_RENDERER_READY),
   getPendingFileEvents: () => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_GET_PENDING_EVENTS),
   acknowledgeFileEvents: (eventIds: string[]) => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_ACK_EVENTS, eventIds),
-  listFolderFiles: (config: any) => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_LIST_FILES, config),
+  listFolderFiles: (config: unknown) => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_LIST_FILES, config),
   seedFolderMtimes: (folderPath: string, mtimes: Record<string, number>) =>
     ipcRenderer.invoke(IPC_CHANNELS.FOLDER_SYNC_SEED_MTIMES, folderPath, mtimes),
 

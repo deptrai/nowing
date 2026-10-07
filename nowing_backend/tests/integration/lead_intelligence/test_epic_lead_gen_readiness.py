@@ -9,37 +9,25 @@ Stories covered:
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.app import app
 from app.auth.context import AuthContext
 from app.db import (
-    CrmConnection,
     Lead,
     Memory,
-    OutcomeEvent,
     User,
     Workspace,
+    get_async_session,
 )
 from app.lead_intelligence.adapters.base import (
     LeadSourceCategory,
     NormalizedLead,
     RawLeadRecord,
-)
-from app.lead_intelligence.campaign.presets import (
-    VerticalPresetId,
-    generate_reverse_icp,
-    get_vertical_preset,
-    list_vertical_presets,
-)
-from app.lead_intelligence.campaign.schemas import (
-    CampaignSpec,
-    ICPCriteria,
-    SourceBudget,
 )
 from app.lead_intelligence.crm.schemas import CrmConversionLogInput
 from app.lead_intelligence.crm.service import CrmSyncService
@@ -47,8 +35,6 @@ from app.lead_intelligence.services.lead_gen_orchestrator import (
     LeadGenOrchestrator,
     LeadGenOrchestratorResult,
 )
-from app.app import app
-from app.db import get_async_session
 from app.users import require_session_context
 
 pytestmark = [pytest.mark.integration]

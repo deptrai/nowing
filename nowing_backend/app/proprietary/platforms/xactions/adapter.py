@@ -46,11 +46,6 @@ _XACTIONS_MCP_SERVER = "src/mcp/server.js"
 _PROXY_REDIS_FAILURE_BACKOFF_SECONDS = 60.0
 
 
-
-
-
-
-
 def _to_int(raw_value: Any) -> int:
     """Convert a raw engagement count to an integer, defaulting to 0 on failure.
 
@@ -149,15 +144,18 @@ class XActionsSocialAdapter:
         resolved = xactions_path or getattr(config, "XACTIONS_PATH", "")
         self.xactions_path = resolved
         self.default_proxy_url = proxy_url
-        self.default_timeout = max(1.0, timeout or getattr(
-            config, "XACTIONS_TIMEOUT_SECONDS", 30
-        ))
+        self.default_timeout = max(
+            1.0, timeout or getattr(config, "XACTIONS_TIMEOUT_SECONDS", 30)
+        )
 
         # AD-SOC-3: in-memory cache + durable Redis backing for proxy bindings.
         self._account_proxies: dict[str, str] = {}
-        self._adapter_v2 = XActionsSocialAdapterV2() if getattr(
-            config, "XACTIONS_TRANSPORT", "streamable-http"
-        ) == "streamable-http" else None
+        self._adapter_v2 = (
+            XActionsSocialAdapterV2()
+            if getattr(config, "XACTIONS_TRANSPORT", "streamable-http")
+            == "streamable-http"
+            else None
+        )
         self._proxy_redis_client = redis_client
         self._proxy_redis_available: bool | None = None
         self._proxy_redis_last_failure = 0.0
@@ -191,7 +189,12 @@ class XActionsSocialAdapter:
         else:
             # Generic fallback: try to derive platform from x_scrape args.
             platform = arguments.get("platform") or tool_name
-            target_id = arguments.get("query") or arguments.get("q") or arguments.get("url") or ""
+            target_id = (
+                arguments.get("query")
+                or arguments.get("q")
+                or arguments.get("url")
+                or ""
+            )
 
         if not platform:
             raise ValueError(f"Cannot determine platform for XActions tool {tool_name}")
@@ -252,6 +255,7 @@ class XActionsSocialAdapter:
             return self._proxy_redis_client
 
         if (
+            # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
             self._proxy_redis_available is False
             and time.monotonic() - self._proxy_redis_last_failure
             < _PROXY_REDIS_FAILURE_BACKOFF_SECONDS
@@ -270,7 +274,9 @@ class XActionsSocialAdapter:
             self._proxy_redis_client = client
             self._proxy_redis_available = True
             return client
-        except Exception as exc:  # Redis connection failure for proxy binding; disable proxy Redis
+        except (
+            Exception
+        ) as exc:  # Redis connection failure for proxy binding; disable proxy Redis
             logger.warning(
                 "XActions proxy binding could not connect to Redis at %s: %s",
                 config.REDIS_APP_URL,
@@ -280,9 +286,7 @@ class XActionsSocialAdapter:
             self._proxy_redis_last_failure = time.monotonic()
             return None
 
-    async def bind_account_proxy(
-        self, account_id: str, proxy_url: str
-    ) -> None:
+    async def bind_account_proxy(self, account_id: str, proxy_url: str) -> None:
         """AD-SOC-3: Sticky 1-to-1 proxy mapping per platform account."""
         if not account_id or not isinstance(account_id, str):
             raise ValueError("account_id must be a non-empty string")
@@ -298,10 +302,10 @@ class XActionsSocialAdapter:
         client = await self._get_proxy_redis_client()
         if client:
             try:
-                await client.hset(
-                    XACTIONS_PROXY_REDIS_KEY, account_id, proxy_url
-                )
-            except Exception as exc:  # Redis hset failure for proxy cache; best-effort persist
+                await client.hset(XACTIONS_PROXY_REDIS_KEY, account_id, proxy_url)
+            except (
+                Exception
+            ) as exc:  # Redis hset failure for proxy cache; best-effort persist
                 logger.warning(
                     "Failed to persist proxy for %s to Redis: %s",
                     account_id,
@@ -319,13 +323,13 @@ class XActionsSocialAdapter:
         client = await self._get_proxy_redis_client()
         if client:
             try:
-                proxy = await client.hget(
-                    XACTIONS_PROXY_REDIS_KEY, account_id
-                )
+                proxy = await client.hget(XACTIONS_PROXY_REDIS_KEY, account_id)
                 if proxy:
                     self._account_proxies[account_id] = proxy
                     return proxy
-            except Exception as exc:  # Redis hget failure for proxy cache; fallback to default proxy
+            except (
+                Exception
+            ) as exc:  # Redis hget failure for proxy cache; fallback to default proxy
                 logger.warning(
                     "Failed to read proxy for %s from Redis: %s",
                     account_id,
@@ -351,7 +355,7 @@ class XActionsSocialAdapter:
 
     async def _browser_options_for_account(
         self, account_id: str | None
-    ) -> dict[str, Any] // None:
+    ) -> dict[str, Any] | None:
         if account_id:
             proxy = await self.get_account_proxy(account_id)
         else:
@@ -469,8 +473,13 @@ class XActionsSocialAdapter:
                 # the v2 mapper/adapter can route it via XActions streamable-http.
                 target = self._target_data_from_tool_call(tool_name, arguments)
                 async with self._adapter_v2 as adapter:
-                    return [post.to_dict() for post in await adapter.fetch_posts_for_target(target)]
-            except Exception as exc:  # XActions v2 adapter call failure; wrap as XActionsMcpError
+                    return [
+                        post.to_dict()
+                        for post in await adapter.fetch_posts_for_target(target)
+                    ]
+            except (
+                Exception
+            ) as exc:  # XActions v2 adapter call failure; wrap as XActionsMcpError
                 raise XActionsMcpError(
                     f"XActions MCP tool {tool_name} failed: {exc}"
                 ) from exc
@@ -554,7 +563,9 @@ class XActionsSocialAdapter:
             }
         except XActionsMcpError as exc:
             return {"success": False, "error": str(exc), "data": []}
-        except Exception as exc:  # unexpected MCP tool execution failure; return error envelope
+        except (
+            Exception
+        ) as exc:  # unexpected MCP tool execution failure; return error envelope
             logger.warning(
                 "XActions MCP tool %s failed: %s",
                 tool_name,
@@ -605,9 +616,7 @@ class XActionsSocialAdapter:
             timeout=timeout,
         )
         if not res.get("success"):
-            raise XActionsMcpError(
-                res.get("error") or "x_facebook_group_posts failed"
-            )
+            raise XActionsMcpError(res.get("error") or "x_facebook_group_posts failed")
         raw_items = res.get("data", []) if isinstance(res, dict) else []
         if not isinstance(raw_items, list):
             logger.warning(
@@ -672,9 +681,7 @@ class XActionsSocialAdapter:
                     shares_count=_to_int(
                         raw.get("shares", 0) or raw.get("shares_count", 0)
                     ),
-                    media_urls=media_urls
-                    if isinstance(media_urls, list)
-                    else [],
+                    media_urls=media_urls if isinstance(media_urls, list) else [],
                     published_at=pub_date,
                 )
             )
@@ -705,9 +712,7 @@ class XActionsSocialAdapter:
             timeout=timeout,
         )
         if not res.get("success"):
-            raise XActionsMcpError(
-                res.get("error") or "x_search_tweets failed"
-            )
+            raise XActionsMcpError(res.get("error") or "x_search_tweets failed")
         raw_items = res.get("data", []) if isinstance(res, dict) else []
         if not isinstance(raw_items, list):
             logger.warning(
@@ -752,9 +757,7 @@ class XActionsSocialAdapter:
             elif isinstance(author_name, str) and author_name:
                 author_url = f"https://x.com/{author_name.lstrip('@')}"
 
-            post_url = (
-                raw.get("post_url") or raw.get("url") or raw.get("permalink")
-            )
+            post_url = raw.get("post_url") or raw.get("url") or raw.get("permalink")
 
             posts.append(
                 SocialPostData(
@@ -774,12 +777,10 @@ class XActionsSocialAdapter:
                         or raw.get("likes", 0)
                     ),
                     comments_count=_to_int(
-                        raw.get("reply_count", 0)
-                        or raw.get("comments_count", 0)
+                        raw.get("reply_count", 0) or raw.get("comments_count", 0)
                     ),
                     shares_count=_to_int(
-                        raw.get("retweet_count", 0)
-                        or raw.get("shares_count", 0)
+                        raw.get("retweet_count", 0) or raw.get("shares_count", 0)
                     ),
                     media_urls=raw.get("media_urls") or [],
                     published_at=pub_date,
@@ -801,7 +802,9 @@ class XActionsSocialAdapter:
                     config.REDIS_APP_URL, decode_responses=True
                 )
                 await redis_client.ping()
-            except Exception as exc:  # local Redis connection failure; surface RuntimeError
+            except (
+                Exception
+            ) as exc:  # local Redis connection failure; surface RuntimeError
                 raise RuntimeError(
                     f"Redis connection failed at {config.REDIS_APP_URL}: {exc}"
                 ) from exc
@@ -817,9 +820,7 @@ class XActionsSocialAdapter:
             "reactions_count": str(post.reactions_count),
             "comments_count": str(post.comments_count),
             "shares_count": str(post.shares_count),
-            "published_at": post.published_at.isoformat()
-            if post.published_at
-            else "",
+            "published_at": post.published_at.isoformat() if post.published_at else "",
             "media_urls": json.dumps(post.media_urls or []),
         }
 
@@ -832,7 +833,9 @@ class XActionsSocialAdapter:
             msg_id = await redis_client.xadd(
                 STREAM_SOCIAL_RAW_POSTS, payload, maxlen=20000, approximate=True
             )
-        except Exception as exc:  # Redis xadd failure for social post; surface RuntimeError
+        except (
+            Exception
+        ) as exc:  # Redis xadd failure for social post; surface RuntimeError
             raise RuntimeError(
                 f"Redis xadd failed on {STREAM_SOCIAL_RAW_POSTS}: {exc}"
             ) from exc

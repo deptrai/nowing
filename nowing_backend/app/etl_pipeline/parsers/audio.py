@@ -18,6 +18,7 @@ async def transcribe_audio(file_path: str, filename: str) -> str:
         if not text:
             raise ValueError("Transcription returned empty text")
     else:
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- open failure propagates to caller
         with open(file_path, "rb") as audio_file:
             kwargs: dict = {
                 "model": app_config.STT_SERVICE,

@@ -198,7 +198,7 @@ class MicroExtractionWorker:
         if self._token_lock:
             async with self._token_lock:
                 if self._tokens_used + estimated_tokens > _TOKEN_BUDGET:
-                    logger.warning(
+                    logger.warning(  # nosemgrep
                         "Micro-extraction token budget exceeded for workspace %s; "
                         "degrading %d records",
                         workspace_id,

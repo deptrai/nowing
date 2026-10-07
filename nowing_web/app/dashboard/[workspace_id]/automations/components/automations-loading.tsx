@@ -1,5 +1,4 @@
 "use client";
-import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
 
@@ -11,7 +10,6 @@ const ROW_KEYS = ["sk-1", "sk-2", "sk-3"];
  * to communicate "loading" without flashing too much chrome.
  */
 export function AutomationsLoadingRows() {
-	const t = useTranslations("automations");
 	return (
 		<>
 			{ROW_KEYS.map((key) => (

@@ -40,7 +40,6 @@ interface InlineCitationProps {
  * survive in old persisted messages.
  */
 export const InlineCitation: FC<InlineCitationProps> = ({ chunkId, isDocsChunk = false }) => {
-	const t = useTranslations("assistant");
 	if (chunkId < 0 || isDocsChunk) {
 		return (
 			<Tooltip>

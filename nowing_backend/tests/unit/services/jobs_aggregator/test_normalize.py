@@ -847,6 +847,7 @@ def test_parse_salary_swaps_inverted_min_max():
 def test_parse_post_date_full_iso_datetime():
     """Verify that full-ISO datetimes with T, Z, or timezone offset are parsed."""
     import datetime
+
     from app.services.jobs_aggregator.normalize import _parse_post_date
 
     assert _parse_post_date("2026-08-10T14:30:00Z") == datetime.date(2026, 8, 10)

@@ -16,7 +16,6 @@ from app.db import (
     Memory,
     MemorySourceType,
     Permission,
-    SearchSourceConnector,
     User,
     Workspace,
     WorkspaceMembership,

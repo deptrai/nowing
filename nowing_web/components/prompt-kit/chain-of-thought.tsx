@@ -263,7 +263,7 @@ export const ChainOfThoughtContent: React.FC<ChainOfThoughtContentProps> = ({
 							<div
 								key={key}
 								className="animate-in fade-in slide-in-from-left-2 duration-200"
-								style={{
+								style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 									animationDelay: `${index * ANIMATION.STAGGER_DELAY_MS}ms`,
 									animationFillMode: "backwards",
 								}}
@@ -349,7 +349,7 @@ export const ChainOfThoughtStep: React.FC<ChainOfThoughtStepProps> = ({
 						// Animate line height from 0 to full
 						isVisible ? "h-4 scale-y-100" : "h-0 scale-y-0"
 					)}
-					style={{ transitionDelay: `${connectionLineDelay}ms` }}
+					style={{ transitionDelay: `${connectionLineDelay}ms` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 				/>
 			</div>
 		</Collapsible>

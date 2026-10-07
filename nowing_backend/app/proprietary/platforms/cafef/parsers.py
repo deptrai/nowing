@@ -160,6 +160,7 @@ def parse_financials(raw: dict[str, Any] | None, symbol: str) -> CafeFFinancials
 
         # Live CafeF envelope: ``{"isSuccess": bool, "value": {...}}``.
         if isinstance(payload, dict) and "isSuccess" in payload:
+            # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
             if payload.get("isSuccess") is False:
                 errors = payload.get("errors")
                 raise CafeFAccessBlockedError(f"CafeF {name} API error: {errors}")
@@ -231,6 +232,7 @@ def parse_quote(raw: dict[str, Any] | None, symbol: str) -> CafeFQuote:
     # Live envelope, unwrap if present.
     if isinstance(raw, dict):
         if "isSuccess" in raw:
+            # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
             if raw.get("isSuccess") is False:
                 errors = raw.get("errors")
                 raise CafeFAccessBlockedError(f"CafeF quote API error: {errors}")

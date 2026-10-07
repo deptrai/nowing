@@ -8,8 +8,8 @@ Verifies the 3 primary pillars of the Sales Copilot Loop:
 
 from __future__ import annotations
 
-import asyncio
 from types import SimpleNamespace
+
 import pytest
 
 from app.lead_intelligence.campaign.schemas import CampaignSpec, ICPCriteria

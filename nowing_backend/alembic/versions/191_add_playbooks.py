@@ -21,7 +21,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Create the enum explicitly first; ``create_type=False`` on the column
     # prevents the ``CREATE TABLE`` event from trying to create it again.
-    playbook_scope = sa.dialects.postgresql.ENUM(
+    playbook_scope = sa.dialects.postgresql.ENUM(  # pyright: ignore[reportAttributeAccessIssue]
         "workspace", "system", name="playbook_scope", create_type=False
     )
     playbook_scope.create(op.get_bind(), checkfirst=True)
@@ -38,15 +38,15 @@ def upgrade() -> None:
         ),
         sa.Column(
             "created_by_user_id",
-            sa.dialects.postgresql.UUID(as_uuid=True),
+            sa.dialects.postgresql.UUID(as_uuid=True),  # pyright: ignore[reportAttributeAccessIssue]
             sa.ForeignKey("user.id", ondelete="SET NULL"),
             nullable=True,
             index=True,
         ),
         sa.Column("name", sa.String(200), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("definition", sa.dialects.postgresql.JSONB(), nullable=False),
-        sa.Column("inputs_schema", sa.dialects.postgresql.JSONB(), nullable=False),
+        sa.Column("definition", sa.dialects.postgresql.JSONB(), nullable=False),  # pyright: ignore[reportAttributeAccessIssue]
+        sa.Column("inputs_schema", sa.dialects.postgresql.JSONB(), nullable=False),  # pyright: ignore[reportAttributeAccessIssue]
         sa.Column(
             "version",
             sa.Integer(),
@@ -55,13 +55,13 @@ def upgrade() -> None:
         ),
         sa.Column(
             "tool_scope",
-            sa.dialects.postgresql.JSONB(),
+            sa.dialects.postgresql.JSONB(),  # pyright: ignore[reportAttributeAccessIssue]
             nullable=False,
             server_default=sa.text("'[]'::jsonb"),
         ),
         sa.Column(
             "verticals",
-            sa.dialects.postgresql.JSONB(),
+            sa.dialects.postgresql.JSONB(),  # pyright: ignore[reportAttributeAccessIssue]
             nullable=False,
             server_default=sa.text("'[\"general\"]'::jsonb"),
         ),

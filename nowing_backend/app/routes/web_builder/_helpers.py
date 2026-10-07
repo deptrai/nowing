@@ -18,7 +18,7 @@ def is_web_builder_enabled_for_workspace(ws: Workspace | None) -> bool:
     """Check both global and workspace-level Web Builder feature flags."""
     if not config.WEB_BUILDER_ENABLED:
         return False
-    return not (ws and ws.web_builder_enabled is False)
+    return not (ws and not ws.web_builder_enabled)
 
 
 async def require_workspace_member(

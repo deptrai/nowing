@@ -9,9 +9,9 @@ import { Slider } from "@/components/ui/slider";
 
 export function PricingLeadCalculator() {
 	const t = useTranslations("pricing");
-	const [phoneUnlocks, setPhoneUnlocks] = useState<number>(300);
-	const [researchQueries, setResearchQueries] = useState<number>(100);
-	const [scrapedItems, setScrapedItems] = useState<number>(2000);
+	const [phoneUnlocks, setPhoneUnlocks] = useState(300);
+	const [researchQueries, setResearchQueries] = useState(100);
+	const [scrapedItems, setScrapedItems] = useState(2000);
 
 	// Unit rates
 	const phoneCost = phoneUnlocks * 0.05; // $0.05 per verified phone
@@ -30,7 +30,7 @@ export function PricingLeadCalculator() {
 				{/* Background Grid Pattern */}
 				<div
 					className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
-					style={{
+					style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 						backgroundImage: "radial-gradient(#059669 1px, transparent 1px)",
 						backgroundSize: "24px 24px",
 					}}

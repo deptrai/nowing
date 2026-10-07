@@ -1,4 +1,3 @@
-import { getTranslations } from "next-intl/server";
 import { AutomationEditContent } from "./automation-edit-content";
 
 export default async function AutomationEditPage({

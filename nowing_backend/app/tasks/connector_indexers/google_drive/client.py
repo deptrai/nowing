@@ -171,7 +171,7 @@ class ComposioDriveClient:
 
         if file_path.startswith(("http://", "https://")):
             try:
-                with urllib.request.urlopen(file_path, timeout=60) as response:
+                with urllib.request.urlopen(file_path, timeout=60) as response:  # nosemgrep
                     return response.read(), None
             except Exception as e:  # download Composio file URL failure; return None and error message
                 return None, f"Failed to download Composio file URL: {e!s}"

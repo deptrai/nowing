@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,10 +16,8 @@ from app.lead_intelligence.dnc.normalizer import (
     normalize_phone_e164,
 )
 from app.lead_intelligence.dnc.service import DncComplianceService
-from app.models.leads.core import DshMission
 from app.models.leads.enrichment import VerifiedContact
 from app.models.leads.main import Lead
-from app.models.leads.social import SocialPost
 from app.models.workspaces import GlobalDncRecord
 
 logger = logging.getLogger(__name__)

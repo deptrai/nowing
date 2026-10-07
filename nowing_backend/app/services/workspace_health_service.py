@@ -7,11 +7,10 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import String, cast, func, join, select, union
+from sqlalchemy import String, cast, func, select, union
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import config
 from app.db import (
     AgentActionLog,
     Memory,
@@ -19,11 +18,9 @@ from app.db import (
     TokenUsage,
     Workspace,
     WorkspaceHealthDaily,
-    WorkspaceLimit,
     WorkspaceMembership,
 )
 from app.models.documents import Document
-from app.models.scraper import ScraperPlatformAccount
 from app.schemas.workspace_health import (
     CoverageGapItem,
     CoverageGapsResponse,

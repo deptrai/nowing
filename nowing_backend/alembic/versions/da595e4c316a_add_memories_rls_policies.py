@@ -34,7 +34,7 @@ def _internal_service_predicate(_table: str) -> str:
 
 
 def _drop_policies(table: str) -> None:
-    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")
+    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")  # nosemgrep
     op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")
     op.execute(f"DROP POLICY IF EXISTS {table}_internal_service_policy ON {table};")
     op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")

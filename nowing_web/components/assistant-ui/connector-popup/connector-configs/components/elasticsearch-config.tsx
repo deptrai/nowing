@@ -23,36 +23,36 @@ export const ElasticsearchConfig: FC<ElasticsearchConfigProps> = ({
 	const authBasicId = useId();
 	const authApiKeyId = useId();
 
-	const [name, setName] = useState<string>(connector.name || "");
-	const [endpointUrl, setEndpointUrl] = useState<string>(
+	const [name, setName] = useState(connector.name || "");
+	const [endpointUrl, setEndpointUrl] = useState(
 		(connector.config?.ELASTICSEARCH_URL as string) || ""
 	);
 	const [authMethod, setAuthMethod] = useState<"basic" | "api_key">(
 		(connector.config?.ELASTICSEARCH_API_KEY ? "api_key" : "basic") as "basic" | "api_key"
 	);
-	const [username, setUsername] = useState<string>(
+	const [username, setUsername] = useState(
 		(connector.config?.ELASTICSEARCH_USERNAME as string) || ""
 	);
-	const [password, setPassword] = useState<string>(
+	const [password, setPassword] = useState(
 		(connector.config?.ELASTICSEARCH_PASSWORD as string) || ""
 	);
-	const [apiKey, setApiKey] = useState<string>(
+	const [apiKey, setApiKey] = useState(
 		(connector.config?.ELASTICSEARCH_API_KEY as string) || ""
 	);
-	const [indices, setIndices] = useState<string>(
+	const [indices, setIndices] = useState(
 		Array.isArray(connector.config?.ELASTICSEARCH_INDEX)
 			? (connector.config?.ELASTICSEARCH_INDEX as string[]).join(", ")
 			: (connector.config?.ELASTICSEARCH_INDEX as string) || ""
 	);
-	const [query, setQuery] = useState<string>(
+	const [query, setQuery] = useState(
 		(connector.config?.ELASTICSEARCH_QUERY as string) || "*"
 	);
-	const [searchFields, setSearchFields] = useState<string>(
+	const [searchFields, setSearchFields] = useState(
 		Array.isArray(connector.config?.ELASTICSEARCH_FIELDS)
 			? (connector.config?.ELASTICSEARCH_FIELDS as string[]).join(", ")
 			: ""
 	);
-	const [maxDocuments, setMaxDocuments] = useState<string>(
+	const [maxDocuments, setMaxDocuments] = useState(
 		connector.config?.ELASTICSEARCH_MAX_DOCUMENTS
 			? String(connector.config.ELASTICSEARCH_MAX_DOCUMENTS)
 			: ""

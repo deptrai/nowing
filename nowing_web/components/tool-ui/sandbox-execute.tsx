@@ -1,5 +1,4 @@
 "use client";
-
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import {
 	AlertCircleIcon,
@@ -20,16 +19,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { authenticatedFetch } from "@/lib/auth-fetch";
 import { buildBackendUrl } from "@/lib/env-config";
 import { cn } from "@/lib/utils";
-
 // ============================================================================
 // Zod Schemas
 // ============================================================================
-
 const ExecuteArgsSchema = z.object({
 	command: z.string(),
 	timeout: z.number().nullish(),
 });
-
 const ExecuteResultSchema = z.object({
 	result: z.string().nullish(),
 	exit_code: z.number().nullish(),
@@ -38,19 +34,15 @@ const ExecuteResultSchema = z.object({
 	status: z.string().nullish(),
 	thread_id: z.string().nullish(),
 });
-
 // ============================================================================
 // Types
 // ============================================================================
-
 type ExecuteArgs = z.infer<typeof ExecuteArgsSchema>;
 type ExecuteResult = z.infer<typeof ExecuteResultSchema>;
-
 interface SandboxFile {
 	path: string;
 	name: string;
 }
-
 interface ParsedOutput {
 	exitCode: number | null;
 	output: string;
@@ -59,13 +51,10 @@ interface ParsedOutput {
 	isError: boolean;
 	files: SandboxFile[];
 }
-
 // ============================================================================
 // Helpers
 // ============================================================================
-
 const SANDBOX_FILE_RE = /^SANDBOX_FILE:\s*(.+)$/gm;
-
 function extractSandboxFiles(text: string): SandboxFile[] {
 	const files: SandboxFile[] = [];
 	let match: RegExpExecArray | null = SANDBOX_FILE_RE.exec(text);
@@ -80,17 +69,14 @@ function extractSandboxFiles(text: string): SandboxFile[] {
 	SANDBOX_FILE_RE.lastIndex = 0;
 	return files;
 }
-
 function stripSandboxFileLines(text: string): string {
 	return text
 		.replace(/^SANDBOX_FILE:\s*.+$/gm, "")
 		.replace(/\n{3,}/g, "\n\n")
 		.trim();
 }
-
 function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 	const raw = result.result || result.output || "";
-
 	if (result.error) {
 		return {
 			exitCode: null,
@@ -101,7 +87,6 @@ function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 			files: [],
 		};
 	}
-
 	if (result.exit_code !== undefined && result.exit_code !== null) {
 		const files = extractSandboxFiles(raw);
 		const displayOutput = stripSandboxFileLines(raw);
@@ -114,7 +99,6 @@ function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 			files,
 		};
 	}
-
 	const exitMatch = raw.match(/^Exit code:\s*(\d+)/);
 	if (exitMatch) {
 		const exitCode = parseInt(exitMatch[1], 10);
@@ -131,7 +115,6 @@ function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 			files,
 		};
 	}
-
 	if (raw.startsWith("Error:")) {
 		return {
 			exitCode: null,
@@ -142,23 +125,19 @@ function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 			files: [],
 		};
 	}
-
 	const files = extractSandboxFiles(raw);
 	const displayOutput = stripSandboxFileLines(raw);
 	return { exitCode: null, output: raw, displayOutput, truncated: false, isError: false, files };
 }
-
 function truncateCommand(command: string, maxLen = 80): string {
 	if (command.length <= maxLen) return command;
 	return `${command.slice(0, maxLen)}…`;
 }
-
 // ============================================================================
 // Download helper
 // ============================================================================
-
 async function downloadSandboxFile(threadId: string, filePath: string, fileName: string) {
-	const t = useTranslations("toolUi");
+	
 	const url = buildBackendUrl(`/api/v1/threads/${threadId}/sandbox/download`, {
 		path: filePath,
 	});
@@ -176,11 +155,9 @@ async function downloadSandboxFile(threadId: string, filePath: string, fileName:
 	a.remove();
 	URL.revokeObjectURL(blobUrl);
 }
-
 // ============================================================================
 // Sub-Components
 // ============================================================================
-
 function ExecuteLoading({ command }: { command: string }) {
 	return (
 		<div className="my-4 flex max-w-lg items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
@@ -194,7 +171,6 @@ function ExecuteLoading({ command }: { command: string }) {
 		</div>
 	);
 }
-
 function ExecuteErrorState({ command, error }: { command: string; error: string }) {
 	const t = useTranslations("toolUi");
 	return (
@@ -214,7 +190,6 @@ function ExecuteErrorState({ command, error }: { command: string; error: string 
 		</div>
 	);
 }
-
 function ExecuteCancelledState({ command }: { command: string }) {
 	return (
 		<div className="my-4 max-w-lg rounded-xl border border-muted p-4 text-muted-foreground">
@@ -225,12 +200,10 @@ function ExecuteCancelledState({ command }: { command: string }) {
 		</div>
 	);
 }
-
 function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: string }) {
 	const t = useTranslations("toolUi");
 	const [downloading, setDownloading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-
 	const handleDownload = useCallback(async () => {
 		setDownloading(true);
 		setError(null);
@@ -242,7 +215,6 @@ function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: 
 			setDownloading(false);
 		}
 	}, [threadId, file.path, file.name]);
-
 	return (
 		<Button
 			variant="ghost"
@@ -262,7 +234,6 @@ function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: 
 		</Button>
 	);
 }
-
 function ExecuteCompleted({
 	command,
 	parsed,
@@ -278,7 +249,6 @@ function ExecuteCompleted({
 	const hasTextContent = parsed.displayOutput.trim().length > 0 || isLongCommand;
 	const hasFiles = parsed.files.length > 0 && !!threadId;
 	const hasContent = hasTextContent || hasFiles;
-
 	const exitBadge = useMemo(() => {
 		if (parsed.exitCode === null) return null;
 		const success = parsed.exitCode === 0;
@@ -300,7 +270,6 @@ function ExecuteCompleted({
 			</Badge>
 		);
 	}, [parsed.exitCode]);
-
 	return (
 		<div className="my-4 max-w-lg">
 			<Collapsible open={open} onOpenChange={setOpen}>
@@ -334,7 +303,6 @@ function ExecuteCompleted({
 					)}
 					{exitBadge}
 				</CollapsibleTrigger>
-
 				<CollapsibleContent>
 					<div
 						className={cn(
@@ -385,22 +353,18 @@ function ExecuteCompleted({
 		</div>
 	);
 }
-
 // ============================================================================
 // Tool UI
 // ============================================================================
-
 export const SandboxExecuteToolUI = ({
 	args,
 	result,
 	status,
 }: ToolCallMessagePartProps<ExecuteArgs, ExecuteResult>) => {
 	const command = args.command || "…";
-
 	if (status.type === "running" || status.type === "requires-action") {
 		return <ExecuteLoading command={command} />;
 	}
-
 	if (status.type === "incomplete") {
 		if (status.reason === "cancelled") {
 			return <ExecuteCancelledState command={command} />;
@@ -414,18 +378,14 @@ export const SandboxExecuteToolUI = ({
 			);
 		}
 	}
-
 	if (!result) {
 		return <ExecuteLoading command={command} />;
 	}
-
 	if (result.error && !result.result && !result.output) {
 		return <ExecuteErrorState command={command} error={result.error} />;
 	}
-
 	const parsed = parseExecuteResult(result);
 	const threadId = result.thread_id || null;
 	return <ExecuteCompleted command={command} parsed={parsed} threadId={threadId} />;
 };
-
 export { type ExecuteArgs, ExecuteArgsSchema, type ExecuteResult, ExecuteResultSchema };

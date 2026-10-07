@@ -72,7 +72,7 @@ async def _capture_session_impl(platform: str, cdp_url: str | None = None) -> di
     if cdp_url:
         # Validate that the CDP URL looks like a WebSocket URL to prevent
         # command injection through an environment variable.
-        if not cdp_url.startswith("ws://") and not cdp_url.startswith("wss://"):
+        if not cdp_url.startswith("ws://") and not cdp_url.startswith("wss://"):  # nosemgrep
             raise ValueError(f"Invalid CDP URL scheme: {cdp_url[:20]!r}")
         cmd.extend(["--cdp", cdp_url])
 

@@ -43,7 +43,7 @@ export function CreateFolderDialog({
 	);
 
 	const handleSubmit = useCallback(
-		(e?: React.FormEvent) => {
+		(e?: React.SubmitEvent<HTMLFormElement>) => {
 			e?.preventDefault();
 			const trimmed = name.trim();
 			if (!trimmed) return;

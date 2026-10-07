@@ -49,7 +49,7 @@ function GoogleGLogo({ className }: { className?: string }) {
 	);
 }
 
-function useHotkeyRows(t: ReturnType<typeof useTranslations>) {
+function getHotkeyRows(t: ReturnType<typeof useTranslations>) {
 	return [
 		{
 			key: "generalAssist" as ShortcutKey,
@@ -187,7 +187,7 @@ function HotkeyRow({
 export default function DesktopLoginPage() {
 	const router = useRouter();
 	const t = useTranslations("desktopLogin");
-	const HOTKEY_ROWS = useHotkeyRows(t);
+	const HOTKEY_ROWS = getHotkeyRows(t);
 	const api = useElectronAPI();
 	const isGoogleAuth = useIsGoogleAuth();
 

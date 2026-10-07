@@ -103,8 +103,8 @@ function ApprovalCard({
 		return "";
 	}, [validAccounts]);
 
-	const [selectedAccountId, setSelectedAccountId] = useState<string>(defaultAccountId);
-	const [parentFolderId, setParentFolderId] = useState<string>("__root__");
+	const [selectedAccountId, setSelectedAccountId] = useState(defaultAccountId);
+	const [parentFolderId, setParentFolderId] = useState("__root__");
 
 	const parentFolders = interruptData.context?.parent_folders ?? {};
 	const availableParentFolders = useMemo(() => {
@@ -313,7 +313,7 @@ function ApprovalCard({
 				{(pendingEdits?.content ?? args.content) != null && (
 					<div
 						className="mt-2 max-h-[7rem] overflow-hidden text-sm"
-						style={{
+						style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 							maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 							WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 						}}

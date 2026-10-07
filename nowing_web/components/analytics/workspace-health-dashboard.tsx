@@ -581,7 +581,7 @@ export function WorkspaceHealthDashboard({ workspaceId }: WorkspaceHealthDashboa
 															"h-full transition-all duration-300",
 															isAlert ? "bg-destructive" : isWarning ? "bg-amber-500" : "bg-primary"
 														)}
-														style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+														style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic per-metric bar width
 													/>
 												</div>
 

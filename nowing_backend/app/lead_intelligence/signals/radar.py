@@ -374,6 +374,7 @@ def _extract_event_entities(payload: dict[str, Any], text: str) -> dict[str, Any
         entities = payload.get(key)
         if isinstance(entities, str):
             with contextlib.suppress(Exception):
+                # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- already inside contextlib.suppress
                 entities = json.loads(entities)
         if isinstance(entities, dict) and (
             entities.get("phones") or entities.get("emails")

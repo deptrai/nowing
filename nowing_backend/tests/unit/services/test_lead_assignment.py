@@ -93,7 +93,7 @@ def _make_fake_session(
 ) -> MagicMock:
     """Build a mocked async session that answers the expected LeadAssignmentService queries."""
     session = MagicMock()
-    session._leads_by_id: dict[UUID, Any] = {}
+    session._leads_by_id = {}
 
     async def _get(_model: Any, _key: Any, **kwargs: Any) -> Any:
         if fake_membership is not None and _model.__name__ == "WorkspaceMembership":
@@ -341,7 +341,9 @@ async def test_round_robin_redis_cursor_persistence():
     fake_membership = _make_fake_membership()
 
     service_1 = LeadAssignmentService(
-        session=_make_fake_session(fake_lead=fake_lead, fake_membership=fake_membership),
+        session=_make_fake_session(
+            fake_lead=fake_lead, fake_membership=fake_membership
+        ),
         redis_client=redis,
     )
     service_1.get_eligible_members = AsyncMock(return_value=eligible)
@@ -349,7 +351,9 @@ async def test_round_robin_redis_cursor_persistence():
     assert res_1.assigned_to_user_id == user_1
 
     service_2 = LeadAssignmentService(
-        session=_make_fake_session(fake_lead=fake_lead, fake_membership=fake_membership),
+        session=_make_fake_session(
+            fake_lead=fake_lead, fake_membership=fake_membership
+        ),
         redis_client=redis,
     )
     service_2.get_eligible_members = AsyncMock(return_value=eligible)

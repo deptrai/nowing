@@ -416,6 +416,7 @@ async def _do_post(
 
         client = await _get_client(_timeout(), headers)
         try:
+            # pi-lens-ignore: ast-grep:no-testclient-text-without-content -- httpx form dict, not a TestClient request (FP)
             resp = await client.post(url, data=body, headers=headers)
         except httpx.TimeoutException as exc:
             if attempt < _MAX_429_RETRIES:

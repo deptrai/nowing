@@ -37,7 +37,6 @@ from app.schemas.dsh import (
 )
 from app.services.browser_operator_audit_service import (
     BrowserOperatorAuditService,
-    generate_session_token,
     validate_session_token,
 )
 from app.services.dsh_control_service import MissionControlService

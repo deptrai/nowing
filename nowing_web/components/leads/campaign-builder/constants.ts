@@ -2,19 +2,7 @@
 
 import type { CampaignIntent, IcpVerticalTemplate } from "@/contracts/types/campaign.types";
 
-export const VERTICAL_PRESETS: Record<
-	IcpVerticalTemplate,
-	{
-		label: string;
-		description: string;
-		industries: string[];
-		locations: string[];
-		companySize: string;
-		techStack: string[];
-		intents: CampaignIntent[];
-		sources: string[];
-	}
-> = {
+export const VERTICAL_PRESETS = {
 	b2b_saas: {
 		label: "B2B SaaS / Chuyển Đổi Số",
 		description: "Tìm các doanh nghiệp đang tuyển IT, nâng cấp phần mềm, công nghệ cao",
@@ -75,7 +63,19 @@ export const VERTICAL_PRESETS: Record<
 		intents: ["BÁN"],
 		sources: ["facebook", "telegram", "batdongsan", "topcv", "tender"],
 	},
-};
+} satisfies Record<
+	IcpVerticalTemplate,
+	{
+		label: string;
+		description: string;
+		industries: string[];
+		locations: string[];
+		companySize: string;
+		techStack: string[];
+		intents: CampaignIntent[];
+		sources: string[];
+	}
+>;
 
 export const AVAILABLE_SOURCES = [
 	{

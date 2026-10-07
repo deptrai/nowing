@@ -33,7 +33,7 @@ export function ConnectAgentDialog({ className }: { className?: string }) {
 				<span
 					aria-hidden="true"
 					className="size-3.5 shrink-0 bg-current"
-					style={{
+					style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 						mask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
 						WebkitMask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
 					}}

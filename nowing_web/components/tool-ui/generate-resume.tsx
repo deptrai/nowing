@@ -317,7 +317,7 @@ function ResumeCard({
 					{pdfUrl && (
 						<div
 							className={`max-h-[7rem] overflow-hidden pointer-events-none mix-blend-multiply dark:mix-blend-screen ${thumbState !== "ready" ? "hidden" : ""}`}
-							style={{
+							style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 								maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 								WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 							}}

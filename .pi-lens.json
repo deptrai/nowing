@@ -1,0 +1,74 @@
+{
+  "rules": {
+    "ast-grep:find-import-file-without-extension": {
+      "disable": [
+        "ast-grep:find-import-file-without-extension",
+        "find-import-file-without-extension"
+      ]
+    },
+    "ast-grep:no-console-except-error": {
+      "disable": [
+        "ast-grep:no-console-except-error",
+        "no-console-except-error"
+      ]
+    },
+    "ast-grep:large-class": {
+      "disable": [
+        "ast-grep:large-class",
+        "large-class"
+      ]
+    },
+    "ast-grep:no-runtime-typeof": {
+      "disable": [
+        "ast-grep:no-runtime-typeof",
+        "no-runtime-typeof"
+      ]
+    },
+    "ast-grep:no-unsafe-dictionary-unknown": {
+      "disable": [
+        "ast-grep:no-unsafe-dictionary-unknown",
+        "no-unsafe-dictionary-unknown"
+      ]
+    },
+    "ast-grep:no-unknown-parameters": {
+      "disable": [
+        "ast-grep:no-unknown-parameters",
+        "no-unknown-parameters"
+      ]
+    },
+    "ast-grep:no-star-imports": {
+      "disable": [
+        "ast-grep:no-star-imports",
+        "no-star-imports"
+      ]
+    },
+    "ast-grep:unchecked-numeric-parse-python": {
+      "disable": [
+        "ast-grep:unchecked-numeric-parse-python",
+        "unchecked-numeric-parse-python"
+      ]
+    },
+    "ast-grep:no-raise-not-implemented": {
+      "disable": [
+        "ast-grep:no-raise-not-implemented",
+        "no-raise-not-implemented"
+      ]
+    },
+    "ast-grep:unreachable-except": {
+      "disable": [
+        "ast-grep:unreachable-except",
+        "unreachable-except"
+      ]
+    },
+    "ast-grep:no-ellipsis-body": {
+      "disable": [
+        "ast-grep:no-ellipsis-body",
+        "no-ellipsis-body"
+      ]
+    }
+  },
+  "ignore": [
+    "nowing_obsidian/eslint.config.mts",
+    "nowing_backend/alembic/versions/**"
+  ]
+}

@@ -65,8 +65,8 @@ function ImagePreview({
 	src,
 	...props
 }: ImagePreviewProps) {
-	const [loadedSrc, setLoadedSrc] = useState<string | undefined>(undefined);
-	const [errorSrc, setErrorSrc] = useState<string | undefined>(undefined);
+	const [loadedSrc, setLoadedSrc] = useState<string>();
+	const [errorSrc, setErrorSrc] = useState<string>();
 	const imageSrc = src ?? "";
 
 	const loaded = imageSrc !== "" && loadedSrc === imageSrc;

@@ -8,7 +8,7 @@
  * persistence is needed, encrypt with a user-supplied secret or OS keychain.
  */
 
-import { LeadClipPayload, OfflineQueuedLead } from '../types';
+import { LeadClipPayload, OfflineQueuedLead } from '../types/index.js';
 
 const QUEUE_STORAGE_KEY = 'nowing_clipper_offline_queue';
 
@@ -27,7 +27,7 @@ export async function enqueueLead(
 ): Promise<OfflineQueuedLead[]> {
   const queue = await getOfflineQueue();
   const queuedLead: OfflineQueuedLead = {
-    id: `offline_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    id: `offline_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     payload,
     workspaceId,
     queuedAt: new Date().toISOString(),
@@ -68,6 +68,6 @@ export async function updateBadge(count: number): Promise<void> {
       await chrome.action.setBadgeText({ text: '' });
     }
   } catch (err) {
-    console.warn('Failed to update extension badge:', err);
+    console.error('Failed to update extension badge:', err);
   }
 }

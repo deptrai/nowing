@@ -1,13 +1,13 @@
 """Unit tests for XActions thin-proxy executor (Story 40.2)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.capabilities.core.xactions_proxy import (
-    make_xactions_executor,
     _map_xactions_error,
+    make_xactions_executor,
 )
-from app.capabilities.core.types import CapabilityContext
 from app.exceptions import ExternalServiceError
 from app.proprietary.platforms.xactions.mcp_client import XActionsMcpError
 
@@ -169,7 +169,7 @@ class TestXActionsProxyExecutor:
             with pytest.raises(ExternalServiceError) as exc_info:
                 await executor(mock_input, None)
 
-            assert "XACTIONS_UPSTREAM_ERROR" == exc_info.value.code
+            assert exc_info.value.code == "XACTIONS_UPSTREAM_ERROR"
 
 
 class TestXActionsErrorMapping:

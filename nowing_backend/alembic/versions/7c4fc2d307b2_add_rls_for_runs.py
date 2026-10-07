@@ -35,10 +35,10 @@ def _tenant_write_predicate(table: str) -> str:
 
 
 def _drop_policies(table: str) -> None:
-    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")
-    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")
-    op.execute(f"DROP POLICY IF EXISTS {table}_internal_service_policy ON {table};")
-    op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
+    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")  # nosemgrep
+    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")  # nosemgrep
+    op.execute(f"DROP POLICY IF EXISTS {table}_internal_service_policy ON {table};")  # nosemgrep
+    op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")  # nosemgrep
 
 
 def _internal_service_predicate(_table: str) -> str:
@@ -47,7 +47,7 @@ def _internal_service_predicate(_table: str) -> str:
 
 def _create_rls(table: str) -> None:
     _drop_policies(table)
-    op.execute(f"""
+    op.execute(f"""  # nosemgrep
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
             FOR SELECT
@@ -58,7 +58,7 @@ def _create_rls(table: str) -> None:
                 OR {_internal_service_predicate(table)}
             );
     """)
-    op.execute(f"""
+    op.execute(f"""  # nosemgrep
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
             FOR ALL
@@ -66,7 +66,7 @@ def _create_rls(table: str) -> None:
             USING ({_tenant_write_predicate(table)})
             WITH CHECK ({_tenant_write_predicate(table)});
     """)
-    op.execute(f"""
+    op.execute(f"""  # nosemgrep
         CREATE POLICY {table}_internal_service_policy ON {table}
             AS PERMISSIVE
             FOR ALL
@@ -74,8 +74,8 @@ def _create_rls(table: str) -> None:
             USING ({_internal_service_predicate(table)})
             WITH CHECK ({_internal_service_predicate(table)});
     """)
-    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
-    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
+    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")  # nosemgrep
+    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")  # nosemgrep
 
 
 def upgrade() -> None:

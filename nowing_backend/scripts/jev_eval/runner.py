@@ -628,6 +628,7 @@ def evaluate_gate(
 
 
 def write_results(results: list[EvalResult]) -> None:
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller
     with open(RESULTS_FILE, "w") as f:
         for r in results:
             f.write(json.dumps(asdict(r), ensure_ascii=False) + "\n")

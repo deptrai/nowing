@@ -286,7 +286,7 @@ function ApprovalCard({
 											{page.body && (
 												<div
 													className="max-h-[5rem] overflow-hidden text-xs text-muted-foreground"
-													style={{
+													style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 														maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 														WebkitMaskImage:
 															"linear-gradient(to bottom, black 50%, transparent 100%)",
@@ -330,7 +330,7 @@ function ApprovalCard({
 							: (actionArgs.new_content ?? args.new_content)) && (
 							<div
 								className="max-h-[7rem] overflow-hidden text-sm"
-								style={{
+								style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 									maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 									WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 								}}

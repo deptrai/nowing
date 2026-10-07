@@ -188,6 +188,7 @@ def _normalize_job(job: dict[str, Any]) -> dict[str, Any]:
 
     is_active = job.get("isActive")
     # A missing or null isActive field does not mean the posting is inactive.
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     is_active = is_active is None or is_active is True
 
     return {

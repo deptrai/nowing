@@ -599,4 +599,5 @@ def _decode_rpc_body(text: str) -> Any | None:
     if start == -1:
         return None
     blob = brace_match_json(body, start)
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- parse failure propagates to caller
     return json.loads(blob) if blob else None

@@ -135,7 +135,7 @@ export function UsageDateRangePicker({ value, onChange }: UsageDateRangePickerPr
 						selected={draftRange}
 						onSelect={handleSelect}
 						numberOfMonths={2}
-						initialFocus
+						autoFocus
 					/>
 					<div className="mt-2 flex justify-end gap-2">
 						<Button variant="outline" size="sm" onClick={() => setIsCustomOpen(false)}>

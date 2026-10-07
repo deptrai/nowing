@@ -71,7 +71,7 @@ export function RunProgressPanel({
 				<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 					<div
 						className="h-full rounded-full bg-primary transition-all duration-300"
-						style={{ width: `${pct}%` }}
+						style={{ width: `${pct}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic progress width
 					/>
 				</div>
 			)}

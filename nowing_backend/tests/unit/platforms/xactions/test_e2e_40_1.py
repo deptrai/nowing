@@ -8,18 +8,18 @@ Tests that exercise the real code path (not mocked):
 """
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
+import pytest
+
+from app.proprietary.platforms.xactions.circuit_breaker import (
+    XACTIONS_CIRCUIT_BREAKER,
+    CircuitState,
+    XActionsCircuitBreaker,
+)
 from app.proprietary.platforms.xactions.mcp_client import (
     XActionsMcpClient,
     XActionsMcpError,
-    XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS,
-)
-from app.proprietary.platforms.xactions.circuit_breaker import (
-    XACTIONS_CIRCUIT_BREAKER,
-    XActionsCircuitBreaker,
-    CircuitState,
 )
 
 

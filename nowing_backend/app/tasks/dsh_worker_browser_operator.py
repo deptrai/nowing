@@ -193,6 +193,7 @@ class BrowserOperatorCdpSubgraph:
             error_msg = parsed_result["error"]
             if isinstance(error_msg, str) and (
                 error_msg.startswith("DEBUGGER_DETACHED")
+                # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- FP: 'is' inside the string literal
                 or "Debugger is not attached" in error_msg
             ):
                 clean_reason = error_msg.removeprefix("DEBUGGER_DETACHED:").strip()

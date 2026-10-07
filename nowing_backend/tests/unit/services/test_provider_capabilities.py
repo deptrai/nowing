@@ -272,10 +272,11 @@ def test_chainlens_listed_in_registry():
 
 def test_chainlens_serialized_by_list_model_providers():
     """list_model_providers returns chainlens in the serialized response shape."""
-    from app.routes.model_connections_routes import list_model_providers
-    from app.schemas.model_connections import ModelProviderRead
     import asyncio
     from unittest.mock import MagicMock
+
+    from app.routes.model_connections_routes import list_model_providers
+    from app.schemas.model_connections import ModelProviderRead
 
     # Bypass auth dependency by calling the underlying function directly
     # list_model_providers ignores its `auth` arg (del auth), so any value works

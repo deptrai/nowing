@@ -44,7 +44,8 @@ function AvatarDisplay({
 	return (
 		<div
 			className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-semibold text-white select-none"
-			style={{ backgroundColor: bgColor }}
+			style={{ backgroundColor: bgColor }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic avatar color
+
 		>
 			{fallback}
 		</div>
@@ -64,7 +65,7 @@ export function ProfileContent() {
 		}
 	}, [user]);
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 
 		try {

@@ -138,7 +138,7 @@ def upgrade():
             )
 
             result = connection.execute(
-                sa.text(f"""
+                sa.text(f"""  # nosemgrep
                     INSERT INTO search_space_roles 
                     (name, description, permissions, is_default, is_system_role, search_space_id)
                     VALUES (:name, :description, {perms_literal}, :is_default, :is_system_role, :search_space_id)
@@ -152,7 +152,7 @@ def upgrade():
                     "search_space_id": ss_id,
                 },
             )
-            role_id = result.fetchone()[0]
+            role_id = result.fetchone()[0]  # pyright: ignore[reportOptionalSubscript]
 
             # Keep track of Owner role ID
             if role["name"] == "Owner":

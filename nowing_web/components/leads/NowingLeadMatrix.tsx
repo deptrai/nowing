@@ -14,7 +14,6 @@ import {
 	MessageSquare,
 	Minimize2,
 	Network,
-	Phone,
 	RefreshCw,
 	Search,
 	ShieldAlert,

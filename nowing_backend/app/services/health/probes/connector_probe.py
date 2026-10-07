@@ -23,8 +23,16 @@ _CONNECTOR_DB_SESSION_SEMAPHORE = asyncio.Semaphore(5)
 
 _CONNECTOR_HEALTH_PING: dict[str, tuple[str, str, dict[str, Any] | None]] = {
     "google_drive": ("GET", "https://www.googleapis.com/drive/v3/about", None),
-    "google_gmail": ("GET", "https://gmail.googleapis.com/gmail/v1/users/me/profile", None),
-    "google_calendar": ("GET", "https://www.googleapis.com/calendar/v3/users/me/calendarList", None),
+    "google_gmail": (
+        "GET",
+        "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+        None,
+    ),
+    "google_calendar": (
+        "GET",
+        "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+        None,
+    ),
     "google_sheets": ("GET", "https://sheets.googleapis.com/v4/spreadsheets", None),
     "slack": ("GET", "https://slack.com/api/auth.test", None),
     "discord": ("GET", "https://discord.com/api/v10/users/@me", None),
@@ -32,7 +40,11 @@ _CONNECTOR_HEALTH_PING: dict[str, tuple[str, str, dict[str, Any] | None]] = {
     "confluence": ("GET", "/rest/api/space", None),
     "notion": ("POST", "https://api.notion.com/v1/search", {"query": ""}),
     "airtable": ("GET", "https://api.airtable.com/v0/meta/bases", None),
-    "linear": ("POST", "https://api.linear.app/graphql", {"query": "{ viewer { id } }"}),
+    "linear": (
+        "POST",
+        "https://api.linear.app/graphql",
+        {"query": "{ viewer { id } }"},
+    ),
     "github": ("GET", "https://api.github.com/user", None),
     "dropbox": ("POST", "https://api.dropboxapi.com/2/users/get_current_account", None),
     "clickup": ("GET", "https://api.clickup.com/api/v2/team", None),
@@ -73,7 +85,9 @@ class ConnectorHealthProbe(HealthProbe):
     def interval_seconds(self) -> int:
         return 900  # 15 minutes
 
-    async def _ping_upstream(self, connection: Connection) -> tuple[HealthStatus, str | None]:
+    async def _ping_upstream(
+        self, connection: Connection
+    ) -> tuple[HealthStatus, str | None]:
         """Run a lightweight upstream ping using the stored connector credentials."""
         ping = _CONNECTOR_HEALTH_PING.get(self._connector_type)
         if not ping:
@@ -90,19 +104,24 @@ class ConnectorHealthProbe(HealthProbe):
             "google_calendar",
             "google_sheets",
         } or self._connector_type in {"slack", "github", "airtable", "clickup"}:
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             headers["Authorization"] = f"Bearer {token}"
         elif self._connector_type == "discord":
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             headers["Authorization"] = f"Bot {token}"
         elif self._connector_type == "notion":
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             headers["Authorization"] = f"Bearer {token}"
             headers["Notion-Version"] = "2022-06-28"
         elif self._connector_type == "linear":
             headers["Authorization"] = token
         elif self._connector_type == "dropbox":
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             headers["Authorization"] = f"Bearer {token}"
         elif self._connector_type in {"jira", "confluence"}:
             # Jira/Confluence often use Basic auth or OAuth; try bearer first if long token
             if token and token.startswith("ey"):
+                # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
                 headers["Authorization"] = f"Bearer {token}"
             else:
                 # Basic auth with api_key as token and user from extra
@@ -115,7 +134,10 @@ class ConnectorHealthProbe(HealthProbe):
         if url.startswith("/"):
             base = connection.base_url or (connection.extra or {}).get("base_url")
             if not base:
-                return ("not_configured", "No base_url configured for Jira/Confluence connector")
+                return (
+                    "not_configured",
+                    "No base_url configured for Jira/Confluence connector",
+                )
             url = base.rstrip("/") + url
 
         try:
@@ -128,7 +150,10 @@ class ConnectorHealthProbe(HealthProbe):
             if resp.status_code in (200, 202, 204):
                 return ("healthy", None)
             if resp.status_code in (401, 403):
-                return ("degraded", f"HTTP {resp.status_code} - credentials rejected or expired")
+                return (
+                    "degraded",
+                    f"HTTP {resp.status_code} - credentials rejected or expired",
+                )
             if resp.status_code == 429:
                 return ("degraded", f"HTTP {resp.status_code} - rate limited")
             if resp.status_code >= 500:
@@ -146,21 +171,13 @@ class ConnectorHealthProbe(HealthProbe):
         latest_connection: Connection | None = None
 
         try:
-            async with _CONNECTOR_DB_SESSION_SEMAPHORE, async_session_maker() as session:
-                    query = select(Connection).where(
-                        and_(
-                            Connection.provider == self._connector_type,
-                            Connection.enabled.is_(True),
-                            or_(
-                                Connection.api_key.isnot(None),
-                                Connection.extra.isnot(None),
-                            ),
-                        )
-                    ).order_by(Connection.created_at.desc()).limit(1)
-                    res = await session.execute(query)
-                    latest_connection = res.scalar_one_or_none()
-
-                    count_query = select(func.count()).select_from(Connection).where(
+            async with (
+                _CONNECTOR_DB_SESSION_SEMAPHORE,
+                async_session_maker() as session,
+            ):
+                query = (
+                    select(Connection)
+                    .where(
                         and_(
                             Connection.provider == self._connector_type,
                             Connection.enabled.is_(True),
@@ -170,21 +187,47 @@ class ConnectorHealthProbe(HealthProbe):
                             ),
                         )
                     )
-                    count_res = await session.execute(count_query)
-                    active_accounts = count_res.scalar() or 0
+                    .order_by(Connection.created_at.desc())
+                    .limit(1)
+                )
+                res = await session.execute(query)
+                latest_connection = res.scalar_one_or_none()
+
+                count_query = (
+                    select(func.count())
+                    .select_from(Connection)
+                    .where(
+                        and_(
+                            Connection.provider == self._connector_type,
+                            Connection.enabled.is_(True),
+                            or_(
+                                Connection.api_key.isnot(None),
+                                Connection.extra.isnot(None),
+                            ),
+                        )
+                    )
+                )
+                count_res = await session.execute(count_query)
+                active_accounts = count_res.scalar() or 0
 
             latency_ms = int((time.perf_counter() - start) * 1000)
             if active_accounts == 0:
                 status = "not_configured"
-                suggested_action = f"Configure active credentials for {self._service_name}"
+                suggested_action = (
+                    f"Configure active credentials for {self._service_name}"
+                )
             elif latest_connection is not None:
-                upstream_status, upstream_error = await self._ping_upstream(latest_connection)
+                upstream_status, upstream_error = await self._ping_upstream(
+                    latest_connection
+                )
                 status = upstream_status
                 last_error = upstream_error
                 if status == "degraded":
                     suggested_action = f"Refresh credentials or inspect {self._service_name} rate limits"
                 elif status == "unavailable":
-                    suggested_action = f"Check {self._service_name} service status and credentials"
+                    suggested_action = (
+                        f"Check {self._service_name} service status and credentials"
+                    )
                 else:
                     suggested_action = None
             else:
@@ -193,10 +236,16 @@ class ConnectorHealthProbe(HealthProbe):
             latency_ms = int((time.perf_counter() - start) * 1000)
             status = "unavailable"
             last_error = f"Connector probe error: {type(exc).__name__}"
-            suggested_action = f"Check database connectivity and credentials for {self._service_name}"
+            suggested_action = (
+                f"Check database connectivity and credentials for {self._service_name}"
+            )
 
-        success_rate = 100.0 if status == "healthy" else (50.0 if status == "degraded" else 0.0)
-        error_rate = 0.0 if status == "healthy" else (50.0 if status == "degraded" else 100.0)
+        success_rate = (
+            100.0 if status == "healthy" else (50.0 if status == "degraded" else 0.0)
+        )
+        error_rate = (
+            0.0 if status == "healthy" else (50.0 if status == "degraded" else 100.0)
+        )
 
         return HealthResult(
             service_id=self._service_id,
@@ -209,6 +258,9 @@ class ConnectorHealthProbe(HealthProbe):
             suggested_action=suggested_action,
             error_rate_15m=error_rate,
             success_rate_15m=success_rate,
-            metadata={"connector_type": self._connector_type, "active_accounts": active_accounts},
+            metadata={
+                "connector_type": self._connector_type,
+                "active_accounts": active_accounts,
+            },
             probed_at=datetime.now(UTC),
         )

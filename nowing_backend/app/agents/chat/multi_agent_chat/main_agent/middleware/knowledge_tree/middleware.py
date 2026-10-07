@@ -71,7 +71,7 @@ def _count_tokens(text: str, *, llm: BaseChatModel | None) -> int:
     count_fn = getattr(llm, "_count_tokens", None)
     if callable(count_fn):
         try:
-            return int(count_fn([{"role": "user", "content": text}]))
+            return int(count_fn([{"role": "user", "content": text}]))  # pyright: ignore[reportArgumentType]
         except Exception as exc:  # model token counter method failure; fall back to profile models
             logger.debug("Suppressed %r", exc)
     profile = getattr(llm, "profile", None)

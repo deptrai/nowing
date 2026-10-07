@@ -6,7 +6,7 @@
  * - WEBCRAWLER_CONNECTOR maps to CRAWLED_URL document type
  * - GOOGLE_DRIVE_CONNECTOR maps to GOOGLE_DRIVE_FILE document type
  */
-export const CONNECTOR_TO_DOCUMENT_TYPE: Record<string, string> = {
+export const CONNECTOR_TO_DOCUMENT_TYPE = {
 	// Direct mappings (connector type matches document type)
 	SLACK_CONNECTOR: "SLACK_CONNECTOR",
 	TEAMS_CONNECTOR: "TEAMS_CONNECTOR",
@@ -35,14 +35,14 @@ export const CONNECTOR_TO_DOCUMENT_TYPE: Record<string, string> = {
 	COMPOSIO_GOOGLE_DRIVE_CONNECTOR: "GOOGLE_DRIVE_FILE",
 	COMPOSIO_GMAIL_CONNECTOR: "GOOGLE_GMAIL_CONNECTOR",
 	COMPOSIO_GOOGLE_CALENDAR_CONNECTOR: "GOOGLE_CALENDAR_CONNECTOR",
-};
+} satisfies Record<string, string>;
 
 /**
  * Get the document type for a given connector type
  * Returns undefined if the connector doesn't index documents (e.g., search APIs)
  */
 export function getDocumentTypeForConnector(connectorType: string): string | undefined {
-	return CONNECTOR_TO_DOCUMENT_TYPE[connectorType];
+	return (CONNECTOR_TO_DOCUMENT_TYPE as Record<string, string>)[connectorType];
 }
 
 /**

@@ -71,7 +71,7 @@ const Pin = ({ className }: { className?: string }) => {
 	const t = useTranslations("contact");
 	return (
 		<motion.div
-			style={{ transform: "translateZ(1px)" }}
+			style={{ transform: "translateZ(1px)" }} // pi-lens-ignore: ast-grep:inline-styles -- 3D transform for compositing layer
 			className={cn(
 				"pointer-events-none absolute z-[60] flex h-40 w-96 items-center justify-center opacity-100 transition duration-500",
 				className
@@ -84,7 +84,7 @@ const Pin = ({ className }: { className?: string }) => {
 				</div>
 
 				<div
-					style={{
+					style={{ // pi-lens-ignore: ast-grep:inline-styles -- 3D perspective/transform for card tilt effect
 						perspective: "800px",
 						transform: "rotateX(70deg) translateZ(0px)",
 					}}

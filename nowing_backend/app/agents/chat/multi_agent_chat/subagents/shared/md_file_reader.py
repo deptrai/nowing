@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from importlib import resources
+from importlib import resources  # nosemgrep
 
 _SHARED_SNIPPETS_PACKAGE = "app.agents.chat.multi_agent_chat.subagents.shared.snippets"
 

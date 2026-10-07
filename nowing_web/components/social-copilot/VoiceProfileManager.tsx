@@ -33,7 +33,7 @@ export function VoiceProfileManager({
 	const wordCount = sampleText.trim().split(/\s+/).filter(Boolean).length;
 	const isWordCountValid = wordCount >= 100;
 
-	const handleLearnVoice = async (e: React.FormEvent) => {
+	const handleLearnVoice = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!profileName.trim()) {
 			toast.error("Vui lòng nhập tên hồ sơ giọng văn");

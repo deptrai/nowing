@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import UUID
 
 from sqlalchemy import (
+    TIMESTAMP,
     Column,
     ForeignKey,
     Integer,
     String,
     Text,
-    TIMESTAMP,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID

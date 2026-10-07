@@ -49,10 +49,12 @@ async def evaluate_standard_1_extraction_and_accuracy(cases_file: Path) -> dict[
     
     service = LeadExtractionService()
     cases = []
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller
     with open(cases_file, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:
+                # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; parse failure propagates to caller
                 cases.append(json.loads(line))
 
     tp_phone, fp_phone, fn_phone = 0, 0, 0

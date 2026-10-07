@@ -110,6 +110,7 @@ def create_build_web_app_tool(deps: dict[str, Any]):
                         select(Workspace).where(Workspace.id == workspace_id)
                     )
                 ).scalars().first()
+                # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
                 if ws is None or ws.web_builder_enabled is False:
                     return WebAppBuildOutput(
                         app_id="",

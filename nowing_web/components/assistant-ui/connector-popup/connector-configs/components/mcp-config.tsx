@@ -25,7 +25,7 @@ interface MCPConfigProps extends ConnectorConfigProps {
 export const MCPConfig: FC<MCPConfigProps> = ({ connector, onConfigChange, onNameChange }) => {
 	const t = useTranslations("assistant");
 	const tConnector = useTranslations("connector");
-	const [name, setName] = useState<string>("");
+	const [name, setName] = useState("");
 	const [configJson, setConfigJson] = useState("");
 	const [jsonError, setJsonError] = useState<string | null>(null);
 	const [isTesting, setIsTesting] = useState(false);

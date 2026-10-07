@@ -50,7 +50,9 @@ class PlatformBenchmarkResult:
     phones_extracted: int
     tax_ids_extracted: int
     emails_extracted: int
-    status: str  # "ok" | "blocked_waf" | "rate_limited" | "timeout" | "degraded" | "error"
+    status: (
+        str  # "ok" | "blocked_waf" | "rate_limited" | "timeout" | "degraded" | "error"
+    )
     error_detail: str | None = None
 
 
@@ -88,7 +90,6 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         test_query="Quy hoạch đất KĐT mới Thủ Thiêm TP.HCM",
         max_items=5,
     ),
-
     # 2. Doanh Nghiệp & Pháp Lý Thuế
     PlatformScraperTestCase(
         platform_name="masothue",
@@ -104,7 +105,6 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         test_query="Gói thầu xây dựng giao thông TP.HCM",
         max_items=10,
     ),
-
     # 3. Tuyển Dụng & Thị Trường HR
     PlatformScraperTestCase(
         platform_name="topcv",
@@ -141,7 +141,6 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         test_query="CEO Founder FinTech Vietnam",
         max_items=10,
     ),
-
     # 4. Địa Điểm & Local Business
     PlatformScraperTestCase(
         platform_name="google_maps",
@@ -157,7 +156,6 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         test_query="Đại lý phân phối sắt thép xây dựng Đồng Nai",
         max_items=10,
     ),
-
     # 5. Tài Chính & Chứng Khoán
     PlatformScraperTestCase(
         platform_name="vietstock",
@@ -173,7 +171,6 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         test_query="Tập đoàn Hòa Phát HPG doanh thu lợi nhuận",
         max_items=5,
     ),
-
     # 6. Thương Mại Điện Tử
     PlatformScraperTestCase(
         platform_name="shopee",
@@ -196,7 +193,6 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         test_query="Air purifier HEPA filter",
         max_items=10,
     ),
-
     # 7. Mạng Xã Hội & Video
     PlatformScraperTestCase(
         platform_name="tiktok",
@@ -240,7 +236,6 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         test_query="Chính chủ cần bán gấp nhà O9O8.123.456 Zalo",
         max_items=5,
     ),
-
     # 8. Web Crawler Đa Năng
     PlatformScraperTestCase(
         platform_name="crawler",
@@ -257,7 +252,7 @@ async def run_single_platform_benchmark(
 ) -> PlatformBenchmarkResult:
     print(f"\n▶ [{tc.platform_name.upper()}] ({tc.domain_category})", flush=True)
     print(f"  Target : {tc.target_description}", flush=True)
-    print(f"  Query  : \"{tc.test_query}\"", flush=True)
+    print(f'  Query  : "{tc.test_query}"', flush=True)
 
     t0 = time.perf_counter()
     status = "ok"
@@ -276,15 +271,28 @@ async def run_single_platform_benchmark(
                 BatdongsanScrapeInput,
             )
             from app.proprietary.platforms.batdongsan.scraper import scrape_batdongsan
-            inp = BatdongsanScrapeInput(city="SG", listing_type="buy", max_items=tc.max_items)
+
+            inp = BatdongsanScrapeInput(
+                city="SG", listing_type="buy", max_items=tc.max_items
+            )
             out = await asyncio.wait_for(scrape_batdongsan(inp), timeout=15.0)
             items_count = len(out.items)
-            phones_count = sum(1 for item in out.items if getattr(item, "phone", None) or getattr(item, "contact_name", None))
+            phones_count = sum(
+                1
+                for item in out.items
+                if getattr(item, "phone", None) or getattr(item, "contact_name", None)
+            )
 
         elif p == "chotot":
             from app.proprietary.platforms.chotot.schemas import ChototScrapeInput
             from app.proprietary.platforms.chotot.scraper import scrape_chotot
-            inp = ChototScrapeInput(category="bds", listing_type="sell", city="ho-chi-minh", max_items=tc.max_items)
+
+            inp = ChototScrapeInput(
+                category="bds",
+                listing_type="sell",
+                city="ho-chi-minh",
+                max_items=tc.max_items,
+            )
             out = await asyncio.wait_for(scrape_chotot(inp), timeout=15.0)
             items_count = len(out.items)
             phones_count = sum(1 for item in out.items if getattr(item, "phone", None))
@@ -294,7 +302,10 @@ async def run_single_platform_benchmark(
                 MuabanBdsScrapeInput,
             )
             from app.proprietary.platforms.muaban_bds.scraper import scrape_muaban_bds
-            inp = MuabanBdsScrapeInput(city="ho-chi-minh", listing_type="buy", max_items=tc.max_items)
+
+            inp = MuabanBdsScrapeInput(
+                city="ho-chi-minh", listing_type="buy", max_items=tc.max_items
+            )
             out = await asyncio.wait_for(scrape_muaban_bds(inp), timeout=15.0)
             items_count = len(out.items)
             phones_count = sum(1 for item in out.items if getattr(item, "phone", None))
@@ -302,6 +313,7 @@ async def run_single_platform_benchmark(
         elif p == "masothue":
             from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
             from app.proprietary.platforms.masothue.scraper import scrape_masothue
+
             inp = MasothueSearchInput(query=tc.test_query, max_items=tc.max_items)
             out = await asyncio.wait_for(scrape_masothue(inp), timeout=15.0)
             items_count = len(out.items)
@@ -310,14 +322,22 @@ async def run_single_platform_benchmark(
 
         elif p == "topcv":
             from app.proprietary.platforms.topcv.scraper import scrape_topcv
-            out = await asyncio.wait_for(scrape_topcv({"keyword": tc.test_query, "max_items": tc.max_items}), timeout=15.0)
+
+            out = await asyncio.wait_for(
+                scrape_topcv({"keyword": tc.test_query, "max_items": tc.max_items}),
+                timeout=15.0,
+            )
             items_list = out.get("items", [])
             items_count = len(items_list)
             emails_count = sum(1 for j in items_list if "email" in str(j).lower())
 
         elif p == "itviec":
             from app.proprietary.platforms.itviec.scraper import scrape_itviec
-            out = await asyncio.wait_for(scrape_itviec({"keyword": tc.test_query, "max_items": tc.max_items}), timeout=15.0)
+
+            out = await asyncio.wait_for(
+                scrape_itviec({"keyword": tc.test_query, "max_items": tc.max_items}),
+                timeout=15.0,
+            )
             items_list = out.get("items", [])
             items_count = len(items_list)
 
@@ -325,7 +345,13 @@ async def run_single_platform_benchmark(
             from app.proprietary.platforms.vietnamworks.scraper import (
                 scrape_vietnamworks,
             )
-            out = await asyncio.wait_for(scrape_vietnamworks({"keyword": tc.test_query, "max_items": tc.max_items}), timeout=15.0)
+
+            out = await asyncio.wait_for(
+                scrape_vietnamworks(
+                    {"keyword": tc.test_query, "max_items": tc.max_items}
+                ),
+                timeout=15.0,
+            )
             items_list = out.get("items", [])
             items_count = len(items_list)
 
@@ -334,7 +360,10 @@ async def run_single_platform_benchmark(
                 GoogleMapsScrapeInput,
             )
             from app.proprietary.platforms.google_maps.scraper import scrape_places
-            inp = GoogleMapsScrapeInput(searchStrings=[tc.test_query], maxCrawledPlaces=tc.max_items)
+
+            inp = GoogleMapsScrapeInput(
+                searchStrings=[tc.test_query], maxCrawledPlaces=tc.max_items
+            )
             places_list = await asyncio.wait_for(scrape_places(inp), timeout=20.0)
             items_count = len(places_list)
             phones_count = sum(1 for pl in places_list if getattr(pl, "phone", None))
@@ -347,8 +376,11 @@ async def run_single_platform_benchmark(
 
         elif p == "crawler":
             from app.proprietary.platforms.crawler.fast_crawler import FastCrawler
+
             crawler = FastCrawler(timeout=10.0)
-            meta_res = await asyncio.wait_for(crawler.crawl(tc.test_query), timeout=15.0)
+            meta_res = await asyncio.wait_for(
+                crawler.crawl(tc.test_query), timeout=15.0
+            )
             items_count = 1 if meta_res.title else 0
             tax_ids_count = len(extract_tax_ids(meta_res.text_content or ""))
 
@@ -357,11 +389,14 @@ async def run_single_platform_benchmark(
             from app.lead_intelligence.adapters.registry import (
                 LeadSourceAdapterRegistry,
             )
+
             reg = LeadSourceAdapterRegistry.get_default()
             adapter = reg.get_adapter(p) if p in reg._adapters else None
             if adapter:
                 records = await asyncio.wait_for(
-                    adapter.search_leads(workspace_id=1, query=tc.test_query, limit=tc.max_items),
+                    adapter.search_leads(
+                        workspace_id=1, query=tc.test_query, limit=tc.max_items
+                    ),
                     timeout=15.0,
                 )
                 items_count = len(records)
@@ -375,7 +410,11 @@ async def run_single_platform_benchmark(
         err_detail = "Scraper execution timed out after 15.0s"
     except Exception as exc:
         err_str = str(exc)
-        if "403" in err_str or "blocked" in err_str.lower() or "cloudflare" in err_str.lower():
+        if (
+            "403" in err_str
+            or "blocked" in err_str.lower()
+            or "cloudflare" in err_str.lower()
+        ):
             status = "blocked_waf"
         elif "429" in err_str or "rate limit" in err_str.lower():
             status = "rate_limited"
@@ -387,13 +426,25 @@ async def run_single_platform_benchmark(
 
     # Print feedback
     if status == "ok" and items_count > 0:
-        print(f"  ✓ [{tc.platform_name}] SUCCESS: Harvested {items_count} items in {exec_time_ms:.2f}ms (Phones: {phones_count} | MST: {tax_ids_count} | Emails: {emails_count})", flush=True)
+        print(
+            f"  ✓ [{tc.platform_name}] SUCCESS: Harvested {items_count} items in {exec_time_ms:.2f}ms (Phones: {phones_count} | MST: {tax_ids_count} | Emails: {emails_count})",
+            flush=True,
+        )
     elif status == "blocked_waf":
-        print(f"  ⚠️ [{tc.platform_name}] WAF/403 BLOCKED: Handled gracefully in {exec_time_ms:.2f}ms (Anti-bot alert)", flush=True)
+        print(
+            f"  ⚠️ [{tc.platform_name}] WAF/403 BLOCKED: Handled gracefully in {exec_time_ms:.2f}ms (Anti-bot alert)",
+            flush=True,
+        )
     elif status == "timeout":
-        print(f"  ⚠️ [{tc.platform_name}] TIMEOUT: Boundary isolated at {exec_time_ms:.2f}ms", flush=True)
+        print(
+            f"  ⚠️ [{tc.platform_name}] TIMEOUT: Boundary isolated at {exec_time_ms:.2f}ms",
+            flush=True,
+        )
     else:
-        print(f"  • [{tc.platform_name}] Status: {status} ({err_detail[:80] if err_detail else '0 items'}) in {exec_time_ms:.2f}ms", flush=True)
+        print(
+            f"  • [{tc.platform_name}] Status: {status} ({err_detail[:80] if err_detail else '0 items'}) in {exec_time_ms:.2f}ms",
+            flush=True,
+        )
 
     return PlatformBenchmarkResult(
         platform_name=tc.platform_name,
@@ -412,15 +463,24 @@ async def run_single_platform_benchmark(
 async def main():
     print("=" * 80, flush=True)
     print("🌐 MASTER 25-PLATFORM LIVE SCRAPER & LEAD ENGINE BENCHMARK", flush=True)
-    print(f"Total Platforms : {len(PLATFORMS_MATRIX)} Platform Scrapers across 8 Domains", flush=True)
-    print(f"Start Timestamp : {time.strftime('%Y-%m-%d %H:%M:%SZ', time.gmtime())}", flush=True)
+    print(
+        f"Total Platforms : {len(PLATFORMS_MATRIX)} Platform Scrapers across 8 Domains",
+        flush=True,
+    )
+    print(
+        f"Start Timestamp : {time.strftime('%Y-%m-%d %H:%M:%SZ', time.gmtime())}",
+        flush=True,
+    )
     print("=" * 80, flush=True)
 
     t0_master = time.perf_counter()
     results: list[PlatformBenchmarkResult] = []
 
     for idx, tc in enumerate(PLATFORMS_MATRIX, 1):
-        print(f"\n--- Running Platform Scraper {idx}/{len(PLATFORMS_MATRIX)}: {tc.platform_name} ---", flush=True)
+        print(
+            f"\n--- Running Platform Scraper {idx}/{len(PLATFORMS_MATRIX)}: {tc.platform_name} ---",
+            flush=True,
+        )
         res = await run_single_platform_benchmark(tc)
         results.append(res)
         await asyncio.sleep(0.3)
@@ -431,7 +491,12 @@ async def main():
     successful_scrapers = [r for r in results if r.status == "ok" and r.items_count > 0]
     waf_blocked = [r for r in results if r.status == "blocked_waf"]
     timeouts = [r for r in results if r.status == "timeout"]
-    degraded = [r for r in results if r.status in ("degraded", "not_configured", "rate_limited") or (r.status == "ok" and r.items_count == 0)]
+    degraded = [
+        r
+        for r in results
+        if r.status in ("degraded", "not_configured", "rate_limited")
+        or (r.status == "ok" and r.items_count == 0)
+    ]
 
     total_items = sum(r.items_count for r in results)
     total_phones = sum(r.phones_extracted for r in results)
@@ -441,15 +506,30 @@ async def main():
     print("\n" + "=" * 80, flush=True)
     print("📊 MASTER 25-PLATFORM LIVE SCRAPER BENCHMARK AUDIT REPORT:", flush=True)
     print("=" * 80, flush=True)
-    print(f"  • Total Platforms Evaluated     : {len(results)} scrapers (8 business domains)", flush=True)
-    print(f"  • Live Scrapers Operational (OK): {len(successful_scrapers)}/{len(results)} ({len(successful_scrapers)*100/len(results):.1f}%)", flush=True)
-    print(f"  • WAF / Cloudflare Blocked (403): {len(waf_blocked)} platforms (Need rotating proxy/session)", flush=True)
+    print(
+        f"  • Total Platforms Evaluated     : {len(results)} scrapers (8 business domains)",
+        flush=True,
+    )
+    print(
+        f"  • Live Scrapers Operational (OK): {len(successful_scrapers)}/{len(results)} ({len(successful_scrapers) * 100 / len(results):.1f}%)",
+        flush=True,
+    )
+    print(
+        f"  • WAF / Cloudflare Blocked (403): {len(waf_blocked)} platforms (Need rotating proxy/session)",
+        flush=True,
+    )
     print(f"  • Execution Timeouts (Guard 15s): {len(timeouts)} platforms", flush=True)
-    print(f"  • Total Items / Leads Harvested : {total_items} records across web", flush=True)
+    print(
+        f"  • Total Items / Leads Harvested : {total_items} records across web",
+        flush=True,
+    )
     print(f"  • Total Contact Phones Captured : {total_phones} phones", flush=True)
     print(f"  • Total Corporate Tax IDs (MST) : {total_tax_ids} tax codes", flush=True)
     print(f"  • Total Direct Emails Captured  : {total_emails} emails", flush=True)
-    print(f"  • Total Benchmark Duration      : {total_bench_duration_s:.2f} seconds ({total_bench_duration_s/60:.2f} minutes)", flush=True)
+    print(
+        f"  • Total Benchmark Duration      : {total_bench_duration_s:.2f} seconds ({total_bench_duration_s / 60:.2f} minutes)",
+        flush=True,
+    )
     print("-" * 80, flush=True)
 
     print("📋 BREAKDOWN THEO 8 NHÓM LĨNH VỰC:", flush=True)
@@ -461,25 +541,41 @@ async def main():
         ok_count = sum(1 for it in items if it.status == "ok" and it.items_count > 0)
         items_harvested = sum(it.items_count for it in items)
         avg_lat = sum(it.execution_time_ms for it in items) / len(items)
-        print(f"  🏷️  {domain:<26}: {ok_count}/{len(items)} Online | {items_harvested:>3} items | Avg Latency: {avg_lat:>7.1f}ms", flush=True)
+        print(
+            f"  🏷️  {domain:<26}: {ok_count}/{len(items)} Online | {items_harvested:>3} items | Avg Latency: {avg_lat:>7.1f}ms",
+            flush=True,
+        )
 
     print("-" * 80, flush=True)
     print("⚠️ PHÁT HIỆN ĐIỂM NGHẼN & BÁO CÁO WAF / ANTI-BOT:", flush=True)
     if waf_blocked:
         for wb in waf_blocked:
-            print(f"  🔒 [WAF 403] Platform '{wb.platform_name}': Bị chặn bởi Cloudflare/Portal WAF -> Cần xoay IP Residential Proxy.", flush=True)
+            print(
+                f"  🔒 [WAF 403] Platform '{wb.platform_name}': Bị chặn bởi Cloudflare/Portal WAF -> Cần xoay IP Residential Proxy.",
+                flush=True,
+            )
     if timeouts:
         for to in timeouts:
-            print(f"  ⏱️ [TIMEOUT] Platform '{to.platform_name}': Quá thời gian chờ 15s -> Cần tối ưu crawl concurrency.", flush=True)
+            print(
+                f"  ⏱️ [TIMEOUT] Platform '{to.platform_name}': Quá thời gian chờ 15s -> Cần tối ưu crawl concurrency.",
+                flush=True,
+            )
     if degraded:
         for dg in degraded:
-            print(f"  ℹ️ [DEGRADED] Platform '{dg.platform_name}': {dg.error_detail[:60] if dg.error_detail else 'Empty payload'}", flush=True)
+            print(
+                f"  ℹ️ [DEGRADED] Platform '{dg.platform_name}': {dg.error_detail[:60] if dg.error_detail else 'Empty payload'}",
+                flush=True,
+            )
 
     print("=" * 80, flush=True)
 
     # Save artifact to disk
-    artifact_path = Path(backend_dir.parent / "_bmad-output/test-artifacts/master_25_platforms_benchmark.json")
+    artifact_path = Path(
+        backend_dir.parent
+        / "_bmad-output/test-artifacts/master_25_platforms_benchmark.json"
+    )
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller
     with open(artifact_path, "w", encoding="utf-8") as f:
         json.dump([asdict(r) for r in results], f, ensure_ascii=False, indent=2)
     print(f"✓ Master 25-Platform Benchmark saved to: {artifact_path}\n", flush=True)

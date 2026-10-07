@@ -78,7 +78,7 @@ class LumaConnector:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=30)
 
             if response.status_code == 200:
                 return response.json()
@@ -271,7 +271,9 @@ class LumaConnector:
 
         except ValueError as e:
             return [], f"Invalid date format: {e!s}. Please use YYYY-MM-DD."
-        except Exception as e:  # events retrieval by date failure; return empty events and error
+        except (
+            Exception
+        ) as e:  # events retrieval by date failure; return empty events and error
             return [], f"Error fetching events by date range: {e!s}"
 
     def format_event_to_markdown(self, event: dict[str, Any]) -> str:

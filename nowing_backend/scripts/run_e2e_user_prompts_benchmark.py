@@ -504,6 +504,7 @@ async def main():
             return
 
         token = resp_login.json().get("token") or resp_login.json().get("access_token")
+        # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
         client.headers["Authorization"] = f"Bearer {token}"
         print(f"✓ Authenticated with {USER_EMAIL} (Bearer JWT acquired)\n")
 
@@ -582,6 +583,7 @@ async def main():
     # Save benchmark artifact to JSON for memory ratification
     artifact_path = Path(backend_dir.parent / "_bmad-output/test-artifacts/master_e2e_prompts_benchmark.json")
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller
     with open(artifact_path, "w", encoding="utf-8") as f:
         json.dump([asdict(r) for r in results], f, ensure_ascii=False, indent=2)
     print(f"✓ Audit artifacts saved to: {artifact_path}\n")

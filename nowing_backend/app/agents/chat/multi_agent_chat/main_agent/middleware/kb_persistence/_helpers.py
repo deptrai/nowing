@@ -105,7 +105,7 @@ async def _ensure_folder_hierarchy(
             )
             session.add(folder)
             await session.flush()
-        parent_id = folder.id
+        parent_id = folder.id  # pyright: ignore[reportAssignmentType]
     return parent_id
 
 
@@ -138,7 +138,7 @@ async def _resolve_folder_id(
         folder = result.scalar_one_or_none()
         if folder is None:
             return None
-        parent_id = folder.id
+        parent_id = folder.id  # pyright: ignore[reportAssignmentType]
     return parent_id
 
 
@@ -210,7 +210,7 @@ async def _create_document(
     await session.flush()
 
     summary_embedding = (await asyncio.to_thread(embed_texts, [content]))[0]
-    doc.embedding = summary_embedding
+    doc.embedding = summary_embedding  # pyright: ignore[reportAttributeAccessIssue]
     chunks = chunk_text(content)
     if chunks:
         chunk_embeddings = await asyncio.to_thread(embed_texts, chunks)
@@ -249,21 +249,21 @@ async def _update_document(
     if document is None:
         return None
 
-    document.content = content
-    document.source_markdown = content
-    document.content_hash = generate_content_hash(content, workspace_id)
-    document.updated_at = datetime.now(UTC)
-    metadata = dict(document.document_metadata or {})
-    metadata["virtual_path"] = virtual_path
-    document.document_metadata = metadata
-    document.unique_identifier_hash = generate_unique_identifier_hash(
+    document.content = content  # pyright: ignore[reportAttributeAccessIssue]
+    document.source_markdown = content  # pyright: ignore[reportAttributeAccessIssue]
+    document.content_hash = generate_content_hash(content, workspace_id)  # pyright: ignore[reportAttributeAccessIssue]
+    document.updated_at = datetime.now(UTC)  # pyright: ignore[reportAttributeAccessIssue]
+    metadata = dict(document.document_metadata or {})  # pyright: ignore[reportCallIssue, reportArgumentType]
+    metadata["virtual_path"] = virtual_path  # pyright: ignore[reportArgumentType]
+    document.document_metadata = metadata  # pyright: ignore[reportAttributeAccessIssue]
+    document.unique_identifier_hash = generate_unique_identifier_hash(  # pyright: ignore[reportAttributeAccessIssue]
         DocumentType.NOTE,
         virtual_path,
         workspace_id,
     )
 
     summary_embedding = (await asyncio.to_thread(embed_texts, [content]))[0]
-    document.embedding = summary_embedding
+    document.embedding = summary_embedding  # pyright: ignore[reportAttributeAccessIssue]
 
     await session.execute(delete(Chunk).where(Chunk.document_id == document.id))
     chunks = chunk_text(content)
@@ -344,22 +344,22 @@ async def _apply_move(
         folder_parts=folder_parts,
     )
 
-    document.title = new_title
-    document.folder_id = folder_id
-    metadata = dict(document.document_metadata or {})
-    metadata["virtual_path"] = dest
-    document.document_metadata = metadata
-    document.unique_identifier_hash = generate_unique_identifier_hash(
+    document.title = new_title  # pyright: ignore[reportAttributeAccessIssue]
+    document.folder_id = folder_id  # pyright: ignore[reportAttributeAccessIssue]
+    metadata = dict(document.document_metadata or {})  # pyright: ignore[reportCallIssue, reportArgumentType]
+    metadata["virtual_path"] = dest  # pyright: ignore[reportArgumentType]
+    document.document_metadata = metadata  # pyright: ignore[reportAttributeAccessIssue]
+    document.unique_identifier_hash = generate_unique_identifier_hash(  # pyright: ignore[reportAttributeAccessIssue]
         DocumentType.NOTE,
         dest,
         workspace_id,
     )
-    document.updated_at = datetime.now(UTC)
+    document.updated_at = datetime.now(UTC)  # pyright: ignore[reportAttributeAccessIssue]
 
     doc_id_by_path.pop(source, None)
-    doc_id_by_path[dest] = document.id
+    doc_id_by_path[dest] = document.id  # pyright: ignore[reportArgumentType]
     doc_id_path_tombstones[source] = None
-    doc_id_path_tombstones[dest] = document.id
+    doc_id_path_tombstones[dest] = document.id  # pyright: ignore[reportArgumentType]
     return {"id": document.id, "source": source, "dest": dest, "title": new_title}
 
 
@@ -450,7 +450,7 @@ def _doc_revision_payload(
     chunks_before: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Pre-mutation field map for ``DocumentRevision``."""
-    metadata = dict(doc.document_metadata or {})
+    metadata = dict(doc.document_metadata or {})  # pyright: ignore[reportCallIssue, reportArgumentType]
     return {
         "content_before": doc.content,
         "title_before": doc.title,
@@ -488,7 +488,7 @@ async def _snapshot_document_pre_write(
     """
     try:
         async with session.begin_nested():
-            chunks = await _load_chunks_for_snapshot(session, doc_id=doc.id)
+            chunks = await _load_chunks_for_snapshot(session, doc_id=doc.id)  # pyright: ignore[reportArgumentType]
             payload = _doc_revision_payload(doc, chunks_before=chunks)
             rev = DocumentRevision(
                 document_id=doc.id,
@@ -505,7 +505,7 @@ async def _snapshot_document_pre_write(
             await _dispatch_reversibility_update(action_id)
         elif action_id is not None:
             deferred_dispatches.append(int(action_id))
-        return rev_id
+        return rev_id  # pyright: ignore[reportReturnType]
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning(
             "kb_persistence: pre-write snapshot for doc=%s failed: %s",
@@ -550,7 +550,7 @@ async def _snapshot_document_pre_create(
             await _dispatch_reversibility_update(action_id)
         elif action_id is not None:
             deferred_dispatches.append(int(action_id))
-        return rev_id
+        return rev_id  # pyright: ignore[reportReturnType]
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning("kb_persistence: pre-create snapshot failed: %s", exc)
         return None
@@ -584,7 +584,7 @@ async def _snapshot_document_pre_move(
             await _dispatch_reversibility_update(action_id)
         elif action_id is not None:
             deferred_dispatches.append(int(action_id))
-        return rev_id
+        return rev_id  # pyright: ignore[reportReturnType]
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning(
             "kb_persistence: pre-move snapshot for doc=%s failed: %s",
@@ -627,7 +627,7 @@ async def _snapshot_folder_pre_mkdir(
             await _dispatch_reversibility_update(action_id)
         elif action_id is not None:
             deferred_dispatches.append(int(action_id))
-        return rev_id
+        return rev_id  # pyright: ignore[reportReturnType]
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning(
             "kb_persistence: pre-mkdir snapshot for folder=%s failed: %s",

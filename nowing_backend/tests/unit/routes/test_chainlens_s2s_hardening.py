@@ -1,8 +1,9 @@
 """Unit tests for ChainLens S2S Hardening (Story 40.5)."""
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi import HTTPException
 
 from app.routes.chainlens_internal import search_private_data

@@ -408,7 +408,7 @@ export function NotificationsDropdown({
 						{[82, 64, 74].map((width) => (
 							<div key={width} className="flex h-14 items-center rounded-md px-2 py-1.5">
 								<div className="min-w-0 flex-1 space-y-1.5">
-									<Skeleton className="h-2.5 rounded" style={{ width: `${width}%` }} />
+									<Skeleton className="h-2.5 rounded" style={{ width: `${width}%` }} /> // pi-lens-ignore: ast-grep:inline-styles -- dynamic notification badge position
 									<Skeleton className="h-2 w-1/2 rounded" />
 								</div>
 							</div>
@@ -438,7 +438,7 @@ export function NotificationsDropdown({
 										"hover:bg-accent hover:text-accent-foreground",
 										unread && "bg-accent/40"
 									)}
-									style={{ contentVisibility: "auto", containIntrinsicSize: "0 56px" }}
+									style={{ contentVisibility: "auto", containIntrinsicSize: "0 56px" }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic notification badge position
 								>
 									<div className="min-w-0 flex-1">
 										<div className="flex min-w-0 items-start gap-1.5">

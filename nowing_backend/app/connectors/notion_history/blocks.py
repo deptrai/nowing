@@ -74,6 +74,7 @@ class NotionBlocksMixin:
             except APIResponseError as e:
                 error_message = str(e)
                 # Handle invalid cursor - stop pagination gracefully
+                # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- FP: 'is' inside the string literal
                 if "start_cursor provided is invalid" in error_message:
                     logger.warning(
                         f"Invalid pagination cursor encountered. "
@@ -329,7 +330,9 @@ class NotionBlocksMixin:
 
                     parsed_url = urlparse(url)
                     return f"[External Image from {parsed_url.netloc}]"
-                except Exception:  # URL parse error for external image; fallback to generic label
+                except (
+                    Exception
+                ):  # URL parse error for external image; fallback to generic label
                     return "[External Image]"
         elif block_type == "code":
             language = block["code"]["language"]

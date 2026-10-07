@@ -18,8 +18,8 @@ export const LinkupApiConfig: FC<LinkupApiConfigProps> = ({
 	onNameChange,
 }) => {
 	const t = useTranslations("assistant");
-	const [apiKey, setApiKey] = useState<string>((connector.config?.LINKUP_API_KEY as string) || "");
-	const [name, setName] = useState<string>(connector.name || "");
+	const [apiKey, setApiKey] = useState((connector.config?.LINKUP_API_KEY as string) || "");
+	const [name, setName] = useState(connector.name || "");
 
 	const handleApiKeyChange = (value: string) => {
 		setApiKey(value);

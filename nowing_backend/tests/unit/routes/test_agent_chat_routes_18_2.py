@@ -393,8 +393,9 @@ class TestSendMessage182:
 
 def test_rejects_whitespace_only_client_id_and_agent_id():
     """Verify whitespace-only client_id or agent_id raises clear ValueError."""
-    from app.schemas.agent_chat import AgentChatThreadCreate
     from pydantic import ValidationError
+
+    from app.schemas.agent_chat import AgentChatThreadCreate
 
     with pytest.raises(ValidationError) as exc:
         AgentChatThreadCreate(client_id="   ")

@@ -137,11 +137,12 @@ export default class NowingPlugin extends Plugin {
 			id: "open-settings",
 			name: "Open settings",
 			callback: () => {
-				// `app.setting` isn't in the d.ts; fall back silently if it moves.
 				type SettingHost = {
 					open?: () => void;
 					openTabById?: (id: string) => void;
 				};
+				// SAFETY: `app.setting` isn't in the d.ts but exists at runtime;
+				// guarded by the open/openTabById checks below — falls back silently if it moves.
 				const setting = (this.app as unknown as { setting?: SettingHost }).setting;
 				if (setting?.open) setting.open();
 				if (setting?.openTabById) setting.openTabById(this.manifest.id);
@@ -153,6 +154,8 @@ export default class NowingPlugin extends Plugin {
 			if (this.shouldAutoSync()) void this.engine.flushQueue();
 		};
 		this.registerDomEvent(window, "online", onNetChange);
+		// SAFETY: NetworkInformation (`navigator.connection`) is missing from the
+		// DOM lib; presence is guarded by the conn/addEventListener checks below.
 		const conn = (navigator as unknown as { connection?: NetworkConnection }).connection;
 		if (conn && typeof conn.addEventListener === "function") {
 			conn.addEventListener("change", onNetChange);
@@ -226,6 +229,8 @@ export default class NowingPlugin extends Plugin {
 		if (!Platform.isMobileApp) return true;
 		// navigator.connection is supported on Android Capacitor; undefined on iOS.
 		// When unavailable, behave permissively so iOS users aren't blocked outright.
+		// SAFETY: NetworkInformation isn't in the DOM lib — cast narrows to the
+		// optional `connection` shape only, guarded by typeof checks below.
 		const conn = (navigator as unknown as { connection?: NetworkConnection }).connection;
 		if (!conn || typeof conn.type !== "string") return true;
 		return conn.type === "wifi" || conn.type === "ethernet";

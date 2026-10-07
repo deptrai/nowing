@@ -16,7 +16,6 @@ import {
 	Network,
 	Phone,
 	Send,
-	Share2,
 	Sparkles,
 	Tag,
 	UserCheck,
@@ -117,7 +116,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	const intentScore = lead.intent_score ?? 0;
 	const compositeScore = lead.composite_score ?? 0;
 
-	const handleAddNote = async (e: React.FormEvent) => {
+	const handleAddNote = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!newNote.trim() || !lead?.id || isSubmittingNote) return;
 
@@ -206,7 +205,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									<div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
 										<div
 											className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-											style={{ width: `${Math.min(100, Math.max(0, fitScore))}%` }}
+											style={{ width: `${Math.min(100, Math.max(0, fitScore))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic score bar width percentage
 										/>
 									</div>
 								</div>
@@ -220,7 +219,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 										<div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
 											<div
 												className="h-full bg-blue-500 rounded-full transition-all duration-300"
-												style={{ width: `${Math.min(100, Math.max(0, intentScore))}%` }}
+												style={{ width: `${Math.min(100, Math.max(0, intentScore))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic score bar width percentage
 											/>
 										</div>
 									</div>
@@ -237,7 +236,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 										<div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
 											<div
 												className="h-full bg-amber-500 rounded-full transition-all duration-300"
-												style={{ width: `${Math.min(100, Math.max(0, compositeScore))}%` }}
+												style={{ width: `${Math.min(100, Math.max(0, compositeScore))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic score bar width percentage
 											/>
 										</div>
 									</div>

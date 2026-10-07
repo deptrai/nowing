@@ -18,6 +18,7 @@ export function openSafeNavigationHref(href: string | undefined): boolean {
 		return false;
 	}
 
+	// pi-lens-ignore: ast-grep:no-open-redirect -- href is sanitized upstream by sanitizeHref()
 	window.open(href, "_blank", "noopener,noreferrer");
 	return true;
 }

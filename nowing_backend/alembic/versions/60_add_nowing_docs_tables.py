@@ -23,7 +23,7 @@ def upgrade() -> None:
     """Create nowing_docs_documents and nowing_docs_chunks tables."""
 
     # Create nowing_docs_documents table
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         BEGIN
@@ -76,7 +76,7 @@ def upgrade() -> None:
     )
 
     # Create nowing_docs_chunks table
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         BEGIN

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -20,7 +20,7 @@ def test_ingestion_writes_schedule_state_to_checkpoint(mocker):
         "schedule_state": {
             "last_run_sources": [{"url": "vcb.com"}],
             "last_run_deliverables": [{"id": "d1"}],
-            "last_fired_at": datetime.now(timezone.utc).isoformat(),
+            "last_fired_at": datetime.now(UTC).isoformat(),
         }
     }
     worker._merge_checkpoint(new_state)
@@ -102,7 +102,7 @@ def test_next_fire_at_advanced_after_successful_ingestion(mocker):
 
     update_mock.assert_called_once()
     args = update_mock.call_args.args[0]
-    assert args > datetime.now(timezone.utc)
+    assert args > datetime.now(UTC)
 
 
 def test_checkpoint_size_exceeds_max_prunes_history(mocker):
@@ -125,8 +125,8 @@ def test_checkpoint_size_exceeds_max_prunes_history(mocker):
 
 def test_redis_publish_failure_rollback_and_503(mocker):
     """AC-4 P2: Redis stream publish fails -> 503 and DB rollback."""
-    from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
     from app.exceptions import NowingError
+    from app.tasks.dsh_worker_scheduled_mission import ScheduledMissionWorker
 
     worker = ScheduledMissionWorker(mission_id="m1", workspace_id=1)
     mocker.patch.object(worker, "_publish_to_redis", side_effect=NowingError("EMAIL_REDIS_PUBLISH_FAILED"))
@@ -155,7 +155,7 @@ async def test_create_recurring_report_mission_accepts_schedule_and_source(mocke
     schedule = {
         "type": "interval",
         "minutes": 360,
-        "next_fire_at": (datetime.now(timezone.utc) + timedelta(minutes=360)).isoformat(),
+        "next_fire_at": (datetime.now(UTC) + timedelta(minutes=360)).isoformat(),
     }
 
     mission = await service.create_mission(
@@ -167,7 +167,7 @@ async def test_create_recurring_report_mission_accepts_schedule_and_source(mocke
         schedule=schedule,
         source="email",
         request_text="Theo dõi giá cổ phiếu VCB trong 30 ngày",
-        next_fire_at=datetime.now(timezone.utc) + timedelta(minutes=360),
+        next_fire_at=datetime.now(UTC) + timedelta(minutes=360),
     )
 
     assert mission.mission_type == "recurring_report"

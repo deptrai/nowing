@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 
 from app.db import Lead
 from app.services.lead_search_service import LeadSearchService
@@ -22,7 +20,7 @@ class _FakeResult:
         self._rows = rows or []
         self._scalar = scalar
 
-    def scalars(self) -> "_FakeResult":
+    def scalars(self) -> _FakeResult:
         return self
 
     def all(self) -> list[Any]:
@@ -64,11 +62,11 @@ class TestLeadSearchServiceQueryConstruction:
 
         _, _ = await service.search_leads(session, workspace_id=1, limit=0)
         stmt0 = session.executed[-1]
-        assert stmt0._limit == 1  # noqa: SLF001
+        assert stmt0._limit == 1
 
         _, _ = await service.search_leads(session, workspace_id=1, limit=999)
         stmt1 = session.executed[-1]
-        assert stmt1._limit == service.MAX_LIMIT  # noqa: SLF001
+        assert stmt1._limit == service.MAX_LIMIT
 
     async def test_workspace_filter_always_present(self, service: LeadSearchService) -> None:
         """Every query contains workspace_id equality."""

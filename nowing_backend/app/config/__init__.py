@@ -45,36 +45,38 @@ from app.config._helpers import (  # noqa: E402
 # Import order matters: later modules may override earlier ones for legacy
 # constants defined in more than one place (e.g. ``FILE_STORAGE_LOCAL_PATH``
 # is canonical in ``web_builder``).
-from app.config.agents import *  # noqa: E402, F403
-from app.config.auth import *  # noqa: E402, F403
-from app.config.billing import *  # noqa: E402, F403
-from app.config.celery import *  # noqa: E402, F403
-from app.config.chainlens import *  # noqa: E402, F403
-from app.config.connectors import *  # noqa: E402, F403
-from app.config.core import *  # noqa: E402, F403
-from app.config.database import *  # noqa: E402, F403
-from app.config.decision import *  # noqa: E402, F403
-from app.config.dsh import *  # noqa: E402, F403
-from app.config.e2e import *  # noqa: E402, F403
-from app.config.entities import *  # noqa: E402, F403
-from app.config.etl import *  # noqa: E402, F403
-from app.config.events import *  # noqa: E402, F403
-from app.config.gateway import *  # noqa: E402, F403
-from app.config.llm import *  # noqa: E402, F403
-from app.config.media import *  # noqa: E402, F403
-from app.config.memory import *  # noqa: E402, F403
-from app.config.oauth import *  # noqa: E402, F403
-from app.config.quota import *  # noqa: E402, F403
-from app.config.research import *  # noqa: E402, F403
-from app.config.scraper import *  # noqa: E402, F403
-from app.config.storage import *  # noqa: E402, F403
-from app.config.urls import *  # noqa: E402, F403
-from app.config.voice import *  # noqa: E402, F403
-from app.config.web_builder import *  # noqa: E402, F403
+from app.config.agents import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.auth import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.billing import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.celery import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.chainlens import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.connectors import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.core import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.database import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.decision import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.dsh import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.e2e import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.entities import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.etl import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.events import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.gateway import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.llm import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.media import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.memory import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.oauth import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.quota import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.research import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.scraper import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.storage import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.urls import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.voice import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.web_builder import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
 
 
 class Config:
     """Backward-compatible config namespace."""
+
+    DEPLOYMENT_MODE: str
 
     def __getattr__(self, name: str):
         """Resolve attribute from the package namespace."""

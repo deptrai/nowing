@@ -205,7 +205,7 @@ class ActionLogMiddleware(AgentMiddleware):
             async with shielded_async_session() as session:
                 session.add(row)
                 await session.commit()
-                row_id = int(row.id) if row.id is not None else None
+                row_id = int(row.id) if row.id is not None else None  # pyright: ignore[reportArgumentType]
                 row_created_at = row.created_at
         except Exception:  # best-effort action log persistence; abort recording
             logger.warning(
@@ -228,7 +228,7 @@ class ActionLogMiddleware(AgentMiddleware):
                     "reversible": bool(reversible),
                     "reverse_descriptor_present": reverse_descriptor is not None,
                     "created_at": row_created_at.isoformat()
-                    if row_created_at
+                    if row_created_at  # pyright: ignore[reportGeneralTypeIssues]
                     else None,
                     "error": error_payload is not None,
                 },

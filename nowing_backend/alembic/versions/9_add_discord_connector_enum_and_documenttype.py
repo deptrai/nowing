@@ -24,7 +24,7 @@ DOCUMENT_NEW_VALUE = "DISCORD_CONNECTOR"
 def upgrade() -> None:
     """Upgrade schema - add DISCORD_CONNECTOR to connector and document enum safely."""
     # Add DISCORD_CONNECTOR to searchsourceconnectortype only if not exists
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         BEGIN
@@ -40,7 +40,7 @@ def upgrade() -> None:
     )
 
     # Add DISCORD_CONNECTOR to documenttype only if not exists
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         BEGIN
@@ -94,10 +94,10 @@ def downgrade() -> None:
 
     # Connector Enum Downgrade Steps
     # 1. Rename the current connector enum type
-    op.execute(f"ALTER TYPE {CONNECTOR_ENUM} RENAME TO {old_connector_enum_name}")
+    op.execute(f"ALTER TYPE {CONNECTOR_ENUM} RENAME TO {old_connector_enum_name}")  # nosemgrep
 
     # 2. Create the new connector enum type with the old values
-    op.execute(f"CREATE TYPE {CONNECTOR_ENUM} AS ENUM({old_connector_values_sql})")
+    op.execute(f"CREATE TYPE {CONNECTOR_ENUM} AS ENUM({old_connector_values_sql})")  # nosemgrep
 
     # 3. Update the connector table:
     op.execute(
@@ -108,17 +108,17 @@ def downgrade() -> None:
     )
 
     # 4. Drop the old connector enum type
-    op.execute(f"DROP TYPE {old_connector_enum_name}")
+    op.execute(f"DROP TYPE {old_connector_enum_name}")  # nosemgrep
 
     # Document Enum Downgrade Steps
     # 1. Rename the current document enum type
-    op.execute(f"ALTER TYPE {DOCUMENT_ENUM} RENAME TO {old_document_enum_name}")
+    op.execute(f"ALTER TYPE {DOCUMENT_ENUM} RENAME TO {old_document_enum_name}")  # nosemgrep
 
     # 2. Create the new document enum type with the old values
-    op.execute(f"CREATE TYPE {DOCUMENT_ENUM} AS ENUM({old_document_values_sql})")
+    op.execute(f"CREATE TYPE {DOCUMENT_ENUM} AS ENUM({old_document_values_sql})")  # nosemgrep
 
     # 3. Delete rows with the new value from the documents table
-    op.execute(
+    op.execute(  # nosemgrep
         f"DELETE FROM {document_table_name} WHERE {document_column_name}::text = '{DOCUMENT_NEW_VALUE}'"
     )
 
@@ -131,6 +131,6 @@ def downgrade() -> None:
     )
 
     # 5. Drop the old enum types
-    op.execute(f"DROP TYPE {old_document_enum_name}")
+    op.execute(f"DROP TYPE {old_document_enum_name}")  # nosemgrep
 
     # ### end Alembic commands ###

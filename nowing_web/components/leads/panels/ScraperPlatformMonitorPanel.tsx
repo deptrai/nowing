@@ -141,7 +141,6 @@ export const ScraperPlatformMonitorPanel: React.FC<ScraperPlatformMonitorPanelPr
 							account: accounts.find((a) => a.platform === "cafef"),
 						},
 					].map((item) => {
-						const _isConfigured = !!item.account;
 						const isEnabled = item.account?.is_enabled ?? true;
 						const hasCookies = !!item.account?.credentials?.cookies;
 

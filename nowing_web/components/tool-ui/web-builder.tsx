@@ -1,5 +1,4 @@
 "use client";
-
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSetAtom } from "jotai";
 import {
@@ -25,17 +24,14 @@ import { Button } from "@/components/ui/button";
 import { webBuilderApiService } from "@/lib/apis/web-builder-api.service";
 import { getWorkspaceIdNumber } from "@/lib/route-params";
 import { cn } from "@/lib/utils";
-
 // ============================================================================
 // Schemas & Types
 // ============================================================================
-
 export const WebAppBuildArgsSchema = z.object({
 	prompt: z.string().optional(),
 	app_name: z.string().nullish(),
 	language: z.string().nullish(),
 });
-
 export const WebAppBuildResultSchema = z.object({
 	app_id: z.string().optional(),
 	workspace_id: z.number().optional(),
@@ -48,12 +44,10 @@ export const WebAppBuildResultSchema = z.object({
 	files: z.array(z.string()).nullish(),
 	error: z.string().nullish(),
 });
-
 export type WebAppBuildArgs = z.infer<typeof WebAppBuildArgsSchema>;
 export type WebAppBuildResult = z.infer<typeof WebAppBuildResultSchema>;
-
 function parseToolResult(raw: unknown): Partial<WebAppBuildResult> {
-	const t = useTranslations("toolUi");
+	
 	if (typeof raw === "object" && raw !== null) {
 		return raw as Partial<WebAppBuildResult>;
 	}
@@ -69,11 +63,9 @@ function parseToolResult(raw: unknown): Partial<WebAppBuildResult> {
 	}
 	return {};
 }
-
 // ============================================================================
 // Subcomponents
 // ============================================================================
-
 function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?: string }) {
 	const t = useTranslations("toolUi");
 	return (
@@ -95,7 +87,6 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 					{t("tu_building")}
 				</Badge>
 			</div>
-
 			<div className="mt-4 space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-4">
 				<div className="h-3.5 w-3/4 rounded bg-muted/60 animate-pulse" />
 				<div className="h-3 w-1/2 rounded bg-muted/50 animate-pulse [animation-delay:150ms]" />
@@ -104,7 +95,6 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 					<div className="h-6 w-20 rounded-md bg-muted/40 animate-pulse [animation-delay:450ms]" />
 				</div>
 			</div>
-
 			{prompt && (
 				<p className="mt-3 truncate text-xs text-muted-foreground italic">
 					Prompt: &ldquo;{prompt}&rdquo;
@@ -113,7 +103,6 @@ function WebAppGeneratingState({ prompt, appName }: { prompt?: string; appName?:
 		</div>
 	);
 }
-
 function WebAppErrorState({
 	title,
 	error,
@@ -144,11 +133,9 @@ function WebAppErrorState({
 		</div>
 	);
 }
-
 // ============================================================================
 // Main Tool UI Component
 // ============================================================================
-
 export function GenerateWebAppToolUI({
 	args,
 	result: rawResult,
@@ -160,13 +147,10 @@ export function GenerateWebAppToolUI({
 	const setDockOpen = useSetAtom(dockOpenAtom);
 	const setDockActiveTab = useSetAtom(dockActiveTabAtom);
 	const setDockWebBuilderAppId = useSetAtom(dockWebBuilderAppIdAtom);
-
 	const result = useMemo(() => parseToolResult(rawResult), [rawResult]);
-
 	const [isPublishing, setIsPublishing] = useState(false);
 	const [publishedUrl, setPublishedUrl] = useState<string | null>(() => result.public_url ?? null);
 	const [copied, setCopied] = useState(false);
-
 	const isRunning = status.type === "running" || status.type === "requires-action";
 	const isFailed =
 		result.status === "validation_failed" ||
@@ -176,16 +160,13 @@ export function GenerateWebAppToolUI({
 		result.status === "deploy_failed" ||
 		Boolean(result.error) ||
 		Boolean(result.message && !result.app_id);
-
 	const appName = result.name || args.app_name || t("default_app_name");
 	const prompt = args.prompt;
 	const appId = result.app_id;
 	const slug = result.slug;
 	const files = result.files ?? [];
-
 	const effectivePublicUrl = publishedUrl || result.public_url;
 	const isPublished = result.status === "published" && Boolean(effectivePublicUrl);
-
 	const handlePublish = async () => {
 		if (!appId) {
 			toast.error(t("missing_app_id"));
@@ -195,13 +176,11 @@ export function GenerateWebAppToolUI({
 			toast.error(t("missing_workspace_id"));
 			return;
 		}
-
 		setIsPublishing(true);
 		try {
 			const deployRes = await webBuilderApiService.publishWebApp(appId, {
 				workspace_id: workspaceId,
 			});
-
 			if (deployRes.status === "published" && deployRes.public_url) {
 				setPublishedUrl(deployRes.public_url);
 				toast.success(t("published_success"), {
@@ -217,7 +196,6 @@ export function GenerateWebAppToolUI({
 			setIsPublishing(false);
 		}
 	};
-
 	const handleCopyPublicUrl = async () => {
 		if (!effectivePublicUrl) return;
 		try {
@@ -229,7 +207,6 @@ export function GenerateWebAppToolUI({
 			toast.error(t("copy_public_url_failed"));
 		}
 	};
-
 	const handleOpenEditor = () => {
 		if (!appId) return;
 		// Open inline in the contextual right dock instead of navigating away.
@@ -237,23 +214,19 @@ export function GenerateWebAppToolUI({
 		setDockActiveTab("web-builder");
 		setDockOpen(true);
 	};
-
 	const handleOpenLive = () => {
 		if (!effectivePublicUrl) return;
 		window.open(effectivePublicUrl, "_blank", "noopener,noreferrer");
 	};
-
 	// 1. Generating State
 	if (isRunning || (!result.app_id && !isFailed)) {
 		return <WebAppGeneratingState prompt={prompt} appName={appName} />;
 	}
-
 	// 2. Error State
 	if (isFailed) {
 		const errorMessage = result.error || result.message || t("unable_to_generate");
 		return <WebAppErrorState title={appName} error={errorMessage} prompt={prompt} />;
 	}
-
 	// 3. Published / Generated State
 	return (
 		<div className="my-4 max-w-xl overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-all hover:border-border">
@@ -283,7 +256,6 @@ export function GenerateWebAppToolUI({
 						)}
 					</div>
 				</div>
-
 				<Badge
 					variant="outline"
 					className={cn(
@@ -296,7 +268,6 @@ export function GenerateWebAppToolUI({
 					{isPublished ? t("published") : t("generated")}
 				</Badge>
 			</div>
-
 			{/* Published Public URL Banner */}
 			{isPublished && effectivePublicUrl && (
 				<div className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3">
@@ -343,7 +314,6 @@ export function GenerateWebAppToolUI({
 					</div>
 				</div>
 			)}
-
 			{/* Project Files Summary */}
 			{files.length > 0 && (
 				<div className="mt-3.5 flex items-center gap-2 text-xs text-muted-foreground">
@@ -351,7 +321,6 @@ export function GenerateWebAppToolUI({
 					<span className="truncate">{t("project_files_generated", { count: files.length })}</span>
 				</div>
 			)}
-
 			{/* Action CTA Buttons */}
 			<div className="mt-4 flex flex-wrap items-center gap-2 pt-2 border-t border-border/60">
 				{appId && (
@@ -366,7 +335,6 @@ export function GenerateWebAppToolUI({
 						{t("tu_open_editor")}
 					</Button>
 				)}
-
 				{!isPublished && (
 					<Button
 						type="button"
@@ -388,7 +356,6 @@ export function GenerateWebAppToolUI({
 						)}
 					</Button>
 				)}
-
 				{isPublished && effectivePublicUrl && (
 					<Button
 						type="button"

@@ -16,7 +16,7 @@ interface PlaygroundLayoutShellProps {
 	children: React.ReactNode;
 }
 
-function usePlaygroundBase(workspaceId: string, pathname: string | null) {
+function getPlaygroundBase(workspaceId: string, pathname: string | null) {
 	const userSettingsBase = `/dashboard/${workspaceId}/user-settings/playground`;
 	if (pathname?.startsWith(userSettingsBase)) return userSettingsBase;
 	return `/dashboard/${workspaceId}/playground`;
@@ -25,7 +25,7 @@ function usePlaygroundBase(workspaceId: string, pathname: string | null) {
 export function PlaygroundLayoutShell({ workspaceId, children }: PlaygroundLayoutShellProps) {
 	const t = useTranslations("layout");
 	const pathname = usePathname();
-	const base = usePlaygroundBase(workspaceId, pathname);
+	const base = getPlaygroundBase(workspaceId, pathname);
 	const segments = useSelectedLayoutSegments();
 
 	const topLevelItems = useMemo(() => getPlaygroundNavItems(base, t), [base, t]);

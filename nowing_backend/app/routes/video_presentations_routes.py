@@ -223,7 +223,9 @@ async def stream_slide_audio(
         media_type = "audio/wav" if ext == ".wav" else "audio/mpeg"
 
         def iterfile():
+            # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- open failure propagates to caller
             with open(file_path, mode="rb") as file_like:
+                # pi-lens-ignore: ast-grep:no-yield-from-non-iterable -- file object is an iterable of bytes
                 yield from file_like
 
         return StreamingResponse(

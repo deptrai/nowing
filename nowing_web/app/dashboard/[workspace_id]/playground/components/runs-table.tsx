@@ -40,8 +40,8 @@ const CAPABILITY_OPTIONS = PLAYGROUND_PLATFORMS.flatMap((platform) =>
 
 export function RunsTable({ workspaceId }: { workspaceId: number }) {
 	const t = useTranslations("playground");
-	const [capability, setCapability] = useState<string>(ALL);
-	const [status, setStatus] = useState<string>(ALL);
+	const [capability, setCapability] = useState(ALL);
+	const [status, setStatus] = useState(ALL);
 	const [expanded, setExpanded] = useState<string | null>(null);
 
 	const filters = {

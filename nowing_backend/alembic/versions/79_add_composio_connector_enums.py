@@ -46,7 +46,7 @@ def upgrade() -> None:
     """Upgrade schema - add Composio connector types to connector and document enums safely."""
     # Add each Composio connector type to searchsourceconnectortype only if not exists
     for value in CONNECTOR_NEW_VALUES:
-        op.execute(
+        op.execute(  # nosemgrep
             f"""
             DO $$
             BEGIN
@@ -63,7 +63,7 @@ def upgrade() -> None:
 
     # Add each Composio connector type to documenttype only if not exists
     for value in DOCUMENT_NEW_VALUES:
-        op.execute(
+        op.execute(  # nosemgrep
             f"""
             DO $$
             BEGIN

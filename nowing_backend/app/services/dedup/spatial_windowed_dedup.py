@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any
 
 
 def _tokenize(text: str | None) -> set[str]:

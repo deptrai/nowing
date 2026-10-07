@@ -148,6 +148,7 @@ def _property_type(raw: dict[str, Any]) -> str | None:
 
 
 def _seller_type(raw: dict[str, Any]) -> str | None:
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     if raw.get("is_company") is True:
         return "company"
     return "individual"

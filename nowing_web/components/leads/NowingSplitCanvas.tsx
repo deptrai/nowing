@@ -438,7 +438,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 			{/* Left Panel: Chat Co-pilot */}
 			{!isFullscreen && !isCollapsed && (
 				<div
-					style={{
+					style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic split ratio
 						width: hasActiveThread && isDockOpen ? `${leftWidth}px` : "100%",
 					}}
 					className={cn(

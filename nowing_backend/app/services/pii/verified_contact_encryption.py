@@ -85,9 +85,11 @@ class VerifiedContactEncryption:
             raise ValueError("Value is not encrypted; refusing to return it as-is")
 
         # Try primary key first
+        primary_exc: Exception | None = None
         try:
             return self._cipher.decrypt_token(value)
-        except Exception as primary_exc:
+        except Exception as exc:
+            primary_exc = exc
             if self._secondary_cipher is None:
                 raise ValueError(
                     f"Token decryption failed with primary key: {primary_exc}"

@@ -26,6 +26,7 @@ def apply_document_retention_policies():
 async def _apply_retention() -> None:
     async with get_celery_session_maker()() as session:
         workspaces = await session.execute(
+            # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
             select(Workspace).filter(Workspace.auto_archive_enabled == True)  # noqa: E712
         )
         now = datetime.now(UTC)

@@ -63,7 +63,7 @@ def upgrade() -> None:
 
     # Trigger the Celery task to populate blocknote_document for existing documents
     try:
-        from app.tasks.celery_tasks.blocknote_migration_tasks import (
+        from app.tasks.celery_tasks.blocknote_migration_tasks import (  # pyright: ignore[reportMissingImports]
             populate_blocknote_for_documents_task,
         )
 

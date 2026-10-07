@@ -66,13 +66,13 @@ export const LeadsContent: React.FC = () => {
 	const [viewMode, setViewMode] = useState<"workbench" | "builder" | "matrix" | "cards">(
 		"workbench"
 	);
-	const [sourceFilter, setSourceFilter] = useState<string>("all");
-	const [statusFilter, setStatusFilter] = useState<string>("all");
-	const [searchQuery, setSearchQuery] = useState<string>("");
+	const [sourceFilter, setSourceFilter] = useState("all");
+	const [statusFilter, setStatusFilter] = useState("all");
+	const [searchQuery, setSearchQuery] = useState("");
 	const [_selectedCompany, setSelectedCompany] = useState<string | null>(null);
-	const [_isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
-	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState<boolean>(false);
-	const [isDncModalOpen, setIsDncModalOpen] = useState<boolean>(false);
+	const [_isDrawerOpen, setIsDrawerOpen] = useState(false);
+	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState(false);
+	const [isDncModalOpen, setIsDncModalOpen] = useState(false);
 	const [activeTableId, setActiveTableId] = useState<string | null>(searchParams.get("table"));
 
 	const {
@@ -180,11 +180,6 @@ export const LeadsContent: React.FC = () => {
 	const handleOpenGraph = (companyName: string) => {
 		setSelectedCompany(companyName);
 		setIsDrawerOpen(true);
-	};
-
-	const _handleCloseDrawer = () => {
-		setIsDrawerOpen(false);
-		setSelectedCompany(null);
 	};
 
 	const handleApplyIcpPresets = (presets: FilterPresets) => {

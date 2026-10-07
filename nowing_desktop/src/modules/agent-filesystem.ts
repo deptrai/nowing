@@ -374,11 +374,10 @@ export async function listAgentFilesystemFiles(
 	const allowedRootPaths = await resolveCurrentRootPaths(options.workspaceId);
 	const requestedRootPath = await canonicalizeRootPath(options.rootPath);
 	const normalizedRequestedRoot = normalizeComparablePath(requestedRootPath);
-	const allowedRoots = new Set(
-		(
-			await Promise.all(allowedRootPaths.map((rootPath) => canonicalizeRootPath(rootPath)))
-		).map((rootPath) => normalizeComparablePath(rootPath))
+	const canonicalRoots = await Promise.all(
+		allowedRootPaths.map((rootPath) => canonicalizeRootPath(rootPath))
 	);
+	const allowedRoots = new Set(canonicalRoots.map((rootPath) => normalizeComparablePath(rootPath)));
 	if (!allowedRoots.has(normalizedRequestedRoot)) {
 		throw new Error("Selected path is not an allowed local root");
 	}

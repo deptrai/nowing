@@ -515,7 +515,9 @@ class TestLegacyToolDeprecation:
 
         def test_multi_required_args_descriptor_raises(self):
             """Descriptor with 2+ requiredArgs must fail loudly, not guess binding."""
-            from app.proprietary.platforms.xactions.adapter_v2 import _build_unified_args
+            from app.proprietary.platforms.xactions.adapter_v2 import (
+                _build_unified_args,
+            )
             descriptor = {"requiredArgs": ["url", "format"], "optionalArgs": []}
             with pytest.raises(ValueError, match="requires multiple args"):
                 _build_unified_args("facebook_group", "abc", descriptor, "group_posts")

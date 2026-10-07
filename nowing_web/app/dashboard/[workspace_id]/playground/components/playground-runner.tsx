@@ -2,7 +2,6 @@
 
 import { Check, Coins, Copy, Hash, Info, Timer } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -113,13 +112,6 @@ function EndpointCopyButton({ endpoint }: { endpoint: string }) {
 			<span className="sr-only">{copied ? "Copied endpoint" : "Copy endpoint"}</span>
 		</Button>
 	);
-}
-
-function usePlaygroundBase(workspaceId: number) {
-	const pathname = usePathname();
-	const userSettingsBase = `/dashboard/${workspaceId}/user-settings/playground`;
-	if (pathname?.startsWith(userSettingsBase)) return userSettingsBase;
-	return `/dashboard/${workspaceId}/playground`;
 }
 
 export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunnerProps) {

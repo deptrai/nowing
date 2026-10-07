@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -34,7 +34,7 @@ def _next_action(degradation_reason: str | None) -> str | None:
     return None
 
 
-def build_scrape_executor(scrape_fn: Optional[ScrapeFn] = None) -> Executor:  # noqa: UP045
+def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
     """Return an executor that calls the VietnamWorks proprietary fetcher."""
 
     _scrape = scrape_fn or scrape_vietnamworks

@@ -33,7 +33,7 @@ def upgrade() -> None:
         "vertical_clients",
         "agent_configs",
     ):
-        op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")
+        op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")  # nosemgrep
         # chat/research tables have a creator column; let the owner see their
         # own rows even if the caller omits client_id in the request body.
         owner_clause = (
@@ -41,7 +41,7 @@ def upgrade() -> None:
             if table in ("new_chat_threads", "research_threads")
             else ""
         )
-        op.execute(
+        op.execute(  # nosemgrep
             f"""
             CREATE POLICY {table}_client_isolation_policy
             ON {table}
@@ -67,8 +67,8 @@ def downgrade() -> None:
         "vertical_clients",
         "agent_configs",
     ):
-        op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")
-        op.execute(
+        op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")  # nosemgrep
+        op.execute(  # nosemgrep
             f"""
             CREATE POLICY {table}_client_isolation_policy
             ON {table}

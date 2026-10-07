@@ -64,14 +64,14 @@ class CdpBridge {
 	public static getInstance(): CdpBridge {
 		if (!CdpBridge.instance) {
 			CdpBridge.instance = new CdpBridge();
-			if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
+			if (chrome !== undefined && chrome.storage?.onChanged) {
 				chrome.storage.onChanged.addListener((changes, area) => {
 					if (area === "local" && (changes.token?.newValue || changes.backend_base_url?.newValue)) {
 						CdpBridge.getInstance().startListening();
 					}
 				});
 			}
-			if (typeof chrome !== "undefined" && chrome.debugger?.onDetach) {
+			if (chrome !== undefined && chrome.debugger?.onDetach) {
 				chrome.debugger.onDetach.addListener((source, reason) => {
 					CdpBridge.getInstance()
 						._handleOnDetach(source, reason)
@@ -147,8 +147,8 @@ class CdpBridge {
 					}
 				}
 			}
-		} catch (err: any) {
-			if (err.name === "AbortError") {
+		} catch (err) {
+			if (err instanceof Error && err.name === "AbortError") {
 				console.info("CdpBridge: SSE connection aborted");
 				return;
 			}
@@ -267,32 +267,38 @@ class CdpBridge {
 
 		if (this.currentCommand && !this.currentCommand.alreadyHandled) {
 			const cmd = this.currentCommand.cmd;
-			await this._sendGuardedResult(
-				cmd.mission_id,
-				null,
-				errorMessage,
-				cmd.command_id
-			);
+			await this._sendGuardedResult({
+				missionId: cmd.mission_id,
+				result: null,
+				error: errorMessage,
+				commandId: cmd.command_id,
+			});
 		}
 
 		// Also fail-fast any queued commands waiting on this debugger session.
 		// Each dropped command carries its own session token, not the shared active one.
 		for (const cmd of droppedCommands) {
-			await this.sendResultWithToken(
-				cmd.mission_id, null, errorMessage, cmd.command_id,
-				false, undefined, cmd.session_token ?? null
-			);
+			await this.sendResultWithToken({
+				missionId: cmd.mission_id,
+				result: null,
+				error: errorMessage,
+				commandId: cmd.command_id,
+				requiresHuman: false,
+				challenge: undefined,
+				sessionToken: cmd.session_token ?? null,
+			});
 		}
 	}
 
-	private async _sendGuardedResult(
-		missionId: string,
-		result: Record<string, any> | null,
-		error: string | null,
-		commandId: string,
-		requiresHuman = false,
-		challenge?: string
-	): Promise<void> {
+	private async _sendGuardedResult(args: {
+		missionId: string;
+		result: Record<string, unknown> | null;
+		error: string | null;
+		commandId: string;
+		requiresHuman?: boolean;
+		challenge?: string;
+	}): Promise<void> {
+		const { missionId, result, error, commandId, requiresHuman = false, challenge } = args;
 		if (this.currentCommand && this.currentCommand.cmd.command_id === commandId) {
 			if (this.currentCommand.alreadyHandled) {
 				console.warn(`CdpBridge: result for command ${commandId} already handled; suppressing`);
@@ -300,7 +306,7 @@ class CdpBridge {
 			}
 			this.currentCommand.alreadyHandled = true;
 		}
-		await this.sendResult(missionId, result, error, commandId, requiresHuman, challenge);
+		await this.sendResult({ missionId, result, error, commandId, requiresHuman, challenge });
 	}
 
 	private async _requireToken(): Promise<string | null> {
@@ -310,7 +316,7 @@ class CdpBridge {
 		} catch {
 			// fallback
 		}
-		if (typeof chrome !== "undefined" && chrome.storage?.local) {
+		if (chrome !== undefined && chrome.storage?.local) {
 			try {
 				const res = await chrome.storage.local.get(["token", "apiKey"]);
 				if (typeof res.token === "string" && res.token) return res.token;
@@ -338,7 +344,7 @@ class CdpBridge {
 		const active = allTabs.find((t) => t.active) || allTabs[0];
 		if (active) return active;
 		if (targetUrl) {
-			return await chrome.tabs.create({ url: targetUrl, active: true });
+			return chrome.tabs.create({ url: targetUrl, active: true });
 		}
 		return undefined;
 	}
@@ -376,10 +382,10 @@ class CdpBridge {
 		await this.detachDebugger();
 	}
 
-	private async _sendCommand<T = any>(
+	private async _sendCommand<T = unknown>(
 		tabId: number,
 		method: string,
-		params?: Record<string, any>,
+		params?: Record<string, unknown>,
 		timeoutMs = 15000
 	): Promise<T> {
 		return new Promise<T>((resolve, reject) => {
@@ -398,14 +404,14 @@ class CdpBridge {
 		});
 	}
 
-	private _waitForEvent(tabId: number, eventMethod: string, timeoutMs = 30000): Promise<any> {
+	private _waitForEvent(tabId: number, eventMethod: string, timeoutMs = 30000): Promise<unknown> {
 		return new Promise((resolve, reject) => {
 			const timer = setTimeout(() => {
 				cleanup();
 				reject(new Error(`Timeout waiting for ${eventMethod}`));
 			}, timeoutMs);
 
-			const handler = (debuggee: chrome.debugger.Debuggee, recvMethod: string, params?: any) => {
+			const handler = (debuggee: chrome.debugger.Debuggee, recvMethod: string, params?: unknown) => {
 				if (debuggee.tabId !== tabId) return;
 				if (recvMethod === eventMethod) {
 					cleanup();
@@ -425,7 +431,7 @@ class CdpBridge {
 	private async _detectChallenge(tabId: number): Promise<string | null> {
 		try {
 			await this._sendCommand(tabId, "Runtime.enable");
-			const result: any = await this._sendCommand(
+			const result = await this._sendCommand<{ result?: { value?: unknown } }>(
 				tabId,
 				"Runtime.evaluate",
 				{
@@ -434,7 +440,7 @@ class CdpBridge {
 				},
 				5000
 			);
-			const value = result?.result?.value;
+			const value = result?.result?.value as { challenge?: string } | undefined;
 			return value?.challenge ?? null;
 		} catch (err) {
 			console.warn("CdpBridge: challenge detection failed:", err);
@@ -444,7 +450,7 @@ class CdpBridge {
 
 	private async _getDocumentInfo(tabId: number): Promise<{ url?: string; title?: string }> {
 		try {
-			const result: any = await this._sendCommand(
+			const result = await this._sendCommand<{ result?: { value?: unknown } }>(
 				tabId,
 				"Runtime.evaluate",
 				{
@@ -453,7 +459,10 @@ class CdpBridge {
 				},
 				5000
 			);
-			return JSON.parse(result?.result?.value ?? "{}") as { url?: string; title?: string };
+			return JSON.parse((result?.result?.value as string | undefined) ?? "{}") as {
+				url?: string;
+				title?: string;
+			};
 		} catch (err) {
 			console.warn("CdpBridge: getDocumentInfo failed:", err);
 			return {};
@@ -498,15 +507,17 @@ class CdpBridge {
 
 		let data = "";
 		for (const opts of attempts) {
-			const cap: any = await this._sendCommand(tabId, "Page.captureScreenshot", opts);
+			const cap = await this._sendCommand<{ data?: string }>(tabId, "Page.captureScreenshot", opts);
 			data = cap?.data ?? "";
 			if (data.length <= MAX_SCREENSHOT_B64_CHARS) {
 				return { data, format: opts.format };
 			}
 			console.warn(
-				`CdpBridge: screenshot too large (${data.length} chars) with`,
+				'CdpBridge: screenshot too large (',
+				data.length,
+				'chars) with',
 				opts,
-				"; retrying with lower quality"
+				'; retrying with lower quality'
 			);
 		}
 
@@ -514,7 +525,7 @@ class CdpBridge {
 	}
 
 	private async handleCdpCommand(cmd: CdpCommand): Promise<void> {
-		const { action, mission_id, command_id, url, user_id } = cmd;
+		const { action, mission_id, command_id, url } = cmd;
 
 		if (!action || !mission_id || !command_id) {
 			console.error("CdpBridge: invalid CDP command", cmd);
@@ -531,12 +542,12 @@ class CdpBridge {
 		const targetUrl = action === "navigate" ? url : cmd.url;
 		const targetTab = await this._findMatchingTab(targetUrl);
 		if (!targetTab?.id) {
-			await this._sendGuardedResult(
-				mission_id,
-				null,
-				"No active tab available for CDP takeover",
-				command_id
-			);
+			await this._sendGuardedResult({
+				missionId: mission_id,
+				result: null,
+				error: "No active tab available for CDP takeover",
+				commandId: command_id,
+			});
 			return;
 		}
 
@@ -548,16 +559,16 @@ class CdpBridge {
 			try {
 				const parsed = new URL(target);
 				if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-					await this._sendGuardedResult(
-						mission_id,
-						null,
-						`Unsupported URL scheme: ${parsed.protocol}`,
-						command_id
-					);
+					await this._sendGuardedResult({
+						missionId: mission_id,
+						result: null,
+						error: `Unsupported URL scheme: ${parsed.protocol}`,
+						commandId: command_id,
+					});
 					return;
 				}
 			} catch {
-				await this._sendGuardedResult(mission_id, null, "Invalid URL", command_id);
+				await this._sendGuardedResult({ missionId: mission_id, result: null, error: "Invalid URL", commandId: command_id });
 				return;
 			}
 		}
@@ -565,13 +576,13 @@ class CdpBridge {
 		try {
 			await this._attachDebugger(tabId);
 
-			let resultPayload: Record<string, any> = { success: true };
+			let resultPayload: Record<string, unknown> = { success: true } satisfies Record<string, unknown>;
 			let skipAutoChallenge = false;
 
 			switch (action) {
 				case "navigate": {
 					if (!targetUrl) {
-						await this._sendGuardedResult(mission_id, null, "navigate requires url", command_id);
+						await this._sendGuardedResult({ missionId: mission_id, result: null, error: "navigate requires url", commandId: command_id });
 						return;
 					}
 					try {
@@ -603,15 +614,15 @@ class CdpBridge {
 						throw new Error("click requires selector");
 					}
 					await this._sendCommand(tabId, "DOM.enable");
-					const doc: any = await this._sendCommand(tabId, "DOM.getDocument");
-					const node: any = await this._sendCommand(tabId, "DOM.querySelector", {
+					const doc = await this._sendCommand<{ root: { nodeId: number } }>(tabId, "DOM.getDocument");
+					const node = await this._sendCommand<{ nodeId?: number }>(tabId, "DOM.querySelector", {
 						nodeId: doc.root.nodeId,
 						selector: cmd.selector,
 					});
 					if (!node?.nodeId) {
 						throw new Error(`Selector not found: ${cmd.selector}`);
 					}
-					const box: any = await this._sendCommand(tabId, "DOM.getBoxModel", {
+					const box = await this._sendCommand<{ model: { content: number[] } }>(tabId, "DOM.getBoxModel", {
 						nodeId: node.nodeId,
 					});
 					const [x, y] = this._boxCenter(box.model.content);
@@ -638,8 +649,8 @@ class CdpBridge {
 						throw new Error("fill requires selector and text");
 					}
 					await this._sendCommand(tabId, "DOM.enable");
-					const doc: any = await this._sendCommand(tabId, "DOM.getDocument");
-					const node: any = await this._sendCommand(tabId, "DOM.querySelector", {
+					const doc = await this._sendCommand<{ root: { nodeId: number } }>(tabId, "DOM.getDocument");
+					const node = await this._sendCommand<{ nodeId?: number }>(tabId, "DOM.querySelector", {
 						nodeId: doc.root.nodeId,
 						selector: cmd.selector,
 					});
@@ -682,11 +693,11 @@ class CdpBridge {
               return { text: el.innerText, html: el.innerHTML };
             })()
           `;
-					const evalResult: any = await this._sendCommand(tabId, "Runtime.evaluate", {
+					const evalResult = await this._sendCommand<{ result?: { value?: unknown } }>(tabId, "Runtime.evaluate", {
 						expression,
 						returnByValue: true,
 					});
-					const value = evalResult?.result?.value;
+					const value = evalResult?.result?.value as { text?: unknown; html?: unknown } | undefined;
 					resultPayload = {
 						selector: cmd.selector,
 						text: typeof value?.text === "string" ? value.text.slice(0, 50000) : "",
@@ -715,7 +726,7 @@ class CdpBridge {
 				}
 
 				default:
-					await this._sendGuardedResult(mission_id, null, `Unsupported action: ${action}`, command_id);
+					await this._sendGuardedResult({ missionId: mission_id, result: null, error: `Unsupported action: ${action}`, commandId: command_id });
 					return;
 			}
 
@@ -725,15 +736,15 @@ class CdpBridge {
 				if (challenge) {
 					// Store the active mission so the popup can offer a Release Control button.
 					await storage.set("activeMissionId", mission_id);
-					await this._sendGuardedResult(mission_id, null, challenge, command_id, true, challenge);
+					await this._sendGuardedResult({ missionId: mission_id, result: null, error: challenge, commandId: command_id, requiresHuman: true, challenge });
 					return;
 				}
 			}
 
-			await this._sendGuardedResult(mission_id, resultPayload, null, command_id);
-		} catch (err: any) {
+			await this._sendGuardedResult({ missionId: mission_id, result: resultPayload, error: null, commandId: command_id });
+		} catch (err) {
 			console.error("CDP execution error:", err);
-			await this._sendGuardedResult(mission_id, null, err.message || String(err), command_id);
+			await this._sendGuardedResult({ missionId: mission_id, result: null, error: err instanceof Error ? err.message : String(err), commandId: command_id });
 		} finally {
 			await this.detachDebugger();
 		}
@@ -746,29 +757,35 @@ class CdpBridge {
 		return [x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2];
 	}
 
-	private async sendResult(
-		missionId: string,
-		result: Record<string, any> | null,
-		error: string | null,
-		commandId: string,
-		requiresHuman = false,
-		challenge?: string
-	): Promise<void> {
-		await this.sendResultWithToken(
-			missionId, result, error, commandId, requiresHuman, challenge,
-			this.activeSessionToken
-		);
+	private async sendResult(args: {
+		missionId: string;
+		result: Record<string, unknown> | null;
+		error: string | null;
+		commandId: string;
+		requiresHuman?: boolean;
+		challenge?: string;
+	}): Promise<void> {
+		await this.sendResultWithToken({
+			missionId: args.missionId,
+			result: args.result,
+			error: args.error,
+			commandId: args.commandId,
+			requiresHuman: args.requiresHuman ?? false,
+			challenge: args.challenge,
+			sessionToken: this.activeSessionToken,
+		});
 	}
 
-	private async sendResultWithToken(
-		missionId: string,
-		result: Record<string, any> | null,
-		error: string | null,
-		commandId: string,
-		requiresHuman: boolean,
-		challenge: string | undefined,
-		sessionToken: string | null
-	): Promise<void> {
+	private async sendResultWithToken(args: {
+		missionId: string;
+		result: Record<string, unknown> | null;
+		error: string | null;
+		commandId: string;
+		requiresHuman: boolean;
+		challenge: string | undefined;
+		sessionToken: string | null;
+	}): Promise<void> {
+		const { missionId, result, error, commandId, requiresHuman, challenge, sessionToken } = args;
 		const token = await this._requireToken();
 		if (!token) {
 			console.error("CdpBridge: cannot send result without auth token");
@@ -817,9 +834,9 @@ class CdpBridge {
 					return;
 				}
 
-				console.warn(`CdpBridge: result POST failed (${res.status}); retry ${i + 1}/3`);
+				console.warn('CdpBridge: result POST failed (', res.status, '); retry', i + 1, '/3');
 			} catch (err) {
-				console.warn(`CdpBridge: result POST network error; retry ${i + 1}/3`, err);
+				console.warn('CdpBridge: result POST network error; retry', i + 1, '/3', err);
 			}
 
 			if (i < 2) {

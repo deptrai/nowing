@@ -118,7 +118,9 @@ export function EmbeddedDocumentsMenu({
 }: {
 	typeCounts: Partial<Record<string, number>>;
 	activeTypes: DocumentTypeEnum[];
+	// pi-lens-ignore: typescript:71007 -- client component function prop (serializable-props is Next.js RSC warning, not applicable here)
 	onToggleType: (type: DocumentTypeEnum, checked: boolean) => void;
+	// pi-lens-ignore: typescript:71007 -- client component function prop (serializable-props is Next.js RSC warning, not applicable here)
 	onCreateFolder: () => void;
 }) {
 	const t = useTranslations("layout");
@@ -246,7 +248,9 @@ export function EmbeddedImportMenu({
 	gate,
 	onFolderWatched,
 }: {
+	// pi-lens-ignore: typescript:71007 -- client component function prop (serializable-props is Next.js RSC warning, not applicable here)
 	gate?: (feature: string) => void;
+	// pi-lens-ignore: typescript:71007 -- client component function prop (serializable-props is Next.js RSC warning, not applicable here)
 	onFolderWatched?: () => void;
 }) {
 	const t = useTranslations("layout");
@@ -818,7 +822,7 @@ function AuthenticatedDocumentsSidebarBase({
 				document.body.removeChild(a);
 				URL.revokeObjectURL(url);
 			} catch (err) {
-				console.error(`Export ${format} failed:`, err);
+				console.error("Export failed:", format, err);
 				toast.error(err instanceof Error ? err.message : t("toast.export_failed"));
 			}
 		},

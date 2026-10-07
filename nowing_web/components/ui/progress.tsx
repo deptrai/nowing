@@ -16,7 +16,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
 		>
 			<div
 				className="h-full bg-primary transition-all duration-300 ease-in-out"
-				style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+				style={{ width: `${Math.min(100, Math.max(0, value))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 			/>
 		</div>
 	)

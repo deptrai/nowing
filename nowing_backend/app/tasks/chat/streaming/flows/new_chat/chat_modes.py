@@ -108,6 +108,7 @@ def resolve_chat_mode(platform_metadata: dict[str, Any] | None) -> ChatMode:
     active = [
         mode
         for mode in CHAT_MODES.values()
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         if mode.mode_id != "default" and metadata.get(mode.flag_key) is True
     ]
     if len(active) > 1:

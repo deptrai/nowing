@@ -73,7 +73,7 @@ function getBackendUrl(): string {
 
 function broadcastAuthChanged(): void {
   for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(IPC_CHANNELS.AUTH_CHANGED, { authed: !!accessToken, accessToken });
+    win.webContents.send(IPC_CHANNELS.AUTH_CHANGED, { authed: Boolean(accessToken), accessToken });
   }
 }
 

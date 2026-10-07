@@ -236,6 +236,7 @@ class WideResearchCrawlSubgraph:
         if cost_micros is not None:
             checkpoint["cost_micros"] = cost_micros
 
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         degraded = status != "complete" or research_output.get("degraded") is True
         if degraded:
             checkpoint["degraded"] = True

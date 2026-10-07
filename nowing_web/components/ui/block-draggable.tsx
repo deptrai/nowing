@@ -137,7 +137,7 @@ function Draggable(props: PlateElementProps) {
 								ref={handleRef}
 								variant="ghost"
 								className="-left-0 absolute h-6 w-full p-0"
-								style={{ top: `${dragButtonTop + 3}px` }}
+								style={{ top: `${dragButtonTop + 3}px` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 								data-plate-prevent-deselect
 							>
 								<DragHandle
@@ -155,7 +155,7 @@ function Draggable(props: PlateElementProps) {
 			<div
 				ref={previewRef}
 				className={cn("-left-0 absolute hidden w-full")}
-				style={{ top: `${-previewTop}px` }}
+				style={{ top: `${-previewTop}px` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 				contentEditable={false}
 			/>
 

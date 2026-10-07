@@ -78,7 +78,7 @@ def upgrade() -> None:
     # Dropping the redundant single-column index is fast even on a warm table
     # and avoids the transactional restrictions of CONCURRENTLY, which is
     # problematic inside asyncpg/alembic autocommit blocks.
-    op.execute(f"DROP INDEX IF EXISTS {OLD_INDEX_NAME}")
+    op.execute(f"DROP INDEX IF EXISTS {OLD_INDEX_NAME}")  # nosemgrep
     op.execute("ANALYZE memories")
 
 
@@ -90,4 +90,4 @@ def downgrade() -> None:
             f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {OLD_INDEX_NAME} "
             "ON memories (research_thread_id)"
         )
-    op.execute(f"DROP STATISTICS IF EXISTS {STATS_NAME}")
+    op.execute(f"DROP STATISTICS IF EXISTS {STATS_NAME}")  # nosemgrep

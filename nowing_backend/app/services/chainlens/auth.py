@@ -241,6 +241,7 @@ class ChainLensServiceAuth:
 
         if self._tokens:
             token = self.current_token
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             headers["Authorization"] = f"{_AUTHORIZATION_BEARER_PREFIX}{token}"
 
         user_ctx = self._sign_user_context()

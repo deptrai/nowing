@@ -281,13 +281,13 @@ export const ConnectorIndicator = forwardRef<ConnectorIndicatorHandle, Connector
 								if (!hasDriveItems) return undefined;
 								return () => {
 									startIndexing(editingConnector.id);
-									handleQuickIndexConnector(
-										editingConnector.id,
-										editingConnector.connector_type,
+									handleQuickIndexConnector({
+										connectorId: editingConnector.id,
+										connectorType: editingConnector.connector_type,
 										stopIndexing,
 										startDate,
-										endDate
-									);
+										endDate,
+									});
 								};
 							})()}
 							onConfigChange={setConnectorConfig}

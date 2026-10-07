@@ -756,7 +756,7 @@ async def _record_chainlens_cost_allocation(
                 run_id=ctx.run_id,
             )
         except Exception:  # best-effort usage telemetry; log and continue
-            logger.exception(
+            logger.exception(  # nosemgrep
                 "Failed to record %s token usage for run %s; continuing",
                 usage_type,
                 ctx.run_id,

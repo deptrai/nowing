@@ -329,6 +329,7 @@ async def require_agent_chat_pat(
         )
 
     # get_auth_context already validates the PAT; do not rely on test fakes.
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     if getattr(pat, "is_valid", None) is False:
         await _audit_rejection(
             request,

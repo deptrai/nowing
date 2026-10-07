@@ -87,7 +87,7 @@ async def admin_client(
 async def seeded_payout(
     db_session: AsyncSession,
     admin_user: User,
-) -> dict[str, object]:
+) -> AsyncGenerator[dict[str, object], None]:
     """Seed a partner and a pending payout, then clean up after the test."""
     partner_id = uuid.uuid4()
     payout_id = uuid.uuid4()

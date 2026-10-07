@@ -1,18 +1,17 @@
 """Unit tests for XActions MCP Client with Circuit Breaker (Story 40.1)."""
 
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from app.proprietary.platforms.xactions.mcp_client import (
-    XActionsMcpClient,
-    XActionsMcpError,
-    XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS,
-    XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS,
-)
+import pytest
+
 from app.proprietary.platforms.xactions.circuit_breaker import (
     XACTIONS_CIRCUIT_BREAKER,
-    CircuitState,
+)
+from app.proprietary.platforms.xactions.mcp_client import (
+    XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS,
+    XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS,
+    XActionsMcpClient,
+    XActionsMcpError,
 )
 
 

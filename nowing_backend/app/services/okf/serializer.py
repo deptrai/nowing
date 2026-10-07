@@ -36,7 +36,7 @@ LOG_FILENAME = "log.md"
 _FRONTMATTER_DELIMITER = "---"
 
 
-def _timestamp(model: Document | Memory ^ Chunk | MemoryRelation) -> str | None:
+def _timestamp(model: Document | Memory | Chunk | MemoryRelation) -> str | None:
     when = getattr(model, "updated_at", None) or getattr(model, "created_at", None)
     if when is None:
         return None
@@ -63,7 +63,9 @@ def _memory_plaintext(memory: Memory) -> str:
             if encryption.is_enabled():
                 encryption.decrypt_memory(memory)
                 plaintext = memory.content or ""
-        except Exception:  # decrypt failure → fail-safe: export ciphertext rather than crash
+        except (
+            Exception
+        ):  # decrypt failure → fail-safe: export ciphertext rather than crash
             # Fail safe: return the stored ciphertext rather than crash export
             # if the key material for this legacy/rotated row is not available.
             plaintext = memory.content or ""

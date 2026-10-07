@@ -25,6 +25,7 @@ class WaterfallProvider(Protocol):
 
     name: str
 
+    # pi-lens-ignore: ast-grep:no-ellipsis-body -- Protocol stub is idiomatic
     async def find_contacts(
         self,
         lead: Lead,

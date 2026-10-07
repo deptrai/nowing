@@ -6,20 +6,15 @@
  * rendered through `esc()` — it comes from the DB and must never be trusted.
  */
 
-import type { ZaloCopilotContext } from '../../types';
+import type { ZaloCopilotContext } from '../../types/index.js';
 import {
   findZaloInput,
   getZaloInputDraft,
   insertIntoZaloComposer,
-} from './insert';
+} from './insert.js';
+import { esc, setShadowHtml } from '../../utils/safe-dom.js';
 
 type PitchTab = 'short' | 'link';
-
-function esc(value: string | null | undefined): string {
-  const div = document.createElement('div');
-  div.textContent = value ?? '';
-  return div.innerHTML;
-}
 
 export class ZaloCopilotOverlay {
   private host: HTMLElement | null = null;
@@ -38,7 +33,7 @@ export class ZaloCopilotOverlay {
   }
 
   private init() {
-    if (document.getElementById('nowing-zalo-copilot-host')) return;
+    if (document.querySelector('#nowing-zalo-copilot-host')) return;
     this.host = document.createElement('div');
     this.host.id = 'nowing-zalo-copilot-host';
     this.host.style.cssText =
@@ -46,7 +41,7 @@ export class ZaloCopilotOverlay {
       'transform:translateY(-50%);' +
       'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;';
     this.shadow = this.host.attachShadow({ mode: 'open' });
-    document.body.appendChild(this.host);
+    document.body.append(this.host);
   }
 
   /** Called by the detector loop whenever the active phone may have changed. */
@@ -70,19 +65,24 @@ export class ZaloCopilotOverlay {
     this.loading = true;
     this.render();
     try {
-      const res: any = await chrome.runtime.sendMessage({
+      interface ZaloContextResponse {
+        success: boolean;
+        context?: ZaloCopilotContext;
+        message?: string;
+      }
+      const res = (await chrome.runtime.sendMessage({
         action: 'GET_ZALO_CONTEXT',
         phone,
-      });
+      })) as ZaloContextResponse | undefined;
       if (seq !== this.requestSeq) return; // stale response
       if (res?.success && res.context) {
-        this.context = res.context as ZaloCopilotContext;
+        this.context = res.context;
       } else {
         this.error = res?.message || 'Không tải được context';
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (seq !== this.requestSeq) return;
-      this.error = err?.message || 'Mất kết nối background worker';
+      this.error = err instanceof Error ? err.message : 'Mất kết nối background worker';
     } finally {
       if (seq === this.requestSeq) {
         this.loading = false;
@@ -136,7 +136,7 @@ export class ZaloCopilotOverlay {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
-    this.shadow.appendChild(toast);
+    this.shadow.append(toast);
     setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => {
       toast.classList.remove('show');
@@ -152,7 +152,9 @@ export class ZaloCopilotOverlay {
     // "Số  chưa khớp lead" message.
     if (!this.phone) this.expanded = false;
 
-    this.shadow.innerHTML = `
+    setShadowHtml(
+      this.shadow,
+      `
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         .pill {
@@ -255,7 +257,8 @@ export class ZaloCopilotOverlay {
         .toast-error { background: #dc2626; }
       </style>
       ${this.expanded ? this.renderDrawer() : this.renderPill()}
-    `;
+    `
+    );
 
     this.bindEvents();
   }
@@ -263,7 +266,7 @@ export class ZaloCopilotOverlay {
   private renderPill(): string {
     // AC-1: the pill only exists while a conversation phone is detected.
     if (!this.phone) return '';
-    const hasMatch = !!this.context?.matched;
+    const hasMatch = Boolean(this.context?.matched);
     return `<button class="pill ${hasMatch ? 'has-match' : ''}" id="copilot-pill"
       title="Nowing Co-pilot">⚡</button>`;
   }
@@ -385,16 +388,16 @@ export class ZaloCopilotOverlay {
   private bindEvents() {
     if (!this.shadow) return;
 
-    this.shadow.getElementById('copilot-pill')?.addEventListener('click', () => {
+    this.shadow.querySelector('#copilot-pill')?.addEventListener('click', () => {
       this.expanded = true;
       this.render();
     });
-    this.shadow.getElementById('copilot-close')?.addEventListener('click', () => {
+    this.shadow.querySelector('#copilot-close')?.addEventListener('click', () => {
       this.expanded = false;
       this.draftConflict = false;
       this.render();
     });
-    this.shadow.getElementById('btn-insert')?.addEventListener('click', () =>
+    this.shadow.querySelector('#btn-insert')?.addEventListener('click', () =>
       this.handleInsertClick()
     );
 

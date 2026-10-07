@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ExtensionConfig } from '../types';
+import { ExtensionConfig } from '../types/index.js';
+import './popup.css';
 
 export const Popup: React.FC = () => {
   const [config, setConfig] = useState<ExtensionConfig>({
@@ -9,11 +10,11 @@ export const Popup: React.FC = () => {
     autoDetect: true,
   });
 
-  const [offlineCount, setOfflineCount] = useState<number>(0);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [offlineCount, setOfflineCount] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
-  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState('');
 
   useEffect(() => {
     // Load config and offline count
@@ -26,7 +27,7 @@ export const Popup: React.FC = () => {
     });
   }, []);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSaving(true);
     setStatusMessage('');
@@ -65,9 +66,10 @@ export const Popup: React.FC = () => {
         setTestStatus('failed');
         setStatusMessage(`✗ Error: ${res.statusText || 'Failed to connect'}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Check URL';
       setTestStatus('failed');
-      setStatusMessage(`✗ Network error: ${err.message || 'Check URL'}`);
+      setStatusMessage(`✗ Network error: ${errorMessage}`);
     } finally {
       setTimeout(() => setTestStatus('idle'), 4000);
     }
@@ -86,22 +88,17 @@ export const Popup: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '16px', boxSizing: 'border-box' }}>
+    <div className="popup-container">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '20px' }}>⚡</span>
-          <span style={{ fontWeight: 700, fontSize: '15px', color: '#6366f1' }}>Nowing Lead Clipper</span>
+      <div className="popup-header">
+        <div className="popup-header-title-group">
+          <span className="popup-header-icon">⚡</span>
+          <span className="popup-header-title">Nowing Lead Clipper</span>
         </div>
         <span
-          style={{
-            fontSize: '11px',
-            padding: '2px 8px',
-            borderRadius: '9999px',
-            backgroundColor: config.patToken ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-            color: config.patToken ? '#34d399' : '#f87171',
-            fontWeight: 600,
-          }}
+          className={`popup-badge ${
+            config.patToken ? 'popup-badge-connected' : 'popup-badge-disconnected'
+          }`}
         >
           {config.patToken ? 'Connected' : 'Token Required'}
         </span>
@@ -110,105 +107,62 @@ export const Popup: React.FC = () => {
       {/* Status banner */}
       {statusMessage && (
         <div
-          style={{
-            padding: '8px 12px',
-            borderRadius: '6px',
-            fontSize: '12px',
-            marginBottom: '12px',
-            backgroundColor: statusMessage.startsWith('✓') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-            color: statusMessage.startsWith('✓') ? '#34d399' : '#f87171',
-            border: `1px solid ${statusMessage.startsWith('✓') ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
-          }}
+          className={`popup-status-message ${
+            statusMessage.startsWith('✓') ? 'popup-status-success' : 'popup-status-error'
+          }`}
         >
           {statusMessage}
         </div>
       )}
 
       {/* Settings Form */}
-      <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <form onSubmit={handleSave} className="popup-form">
         <div>
-          <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>
+          <label htmlFor="backend-url" className="popup-label">
             Backend API URL
           </label>
           <input
+            id="backend-url"
             type="text"
             value={config.backendUrl}
             onChange={(e) => setConfig({ ...config, backendUrl: e.target.value })}
             placeholder="http://localhost:8000"
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              borderRadius: '6px',
-              border: '1px solid #334155',
-              backgroundColor: '#1e293b',
-              color: '#f8fafc',
-              fontSize: '13px',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
+            className="popup-input"
           />
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>
+          <label htmlFor="workspace-id" className="popup-label">
             Workspace ID
           </label>
           <input
+            id="workspace-id"
             type="number"
             value={config.workspaceId || 1}
             onChange={(e) => setConfig({ ...config, workspaceId: parseInt(e.target.value, 10) || 1 })}
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              borderRadius: '6px',
-              border: '1px solid #334155',
-              backgroundColor: '#1e293b',
-              color: '#f8fafc',
-              fontSize: '13px',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
+            className="popup-input"
           />
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>
+          <label htmlFor="pat-token" className="popup-label">
             Personal Access Token (`leads:clipper:write`)
           </label>
           <input
+            id="pat-token"
             type="password"
             value={config.patToken}
             onChange={(e) => setConfig({ ...config, patToken: e.target.value })}
             placeholder="nw_pat_..."
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              borderRadius: '6px',
-              border: '1px solid #334155',
-              backgroundColor: '#1e293b',
-              color: '#f8fafc',
-              fontSize: '13px',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
+            className="popup-input"
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+        <div className="popup-form-actions">
           <button
             type="submit"
             disabled={isSaving}
-            style={{
-              flex: 1,
-              padding: '8px 12px',
-              borderRadius: '6px',
-              backgroundColor: '#6366f1',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className="popup-btn popup-btn-primary"
           >
             {isSaving ? 'Saving...' : 'Save Config'}
           </button>
@@ -217,16 +171,7 @@ export const Popup: React.FC = () => {
             type="button"
             onClick={handleTestConnection}
             disabled={testStatus === 'testing'}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              backgroundColor: '#334155',
-              color: '#f8fafc',
-              border: 'none',
-              fontWeight: 500,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className="popup-btn popup-btn-secondary"
           >
             {testStatus === 'testing' ? 'Testing...' : 'Test'}
           </button>
@@ -234,32 +179,19 @@ export const Popup: React.FC = () => {
       </form>
 
       {/* Offline Buffer & Sync Section */}
-      <div
-        style={{
-          marginTop: '16px',
-          padding: '12px',
-          borderRadius: '8px',
-          backgroundColor: '#1e293b',
-          border: '1px solid #334155',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#cbd5e1' }}>Offline Sync Queue</span>
+      <div className="popup-offline-card">
+        <div className="popup-offline-header">
+          <span className="popup-offline-title">Offline Sync Queue</span>
           <span
-            style={{
-              fontSize: '11px',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              backgroundColor: offlineCount > 0 ? '#f59e0b' : '#475569',
-              color: '#ffffff',
-              fontWeight: 700,
-            }}
+            className={`popup-offline-badge ${
+              offlineCount > 0 ? 'popup-offline-badge-pending' : 'popup-offline-badge-empty'
+            }`}
           >
             {offlineCount} pending
           </span>
         </div>
 
-        <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 10px 0' }}>
+        <p className="popup-offline-desc">
           Leads captured while disconnected or server unreachable are stored safely in local buffer.
         </p>
 
@@ -267,18 +199,9 @@ export const Popup: React.FC = () => {
           type="button"
           onClick={handleSyncOffline}
           disabled={offlineCount === 0 || isSyncing}
-          style={{
-            width: '100%',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            backgroundColor: offlineCount > 0 ? '#059669' : '#334155',
-            color: '#ffffff',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: 600,
-            cursor: offlineCount > 0 ? 'pointer' : 'not-allowed',
-            opacity: offlineCount > 0 ? 1 : 0.6,
-          }}
+          className={`popup-btn popup-btn-sync ${
+            offlineCount > 0 ? 'popup-btn-sync-active' : 'popup-btn-sync-disabled'
+          }`}
         >
           {isSyncing ? 'Syncing...' : 'Sync Pending Leads'}
         </button>

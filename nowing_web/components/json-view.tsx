@@ -102,7 +102,7 @@ export function JsonView({
 				onEdit={interactive}
 				onAdd={interactive}
 				onDelete={interactive}
-				style={{ backgroundColor: "transparent", fontSize: 12, fontFamily: "var(--font-mono)" }}
+				style={{ backgroundColor: "transparent", fontSize: 12, fontFamily: "var(--font-mono)" }} // pi-lens-ignore: ast-grep:inline-styles -- react-json-view theming API only accepts style prop
 				{...SHARED_DEFAULTS}
 			/>
 		</div>

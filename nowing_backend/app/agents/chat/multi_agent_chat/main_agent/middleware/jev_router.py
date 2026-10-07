@@ -184,7 +184,7 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
         )
         if not telemetry_ok:
             return await service.decide(
-                state, self._questions, session=None, **decide_kwargs
+                state, self._questions, session=None, **decide_kwargs  # pyright: ignore[reportArgumentType]
             )
 
         from app.db import async_session_maker
@@ -192,7 +192,7 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
         async with async_session_maker() as session:
             try:
                 return await service.decide(
-                    state, self._questions, session=session, **decide_kwargs
+                    state, self._questions, session=session, **decide_kwargs  # pyright: ignore[reportArgumentType]
                 )
             finally:
                 try:

@@ -1,6 +1,6 @@
 import { Storage } from "@plasmohq/storage";
 import { getRenderedHtml, initQueues, initWebHistory } from "~utils/commons";
-import type { WebHistory } from "~utils/interfaces";
+import type { TimeQueueEntry, UrlQueueEntry } from "~utils/interfaces";
 import { CdpBridge } from "./cdp-bridge";
 
 // Start listening for CDP commands from Nowing Backend
@@ -14,7 +14,7 @@ chrome.tabs.onActivated?.addListener(() => {
 	CdpBridge.getInstance().startListening();
 });
 
-chrome.tabs.onCreated.addListener(async (tab: any) => {
+chrome.tabs.onCreated.addListener(async (tab: chrome.tabs.Tab) => {
 	CdpBridge.getInstance().startListening();
 	try {
 		await initWebHistory(tab.id);
@@ -24,13 +24,14 @@ chrome.tabs.onCreated.addListener(async (tab: any) => {
 	}
 });
 
-chrome.tabs.onUpdated.addListener(async (tabId: number, changeInfo: any, tab: any) => {
-	if (
-		changeInfo.status === "complete" &&
-		tab.url &&
-		(tab.url.startsWith("http://") || tab.url.startsWith("https://"))
-	) {
-		const storage = new Storage({ area: "local" });
+chrome.tabs.onUpdated.addListener(
+	async (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+		if (
+			changeInfo.status === "complete" &&
+			tab.url &&
+			(tab.url.startsWith("http://") || tab.url.startsWith("https://"))
+		) {
+			const storage = new Storage({ area: "local" });
 		await initWebHistory(tab.id);
 		await initQueues(tab.id);
 
@@ -41,17 +42,24 @@ chrome.tabs.onUpdated.addListener(async (tabId: number, changeInfo: any, tab: an
 			func: getRenderedHtml,
 		});
 
-		const toPushInTabHistory: any = result[0].result; // const { renderedHtml, title, url, entryTime } = result[0].result;
+		const toPushInTabHistory = result[0].result as {
+			url: string;
+			entryTime: number;
+		};
 
-		const urlQueueListObj: any = await storage.get("urlQueueList");
-		const timeQueueListObj: any = await storage.get("timeQueueList");
+		const urlQueueListObj = (await storage.get("urlQueueList")) as {
+			urlQueueList: UrlQueueEntry[];
+		};
+		const timeQueueListObj = (await storage.get("timeQueueList")) as {
+			timeQueueList: TimeQueueEntry[];
+		};
 
 		urlQueueListObj.urlQueueList
-			.find((data: WebHistory) => data.tabsessionId === tabId)
-			.urlQueue.push(toPushInTabHistory.url);
+			.find((data: UrlQueueEntry) => data.tabsessionId === tabId)
+			?.urlQueue.push(toPushInTabHistory.url);
 		timeQueueListObj.timeQueueList
-			.find((data: WebHistory) => data.tabsessionId === tabId)
-			.timeQueue.push(toPushInTabHistory.entryTime);
+			.find((data: TimeQueueEntry) => data.tabsessionId === tabId)
+			?.timeQueue.push(toPushInTabHistory.entryTime);
 
 		await storage.set("urlQueueList", {
 			urlQueueList: urlQueueListObj.urlQueueList,
@@ -69,30 +77,34 @@ chrome.tabs.onReplaced.addListener(async (_addedTabId: number, removedTabId: num
 	}
 });
 
-chrome.tabs.onRemoved.addListener(async (tabId: number, _removeInfo: object) => {
+chrome.tabs.onRemoved.addListener(async (tabId: number, _removeInfo: chrome.tabs.TabRemoveInfo) => {
 	const bridge = CdpBridge.getInstance();
 	if (bridge.getActiveDebuggeeTabId() === tabId) {
 		await bridge.detachActiveDebugger();
 	}
 	const storage = new Storage({ area: "local" });
-	const urlQueueListObj: any = await storage.get("urlQueueList");
-	const timeQueueListObj: any = await storage.get("timeQueueList");
+	const urlQueueListObj = (await storage.get("urlQueueList")) as {
+		urlQueueList?: UrlQueueEntry[];
+	};
+	const timeQueueListObj = (await storage.get("timeQueueList")) as {
+		timeQueueList?: TimeQueueEntry[];
+	};
 	if (urlQueueListObj.urlQueueList && timeQueueListObj.timeQueueList) {
-		const urlQueueListToSave = urlQueueListObj.urlQueueList.map((element: WebHistory) => {
+		const urlQueueListToSave = urlQueueListObj.urlQueueList.map((element: UrlQueueEntry) => {
 			if (element.tabsessionId !== tabId) {
 				return element;
 			}
 		});
-		const timeQueueListSave = timeQueueListObj.timeQueueList.map((element: WebHistory) => {
+		const timeQueueListSave = timeQueueListObj.timeQueueList.map((element: TimeQueueEntry) => {
 			if (element.tabsessionId !== tabId) {
 				return element;
 			}
 		});
 		await storage.set("urlQueueList", {
-			urlQueueList: urlQueueListToSave.filter((item: any) => item),
+			urlQueueList: urlQueueListToSave.filter(Boolean),
 		});
 		await storage.set("timeQueueList", {
-			timeQueueList: timeQueueListSave.filter((item: any) => item),
+			timeQueueList: timeQueueListSave.filter(Boolean),
 		});
 	}
 });

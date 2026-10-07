@@ -48,7 +48,7 @@ const createElasticsearchConnectorFormSchema = (
 			name: z.string().min(3, {
 				message: t("connector_name_min"),
 			}),
-			endpoint_url: z.string().url({ message: t("elasticsearch_endpoint_invalid") }),
+			endpoint_url: z.url({ message: t("elasticsearch_endpoint_invalid") }),
 			auth_method: z.enum(["basic", "api_key"]),
 			username: z.string().optional(),
 			password: z.string().optional(),
@@ -83,8 +83,8 @@ export const ElasticsearchConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSub
 	const isSubmittingRef = useRef(false);
 	const authBasicId = useId();
 	const authApiKeyId = useId();
-	const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-	const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+	const [startDate, setStartDate] = useState<Date | undefined>();
+	const [endDate, setEndDate] = useState<Date | undefined>();
 	const [periodicEnabled, setPeriodicEnabled] = useState(false);
 	const [frequencyMinutes, setFrequencyMinutes] = useState("1440");
 

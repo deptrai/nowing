@@ -17,8 +17,7 @@ function compile(pattern: string): RegExp {
 	if (cached) return cached;
 
 	let body = "";
-	let i = 0;
-	while (i < pattern.length) {
+	for (let i = 0; i < pattern.length; ) {
 		const ch = pattern[i] ?? "";
 		if (ch === "*") {
 			if (pattern[i + 1] === "*") {
@@ -43,7 +42,9 @@ function compile(pattern: string): RegExp {
 	const anchored = pattern.includes("/")
 		? `^${body}(/.*)?$`
 		: `(^|/)${body}(/.*)?$`;
-	const re = new RegExp(anchored);
+	// Every regex metachar in `pattern` is escaped above; only `[^/]*`/`.*`
+	// fragments we inject remain, so the compiled regex is linear-time.
+	const re = new RegExp(anchored); // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
 	cache.set(pattern, re);
 	return re;
 }

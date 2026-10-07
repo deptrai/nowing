@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture(autouse=True)
-def reset_matrix_cache() -> None:
+def reset_matrix_cache() -> Generator[None, None, None]:
     CanonicalActionMatrix.reset()
     yield
     CanonicalActionMatrix.reset()
@@ -36,9 +37,21 @@ class TestParseActionDescriptors:
     def test_parse_list_envelope(self):
         raw = {
             "actions": [
-                {"platform": "tiktok", "action": "posts_by_hashtag", "requiredArgs": ["hashtag"]},
-                {"platform": "tiktok", "action": "user_posts", "requiredArgs": ["username"]},
-                {"platform": "shopee", "action": "search_products", "requiredArgs": ["keyword"]},
+                {
+                    "platform": "tiktok",
+                    "action": "posts_by_hashtag",
+                    "requiredArgs": ["hashtag"],
+                },
+                {
+                    "platform": "tiktok",
+                    "action": "user_posts",
+                    "requiredArgs": ["username"],
+                },
+                {
+                    "platform": "shopee",
+                    "action": "search_products",
+                    "requiredArgs": ["keyword"],
+                },
             ]
         }
         matrix = parse_action_descriptors(raw)
@@ -48,7 +61,11 @@ class TestParseActionDescriptors:
 
     def test_parse_plain_list(self):
         raw = [
-            {"platform": "tiktok", "action": "posts_by_hashtag", "requiredArgs": ["hashtag"]},
+            {
+                "platform": "tiktok",
+                "action": "posts_by_hashtag",
+                "requiredArgs": ["hashtag"],
+            },
         ]
         matrix = parse_action_descriptors(raw)
         assert "tiktok" in matrix
@@ -172,7 +189,13 @@ class TestDerivePlatformAction:
 class TestCanonicalActionMatrixCache:
     async def test_get_fetches_and_caches(self):
         client = _client_returning(
-            [{"platform": "tiktok", "action": "posts_by_hashtag", "requiredArgs": ["hashtag"]}]
+            [
+                {
+                    "platform": "tiktok",
+                    "action": "posts_by_hashtag",
+                    "requiredArgs": ["hashtag"],
+                }
+            ]
         )
         matrix = await CanonicalActionMatrix.get(client)
         assert "tiktok" in matrix
@@ -207,7 +230,13 @@ class TestCanonicalActionMatrixCache:
     async def test_get_partial_catalog_merges_with_static(self):
         # Live returns only 1 platform; static should fill the rest
         client = _client_returning(
-            [{"platform": "tiktok", "action": "posts_by_hashtag", "requiredArgs": ["hashtag"]}]
+            [
+                {
+                    "platform": "tiktok",
+                    "action": "posts_by_hashtag",
+                    "requiredArgs": ["hashtag"],
+                }
+            ]
         )
         matrix = await CanonicalActionMatrix.get(client)
         # Live platform present
@@ -244,7 +273,13 @@ class TestGetSync:
 
     async def test_get_sync_returns_cache_when_fresh(self):
         client = _client_returning(
-            [{"platform": "tiktok", "action": "posts_by_hashtag", "requiredArgs": ["hashtag"]}]
+            [
+                {
+                    "platform": "tiktok",
+                    "action": "posts_by_hashtag",
+                    "requiredArgs": ["hashtag"],
+                }
+            ]
         )
         live_matrix = await CanonicalActionMatrix.get(client)
         sync_matrix = CanonicalActionMatrix.get_sync()

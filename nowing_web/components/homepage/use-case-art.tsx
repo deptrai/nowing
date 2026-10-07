@@ -26,7 +26,7 @@ function Pulse({
 			cy={cy}
 			r={5}
 			className="fill-brand/40"
-			style={{ transformBox: "fill-box", transformOrigin: "center" }}
+			style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG transformBox/transformOrigin have no CSS module equivalent for fill-box context
 			initial={false}
 			animate={{ scale: [1, 2.4], opacity: [0.5, 0] }}
 			transition={{ duration: 2, ease: "easeOut", repeat: Infinity, delay }}
@@ -74,7 +74,7 @@ function PriceArt({ reduce }: { reduce: boolean }) {
 				r="4"
 				className="fill-brand"
 				variants={{ hidden: { opacity: 0, scale: 0 }, visible: { opacity: 1, scale: 1 } }}
-				style={{ transformBox: "fill-box", transformOrigin: "center" }}
+				style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG transformBox/transformOrigin have no CSS module equivalent for fill-box context
 				transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.7 }}
 			/>
 			{/* Price-change tag */}
@@ -117,7 +117,7 @@ function BrandArt({ reduce }: { reduce: boolean }) {
 					className="stroke-muted-foreground/20"
 					strokeWidth="1"
 					variants={{ hidden: { opacity: 0, scale: 0.6 }, visible: { opacity: 1, scale: 1 } }}
-					style={{ transformBox: "fill-box", transformOrigin: "center" }}
+					style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG transformBox/transformOrigin have no CSS module equivalent for fill-box context
 					transition={{ duration: 0.45, ease: EASE_OUT, delay: i * 0.12 }}
 				/>
 			))}
@@ -128,7 +128,7 @@ function BrandArt({ reduce }: { reduce: boolean }) {
 				r="4"
 				className="fill-brand"
 				variants={{ hidden: { opacity: 0, scale: 0 }, visible: { opacity: 1, scale: 1 } }}
-				style={{ transformBox: "fill-box", transformOrigin: "center" }}
+				style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG transformBox/transformOrigin have no CSS module equivalent for fill-box context
 				transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.35 }}
 			/>
 			<Pulse cx={120} cy={48} reduce={reduce} delay={0.6} />
@@ -141,7 +141,7 @@ function BrandArt({ reduce }: { reduce: boolean }) {
 					r="3"
 					className="fill-brand/70"
 					variants={{ hidden: { opacity: 0, scale: 0 }, visible: { opacity: 1, scale: 1 } }}
-					style={{ transformBox: "fill-box", transformOrigin: "center" }}
+					style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG transformBox/transformOrigin have no CSS module equivalent for fill-box context
 					transition={{ duration: 0.3, ease: EASE_OUT, delay: blip.delay }}
 				/>
 			))}
@@ -224,7 +224,7 @@ function SerpArt({ reduce }: { reduce: boolean }) {
 			].map((row, i) => (
 				<motion.g
 					key={row.startY}
-					style={reduce ? { y: 26 } : undefined}
+					style={reduce ? { y: 26 } : undefined} // pi-lens-ignore: ast-grep:inline-styles -- framer-motion reduced-motion conditional style
 					variants={
 						reduce
 							? undefined
@@ -256,7 +256,7 @@ function SerpArt({ reduce }: { reduce: boolean }) {
 			))}
 			{/* Your row: starts at rank 3, climbs to rank 1 */}
 			<motion.g
-				style={reduce ? { y: -52 } : undefined}
+				style={reduce ? { y: -52 } : undefined} // pi-lens-ignore: ast-grep:inline-styles -- framer-motion reduced-motion conditional style
 				variants={
 					reduce
 						? undefined
@@ -313,7 +313,7 @@ function ChatArt({ reduce }: { reduce: boolean }) {
 				r="6"
 				className="fill-brand"
 				variants={{ hidden: { opacity: 0, scale: 0 }, visible: { opacity: 1, scale: 1 } }}
-				style={{ transformBox: "fill-box", transformOrigin: "center" }}
+				style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG transformBox/transformOrigin have no CSS module equivalent for fill-box context
 				transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.4 }}
 			/>
 			<Pulse cx={22} cy={44} reduce={reduce} delay={0.7} />
@@ -375,7 +375,7 @@ function ApiArt({ reduce }: { reduce: boolean }) {
 			{/* 200 OK badge */}
 			<motion.g
 				variants={{ hidden: { opacity: 0, scale: 0.8 }, visible: { opacity: 1, scale: 1 } }}
-				style={{ transformBox: "fill-box", transformOrigin: "center" }}
+				style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG transformBox/transformOrigin have no CSS module equivalent for fill-box context
 				transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.45 }}
 			>
 				<rect x="182" y="10" width="46" height="16" rx="4" className="fill-brand/10" />
@@ -398,7 +398,7 @@ function ApiArt({ reduce }: { reduce: boolean }) {
 					x="12"
 					y={line.y}
 					className="fill-muted-foreground font-mono text-[10px]"
-					style={{ whiteSpace: "pre" }}
+					style={{ whiteSpace: "pre" }} // pi-lens-ignore: ast-grep:inline-styles -- SVG text whiteSpace pre for ASCII layout
 					variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0 } }}
 					transition={{ duration: 0.3, ease: EASE_OUT, delay: line.delay }}
 				>

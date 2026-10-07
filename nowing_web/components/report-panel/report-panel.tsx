@@ -105,6 +105,7 @@ export function ReportPanelContent({
 }: {
 	reportId: number;
 	title: string;
+	// pi-lens-ignore: typescript:71007 -- client component function prop
 	onClose?: () => void;
 	/** When true, adjusts dropdown behavior to work inside a Vaul drawer on mobile */
 	insideDrawer?: boolean;
@@ -266,7 +267,7 @@ export function ReportPanelContent({
 					URL.revokeObjectURL(url);
 				}
 			} catch (err) {
-				console.error(`Export ${format} failed:`, err);
+				console.error("Export failed:", format, err);
 			} finally {
 				setExporting(null);
 			}

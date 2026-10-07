@@ -287,7 +287,7 @@ def apply_publication(conn: Connection) -> None:
     conn.execute(text(build_set_table_sql(conn)))
     if not exists[1]:
         conn.execute(
-            text(
+            text(  # nosemgrep
                 f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"
             )
         )
@@ -314,14 +314,14 @@ def ensure_publication(conn: Connection) -> None:
         # 116_create_zero_publication.py): the publication does not exist, so
         # no zero-cache replica can be attached to it yet.
         conn.execute(
-            text(
+            text(  # nosemgrep
                 f"CREATE PUBLICATION {_quote_identifier(PUBLICATION_NAME)} "
                 "FOR TABLE notifications WITH (publish_via_partition_root = true)"
             )
         )
     elif not exists[1]:
         conn.execute(
-            text(
+            text(  # nosemgrep
                 f"ALTER PUBLICATION {_quote_identifier(PUBLICATION_NAME)} SET (publish_via_partition_root = true)"
             )
         )

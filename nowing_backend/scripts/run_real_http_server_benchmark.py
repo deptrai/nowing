@@ -53,6 +53,7 @@ async def run_real_http_benchmark():
             
         auth_data = resp_login.json()
         token = auth_data.get("token") or auth_data.get("access_token")
+        # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
         client.headers["Authorization"] = f"Bearer {token}"
         print(f"  ✓ Logged in via HTTP 200 OK in {t_login_ms:.2f} ms (Bearer JWT acquired)")
 

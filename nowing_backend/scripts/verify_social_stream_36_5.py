@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import sys
 import uuid
-from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 from sqlalchemy import delete, select

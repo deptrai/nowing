@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, BookText, Cpu, Earth, Gauge, Settings, ShieldCheck, UserKey } from "lucide-react";
+import { Archive, BookText, Earth, Gauge, Settings, ShieldCheck, UserKey } from "lucide-react";
 import { useSelectedLayoutSegment } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type React from "react";

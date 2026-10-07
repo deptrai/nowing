@@ -15,7 +15,7 @@ export default function AdminDncPage() {
 	const [items, setItems] = useState<GlobalDncRecordRead[]>([]);
 	const [total, setTotal] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
-	const [recordTypeFilter, setRecordTypeFilter] = useState<string>("");
+	const [recordTypeFilter, setRecordTypeFilter] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [offset, setOffset] = useState(0);
 	const [limit] = useState(50);
@@ -56,7 +56,7 @@ export default function AdminDncPage() {
 		loadDncRecords();
 	}, [loadDncRecords]);
 
-	const handleAddSubmit = async (e: React.FormEvent) => {
+	const handleAddSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		setAddError("");
 		setIsSubmitting(true);
@@ -79,7 +79,7 @@ export default function AdminDncPage() {
 		}
 	};
 
-	const handleCsvImport = async (e: React.FormEvent) => {
+	const handleCsvImport = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!csvFile) return;
 		setIsImporting(true);

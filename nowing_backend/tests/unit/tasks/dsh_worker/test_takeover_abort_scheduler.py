@@ -11,7 +11,6 @@ from fastapi import HTTPException
 from app.db import DshMission, DshMissionStatus
 from app.routes.dsh_routes import abort_mission, resume_mission, sweep_takeovers
 from app.services.dsh_mission_service import (
-    DshMissionService,
     DshMissionServiceError,
     abort_takeover_mission,
     sweep_expired_takeovers,

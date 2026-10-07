@@ -15,7 +15,7 @@ interface PermissionsStatus {
 	screenRecording: PermissionStatus;
 }
 
-function useSteps(t: ReturnType<typeof useTranslations>) {
+function getSteps(t: ReturnType<typeof useTranslations>) {
 	return [
 		{
 			id: "screen-recording",
@@ -63,7 +63,7 @@ function StatusBadge({ status }: { status: PermissionStatus }) {
 export default function DesktopPermissionsPage() {
 	const router = useRouter();
 	const t = useTranslations("desktopPerms");
-	const STEPS = useSteps(t);
+	const STEPS = getSteps(t);
 	const api = useElectronAPI();
 	const [permissions, setPermissions] = useState<PermissionsStatus | null>(null);
 

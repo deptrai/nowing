@@ -236,7 +236,7 @@ export function RoutedSectionShell({
 					<div
 						className="overflow-x-auto border-b border-border pb-3 md:hidden"
 						onScroll={handleTabScroll}
-						style={{
+						style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic --thread-max-width CSS variable
 							maskImage: `linear-gradient(to right, ${tabScrollPos === "start" ? "black" : "transparent"}, black 24px, black calc(100% - 24px), ${tabScrollPos === "end" ? "black" : "transparent"})`,
 							WebkitMaskImage: `linear-gradient(to right, ${tabScrollPos === "start" ? "black" : "transparent"}, black 24px, black calc(100% - 24px), ${tabScrollPos === "end" ? "black" : "transparent"})`,
 						}}

@@ -29,20 +29,20 @@ export default function AdminBulkOpsPage() {
 		{ field: "inactive_days", op: "gte", value: 60 },
 	]);
 	const [actionParams, setActionParams] = useState<Record<string, unknown>>({});
-	const [idempotencyKey, setIdempotencyKey] = useState<string>("");
+	const [idempotencyKey, setIdempotencyKey] = useState("");
 
 	// Dry run state
 	const [dryRunResult, setDryRunResult] = useState<DryRunResponse | null>(null);
-	const [isDryRunning, setIsDryRunning] = useState<boolean>(false);
+	const [isDryRunning, setIsDryRunning] = useState(false);
 
 	// Execution state
-	const [isExecuting, setIsExecuting] = useState<boolean>(false);
-	const [isMfaOpen, setIsMfaOpen] = useState<boolean>(false);
+	const [isExecuting, setIsExecuting] = useState(false);
+	const [isMfaOpen, setIsMfaOpen] = useState(false);
 
 	// Active job tracking
 	const [activeJob, setActiveJob] = useState<JobStatusResponse | null>(null);
 	const [jobErrors, setJobErrors] = useState<BulkOpErrorRead[]>([]);
-	const [isCancelling, setIsCancelling] = useState<boolean>(false);
+	const [isCancelling, setIsCancelling] = useState(false);
 
 	const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 

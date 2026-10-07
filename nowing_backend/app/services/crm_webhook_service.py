@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
-import uuid
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

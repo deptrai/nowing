@@ -26,7 +26,7 @@ const ThreadContent: FC<ThreadProps> = ({ hasActiveThread = false, initialPrompt
 	return (
 		<ThreadPrimitive.Root
 			className="aui-root aui-thread-root @container flex h-full min-h-0 flex-col bg-main-panel"
-			style={{
+			style={{ // pi-lens-ignore: ast-grep:inline-styles -- CSS variable passthrough consumed by children
 				["--thread-max-width" as string]: threadMaxWidth,
 			}}
 		>

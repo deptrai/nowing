@@ -67,8 +67,8 @@ export function LandZoningModal({
 	initialLatitude,
 	initialLongitude,
 }: LandZoningModalProps) {
-	const [lat, setLat] = useState<string>(initialLatitude?.toString() ?? "21.0285");
-	const [lng, setLng] = useState<string>(initialLongitude?.toString() ?? "105.8542");
+	const [lat, setLat] = useState(initialLatitude?.toString() ?? "21.0285");
+	const [lng, setLng] = useState(initialLongitude?.toString() ?? "105.8542");
 	const [result, setResult] = useState<ZoningCheckOutput | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);

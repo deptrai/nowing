@@ -39,6 +39,7 @@ type SidebarContext = {
 
 const SidebarContext = React.createContext<SidebarContext | null>(null);
 
+// pi-lens-ignore: ast-grep:unnecessary-react-hook -- uses React.useContext (qualified call, rule false positive)
 function useSidebar() {
 	const context = React.useContext(SidebarContext);
 	if (!context) {
@@ -123,7 +124,7 @@ function SidebarProvider({
 			<TooltipProvider delayDuration={0}>
 				<div
 					data-slot="sidebar-wrapper"
-					style={
+					style={ // pi-lens-ignore: ast-grep:inline-styles -- CSS custom properties for dynamic sidebar config
 						{
 							"--sidebar-width": SIDEBAR_WIDTH,
 							"--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
@@ -181,7 +182,7 @@ function Sidebar({
 					data-slot="sidebar"
 					data-mobile="true"
 					className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
-					style={
+					style={ // pi-lens-ignore: ast-grep:inline-styles -- CSS custom properties for dynamic sidebar config
 						{
 							"--sidebar-width": SIDEBAR_WIDTH_MOBILE,
 						} as React.CSSProperties
@@ -605,7 +606,7 @@ function SidebarMenuSkeleton({
 			<Skeleton
 				className="h-4 max-w-(--skeleton-width) flex-1"
 				data-sidebar="menu-skeleton-text"
-				style={
+				style={ // pi-lens-ignore: ast-grep:inline-styles -- CSS custom properties for dynamic sidebar config
 					{
 						"--skeleton-width": width,
 					} as React.CSSProperties

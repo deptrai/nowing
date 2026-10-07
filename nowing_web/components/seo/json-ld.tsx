@@ -11,6 +11,7 @@ export function JsonLd({ data }: JsonLdProps) {
 
 	return (
 		// biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data requires dangerouslySetInnerHTML for script injection
+		// nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml -- JSON.stringify of server-side structured data, not user input
 		<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
 	);
 }

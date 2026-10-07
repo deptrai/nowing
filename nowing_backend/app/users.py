@@ -6,7 +6,7 @@ import httpx
 import jwt
 from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, models
+from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
@@ -62,7 +62,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
-    async def oauth_callback(
+    async def oauth_callback(  # pyright: ignore[reportIncompatibleMethodOverride] -- fastapi-users types oauth_callback over its OAuth-account TypeVar; concrete User is the actual contract
         self,
         oauth_name: str,
         access_token: str,
@@ -79,7 +79,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         Override OAuth callback to capture Google profile data (name, avatar).
         """
         # Call parent implementation to create/get user
-        user = await super().oauth_callback(
+        user = await super().oauth_callback(  # pyright: ignore[reportAttributeAccessIssue] -- fastapi-users binds oauth_callback to its OAuth TypeVar self; UserManager[User] is the real self
             oauth_name,
             access_token,
             account_id,
@@ -137,7 +137,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             async with async_session_maker() as session:
                 await session.execute(
                     update(User)
-                    .where(User.id == user.id)
+                    .where(User.id == user.id)  # pyright: ignore[reportArgumentType] -- SQLAlchemy ColumnOperators.__eq__ stubs resolve to bool; runtime returns ColumnElement
                     .values(last_login=datetime.now(UTC))
                 )
                 await session.commit()
@@ -212,20 +212,20 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None
     ):
-        logger.info("User %s has forgot their password. Reset token: %s", user.id, token)
+        logger.info("User %s has forgot their password.", user.id)
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Request | None = None
     ):
-        logger.info("Verification requested for user %s. Verification token: %s", user.id, token)
+        logger.info("Verification requested for user %s.", user.id)
 
 
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
     yield UserManager(user_db)
 
 
-class IatJWTStrategy(JWTStrategy[models.UP, models.ID]):
-    async def write_token(self, user: models.UP) -> str:
+class IatJWTStrategy(JWTStrategy[User, uuid.UUID]):
+    async def write_token(self, user: User) -> str:
         data = {
             "sub": str(user.id),
             "aud": self.token_audience,
@@ -239,7 +239,7 @@ class IatJWTStrategy(JWTStrategy[models.UP, models.ID]):
         )
 
 
-def get_jwt_strategy() -> JWTStrategy[models.UP, models.ID]:
+def get_jwt_strategy() -> JWTStrategy[User, uuid.UUID]:
     return IatJWTStrategy(
         secret=SECRET,
         lifetime_seconds=config.ACCESS_TOKEN_LIFETIME_SECONDS,
@@ -351,6 +351,8 @@ async def get_auth_context(
                 return AuthContext.pat_auth(pat.user, pat)
 
         if is_bearer and _token_meets_epoch(token):
+            is_impersonation = False
+            impersonated_by: uuid.UUID | None = None
             try:
                 user = await get_jwt_strategy().read_token(token, user_manager)
                 payload = jwt.decode(token, SECRET, algorithms=["HS256"], options={"verify_aud": False})
@@ -365,6 +367,8 @@ async def get_auth_context(
 
     cookie_token = request.cookies.get(config.SESSION_COOKIE_NAME)
     if cookie_token and _token_meets_epoch(cookie_token):
+        is_impersonation = False
+        impersonated_by: uuid.UUID | None = None
         try:
             user = await get_jwt_strategy().read_token(cookie_token, user_manager)
             payload = jwt.decode(cookie_token, SECRET, algorithms=["HS256"], options={"verify_aud": False})

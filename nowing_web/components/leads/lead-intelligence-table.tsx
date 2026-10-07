@@ -118,7 +118,7 @@ export const LeadIntelligenceTable: React.FC<LeadIntelligenceTableProps> = ({
 								<td className="px-4 py-3.5 space-y-1">
 									<div
 										className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
-										style={{ borderColor: "inherit" }}
+										style={{ borderColor: "inherit" }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic column width
 									>
 										<span className={cn("px-1.5 py-0.5 rounded-md", fit.colorClass)}>
 											{fit.score} • {fit.label}

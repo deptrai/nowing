@@ -6,7 +6,6 @@ import {
 	ArrowUpRight,
 	CheckCircle2,
 	Clock,
-	Filter,
 	RefreshCw,
 	XCircle,
 } from "lucide-react";
@@ -36,7 +35,7 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 	const [items, setItems] = useState<ActivityTimelineItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [directionFilter, setDirectionFilter] = useState<string>("all");
+	const [directionFilter, setDirectionFilter] = useState("all");
 
 	const fetchTimeline = async () => {
 		setLoading(true);

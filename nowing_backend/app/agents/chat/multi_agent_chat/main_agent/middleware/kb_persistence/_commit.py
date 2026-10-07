@@ -340,7 +340,7 @@ async def commit_staged_filesystem_state(
                     )
                     if existing is not None:
                         doc_id = existing.id
-                        doc_id_by_path[path] = existing.id
+                        doc_id_by_path[path] = existing.id  # pyright: ignore[reportArgumentType]
                 if doc_id is not None:
                     if snapshot_enabled and action_id is not None:
                         result_doc = await session.execute(
@@ -361,7 +361,7 @@ async def commit_staged_filesystem_state(
                             )
                     updated = await _update_document(
                         session,
-                        doc_id=doc_id,
+                        doc_id=doc_id,  # pyright: ignore[reportArgumentType]
                         content=content,
                         virtual_path=path,
                         workspace_id=workspace_id,
@@ -431,7 +431,7 @@ async def commit_staged_filesystem_state(
                                 )
                             )
                         continue
-                    doc_id_by_path[path] = new_doc.id
+                    doc_id_by_path[path] = new_doc.id  # pyright: ignore[reportArgumentType]
                     if placeholder_revision_id is not None:
                         await session.execute(
                             update(DocumentRevision)
@@ -491,7 +491,7 @@ async def commit_staged_filesystem_state(
                     async with session.begin_nested():
                         if snapshot_enabled and action_id is not None:
                             chunks = await _load_chunks_for_snapshot(
-                                session, doc_id=doc_pk
+                                session, doc_id=doc_pk  # pyright: ignore[reportArgumentType]
                             )
                             payload = _doc_revision_payload(
                                 document_to_delete, chunks_before=chunks

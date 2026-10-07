@@ -1,0 +1,3 @@
+# Generated alembic migrations: literal DDL strings trip SQL-injection
+# rules as false positives; they are not runtime user-input surfaces.
+alembic/versions/

@@ -10,7 +10,7 @@ search_source_connectors, and documents tables.
 NOTE: Electric SQL user creation is idempotent (uses IF NOT EXISTS).
 - Docker deployments: user is pre-created by docker/scripts/init-electric-user.sh
 - Local PostgreSQL: user is created here during migration
-Both approaches are safe to run together without conflicts as this migraiton is idempotent
+Both approaches are safe to run together without conflicts as this migration is idempotent
 """
 
 from collections.abc import Sequence
@@ -76,7 +76,7 @@ def upgrade() -> None:
     # =====================================================
 
     # Create Electric SQL replication user if not exists
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         BEGIN
@@ -89,7 +89,7 @@ def upgrade() -> None:
     )
 
     # Grant necessary permissions to electric user
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         DECLARE
@@ -100,13 +100,13 @@ def upgrade() -> None:
         $$;
         """
     )
-    op.execute(f"GRANT USAGE ON SCHEMA public TO {electric_db_user};")
-    op.execute(f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {electric_db_user};")
-    op.execute(f"GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO {electric_db_user};")
-    op.execute(
+    op.execute(f"GRANT USAGE ON SCHEMA public TO {electric_db_user};")  # nosemgrep
+    op.execute(f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {electric_db_user};")  # nosemgrep
+    op.execute(f"GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO {electric_db_user};")  # nosemgrep
+    op.execute(  # nosemgrep
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {electric_db_user};"
     )
-    op.execute(
+    op.execute(  # nosemgrep
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO {electric_db_user};"
     )
 

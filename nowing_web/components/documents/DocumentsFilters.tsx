@@ -22,10 +22,13 @@ export function DocumentsFilters({
 	onCreateFolder,
 }: {
 	typeCounts: Partial<Record<DocumentTypeEnum, number>>;
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop, not an RSC boundary
 	onSearch: (v: string) => void;
 	searchValue: string;
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop, not an RSC boundary
 	onToggleType: (type: DocumentTypeEnum, checked: boolean) => void;
 	activeTypes: DocumentTypeEnum[];
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop, not an RSC boundary
 	onCreateFolder?: () => void;
 }) {
 	const t = useTranslations("documents");
@@ -118,7 +121,7 @@ export function DocumentsFilters({
 								<div
 									className="max-h-[300px] overflow-y-auto overflow-x-hidden py-1.5 px-1.5"
 									onScroll={handleScroll}
-									style={{
+									style={{ // pi-lens-ignore: ast-grep:inline-styles -- mask gradient depends on live scroll position
 										maskImage: `linear-gradient(to bottom, ${scrollPos === "top" ? "black" : "transparent"}, black 16px, black calc(100% - 16px), ${scrollPos === "bottom" ? "black" : "transparent"})`,
 										WebkitMaskImage: `linear-gradient(to bottom, ${scrollPos === "top" ? "black" : "transparent"}, black 16px, black calc(100% - 16px), ${scrollPos === "bottom" ? "black" : "transparent"})`,
 									}}

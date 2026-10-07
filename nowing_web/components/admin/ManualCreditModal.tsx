@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type SubmitEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
 	adminCreditsApiService,
 	type ManualCreditAdjustPayload,
@@ -46,7 +46,7 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 	});
 	const [error, setError] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [idempotencyKey, setIdempotencyKey] = useState<string>(generateIdempotencyKey);
+	const [idempotencyKey, setIdempotencyKey] = useState(generateIdempotencyKey);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -83,7 +83,7 @@ export default function ManualCreditModal({ isOpen, onClose, onSuccess }: Manual
 		return null;
 	}, [form]);
 
-	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setError(null);
 

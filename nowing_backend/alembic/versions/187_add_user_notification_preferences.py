@@ -26,7 +26,7 @@ def upgrade() -> None:
         "user",
         sa.Column(
             "notification_preferences",
-            sa.dialects.postgresql.JSONB(),
+            sa.dialects.postgresql.JSONB(),  # pyright: ignore[reportAttributeAccessIssue]
             nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),

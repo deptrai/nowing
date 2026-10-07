@@ -65,7 +65,7 @@ export function CommentPanel({
 					!isInline &&
 					"w-85 rounded-lg border-sidebar-border border bg-sidebar text-sidebar-foreground"
 			)}
-			style={
+			style={ // pi-lens-ignore: ast-grep:inline-styles -- maxHeight computed from viewport height at runtime
 				!isMobile && !isInline && effectiveMaxHeight ? { maxHeight: effectiveMaxHeight } : undefined
 			}
 		>

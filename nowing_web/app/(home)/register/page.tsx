@@ -51,7 +51,7 @@ export default function RegisterPage() {
 		}
 	}, [authType, router, session.status]);
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = (e: React.SubmitEvent) => {
 		e.preventDefault();
 		submitForm();
 	};

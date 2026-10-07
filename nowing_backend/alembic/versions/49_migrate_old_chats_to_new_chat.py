@@ -126,7 +126,7 @@ def upgrade() -> None:
                     "created_at": created_at,
                 },
             )
-            new_thread_id = result.fetchone()[0]
+            new_thread_id = result.fetchone()[0]  # pyright: ignore[reportOptionalSubscript]
 
             # Migrate messages - only user and assistant roles, skip SOURCES/TERMINAL_INFO
             message_count = 0
@@ -157,7 +157,7 @@ def upgrade() -> None:
                 # Use direct SQL with string interpolation for the enum since CAST doesn't work
                 # The enum value comes from trusted source (our own code), not user input
                 connection.execute(
-                    sa.text(f"""
+                    sa.text(f"""  # nosemgrep
                         INSERT INTO new_chat_messages 
                         (thread_id, role, content, created_at)
                         VALUES (:thread_id, '{role}', CAST(:content AS jsonb), :created_at)

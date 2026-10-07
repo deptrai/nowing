@@ -51,7 +51,7 @@ def _route_label(request: Request) -> str:
     """Return a low-cardinality route template for audit/metrics."""
     route = request.scope.get("route")
     if route is not None:
-        return f"{request.method} {route.path}"
+        return f"{request.method} {route.path}"  # nosemgrep
     return f"{request.method} {request.url.path}"
 
 

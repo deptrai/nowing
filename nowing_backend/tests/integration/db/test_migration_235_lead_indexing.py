@@ -64,7 +64,7 @@ async def _index_exists(db_session: AsyncSession, index: str) -> bool:
 
 async def _drop_column(db_session: AsyncSession, table: str, column: str) -> None:
     await db_session.execute(
-        text(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {column} CASCADE")
+        text(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {column} CASCADE")  # nosemgrep
     )
     await db_session.flush()
 
@@ -82,7 +82,7 @@ async def _drop_indexes(db_session: AsyncSession) -> None:
         "ix_leads_ws_client_fit_score",
         "ix_leads_ws_assigned_created",
     ]:
-        await db_session.execute(text(f"DROP INDEX IF EXISTS {idx}"))
+        await db_session.execute(text(f"DROP INDEX IF EXISTS {idx}"))  # nosemgrep
     await db_session.flush()
 
 

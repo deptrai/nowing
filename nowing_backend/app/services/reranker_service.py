@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from rerankers import Document as RerankerDocument
 
@@ -103,14 +105,16 @@ class RerankerService:
 
             return serialized_results
 
-        except Exception as e:  # reranker failure → fall back to original document order
+        except (
+            Exception
+        ) as e:  # reranker failure → fall back to original document order
             # Log the error
             logging.error(f"Error during reranking: {e!s}")
             # Fall back to original documents without reranking
             return documents
 
     @staticmethod
-    def get_reranker_instance() -> Optional["RerankerService"]:
+    def get_reranker_instance() -> RerankerService | None:
         """
         Get a reranker service instance from the global configuration.
 

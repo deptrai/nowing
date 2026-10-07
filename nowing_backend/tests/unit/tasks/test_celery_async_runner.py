@@ -433,7 +433,6 @@ def test_runner_swallows_mcp_client_dispose_errors() -> None:
 
 def test_runner_mcp_client_timeout_protection() -> None:
     """If release_shared_client_for_loop hangs, the runner times out and closes safely."""
-    import app.tasks.celery_tasks as celery_pkg
     from app.tasks.celery_tasks import run_async_celery_task
 
     engine_stub = _StaleLoopEngine()

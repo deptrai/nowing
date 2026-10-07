@@ -12,13 +12,15 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Lead, LeadActivityLog, LeadPipelineStage, User, Workspace, WorkspaceMembership
-from app.routes.lead_pipeline_routes import _ensure_default_stages
-from app.schemas.lead_pipeline import (
-    LeadActivityLogCreate,
-    LeadStageTransitionRequest,
+from app.db import (
+    Lead,
+    LeadActivityLog,
+    LeadPipelineStage,
+    User,
+    Workspace,
+    WorkspaceMembership,
 )
-from app.services.lead_assignment_service import LeadAssignmentService
+from app.routes.lead_pipeline_routes import _ensure_default_stages
 from app.services.workspace_credit_service import WorkspaceCreditService
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]

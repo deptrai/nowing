@@ -20,7 +20,7 @@ def _column_exists(table_name: str, column_name: str) -> bool:
     from sqlalchemy.engine import reflection
 
     bind = op.get_bind()
-    inspector = reflection.Inspector.from_engine(bind)
+    inspector = reflection.Inspector.from_engine(bind)  # pyright: ignore[reportArgumentType]
     columns = {c["name"] for c in inspector.get_columns(table_name)}
     return column_name in columns
 

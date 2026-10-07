@@ -3,7 +3,11 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 // Configure postgres client for Vercel serverless environment
-const client = postgres(process.env.DATABASE_URL!, {
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+	throw new Error("DATABASE_URL is not set");
+}
+const client = postgres(databaseUrl, {
 	max: 1, // Limit connections for serverless (Vercel)
 	idle_timeout: 20, // Close idle connections after 20 seconds
 	max_lifetime: 60 * 30, // Close connections after 30 minutes

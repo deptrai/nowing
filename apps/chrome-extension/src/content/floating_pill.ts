@@ -3,14 +3,14 @@
  * Renders an isolated UI component into the host DOM without style collision.
  */
 
-import { LeadClipPayload, LeadClipResponse } from '../types';
+import { LeadClipPayload } from '../types/index.js';
+import { esc, setShadowHtml } from '../utils/safe-dom.js';
 
 export class FloatingActionPill {
   private host: HTMLElement | null = null;
   private shadow: ShadowRoot | null = null;
   private payload: LeadClipPayload | null = null;
   private isDebouncing: boolean = false;
-  private isMinimized: boolean = false;
 
   constructor() {
     this.init();
@@ -22,7 +22,7 @@ export class FloatingActionPill {
   }
 
   private init() {
-    if (document.getElementById('nowing-clipper-host')) return;
+    if (document.querySelector('#nowing-clipper-host')) return;
 
     this.host = document.createElement('div');
     this.host.id = 'nowing-clipper-host';
@@ -34,7 +34,7 @@ export class FloatingActionPill {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     `;
     this.shadow = this.host.attachShadow({ mode: 'open' });
-    document.body.appendChild(this.host);
+    document.body.append(this.host);
   }
 
   private async handleClip() {
@@ -42,8 +42,15 @@ export class FloatingActionPill {
     this.isDebouncing = true;
     this.render();
 
+    interface ClipMessageResponse {
+      success?: boolean;
+      is_duplicate?: boolean;
+      queued?: boolean;
+      message?: string;
+    }
+
     try {
-      const response: any = await new Promise((resolve) => {
+      const response = await new Promise<ClipMessageResponse | undefined>((resolve) => {
         chrome.runtime.sendMessage(
           {
             action: 'CLIP_LEAD',
@@ -64,8 +71,9 @@ export class FloatingActionPill {
       } else {
         this.showToast(`✗ Failed: ${response?.message || 'Check PAT token'}`, 'error');
       }
-    } catch (err: any) {
-      this.showToast(`✗ Error: ${err?.message || 'Connection failed'}`, 'error');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Connection failed';
+      this.showToast(`✗ Error: ${errorMessage}`, 'error');
     } finally {
       // 2s debounce window
       setTimeout(() => {
@@ -80,7 +88,7 @@ export class FloatingActionPill {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
-    this.shadow.appendChild(toast);
+    this.shadow.append(toast);
 
     setTimeout(() => {
       toast.classList.add('show');
@@ -99,7 +107,9 @@ export class FloatingActionPill {
     const phone = this.payload?.phone;
     const price = this.payload?.price;
 
-    this.shadow.innerHTML = `
+    setShadowHtml(
+      this.shadow,
+      `
       <style>
         * {
           box-sizing: border-box;
@@ -213,8 +223,8 @@ export class FloatingActionPill {
         <span class="tag-platform">${platformLabel}</span>
         
         <div class="info-preview">
-          ${phone ? `<span class="phone-chip">📞 ${phone}</span>` : ''}
-          ${price ? `<span style="color:#fbbf24;font-weight:500;">${price}</span>` : ''}
+          ${phone ? `<span class="phone-chip">📞 ${esc(phone)}</span>` : ''}
+          ${price ? `<span style="color:#fbbf24;font-weight:500;">${esc(price)}</span>` : ''}
         </div>
 
         <button class="btn-clip" id="btn-clip-action" ${this.isDebouncing ? 'disabled' : ''}>
@@ -225,9 +235,10 @@ export class FloatingActionPill {
           }
         </button>
       </div>
-    `;
+    `
+    );
 
-    const clipBtn = this.shadow.getElementById('btn-clip-action');
+    const clipBtn = this.shadow.querySelector('#btn-clip-action');
     if (clipBtn) {
       clipBtn.addEventListener('click', () => this.handleClip());
     }

@@ -620,7 +620,7 @@ def _capability_tool(
             }
         )
 
-    _run.__annotations__["runtime"] = ToolRuntime
+    _run.__annotations__["runtime"] = ToolRuntime  # nosemgrep
 
     return StructuredTool.from_function(
         coroutine=_run,

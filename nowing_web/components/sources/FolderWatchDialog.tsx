@@ -208,7 +208,7 @@ export function FolderWatchDialog({
 										<div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
 											<div
 												className="h-full bg-primary rounded-full transition-[width] duration-300"
-												style={{
+												style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 													width: `${Math.round((progress.uploaded / progress.total) * 100)}%`,
 												}}
 											/>

@@ -140,19 +140,24 @@ export function parseSerializablePlan(data: unknown): NormalizedPlan {
 		// Try to extract basic info for fallback
 		const obj = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
 
+		let todos;
+		if (Array.isArray(obj.todos)) {
+			todos = obj.todos.map((t: unknown, i: number) => {
+				const todo = t as Record<string, unknown>;
+				return {
+					id: typeof todo?.id === "string" ? todo.id : `todo-${i}`,
+					content: typeof todo?.content === "string" ? todo.content : "Task",
+					status: normalizeStatus(todo?.status),
+				};
+			});
+		} else {
+			todos = [{ id: "1", content: "No tasks", status: "pending" as const }];
+		}
+
 		return {
 			id: typeof obj.id === "string" ? obj.id : `plan-${Date.now()}`,
 			title: typeof obj.title === "string" ? obj.title : "Plan",
-			todos: Array.isArray(obj.todos)
-				? obj.todos.map((t: unknown, i: number) => {
-						const todo = t as Record<string, unknown>;
-						return {
-							id: typeof todo?.id === "string" ? todo.id : `todo-${i}`,
-							content: typeof todo?.content === "string" ? todo.content : "Task",
-							status: normalizeStatus(todo?.status),
-						};
-					})
-				: [{ id: "1", content: "No tasks", status: "pending" as const }],
+			todos,
 		};
 	}
 

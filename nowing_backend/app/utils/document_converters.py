@@ -89,7 +89,7 @@ def get_model_context_window(model_name: str) -> int:
         context_window = model_info.get("max_input_tokens")
         # Handle case where key exists but value is None
         if context_window is None:
-            logger.warning(
+            logger.warning(  # nosemgrep
                 "max_input_tokens is None for %s, using default 4096 tokens.",
                 model_name,
             )
@@ -141,7 +141,7 @@ def optimize_content_for_context_window(
     available_tokens = context_window - reserved_tokens
 
     if available_tokens <= 100:  # Minimum viable content
-        logger.warning("Very limited tokens available for content: %s", available_tokens)
+        logger.warning("Very limited tokens available for content: %s", available_tokens)  # nosemgrep
         return content[:500]  # Fallback to first 500 chars
 
     # Binary search to find optimal content length

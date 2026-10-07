@@ -44,6 +44,8 @@ const DEFAULTS: PersistedState = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazily imported ESM module; matches shortcuts.ts pattern
+// Lazily imported ESM electron-store; typed generically elsewhere.
+// pi-lens-ignore: ast-grep:no-any-type
 let store: any = null;
 
 async function getStore() {
@@ -287,18 +289,15 @@ export function wasLaunchedAtLogin(): boolean {
   if (process.argv.includes(HIDDEN_FLAG)) return true;
   if (process.platform === 'darwin') {
     const settings = app.getLoginItemSettings();
-    return settings.wasOpenedAtLogin || settings.wasOpenedAsHidden;
+    return settings.wasOpenedAtLogin;
   }
   return false;
 }
 
 // Used for boot UI behavior. On macOS we only start hidden when the OS
 // explicitly launched the app as hidden, not merely "at login".
+// `wasOpenedAsHidden` is deprecated in Electron; HIDDEN_FLAG (passed by
+// launchd/login items) is the supported signal.
 export function shouldStartHidden(): boolean {
-  if (process.argv.includes(HIDDEN_FLAG)) return true;
-  if (process.platform === 'darwin') {
-    const settings = app.getLoginItemSettings();
-    return settings.wasOpenedAsHidden;
-  }
-  return false;
+  return process.argv.includes(HIDDEN_FLAG);
 }

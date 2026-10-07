@@ -146,6 +146,7 @@ def iter_tool_end_frames(
             thinking_step_id=original_step_id,
         ),
     )
+    # pi-lens-ignore: ast-grep:no-yield-from-non-iterable -- source is a generator (iterable)
     yield from iter_tool_completion_emission_frames(emission_ctx)
 
     clear_task_span_if_delegating_task_ended(state, tool_name=tool_name, run_id=run_id)

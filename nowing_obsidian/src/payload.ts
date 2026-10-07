@@ -80,8 +80,7 @@ function normalizeFrontmatter(
 	if (!fm) return {};
 	// FrontMatterCache extends a plain object; strip the `position` key
 	// the cache adds so the wire payload stays clean.
-	const rest: Record<string, unknown> = { ...(fm as Record<string, unknown>) };
-	delete rest.position;
+	const { position: _position, ...rest } = fm as Record<string, unknown>;
 	return rest;
 }
 

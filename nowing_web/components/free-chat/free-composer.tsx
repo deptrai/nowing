@@ -175,7 +175,7 @@ export const FreeComposer: FC = () => {
 					"placeholder:text-muted-foreground focus:outline-none",
 					"min-h-[44px] max-h-[200px]"
 				)}
-				style={{ fieldSizing: "content" } as React.CSSProperties}
+				style={{ fieldSizing: "content" } as React.CSSProperties} // pi-lens-ignore: ast-grep:inline-styles -- fieldSizing has no Tailwind equivalent yet
 			/>
 
 			<div className="flex items-center justify-between gap-2 px-3 pb-2 pt-1">

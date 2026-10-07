@@ -160,7 +160,7 @@ export function Sidebar({
 				!isResizing && "transition-[width] duration-200 ease-out",
 				className
 			)}
-			style={{ width: isCollapsed ? collapsedWidth : sidebarWidth }}
+			style={{ width: isCollapsed ? collapsedWidth : sidebarWidth }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic sidebar width for collapse animation
 		>
 			<div className="relative flex h-12 shrink-0 items-center gap-0 px-1">
 				<div
@@ -185,7 +185,7 @@ export function Sidebar({
 							"pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center transition-opacity duration-150",
 							isCollapsed ? "opacity-100 delay-150" : "opacity-0"
 						)}
-						style={{ width: collapsedWidth }}
+						style={{ width: collapsedWidth }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic sidebar width for collapse animation
 					>
 						{collapsedHeaderContent}
 					</div>

@@ -28,7 +28,6 @@ from fastapi_users.password import PasswordHelper  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
-from app.config import config  # noqa: E402
 from app.db import (  # noqa: E402
     AgentConfig,
     PersonalAccessToken,

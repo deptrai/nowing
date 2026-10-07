@@ -36,7 +36,7 @@ const StatusIcon: FC<StatusIconProps> = ({ status, className, isStreaming = true
 			return (
 				<CircleDashed
 					className={cn(baseClass, "text-primary", isStreaming && "animate-spin")}
-					style={isStreaming ? { animationDuration: "3s" } : undefined}
+					style={isStreaming ? { animationDuration: "3s" } : undefined} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 				/>
 			);
 		case "cancelled":

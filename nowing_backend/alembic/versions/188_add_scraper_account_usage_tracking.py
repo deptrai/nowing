@@ -31,7 +31,7 @@ def upgrade() -> None:
         "scraper_platform_accounts",
         sa.Column(
             "usage_state",
-            sa.dialects.postgresql.JSONB(),
+            sa.dialects.postgresql.JSONB(),  # pyright: ignore[reportAttributeAccessIssue]
             nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),

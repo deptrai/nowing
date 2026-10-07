@@ -4,7 +4,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { PanelRight } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
 import { startTransition, useEffect } from "react";
 import { closeReportPanelAtom, reportPanelAtom } from "@/atoms/chat/report-panel.atom";
 import { citationPanelAtom, closeCitationPanelAtom } from "@/atoms/citation/citation-panel.atom";
@@ -84,7 +83,6 @@ export function RightPanelToggleButton({
 	iconClassName,
 	disabled = false,
 }: RightPanelToggleButtonProps) {
-	const t = useTranslations("layout");
 	const [collapsed, setCollapsed] = useAtom(rightPanelCollapsedAtom);
 	const reportState = useAtomValue(reportPanelAtom);
 	const editorState = useAtomValue(editorPanelAtom);
@@ -286,7 +284,7 @@ export function RightPanel({ showTopBorder = false, disabled = false }: RightPan
 						showTopBorder && "border-t"
 					)}
 				>
-					<div style={{ width: targetWidth }} className="flex h-full min-h-0 flex-col">
+					<div style={{ width: targetWidth }} className="flex h-full min-h-0 flex-col"> // pi-lens-ignore: ast-grep:inline-styles -- dynamic panel width for drag-resize
 						<div className="relative flex-1 min-h-0 overflow-hidden">
 							{effectiveTab === "report" && reportOpen && (
 								<div className="h-full flex flex-col">

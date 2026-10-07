@@ -39,7 +39,7 @@ const createBookstackConnectorFormSchema = (
 		name: z.string().min(3, {
 			message: t("connector_name_min"),
 		}),
-		base_url: z.string().url({ message: t("bookstack_base_url_invalid") }),
+		base_url: z.url({ message: t("bookstack_base_url_invalid") }),
 		token_id: z.string().min(1, {
 			message: t("bookstack_token_id_required"),
 		}),
@@ -53,8 +53,8 @@ type BookStackConnectorFormValues = z.infer<ReturnType<typeof createBookstackCon
 export const BookStackConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
-	const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-	const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+	const [startDate, setStartDate] = useState<Date | undefined>();
+	const [endDate, setEndDate] = useState<Date | undefined>();
 	const [periodicEnabled, setPeriodicEnabled] = useState(false);
 	const [frequencyMinutes, setFrequencyMinutes] = useState("1440");
 	const form = useForm<BookStackConnectorFormValues>({

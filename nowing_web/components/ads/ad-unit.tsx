@@ -67,7 +67,7 @@ export function AdUnit({
 		<ins
 			ref={insRef}
 			className={cn("adsbygoogle block", className)}
-			style={{ display: "block", ...style }}
+			style={{ display: "block", ...style }} // pi-lens-ignore: ast-grep:inline-styles -- AdSense requires inline display:block on the ins element
 			data-ad-client={ADSENSE_CLIENT_ID}
 			data-ad-slot={slot}
 			data-ad-format={format}

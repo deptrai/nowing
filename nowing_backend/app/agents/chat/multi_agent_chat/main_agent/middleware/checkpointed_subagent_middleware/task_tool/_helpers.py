@@ -46,7 +46,7 @@ class SubagentInvokeTimeoutError(Exception):
 _T = TypeVar("_T")
 
 
-async def _ainvoke_with_timeout[T](
+async def _ainvoke_with_timeout(
     coro: Awaitable[_T], *, subagent_type: str, started_at: float
 ) -> _T:
     """Apply the subagent invoke timeout to ``coro`` (non-positive disables it).

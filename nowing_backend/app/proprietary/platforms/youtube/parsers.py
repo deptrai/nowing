@@ -287,6 +287,7 @@ def _is_age_restricted(player: dict, microformat: dict) -> bool | None:
         reason = (status.get("reason") or "").lower()
         if status.get("desktopLegacyAgeGateReason") or "age" in reason:
             return True
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     if microformat.get("isFamilySafe") is False:
         return True
     return None

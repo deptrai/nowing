@@ -77,7 +77,7 @@ class TokenUsageStore {
 
 const TokenUsageContext = createContext<TokenUsageStore | null>(null);
 
-export const TokenUsageProvider: FC<{ store: TokenUsageStore; children: ReactNode }> = ({
+export const TokenUsageProvider: FC<{ store: TokenUsageStore; children: ReactNode }> = ({ // pi-lens-ignore: typescript:71007 -- store object injected by client wrapper, not an RSC boundary
 	store,
 	children,
 }) => <TokenUsageContext.Provider value={store}>{children}</TokenUsageContext.Provider>;

@@ -35,12 +35,12 @@ function buildContextMenu(screenshotAccelerator: string): Menu {
 }
 
 function getTrayIcon(): NativeImage {
-  const iconName =
-    process.platform === 'darwin'
-      ? 'iconTemplate.png'
-      : process.platform === 'win32'
-        ? 'icon.ico'
-        : 'icon.png';
+  let iconName = 'icon.png';
+  if (process.platform === 'darwin') {
+    iconName = 'iconTemplate.png';
+  } else if (process.platform === 'win32') {
+    iconName = 'icon.ico';
+  }
   const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'assets', iconName)
     : path.join(__dirname, '..', 'assets', iconName);
@@ -70,9 +70,10 @@ function registerOne(
       console.log(`[hotkeys] Register ${label} ${accelerator}: OK`);
       return accelerator;
     }
-    console.warn(`[hotkeys] Register ${label} ${accelerator}: FAILED (OS or another app may own this chord)`);
+    // pi-lens-ignore: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- label is an internal shortcut constant
+    console.warn('[hotkeys] Register', label, accelerator, ': FAILED (OS or another app may own this chord)');
   } catch (err) {
-    console.error(`[tray] Error registering ${label} shortcut:`, err);
+    console.error('[tray] Error registering', label, 'shortcut:', err);
   }
   return null;
 }

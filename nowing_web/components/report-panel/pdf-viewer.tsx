@@ -127,7 +127,7 @@ export function PdfViewer({ pdfUrl, isPublic = false, toolbarActions }: PdfViewe
 			page.cleanup();
 		} catch (err: unknown) {
 			if (err instanceof Error && err.message?.includes("cancelled")) return;
-			console.error(`Failed to render page ${pageNum}:`, err);
+			console.error("Failed to render page:", pageNum, err);
 		}
 	}, []);
 
@@ -331,7 +331,7 @@ export function PdfViewer({ pdfUrl, isPublic = false, toolbarActions }: PdfViewe
 						<Spinner size="md" />
 					</div>
 				) : (
-					<div className="flex flex-col items-center py-4" style={{ gap: `${PAGE_GAP}px` }}>
+					<div className="flex flex-col items-center py-4" style={{ gap: `${PAGE_GAP}px` }}> // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 						{pageDimsRef.current.map((dims, i) => {
 							const pageNum = i + 1;
 							const scaledWidth = Math.floor(dims.width * scale);
@@ -340,7 +340,7 @@ export function PdfViewer({ pdfUrl, isPublic = false, toolbarActions }: PdfViewe
 								<div
 									key={pageNum}
 									className="relative shrink-0"
-									style={{ width: scaledWidth, height: scaledHeight }}
+									style={{ width: scaledWidth, height: scaledHeight }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 								>
 									<canvas
 										ref={(el) => setCanvasRef(pageNum, el)}

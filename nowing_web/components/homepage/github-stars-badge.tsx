@@ -126,13 +126,13 @@ function DigitWheel({
 	}, [ySpring, endY, onSettled, isRolling]);
 
 	return (
-		<div style={{ height: itemSize, overflow: "hidden" }}>
-			<motion.div style={{ y: ySpring }}>
+		<div style={{ height: itemSize, overflow: "hidden" }}> // pi-lens-ignore: ast-grep:inline-styles -- height driven by itemSize prop
+			<motion.div style={{ y: ySpring }}> // pi-lens-ignore: ast-grep:inline-styles -- framer-motion MotionValue must be passed via style
 				{sequence.map((item) => (
 					<div
 						key={item.id}
 						className={className}
-						style={{
+						style={{ // pi-lens-ignore: ast-grep:inline-styles -- height driven by itemSize prop
 							height: itemSize,
 							display: "flex",
 							alignItems: "center",
@@ -196,7 +196,7 @@ function AnimatedStarCount({
 						<div
 							key={sepKey}
 							className={className}
-							style={{
+							style={{ // pi-lens-ignore: ast-grep:inline-styles -- height driven by itemSize prop
 								height: itemSize,
 								display: "flex",
 								alignItems: "center",

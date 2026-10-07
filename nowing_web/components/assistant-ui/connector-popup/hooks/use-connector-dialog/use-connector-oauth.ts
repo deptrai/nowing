@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import { OAUTH_RESULT_COOKIE, type parseOAuthCallbackResult } from "@/contracts/types/oauth.types";
 import { authenticatedFetch } from "@/lib/auth-fetch";
-import { buildBackendUrl } from "@/lib/env-config";
+import { BACKEND_URL, buildBackendUrl } from "@/lib/env-config";
 import { trackConnectorSetupFailure, trackConnectorSetupStarted } from "@/lib/posthog/events";
 import { COMPOSIO_CONNECTORS, OAUTH_CONNECTORS } from "../../constants/connector-constants";
 import { parseOAuthAuthResponse } from "../../constants/connector-popup.schemas";
@@ -44,9 +44,16 @@ export function useConnectorOAuth(
 				const data = await response.json();
 				const validatedData = parseOAuthAuthResponse(data);
 
-				window.location.href = validatedData.auth_url;
+				// Only follow redirects to our own backend origin (auth_url is issued by the backend)
+				const authUrl = new URL(validatedData.auth_url, window.location.origin);
+				const backendOrigin = BACKEND_URL ? new URL(BACKEND_URL).origin : window.location.origin;
+				if (authUrl.origin !== backendOrigin && authUrl.origin !== window.location.origin) {
+					throw new Error("Invalid auth URL origin");
+				}
+				// pi-lens-ignore: ast-grep:no-open-redirect -- origin allowlisted above (backend-issued auth_url only)
+				window.location.href = authUrl.toString();
 			} catch (error) {
-				console.error(`Error connecting to ${connector.title}:`, error);
+				console.error("[oauth] connect failed:", connector.connectorType, error);
 				trackConnectorSetupFailure(
 					Number(workspaceId),
 					connector.connectorType,

@@ -15,8 +15,13 @@ export function migrateWatchedFolderConfigs<T>(
     if (c.workspaceId === undefined && c.searchSpaceId !== undefined) {
       migrated = true;
       const { searchSpaceId, ...rest } = c;
+      // SAFETY: call sites cast the raw persisted store shape (which only ever
+      // contained the legacy field) to T; the renamed object preserves every
+      // other property verbatim, so the runtime value already matches T.
       return { ...rest, workspaceId: searchSpaceId } as unknown as T;
     }
+    // SAFETY: raw config entries come from the same persisted store callers
+    // typed as T; unchanged entries are already the right shape at runtime.
     return c as unknown as T;
   });
   return { configs, migrated };

@@ -34,7 +34,7 @@ function List(props: PlateElementProps) {
 	const List = isOrderedList(props.element) ? "ol" : "ul";
 
 	return (
-		<List className="relative m-0 p-0" style={{ listStyleType }} start={listStart}>
+		<List className="relative m-0 p-0" style={{ listStyleType }} start={listStart}> // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 			{Marker && <Marker {...props} />}
 			{Li ? <Li {...props} /> : <li>{props.children}</li>}
 		</List>

@@ -1,12 +1,13 @@
 """Unit tests for XActions Circuit Breaker (Story 40.1)."""
 
 import asyncio
+
 import pytest
 
 from app.proprietary.platforms.xactions.circuit_breaker import (
-    XActionsCircuitBreaker,
-    CircuitState,
     CircuitBreakerOpenError,
+    CircuitState,
+    XActionsCircuitBreaker,
 )
 
 

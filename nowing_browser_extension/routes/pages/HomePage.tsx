@@ -30,7 +30,7 @@ import { Label } from "~routes/ui/label";
 import { useToast } from "~routes/ui/use-toast";
 import { buildBackendUrl } from "~utils/backend-url";
 import { getRenderedHtml } from "~utils/commons";
-import type { WebHistory } from "~utils/interfaces";
+import type { WebHistory, TabHistoryEntry, TimeQueueEntry, UrlQueueEntry } from "~utils/interfaces";
 import Loading from "./Loading";
 
 // One-time migration: legacy persisted keys were `search_space` / `search_space_id`.
@@ -50,7 +50,7 @@ async function migrateLegacyWorkspaceKeys(storage: Storage): Promise<void> {
 const HomePage = () => {
 	const { toast } = useToast();
 	const navigation = useNavigate();
-	const [noOfWebPages, setNoOfWebPages] = useState<number>(0);
+	const [noOfWebPages, setNoOfWebPages] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [open, setOpen] = React.useState(false);
 	const [value, setValue] = React.useState<string>("");
@@ -97,13 +97,13 @@ const HomePage = () => {
 	useEffect(() => {
 		async function onLoad() {
 			try {
-				chrome.storage.onChanged.addListener((changes: any, areaName: string) => {
+				chrome.storage.onChanged.addListener((changes: Record<string, chrome.storage.StorageChange>) => {
 					if (changes.webhistory) {
 						const webhistory = JSON.parse(changes.webhistory.newValue);
 						console.log("webhistory", webhistory);
 
 						let sum = 0;
-						webhistory.webhistory.forEach((element: any) => {
+						webhistory.webhistory.forEach((element: WebHistory) => {
 							sum = sum + element.tabHistory.length;
 						});
 
@@ -121,13 +121,15 @@ const HomePage = () => {
 
 				await storage.set("showShadowDom", true);
 
-				const webhistoryObj: any = await storage.get("webhistory");
+				const webhistoryObj = (await storage.get("webhistory")) as {
+					webhistory?: WebHistory[];
+				};
 				if (webhistoryObj.webhistory.length) {
 					const webhistory = webhistoryObj.webhistory;
 
 					if (webhistoryObj) {
 						let sum = 0;
-						webhistory.forEach((element: any) => {
+						webhistory.forEach((element: WebHistory) => {
 							sum = sum + element.tabHistory.length;
 						});
 						setNoOfWebPages(sum);
@@ -147,9 +149,15 @@ const HomePage = () => {
 		try {
 			const storage = new Storage({ area: "local" });
 
-			const webHistory: any = await storage.get("webhistory");
-			const urlQueue: any = await storage.get("urlQueueList");
-			const timeQueue: any = await storage.get("timeQueueList");
+			const webHistory = (await storage.get("webhistory")) as {
+				webhistory?: WebHistory[];
+			};
+			const urlQueue = (await storage.get("urlQueueList")) as {
+				urlQueueList?: UrlQueueEntry[];
+			};
+			const timeQueue = (await storage.get("timeQueueList")) as {
+				timeQueueList?: TimeQueueEntry[];
+			};
 
 			if (!webHistory.webhistory) {
 				return;
@@ -164,36 +172,36 @@ const HomePage = () => {
 					}
 				});
 
-				actives = actives.filter((item: any) => item);
+				actives = actives.filter(Boolean);
 
 				//Only retain which is still active
-				const newHistory = webHistory.webhistory.map((element: any) => {
+				const newHistory = webHistory.webhistory?.map((element: WebHistory) => {
 					//@ts-ignore
 					if (actives.includes(element.tabsessionId)) {
 						return element;
 					}
 				});
 
-				const newUrlQueue = urlQueue.urlQueueList.map((element: any) => {
+				const newUrlQueue = urlQueue.urlQueueList?.map((element: UrlQueueEntry) => {
 					//@ts-ignore
 					if (actives.includes(element.tabsessionId)) {
 						return element;
 					}
 				});
 
-				const newTimeQueue = timeQueue.timeQueueList.map((element: any) => {
+				const newTimeQueue = timeQueue.timeQueueList?.map((element: TimeQueueEntry) => {
 					//@ts-ignore
 					if (actives.includes(element.tabsessionId)) {
 						return element;
 					}
 				});
 
-				await storage.set("webhistory", { webhistory: newHistory.filter((item: any) => item) });
+				await storage.set("webhistory", { webhistory: newHistory?.filter(Boolean) ?? [] });
 				await storage.set("urlQueueList", {
-					urlQueueList: newUrlQueue.filter((item: any) => item),
+					urlQueueList: newUrlQueue?.filter(Boolean) ?? [],
 				});
 				await storage.set("timeQueueList", {
-					timeQueueList: newTimeQueue.filter((item: any) => item),
+					timeQueueList: newTimeQueue?.filter(Boolean) ?? [],
 				});
 				toast({
 					title: "History store cleared",
@@ -219,14 +227,18 @@ const HomePage = () => {
 					func: getRenderedHtml,
 				});
 
-				const toPushInTabHistory: any = result[0].result;
+				const toPushInTabHistory = result[0].result as TabHistoryEntry & {
+					renderedHtml: string;
+				};
 
 				//Updates 'tabhistory'
-				const webhistoryObj: any = await storage.get("webhistory");
+				const webhistoryObj = (await storage.get("webhistory")) as {
+					webhistory?: WebHistory[];
+				};
 
-				const webHistoryOfTabId = webhistoryObj.webhistory.filter((data: WebHistory) => {
-					return data.tabsessionId === tab.id;
-				});
+				const webHistoryOfTabId = (webhistoryObj.webhistory ?? []).filter(
+					(data: WebHistory) => data.tabsessionId === tab.id
+				);
 
 				toPushInTabHistory.pageContentMarkdown = convertHtmlToMarkdown(
 					toPushInTabHistory.renderedHtml,
@@ -237,32 +249,32 @@ const HomePage = () => {
 					}
 				);
 
-				delete toPushInTabHistory.renderedHtml;
+				const { renderedHtml: _renderedHtml, ...toSave } = toPushInTabHistory;
 
-				const tabhistory = webHistoryOfTabId[0].tabHistory;
+				const urlQueueListObj = (await storage.get("urlQueueList")) as {
+					urlQueueList?: UrlQueueEntry[];
+				};
+				const timeQueueListObj = (await storage.get("timeQueueList")) as {
+					timeQueueList?: TimeQueueEntry[];
+				};
 
-				const urlQueueListObj: any = await storage.get("urlQueueList");
-				const timeQueueListObj: any = await storage.get("timeQueueList");
-
-				const isUrlQueueThere = urlQueueListObj.urlQueueList.find(
-					(data: WebHistory) => data.tabsessionId === tabId
+				const isUrlQueueThere = urlQueueListObj.urlQueueList?.find(
+					(data: UrlQueueEntry) => data.tabsessionId === tabId
 				);
-				const isTimeQueueThere = timeQueueListObj.timeQueueList.find(
-					(data: WebHistory) => data.tabsessionId === tabId
+				const isTimeQueueThere = timeQueueListObj.timeQueueList?.find(
+					(data: TimeQueueEntry) => data.tabsessionId === tabId
 				);
 
 				toPushInTabHistory.duration =
-					toPushInTabHistory.entryTime -
-					isTimeQueueThere.timeQueue[isTimeQueueThere.timeQueue.length - 1];
-				if (isUrlQueueThere.urlQueue.length === 1) {
+					toPushInTabHistory.entryTime - (isTimeQueueThere?.timeQueue.at(-1) ?? 0);
+				if ((isUrlQueueThere?.urlQueue.length ?? 0) === 1) {
 					toPushInTabHistory.reffererUrl = "START";
 				}
-				if (isUrlQueueThere.urlQueue.length > 1) {
-					toPushInTabHistory.reffererUrl =
-						isUrlQueueThere.urlQueue[isUrlQueueThere.urlQueue.length - 2];
+				if ((isUrlQueueThere?.urlQueue.length ?? 0) > 1) {
+					toPushInTabHistory.reffererUrl = isUrlQueueThere?.urlQueue.at(-2) ?? "";
 				}
 
-				webHistoryOfTabId[0].tabHistory.push(toPushInTabHistory);
+				webHistoryOfTabId[0]?.tabHistory.push(toSave);
 
 				await storage.set("webhistory", webhistoryObj);
 

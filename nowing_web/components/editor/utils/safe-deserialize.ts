@@ -27,6 +27,7 @@ const LENIENT_PLUGINS = [remarkGfm, remarkMath];
 
 function plainTextFallback(markdown: string): Descendant[] {
 	return [
+		// SAFETY: fallback node is a valid Slate paragraph — cast needed because Descendant lacks the text leaf type
 		{
 			type: "p",
 			children: [{ text: markdown }],

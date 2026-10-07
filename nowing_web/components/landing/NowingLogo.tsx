@@ -23,7 +23,7 @@ export const NowingLogo: React.FC<NowingLogoProps> = ({
 		<div className={cn("inline-flex items-center gap-2.5 select-none", className)}>
 			{/* Nowing Brand Geometric Icon in Mint & Emerald Green */}
 			<div
-				style={{ width: size, height: size }}
+				style={{ width: size, height: size }} // pi-lens-ignore: ast-grep:inline-styles -- size prop is a runtime number
 				className="relative flex items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-600 shadow-md shadow-emerald-500/20 text-white flex-shrink-0"
 			>
 				<svg

@@ -1,4 +1,3 @@
-import { getTranslations } from "next-intl/server";
 import { AutomationNewContent } from "./automation-new-content";
 
 export default async function NewAutomationPage({

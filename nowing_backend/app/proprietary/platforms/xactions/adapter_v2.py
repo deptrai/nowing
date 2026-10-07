@@ -339,7 +339,7 @@ class UniversalScrapeTargetMapper:
                 and bound_arg in ("url", "groupId", "pageId")
                 and getattr(target, "target_url", None)
             ):
-                candidate = getattr(target, "target_url")
+                candidate = target.target_url
                 if isinstance(candidate, str) and candidate.strip():
                     target_id_value = candidate
             if target_id_value is None or not str(target_id_value).strip():

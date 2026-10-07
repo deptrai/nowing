@@ -96,6 +96,7 @@ async def get_allowed_read_space_ids(
         .order_by(WorkspaceMembership.workspace_id)
     )
     if auth.is_gated:
+        # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
         stmt = stmt.filter(Workspace.api_access_enabled == True)  # noqa: E712
 
     result = await session.execute(stmt)
@@ -297,6 +298,7 @@ async def get_default_role(
     result = await session.execute(
         select(WorkspaceRole).filter(
             WorkspaceRole.workspace_id == workspace_id,
+            # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
             WorkspaceRole.is_default == True,  # noqa: E712
         )
     )

@@ -18,12 +18,12 @@ export const JiraConfig: FC<JiraConfigProps> = ({ connector, onConfigChange, onN
 	// Check if this is an OAuth connector (has access_token or _token_encrypted flag)
 	const isOAuth = !!(connector.config?.access_token || connector.config?._token_encrypted);
 
-	const [baseUrl, setBaseUrl] = useState<string>((connector.config?.JIRA_BASE_URL as string) || "");
-	const [email, setEmail] = useState<string>((connector.config?.JIRA_EMAIL as string) || "");
-	const [apiToken, setApiToken] = useState<string>(
+	const [baseUrl, setBaseUrl] = useState((connector.config?.JIRA_BASE_URL as string) || "");
+	const [email, setEmail] = useState((connector.config?.JIRA_EMAIL as string) || "");
+	const [apiToken, setApiToken] = useState(
 		(connector.config?.JIRA_API_TOKEN as string) || ""
 	);
-	const [name, setName] = useState<string>(connector.name || "");
+	const [name, setName] = useState(connector.name || "");
 
 	const handleBaseUrlChange = (value: string) => {
 		setBaseUrl(value);

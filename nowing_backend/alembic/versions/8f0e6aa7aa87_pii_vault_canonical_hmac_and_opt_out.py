@@ -67,7 +67,7 @@ def _backfill_verified_contacts(conn) -> None:
     while True:
         where_clause = "id > :last_id" if last_id is not None else "1=1"
         rows = conn.execute(
-            text(
+            text(  # nosemgrep
                 f"""
                 SELECT id, workspace_id, phone, email, value_hmac,
                        phone_hmac, email_hmac, lead_id
@@ -170,7 +170,7 @@ def _backfill_leads(conn) -> None:
     while True:
         where_clause = "id > :last_id" if last_id is not None else "1=1"
         rows = conn.execute(
-            text(
+            text(  # nosemgrep
                 f"""
                 SELECT id, workspace_id, company_name, domain
                 FROM leads

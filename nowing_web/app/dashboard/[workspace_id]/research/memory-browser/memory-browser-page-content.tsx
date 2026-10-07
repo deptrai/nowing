@@ -89,14 +89,14 @@ export function MemoryBrowserPageContent({ workspaceId }: MemoryBrowserPageConte
 	// ---- Filter / pagination state ----
 	const [view, setView] = useState<ViewMode>("list");
 	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState<number>(50);
+	const [pageSize, setPageSize] = useState(50);
 	const [keyword, setKeyword] = useState("");
 	const [selectedSourceTypes, setSelectedSourceTypes] = useState<Set<string>>(new Set());
 	const [confidenceRange, setConfidenceRange] = useState<[number, number]>([0, 1]);
 	const [datePreset, setDatePreset] = useState<DatePreset | "">("");
 	const [customFrom, setCustomFrom] = useState("");
 	const [customTo, setCustomTo] = useState("");
-	const [createdBy, setCreatedBy] = useState<string>("");
+	const [createdBy, setCreatedBy] = useState("");
 
 	// ---- UI state ----
 	const [loading, setLoading] = useState(false);

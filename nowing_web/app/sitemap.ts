@@ -24,9 +24,7 @@ async function getFreeModelSlugs(): Promise<string[]> {
 		});
 		if (!res.ok) return [];
 		const models = await res.json();
-		return models
-			.filter((m: { seo_slug?: string }) => m.seo_slug)
-			.map((m: { seo_slug: string }) => m.seo_slug);
+		return models.flatMap((m: { seo_slug?: string }) => (m.seo_slug ? [m.seo_slug] : []));
 	} catch {
 		return [];
 	}

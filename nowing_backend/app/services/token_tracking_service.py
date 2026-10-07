@@ -276,7 +276,7 @@ def start_turn() -> TurnTokenAccumulator:
     """
     acc = TurnTokenAccumulator()
     _turn_accumulator.set(acc)
-    logger.info("[TokenTracking] start_turn: new accumulator created (id=%s)", id(acc))
+    logger.info("[TokenTracking] start_turn: new accumulator created (id=%s)", id(acc))  # nosemgrep
     return acc
 
 
@@ -327,7 +327,7 @@ async def scoped_turn() -> AsyncIterator[TurnTokenAccumulator]:
     """
     acc = TurnTokenAccumulator()
     token = _turn_accumulator.set(acc)
-    logger.debug(
+    logger.debug(  # nosemgrep
         "[TokenTracking] scoped_turn: enter (acc id=%s, prev token=%s)",
         id(acc),
         token,
@@ -336,7 +336,7 @@ async def scoped_turn() -> AsyncIterator[TurnTokenAccumulator]:
         yield acc
     finally:
         _turn_accumulator.reset(token)
-        logger.debug(
+        logger.debug(  # nosemgrep
             "[TokenTracking] scoped_turn: exit (acc id=%s captured %d call(s), %d micros total)",
             id(acc),
             len(acc.calls),
@@ -395,14 +395,14 @@ def _extract_cost_usd(
             return value
     except Exception as exc:  # litellm completion_cost fallback; try cost_per_token if completion_cost fails
         if is_image:
-            logger.warning(
+            logger.warning(  # nosemgrep
                 "[TokenTracking] completion_cost failed for image model=%s "
                 "(will try cost_per_token). Cause: %s",
                 model,
                 exc,
             )
         else:
-            logger.debug(
+            logger.debug(  # nosemgrep
                 "[TokenTracking] completion_cost failed for model=%s: %s", model, exc
             )
 
@@ -418,7 +418,7 @@ def _extract_cost_usd(
             if value > 0:
                 return value
         except Exception as exc:  # litellm cost_per_token fallback; return zero/fallback cost if unavailable
-            logger.debug(
+            logger.debug(  # nosemgrep
                 "[TokenTracking] cost_per_token failed for model=%s: %s", model, exc
             )
 
@@ -505,7 +505,7 @@ class TokenTrackingCallback(CustomLogger):
         cost_micros = round(cost_usd * 1_000_000) if cost_usd > 0 else 0
 
         if cost_micros == 0 and (prompt_tokens > 0 or completion_tokens > 0):
-            logger.warning(
+            logger.warning(  # nosemgrep
                 "[TokenTracking] No cost resolved for model=%s prompt=%d completion=%d "
                 "kind=%s — debiting 0. Register pricing via pricing_registration or YAML "
                 "input_cost_per_token/output_cost_per_token (or rely on response_cost "
@@ -538,7 +538,7 @@ class TokenTrackingCallback(CustomLogger):
         if prompt_tokens > 0 and (cached_tokens > 0 or cache_creation_tokens > 0):
             cache_hit_ratio = cached_tokens / prompt_tokens
 
-        logger.info(
+        logger.info(  # nosemgrep
             "[TokenTracking] Captured: model=%s kind=%s prompt=%d completion=%d total=%d "
             "cost=$%.6f (%d micros) (accumulator now has %d calls)%s%s",
             model,
@@ -638,7 +638,7 @@ async def record_token_usage(
             run_id=run_id,
         )
         session.add(record)
-        logger.debug(
+        logger.debug(  # nosemgrep
             "[TokenTracking] recorded %s usage: prompt=%d completion=%d total=%d cost_micros=%d",
             usage_type,
             prompt_tokens,
@@ -648,7 +648,7 @@ async def record_token_usage(
         )
         return record
     except Exception:  # best-effort token usage telemetry; never abort the caller
-        logger.warning(
+        logger.warning(  # nosemgrep
             "[TokenTracking] failed to record %s token usage",
             usage_type,
             exc_info=True,

@@ -269,7 +269,7 @@ function AuthenticatedZeroProvider({
 	children: React.ReactNode;
 	isDesktop: boolean;
 }) {
-	const [loadedContext, setLoadedContext] = useState<ZeroContextState>(undefined);
+	const [loadedContext, setLoadedContext] = useState<ZeroContextState>();
 	// null = probing, false = cache unreachable (render children without Zero),
 	// true = reachable (mount Zero provider).
 	const [cacheReachable, setCacheReachable] = useState<boolean | null>(null);
@@ -394,7 +394,7 @@ function ZeroClientProvider({
 						// Close immediately: zero-cache is unreachable. A closed
 						// instance still satisfies useZero() and useQuery() (empty
 						// snapshot), but never opens the WebSocket — so the browser
-						// console stays free of the native ws:// connect errors.
+						// console stays free of the native WebSocket connect errors.
 						void z.close();
 					}
 				: undefined,

@@ -460,7 +460,7 @@ class AutoReplyAgent:
                 session, workspace_id, target_chat_id
             )
             if not chat_id or not token:
-                logger.warning(
+                logger.warning(  # nosemgrep
                     "Hot lead alert skipped: unauthorized or missing Telegram chat/token for workspace %s",
                     workspace_id,
                 )

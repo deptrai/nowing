@@ -13,6 +13,8 @@ interface FieldMappingModalProps {
 	onConfirmSync: (config: Record<string, unknown>, maskPii: boolean) => Promise<void>;
 }
 
+const GOOGLE_TOKEN_PLACEHOLDER = "Paste token here...";
+
 export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 	isOpen,
 	onClose,
@@ -21,18 +23,18 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 	onConfirmSync,
 }) => {
 	const t = useTranslations("leads");
-	const [maskPii, setMaskPii] = useState<boolean>(true);
-	const [loading, setLoading] = useState<boolean>(false);
+	const [maskPii, setMaskPii] = useState(true);
+	const [loading, setLoading] = useState(false);
 
 	// Lark Base config
-	const [appToken, setAppToken] = useState<string>("");
-	const [tableId, setTableId] = useState<string>("");
-	const [larkToken, setLarkToken] = useState<string>("");
+	const [appToken, setAppToken] = useState("");
+	const [tableId, setTableId] = useState("");
+	const [larkToken, setLarkToken] = useState("");
 
 	// Google Sheets config
-	const [spreadsheetId, setSpreadsheetId] = useState<string>("");
-	const [sheetRange, setSheetRange] = useState<string>("Sheet1!A1");
-	const [googleToken, setGoogleToken] = useState<string>("");
+	const [spreadsheetId, setSpreadsheetId] = useState("");
+	const [sheetRange, setSheetRange] = useState("Sheet1!A1");
+	const [googleToken, setGoogleToken] = useState("");
 
 	if (!isOpen) return null;
 
@@ -179,7 +181,7 @@ export const FieldMappingModal: React.FC<FieldMappingModalProps> = ({
 									type="password"
 									value={googleToken}
 									onChange={(e) => setGoogleToken(e.target.value)}
-									placeholder="ya29.a0..."
+									placeholder={GOOGLE_TOKEN_PLACEHOLDER}
 									className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500 font-mono text-xs"
 								/>
 							</div>

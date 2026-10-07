@@ -41,27 +41,25 @@ export const setCurrentThreadMetadataAtom = atom(
 		const current = get(currentThreadAtom);
 		const isSameThread = current.id === metadata.id;
 
+		let nextWorkspaceId: number | null;
+		let nextVisibility: ChatVisibility | null;
+		let nextHasComments: boolean;
+		if (isSameThread) {
+			nextWorkspaceId = "workspaceId" in metadata ? (metadata.workspaceId ?? null) : current.workspaceId;
+			nextVisibility = "visibility" in metadata ? (metadata.visibility ?? null) : current.visibility;
+			nextHasComments = "hasComments" in metadata ? (metadata.hasComments ?? false) : current.hasComments;
+		} else {
+			nextWorkspaceId = "workspaceId" in metadata ? (metadata.workspaceId ?? null) : null;
+			nextVisibility = "visibility" in metadata ? (metadata.visibility ?? null) : null;
+			nextHasComments = "hasComments" in metadata ? (metadata.hasComments ?? false) : false;
+		}
+
 		set(currentThreadAtom, {
 			...current,
 			id: metadata.id,
-			workspaceId:
-				"workspaceId" in metadata
-					? (metadata.workspaceId ?? null)
-					: isSameThread
-						? current.workspaceId
-						: null,
-			visibility:
-				"visibility" in metadata
-					? (metadata.visibility ?? null)
-					: isSameThread
-						? current.visibility
-						: null,
-			hasComments:
-				"hasComments" in metadata
-					? (metadata.hasComments ?? false)
-					: isSameThread
-						? current.hasComments
-						: false,
+			workspaceId: nextWorkspaceId,
+			visibility: nextVisibility,
+			hasComments: nextHasComments,
 		});
 	}
 );

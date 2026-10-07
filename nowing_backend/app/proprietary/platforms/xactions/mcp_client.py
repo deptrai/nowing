@@ -112,6 +112,7 @@ class XActionsMcpClient:
             "X-Consumer-Id": self.consumer_id,
         }
         if self.api_key:
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             self._headers["Authorization"] = f"Bearer {self.api_key}"
 
     @property
@@ -198,7 +199,7 @@ class XActionsMcpClient:
 
     async def _handle_transport_error(self, exc: BaseException) -> None:
         self._tainted = True
-        try:
+        with contextlib.suppress(RuntimeError):
             current_loop = asyncio.get_running_loop()
             with _CLIENTS_LOCK:
                 if (
@@ -206,8 +207,6 @@ class XActionsMcpClient:
                     and _LOOP_CLIENTS[current_loop].client is self
                 ):
                     _LOOP_CLIENTS.pop(current_loop, None)
-        except RuntimeError:
-            pass
         with contextlib.suppress(Exception):
             await self._close_session()
 
@@ -392,7 +391,7 @@ class XActionsMcpClient:
 
         try:
             return await anyio.to_thread.run_sync(
-                lambda: json.load(open(safe_path, encoding="utf-8"))
+                lambda: json.load(open(safe_path, encoding="utf-8"))  # pi-lens-ignore: python-path-traversal -- safe_path validated by _resolve_artifact_path above
             )
         except Exception as exc:  # local artifact file read/JSON parse failure; return empty list
             logger.warning("Failed to read artifact %s: %s", safe_path, exc)
@@ -411,7 +410,7 @@ class XActionsMcpClient:
                 "status": "healthy" if result.get("success") else "degraded",
                 "data": result.get("data", {}),
             }
-        except asyncio.TimeoutError:
+        except TimeoutError:  # asyncio.TimeoutError is an alias of the builtin since Python 3.11
             return {
                 "status": "unavailable",
                 "error": f"connectivity check timed out after {XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS}s",

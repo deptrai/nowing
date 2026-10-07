@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -91,7 +91,7 @@ def test_past_due_mission_run_once_and_advance(mocker):
     """AC-6 P3: next_fire_at > 24h past still runs once and advances."""
     from app.tasks.celery_tasks.schedule_mission_tick import schedule_mission_tick
 
-    past = datetime.now(timezone.utc) - timedelta(hours=25)
+    past = datetime.now(UTC) - timedelta(hours=25)
     mission = mocker.MagicMock()
     mission.id = "m1"
     mission.workspace_id = 1

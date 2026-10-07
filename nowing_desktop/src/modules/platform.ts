@@ -23,11 +23,16 @@ export function getFrontmostApp(): string {
   return '';
 }
 
-export function simulatePaste(): void {
-  if (process.platform === 'darwin') {
-    execSync('osascript -e \'tell application "System Events" to keystroke "v" using command down\'', EXEC_OPTS);
-  } else if (process.platform === 'win32') {
-    execSync('powershell -NoProfile -NonInteractive -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'^v\')"', EXEC_OPTS);
+export function simulatePaste(): boolean {
+  try {
+    if (process.platform === 'darwin') {
+      execSync('osascript -e \'tell application "System Events" to keystroke "v" using command down\'', EXEC_OPTS);
+    } else if (process.platform === 'win32') {
+      execSync('powershell -NoProfile -NonInteractive -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'^v\')"', EXEC_OPTS);
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 

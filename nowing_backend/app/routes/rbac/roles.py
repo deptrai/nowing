@@ -165,7 +165,6 @@ async def create_role(
     Requires ROLES_CREATE permission.
     """
     try:
-
         # Reserved "Admin" name guard (RB-4)
         clean_name = role_data.name.strip()
         if not clean_name:
@@ -212,7 +211,7 @@ async def create_role(
             existing_defaults = await session.execute(
                 select(WorkspaceRole).filter(
                     WorkspaceRole.workspace_id == workspace_id,
-                    WorkspaceRole.is_default == True,  # noqa: E712
+                    WorkspaceRole.is_default.is_(True),
                 )
             )
             for existing in existing_defaults.scalars().all():
@@ -276,7 +275,6 @@ async def list_roles(
     Requires ROLES_READ permission.
     """
     try:
-
         result = await session.execute(
             select(WorkspaceRole).filter(WorkspaceRole.workspace_id == workspace_id)
         )
@@ -311,7 +309,6 @@ async def get_role(
     Requires ROLES_READ permission.
     """
     try:
-
         result = await session.execute(
             select(WorkspaceRole).filter(
                 WorkspaceRole.id == role_id,
@@ -356,7 +353,6 @@ async def update_role(
     System roles can only have their permissions updated, not name/description.
     """
     try:
-
         result = await session.execute(
             select(WorkspaceRole).filter(
                 WorkspaceRole.id == role_id,
@@ -430,7 +426,7 @@ async def update_role(
             existing_defaults = await session.execute(
                 select(WorkspaceRole).filter(
                     WorkspaceRole.workspace_id == workspace_id,
-                    WorkspaceRole.is_default == True,  # noqa: E712
+                    WorkspaceRole.is_default.is_(True),
                 )
             )
             for existing in existing_defaults.scalars().all():
@@ -483,7 +479,6 @@ async def delete_role(
     System roles cannot be deleted.
     """
     try:
-
         result = await session.execute(
             select(WorkspaceRole).filter(
                 WorkspaceRole.id == role_id,

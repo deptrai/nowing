@@ -160,14 +160,14 @@ class CampaignSpec(BaseModel):
 
 
     @classmethod
-    def from_payload(cls, payload: dict[str, Any]) -> "CampaignSpec":
+    def from_payload(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Accept either a declarative CampaignSpec dict or a frontend CampaignCreateInput dict."""
         if "icp_config" in payload or "source_budget_config" in payload:
             return cls.from_campaign_create_input(payload)
         return cls.model_validate(payload)
 
     @classmethod
-    def from_campaign_create_input(cls, payload: dict[str, Any]) -> "CampaignSpec":
+    def from_campaign_create_input(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Convert frontend CampaignCreateInput shape into internal CampaignSpec."""
         icp_config = payload.get("icp_config") or {}
         source_budget_config = payload.get("source_budget_config") or {}
@@ -198,7 +198,7 @@ class CampaignSpec(BaseModel):
         icp_criteria = ICPCriteria(
             target_industries=icp_config.get("target_industries", []),
             target_locations=icp_config.get("locations", []),
-            target_company_sizes=icp_config.get("company_size_range") and [icp_config["company_size_range"]] or [],
+            target_company_sizes=(icp_config.get("company_size_range") and [icp_config["company_size_range"]]) or [],
             target_tech_stack=icp_config.get("tech_stack", []),
             target_keywords=keywords,
             negative_keywords=icp_config.get("negative_keywords", []),

@@ -190,6 +190,7 @@ async def _open_session(
     if credentials:
         token = credentials.get("token")
         if token:
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             session_kwargs["extra_headers"]["Authorization"] = f"Bearer {token}"
         cookie_string = credentials.get("cookies")
         if cookie_string:

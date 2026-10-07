@@ -333,6 +333,7 @@ def delete_local_sandbox_files(thread_id: int | str) -> None:
     """Remove all locally-persisted sandbox files for a thread."""
     thread_dir = _get_sandbox_files_dir() / str(thread_id)
     if thread_dir.is_dir():
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- ignore_errors=True, best-effort cleanup
         shutil.rmtree(thread_dir, ignore_errors=True)
         logger.info("Deleted local sandbox files for thread %s", thread_id)
 

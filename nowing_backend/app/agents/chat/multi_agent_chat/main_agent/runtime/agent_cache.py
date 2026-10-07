@@ -56,7 +56,7 @@ async def build_agent_with_cache(
     subagent_dependencies: dict[str, Any],
     mcp_tools_by_agent: dict[str, list[BaseTool]],
     disabled_tools: list[str] | None,
-    config_id: str | None,
+    config_id: int | None,
     image_gen_model_id_override: int | None = None,
     research_thread_id: int | None = None,
     client_id: str | None = None,
@@ -113,7 +113,7 @@ async def build_agent_with_cache(
         filesystem_mode,
         anon_session_id,
         tools_signature(
-            tools,
+            tools,  # pyright: ignore[reportArgumentType]
             available_connectors=available_connectors,
             available_document_types=available_document_types,
         ),

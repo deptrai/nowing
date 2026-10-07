@@ -29,6 +29,7 @@ def build_xactions_connector_config() -> dict:
 
     headers = {"X-Consumer-Id": consumer_id}
     if api_key:
+        # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
         headers["Authorization"] = f"Bearer {api_key}"
 
     return {

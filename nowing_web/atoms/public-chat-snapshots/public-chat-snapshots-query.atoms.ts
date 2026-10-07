@@ -8,7 +8,7 @@ export const publicChatSnapshotsAtom = atomWithQuery((get) => {
 
 	return {
 		queryKey: cacheKeys.publicChatSnapshots.byWorkspace(Number(workspaceId) || 0),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		staleTime: 5 * 60 * 1000,
 		queryFn: async () => {
 			if (!workspaceId) {

@@ -36,26 +36,26 @@ export const SearxngConfig: FC<SearxngConfigProps> = ({
 	onNameChange,
 }) => {
 	const t = useTranslations("assistant");
-	const [host, setHost] = useState<string>((connector.config?.SEARXNG_HOST as string) || "");
-	const [apiKey, setApiKey] = useState<string>((connector.config?.SEARXNG_API_KEY as string) || "");
-	const [engines, setEngines] = useState<string>(arrayToString(connector.config?.SEARXNG_ENGINES));
-	const [categories, setCategories] = useState<string>(
+	const [host, setHost] = useState((connector.config?.SEARXNG_HOST as string) || "");
+	const [apiKey, setApiKey] = useState((connector.config?.SEARXNG_API_KEY as string) || "");
+	const [engines, setEngines] = useState(arrayToString(connector.config?.SEARXNG_ENGINES));
+	const [categories, setCategories] = useState(
 		arrayToString(connector.config?.SEARXNG_CATEGORIES)
 	);
-	const [language, setLanguage] = useState<string>(
+	const [language, setLanguage] = useState(
 		(connector.config?.SEARXNG_LANGUAGE as string) || ""
 	);
-	const [safesearch, setSafesearch] = useState<string>(
+	const [safesearch, setSafesearch] = useState(
 		connector.config?.SEARXNG_SAFESEARCH !== undefined
 			? String(connector.config.SEARXNG_SAFESEARCH)
 			: ""
 	);
-	const [verifySsl, setVerifySsl] = useState<boolean>(
+	const [verifySsl, setVerifySsl] = useState(
 		connector.config?.SEARXNG_VERIFY_SSL !== undefined
 			? (connector.config.SEARXNG_VERIFY_SSL as boolean)
 			: true
 	);
-	const [name, setName] = useState<string>(connector.name || "");
+	const [name, setName] = useState(connector.name || "");
 
 	const updateConfig = (updates: Record<string, unknown>) => {
 		if (onConfigChange) {

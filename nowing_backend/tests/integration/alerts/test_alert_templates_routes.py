@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 import pytest
@@ -28,7 +29,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 @pytest.fixture
 async def authed_workspace_setup(
     db_session: AsyncSession,
-) -> tuple[AsyncClient, User, Workspace]:
+) -> AsyncGenerator[tuple[AsyncClient, User, Workspace], None]:
     """Create a user, workspace with OWNER membership, and an authenticated client."""
     user = User(
         id=uuid4(),
@@ -148,7 +149,9 @@ async def test_create_alert_from_template_success(authed_workspace_setup) -> Non
     assert data["enabled"] is True
 
 
-async def test_create_alert_from_template_missing_template_404(authed_workspace_setup) -> None:
+async def test_create_alert_from_template_missing_template_404(
+    authed_workspace_setup,
+) -> None:
     """POST /workspaces/{id}/alerts/from-template returns 404 for unknown template."""
     client, _user, workspace = authed_workspace_setup
 
@@ -166,7 +169,9 @@ async def test_create_alert_from_template_missing_template_404(authed_workspace_
     assert "not found" in res.text.lower()
 
 
-async def test_create_alert_from_template_missing_required_param_400(authed_workspace_setup) -> None:
+async def test_create_alert_from_template_missing_required_param_400(
+    authed_workspace_setup,
+) -> None:
     """POST /workspaces/{id}/alerts/from-template returns 400 when missing required param."""
     client, _user, workspace = authed_workspace_setup
 
@@ -184,10 +189,15 @@ async def test_create_alert_from_template_missing_required_param_400(authed_work
         json=payload,
     )
     assert res.status_code == 400, res.text
-    assert "compilation error" in res.text.lower() or "missing required parameter" in res.text.lower()
+    assert (
+        "compilation error" in res.text.lower()
+        or "missing required parameter" in res.text.lower()
+    )
 
 
-async def test_create_alert_from_template_unavailable_capability_400(authed_workspace_setup) -> None:
+async def test_create_alert_from_template_unavailable_capability_400(
+    authed_workspace_setup,
+) -> None:
     """POST /workspaces/{id}/alerts/from-template returns 400 CAPABILITY_UNAVAILABLE."""
     client, _user, workspace = authed_workspace_setup
 
@@ -230,4 +240,3 @@ async def test_alert_rules_prefix_alias_supported(authed_workspace_setup) -> Non
     res2 = await client.get(f"/workspaces/{workspace.id}/alerts/templates")
     assert res2.status_code == 200, res2.text
     assert res1.json() == res2.json()
-

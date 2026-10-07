@@ -373,7 +373,7 @@ function ApprovalCard({
 				{editableBody ? (
 					<div
 						className="mt-2 max-h-[7rem] overflow-hidden text-sm"
-						style={{
+						style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 							maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 							WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 						}}

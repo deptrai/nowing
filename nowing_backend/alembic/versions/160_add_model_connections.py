@@ -64,7 +64,7 @@ def _create_index_if_missing(
 def _add_searchspace_column_if_missing(
     column_name: str,
     *,
-    server_default: object | None = None,
+    server_default: sa.TextClause | None = None,
 ) -> None:
     if not _column_exists("searchspaces", column_name):
         op.add_column(

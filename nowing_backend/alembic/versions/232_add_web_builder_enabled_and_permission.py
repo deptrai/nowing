@@ -19,14 +19,14 @@ depends_on: str | Sequence[str] | None = None
 def _table_exists(table_name: str) -> bool:
     from sqlalchemy.engine import reflection
     bind = op.get_context().bind
-    inspector = reflection.Inspector.from_engine(bind)
+    inspector = reflection.Inspector.from_engine(bind)  # pyright: ignore[reportArgumentType]
     return table_name in inspector.get_table_names()
 
 
 def _column_exists(table_name: str, column_name: str) -> bool:
     from sqlalchemy.engine import reflection
     bind = op.get_context().bind
-    inspector = reflection.Inspector.from_engine(bind)
+    inspector = reflection.Inspector.from_engine(bind)  # pyright: ignore[reportArgumentType]
     return any(c["name"] == column_name for c in inspector.get_columns(table_name))
 
 

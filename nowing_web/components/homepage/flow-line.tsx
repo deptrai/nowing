@@ -49,7 +49,7 @@ export function FlowLine() {
 				<span
 					key={left}
 					className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
-					style={{ left }}
+					style={{ left }} // pi-lens-ignore: ast-grep:inline-styles -- left position computed per-step from layout math
 				>
 					{reduce ? (
 						<span className="block size-3 rounded-full border-2 border-brand bg-background" />

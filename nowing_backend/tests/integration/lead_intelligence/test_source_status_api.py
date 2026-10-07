@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app import app
 from app.auth.context import AuthContext
-from app.db import Permission, User, Workspace, get_async_session
+from app.db import User, Workspace, get_async_session
 from app.users import require_session_context
 
 pytestmark = [pytest.mark.integration]

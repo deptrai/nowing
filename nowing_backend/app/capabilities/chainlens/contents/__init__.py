@@ -15,8 +15,8 @@ from app.capabilities.chainlens.contents.schemas import (
 
 __all__ = [
     "CHAINLENS_CONTENTS",
-    "ContentsExecutor",
     "ContentItem",
+    "ContentsExecutor",
     "ContentsInput",
     "ContentsOutput",
     "build_contents_executor",

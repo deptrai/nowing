@@ -37,7 +37,7 @@ export const ChatViewport: FC<ChatViewportProps> = ({ children, footer, hasActiv
 		scrollToBottomOnInitialize
 		scrollToBottomOnThreadSwitch
 		className="aui-thread-viewport relative flex flex-1 min-h-0 flex-col overflow-y-auto px-4 scroll-smooth"
-		style={{ scrollbarGutter: "stable" }}
+		style={{ scrollbarGutter: "stable" }} // pi-lens-ignore: ast-grep:inline-styles -- prop passthrough on third-party viewport component
 	>
 		<div
 			aria-hidden
@@ -48,7 +48,7 @@ export const ChatViewport: FC<ChatViewportProps> = ({ children, footer, hasActiv
 			<AuiIf condition={({ thread }) => hasActiveThread || !thread.isEmpty}>
 				<ThreadPrimitive.ViewportFooter
 					className="aui-chat-composer-footer sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col items-stretch bg-gradient-to-t from-main-panel from-60% to-transparent px-4 pt-6"
-					style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+					style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }} // pi-lens-ignore: ast-grep:inline-styles -- env() safe-area not expressible in CSS module without var indirection
 				>
 					<div className="aui-chat-composer-area relative mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-3 overflow-visible">
 						<ChatScrollToBottom />

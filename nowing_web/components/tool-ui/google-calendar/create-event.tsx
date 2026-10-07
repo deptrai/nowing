@@ -166,8 +166,8 @@ function ApprovalCard({
 		return "";
 	}, [calendars]);
 
-	const [selectedAccountId, setSelectedAccountId] = useState<string>(defaultAccountId);
-	const [selectedCalendarId, setSelectedCalendarId] = useState<string>(defaultCalendarId);
+	const [selectedAccountId, setSelectedAccountId] = useState(defaultAccountId);
+	const [selectedCalendarId, setSelectedCalendarId] = useState(defaultCalendarId);
 
 	useEffect(() => {
 		if (defaultAccountId && !selectedAccountId) setSelectedAccountId(defaultAccountId);
@@ -472,7 +472,7 @@ function ApprovalCard({
 				{(pendingEdits?.description ?? args.description) && (
 					<div
 						className="mt-2 max-h-[7rem] overflow-hidden text-sm"
-						style={{
+						style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 							maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 							WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 						}}

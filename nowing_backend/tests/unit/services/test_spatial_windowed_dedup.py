@@ -7,7 +7,6 @@ import time
 import pytest
 
 from app.services.dedup.spatial_windowed_dedup import (
-    SpatialWindowedDeduplicator,
     deduplicate_postings,
     jaccard_similarity,
 )

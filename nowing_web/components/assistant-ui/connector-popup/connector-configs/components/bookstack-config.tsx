@@ -18,16 +18,16 @@ export const BookStackConfig: FC<BookStackConfigProps> = ({
 	onNameChange,
 }) => {
 	const t = useTranslations("assistant");
-	const [baseUrl, setBaseUrl] = useState<string>(
+	const [baseUrl, setBaseUrl] = useState(
 		(connector.config?.BOOKSTACK_BASE_URL as string) || ""
 	);
-	const [tokenId, setTokenId] = useState<string>(
+	const [tokenId, setTokenId] = useState(
 		(connector.config?.BOOKSTACK_TOKEN_ID as string) || ""
 	);
-	const [tokenSecret, setTokenSecret] = useState<string>(
+	const [tokenSecret, setTokenSecret] = useState(
 		(connector.config?.BOOKSTACK_TOKEN_SECRET as string) || ""
 	);
-	const [name, setName] = useState<string>(connector.name || "");
+	const [name, setName] = useState(connector.name || "");
 
 	const handleBaseUrlChange = (value: string) => {
 		setBaseUrl(value);

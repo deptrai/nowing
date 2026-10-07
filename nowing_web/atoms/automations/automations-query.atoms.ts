@@ -15,7 +15,7 @@ export const automationsListAtom = atomWithQuery((get) => {
 
 	return {
 		queryKey: cacheKeys.automations.list(Number(workspaceId ?? 0), DEFAULT_LIMIT, DEFAULT_OFFSET),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		staleTime: 60 * 1000,
 		queryFn: async () => {
 			if (!workspaceId) {

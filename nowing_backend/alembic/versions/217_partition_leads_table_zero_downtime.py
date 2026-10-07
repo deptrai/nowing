@@ -43,6 +43,7 @@ def downgrade() -> None:
     ]
     for table_name, fk_name in composite_fks:
         conn.execute(
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"ALTER TABLE IF EXISTS {table_name} DROP CONSTRAINT IF EXISTS {fk_name};"
             )

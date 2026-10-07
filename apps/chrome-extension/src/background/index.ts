@@ -4,14 +4,13 @@
  */
 
 import {
-  clearOfflineQueue,
   enqueueLead,
   getOfflineQueue,
   removeQueuedLead,
   updateBadge,
-} from '../storage/offline_queue';
-import { getConfig, saveConfig } from '../storage/token_store';
-import { ExtensionMessage, LeadClipPayload, LeadClipResponse } from '../types';
+} from '../storage/offline_queue.js';
+import { getConfig, saveConfig } from '../storage/token_store.js';
+import { ExtensionMessage, LeadClipPayload, LeadClipResponse } from '../types/index.js';
 
 // Update initial badge on service worker start
 getOfflineQueue().then((q) => updateBadge(q.length));
@@ -19,31 +18,34 @@ getOfflineQueue().then((q) => updateBadge(q.length));
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
   handleMessage(message)
     .then((res) => sendResponse(res))
-    .catch((err) => sendResponse({ success: false, message: err.message }));
+    .catch((err) =>
+      sendResponse({ success: false, message: err instanceof Error ? err.message : 'Error' }));
   return true; // Keep async response channel open
 });
 
-async function handleMessage(message: ExtensionMessage): Promise<any> {
+async function handleMessage(message: ExtensionMessage): Promise<unknown> {
   switch (message.action) {
     case 'CLIP_LEAD':
-      return await handleClipLead(message.payload);
+      return handleClipLead(message.payload);
 
     case 'GET_CONFIG':
-      return await getConfig();
+      return getConfig();
 
-    case 'SAVE_CONFIG':
+    case 'SAVE_CONFIG': {
       const updated = await saveConfig(message.config);
       return { success: true, config: updated };
+    }
 
-    case 'GET_OFFLINE_COUNT':
+    case 'GET_OFFLINE_COUNT': {
       const queue = await getOfflineQueue();
       return { count: queue.length };
+    }
 
     case 'SYNC_OFFLINE_QUEUE':
-      return await handleSyncOfflineQueue();
+      return handleSyncOfflineQueue();
 
     case 'GET_ZALO_CONTEXT':
-      return await handleZaloContext(message.phone);
+      return handleZaloContext(message.phone);
 
     case 'PING':
       return { status: 'ok', timestamp: Date.now() };
@@ -53,7 +55,7 @@ async function handleMessage(message: ExtensionMessage): Promise<any> {
   }
 }
 
-async function handleClipLead(payload: LeadClipPayload): Promise<any> {
+async function handleClipLead(payload: LeadClipPayload): Promise<unknown> {
   const config = await getConfig();
 
   if (!config.patToken) {
@@ -97,9 +99,10 @@ async function handleClipLead(payload: LeadClipPayload): Promise<any> {
 
     const data: LeadClipResponse = await response.json();
     return data;
-  } catch (netErr: any) {
+  } catch (netErr) {
     // Network disconnection / fetch failure: save to offline buffer (AC-4)
-    await enqueueLead(payload, config.workspaceId, netErr.message || 'Network disconnected');
+    const msg = netErr instanceof Error ? netErr.message : 'Network disconnected';
+    await enqueueLead(payload, config.workspaceId, msg);
     return {
       success: false,
       queued: true,
@@ -116,15 +119,15 @@ async function handleClipLead(payload: LeadClipPayload): Promise<any> {
 
 // Per-phone cache so SPA conversation flips don't refetch/rebuild.
 const ZALO_CONTEXT_TTL_MS = 60_000;
-const zaloContextCache = new Map<string, { context: any; ts: number }>();
+const zaloContextCache = new Map<string, { context: unknown; ts: number }>();
 
-function detailToMessage(detail: any, fallback: string): string {
+function detailToMessage(detail: unknown, fallback: string): string {
   // FastAPI 422 returns detail as an array of {msg, loc, ...} objects.
   if (Array.isArray(detail)) return detail[0]?.msg || fallback;
-  return detail || fallback;
+  return typeof detail === 'string' && detail ? detail : fallback;
 }
 
-async function handleZaloContext(phone: string): Promise<any> {
+async function handleZaloContext(phone: string): Promise<unknown> {
   const config = await getConfig();
 
   if (!config.patToken?.trim()) {
@@ -162,11 +165,14 @@ async function handleZaloContext(phone: string): Promise<any> {
     const context = await response.json();
     zaloContextCache.set(phone, { context, ts: Date.now() });
     return { success: true, context };
-  } catch (netErr: any) {
-    const message =
-      netErr?.name === 'TimeoutError' || netErr?.name === 'AbortError'
-        ? 'Request timed out'
-        : netErr?.message || 'Network offline';
+  } catch (netErr) {
+    const name = netErr instanceof Error ? netErr.name : '';
+    let message = 'Network offline';
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      message = 'Request timed out';
+    } else if (netErr instanceof Error) {
+      message = netErr.message;
+    }
     return { success: false, message };
   }
 }
@@ -225,7 +231,8 @@ async function handleSyncOfflineQueue(): Promise<{ synced: number; failed: numbe
     }
   }
 
-  const remaining = (await getOfflineQueue()).length;
+  const remainingQueue = await getOfflineQueue();
+  const remaining = remainingQueue.length;
   await updateBadge(remaining);
   return { synced, failed, remaining };
 }

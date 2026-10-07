@@ -463,6 +463,7 @@ class PresentationStudioService:
         if last_error is not None:
             logger.exception("[PresentationStudio] Persist failed: %s", last_error)
             if storage_dir is not None and storage_dir.exists():
+                # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- ignore_errors=True is intentional best-effort cleanup
                 shutil.rmtree(storage_dir, ignore_errors=True)
             return GeneratePresentationOutput(
                 status="failed",

@@ -29,7 +29,7 @@ def _table_exists(table_name: str) -> bool:
     from sqlalchemy.engine import reflection
 
     bind = op.get_bind()
-    inspector = reflection.Inspector.from_engine(bind)
+    inspector = reflection.Inspector.from_engine(bind)  # pyright: ignore[reportArgumentType]
     return table_name in inspector.get_table_names()
 
 
@@ -37,7 +37,7 @@ def _column_exists(table_name: str, column_name: str) -> bool:
     from sqlalchemy.engine import reflection
 
     bind = op.get_bind()
-    inspector = reflection.Inspector.from_engine(bind)
+    inspector = reflection.Inspector.from_engine(bind)  # pyright: ignore[reportArgumentType]
     columns = [col["name"] for col in inspector.get_columns(table_name)]
     return column_name in columns
 

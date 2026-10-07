@@ -75,7 +75,7 @@ export const TableElement = withHOC(
 					"overflow-x-auto py-5",
 					hasControls && "-ml-2 *:data-[slot=block-selection]:left-2"
 				)}
-				style={{ paddingLeft: marginLeft }}
+				style={{ paddingLeft: marginLeft }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 			>
 				<div className="group/table relative w-fit">
 					<table
@@ -353,7 +353,7 @@ export function TableCellElement({
 				borders.left?.size && "before:border-l before:border-l-border",
 				borders.top?.size && "before:border-t before:border-t-border"
 			)}
-			style={
+			style={ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 				{
 					"--cellBackground": element.background,
 					minWidth: width || 48,
@@ -365,7 +365,7 @@ export function TableCellElement({
 				rowSpan: api.table.getRowSpan(element),
 			}}
 		>
-			<div className="relative z-20 box-border h-full px-3 py-2" style={{ minHeight }}>
+			<div className="relative z-20 box-border h-full px-3 py-2" style={{ minHeight }}> // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 				{props.children}
 			</div>
 

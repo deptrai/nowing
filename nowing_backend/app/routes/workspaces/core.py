@@ -142,9 +142,7 @@ async def read_workspaces(
         not_deleting = ~Workspace.name.startswith("[DELETING] ")
 
         api_access_filter = (
-            Workspace.api_access_enabled == True  # noqa: E712
-            if auth.is_gated
-            else True
+            Workspace.api_access_enabled.is_(True) if auth.is_gated else True
         )
 
         if owned_only:
@@ -189,7 +187,7 @@ async def read_workspaces(
                 select(WorkspaceMembership).filter(
                     WorkspaceMembership.workspace_id == space.id,
                     WorkspaceMembership.user_id == user.id,
-                    WorkspaceMembership.is_owner == True,  # noqa: E712
+                    WorkspaceMembership.is_owner.is_(True),
                 )
             )
             is_owner = ownership_result.scalars().first() is not None
@@ -505,7 +503,9 @@ async def delete_workspace(
             from app.tasks.celery_tasks.document_tasks import delete_workspace_task
 
             delete_workspace_task.delay(workspace_id)
-        except Exception as dispatch_error:  # celery dispatch failure; revert rename and surface error
+        except (
+            Exception
+        ) as dispatch_error:  # celery dispatch failure; revert rename and surface error
             db_workspace.name = base_name
             await session.commit()
             raise HTTPException(

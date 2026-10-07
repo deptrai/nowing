@@ -182,25 +182,25 @@ export class NowingSettingTab extends PluginSettingTab {
 				});
 			});
 
-		this.renderFolderList(
+		this.renderFolderList({
 			containerEl,
-			"Include folders",
-			"Folders to sync (leave empty to sync entire vault).",
-			settings.includeFolders,
-			(next) => {
+			title: "Include folders",
+			desc: "Folders to sync (leave empty to sync entire vault).",
+			current: settings.includeFolders,
+			write: (next) => {
 				this.plugin.settings.includeFolders = next;
 			},
-		);
+		});
 
-		this.renderFolderList(
+		this.renderFolderList({
 			containerEl,
-			"Exclude folders",
-			"Folders to exclude from sync (takes precedence over includes).",
-			settings.excludeFolders,
-			(next) => {
+			title: "Exclude folders",
+			desc: "Folders to exclude from sync (takes precedence over includes).",
+			current: settings.excludeFolders,
+			write: (next) => {
 				this.plugin.settings.excludeFolders = next;
 			},
-		);
+		});
 
 		new Setting(containerEl)
 			.setName("Advanced exclude patterns")
@@ -283,6 +283,7 @@ export class NowingSettingTab extends PluginSettingTab {
 			)
 			.addButton((btn) =>
 				btn.setButtonText("Open releases").onClick(() => {
+					// pi-lens-ignore: ast-grep:no-open-redirect — hardcoded releases URL, not a redirect target
 					window.open(
 						"https://github.com/nowing/Nowing/releases?q=obsidian",
 						"_blank",
@@ -331,13 +332,14 @@ export class NowingSettingTab extends PluginSettingTab {
 		}
 	}
 
-	private renderFolderList(
-		containerEl: HTMLElement,
-		title: string,
-		desc: string,
-		current: string[],
-		write: (next: string[]) => void,
-	): void {
+	private renderFolderList(args: {
+		containerEl: HTMLElement;
+		title: string;
+		desc: string;
+		current: string[];
+		write: (next: string[]) => void;
+	}): void {
+		const { containerEl, title, desc, current, write } = args;
 		const setting = new Setting(containerEl).setName(title).setDesc(desc);
 
 		const persist = async (next: string[]): Promise<void> => {

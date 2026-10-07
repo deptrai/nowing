@@ -26,6 +26,7 @@ import { leadsApiService } from "@/lib/apis/leads-api.service";
 import { VERTICAL_PRESETS } from "./constants";
 import type { CampaignBuilderProps, UseCampaignBuilderReturn } from "./types";
 
+	// pi-lens-ignore: ast-grep:no-flag-argument -- destructured props object, no boolean flag param
 export function useCampaignBuilder({
 	workspaceId,
 	onCampaignCreated,
@@ -369,6 +370,7 @@ export function useCampaignBuilder({
 		}
 	};
 
+	// pi-lens-ignore: ast-grep:no-flag-argument -- andLaunch is a meaningful boolean flag used at 2 call sites
 	const handleSaveCampaign = async (andLaunch = false) => {
 		if (!campaignName.trim()) {
 			toast.error("Vui lòng nhập tên chiến dịch");

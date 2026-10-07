@@ -131,8 +131,8 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 
 	// Filtering & Searching
 	const [searchQuery, setSearchQuery] = useState("");
-	const [stageFilter, setStageFilter] = useState<string>("all");
-	const [sdrStatusFilter, setSdrStatusFilter] = useState<string>("all");
+	const [stageFilter, setStageFilter] = useState("all");
+	const [sdrStatusFilter, setSdrStatusFilter] = useState("all");
 	const [sortField, setSortField] = useState<"fit_score" | "intent_score" | "created_at">(
 		"fit_score"
 	);

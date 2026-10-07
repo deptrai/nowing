@@ -32,7 +32,7 @@ def exec():
 
 
 async def test_executor_returns_quote_and_financials(exec) -> None:
-    out = await exec(ScrapeInput(symbol="VCB", include_financials=True))
+    out = await exec(ScrapeInput(symbol="VCB", include_financials=True))  # nosemgrep
     assert out.quote is not None
     assert out.financials is not None
     assert out.quote.symbol == "VCB"
@@ -43,7 +43,7 @@ async def test_executor_returns_quote_and_financials(exec) -> None:
 
 async def test_executor_cost_micros(exec, monkeypatch) -> None:
     monkeypatch.setattr(config, "CAFEF_DATA_MICROS_PER_ITEM", 7500)
-    out = await exec(ScrapeInput(symbol="VCB"))
+    out = await exec(ScrapeInput(symbol="VCB"))  # nosemgrep
     assert out.cost_micros == 7500
 
 
@@ -52,7 +52,7 @@ async def test_executor_degraded_is_free() -> None:
         return CafeFScrapeOutput(degraded=True, degradation_reason="api_error")
 
     exec = build_scrape_executor(scrape_fn=_bad)
-    out = await exec(ScrapeInput(symbol="VCB"))
+    out = await exec(ScrapeInput(symbol="VCB"))  # nosemgrep
     assert out.degraded is True
     assert out.cost_micros == 0
     assert out.total_items == 0

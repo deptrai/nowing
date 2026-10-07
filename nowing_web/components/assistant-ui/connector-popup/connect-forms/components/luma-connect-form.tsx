@@ -49,8 +49,8 @@ type LumaConnectorFormValues = z.infer<ReturnType<typeof createLumaConnectorForm
 export const LumaConnectForm: FC<ConnectFormProps> = ({ onSubmit, isSubmitting }) => {
 	const t = useTranslations("assistant");
 	const isSubmittingRef = useRef(false);
-	const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-	const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+	const [startDate, setStartDate] = useState<Date | undefined>();
+	const [endDate, setEndDate] = useState<Date | undefined>();
 	const [periodicEnabled, setPeriodicEnabled] = useState(false);
 	const [frequencyMinutes, setFrequencyMinutes] = useState("1440");
 	const form = useForm<LumaConnectorFormValues>({

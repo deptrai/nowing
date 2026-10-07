@@ -5,11 +5,11 @@
  * dedicated extractors.
  */
 
-import { LeadClipPayload } from '../../types';
-import { canonicalizeUrl, extractEmails, extractPrice, extractVietnamesePhones } from '../../utils/normalizer';
+import { LeadClipPayload } from '../../types/index.js';
+import { canonicalizeUrl, extractEmails, extractPrice, extractVietnamesePhones } from '../../utils/normalizer.js';
 
 export function extractGenericLead(): LeadClipPayload | null {
-  const bodyText = document.body?.innerText || '';
+  const bodyText = document.body?.textContent || '';
   const phones = extractVietnamesePhones(bodyText);
   const emails = extractEmails(bodyText);
   const price = extractPrice(bodyText);

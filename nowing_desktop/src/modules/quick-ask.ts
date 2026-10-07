@@ -122,8 +122,14 @@ async function quickAskHandler(): Promise<void> {
   const text = selected || savedClipboard.trim();
 
   sourceApp = getFrontmostApp();
-  console.log('[quick-ask] Source app:', sourceApp, '| Opening Quick Assist with', text.length, 'chars', selected ? '(selected)' : text ? '(clipboard fallback)' : '(empty)');
-  trackEvent('desktop_quick_ask_opened', { has_selected_text: !!selected });
+  let sourceLabel = '(empty)';
+  if (selected) {
+    sourceLabel = '(selected)';
+  } else if (text) {
+    sourceLabel = '(clipboard fallback)';
+  }
+  console.log('[quick-ask] Source app:', sourceApp, '| Opening Quick Assist with', text.length, 'chars', sourceLabel);
+  trackEvent('desktop_quick_ask_opened', { has_selected_text: Boolean(selected) });
   openQuickAsk(text);
 }
 

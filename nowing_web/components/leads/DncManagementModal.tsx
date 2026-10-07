@@ -34,13 +34,13 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 	const t = useTranslations("leads");
 	const [activeTab, setActiveTab] = useState<"list" | "add" | "import">("list");
 	const [records, setRecords] = useState<DncRecord[]>([]);
-	const [totalCount, setTotalCount] = useState<number>(0);
-	const [page, setPage] = useState<number>(1);
-	const [selectedType, setSelectedType] = useState<string>("all");
-	const [searchQuery, setSearchQuery] = useState<string>("");
-	const [debouncedQuery, setDebouncedQuery] = useState<string>("");
-	const [loading, setLoading] = useState<boolean>(false);
-	const [actionLoading, setActionLoading] = useState<boolean>(false);
+	const [totalCount, setTotalCount] = useState(0);
+	const [page, setPage] = useState(1);
+	const [selectedType, setSelectedType] = useState("all");
+	const [searchQuery, setSearchQuery] = useState("");
+	const [debouncedQuery, setDebouncedQuery] = useState("");
+	const [loading, setLoading] = useState(false);
+	const [actionLoading, setActionLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -54,8 +54,8 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 
 	// New Entry Form State
 	const [newType, setNewType] = useState<DncRecordType>("phone");
-	const [newValue, setNewValue] = useState<string>("");
-	const [newReason, setNewReason] = useState<string>("Opt-out requested");
+	const [newValue, setNewValue] = useState("");
+	const [newReason, setNewReason] = useState("Opt-out requested");
 
 	// CSV Upload State
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -87,7 +87,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 		}
 	}, [isOpen, fetchRecords]);
 
-	const handleAddSingle = async (e: React.FormEvent) => {
+	const handleAddSingle = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!newValue.trim()) return;
 
@@ -129,7 +129,7 @@ export const DncManagementModal: React.FC<DncManagementModalProps> = ({
 		}
 	};
 
-	const handleFileUpload = async (e: React.FormEvent) => {
+	const handleFileUpload = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!selectedFile) return;
 		setActionLoading(true);

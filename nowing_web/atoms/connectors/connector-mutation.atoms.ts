@@ -17,7 +17,7 @@ export const createConnectorMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.connectors.all(workspaceId ?? ""),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: CreateConnectorRequest) => {
 			return connectorsApiService.createConnector(request);
 		},
@@ -36,7 +36,7 @@ export const updateConnectorMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.connectors.all(workspaceId ?? ""),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: UpdateConnectorRequest) => {
 			return connectorsApiService.updateConnector(request);
 		},
@@ -58,7 +58,7 @@ export const deleteConnectorMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.connectors.all(workspaceId ?? ""),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: DeleteConnectorRequest) => {
 			return connectorsApiService.deleteConnector(request);
 		},
@@ -84,7 +84,7 @@ export const indexConnectorMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.connectors.index(),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: IndexConnectorRequest) => {
 			return connectorsApiService.indexConnector(request);
 		},

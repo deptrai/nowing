@@ -58,6 +58,7 @@ def _signature(name: str, args: Any) -> str:
         canonical = json.dumps(args, sort_keys=True, default=str)
     except (TypeError, ValueError):
         canonical = repr(args)
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     digest = hashlib.sha1(f"{name}::{canonical}".encode()).hexdigest()
     return digest[:16]
 

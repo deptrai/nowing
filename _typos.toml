@@ -1,0 +1,71 @@
+# typos-lsp / typos-cli config.
+
+# Generated alembic migrations embed revision-hash fragments (e.g. "caf",
+# "SUR") in docstrings that read as typos. Skip the whole generated dir.
+[files]
+extend-exclude = ["nowing_backend/alembic/versions/**"]
+
+[default]
+# Skip identifiers containing digits entirely — alembic revision hashes like
+# c416d1048caf otherwise flag hash fragments ("caf") as misspellings.
+extend-ignore-identifiers-re = ['.*[0-9].*']
+
+# `refferer`/`Refferer` is a deliberate misspelling baked into the backend API
+# contract (VisitedWebPageReffererURL — see nowing_backend/app/schemas/documents.py,
+# routes/documents/upload.py, extension_processor.py). Renaming would break the
+# contract, so whitelist it instead of "fixing" it.
+[default.extend-words]
+refferer = "refferer"
+Refferer = "Refferer"
+# "thay" is a valid Vietnamese word ("instead of" / "replace") used in
+# Vietnamese sample content — not a misspelling of "they"/"that".
+thay = "thay"
+Thay = "Thay"
+# "tham" = Vietnamese "participate" (tham gia); "Nam" = common Vietnamese given name.
+tham = "tham"
+Tham = "Tham"
+Nam = "Nam"
+Thi = "Thi"
+thi = "thi"
+PN = "PN"
+
+# Python variable names used in backend code (not typos)
+ot = "ot"
+aafter = "aafter"
+als = "als"
+mis = "mis"
+DELET = "DELET"
+unparseable = "unparseable"
+# "SUR-" is a Jira-style ticket prefix; "caf" is an alembic revision-hash
+# fragment (e.g. c416d1048caf) quoted in migration docstrings/comments.
+SUR = "SUR"
+caf = "caf"
+
+# Vietnamese words, brand names, and domain terms used in fixtures/comments.
+FPT = "FPT"
+fpt = "fpt"
+Ba = "Ba"
+ba = "ba"
+SER = "SER"          # "SERPs"
+INSER = "INSER"      # "INSERTs" in docstrings
+UPDAT = "UPDAT"      # "UPDATEs"
+SELEC = "SELEC"      # "SELECTs"
+Ded = "Ded"          # "ANDed"
+masterise = "masterise"  # Masterise Homes brand
+ths = "ths"          # Vietnamese honorific "Ths." (Thạc sĩ)
+vor = "vor"          # .vor file extension
+ND = "ND"            # Vietnamese abbreviation
+tre = "tre"
+Tre = "Tre"
+toi = "toi"
+Toi = "Toi"
+alo = "alo"
+Alo = "Alo"
+bui = "bui"          # Bùi surname
+tich = "tich"
+tro = "tro"
+hom = "hom"          # "hôm nay"
+som = "som"          # fixture text
+nin = "nin"          # Mongo $nin operator
+shema = "shema"      # intentional typo example in a docstring
+tme = "tme"          # t.me Telegram link prefix (test_clean_tme_url)

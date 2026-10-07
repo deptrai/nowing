@@ -212,7 +212,7 @@ export const VisualCadenceBuilder: React.FC<VisualCadenceBuilderProps> = ({
 		handleUpdateStep(index, { fallback_channels: nextFallbacks });
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
 		e.preventDefault();
 		// Sanitize: non-dispatch steps should not carry a real channel.
 		const cleanSteps = steps.map((step) => ({

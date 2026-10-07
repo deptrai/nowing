@@ -58,7 +58,7 @@ def _emission_module(tool_name: str) -> str:
 
 def _import_thinking(tool_name: str):
     try:
-        return importlib.import_module(
+        return importlib.import_module(  # nosemgrep
             f"{_BASE}.{_thinking_module(tool_name)}.thinking"
         )
     except ModuleNotFoundError:
@@ -67,7 +67,7 @@ def _import_thinking(tool_name: str):
 
 def _import_emission(tool_name: str):
     try:
-        return importlib.import_module(
+        return importlib.import_module(  # nosemgrep
             f"{_BASE}.{_emission_module(tool_name)}.emission"
         )
     except ModuleNotFoundError:
@@ -89,4 +89,5 @@ def resolve_tool_completed_thinking_step(
 def iter_tool_completion_emission_frames(
     ctx: ToolCompletionEmissionContext,
 ) -> Iterator[str]:
+    # pi-lens-ignore: ast-grep:no-yield-from-non-iterable -- source is a generator (iterable)
     yield from _import_emission(ctx.tool_name).iter_completion_emission_frames(ctx)

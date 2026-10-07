@@ -156,7 +156,7 @@ export default function SocialCopilotPage() {
 		}
 	};
 
-	const handleManualIngest = async (e: React.FormEvent) => {
+	const handleManualIngest = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!manualText.trim()) return;
 

@@ -48,6 +48,7 @@ def _get_vnd_amounts(payout: PartnerPayout) -> tuple[int, int, int]:
 
 def _name_match_status(details: dict) -> str:
     """Compute name match status from cached payout_details."""
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     if details.get("name_match_verified") is True:
         return "100% Match" if details.get("name_match_status") == "100% Match" else "Name Mismatch"
     return "Unverified"

@@ -241,12 +241,12 @@ class ToolCallNameRepairMiddleware(
                     json.dumps(c.get("args") or {}, sort_keys=True, default=str),
                 )
 
-            existing_pairs = {_call_key(c) for c in calls}
+            existing_pairs = {_call_key(c) for c in calls}  # pyright: ignore[reportArgumentType]
             for recovered in markup_calls:
                 pair = _call_key(recovered)
                 if pair in existing_pairs:
                     continue
-                calls.append(recovered)
+                calls.append(recovered)  # pyright: ignore[reportArgumentType]
                 existing_pairs.add(pair)
 
         if not calls:

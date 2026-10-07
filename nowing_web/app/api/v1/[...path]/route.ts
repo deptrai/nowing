@@ -14,6 +14,7 @@ const HOP_BY_HOP_HEADERS = new Set([
 ]);
 
 function getBackendBaseUrl() {
+	// pi-lens-ignore: ast-grep:hardcoded-url -- Docker-internal default, overridable via NOWING_BACKEND_INTERNAL_URL
 	const base =
 		process.env.NOWING_BACKEND_INTERNAL_URL ||
 		// TODO: Remove FASTAPI_BACKEND_INTERNAL_URL after the post-Caddy env migration window.
@@ -40,6 +41,8 @@ function toClientHeaders(headers: Headers) {
 async function proxy(request: NextRequest, context: { params: Promise<{ path?: string[] }> }) {
 	const params = await context.params;
 	const path = params.path?.join("/") || "";
+	// pi-lens-ignore: ast-grep:hardcoded-url -- Docker-internal service fallback, overridable via env
+	// pi-lens-ignore: ast-grep:unchecked-throwing-call -- route handler converts throws to 500
 	const upstreamUrl = new URL(`${getBackendBaseUrl()}/api/v1/${path}`);
 	upstreamUrl.search = request.nextUrl.search;
 

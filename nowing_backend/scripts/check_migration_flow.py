@@ -34,8 +34,8 @@ async def recreate_scratch_db() -> None:
     import asyncpg
 
     admin = await asyncpg.connect(ADMIN_URL)
-    await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')
-    await admin.execute(f'CREATE DATABASE "{SCRATCH_DB}"')
+    await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')  # nosemgrep
+    await admin.execute(f'CREATE DATABASE "{SCRATCH_DB}"')  # nosemgrep
     await admin.close()
 
 
@@ -43,7 +43,7 @@ async def drop_scratch_db() -> None:
     import asyncpg
 
     admin = await asyncpg.connect(ADMIN_URL)
-    await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')
+    await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')  # nosemgrep
     await admin.close()
 
 

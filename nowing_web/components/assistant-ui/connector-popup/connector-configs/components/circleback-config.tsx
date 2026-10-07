@@ -30,8 +30,8 @@ export type CirclebackWebhookInfo = z.infer<typeof circlebackWebhookInfoSchema>;
 
 export const CirclebackConfig: FC<CirclebackConfigProps> = ({ connector, onNameChange }) => {
 	const t = useTranslations("assistant");
-	const [name, setName] = useState<string>(connector.name || "");
-	const [webhookUrl, setWebhookUrl] = useState<string>("");
+	const [name, setName] = useState(connector.name || "");
+	const [webhookUrl, setWebhookUrl] = useState("");
 	const [webhookInfo, setWebhookInfo] = useState<CirclebackWebhookInfo | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [copied, setCopied] = useState(false);

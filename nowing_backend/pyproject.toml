@@ -285,6 +285,17 @@ filterwarnings = [
     "ignore::UserWarning:chonkie",
 ]
 
+[tool.pyright]
+# This project is linted by ruff, not pyright. SQLAlchemy 1.4-style
+# `Column[T]` declarations produce thousands of systematic type
+# diagnostics that are not actionable; keep type checking off.
+# (Root pyrightconfig.json repeats this for the repo-root LSP workspace.)
+typeCheckingMode = "off"
+# alembic migrations are generated artifacts: literal DDL strings, tuple
+# down_revision merge heads, and dialect imports all trip Pyright false
+# positives without carrying real risk. Exclude them from analysis.
+exclude = ["alembic/versions"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*", "alembic*"]

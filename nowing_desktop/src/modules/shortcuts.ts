@@ -12,6 +12,8 @@ const DEFAULTS: ShortcutConfig = {
 
 const STORE_KEY = 'shortcuts';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazily imported ESM module; matches folder-watcher.ts pattern
+// Lazily imported ESM electron-store; typed generically elsewhere.
+// pi-lens-ignore: ast-grep:no-any-type
 let store: any = null;
 
 async function getStore() {

@@ -155,7 +155,7 @@ const DroppableColumn: React.FC<{
 				<div className="flex items-center gap-2 min-w-0">
 					<div
 						className="w-2.5 h-2.5 rounded-full shrink-0"
-						style={{ backgroundColor: stage.color || "#3B82F6" }}
+						style={{ backgroundColor: stage.color || "#3B82F6" }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic card position
 					/>
 					<h3 className="text-xs font-bold text-foreground truncate">{stage.name}</h3>
 				</div>

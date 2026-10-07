@@ -210,7 +210,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
 
     async def endpoint(
         workspace_id: int,
-        payload: input_model,
+        # Dynamic per-capability model captured eagerly at def time; FastAPI
+        # needs the real class object as the annotation (pyright can't see it).
+        payload: input_model,  # pyright: ignore[reportInvalidTypeForm]
         response: Response,
         session: AsyncSession = Depends(get_async_session),
         auth: AuthContext = Depends(get_auth_context),
@@ -297,7 +299,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 if run_id is not None:
                     response.headers["X-Run-Id"] = f"run_{run_id}"
                 raise
-            except Exception as exc:  # capability executor error → record sync error and raise
+            except (
+                Exception
+            ) as exc:  # capability executor error → record sync error and raise
                 run_id = await record_and_publish_sync_run_error(
                     session=session,
                     workspace_id=workspace_id,
@@ -614,8 +618,7 @@ def _register_run_history(router: APIRouter) -> None:
         content = f"{output.answer}\n\n{sources_md}"
         existing = (
             await session.execute(
-                select(Report)
-                .where(
+                select(Report).where(
                     Report.report_metadata["run_id"].as_string() == f"run_{row.id}",
                     Report.workspace_id == workspace_id,
                 )

@@ -34,9 +34,9 @@ const LIMIT = 100;
 
 export default function AffiliatePayoutsPage() {
 	const t = useTranslations("admin");
-	const [statusFilter, setStatusFilter] = useState<string>("all");
+	const [statusFilter, setStatusFilter] = useState("all");
 	const [selectedPayout, setSelectedPayout] = useState<AdminPayoutItem | null>(null);
-	const [offset, setOffset] = useState<number>(0);
+	const [offset, setOffset] = useState(0);
 	const [allItems, setAllItems] = useState<AdminPayoutItem[]>([]);
 
 	const { data, isLoading, error, refetch, isFetching } = useQuery({

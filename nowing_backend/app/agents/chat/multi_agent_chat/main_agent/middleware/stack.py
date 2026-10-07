@@ -21,7 +21,7 @@ import time
 from collections.abc import Sequence
 from typing import Any, cast
 
-from deepagents import SubAgent
+from deepagents import CompiledSubAgent, SubAgent
 from deepagents.backends import StateBackend
 from langchain.agents import create_agent
 from langchain_core.language_models import BaseChatModel
@@ -166,8 +166,8 @@ def build_main_agent_deepagent_middleware(
         runnable = create_agent(
             llm,
             system_prompt=kb_readonly_spec["system_prompt"],
-            tools=kb_readonly_spec["tools"],
-            middleware=kb_readonly_spec["middleware"],
+            tools=kb_readonly_spec.get("tools"),
+            middleware=kb_readonly_spec.get("middleware") or [],
             name=KB_READONLY_NAME,
             checkpointer=checkpointer,
         )
@@ -211,7 +211,7 @@ def build_main_agent_deepagent_middleware(
     # registered as a lazy descriptor (name + description cheap; spec built on
     # first ``task("knowledge_base")`` use) — see ``_build_kb_write_spec``.
     exclude_names = [*get_subagents_to_exclude(available_connectors), KB_WRITE_NAME]
-    subagents: list[SubAgent] = build_subagents(
+    subagents: list[SubAgent | CompiledSubAgent] = cast(list[SubAgent | CompiledSubAgent], build_subagents(
         dependencies=subagent_dependencies,
         model=llm,
         middleware_stack=shared_subagent_middleware,
@@ -219,7 +219,7 @@ def build_main_agent_deepagent_middleware(
         exclude=exclude_names,
         disabled_tools=disabled_tools,
         ask_kb_tool=ask_kb_tool,
-    )
+    ))
     kb_write_descriptor = cast(
         SubAgent,
         {

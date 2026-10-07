@@ -1,0 +1,8 @@
+# typos-lsp / typos-cli config.
+# `refferer`/`Refferer` is a deliberate misspelling baked into the backend API
+# contract (VisitedWebPageReffererURL — see nowing_backend/app/schemas/documents.py,
+# routes/documents/upload.py, extension_processor.py). Renaming would break the
+# contract, so whitelist it instead of "fixing" it.
+[default.extend-words]
+refferer = "refferer"
+Refferer = "Refferer"

@@ -22,7 +22,7 @@ NEW_VALUE = "NOTE"
 
 def upgrade() -> None:
     """Safely add 'NOTE' to documenttype enum if missing."""
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
     DO $$
     BEGIN

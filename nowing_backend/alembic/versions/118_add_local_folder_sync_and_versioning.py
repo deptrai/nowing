@@ -18,6 +18,7 @@ Revises: 117
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -59,7 +60,7 @@ def upgrade() -> None:
     if not col_exists:
         op.add_column(
             "folders",
-            sa.Column("metadata", sa.dialects.postgresql.JSONB, nullable=True),
+            sa.Column("metadata", postgresql.JSONB, nullable=True),
         )
 
     # Create document_versions table

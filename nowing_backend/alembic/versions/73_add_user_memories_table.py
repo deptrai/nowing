@@ -45,7 +45,7 @@ def upgrade() -> None:
     )
 
     # Create user_memories table
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         BEGIN

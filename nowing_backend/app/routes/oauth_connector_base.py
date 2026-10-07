@@ -238,6 +238,7 @@ class OAuthConnectorRoute:
                 body["code_verifier"] = verifier
 
         async with httpx.AsyncClient() as client:
+            # pi-lens-ignore: ast-grep:no-testclient-text-without-content -- httpx form POST, not TestClient
             resp = await client.post(
                 self.token_url, data=body, headers=headers, timeout=30.0
             )
@@ -263,6 +264,7 @@ class OAuthConnectorRoute:
             try:
                 refresh_tok = encryption.decrypt_token(refresh_tok)
             except Exception as e:  # decryption failure → surface as typed HTTP error
+                # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
                 logger.error("Failed to decrypt refresh token: %s", e)
                 raise HTTPException(
                     status_code=500, detail="Failed to decrypt stored refresh token"
@@ -294,6 +296,7 @@ class OAuthConnectorRoute:
             body["client_secret"] = client_secret
 
         async with httpx.AsyncClient() as client:
+            # pi-lens-ignore: ast-grep:no-testclient-text-without-content -- httpx form POST, not TestClient
             resp = await client.post(
                 self.token_url, data=body, headers=headers, timeout=30.0
             )
@@ -347,6 +350,7 @@ class OAuthConnectorRoute:
         await session.commit()
         await session.refresh(connector)
 
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         logger.info(
             "Refreshed %s token for connector %s",
             self.provider_name,

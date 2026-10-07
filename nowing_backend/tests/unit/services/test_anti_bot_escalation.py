@@ -197,8 +197,9 @@ async def test_open_escalation_after_retry(
 
 def test_anti_bot_escalation_read_syncs_metadata_and_escalation_metadata():
     """Verify AntiBotEscalationRead supports both .metadata and .escalation_metadata seamlessly."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     from uuid import uuid4
+
     from app.schemas.anti_bot_escalation import AntiBotEscalationRead
 
     payload = {
@@ -210,9 +211,9 @@ def test_anti_bot_escalation_read_syncs_metadata_and_escalation_metadata():
         "block_type": "bot_detected",
         "status": "open",
         "detection_count": 1,
-        "last_seen_at": datetime.now(timezone.utc),
+        "last_seen_at": datetime.now(UTC),
         "escalation_metadata": {"storage_key": "path/key.png"},
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
     }
 
     read_obj = AntiBotEscalationRead.model_validate(payload)

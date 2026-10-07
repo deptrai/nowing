@@ -156,7 +156,7 @@ const XScrollable = forwardRef<
 					!showScrollbar && "scrollbar-none",
 					contentClassName
 				)}
-				style={{
+				style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 					maskImage,
 					WebkitMaskImage: maskImage,
 				}}
@@ -375,7 +375,7 @@ const TabsList = forwardRef<
 									HOVER_INDICATOR_CLASSES[variant],
 									hoverIndicatorClassName
 								)}
-								style={{
+								style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 									...hoverStyle,
 									opacity: hoveredIndex !== null ? 1 : 0,
 									transition: "all 300ms ease-out",
@@ -470,7 +470,7 @@ const TabsList = forwardRef<
 									activeIndicatorPosition === "top" ? "top-[-1px]" : "bottom-[-1px]",
 									activeIndicatorClassName
 								)}
-								style={{
+								style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 									...activeStyle,
 									transition: "all 300ms ease-out",
 									[activeIndicatorPosition]: `${activeIndicatorOffset}px`,

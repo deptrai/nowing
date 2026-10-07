@@ -132,7 +132,7 @@ def test_email_body_too_large_returns_413():
     from app.gateway.email.adapter import EmailAdapter
 
     adapter = EmailAdapter()
-    with pytest.raises(Exception) as exc_info:  # noqa: B017
+    with pytest.raises(Exception) as exc_info:
         adapter.parse_inbound({"body-plain": "x" * (31 * 1024 * 1024)})
 
     assert "413" in str(exc_info.value)

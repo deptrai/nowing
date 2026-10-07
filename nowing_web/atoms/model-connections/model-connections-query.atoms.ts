@@ -30,7 +30,7 @@ export const modelConnectionsAtom = atomWithQuery((get) => {
 	const workspaceId = Number(get(activeWorkspaceIdAtom));
 	return {
 		queryKey: cacheKeys.modelConnections.all(workspaceId),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		staleTime: 5 * 60 * 1000,
 		queryFn: () => modelConnectionsApiService.getConnections(workspaceId),
 	};
@@ -40,7 +40,7 @@ export const modelRolesAtom = atomWithQuery((get) => {
 	const workspaceId = Number(get(activeWorkspaceIdAtom));
 	return {
 		queryKey: cacheKeys.modelConnections.roles(workspaceId),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		staleTime: 5 * 60 * 1000,
 		queryFn: () => modelConnectionsApiService.getModelRoles(workspaceId),
 	};

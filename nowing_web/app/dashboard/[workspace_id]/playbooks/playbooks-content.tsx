@@ -93,10 +93,10 @@ function normalizeVietnamese(input: string): string {
 
 export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 	const t = useTranslations("playbooks");
-	const [selectedCategory, setSelectedCategory] = useState<string>("all");
+	const [selectedCategory, setSelectedCategory] = useState("all");
 	const { data, isLoading, error } = useAtomValue(playbooksListAtom(selectedCategory));
 	const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookSummary | null>(null);
-	const [searchQuery, setSearchQuery] = useState<string>("");
+	const [searchQuery, setSearchQuery] = useState("");
 
 	const { data: workspace } = useQuery({
 		queryKey: [...cacheKeys.workspaces.detail(String(workspaceId))],

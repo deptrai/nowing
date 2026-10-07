@@ -288,7 +288,7 @@ export function useConnectorEdit({ base }: UseConnectorEditOptions): UseConnecto
 						Number(workspaceId),
 						editingConnector.connector_type,
 						editingConnector.id,
-						{ hasStartDate: !!startDateStr, hasEndDate: !!endDateStr }
+						{ hasStartDate: Boolean(startDateStr), hasEndDate: Boolean(endDateStr) }
 					);
 				}
 

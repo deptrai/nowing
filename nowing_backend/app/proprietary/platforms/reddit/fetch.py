@@ -179,6 +179,7 @@ def _parse_json(page: Any) -> Any | None:
             val = val.decode("utf-8", "replace")
         if isinstance(val, str) and val.strip():
             with suppress(Exception):
+                # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- already inside contextlib.suppress
                 return json.loads(val)
             return None
     return None

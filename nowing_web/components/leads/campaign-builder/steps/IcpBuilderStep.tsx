@@ -34,6 +34,7 @@ export function IcpBuilderStep({
 	onCancel,
 }: {
 	builder: UseCampaignBuilderReturn;
+	// pi-lens-ignore: typescript:71007 -- client component function prop
 	onCancel?: () => void;
 }) {
 	const t = useTranslations("leads");

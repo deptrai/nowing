@@ -5,7 +5,7 @@ import { convertHtmlToMarkdown } from "dom-to-semantic-markdown";
 import { DOMParser } from "linkedom";
 import { buildBackendUrl } from "~utils/backend-url";
 import { getRenderedHtml, webhistoryToLangChainDocument } from "~utils/commons";
-import type { WebHistory } from "~utils/interfaces";
+import type { TabHistoryEntry, TimeQueueEntry, UrlQueueEntry } from "~utils/interfaces";
 
 // @ts-ignore
 globalThis.Node = {
@@ -20,7 +20,7 @@ globalThis.Node = {
 	DOCUMENT_FRAGMENT_NODE: 11,
 };
 
-const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
+const handler: PlasmoMessaging.MessageHandler = async (_req, res) => {
 	try {
 		chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 			const storage = new Storage({ area: "local" });
@@ -38,7 +38,9 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
 
 				console.log("SnapRes", result);
 
-				const toPushInTabHistory: any = result[0].result; // const { renderedHtml, title, url, entryTime } = result[0].result;
+				const toPushInTabHistory = result[0].result as TabHistoryEntry & {
+					renderedHtml: string;
+				};
 
 				toPushInTabHistory.pageContentMarkdown = convertHtmlToMarkdown(
 					toPushInTabHistory.renderedHtml,
@@ -50,34 +52,36 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
 					}
 				);
 
-				delete toPushInTabHistory.renderedHtml;
+				const { renderedHtml: _renderedHtml, ...toSave } = toPushInTabHistory;
 
 				console.log("toPushInTabHistory", toPushInTabHistory);
 
-				const urlQueueListObj: any = await storage.get("urlQueueList");
-				const timeQueueListObj: any = await storage.get("timeQueueList");
+				const urlQueueListObj = (await storage.get("urlQueueList")) as {
+					urlQueueList?: UrlQueueEntry[];
+				};
+				const timeQueueListObj = (await storage.get("timeQueueList")) as {
+					timeQueueList?: TimeQueueEntry[];
+				};
 
-				const isUrlQueueThere = urlQueueListObj.urlQueueList.find(
-					(data: WebHistory) => data.tabsessionId === tabId
+				const isUrlQueueThere = urlQueueListObj.urlQueueList?.find(
+					(data: UrlQueueEntry) => data.tabsessionId === tabId
 				);
-				const isTimeQueueThere = timeQueueListObj.timeQueueList.find(
-					(data: WebHistory) => data.tabsessionId === tabId
+				const isTimeQueueThere = timeQueueListObj.timeQueueList?.find(
+					(data: TimeQueueEntry) => data.tabsessionId === tabId
 				);
 
 				toPushInTabHistory.duration =
-					toPushInTabHistory.entryTime -
-					isTimeQueueThere.timeQueue[isTimeQueueThere.timeQueue.length - 1];
-				if (isUrlQueueThere.urlQueue.length === 1) {
+					toPushInTabHistory.entryTime - (isTimeQueueThere?.timeQueue.at(-1) ?? 0);
+				if ((isUrlQueueThere?.urlQueue.length ?? 0) === 1) {
 					toPushInTabHistory.reffererUrl = "START";
 				}
-				if (isUrlQueueThere.urlQueue.length > 1) {
-					toPushInTabHistory.reffererUrl =
-						isUrlQueueThere.urlQueue[isUrlQueueThere.urlQueue.length - 2];
+				if ((isUrlQueueThere?.urlQueue.length ?? 0) > 1) {
+					toPushInTabHistory.reffererUrl = isUrlQueueThere?.urlQueue.at(-2) ?? "";
 				}
 
-				const toSaveFinally: any[] = [];
+				const toSaveFinally: { metadata: Record<string, unknown>; pageContent: unknown }[] = [];
 
-				const markdownFormat = webhistoryToLangChainDocument(tab.id, [toPushInTabHistory]);
+				const markdownFormat = webhistoryToLangChainDocument(tab.id, [toSave]);
 				toSaveFinally.push(...markdownFormat);
 
 				console.log("toSaveFinally", toSaveFinally);

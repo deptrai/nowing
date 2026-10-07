@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    TIMESTAMP,
     Column,
     Integer,
     String,
     Text,
-    TIMESTAMP,
     UniqueConstraint,
     text,
 )

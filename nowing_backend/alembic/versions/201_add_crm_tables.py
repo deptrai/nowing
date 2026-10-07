@@ -152,14 +152,15 @@ def _tenant_predicate(table: str) -> str:
 
 
 def _drop_policies(table: str) -> None:
-    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")
-    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")
-    op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
+    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")  # nosemgrep
+    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")  # nosemgrep
+    op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")  # nosemgrep
 
 
 def _create_rls(table: str) -> None:
     _drop_policies(table)
     predicate = _tenant_predicate(table)
+    # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
     op.execute(f"""
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
@@ -167,6 +168,7 @@ def _create_rls(table: str) -> None:
             TO PUBLIC
             USING ({predicate});
     """)
+    # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
     op.execute(f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
@@ -175,7 +177,7 @@ def _create_rls(table: str) -> None:
             USING ({predicate})
             WITH CHECK ({predicate});
     """)
-    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")  # nosemgrep
 
 
 def _drop_all_rls() -> None:

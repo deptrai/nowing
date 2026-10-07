@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,22 +56,9 @@ export function RetentionPolicyPanel({
 		setMemAction(retention.memory_retention_action ?? "archive");
 	}, [retention]);
 
-	const hasChanges = useMemo(() => {
-		if (!retention) return false;
-		const d = docDays.trim() === "" ? null : Number(docDays);
-		const m = memDays.trim() === "" ? null : Number(memDays);
-		return (
-			docAutoArchive !== (retention.auto_archive_enabled ?? false) ||
-			d !== (retention.document_retention_days ?? null) ||
-			docAction !== (retention.document_retention_action ?? "archive") ||
-			memAutoArchive !== (retention.memory_auto_archive_enabled ?? false) ||
-			m !== (retention.memory_retention_days ?? null) ||
-			memAction !== (retention.memory_retention_action ?? "archive")
-		);
-	}, [retention, docAutoArchive, docDays, docAction, memAutoArchive, memDays, memAction]);
 
 	const handleSave = useCallback(
-		async (e?: React.FormEvent) => {
+		async (e?: React.SubmitEvent) => {
 			e?.preventDefault();
 			if (!canEdit) {
 				toast.error(t("errors.not_owner"));

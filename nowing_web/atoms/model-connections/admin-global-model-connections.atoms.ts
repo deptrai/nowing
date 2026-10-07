@@ -48,10 +48,12 @@ export const updateAdminGlobalConnectionMutationAtom = atomWithMutation(() => ({
 		toast.success("Global connection updated");
 		queryClient.setQueryData<AdminGlobalConnectionRead[]>(
 			cacheKeys.admin.globalModelConnections(),
-			(current = []) =>
-				current.some((item) => item.id === connection.id)
-					? current.map((item) => (item.id === connection.id ? connection : item))
-					: [...current, connection]
+			(current = []) => {
+				if (!current.some((item) => item.id === connection.id)) {
+					return [...current, connection];
+				}
+				return current.map((item) => (item.id === connection.id ? connection : item));
+			}
 		);
 		invalidateAdminGlobalConnections();
 	},
@@ -139,10 +141,12 @@ export const bulkUpdateAdminGlobalModelsMutationAtom = atomWithMutation(() => ({
 		toast.success("Models updated");
 		queryClient.setQueryData<AdminGlobalConnectionRead[]>(
 			cacheKeys.admin.globalModelConnections(),
-			(current = []) =>
-				current.some((item) => item.id === connection.id)
-					? current.map((item) => (item.id === connection.id ? connection : item))
-					: [...current, connection]
+			(current = []) => {
+				if (!current.some((item) => item.id === connection.id)) {
+					return [...current, connection];
+				}
+				return current.map((item) => (item.id === connection.id ? connection : item));
+			}
 		);
 		invalidateAdminGlobalConnections();
 	},

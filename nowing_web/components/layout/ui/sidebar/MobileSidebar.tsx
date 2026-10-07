@@ -45,6 +45,7 @@ interface MobileSidebarProps {
 	isLoadingChats?: boolean;
 }
 
+	// pi-lens-ignore: typescript:71007 -- client component function prop
 export function MobileSidebarTrigger({ onClick }: { onClick: () => void }) {
 	const t = useTranslations("layout");
 	return (

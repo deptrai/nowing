@@ -140,7 +140,7 @@ export function DocumentUploadTab({
 	const { etlService } = useRuntimeConfig();
 	const [files, setFiles] = useState<FileWithId[]>([]);
 	const [uploadProgress, setUploadProgress] = useState(0);
-	const [accordionValue, setAccordionValue] = useState<string>("");
+	const [accordionValue, setAccordionValue] = useState("");
 	const [useVisionLlm, setUseVisionLlm] = useState(false);
 	const [processingMode, setProcessingMode] = useState<ProcessingMode>("basic");
 	const [uploadDocumentMutation] = useAtom(uploadDocumentMutationAtom);
@@ -644,7 +644,7 @@ export function DocumentUploadTab({
 									<div
 										key={item.path}
 										className="flex items-center gap-1.5 py-0.5 px-2"
-										style={{ paddingLeft: `${item.depth * 16 + 8}px` }}
+										style={{ paddingLeft: `${item.depth * 16 + 8}px` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 									>
 										{item.isFolder ? (
 											<FolderOpen className="h-3.5 w-3.5 text-blue-400 shrink-0" />

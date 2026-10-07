@@ -1,15 +1,12 @@
 "use client";
-
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
 function isVideoSrc(src: string) {
-	const t = useTranslations("ui");
+	
 	return /\.(mp4|webm|ogg)(\?|$)/i.test(src);
 }
-
 function ExpandedMediaOverlay({
 	src,
 	alt,
@@ -21,11 +18,9 @@ function ExpandedMediaOverlay({
 }) {
 	const t = useTranslations("ui");
 	const overlayRef = useRef<HTMLDivElement>(null);
-
 	useEffect(() => {
 		overlayRef.current?.focus();
 	}, []);
-
 	useEffect(() => {
 		const handleKey = (e: KeyboardEvent) => {
 			if (e.key === "Escape") onClose();
@@ -33,7 +28,6 @@ function ExpandedMediaOverlay({
 		document.addEventListener("keydown", handleKey);
 		return () => document.removeEventListener("keydown", handleKey);
 	}, [onClose]);
-
 	const mediaElement = isVideoSrc(src) ? (
 		<motion.video
 			initial={{ scale: 0.85, opacity: 0 }}
@@ -58,7 +52,6 @@ function ExpandedMediaOverlay({
 			className="max-h-[90vh] max-w-[90vw] cursor-pointer rounded-2xl shadow-2xl"
 		/>
 	);
-
 	return createPortal(
 		<motion.div
 			role="dialog"
@@ -81,17 +74,14 @@ function ExpandedMediaOverlay({
 		document.body
 	);
 }
-
 function useExpandedMedia() {
 	const [expanded, setExpanded] = useState(false);
 	const open = useCallback(() => setExpanded(true), []);
 	const close = useCallback(() => setExpanded(false), []);
 	return { expanded, open, close };
 }
-
 /** @deprecated Use ExpandedMediaOverlay instead */
 const ExpandedGifOverlay = ExpandedMediaOverlay;
 /** @deprecated Use useExpandedMedia instead */
 const useExpandedGif = useExpandedMedia;
-
 export { ExpandedGifOverlay, ExpandedMediaOverlay, useExpandedGif, useExpandedMedia };

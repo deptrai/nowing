@@ -155,7 +155,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 
 	const attachRef = useCallback(
 		(node: HTMLDivElement | null) => {
-			(rowRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+			(rowRef as React.RefObject<HTMLDivElement | null>).current = node;
 			if (canMove) {
 				drag(node);
 			}
@@ -171,7 +171,7 @@ export const DocumentNode = React.memo(function DocumentNode({
 					active={isMentioned || dropdownOpen}
 					dragging={isDragging}
 					className="group/item relative gap-2.5 px-1"
-					style={{ paddingLeft: `${depth * 16 + 4}px` }}
+					style={{ paddingLeft: `${depth * 16 + 4}px` }} // pi-lens-ignore: ast-grep:inline-styles -- indent computed from tree depth
 					role="button"
 					tabIndex={isUnavailable ? -1 : 0}
 					aria-disabled={isUnavailable}

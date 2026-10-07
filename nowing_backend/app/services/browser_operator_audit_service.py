@@ -7,13 +7,11 @@ import hmac
 import logging
 import time
 import uuid
-from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
-from app.db import DshMission
 from app.models.browser_operator_audit import BrowserOperatorAuditEvent
 from app.services.pii.redact import redact_pii
 
@@ -90,6 +88,7 @@ async def validate_session_token(
 
     # Single-use replay protection: consume token in Redis
     if redis_client is not None:
+        # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- redis key name, not a credential
         used_key = f"cdp:used_token:{token}"
         try:
             already = await redis_client.set(

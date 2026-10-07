@@ -61,7 +61,7 @@ export function PromptConfigManager({ workspaceId }: PromptConfigManagerProps) {
 		}
 	};
 
-	const onSubmit = (e: React.FormEvent) => {
+	const onSubmit = (e: React.SubmitEvent) => {
 		e.preventDefault();
 		handleSave();
 	};

@@ -543,7 +543,7 @@ export class SyncEngine {
 			const isError =
 				last === "auth-error" || last === "offline" || last === "error";
 			const s = this.deps.getSettings();
-			const setupComplete = !!(s.apiToken && s.workspaceId && s.connectorId);
+			const setupComplete = Boolean(s.apiToken && s.workspaceId && s.connectorId);
 			if (isError && setupComplete) return;
 		}
 		this.setStatus(this.queueStatusKind(), this.statusDetail());
@@ -742,10 +742,8 @@ function toMillis(value: number | string | Date): number {
 }
 
 function pruneTombstones(tombstones: Record<string, number>): Record<string, number> {
-	const out: Record<string, number> = {};
 	const cutoff = Date.now() - TOMBSTONE_TTL_MS;
-	for (const [k, v] of Object.entries(tombstones)) {
-		if (v >= cutoff) out[k] = v;
-	}
-	return out;
+	return Object.fromEntries(
+		Object.entries(tombstones).filter(([, v]) => v >= cutoff),
+	);
 }
