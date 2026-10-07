@@ -316,7 +316,7 @@ class WorkspaceHealthService:
         connector_rows = list(connectors_res.all())
 
         gap_count = 0
-        for conn_id, ctype in connector_rows:
+        for conn_id, _ctype in connector_rows:
             doc_count_stmt = select(func.count(Document.id)).where(
                 Document.workspace_id == workspace_id,
                 Document.connector_id == conn_id,
@@ -600,8 +600,6 @@ class WorkspaceHealthService:
         curr_7_qv = qv_spark[7:]
         prev_7_cred = cred_spark[:7]
         curr_7_cred = cred_spark[7:]
-        prev_7_cpt = cpt_spark[:7]
-        curr_7_cpt = cpt_spark[7:]
 
         # For WAU, split sparkline into prev/curr 7-day windows
         prev_7_wau = wau_spark[:7]

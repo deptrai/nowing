@@ -109,74 +109,90 @@ async def test_post_batch_core_rotates_and_retries_on_401():
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_auth_error_when_401_and_rotation_fails():
     """If only one token is available, 401 cannot be recovered."""
-    with patch.object(
-        ingest_mod.httpx,
-        "AsyncClient",
-        _make_client_class([(401, None)]),
+    with (
+        patch.object(
+            ingest_mod.httpx,
+            "AsyncClient",
+            _make_client_class([(401, None)]),
+        ),
+        pytest.raises(ConnectorAuthError) as exc,
     ):
-        with pytest.raises(ConnectorAuthError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config(CHAINLENS_SERVICE_TOKEN="single"))
+        await _post_batch_core("batdongsan", 1, [], _fake_config(CHAINLENS_SERVICE_TOKEN="single"))
     assert exc.value.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_auth_error_on_403():
     """403 is a non-retryable auth failure."""
-    with patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(403, {"error": "forbidden"})])):
-        with pytest.raises(ConnectorAuthError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config())
+    with (
+        patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(403, {"error": "forbidden"})])),
+        pytest.raises(ConnectorAuthError) as exc,
+    ):
+        await _post_batch_core("batdongsan", 1, [], _fake_config())
     assert exc.value.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_api_error_on_400():
     """400 is a client error."""
-    with patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(400, {"error": "bad request"})])):
-        with pytest.raises(ConnectorAPIError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config())
+    with (
+        patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(400, {"error": "bad request"})])),
+        pytest.raises(ConnectorAPIError) as exc,
+    ):
+        await _post_batch_core("batdongsan", 1, [], _fake_config())
     assert exc.value.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_api_error_on_422():
     """422 is a client error."""
-    with patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(422, {"error": "validation"})])):
-        with pytest.raises(ConnectorAPIError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config())
+    with (
+        patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(422, {"error": "validation"})])),
+        pytest.raises(ConnectorAPIError) as exc,
+    ):
+        await _post_batch_core("batdongsan", 1, [], _fake_config())
     assert exc.value.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_conflict_on_409():
     """409 is mapped to a non-retryable ConnectorAPIError."""
-    with patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(409, {"ingestJobId": "job-409"})])):
-        with pytest.raises(ConnectorAPIError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config())
+    with (
+        patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(409, {"ingestJobId": "job-409"})])),
+        pytest.raises(ConnectorAPIError) as exc,
+    ):
+        await _post_batch_core("batdongsan", 1, [], _fake_config())
     assert exc.value.status_code == 409
 
 
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_rate_limit_on_429():
     """429 is a retryable rate limit."""
-    with patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(429, {"error": "rate limited"})])):
-        with pytest.raises(ConnectorRateLimitError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config())
+    with (
+        patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(429, {"error": "rate limited"})])),
+        pytest.raises(ConnectorRateLimitError) as exc,
+    ):
+        await _post_batch_core("batdongsan", 1, [], _fake_config())
     assert exc.value.status_code == 429
 
 
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_server_error_on_500():
     """5xx is a server error."""
-    with patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(500, {"error": "boom"})])):
-        with pytest.raises(ConnectorAPIError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config())
+    with (
+        patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(500, {"error": "boom"})])),
+        pytest.raises(ConnectorAPIError) as exc,
+    ):
+        await _post_batch_core("batdongsan", 1, [], _fake_config())
     assert exc.value.status_code == 500
 
 
 @pytest.mark.asyncio
 async def test_post_batch_core_raises_timeout_on_504():
     """504 is a gateway timeout."""
-    with patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(504, {"error": "timeout"})])):
-        with pytest.raises(ConnectorTimeoutError) as exc:
-            await _post_batch_core("batdongsan", 1, [], _fake_config())
+    with (
+        patch.object(ingest_mod.httpx, "AsyncClient", _make_client_class([(504, {"error": "timeout"})])),
+        pytest.raises(ConnectorTimeoutError) as exc,
+    ):
+        await _post_batch_core("batdongsan", 1, [], _fake_config())
     assert exc.value.status_code == 504

@@ -32,7 +32,7 @@ class ContentsInput(BaseModel):
         default=None,
         description="Optional focus query; defaults to the joined URLs when absent.",
     )
-    optimizationMode: ContentsOptimizationMode | None = Field(
+    optimizationMode: ContentsOptimizationMode | None = Field(  # noqa: N815 -- API contract field
         default=None,
         description="Latency vs depth hint for the upstream engine.",
     )
@@ -46,7 +46,7 @@ class ContentsInput(BaseModel):
         le=10,
         description="Number of same-origin subpages to crawl per URL.",
     )
-    subpageTarget: str | None = Field(
+    subpageTarget: str | None = Field(  # noqa: N815 -- API contract field
         default=None,
         description="Keyword/path filter applied to discovered subpage links.",
     )
@@ -54,7 +54,7 @@ class ContentsInput(BaseModel):
         default=None,
         description="Livecrawl cache policy for the upstream engine.",
     )
-    maxAgeHours: int | None = Field(
+    maxAgeHours: int | None = Field(  # noqa: N815 -- API contract field
         default=None,
         ge=1,
         le=2160,

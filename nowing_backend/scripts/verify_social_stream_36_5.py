@@ -218,7 +218,7 @@ async def main():
 
         dlq_entries = await redis_client.xrange(STREAM_SOCIAL_DEAD_LETTER)
         found_dlq_2 = False
-        for dlq_id, entry in dlq_entries:
+        for _dlq_id, entry in dlq_entries:
             if entry.get("original_id") == msg_id_2 and entry.get("dlq_reason") == DLQ_REASON_UNSUPPORTED_SCHEMA_VERSION:
                 found_dlq_2 = True
                 break
@@ -260,7 +260,7 @@ async def main():
 
         dlq_entries = await redis_client.xrange(STREAM_SOCIAL_DEAD_LETTER)
         found_dlq_3 = False
-        for dlq_id, entry in dlq_entries:
+        for _dlq_id, entry in dlq_entries:
             if entry.get("original_id") == msg_id_3 and entry.get("dlq_reason") == DLQ_REASON_MISSING_CONTENT:
                 found_dlq_3 = True
                 break
@@ -294,7 +294,7 @@ async def main():
 
         dlq_entries = await redis_client.xrange(STREAM_SOCIAL_DEAD_LETTER)
         found_dlq_4 = False
-        for dlq_id, entry in dlq_entries:
+        for _dlq_id, entry in dlq_entries:
             if entry.get("original_id") == msg_id_4 and entry.get("dlq_reason") == DLQ_REASON_MISSING_TARGET_ID:
                 found_dlq_4 = True
                 break

@@ -77,7 +77,7 @@ class TestE2E401CircuitBreaker:
             raise ConnectionError("XActions unreachable")
 
         with patch.object(client, "_call_tool_inner", side_effect=fail_call):
-            for i in range(3):
+            for _i in range(3):
                 with pytest.raises(ConnectionError):
                     await client.call_tool("x_scrape", {})
 

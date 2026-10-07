@@ -88,14 +88,14 @@ def _validate_platform_against_matrix(platform: str) -> None:
     matrix = CanonicalActionMatrix.get_sync()
     try:
         derive_platform_action(platform, matrix)
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "error": f"Unsupported platform: {platform}",
                 "supported_platforms": _matrix_supported_platform_kinds(matrix),
             },
-        )
+        ) from e
 
 
 class SocialTargetCreate(BaseModel):

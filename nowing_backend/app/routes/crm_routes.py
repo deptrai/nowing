@@ -6,7 +6,7 @@ import json
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -264,9 +264,6 @@ async def list_crm_conversions(
         for e in events
     ]
 
-
-
-from fastapi import Header, Request
 
 
 @router.post("/webhooks/hubspot", tags=["crm"])

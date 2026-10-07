@@ -43,6 +43,7 @@ import subprocess
 import sys
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 # Make ``nowing_backend/`` importable when run from repo root or the backend dir.
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -293,19 +294,19 @@ async def _seed_leads(session, dry_run: bool) -> int:
         """
     )
 
-    base_vals = dict(
-        ws=WORKSPACE_ID,
-        client_id="e2e-prod",
-        source=E2E_SOURCE_TAG,
-        industry="e2e-test",
-        company_size="11-50",
-        location="Ho Chi Minh City",
-        fit_score=0.85,
-        intent_score=0.75,
-        composite_score=0.80,
-        status="new",
-        enriched=False,
-    )
+    base_vals = {
+        "ws": WORKSPACE_ID,
+        "client_id": "e2e-prod",
+        "source": E2E_SOURCE_TAG,
+        "industry": "e2e-test",
+        "company_size": "11-50",
+        "location": "Ho Chi Minh City",
+        "fit_score": 0.85,
+        "intent_score": 0.75,
+        "composite_score": 0.80,
+        "status": "new",
+        "enriched": False,
+    }
 
     created = 0
     for company, domain in LEAD_COMPANIES:
@@ -587,7 +588,7 @@ def _run_ssh(host: str, container: str, dry_run: bool, force: bool) -> int:
         f"docker exec -i {container} python - --local-run "
         + " ".join(extra),
     ]
-    with open(__file__, "rb") as f:
+    with Path(__file__).open("rb") as f:
         result = subprocess.run(cmd, stdin=f, check=False)
     return result.returncode
 

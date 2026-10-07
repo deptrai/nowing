@@ -223,6 +223,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.per-file-ignores]
 # CLI tools and test benches intentionally write to stdout/stderr.
+"scripts/**" = ["T201"]
 "app/proprietary/web_crawler/testbench/__main__.py" = ["T201"]
 "app/proprietary/web_crawler/testbench/core.py" = ["T201"]
 "app/proprietary/web_crawler/testbench/suite_extraction.py" = ["T201"]

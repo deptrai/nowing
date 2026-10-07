@@ -101,8 +101,12 @@ def upgrade() -> None:
         """
     )
     op.execute(f"GRANT USAGE ON SCHEMA public TO {electric_db_user};")  # nosemgrep
-    op.execute(f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {electric_db_user};")  # nosemgrep
-    op.execute(f"GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO {electric_db_user};")  # nosemgrep
+    op.execute(
+        f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {electric_db_user};"
+    )  # nosemgrep
+    op.execute(
+        f"GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO {electric_db_user};"
+    )  # nosemgrep
     op.execute(  # nosemgrep
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {electric_db_user};"
     )

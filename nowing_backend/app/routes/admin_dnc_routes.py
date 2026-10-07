@@ -17,6 +17,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -192,9 +193,6 @@ async def delete_global_dnc_entry(
     await session.commit()
     # Invalidate Redis cache post-commit
     await service.invalidate_cache()
-
-
-from pydantic import BaseModel, Field
 
 
 class CompliancePurgeRequest(BaseModel):

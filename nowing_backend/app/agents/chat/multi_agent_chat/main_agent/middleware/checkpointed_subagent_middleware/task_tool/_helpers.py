@@ -10,7 +10,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Awaitable
-from typing import NoReturn, TypeVar
+from typing import NoReturn
 
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphInterrupt
@@ -43,12 +43,9 @@ class SubagentInvokeTimeoutError(Exception):
         self.elapsed_seconds = elapsed_seconds
 
 
-_T = TypeVar("_T")
-
-
-async def _ainvoke_with_timeout(
-    coro: Awaitable[_T], *, subagent_type: str, started_at: float
-) -> _T:
+async def _ainvoke_with_timeout[T](
+    coro: Awaitable[T], *, subagent_type: str, started_at: float
+) -> T:
     """Apply the subagent invoke timeout to ``coro`` (non-positive disables it).
 
     On expiry the task is cancelled and :class:`SubagentInvokeTimeoutError` is

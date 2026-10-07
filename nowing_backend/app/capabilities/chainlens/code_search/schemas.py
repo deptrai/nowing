@@ -34,7 +34,7 @@ class CodeSearchInput(BaseModel):
         "appended to the query per the upstream MCP contract.",
     )
     # CamelCase mirrors the upstream request field name (numResults).
-    maxResults: int = Field(
+    maxResults: int = Field(  # noqa: N815 -- API contract field
         default=8,
         ge=1,
         le=20,

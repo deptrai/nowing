@@ -41,11 +41,13 @@ class PlanLimitedError(Exception):
     to HTTP 403; the chat tool translates it to status="plan_limited".
     """
 
-    def __init__(self, detail: str = "PPTX format generation is not enabled on this workspace plan; use Marp or upgrade"):
+    def __init__(
+        self,
+        detail: str = "PPTX format generation is not enabled on this workspace plan; use Marp or upgrade",
+    ):
         super().__init__(detail)
         self.detail = detail
         self.status_code = 403
-
 
 
 def _llm_content_to_text(raw: Any) -> str:
@@ -170,7 +172,9 @@ class PresentationStudioService:
                     "status": status,
                 },
             )
-        except Exception:  # best-effort usage recording; never fail generation on metering
+        except (
+            Exception
+        ):  # best-effort usage recording; never fail generation on metering
             logger.exception(
                 "[PresentationStudio] Failed to record presentation_generate usage"
             )
@@ -304,7 +308,6 @@ class PresentationStudioService:
             if tier not in {"team", "growth", "enterprise"}:
                 raise PlanLimitedError()
 
-
         if len(prompt) > app_config.PRESENTATION_MAX_PROMPT_CHARS:
             prompt = prompt[: app_config.PRESENTATION_MAX_PROMPT_CHARS]
 
@@ -326,7 +329,9 @@ class PresentationStudioService:
             )
             try:
                 await session.commit()
-            except Exception:  # best-effort usage commit on failure path; row loss is acceptable
+            except (
+                Exception
+            ):  # best-effort usage commit on failure path; row loss is acceptable
                 logger.exception(
                     "[PresentationStudio] Failed to commit usage for validation_failed"
                 )
@@ -353,7 +358,9 @@ class PresentationStudioService:
 
         try:
             spec = DeckSpec(**spec_dict)
-        except Exception as e:  # spec schema mismatch → structured validation failure, not a crash
+        except (
+            Exception
+        ) as e:  # spec schema mismatch → structured validation failure, not a crash
             logger.warning("[PresentationStudio] DeckSpec validation failed: %s", e)
             return await _fail_validation("Deck spec validation failed.")
 
@@ -388,7 +395,9 @@ class PresentationStudioService:
                 pptx_file = storage_dir / "output.pptx"
                 pptx_file.write_bytes(pptx_bytes)
                 file_path = str(pptx_file)
-        except Exception:  # artifact write failure → cleanup temp dir then propagate via caller
+        except (
+            Exception
+        ):  # artifact write failure → cleanup temp dir then propagate via caller
             logger.exception("[PresentationStudio] File write failed")
             if storage_dir is not None and storage_dir.exists():
                 shutil.rmtree(storage_dir, ignore_errors=True)

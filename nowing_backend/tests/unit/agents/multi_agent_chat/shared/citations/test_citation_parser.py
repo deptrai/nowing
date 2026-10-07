@@ -28,7 +28,7 @@ def test_citation_regex_parity_with_frontend_source():
         pytest.skip(f"Frontend citation parser not found: {web_ts_path}")
 
     lines = web_ts_path.read_text(encoding="utf-8").splitlines()
-    matching_indices = [i for i, l in enumerate(lines) if "export const CITATION_REGEX =" in l]
+    matching_indices = [i for i, line in enumerate(lines) if "export const CITATION_REGEX =" in line]
     assert matching_indices, "Failed to find CITATION_REGEX export in citation-parser.ts"
 
     raw_regex_line = lines[matching_indices[0] + 1].strip()

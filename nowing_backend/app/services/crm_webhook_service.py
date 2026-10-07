@@ -105,7 +105,6 @@ class CrmWebhookService:
                 results.append({"deal_id": deal_id, "status": "lead_not_found"})
                 continue
 
-            old_status = lead.status
             lead.status = new_status
             lead.updated_at = datetime.now(UTC)
 
@@ -178,7 +177,6 @@ class CrmWebhookService:
         if not lead:
             return {"opportunity_id": opp_id, "status": "lead_not_found"}
 
-        old_status = lead.status
         lead.status = new_status
         lead.updated_at = datetime.now(UTC)
 

@@ -137,7 +137,7 @@ class TestUnifiedDispatchFlagOn:
 
     def test_map_target_id_fallback_to_target_id_attr(self):
         target = _make_target("shopee_keyword", "phone", id=None, workspace_id=None)
-        tool, args = UniversalScrapeTargetMapper.map(target)
+        _tool, args = UniversalScrapeTargetMapper.map(target)
         assert args["context"]["targetId"] == "phone"  # falls back to target_id
         assert args["context"]["workspaceId"] is None
 
@@ -151,7 +151,7 @@ class TestUnifiedDispatchFlagOn:
 
     def test_map_linkedin_company(self):
         target = _make_target("linkedin_company", "acme-corp")
-        tool, args = UniversalScrapeTargetMapper.map(target)
+        _tool, args = UniversalScrapeTargetMapper.map(target)
         assert args["platform"] == "linkedin"
         assert args["action"] == "company_profile"
         assert args["args"] == {"companySlug": "acme-corp"}
@@ -214,7 +214,7 @@ class TestUnifiedDispatchFlagOn:
             side_effect=AssertionError("must not fetch matrix for legacy tools")
         )
         target = _make_target("facebook_page", "page1")
-        tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
+        tool, _args = await UniversalScrapeTargetMapper.map_async(target, client)
         assert tool == "x_facebook_posts"
         client.call_tool.assert_not_called()
 

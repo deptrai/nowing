@@ -36,11 +36,11 @@ class ActionDescriptor(BaseModel):
     platform: str
     action: str
     description: str = ""
-    requiredArgs: list[str] = Field(default_factory=list)
-    optionalArgs: list[str] = Field(default_factory=list)
+    requiredArgs: list[str] = Field(default_factory=list)  # noqa: N815 -- API contract field
+    optionalArgs: list[str] = Field(default_factory=list)  # noqa: N815 -- API contract field
     example: dict[str, Any] = Field(default_factory=dict)
-    outputType: str = ""
-    requiresAuth: bool = False
+    outputType: str = ""  # noqa: N815 -- API contract field
+    requiresAuth: bool = False  # noqa: N815 -- API contract field
     match: dict[str, Any] = Field(default_factory=dict)
     # Nowing-side binding hints (not part of the XActions descriptor schema):
     # ``xactions_action`` = the canonical verb actually dispatched on the wire

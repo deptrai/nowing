@@ -241,7 +241,7 @@ class CampaignSpec(BaseModel):
             icp_criteria=icp_criteria,
             intent_tags=icp_config.get("intents", []),
             source_budgets=budgets,
-            target_sources=[s for s in source_budget_config.get("sources", [])],
+            target_sources=list(source_budget_config.get("sources", [])),
             excluded_sources=[],
             excluded_identities=payload.get("excluded_identities") or [],
             max_total_leads=source_budget_config.get("expected_leads_target", 50),

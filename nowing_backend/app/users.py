@@ -122,7 +122,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                 if update_dict:
                     user = await self.user_db.update(user, update_dict)
 
-            except Exception as e:  # Google profile fetch failure; continue with existing user profile
+            except (
+                Exception
+            ) as e:  # Google profile fetch failure; continue with existing user profile
                 logger.warning(f"Failed to fetch Google profile: {e}")
 
         return user
@@ -141,7 +143,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                     .values(last_login=datetime.now(UTC))
                 )
                 await session.commit()
-        except Exception as e:  # last_login timestamp update failure; suppress and continue
+        except (
+            Exception
+        ) as e:  # last_login timestamp update failure; suppress and continue
             logger.warning(f"Failed to update last_login for user {user.id}: {e}")
 
     async def on_after_register(self, user: User, request: Request | None = None):
@@ -206,7 +210,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                 logger.info(
                     f"Created default workspace (ID: {default_workspace.id}) for user {user.id}"
                 )
-        except Exception as e:  # default workspace creation failure; log error and continue
+        except (
+            Exception
+        ) as e:  # default workspace creation failure; log error and continue
             logger.error(f"Failed to create default workspace for user {user.id}: {e}")
 
     async def on_after_forgot_password(
@@ -355,15 +361,25 @@ async def get_auth_context(
             impersonated_by: uuid.UUID | None = None
             try:
                 user = await get_jwt_strategy().read_token(token, user_manager)
-                payload = jwt.decode(token, SECRET, algorithms=["HS256"], options={"verify_aud": False})
+                payload = jwt.decode(
+                    token, SECRET, algorithms=["HS256"], options={"verify_aud": False}
+                )
                 is_impersonation = payload.get("is_impersonation", False)
-                impersonated_by = uuid.UUID(payload.get("impersonated_by")) if payload.get("impersonated_by") else None
+                impersonated_by = (
+                    uuid.UUID(payload.get("impersonated_by"))
+                    if payload.get("impersonated_by")
+                    else None
+                )
             except Exception:  # bearer token decode or user lookup failure; return None
                 logger.exception("Failed to read bearer access token")
                 user = None
 
             if user and user.is_active:
-                return AuthContext.session(user, is_impersonation=is_impersonation, impersonated_by=impersonated_by)
+                return AuthContext.session(
+                    user,
+                    is_impersonation=is_impersonation,
+                    impersonated_by=impersonated_by,
+                )
 
     cookie_token = request.cookies.get(config.SESSION_COOKIE_NAME)
     if cookie_token and _token_meets_epoch(cookie_token):
@@ -371,15 +387,28 @@ async def get_auth_context(
         impersonated_by: uuid.UUID | None = None
         try:
             user = await get_jwt_strategy().read_token(cookie_token, user_manager)
-            payload = jwt.decode(cookie_token, SECRET, algorithms=["HS256"], options={"verify_aud": False})
+            payload = jwt.decode(
+                cookie_token,
+                SECRET,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+            )
             is_impersonation = payload.get("is_impersonation", False)
-            impersonated_by = uuid.UUID(payload.get("impersonated_by")) if payload.get("impersonated_by") else None
-        except Exception:  # session cookie token decode or user lookup failure; return None
+            impersonated_by = (
+                uuid.UUID(payload.get("impersonated_by"))
+                if payload.get("impersonated_by")
+                else None
+            )
+        except (
+            Exception
+        ):  # session cookie token decode or user lookup failure; return None
             logger.exception("Failed to read session cookie access token")
             user = None
 
         if user and user.is_active:
-            return AuthContext.session(user, is_impersonation=is_impersonation, impersonated_by=impersonated_by)
+            return AuthContext.session(
+                user, is_impersonation=is_impersonation, impersonated_by=impersonated_by
+            )
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

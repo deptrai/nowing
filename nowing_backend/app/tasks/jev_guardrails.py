@@ -42,10 +42,10 @@ async def evaluate_entity_dedup(
 
     # Best-effort matching via DecisionService entity_match
     try:
-        service = DecisionService()
+        _ = DecisionService()
         # Find best candidate
         for existing in existing_entities:
-            state = {
+            _ = {
                 "candidate": candidate,
                 "existing": existing,
             }

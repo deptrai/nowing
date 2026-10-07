@@ -154,7 +154,7 @@ class CompliancePurgeService:
                 "leads": purged_leads,
                 "social_posts": purged_posts,
             },
-            "workspaces_affected": sorted(list(affected_workspaces)),
+            "workspaces_affected": sorted(affected_workspaces),
             "reason": reason,
             "ticket_ref": ticket_ref,
         }

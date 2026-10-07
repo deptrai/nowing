@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-
 import pytest
 
 pytestmark = [pytest.mark.unit]
@@ -39,7 +37,7 @@ def test_tick_skips_missions_not_due(mocker):
     """AC-6 P1: missions with next_fire_at > now are skipped."""
     from app.tasks.celery_tasks.schedule_mission_tick import schedule_mission_tick
 
-    claim_mock = mocker.patch(
+    mocker.patch(
         "app.tasks.celery_tasks.schedule_mission_tick._claim_due_missions",
         return_value=[],
     )
@@ -91,7 +89,6 @@ def test_past_due_mission_run_once_and_advance(mocker):
     """AC-6 P3: next_fire_at > 24h past still runs once and advances."""
     from app.tasks.celery_tasks.schedule_mission_tick import schedule_mission_tick
 
-    past = datetime.now(UTC) - timedelta(hours=25)
     mission = mocker.MagicMock()
     mission.id = "m1"
     mission.workspace_id = 1

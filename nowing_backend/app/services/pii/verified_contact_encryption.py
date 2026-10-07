@@ -62,9 +62,7 @@ class VerifiedContactEncryption:
         )
 
         self._cipher = TokenEncryption(primary)
-        self._secondary_cipher = (
-            TokenEncryption(secondary) if secondary else None
-        )
+        self._secondary_cipher = TokenEncryption(secondary) if secondary else None
         self._primary_key = primary
         self._secondary_key = secondary
 

@@ -89,7 +89,7 @@ def test_two_loop_sequential_lifecycle():
 
     without 'Event loop is closed' or 'Future attached to different loop' errors.
     """
-    with patch_mcp_session() as (session1, transport1):
+    with patch_mcp_session() as (_session1, _transport1):
         loop1 = asyncio.new_event_loop()
         asyncio.set_event_loop(loop1)
 
@@ -103,7 +103,7 @@ def test_two_loop_sequential_lifecycle():
         loop1.run_until_complete(release_shared_client_for_loop(loop1))
         loop1.close()
 
-    with patch_mcp_session() as (session2, transport2):
+    with patch_mcp_session() as (_session2, _transport2):
         loop2 = asyncio.new_event_loop()
         asyncio.set_event_loop(loop2)
 
@@ -324,7 +324,7 @@ def test_passive_and_active_memory_recovery():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            client = loop.run_until_complete(get_shared_client())
+            loop.run_until_complete(get_shared_client())
             with _CLIENTS_LOCK:
                 assert loop in _LOOP_CLIENTS
             loop.run_until_complete(release_shared_client_for_loop(loop))
@@ -339,7 +339,7 @@ def test_passive_and_active_memory_recovery():
         asyncio.set_event_loop(temp_loop)
         try:
             with patch_mcp_session():
-                temp_client = temp_loop.run_until_complete(get_shared_client())
+                temp_loop.run_until_complete(get_shared_client())
                 with _CLIENTS_LOCK:
                     assert temp_loop in _LOOP_CLIENTS
         finally:
@@ -511,8 +511,7 @@ def test_thread_safety_multi_thread_access():
             asyncio.set_event_loop(None)
             loop.close()
 
-    with patch_mcp_session():
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with patch_mcp_session(), concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(_worker, i) for i in range(10)]
             for f in concurrent.futures.as_completed(futures):
                 f.result()

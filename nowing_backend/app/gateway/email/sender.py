@@ -8,7 +8,6 @@ import smtplib
 from email.message import EmailMessage
 from typing import Any
 
-from app.alerts.engine.notify import _send_email_smtp
 from app.config import config
 
 logger = logging.getLogger(__name__)

@@ -151,7 +151,7 @@ class TestGoldenConfidenceGate:
         total_prompt_chars = 0
         prompt_count = 0
         for lead in micro_leads:
-            prompt, indices = build_batch_prompt([lead])
+            prompt, _indices = build_batch_prompt([lead])
             if prompt:
                 prompt_count += 1
                 total_prompt_chars += len(prompt)

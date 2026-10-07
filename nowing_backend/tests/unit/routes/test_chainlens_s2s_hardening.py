@@ -30,8 +30,8 @@ async def test_search_private_data_enforces_5s_timeout():
     async def _slow_search(**kwargs):
         await asyncio.sleep(5.5)
 
-    with patch("app.routes.chainlens_internal.PrivateProviderService") as MockService:
-        instance = MockService.return_value
+    with patch("app.routes.chainlens_internal.PrivateProviderService") as mock_service:
+        instance = mock_service.return_value
         instance.search = _slow_search
 
         with pytest.raises(HTTPException) as exc_info:

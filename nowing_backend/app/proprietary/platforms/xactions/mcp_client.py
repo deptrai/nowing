@@ -40,7 +40,9 @@ from app.proprietary.platforms.xactions.circuit_breaker import (
 
 logger = logging.getLogger(__name__)
 
-XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS = float(os.environ.get("XACTIONS_MCP_TIMEOUT", "60.0"))
+XACTIONS_MCP_DEFAULT_TIMEOUT_SECONDS = float(
+    os.environ.get("XACTIONS_MCP_TIMEOUT", "60.0")
+)
 # Story 40.1: Fast timeout for connectivity/health checks (4.0s)
 XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS = float(
     os.environ.get("XACTIONS_CONNECTIVITY_TIMEOUT", "4.0")
@@ -103,9 +105,9 @@ class XActionsMcpClient:
         self._session: ClientSession | None = None
         self._transport_cm = None
         self._serialize_lock: asyncio.Lock | None = None
-        self._serialize_lock_loop_ref: weakref.ReferenceType[
-            asyncio.AbstractEventLoop
-        ] | None = None
+        self._serialize_lock_loop_ref: (
+            weakref.ReferenceType[asyncio.AbstractEventLoop] | None
+        ) = None
         self._is_managed: bool = False
         self._tainted: bool = False
         self._headers: dict[str, str] = {
@@ -234,7 +236,9 @@ class XActionsMcpClient:
                 {
                     "name": tool.name,
                     "description": tool.description or "",
-                    "input_schema": tool.inputSchema if hasattr(tool, "inputSchema") else {},
+                    "input_schema": tool.inputSchema
+                    if hasattr(tool, "inputSchema")
+                    else {},
                 }
                 for tool in response.tools
             ]
@@ -343,11 +347,15 @@ class XActionsMcpClient:
         # Fetch artifact outside serialize_lock to prevent blocking I/O and deadlocks
         artifact_data: list[Any] = []
         if artifact_path:
-            logger.info("XActions returned artifact for %s: %s", tool_name, artifact_path)
+            logger.info(
+                "XActions returned artifact for %s: %s", tool_name, artifact_path
+            )
             artifact_data = await self._fetch_artifact(artifact_path)
 
         if artifact_data:
-            items = artifact_data if isinstance(artifact_data, list) else [artifact_data]
+            items = (
+                artifact_data if isinstance(artifact_data, list) else [artifact_data]
+            )
             data = (data if isinstance(data, list) else []) + items
 
         return {
@@ -391,9 +399,13 @@ class XActionsMcpClient:
 
         try:
             return await anyio.to_thread.run_sync(
-                lambda: json.load(open(safe_path, encoding="utf-8"))  # pi-lens-ignore: python-path-traversal -- safe_path validated by _resolve_artifact_path above
+                lambda: json.load(
+                    open(safe_path, encoding="utf-8")
+                )  # pi-lens-ignore: python-path-traversal -- safe_path validated by _resolve_artifact_path above
             )
-        except Exception as exc:  # local artifact file read/JSON parse failure; return empty list
+        except (
+            Exception
+        ) as exc:  # local artifact file read/JSON parse failure; return empty list
             logger.warning("Failed to read artifact %s: %s", safe_path, exc)
             return []
 
@@ -410,7 +422,9 @@ class XActionsMcpClient:
                 "status": "healthy" if result.get("success") else "degraded",
                 "data": result.get("data", {}),
             }
-        except TimeoutError:  # asyncio.TimeoutError is an alias of the builtin since Python 3.11
+        except (
+            TimeoutError
+        ):  # asyncio.TimeoutError is an alias of the builtin since Python 3.11
             return {
                 "status": "unavailable",
                 "error": f"connectivity check timed out after {XACTIONS_CONNECTIVITY_TIMEOUT_SECONDS}s",
@@ -458,7 +472,9 @@ async def get_shared_client(
             ):
                 return entry.client
 
-            if entry is not None and getattr(getattr(entry, "client", None), "_tainted", False):
+            if entry is not None and getattr(
+                getattr(entry, "client", None), "_tainted", False
+            ):
                 _LOOP_CLIENTS.pop(loop, None)
                 entry = None
 
