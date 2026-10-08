@@ -34,13 +34,13 @@ logger = logging.getLogger(__name__)
 def _legacy_scrape_args(
     target: Any, platform: str, action: str, action_args: dict[str, Any]
 ) -> dict[str, Any]:
-    """Build the nested ``x_scrape`` envelope for flag-OFF ``PLATFORM_TOOL_MAP``.
+    """Build the nested ``medirus_scrape`` envelope for flag-OFF ``PLATFORM_TOOL_MAP``.
 
-    ``x_scrape`` requires ``args`` as a nested object (AD-2) plus a ``context``
+    ``medirus_scrape`` requires ``args`` as a nested object (AD-2) plus a ``context``
     envelope carrying ``targetId``/``workspaceId`` so the single-writer Redis
     stream keeps tenant routing (REQ-X2). Earlier builders passed action args
     flat alongside ``platform``/``action`` — the server dropped them into a
-    missing-``args`` ``XACT_4002``.
+    missing-``args`` ``MEDIRUS_4002``.
     """
     target_db_id = getattr(target, "id", None)
     return {
@@ -55,27 +55,27 @@ def _legacy_scrape_args(
 
 
 # Map Nowing platform targets to Medirus tool/action pairs.
-# VN-domain platforms are dispatched via the generic `x_scrape` tool once
-# Medirus exposes it (Story 21.8a requirement). Until then, `x_crawl_post`
+# VN-domain platforms are dispatched via the generic `medirus_scrape` tool once
+# Medirus exposes it (Story 21.8a requirement). Until then, `medirus_crawl_post`
 # is used as a fallback for post detail.
 PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
     "facebook_group": {
-        "tool": "x_facebook_group_posts",
+        "tool": "medirus_facebook_group_posts",
         "args_builder": lambda t: {"url": _facebook_group_url(t.target_id), "limit": 20},
     },
     "facebook_page": {
-        "tool": "x_facebook_posts",
+        "tool": "medirus_facebook_posts",
         "args_builder": lambda t: {"url": _facebook_page_url(t.target_id), "limit": 20},
     },
     "twitter_keyword": {
-        "tool": "x_search_tweets",
+        "tool": "medirus_search_tweets",
         "args_builder": lambda t: {"query": t.target_id, "limit": 20},
     },
     "twitter_user": {
-        "tool": "x_get_tweets",
+        "tool": "medirus_get_tweets",
         "args_builder": lambda t: {"username": t.target_id.strip("@"), "limit": 20},
     },
-    # NOTE (Epic 36 follow-up): these ``x_scrape`` arg_builders now emit the
+    # NOTE (Epic 36 follow-up): these ``medirus_scrape`` arg_builders now emit the
     # *canonical* action names + platform keys from the live ``medirus_list``
     # catalog (24 platforms / 189 actions), in the nested
     # ``{platform, action, args, context}`` envelope per AD-2. The previous
@@ -85,39 +85,39 @@ PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
     # "platform not supported". ``context`` forwards targetId/workspaceId so
     # the single-writer stream carries tenant routing (REQ-X2).
     "tiktok_hashtag": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "tiktok", "hashtag_feed", {"tag": t.target_id}),
     },
     "chotot_category": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "chotot", "search_listings", {"category": t.target_id}),
     },
     "shopee_keyword": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "shopee", "search_products", {"keyword": t.target_id}),
     },
     "topcv_search": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "topcv", "search_jobs", {"keyword": t.target_id}),
     },
     "vietnamworks_search": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "vietnamworks", "search_jobs", {"keyword": t.target_id}),
     },
     "linkedin_company": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "linkedin", "company_profile", {"companySlug": t.target_id}),
     },
     "batdongsan_category": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "batdongsan", "search_listings", {"category": t.target_id}),
     },
     "masothue_lookup": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "masothue", "detail", {"taxCode": t.target_id}),
     },
     "b2b_registry_search": {
-        "tool": "x_scrape",
+        "tool": "medirus_scrape",
         "args_builder": lambda t: _legacy_scrape_args(t, "b2b_registry_extended", "search", {"q": t.target_id}),
     },
 }
@@ -143,7 +143,7 @@ def _facebook_page_url(target_id: str) -> str:
 def _facebook_id_from_target(target_id: str, segment: str) -> str:
     """Extract the numeric/slug id from a Facebook URL or bare id.
 
-    ``x_scrape`` group/page descriptors take ``groupId``/``pageId`` (the bare
+    ``medirus_scrape`` group/page descriptors take ``groupId``/``pageId`` (the bare
     id), not a URL — unlike the legacy tools that accepted ``url``. Accepts
     ``"12345"``, ``"…/groups/12345"``, or ``"…/pagename"`` and returns the id.
     """
@@ -182,8 +182,9 @@ class TargetUnsupportedError(RuntimeError):
 
 
 def _is_tool_not_found_error(exc: MedirusMcpError) -> bool:
-    code_str = str(exc.code) if exc.code is not None else ""
-    if code_str in ("XACT_404", "tool_not_found", "404"):
+    # Accept legacy XACT_* codes emitted by pre-rename Medirus builds
+    code_str = (str(exc.code) if exc.code is not None else "").replace("XACT_", "MEDIRUS_")
+    if code_str in ("MEDIRUS_404", "tool_not_found", "404"):
         return True
     if isinstance(exc.message, str):
         msg_lower = exc.message.lower()
@@ -193,8 +194,9 @@ def _is_tool_not_found_error(exc: MedirusMcpError) -> bool:
 
 
 def _is_permanent_fallback_error(exc: MedirusMcpError) -> bool:
-    code_str = str(exc.code) if exc.code is not None else ""
-    if code_str in ("XACT_404", "XACT_4001", "tool_not_found", "404", "4001"):
+    # Accept legacy XACT_* codes emitted by pre-rename Medirus builds
+    code_str = (str(exc.code) if exc.code is not None else "").replace("XACT_", "MEDIRUS_")
+    if code_str in ("MEDIRUS_404", "MEDIRUS_4001", "tool_not_found", "404", "4001"):
         return True
     if isinstance(exc.message, str):
         msg_lower = exc.message.lower()
@@ -238,7 +240,7 @@ def _build_unified_args(
 
     When the descriptor declares ``limit`` in ``optionalArgs``, the
     canonical default ``limit=20`` is preserved so routing through
-    ``x_scrape`` matches the legacy ``PLATFORM_TOOL_MAP`` behaviour.
+    ``medirus_scrape`` matches the legacy ``PLATFORM_TOOL_MAP`` behaviour.
     """
     required_args = list(descriptor.get("requiredArgs") or [])
     if not required_args:
@@ -292,16 +294,16 @@ def _build_unified_args(
 class UniversalScrapeTargetMapper:
     """Map a Nowing social target to an Medirus tool call.
 
-    VN-domain platforms are dispatched via `x_scrape` when available. If the
-    Medirus daemon does not yet expose `x_scrape` (per INTEGRATION-PLAN),
-    callers should treat an MCP `tool_not_found`/`XACT_404`-style failure as
-    a signal to fall back to `x_crawl_post` for post-detail-only ingestion.
+    VN-domain platforms are dispatched via `medirus_scrape` when available. If the
+    Medirus daemon does not yet expose `medirus_scrape` (per INTEGRATION-PLAN),
+    callers should treat an MCP `tool_not_found`/`MEDIRUS_404`-style failure as
+    a signal to fall back to `medirus_crawl_post` for post-detail-only ingestion.
 
     When ``MEDIRUS_USE_UNIFIED_DISPATCH`` is ON, platforms resolve their
     ``(platform, action)`` pair from the :class:`CanonicalActionMatrix` and
     emit the nested ``{platform, action, args, context}`` envelope per AD-2.
     When ``MEDIRUS_LEGACY_TOOL_DEPRECATION`` is also ON (Story 36.6b), Facebook
-    and Twitter legacy tools are also routed through ``x_scrape``; when OFF,
+    and Twitter legacy tools are also routed through ``medirus_scrape``; when OFF,
     those four platforms remain on dedicated legacy tools.
     """
 
@@ -311,9 +313,9 @@ class UniversalScrapeTargetMapper:
         platform_kind: str,
         matrix: dict[str, dict[str, dict[str, Any]]],
     ) -> tuple[str, dict[str, Any]]:
-        """Build the nested ``x_scrape`` envelope for a matrix-backed platform.
+        """Build the nested ``medirus_scrape`` envelope for a matrix-backed platform.
 
-        Returns ``("x_scrape", {platform, action, args: {...}, context:
+        Returns ``("medirus_scrape", {platform, action, args: {...}, context:
         {targetId, workspaceId}})``. Action args are populated from the
         descriptor's ``requiredArgs`` — the target's ``target_id`` is bound to
         the single required arg (all current matrix entries have exactly one).
@@ -365,7 +367,7 @@ class UniversalScrapeTargetMapper:
             "args": args,
             "context": context,
         }
-        return "x_scrape", arguments
+        return "medirus_scrape", arguments
 
     @staticmethod
     def map(target: Any) -> tuple[str, dict[str, Any]]:
@@ -383,11 +385,11 @@ class UniversalScrapeTargetMapper:
                 raise ValueError(f"Unsupported social platform: {platform}")
             # Legacy dedicated tools (facebook/twitter) stay as-is unless
             # deprecation flag is also ON.
-            if mapping["tool"] != "x_scrape":
+            if mapping["tool"] != "medirus_scrape":
                 if not _is_legacy_tool_deprecated():
                     return mapping["tool"], mapping["args_builder"](target)
                 logger.debug(
-                    "Unified dispatch: routing legacy tool %s via x_scrape "
+                    "Unified dispatch: routing legacy tool %s via medirus_scrape "
                     "(platform=%s, MEDIRUS_LEGACY_TOOL_DEPRECATION=on)",
                     mapping["tool"], platform,
                 )
@@ -419,11 +421,11 @@ class UniversalScrapeTargetMapper:
         mapping = PLATFORM_TOOL_MAP.get(platform)
         if mapping is None:
             raise ValueError(f"Unsupported social platform: {platform}")
-        if mapping["tool"] != "x_scrape":
+        if mapping["tool"] != "medirus_scrape":
             if not _is_legacy_tool_deprecated():
                 return mapping["tool"], mapping["args_builder"](target)
             logger.debug(
-                "Unified dispatch: routing legacy tool %s via x_scrape "
+                "Unified dispatch: routing legacy tool %s via medirus_scrape "
                 "(platform=%s, MEDIRUS_LEGACY_TOOL_DEPRECATION=on)",
                 mapping["tool"], platform,
             )
@@ -435,14 +437,14 @@ class UniversalScrapeTargetMapper:
 
     @staticmethod
     def fallback_crawl_post(target: Any) -> tuple[str, dict[str, Any]]:
-        """Return an `x_crawl_post` fallback call for post-detail scraping.
+        """Return an `medirus_crawl_post` fallback call for post-detail scraping.
 
-        Used when `x_scrape` is not yet exposed by Medirus (AC 7).
+        Used when `medirus_scrape` is not yet exposed by Medirus (AC 7).
         """
         platform = _normalize_platform_for_post(getattr(target, "platform", "") or "")
         if not platform:
             raise TargetUnsupportedError(
-                f"Target {getattr(target, 'id', None)} lacks valid platform for x_crawl_post fallback"
+                f"Target {getattr(target, 'id', None)} lacks valid platform for medirus_crawl_post fallback"
             )
         raw_url = str(getattr(target, "target_url", None) or "").strip() or str(
             getattr(target, "target_id", "") or ""
@@ -450,9 +452,9 @@ class UniversalScrapeTargetMapper:
         target_url = raw_url
         if not target_url.lower().startswith(("http://", "https://")):
             raise TargetUnsupportedError(
-                f"Target {getattr(target, 'id', None)} lacks valid HTTP(S) URL for x_crawl_post fallback: {target_url!r}"
+                f"Target {getattr(target, 'id', None)} lacks valid HTTP(S) URL for medirus_crawl_post fallback: {target_url!r}"
             )
-        return "x_crawl_post", {"platform": platform, "url": target_url}
+        return "medirus_crawl_post", {"platform": platform, "url": target_url}
 
 
 class MedirusSocialAdapterV2:
@@ -509,7 +511,7 @@ class MedirusSocialAdapterV2:
             )
             if _is_tool_not_found_error(exc):
                 logger.warning(
-                    "Medirus primary tool %s not found (code=%s) for target %s (platform=%s). Attempting x_crawl_post fallback.",
+                    "Medirus primary tool %s not found (code=%s) for target %s (platform=%s). Attempting medirus_crawl_post fallback.",
                     tool_name,
                     exc.code,
                     getattr(target, "id", None),
@@ -546,7 +548,7 @@ class MedirusSocialAdapterV2:
 
         if not result.get("success"):
             err_msg = result.get("error") or "unknown error"
-            if effective_tool == "x_crawl_post":
+            if effective_tool == "medirus_crawl_post":
                 # Only a clean permanent failure should retire the target. A
                 # success=False envelope carries no MCP code, so classify by the
                 # error text; ambiguous/transient messages fall through to a

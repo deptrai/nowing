@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class MedirusHealthProbe(HealthProbe):
-    """Check Medirus MCP daemon health via `x_governor_status`."""
+    """Check Medirus MCP daemon health via `medirus_governor_status`."""
 
     service_id = "scraper/medirus"
     service_name = "Medirus Social Graph"
@@ -29,13 +29,13 @@ class MedirusHealthProbe(HealthProbe):
         start = datetime.now(UTC)
         try:
             async with MedirusMcpClient() as client:
-                result = await client.call_tool("x_governor_status", {})
+                result = await client.call_tool("medirus_governor_status", {})
                 governor_data = result.get("data", {}) or {}
                 if isinstance(governor_data, list):
                     governor_data = governor_data[0] if governor_data else {}
 
                 try:
-                    metrics_result = await client.call_tool("x_admin_stream_metrics", {})
+                    metrics_result = await client.call_tool("medirus_admin_stream_metrics", {})
                     metrics_data = metrics_result.get("metrics") or metrics_result.get("data") or {}
                     if isinstance(metrics_data, list):
                         metrics_data = metrics_data[0] if metrics_data else {}
@@ -46,7 +46,7 @@ class MedirusHealthProbe(HealthProbe):
                 # AC 9: evaluate Medirus stream alerts and trigger admin alerts
                 # via the Nowing alert engine when a breach is reported.
                 try:
-                    alerts_result = await client.call_tool("x_admin_stream_alerts", {})
+                    alerts_result = await client.call_tool("medirus_admin_stream_alerts", {})
                     alerts = alerts_result.get("data") or alerts_result.get("alerts") or []
                     if isinstance(alerts, list):
                         first = alerts[0] if alerts else {}

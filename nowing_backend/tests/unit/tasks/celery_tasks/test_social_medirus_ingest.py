@@ -520,7 +520,7 @@ async def test_ingest_social_target_resolves_proxy_binding(
 async def test_ingest_social_target_retries_on_rate_limit(
     monkeypatch,
 ):
-    """XACT_4291 triggers task.retry with retry_after countdown."""
+    """MEDIRUS_4291 triggers task.retry with retry_after countdown."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -535,7 +535,7 @@ async def test_ingest_social_target_retries_on_rate_limit(
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("rate limited", code="XACT_4291", retry_after=45)
+    err = MedirusMcpError("rate limited", code="MEDIRUS_4291", retry_after=45)
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -561,7 +561,7 @@ async def test_ingest_social_target_retries_on_rate_limit(
 async def test_ingest_social_target_rate_limit_exhausted_retries_halts(
     monkeypatch,
 ):
-    """XACT_4291 when retries >= 5 halts target and does not write DLQ."""
+    """MEDIRUS_4291 when retries >= 5 halts target and does not write DLQ."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -576,7 +576,7 @@ async def test_ingest_social_target_rate_limit_exhausted_retries_halts(
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("rate limited", code="XACT_4291", retry_after=45)
+    err = MedirusMcpError("rate limited", code="MEDIRUS_4291", retry_after=45)
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -680,7 +680,7 @@ async def test_ingest_social_target_pauses_on_proxy_exhausted(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_ingest_social_target_pauses_on_5030_temporary_unavailable(monkeypatch):
-    """XACT_5030 pauses target and pushes last_scraped_at to future."""
+    """MEDIRUS_5030 pauses target and pushes last_scraped_at to future."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -695,7 +695,7 @@ async def test_ingest_social_target_pauses_on_5030_temporary_unavailable(monkeyp
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("temporary unavailable", code="XACT_5030", retry_after=300)
+    err = MedirusMcpError("temporary unavailable", code="MEDIRUS_5030", retry_after=300)
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -720,7 +720,7 @@ async def test_ingest_social_target_pauses_on_5030_temporary_unavailable(monkeyp
 async def test_ingest_social_target_halts_on_auth_failure(
     monkeypatch,
 ):
-    """XACT_4010 halts target and marks it inactive."""
+    """MEDIRUS_4010 halts target and marks it inactive."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -735,7 +735,7 @@ async def test_ingest_social_target_halts_on_auth_failure(
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("auth failed", code="XACT_4010")
+    err = MedirusMcpError("auth failed", code="MEDIRUS_4010")
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -758,7 +758,7 @@ async def test_ingest_social_target_halts_on_auth_failure(
 async def test_ingest_social_target_signer_crash_retries(
     monkeypatch,
 ):
-    """XACT_5000 triggers retry with countdown=60, max_retries=3."""
+    """MEDIRUS_5000 triggers retry with countdown=60, max_retries=3."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -773,7 +773,7 @@ async def test_ingest_social_target_signer_crash_retries(
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("signer crash", code="XACT_5000")
+    err = MedirusMcpError("signer crash", code="MEDIRUS_5000")
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -798,7 +798,7 @@ async def test_ingest_social_target_signer_crash_retries(
 async def test_ingest_social_target_signer_crash_exhausted_retries_writes_dlq_and_halts(
     monkeypatch,
 ):
-    """XACT_5000 when retries >= 3 writes DLQ and halts target."""
+    """MEDIRUS_5000 when retries >= 3 writes DLQ and halts target."""
     target = _fake_target(target_id=42, workspace_id=10, account_id="acc_1", platform="facebook_group")
     session = _FakeSession(target)
 
@@ -813,7 +813,7 @@ async def test_ingest_social_target_signer_crash_exhausted_retries_writes_dlq_an
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("signer crash", code="XACT_5000")
+    err = MedirusMcpError("signer crash", code="MEDIRUS_5000")
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -839,7 +839,7 @@ async def test_ingest_social_target_signer_crash_exhausted_retries_writes_dlq_an
     assert stream_name == "stream:social:failed"
     assert entry_data["original_id"] == "42"
     assert entry_data["error"] == str(err)
-    assert entry_data["code"] == "XACT_5000"
+    assert entry_data["code"] == "MEDIRUS_5000"
     assert entry_data["retries"] == "3"
     assert "failed_at" in entry_data
     # failed_at must be a parseable ISO timestamp
@@ -850,7 +850,7 @@ async def test_ingest_social_target_signer_crash_exhausted_retries_writes_dlq_an
     assert payload["platform"] == "facebook_group"
     assert payload["workspace_id"] == 10
     assert payload["account_id"] == "acc_1"
-    assert payload["code"] == "XACT_5000"
+    assert payload["code"] == "MEDIRUS_5000"
     assert payload["retries"] == 3
 
 
@@ -874,7 +874,7 @@ async def test_ingest_social_target_signer_crash_dlq_fail_still_halts(
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("signer crash", code="XACT_5000")
+    err = MedirusMcpError("signer crash", code="MEDIRUS_5000")
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -901,7 +901,7 @@ async def test_ingest_social_target_bad_request_4001_pauses_and_logs_suggested_a
     monkeypatch,
     caplog,
 ):
-    """XACT_4001 pauses target, sets future last_scraped_at, and logs suggested action."""
+    """MEDIRUS_4001 pauses target, sets future last_scraped_at, and logs suggested action."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -918,7 +918,7 @@ async def test_ingest_social_target_bad_request_4001_pauses_and_logs_suggested_a
 
     err = MedirusMcpError(
         "invalid filter parameter",
-        code="XACT_4001",
+        code="MEDIRUS_4001",
         retry_after=180,
         suggested_action="check keyword syntax",
     )
@@ -1298,7 +1298,7 @@ async def test_ingest_social_target_unmapped_code_defaults_to_pause(monkeypatch)
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("unknown", code="XACT_9999", retry_after=120)
+    err = MedirusMcpError("unknown", code="MEDIRUS_9999", retry_after=120)
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -1359,7 +1359,7 @@ async def test_ingest_social_target_none_code_defaults_to_pause(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_rate_limit_default_retry_after(monkeypatch):
-    """XACT_4291 without retry_after falls back to 30 seconds and max_retries=5."""
+    """MEDIRUS_4291 without retry_after falls back to 30 seconds and max_retries=5."""
     target = _fake_target(platform="facebook_group")
     session = _FakeSession(target)
 
@@ -1374,7 +1374,7 @@ async def test_rate_limit_default_retry_after(monkeypatch):
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("rate limited", code="XACT_4291")
+    err = MedirusMcpError("rate limited", code="MEDIRUS_4291")
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -1735,7 +1735,7 @@ async def test_ingest_social_target_marks_unsupported_on_target_unsupported_erro
 
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(
-        side_effect=TargetUnsupportedError("Target lacks valid HTTP(S) URL for x_crawl_post fallback")
+        side_effect=TargetUnsupportedError("Target lacks valid HTTP(S) URL for medirus_crawl_post fallback")
     )
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
 
@@ -1820,7 +1820,7 @@ async def test_ingest_social_target_unhandled_behavior_raises(monkeypatch):
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("fatal crash", code="XACT_FATAL")
+    err = MedirusMcpError("fatal crash", code="MEDIRUS_FATAL")
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
     mock_adapter.ingest_raw_post_to_stream = AsyncMock()
@@ -1860,7 +1860,7 @@ async def test_ingest_social_target_exhausted_pause_pauses_target(monkeypatch):
     fake_aioredis.from_url.return_value = client
     monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 
-    err = MedirusMcpError("flaky", code="XACT_FLAKY")
+    err = MedirusMcpError("flaky", code="MEDIRUS_FLAKY")
     mock_adapter = MagicMock()
     mock_adapter.fetch_posts_for_target = AsyncMock(side_effect=err)
 

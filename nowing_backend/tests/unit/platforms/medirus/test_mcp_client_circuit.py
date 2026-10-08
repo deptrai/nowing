@@ -53,12 +53,12 @@ class TestMedirusMcpClientCircuitBreaker:
             )
         )
 
-        result = await client.call_tool("x_test_tool", {})
+        result = await client.call_tool("medirus_test_tool", {})
         assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_call_tool_circuit_open_raises_xact_4001(self, client):
-        """Open circuit raises XACT_4001 error."""
+        """Open circuit raises MEDIRUS_4001 error."""
         # Force circuit open via failures
         async def fail():
             raise ConnectionError("down")
@@ -72,9 +72,9 @@ class TestMedirusMcpClientCircuitBreaker:
         client._session = AsyncMock()
 
         with pytest.raises(MedirusMcpError) as exc_info:
-            await client.call_tool("x_test_tool", {})
+            await client.call_tool("medirus_test_tool", {})
 
-        assert exc_info.value.code == "XACT_4001"
+        assert exc_info.value.code == "MEDIRUS_4001"
         assert "scraper_temporarily_unavailable" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -98,7 +98,7 @@ class TestMedirusMcpClientCircuitBreaker:
             )
         )
 
-        await client.call_tool("x_test_tool", {})
+        await client.call_tool("medirus_test_tool", {})
         assert MEDIRUS_CIRCUIT_BREAKER.stats.failure_count == 0
 
     @pytest.mark.asyncio
@@ -113,7 +113,7 @@ class TestMedirusMcpClientCircuitBreaker:
         client._tainted = False
 
         with pytest.raises(ConnectionError):
-            await client.call_tool("x_test_tool", {})
+            await client.call_tool("medirus_test_tool", {})
 
         assert (
             MEDIRUS_CIRCUIT_BREAKER.stats.failure_count == initial_count + 1
@@ -139,7 +139,7 @@ class TestMedirusMcpClientEnvelope:
             return_value=MagicMock(content=[], isError=False)
         )
 
-        result = await client.call_tool("x_test_tool", {})
+        result = await client.call_tool("medirus_test_tool", {})
         assert result == {"success": True, "data": [], "meta": {}}
 
     @pytest.mark.asyncio
@@ -158,7 +158,7 @@ class TestMedirusMcpClientEnvelope:
         )
 
         with pytest.raises(MedirusMcpError) as exc_info:
-            await client.call_tool("x_test_tool", {})
+            await client.call_tool("medirus_test_tool", {})
 
         assert exc_info.value.code == "TOOL_ERROR"
         assert "Tool failed" in str(exc_info.value)
@@ -175,6 +175,6 @@ class TestMedirusMcpClientEnvelope:
         )
 
         with pytest.raises(RuntimeError) as exc_info:
-            await client.call_tool("x_test_tool", {})
+            await client.call_tool("medirus_test_tool", {})
 
         assert "Non-JSON" in str(exc_info.value)

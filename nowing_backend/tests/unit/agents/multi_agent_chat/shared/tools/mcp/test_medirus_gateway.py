@@ -25,7 +25,7 @@ async def test_create_medirus_meta_tools_structure():
     )
     assert len(tools) == 3
     tool_names = {t.name for t in tools}
-    assert tool_names == {"x_search", "x_scrape", "x_crawl_post"}
+    assert tool_names == {"medirus_search", "medirus_scrape", "medirus_crawl_post"}
     for t in tools:
         assert t.metadata["hitl"] is False
         assert t.metadata["mcp_transport"] == "http"
@@ -35,7 +35,7 @@ async def test_create_medirus_meta_tools_structure():
 
 @pytest.mark.asyncio
 async def test_search_tweets_dispatch():
-    """Verify x_search for twitter dispatches to x_search_tweets."""
+    """Verify medirus_search for twitter dispatches to medirus_search_tweets."""
     with patch(
         "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway._execute_medirus_tool",
         new_callable=AsyncMock,
@@ -54,7 +54,7 @@ async def test_search_tweets_dispatch():
 
         mock_exec.assert_called_once_with(
             {"url": "http://test:3001/mcp"},
-            "x_search_tweets",
+            "medirus_search_tweets",
             {"query": "ai agent", "platform": "twitter", "limit": 10},
         )
         parsed = json.loads(res_str)
@@ -64,7 +64,7 @@ async def test_search_tweets_dispatch():
 
 @pytest.mark.asyncio
 async def test_scrape_marketplace_dispatch():
-    """Verify x_scrape for facebook marketplace dispatches to x_facebook_marketplace."""
+    """Verify medirus_scrape for facebook marketplace dispatches to medirus_facebook_marketplace."""
     with patch(
         "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway._execute_medirus_tool",
         new_callable=AsyncMock,
@@ -86,7 +86,7 @@ async def test_scrape_marketplace_dispatch():
 
         mock_exec.assert_called_once_with(
             {"url": "http://test:3001/mcp"},
-            "x_facebook_marketplace",
+            "medirus_facebook_marketplace",
             {
                 "query": "xe máy",
                 "limit": 5,
@@ -101,7 +101,7 @@ async def test_scrape_marketplace_dispatch():
 
 @pytest.mark.asyncio
 async def test_crawl_post_dispatch():
-    """Verify x_crawl_post dispatches to x_crawl_post on Medirus."""
+    """Verify medirus_crawl_post dispatches to medirus_crawl_post on Medirus."""
     with patch(
         "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway._execute_medirus_tool",
         new_callable=AsyncMock,
@@ -119,7 +119,7 @@ async def test_crawl_post_dispatch():
 
         mock_exec.assert_called_once_with(
             {"url": "http://test:3001/mcp"},
-            "x_crawl_post",
+            "medirus_crawl_post",
             {
                 "platform": "facebook",
                 "limit": 20,
@@ -151,7 +151,7 @@ async def test_search_facebook_default_search_type():
 
 @pytest.mark.asyncio
 async def test_scrape_non_twitter_posts_uses_x_scrape():
-    """Shopee/TikTok/Chotot 'posts' action must route to x_scrape."""
+    """Shopee/TikTok/Chotot 'posts' action must route to medirus_scrape."""
     with patch(
         "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway._execute_medirus_tool",
         new_callable=AsyncMock,
@@ -167,7 +167,7 @@ async def test_scrape_non_twitter_posts_uses_x_scrape():
         )
 
         tool = mock_exec.call_args[0][1]
-        assert tool == "x_scrape"
+        assert tool == "medirus_scrape"
 
 
 @pytest.mark.asyncio
@@ -177,14 +177,14 @@ async def test_format_result_error_without_error_key():
         _format_result,
     )
     result = {"success": False, "message": "something went wrong"}
-    formatted = _format_result("x_test", result)
+    formatted = _format_result("medirus_test", result)
     assert formatted.startswith("Error")
     assert "something went wrong" in formatted
 
 
 @pytest.mark.asyncio
 async def test_crawl_post_requires_url_or_post_id():
-    """x_crawl_post returns an error if both url and post_id are missing."""
+    """medirus_crawl_post returns an error if both url and post_id are missing."""
     res = await _handle_medirus_crawl_post(
         server_config={"url": "http://test:3001/mcp"},
     )
@@ -216,13 +216,13 @@ async def test_execute_medirus_tool_calls_client():
                 "headers": {"X-Consumer-Id": "nowing"},
                 "api_key": "key",
             },
-            tool_name="x_search_tweets",
+            tool_name="medirus_search_tweets",
             arguments={"query": "ai", "platform": "twitter"},
         )
 
         assert result["success"] is True
         mock_client.call_tool.assert_awaited_once_with(
-            "x_search_tweets",
+            "medirus_search_tweets",
             {"query": "ai", "platform": "twitter", "dryRun": False},
         )
 
@@ -251,12 +251,12 @@ async def test_execute_medirus_tool_injects_facebook_auth():
 
             result = await _execute_medirus_tool(
                 server_config={"url": "http://test:3001/mcp"},
-                tool_name="x_facebook_group_posts",
+                tool_name="medirus_facebook_group_posts",
                 arguments={"url": "https://facebook.com/groups/test"},
             )
 
             call_args = mock_client.call_tool.call_args[0]
-            assert call_args[0] == "x_facebook_group_posts"
+            assert call_args[0] == "medirus_facebook_group_posts"
             assert call_args[1]["accountId"] == "fb_acc_01"
             assert call_args[1]["authCookie"]["accountId"] == "fb_acc_01"
             assert result["success"] is True

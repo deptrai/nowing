@@ -23,7 +23,7 @@ async def test_build_medirus_connector_config_uses_env():
 
     assert cfg["server_config"]["transport"] == "streamable-http"
     assert "url" in cfg["server_config"]
-    assert cfg["trusted_tools"] == ["x_scrape", "x_search", "x_crawl_post"]
+    assert cfg["trusted_tools"] == ["medirus_scrape", "medirus_search", "medirus_crawl_post"]
     assert cfg["consumer_id"] is not None
     headers = cfg["server_config"].get("headers", {})
     assert "X-Consumer-Id" in headers

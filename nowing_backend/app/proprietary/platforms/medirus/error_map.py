@@ -1,4 +1,4 @@
-"""Centralized XACT_* error to task-behavior mapping (AD-10 / Story 36.3).
+"""Centralized MEDIRUS_* error to task-behavior mapping (AD-10 / Story 36.3).
 
 Decouples Medirus protocol-level error codes from task execution logic.
 Pure logic module: NO Celery imports or framework retry execution allowed here.
@@ -92,14 +92,14 @@ def _extract_message(exc: Any) -> str:
     return f"{exc.__class__.__name__} (code={raw_code})"
 
 
-XACT_ERROR_BEHAVIOR: dict[str, Callable[[Any], BehaviorDecision]] = {
-    "XACT_4291": lambda e: BehaviorDecision(
+MEDIRUS_ERROR_BEHAVIOR: dict[str, Callable[[Any], BehaviorDecision]] = {
+    "MEDIRUS_4291": lambda e: BehaviorDecision(
         behavior=TaskBehavior.RETRY,
         countdown=clamp_countdown(getattr(e, "retry_after", None)),
         max_retries=5,
         exhausted_behavior=TaskBehavior.HALT,
         write_dlq=False,
-        code="XACT_4291",
+        code="MEDIRUS_4291",
         reason=_extract_message(e),
         suggested_action=getattr(e, "suggested_action", None),
     ),
@@ -117,33 +117,33 @@ XACT_ERROR_BEHAVIOR: dict[str, Callable[[Any], BehaviorDecision]] = {
         reason=_extract_message(e),
         suggested_action=getattr(e, "suggested_action", None),
     ),
-    "XACT_5030": lambda e: BehaviorDecision(
+    "MEDIRUS_5030": lambda e: BehaviorDecision(
         behavior=TaskBehavior.PAUSE,
         cooldown_seconds=clamp_cooldown(getattr(e, "retry_after", None)),
-        code="XACT_5030",
+        code="MEDIRUS_5030",
         reason=_extract_message(e),
         suggested_action=getattr(e, "suggested_action", None),
     ),
-    "XACT_4010": lambda e: BehaviorDecision(
+    "MEDIRUS_4010": lambda e: BehaviorDecision(
         behavior=TaskBehavior.HALT,
-        code="XACT_4010",
+        code="MEDIRUS_4010",
         reason=_extract_message(e),
         suggested_action=getattr(e, "suggested_action", None),
     ),
-    "XACT_5000": lambda e: BehaviorDecision(
+    "MEDIRUS_5000": lambda e: BehaviorDecision(
         behavior=TaskBehavior.RETRY,
         countdown=60,
         max_retries=3,
         exhausted_behavior=TaskBehavior.HALT,
         write_dlq=True,
-        code="XACT_5000",
+        code="MEDIRUS_5000",
         reason=_extract_message(e),
         suggested_action=getattr(e, "suggested_action", None),
     ),
-    "XACT_4001": lambda e: BehaviorDecision(
+    "MEDIRUS_4001": lambda e: BehaviorDecision(
         behavior=TaskBehavior.PAUSE,
         cooldown_seconds=clamp_cooldown(getattr(e, "retry_after", None)),
-        code="XACT_4001",
+        code="MEDIRUS_4001",
         reason=_extract_message(e),
         suggested_action=getattr(e, "suggested_action", None),
     ),
@@ -154,14 +154,16 @@ def resolve_task_behavior(
     exc: Any,
     default: TaskBehavior = TaskBehavior.PAUSE,
 ) -> BehaviorDecision:
-    """Resolve an exception into a BehaviorDecision via XACT_ERROR_BEHAVIOR map.
+    """Resolve an exception into a BehaviorDecision via MEDIRUS_ERROR_BEHAVIOR map.
 
     Coerces exc.code with str().strip().upper(). Unmapped, None, or non-string
     codes return default behavior (PAUSE) with clamped cooldown and no KeyError.
     """
     raw_code = getattr(exc, "code", None)
     code = str(raw_code).strip().upper() if raw_code is not None else ""
-    handler = XACT_ERROR_BEHAVIOR.get(code)
+    # Accept legacy XACT_* codes emitted by pre-rename Medirus builds
+    code = code.replace("XACT_", "MEDIRUS_")
+    handler = MEDIRUS_ERROR_BEHAVIOR.get(code)
     if handler is not None:
         return handler(exc)
 
@@ -187,7 +189,7 @@ def resolve_task_behavior(
 
 
 __all__ = [
-    "XACT_ERROR_BEHAVIOR",
+    "MEDIRUS_ERROR_BEHAVIOR",
     "BehaviorDecision",
     "TaskBehavior",
     "clamp_cooldown",

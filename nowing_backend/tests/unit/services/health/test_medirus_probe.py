@@ -54,7 +54,7 @@ async def test_medirus_probe_calls_x_governor_status(probe: MedirusHealthProbe) 
 
         await probe.probe()
 
-    assert mock_client.call_tool.call_args_list[0].args[0] == "x_governor_status"
+    assert mock_client.call_tool.call_args_list[0].args[0] == "medirus_governor_status"
 
 
 @pytest.mark.asyncio

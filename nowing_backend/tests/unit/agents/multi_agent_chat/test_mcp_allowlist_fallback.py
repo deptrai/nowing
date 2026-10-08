@@ -62,11 +62,11 @@ async def test_medirus_connector_loads_meta_tools_not_full_discovery():
         connector_id=42,
         connector_name="Medirus",
         server_config={"url": "http://test:3001/mcp"},
-        allowed_tools=["x_scrape", "x_search", "x_crawl_post"],
-        readonly_tools=frozenset({"x_scrape", "x_search", "x_crawl_post"}),
+        allowed_tools=["medirus_scrape", "medirus_search", "medirus_crawl_post"],
+        readonly_tools=frozenset({"medirus_scrape", "medirus_search", "medirus_crawl_post"}),
         connector_type="MEDIRUS_MCP_CONNECTOR",
     )
 
-    assert sorted(t.name for t in tools) == ["x_crawl_post", "x_scrape", "x_search"]
+    assert sorted(t.name for t in tools) == ["medirus_crawl_post", "medirus_scrape", "medirus_search"]
     assert all(t.metadata["hitl"] is False for t in tools)
     assert all(t.metadata["mcp_connector_name"] == "Medirus" for t in tools)

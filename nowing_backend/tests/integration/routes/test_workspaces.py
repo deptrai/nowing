@@ -75,7 +75,7 @@ async def test_create_workspace_auto_provisions_medirus_connector(
     assert len(medirus) == 1
     assert medirus[0]["name"] == "Medirus"
     assert medirus[0]["config"]["consumer_id"] == "nowing"
-    assert medirus[0]["config"]["trusted_tools"] == ["x_scrape", "x_search", "x_crawl_post"]
+    assert medirus[0]["config"]["trusted_tools"] == ["medirus_scrape", "medirus_search", "medirus_crawl_post"]
 
 
 @pytest.mark.integration

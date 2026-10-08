@@ -268,11 +268,11 @@ MCP_SERVICES: dict[str, MCPServiceConfig] = {
         connector_type="MEDIRUS_MCP_CONNECTOR",
         supports_dcr=False,
         allowed_tools=[
-            "x_scrape",
-            "x_search",
-            "x_crawl_post",
+            "medirus_scrape",
+            "medirus_search",
+            "medirus_crawl_post",
         ],
-        readonly_tools=frozenset({"x_scrape", "x_search", "x_crawl_post"}),
+        readonly_tools=frozenset({"medirus_scrape", "medirus_search", "medirus_crawl_post"}),
         account_metadata_keys=["consumer_id"],
     ),
 }

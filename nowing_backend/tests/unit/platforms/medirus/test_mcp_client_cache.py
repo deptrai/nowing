@@ -95,7 +95,7 @@ def test_two_loop_sequential_lifecycle():
 
         async def _run1():
             c1 = await get_shared_client()
-            res = await c1.call_tool("x_test", {})
+            res = await c1.call_tool("medirus_test", {})
             assert res["success"] is True
             return c1
 
@@ -110,7 +110,7 @@ def test_two_loop_sequential_lifecycle():
         async def _run2():
             c2 = await get_shared_client()
             assert c2 is not client1
-            res = await c2.call_tool("x_test", {})
+            res = await c2.call_tool("medirus_test", {})
             assert res["success"] is True
             return c2
 
@@ -148,7 +148,7 @@ async def test_concurrent_tool_call_serialization():
     with patch_mcp_session(call_tool_side_effect=_mock_call):
         client = await get_shared_client()
         results = await asyncio.gather(
-            *(client.call_tool("x_test", {}) for _ in range(5))
+            *(client.call_tool("medirus_test", {}) for _ in range(5))
         )
         assert len(results) == 5
         assert max_in_flight <= 1
@@ -170,7 +170,7 @@ async def test_list_tools_and_call_tool_shared_lock():
         await asyncio.sleep(0.02)
         in_flight -= 1
         return MagicMock(
-            tools=[MagicMock(name="x_tool", description="", inputSchema={})]
+            tools=[MagicMock(name="medirus_tool", description="", inputSchema={})]
         )
 
     async def _mock_call(*args, **kwargs):
@@ -191,9 +191,9 @@ async def test_list_tools_and_call_tool_shared_lock():
 
         await asyncio.gather(
             client.list_tools(),
-            client.call_tool("x_test", {}),
+            client.call_tool("medirus_test", {}),
             client.list_tools(),
-            client.call_tool("x_test2", {}),
+            client.call_tool("medirus_test2", {}),
         )
         assert max_in_flight <= 1
 
@@ -389,7 +389,7 @@ async def test_default_adapter_integration():
         await adapter.close()
         # Shared client session remains open
         assert client._session is not None
-        res = await client.call_tool("x_test", {})
+        res = await client.call_tool("medirus_test", {})
         assert res["success"] is True
 
 
@@ -431,7 +431,7 @@ async def test_direct_async_with_protection():
 
         # Exiting async with must NOT have closed _session
         assert shared._session is not None
-        res = await shared.call_tool("x_test", {})
+        res = await shared.call_tool("medirus_test", {})
         assert res["success"] is True
 
 
@@ -450,7 +450,7 @@ async def test_fatal_transport_drop_eviction():
         )
 
         with pytest.raises(httpx.TransportError):
-            await client.call_tool("x_test", {})
+            await client.call_tool("medirus_test", {})
 
         assert client._tainted is True
         assert client._session is None
@@ -485,7 +485,7 @@ async def test_artifact_fetching_outside_lock():
         client = await get_shared_client()
         client._fetch_artifact = _fake_fetch_artifact
 
-        res = await client.call_tool("x_test", {})
+        res = await client.call_tool("medirus_test", {})
         assert res["success"] is True
         assert res["data"] == [{"id": "artifact_post"}]
         assert lock_was_locked_during_fetch is False
@@ -507,7 +507,7 @@ def test_thread_safety_multi_thread_access():
 
             async def _run():
                 c = await get_shared_client()
-                res = await c.call_tool("x_test", {"thread": thread_id})
+                res = await c.call_tool("medirus_test", {"thread": thread_id})
                 assert res["success"] is True
                 await release_shared_client_for_loop(loop)
 
@@ -539,7 +539,7 @@ async def test_multi_tenancy_arguments_non_persistence():
         initial_headers = dict(client._headers)
 
         await client.call_tool(
-            "x_test",
+            "medirus_test",
             {
                 "accountId": "tenant_xyz",
                 "proxyUrl": "socks5://proxy:1080",
@@ -581,7 +581,7 @@ async def test_tainted_client_raises_in_call_and_list_tools():
         client._tainted = True
 
         with pytest.raises(RuntimeError, match="session is closed or tainted"):
-            await client.call_tool("x_test", {})
+            await client.call_tool("medirus_test", {})
 
         with pytest.raises(RuntimeError, match="session is closed or tainted"):
             await client.list_tools()
@@ -603,7 +603,7 @@ async def test_anyio_fatal_transport_eviction(exc_cls):
         client._session.call_tool = AsyncMock(side_effect=exc_cls())
 
         with pytest.raises(exc_cls):
-            await client.call_tool("x_test", {})
+            await client.call_tool("medirus_test", {})
 
         assert client._tainted is True
         with _CLIENTS_LOCK:

@@ -47,13 +47,13 @@ class TestUniversalScrapeTargetMapper:
     def test_map_facebook_group(self):
         target = FakeTarget("facebook_group", "honda_scoopy")
         tool, args = UniversalScrapeTargetMapper.map(target)
-        assert tool == "x_facebook_group_posts"
+        assert tool == "medirus_facebook_group_posts"
         assert args["url"].endswith("/groups/honda_scoopy")
 
     def test_map_tiktok_hashtag(self):
         target = FakeTarget("tiktok_hashtag", "bds")
         tool, args = UniversalScrapeTargetMapper.map(target)
-        assert tool == "x_scrape"
+        assert tool == "medirus_scrape"
         assert args["platform"] == "tiktok"
 
     def test_map_unsupported_raises(self):
@@ -69,7 +69,7 @@ class TestUniversalScrapeTargetMapper:
     def test_fallback_crawl_post_accepts_url(self):
         target = FakeTarget("facebook_page", "https://facebook.com/my_page")
         tool, args = UniversalScrapeTargetMapper.fallback_crawl_post(target)
-        assert tool == "x_crawl_post"
+        assert tool == "medirus_crawl_post"
         assert args["url"].startswith("https://")
         assert args["platform"] == "facebook"
 
@@ -89,7 +89,7 @@ class TestMedirusSocialAdapterV2:
         _ = await adapter.fetch_posts_for_target(target)
 
         call_args = client._session.call_tool.call_args
-        assert call_args[0][0] == "x_scrape"
+        assert call_args[0][0] == "medirus_scrape"
         assert call_args.kwargs["arguments"]["dryRun"] is False
 
     @pytest.mark.asyncio
@@ -126,12 +126,12 @@ class TestMedirusSocialAdapterV2:
         )
 
         async def _call_tool(tool_name, arguments):
-            if tool_name == "x_scrape":
+            if tool_name == "medirus_scrape":
                 raise MedirusMcpError(
-                    message="Tool x_scrape not found",
-                    code="XACT_404",
+                    message="Tool medirus_scrape not found",
+                    code="MEDIRUS_404",
                 )
-            if tool_name == "x_crawl_post":
+            if tool_name == "medirus_crawl_post":
                 return {
                     "success": True,
                     "data": [
@@ -159,7 +159,7 @@ class TestMedirusSocialAdapterV2:
         # Verify fallback arguments passed
         assert client.call_tool.call_count == 2
         fallback_call = client.call_tool.call_args_list[1]
-        assert fallback_call[0][0] == "x_crawl_post"
+        assert fallback_call[0][0] == "medirus_crawl_post"
         assert fallback_call[0][1] == {
             "platform": "chotot",
             "url": "https://www.chotot.com/mua-ban-laptop",
@@ -178,9 +178,9 @@ class TestMedirusSocialAdapterV2:
         )
 
         async def _call_tool(tool_name, arguments):
-            if tool_name == "x_scrape":
-                raise MedirusMcpError("Not found", code="XACT_404")
-            assert tool_name == "x_crawl_post"
+            if tool_name == "medirus_scrape":
+                raise MedirusMcpError("Not found", code="MEDIRUS_404")
+            assert tool_name == "medirus_crawl_post"
             return {
                 "success": True,
                 "data": {
@@ -209,14 +209,14 @@ class TestMedirusSocialAdapterV2:
         )
 
         client.call_tool = AsyncMock(
-            side_effect=MedirusMcpError("Tool x_scrape not found", code="XACT_404")
+            side_effect=MedirusMcpError("Tool medirus_scrape not found", code="MEDIRUS_404")
         )
 
         with pytest.raises(TargetUnsupportedError, match="lacks valid HTTP"):
             await adapter.fetch_posts_for_target(target)
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("fallback_code", ["XACT_404", "XACT_4001", "tool_not_found"])
+    @pytest.mark.parametrize("fallback_code", ["MEDIRUS_404", "MEDIRUS_4001", "tool_not_found"])
     async def test_fetch_posts_for_target_fallback_permanent_error_raises_target_unsupported(
         self, fallback_code
     ):
@@ -228,8 +228,8 @@ class TestMedirusSocialAdapterV2:
         )
 
         async def _call_tool(tool_name, arguments):
-            if tool_name == "x_scrape":
-                raise MedirusMcpError("Tool x_scrape not found", code="XACT_404")
+            if tool_name == "medirus_scrape":
+                raise MedirusMcpError("Tool medirus_scrape not found", code="MEDIRUS_404")
             raise MedirusMcpError(f"Fallback failed: {fallback_code}", code=fallback_code)
 
         client.call_tool = AsyncMock(side_effect=_call_tool)
@@ -247,15 +247,15 @@ class TestMedirusSocialAdapterV2:
         )
 
         async def _call_tool(tool_name, arguments):
-            if tool_name == "x_scrape":
-                raise MedirusMcpError("Tool x_scrape not found", code="XACT_404")
-            raise MedirusMcpError("Rate limit exceeded", code="XACT_4291", retry_after=45)
+            if tool_name == "medirus_scrape":
+                raise MedirusMcpError("Tool medirus_scrape not found", code="MEDIRUS_404")
+            raise MedirusMcpError("Rate limit exceeded", code="MEDIRUS_4291", retry_after=45)
 
         client.call_tool = AsyncMock(side_effect=_call_tool)
 
         with pytest.raises(MedirusMcpError) as exc_info:
             await adapter.fetch_posts_for_target(target)
-        assert exc_info.value.code == "XACT_4291"
+        assert exc_info.value.code == "MEDIRUS_4291"
         assert exc_info.value.retry_after == 45
 
     @pytest.mark.asyncio
@@ -268,12 +268,12 @@ class TestMedirusSocialAdapterV2:
         )
 
         client.call_tool = AsyncMock(
-            side_effect=MedirusMcpError("Rate limit", code="XACT_4291", retry_after=30)
+            side_effect=MedirusMcpError("Rate limit", code="MEDIRUS_4291", retry_after=30)
         )
 
         with pytest.raises(MedirusMcpError) as exc_info:
             await adapter.fetch_posts_for_target(target)
-        assert exc_info.value.code == "XACT_4291"
+        assert exc_info.value.code == "MEDIRUS_4291"
         assert client.call_tool.call_count == 1
 
     @pytest.mark.asyncio
@@ -404,7 +404,7 @@ class TestMedirusSocialAdapterV2:
     async def test_fetch_posts_for_target_unified_and_deprecation_flags_on(
         self, monkeypatch
     ):
-        """Integration: both flags ON routes legacy facebook_group through x_scrape
+        """Integration: both flags ON routes legacy facebook_group through medirus_scrape
         and preserves adapter envelope enrichment (accountId/proxyUrl/dryRun)."""
         from app.config import config
         from app.proprietary.platforms.medirus.action_matrix import (
@@ -431,7 +431,7 @@ class TestMedirusSocialAdapterV2:
             call_args = client._session.call_tool.call_args
             tool_name = call_args[0][0]
             arguments = call_args.kwargs["arguments"]
-            assert tool_name == "x_scrape"
+            assert tool_name == "medirus_scrape"
             assert arguments["platform"] == "facebook"
             assert arguments["action"] == "group_posts"
             assert arguments["args"] == {

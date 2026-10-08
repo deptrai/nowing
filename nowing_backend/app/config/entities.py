@@ -101,7 +101,7 @@ MEDIRUS_STREAM_REDIS_URL = os.getenv("MEDIRUS_STREAM_REDIS_URL", "").strip()
 # Unified dispatch gate (Story 36.6a / AD-1, AD-2, AD-6)
 # When ON: UniversalScrapeTargetMapper resolves platform+action from the
 # CanonicalActionMatrix (medirus_list + static fallback) and dispatches
-# x_scrape with the nested {platform, action, args, context} envelope.
+# medirus_scrape with the nested {platform, action, args, context} envelope.
 # When OFF: legacy PLATFORM_TOOL_MAP path is used unchanged.
 MEDIRUS_USE_UNIFIED_DISPATCH = (
     os.getenv("MEDIRUS_USE_UNIFIED_DISPATCH", "false").strip().lower()
@@ -110,7 +110,7 @@ MEDIRUS_USE_UNIFIED_DISPATCH = (
 # Legacy tool deprecation gate (Story 36.6b / AD-1, AD-2)
 # When ON (and MEDIRUS_USE_UNIFIED_DISPATCH is also ON): UniversalScrapeTargetMapper
 # routes facebook_group, facebook_page, twitter_keyword, twitter_user through
-# x_scrape with the canonical matrix envelope instead of dedicated legacy tools.
+# medirus_scrape with the canonical matrix envelope instead of dedicated legacy tools.
 # When OFF (or MEDIRUS_USE_UNIFIED_DISPATCH is OFF): legacy tool calls are preserved.
 MEDIRUS_LEGACY_TOOL_DEPRECATION = (
     os.getenv("MEDIRUS_LEGACY_TOOL_DEPRECATION", "false").strip().lower()

@@ -34,7 +34,7 @@ def make_medirus_executor(
     Args:
         platform: Platform name (e.g., 'topcv', 'chotot').
         action: Medirus action (default: 'scrape').
-        args_mapper: Optional callable(input) → dict for x_scrape args.
+        args_mapper: Optional callable(input) → dict for medirus_scrape args.
                      If None, uses input.model_dump() directly.
 
     Returns:
@@ -64,7 +64,7 @@ def make_medirus_executor(
         client = await get_shared_client()
 
         try:
-            result = await client.call_tool("x_scrape", payload)
+            result = await client.call_tool("medirus_scrape", payload)
         except MedirusMcpError as exc:
             logger.warning(
                 "Medirus error for %s.%s: code=%s message=%s",
@@ -103,15 +103,15 @@ def make_medirus_executor(
 
 def _map_medirus_error(exc: MedirusMcpError) -> Exception:
     """Map MedirusMcpError to HTTP-friendly exceptions."""
-    if exc.code == "XACT_4001":
+    if exc.code == "MEDIRUS_4001":
         return ExternalServiceError(
             "Scraper temporarily unavailable (Medirus circuit open)",
-            code="XACT_4001",
+            code="MEDIRUS_4001",
         )
-    if exc.code in ("VALIDATION_ERROR", "INVALID_ARGS", "XACT_4002"):
+    if exc.code in ("VALIDATION_ERROR", "INVALID_ARGS", "MEDIRUS_4002"):
         return ExternalServiceError(
             f"Invalid scrape arguments: {exc.message}",
-            code="XACT_4002",
+            code="MEDIRUS_4002",
         )
     return ExternalServiceError(
         f"Medirus scrape failed: {exc.message}",
@@ -143,8 +143,9 @@ class _ProxyArgs:
 
 def _is_tool_not_found(exc: MedirusMcpError) -> bool:
     """Mirror adapter_v2's tool_not_found detection (Story 40.2 local fallback)."""
-    code_str = str(exc.code) if exc.code is not None else ""
-    if code_str in ("XACT_404", "tool_not_found", "404"):
+    # Accept legacy XACT_* codes emitted by pre-rename Medirus builds
+    code_str = (str(exc.code) if exc.code is not None else "").replace("XACT_", "MEDIRUS_")
+    if code_str in ("MEDIRUS_404", "tool_not_found", "404"):
         return True
     msg_lower = (exc.message or "").lower()
     return "tool_not_found" in msg_lower or "tool not found" in msg_lower
@@ -175,7 +176,7 @@ async def medirus_scrape_or_local(
         proxy = make_medirus_executor(platform=platform, action=action)
         return await proxy(_ProxyArgs(args), ctx)
     except ExternalServiceError as exc:
-        if getattr(exc, "code", None) == "XACT_4001":
+        if getattr(exc, "code", None) == "MEDIRUS_4001":
             raise  # circuit open — fail fast, do not hammer the local path
         logger.warning(
             "medirus_scrape_or_local: Medirus unavailable for %s.%s (%s) — "

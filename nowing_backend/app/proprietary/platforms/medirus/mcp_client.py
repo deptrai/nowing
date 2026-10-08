@@ -6,11 +6,11 @@ and the `X-Consumer-Id` header required by AD-20 / Trinity contract.
 
 Usage:
     async with MedirusMcpClient() as client:
-        result = await client.call_tool("x_facebook_group_posts", {...})
+        result = await client.call_tool("medirus_facebook_group_posts", {...})
 
 Story 40.1 additions:
     - Circuit breaker integration (3 consecutive failures → OPEN for 60s)
-    - Fail-fast with XACT_4001 code when circuit is open
+    - Fail-fast with MEDIRUS_4001 code when circuit is open
     - 4.0s connectivity timeout for health probes
 """
 
@@ -85,7 +85,7 @@ class MedirusMcpClient:
 
     Usage:
         async with MedirusMcpClient() as client:
-            result = await client.call_tool("x_facebook_group_posts", {...})
+            result = await client.call_tool("medirus_facebook_group_posts", {...})
     """
 
     def __init__(
@@ -264,11 +264,11 @@ class MedirusMcpClient:
                 self._call_tool_inner, tool_name, arguments
             )
         except CircuitBreakerOpenError as exc:
-            # Map circuit-open to XACT_4001 error envelope for upstream handling
+            # Map circuit-open to MEDIRUS_4001 error envelope for upstream handling
             logger.warning("Medirus circuit breaker OPEN: %s", exc)
             raise MedirusMcpError(
                 message="scraper_temporarily_unavailable",
-                code="XACT_4001",
+                code="MEDIRUS_4001",
             ) from exc
 
     async def _call_tool_inner(
@@ -284,7 +284,7 @@ class MedirusMcpClient:
                 )
 
             effective_arguments = arguments
-            if tool_name.startswith("x_admin_"):
+            if tool_name.startswith("medirus_admin_"):
                 effective_arguments = self._admin_args(arguments)
 
             logger.info("Calling Medirus MCP tool %s", tool_name)
@@ -417,7 +417,7 @@ class MedirusMcpClient:
         """
         try:
             async with asyncio.timeout(MEDIRUS_CONNECTIVITY_TIMEOUT_SECONDS):
-                result = await self.call_tool("x_governor_status", {})
+                result = await self.call_tool("medirus_governor_status", {})
             return {
                 "status": "healthy" if result.get("success") else "degraded",
                 "data": result.get("data", {}),

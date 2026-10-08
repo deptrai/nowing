@@ -1,4 +1,4 @@
-"""Unit tests for centralized XACT_* error map (AD-10 / Story 36.3).
+"""Unit tests for centralized MEDIRUS_* error map (AD-10 / Story 36.3).
 
 Ensures pure logic behavior without Celery worker or Celery imports.
 """
@@ -110,7 +110,7 @@ class TestClampCooldown:
 
 class TestCanonicalCodesMapping:
     def test_rate_limit_4291(self):
-        err = MedirusMcpError("Rate limit exceeded", code="XACT_4291", retry_after=45)
+        err = MedirusMcpError("Rate limit exceeded", code="MEDIRUS_4291", retry_after=45)
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.RETRY
         assert decision.countdown == 45
@@ -120,14 +120,14 @@ class TestCanonicalCodesMapping:
         assert "Rate limit exceeded" in decision.reason
 
     def test_rate_limit_4291_no_retry_after(self):
-        err = MedirusMcpError("Rate limit", code="XACT_4291", retry_after=None)
+        err = MedirusMcpError("Rate limit", code="MEDIRUS_4291", retry_after=None)
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.RETRY
         assert decision.countdown == 30
         assert decision.max_retries == 5
 
     def test_rate_limit_4291_large_retry_after(self):
-        err = MedirusMcpError("Rate limit", code="XACT_4291", retry_after=99999)
+        err = MedirusMcpError("Rate limit", code="MEDIRUS_4291", retry_after=99999)
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.RETRY
         assert decision.countdown == 3600
@@ -147,20 +147,20 @@ class TestCanonicalCodesMapping:
         assert "Proxy exhausted" in decision.reason
 
     def test_5030_temporary_unavailable(self):
-        err = MedirusMcpError("Service unavailable", code="XACT_5030", retry_after=300)
+        err = MedirusMcpError("Service unavailable", code="MEDIRUS_5030", retry_after=300)
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.PAUSE
         assert decision.cooldown_seconds == 300
         assert "Service unavailable" in decision.reason
 
     def test_auth_fatal_4010(self):
-        err = MedirusMcpError("Invalid credentials", code="XACT_4010")
+        err = MedirusMcpError("Invalid credentials", code="MEDIRUS_4010")
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.HALT
         assert "Invalid credentials" in decision.reason
 
     def test_signer_crash_5000(self):
-        err = MedirusMcpError("Signer crashed", code="XACT_5000")
+        err = MedirusMcpError("Signer crashed", code="MEDIRUS_5000")
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.RETRY
         assert decision.countdown == 60
@@ -172,7 +172,7 @@ class TestCanonicalCodesMapping:
     def test_bad_request_4001_with_suggested_action(self):
         err = MedirusMcpError(
             "Bad query params",
-            code="XACT_4001",
+            code="MEDIRUS_4001",
             retry_after=400,
             suggested_action="check workspace config",
         )
@@ -186,7 +186,7 @@ class TestCanonicalCodesMapping:
         assert "check workspace config" not in decision.reason
 
     def test_bad_request_4001_without_suggested_action(self):
-        err = MedirusMcpError("Bad query", code="XACT_4001")
+        err = MedirusMcpError("Bad query", code="MEDIRUS_4001")
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.PAUSE
         assert decision.cooldown_seconds == 600
@@ -202,11 +202,11 @@ class TestEdgeCasesAndCoercion:
         assert decision.countdown == 50
 
     def test_unmapped_code_defaults_to_pause(self):
-        err = MedirusMcpError("Unknown error", code="XACT_9999", retry_after=180)
+        err = MedirusMcpError("Unknown error", code="MEDIRUS_9999", retry_after=180)
         decision = resolve_task_behavior(err)
         assert decision.behavior == TaskBehavior.PAUSE
         assert decision.cooldown_seconds == 180
-        assert "unmapped code XACT_9999" in decision.reason
+        assert "unmapped code MEDIRUS_9999" in decision.reason
         assert "Unknown error" in decision.reason
 
     def test_none_code_defaults_to_pause(self):
@@ -256,20 +256,20 @@ class TestCeleryIndependence:
 
 class TestExtractMessageFallback:
     def test_empty_message_and_empty_str_returns_class_code(self):
-        err = MedirusMcpError("", code="XACT_5000")
+        err = MedirusMcpError("", code="MEDIRUS_5000")
         # message="" and str(err)="" -> fallback includes class name + code
         msg = error_map._extract_message(err)
         assert "MedirusMcpError" in msg
-        assert "XACT_5000" in msg
+        assert "MEDIRUS_5000" in msg
 
     def test_default_retry_populates_countdown(self):
-        err = MagicMock(code="XACT_9999", message="weird", retry_after=42)
+        err = MagicMock(code="MEDIRUS_9999", message="weird", retry_after=42)
         decision = resolve_task_behavior(err, default=TaskBehavior.RETRY)
         assert decision.behavior == TaskBehavior.RETRY
         assert decision.countdown == 42
         assert decision.cooldown_seconds is None
 
     def test_default_retry_clamps_countdown(self):
-        err = MagicMock(code="XACT_9999", message="weird", retry_after=99999)
+        err = MagicMock(code="MEDIRUS_9999", message="weird", retry_after=99999)
         decision = resolve_task_behavior(err, default=TaskBehavior.RETRY)
         assert decision.countdown == 3600

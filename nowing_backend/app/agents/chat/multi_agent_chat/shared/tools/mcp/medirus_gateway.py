@@ -3,9 +3,9 @@
 Instead of exposing 150+ granular Medirus scraping tools into the LLM system
 prompt (which causes severe prompt bloat, high token costs, and tool hallucination),
 this module wraps Medirus into 3 clean, consolidated meta-tools:
-1. `x_search`: Cross-platform keyword/hashtag/user search across Twitter/X, Facebook, Threads, etc.
-2. `x_scrape`: Targeted listing/feed scraping (e.g. Marketplace, user posts, trends, hashtags).
-3. `x_crawl_post`: Deep post inspection for a specific post URL or ID.
+1. `medirus_search`: Cross-platform keyword/hashtag/user search across Twitter/X, Facebook, Threads, etc.
+2. `medirus_scrape`: Targeted listing/feed scraping (e.g. Marketplace, user posts, trends, hashtags).
+3. `medirus_crawl_post`: Deep post inspection for a specific post URL or ID.
 
 Each meta-tool validates high-level parameters and dispatches dynamically to the
 appropriate underlying Medirus MCP tool on the daemon.
@@ -257,7 +257,7 @@ async def _handle_medirus_search(
 
     if normalized == "facebook":
         # Specialized Facebook search (posts, people, pages, groups)
-        tool_name = "x_facebook_search"
+        tool_name = "medirus_facebook_search"
         arguments = {
             "query": query,
             "type": search_type or "posts",
@@ -266,7 +266,7 @@ async def _handle_medirus_search(
         }
     else:
         # Cross-platform social search (Twitter, Bluesky, Mastodon, Threads, Facebook)
-        tool_name = "x_search_tweets"
+        tool_name = "medirus_search_tweets"
         arguments = {
             "query": query,
             "platform": normalized,
@@ -294,7 +294,7 @@ async def _handle_medirus_scrape(
     act = action.strip().lower()
 
     if normalized_platform == "facebook" and act == "marketplace":
-        tool_name = "x_facebook_marketplace"
+        tool_name = "medirus_facebook_marketplace"
         arguments: dict[str, Any] = {
             "query": query or target or "all",
             "limit": limit,
@@ -308,7 +308,7 @@ async def _handle_medirus_scrape(
             arguments["maxPrice"] = max_price
 
     elif normalized_platform == "facebook" and act in ("group_posts", "group"):
-        tool_name = "x_facebook_group_posts"
+        tool_name = "medirus_facebook_group_posts"
         url = target or query
         if not url:
             return "Error: Facebook group scrape requires a target or query (group id or URL)."
@@ -317,7 +317,7 @@ async def _handle_medirus_scrape(
         arguments = {"url": url, "limit": limit, "dryRun": False}
 
     elif normalized_platform == "facebook" and act in ("page_posts", "page"):
-        tool_name = "x_facebook_posts"
+        tool_name = "medirus_facebook_posts"
         url = target or query
         if not url:
             return "Error: Facebook page scrape requires a target or query (page id or URL)."
@@ -326,18 +326,18 @@ async def _handle_medirus_scrape(
         arguments = {"url": url, "limit": limit, "dryRun": False}
 
     elif normalized_platform == "twitter" and act == "hashtag":
-        tool_name = "x_get_hashtag"
+        tool_name = "medirus_get_hashtag"
         tag = (target or query or "").lstrip("#")
         arguments = {"hashtag": tag, "limit": limit}
 
     elif normalized_platform == "twitter" and act == "trends":
-        tool_name = "x_get_trends"
+        tool_name = "medirus_get_trends"
         arguments = {"limit": limit}
         if query:
             arguments["category"] = query
 
     elif act in ("user_posts", "tweets", "user_tweets"):
-        tool_name = "x_get_tweets"
+        tool_name = "medirus_get_tweets"
         username = (target or query or "").lstrip("@")
         arguments = {
             "username": username,
@@ -346,7 +346,7 @@ async def _handle_medirus_scrape(
         }
 
     elif normalized_platform in ("tiktok", "chotot", "shopee", "topcv", "batdongsan", "masothue", "b2b_registry", "linkedin_company"):
-        tool_name = "x_scrape"
+        tool_name = "medirus_scrape"
         arguments = {
             "platform": normalized_platform,
             "action": act,
@@ -356,12 +356,12 @@ async def _handle_medirus_scrape(
         }
 
     else:
-        # Fallback to x_crawl_post or x_search_tweets
+        # Fallback to medirus_crawl_post or medirus_search_tweets
         if target and target.startswith("http"):
-            tool_name = "x_crawl_post"
+            tool_name = "medirus_crawl_post"
             arguments = {"platform": normalized_platform, "url": target, "limit": limit}
         else:
-            tool_name = "x_search_tweets"
+            tool_name = "medirus_search_tweets"
             arguments = {
                 "query": query or target or "",
                 "platform": normalized_platform,
@@ -382,9 +382,9 @@ async def _handle_medirus_crawl_post(
     **extra: Any,
 ) -> str:
     if not url and not post_id:
-        return "Error: x_crawl_post requires a url or post_id."
+        return "Error: medirus_crawl_post requires a url or post_id."
     target_platform = _normalize_platform(platform or _detect_platform_from_url(url))
-    tool_name = "x_crawl_post"
+    tool_name = "medirus_crawl_post"
     arguments: dict[str, Any] = {
         "platform": target_platform,
         "limit": limit,
@@ -428,7 +428,7 @@ def create_medirus_meta_tools(
         return await _handle_medirus_crawl_post(server_config, **kwargs)
 
     search_tool = StructuredTool(
-        name="x_search",
+        name="medirus_search",
         description=(
             "[Medirus Social] Search posts, tweets, and profiles across social media "
             "(Twitter/X, Facebook, Threads, Bluesky, Mastodon). Use this to find discussions, "
@@ -443,12 +443,12 @@ def create_medirus_meta_tools(
             "mcp_connector_id": connector_id,
             "mcp_is_generic": False,
             "hitl": False,
-            "mcp_original_tool_name": "x_search",
+            "mcp_original_tool_name": "medirus_search",
         },
     )
 
     scrape_tool = StructuredTool(
-        name="x_scrape",
+        name="medirus_scrape",
         description=(
             "[Medirus Social] Scrape structured listings and feeds from social platforms. "
             "Supports Facebook Marketplace (product listings, prices, locations), Twitter hashtags "
@@ -463,12 +463,12 @@ def create_medirus_meta_tools(
             "mcp_connector_id": connector_id,
             "mcp_is_generic": False,
             "hitl": False,
-            "mcp_original_tool_name": "x_scrape",
+            "mcp_original_tool_name": "medirus_scrape",
         },
     )
 
     crawl_post_tool = StructuredTool(
-        name="x_crawl_post",
+        name="medirus_crawl_post",
         description=(
             "[Medirus Social] Crawl full content, comment tree, and media details for a specific "
             "post URL or ID across Facebook, Twitter/X, Threads, and Bluesky."
@@ -482,7 +482,7 @@ def create_medirus_meta_tools(
             "mcp_connector_id": connector_id,
             "mcp_is_generic": False,
             "hitl": False,
-            "mcp_original_tool_name": "x_crawl_post",
+            "mcp_original_tool_name": "medirus_crawl_post",
         },
     )
 

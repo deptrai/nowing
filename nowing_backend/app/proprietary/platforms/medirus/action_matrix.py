@@ -51,7 +51,7 @@ class ActionDescriptor(BaseModel):
 
 
 # Static fallback matrix — conservative; only platforms that are known to work
-# via `x_scrape` (or legacy tools) today. Action names here use the *canonical*
+# via `medirus_scrape` (or legacy tools) today. Action names here use the *canonical*
 # Medirus spelling (per REQ-X4) rather than the legacy mistakes still sitting
 # in ``PLATFORM_TOOL_MAP``.
 # Static fallback matrix — mirrors the live ``medirus_list`` catalog
@@ -126,7 +126,7 @@ STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
             "match": {"target_kind": "search"},
         }
     },
-    # facebook/twitter descriptors — routed through x_scrape when both
+    # facebook/twitter descriptors — routed through medirus_scrape when both
     # MEDIRUS_USE_UNIFIED_DISPATCH and MEDIRUS_LEGACY_TOOL_DEPRECATION are ON
     # (Story 36.6b), and for platform validation when unified dispatch is ON.
     # requiredArgs use the live catalog names (groupId/pageId/query) rather
@@ -147,7 +147,7 @@ STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
     "twitter": {
         # ``twitter_keyword`` → generic ``search`` (catalog has no
         # ``search_tweets``); ``twitter_user`` → ``search`` with the advanced
-        # ``from`` arg (catalog has no ``user_tweets``; ``x_get_tweets`` stays a
+        # ``from`` arg (catalog has no ``user_tweets``; ``medirus_get_tweets`` stays a
         # dedicated legacy tool when deprecation is OFF).
         "search": {
             "requiredArgs": ["query"],

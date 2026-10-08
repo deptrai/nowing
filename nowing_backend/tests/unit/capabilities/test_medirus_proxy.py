@@ -23,7 +23,7 @@ class TestMedirusProxyExecutor:
 
     @pytest.mark.asyncio
     async def test_executor_calls_x_scrape(self, mock_client):
-        """Test that executor calls x_scrape with correct envelope."""
+        """Test that executor calls medirus_scrape with correct envelope."""
         mock_client.call_tool = AsyncMock(
             return_value={
                 "success": True,
@@ -52,9 +52,9 @@ class TestMedirusProxyExecutor:
 
             result = await executor(mock_input, ctx)
 
-            # Verify x_scrape was called with correct envelope
+            # Verify medirus_scrape was called with correct envelope
             mock_client.call_tool.assert_called_once_with(
-                "x_scrape",
+                "medirus_scrape",
                 {
                     "platform": "topcv",
                     "action": "scrape",
@@ -71,11 +71,11 @@ class TestMedirusProxyExecutor:
 
     @pytest.mark.asyncio
     async def test_executor_maps_xact_4001_to_503(self, mock_client):
-        """Test that XACT_4001 circuit-open maps to ExternalServiceError."""
+        """Test that MEDIRUS_4001 circuit-open maps to ExternalServiceError."""
         mock_client.call_tool = AsyncMock(
             side_effect=MedirusMcpError(
                 message="scraper_temporarily_unavailable",
-                code="XACT_4001",
+                code="MEDIRUS_4001",
             )
         )
 
@@ -91,7 +91,7 @@ class TestMedirusProxyExecutor:
             with pytest.raises(ExternalServiceError) as exc_info:
                 await executor(mock_input, None)
 
-            assert exc_info.value.code == "XACT_4001"
+            assert exc_info.value.code == "MEDIRUS_4001"
 
     @pytest.mark.asyncio
     async def test_executor_handles_degraded_response(self, mock_client):
@@ -148,7 +148,7 @@ class TestMedirusProxyExecutor:
             with pytest.raises(ExternalServiceError) as exc_info:
                 await executor(mock_input, None)
 
-            assert exc_info.value.code == "XACT_4002"
+            assert exc_info.value.code == "MEDIRUS_4002"
 
     @pytest.mark.asyncio
     async def test_executor_wraps_generic_error(self, mock_client):
@@ -176,19 +176,19 @@ class TestMedirusErrorMapping:
     """Test error mapping functions."""
 
     def test_map_xact_4001(self):
-        exc = MedirusMcpError("test", code="XACT_4001")
+        exc = MedirusMcpError("test", code="MEDIRUS_4001")
         result = _map_medirus_error(exc)
         assert isinstance(result, ExternalServiceError)
-        assert result.code == "XACT_4001"
+        assert result.code == "MEDIRUS_4001"
 
     def test_map_xact_4002(self):
-        exc = MedirusMcpError("bad args", code="XACT_4002")
+        exc = MedirusMcpError("bad args", code="MEDIRUS_4002")
         result = _map_medirus_error(exc)
         assert isinstance(result, ExternalServiceError)
-        assert result.code == "XACT_4002"
+        assert result.code == "MEDIRUS_4002"
 
     def test_map_validation_error(self):
         exc = MedirusMcpError("invalid", code="VALIDATION_ERROR")
         result = _map_medirus_error(exc)
         assert isinstance(result, ExternalServiceError)
-        assert result.code == "XACT_4002"
+        assert result.code == "MEDIRUS_4002"

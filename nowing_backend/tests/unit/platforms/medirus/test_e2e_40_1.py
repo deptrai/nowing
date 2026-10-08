@@ -3,7 +3,7 @@
 Tests that exercise the real code path (not mocked):
 - call_tool goes through circuit breaker
 - After 3 failures → circuit opens
-- Subsequent calls fail fast with XACT_4001
+- Subsequent calls fail fast with MEDIRUS_4001
 - After recovery timeout → circuit half-opens and probes
 """
 
@@ -53,7 +53,7 @@ class TestE2E401CircuitBreaker:
 
         with patch.object(client, "_call_tool_inner", side_effect=fake_call):
             result = await client.call_tool(
-                "x_scrape",
+                "medirus_scrape",
                 {
                     "platform": "topcv",
                     "action": "scrape",
@@ -69,7 +69,7 @@ class TestE2E401CircuitBreaker:
 
     @pytest.mark.asyncio
     async def test_e2e_circuit_opens_after_threshold(self):
-        """Circuit opens after 3 consecutive failures → fail-fast XACT_4001."""
+        """Circuit opens after 3 consecutive failures → fail-fast MEDIRUS_4001."""
         client = MedirusMcpClient(
             url="http://test:3001/mcp",
             api_key="test-key",
@@ -82,16 +82,16 @@ class TestE2E401CircuitBreaker:
         with patch.object(client, "_call_tool_inner", side_effect=fail_call):
             for _i in range(3):
                 with pytest.raises(ConnectionError):
-                    await client.call_tool("x_scrape", {})
+                    await client.call_tool("medirus_scrape", {})
 
         assert MEDIRUS_CIRCUIT_BREAKER.is_open
         assert MEDIRUS_CIRCUIT_BREAKER.stats.state == CircuitState.OPEN
 
-        # 4th call fails fast with XACT_4001
+        # 4th call fails fast with MEDIRUS_4001
         with pytest.raises(MedirusMcpError) as exc_info:
-            await client.call_tool("x_scrape", {})
+            await client.call_tool("medirus_scrape", {})
 
-        assert exc_info.value.code == "XACT_4001"
+        assert exc_info.value.code == "MEDIRUS_4001"
         assert "scraper_temporarily_unavailable" in str(exc_info.value)
 
     @pytest.mark.asyncio

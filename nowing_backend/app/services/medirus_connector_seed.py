@@ -2,7 +2,7 @@
 
 Ensures every active workspace has an `MEDIRUS_MCP_CONNECTOR` record pointing to
 the configured Medirus daemon so chat agents have immediate access to the 3
-meta-tools (`x_scrape`, `x_search`, `x_crawl_post`) without requiring manual setup.
+meta-tools (`medirus_scrape`, `medirus_search`, `medirus_crawl_post`) without requiring manual setup.
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ def build_medirus_connector_config() -> dict:
             "transport": "streamable-http",
             "headers": headers,
         },
-        "trusted_tools": ["x_scrape", "x_search", "x_crawl_post"],
+        "trusted_tools": ["medirus_scrape", "medirus_search", "medirus_crawl_post"],
     }
 
 

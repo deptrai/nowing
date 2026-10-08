@@ -174,20 +174,20 @@ class MedirusSocialAdapter:
         target_name = arguments.get("name", "") or tool_name
         target_url = arguments.get("url")
 
-        if tool_name == "x_facebook_group_posts":
+        if tool_name == "medirus_facebook_group_posts":
             platform = "facebook_group"
             target_id = target_url or arguments.get("group_id") or ""
-        elif tool_name == "x_facebook_posts":
+        elif tool_name == "medirus_facebook_posts":
             platform = "facebook_page"
             target_id = target_url or arguments.get("page_id") or ""
-        elif tool_name == "x_search_tweets":
+        elif tool_name == "medirus_search_tweets":
             platform = "twitter_keyword"
             target_id = arguments.get("query") or ""
-        elif tool_name == "x_get_tweets":
+        elif tool_name == "medirus_get_tweets":
             platform = "twitter_user"
             target_id = arguments.get("username") or ""
         else:
-            # Generic fallback: try to derive platform from x_scrape args.
+            # Generic fallback: try to derive platform from medirus_scrape args.
             platform = arguments.get("platform") or tool_name
             target_id = (
                 arguments.get("query")
@@ -395,10 +395,10 @@ class MedirusSocialAdapter:
         params: dict[str, Any],
         account_id: str | None,
     ) -> tuple[str, dict[str, Any]]:
-        if action == "x_facebook_group_posts":
+        if action == "medirus_facebook_group_posts":
             group_id = params.get("group_id")
             if not group_id:
-                raise ValueError("group_id is required for x_facebook_group_posts")
+                raise ValueError("group_id is required for medirus_facebook_group_posts")
 
             group_id_str = str(group_id)
             url = (
@@ -418,12 +418,12 @@ class MedirusSocialAdapter:
             if browser_options:
                 arguments["browserOptions"] = browser_options
 
-            return "x_facebook_group_posts", arguments
+            return "medirus_facebook_group_posts", arguments
 
-        if action == "x_search_tweets":
+        if action == "medirus_search_tweets":
             query = params.get("query")
             if not query:
-                raise ValueError("query is required for x_search_tweets")
+                raise ValueError("query is required for medirus_search_tweets")
             arguments = {
                 "query": str(query),
                 "limit": int(params.get("limit", 20)),
@@ -432,7 +432,7 @@ class MedirusSocialAdapter:
             browser_options = await self._browser_options_for_account(account_id)
             if browser_options:
                 arguments["browserOptions"] = browser_options
-            return "x_search_tweets", arguments
+            return "medirus_search_tweets", arguments
 
         raise ValueError(f"Unsupported Medirus tool action: {action}")
 
@@ -574,7 +574,7 @@ class MedirusSocialAdapter:
             )
             return {"success": False, "error": str(exc), "data": []}
 
-        if action == "x_facebook_group_posts":
+        if action == "medirus_facebook_group_posts":
             if isinstance(raw, dict) and raw.get("note"):
                 return {"success": False, "error": raw["note"], "data": []}
             return {
@@ -582,7 +582,7 @@ class MedirusSocialAdapter:
                 "data": raw if isinstance(raw, list) else [],
             }
 
-        if action == "x_search_tweets":
+        if action == "medirus_search_tweets":
             return {
                 "success": True,
                 "data": raw if isinstance(raw, list) else [],
@@ -610,13 +610,13 @@ class MedirusSocialAdapter:
             "auth_cookie": auth_cookie,
         }
         res = await self._execute_medirus_command(
-            "x_facebook_group_posts",
+            "medirus_facebook_group_posts",
             payload,
             account_id,
             timeout=timeout,
         )
         if not res.get("success"):
-            raise MedirusMcpError(res.get("error") or "x_facebook_group_posts failed")
+            raise MedirusMcpError(res.get("error") or "medirus_facebook_group_posts failed")
         raw_items = res.get("data", []) if isinstance(res, dict) else []
         if not isinstance(raw_items, list):
             logger.warning(
@@ -706,13 +706,13 @@ class MedirusSocialAdapter:
             "account_id": account_id,
         }
         res = await self._execute_medirus_command(
-            "x_search_tweets",
+            "medirus_search_tweets",
             payload,
             account_id,
             timeout=timeout,
         )
         if not res.get("success"):
-            raise MedirusMcpError(res.get("error") or "x_search_tweets failed")
+            raise MedirusMcpError(res.get("error") or "medirus_search_tweets failed")
         raw_items = res.get("data", []) if isinstance(res, dict) else []
         if not isinstance(raw_items, list):
             logger.warning(

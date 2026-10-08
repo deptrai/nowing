@@ -53,7 +53,7 @@ def medirus_mcp_server():
         return SimpleNamespace(
             tools=[
                 _make_tool(
-                    "x_facebook_group_posts",
+                    "medirus_facebook_group_posts",
                     "Fetch posts from a Facebook group.",
                     {
                         "type": "object",
@@ -65,7 +65,7 @@ def medirus_mcp_server():
                     },
                 ),
                 _make_tool(
-                    "x_admin_purge",
+                    "medirus_admin_purge",
                     "Admin-only purge operation.",
                     {
                         "type": "object",
@@ -83,7 +83,7 @@ def medirus_mcp_server():
         last_call["tool_name"] = tool_name
         last_call["arguments"] = arguments
 
-        if tool_name == "x_facebook_group_posts":
+        if tool_name == "medirus_facebook_group_posts":
             envelope = {
                 "success": True,
                 "data": [{"id": "post-1", "message": "hello"}],
@@ -92,15 +92,15 @@ def medirus_mcp_server():
             }
             return _make_text_response(json.dumps(envelope))
 
-        if tool_name == "x_governor_status":
+        if tool_name == "medirus_governor_status":
             return _make_text_response(json.dumps({"success": True, "data": {}}))
 
-        if tool_name == "x_admin_purge":
+        if tool_name == "medirus_admin_purge":
             return _make_text_response(
                 json.dumps({"success": True, "data": {"purged": True}})
             )
 
-        if tool_name == "x_rate_limited_tool":
+        if tool_name == "medirus_rate_limited_tool":
             envelope = {
                 "success": False,
                 "error": {
@@ -149,9 +149,9 @@ class TestHermeticMedirusMcpClient:
         """list_tools returns tool names, descriptions, and input schemas."""
         tools = await medirus_client.list_tools()
         names = {tool["name"] for tool in tools}
-        assert names == {"x_facebook_group_posts", "x_admin_purge"}
+        assert names == {"medirus_facebook_group_posts", "medirus_admin_purge"}
 
-        fb_tool = next(t for t in tools if t["name"] == "x_facebook_group_posts")
+        fb_tool = next(t for t in tools if t["name"] == "medirus_facebook_group_posts")
         assert fb_tool["description"] == "Fetch posts from a Facebook group."
         assert fb_tool["input_schema"]["required"] == ["group_id"]
 
@@ -161,7 +161,7 @@ class TestHermeticMedirusMcpClient:
     ) -> None:
         """call_tool parses the 3-layer envelope and returns data, meta, summary."""
         result = await medirus_client.call_tool(
-            "x_facebook_group_posts",
+            "medirus_facebook_group_posts",
             {"group_id": "12345", "limit": 10},
         )
 
@@ -171,7 +171,7 @@ class TestHermeticMedirusMcpClient:
         assert result["summary"] == {"fetched": 1}
 
         last_call = medirus_mcp_server["last_call"]
-        assert last_call["tool_name"] == "x_facebook_group_posts"
+        assert last_call["tool_name"] == "medirus_facebook_group_posts"
         assert last_call["arguments"]["group_id"] == "12345"
 
     @pytest.mark.asyncio
@@ -181,7 +181,7 @@ class TestHermeticMedirusMcpClient:
         """Structured error envelope raises MedirusMcpError with retry_after."""
         with pytest.raises(MedirusMcpError) as exc_info:
             await medirus_client.call_tool(
-                "x_rate_limited_tool",
+                "medirus_rate_limited_tool",
                 {"group_id": "12345"},
             )
 
@@ -195,14 +195,14 @@ class TestHermeticMedirusMcpClient:
     async def test_hermetic_call_tool_admin_token_injection(
         self, medirus_client: MedirusMcpClient, medirus_mcp_server: dict[str, Any]
     ) -> None:
-        """Admin token is injected for x_admin_* tools when token not provided."""
+        """Admin token is injected for medirus_admin_* tools when token not provided."""
         await medirus_client.call_tool(
-            "x_admin_purge",
+            "medirus_admin_purge",
             {"target_id": "queue-42"},
         )
 
         last_call = medirus_mcp_server["last_call"]
-        assert last_call["tool_name"] == "x_admin_purge"
+        assert last_call["tool_name"] == "medirus_admin_purge"
         assert last_call["arguments"]["target_id"] == "queue-42"
         assert last_call["arguments"]["token"] == _MEDIRUS_ADMIN_TOKEN
 
@@ -212,7 +212,7 @@ class TestHermeticMedirusMcpClient:
     ) -> None:
         """Caller-provided token is not overwritten by the admin token helper."""
         await medirus_client.call_tool(
-            "x_admin_purge",
+            "medirus_admin_purge",
             {"target_id": "queue-42", "token": "caller-token"},
         )
 

@@ -42,7 +42,7 @@ class TestMedirusMcpClient:
         mock_result.content = [mock_content]
         client._session = AsyncMock()
         client._session.call_tool = AsyncMock(return_value=mock_result)
-        result = await client.call_tool("x_facebook_group_posts", {})
+        result = await client.call_tool("medirus_facebook_group_posts", {})
         assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -51,13 +51,13 @@ class TestMedirusMcpClient:
         mock_result = MagicMock()
         mock_result.isError = True
         mock_content = MagicMock()
-        mock_content.text = '{"success": false, "error": {"code": "XACT_4291", "message": "rate limited", "retryAfterMs": 5000}}'
+        mock_content.text = '{"success": false, "error": {"code": "MEDIRUS_4291", "message": "rate limited", "retryAfterMs": 5000}}'
         mock_result.content = [mock_content]
         client._session = AsyncMock()
         client._session.call_tool = AsyncMock(return_value=mock_result)
         with pytest.raises(MedirusMcpError) as exc:
-            await client.call_tool("x_facebook_group_posts", {})
-        assert exc.value.code == "XACT_4291"
+            await client.call_tool("medirus_facebook_group_posts", {})
+        assert exc.value.code == "MEDIRUS_4291"
         assert exc.value.retry_after == 5.0  # 5000 ms → 5 s
 
     @pytest.mark.asyncio
@@ -71,7 +71,7 @@ class TestMedirusMcpClient:
         client._session = AsyncMock()
         client._session.call_tool = AsyncMock(return_value=mock_result)
         with pytest.raises(RuntimeError, match="Non-JSON Medirus response"):
-            await client.call_tool("x_facebook_group_posts", {})
+            await client.call_tool("medirus_facebook_group_posts", {})
 
     @pytest.mark.asyncio
     async def test_health_check(self):
@@ -140,7 +140,7 @@ class TestMedirusMcpClient:
         mock_content.text = '{"data": [], "meta": {}}'
         mock_result.content = [mock_content]
         client._session.call_tool = AsyncMock(return_value=mock_result)
-        result = await client.call_tool("x_facebook_group_posts", {})
+        result = await client.call_tool("medirus_facebook_group_posts", {})
         assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -154,7 +154,7 @@ class TestMedirusMcpClient:
         mock_content.text = "   "
         mock_result.content = [mock_content]
         client._session.call_tool = AsyncMock(return_value=mock_result)
-        result = await client.call_tool("x_facebook_group_posts", {})
+        result = await client.call_tool("medirus_facebook_group_posts", {})
         assert result["success"] is True
         assert result["data"] == []
         assert result["meta"] == {}
@@ -177,7 +177,7 @@ class TestMedirusMcpClient:
         with patch.object(
             client, "_fetch_artifact", new=AsyncMock(return_value=[{"post_id": "2"}])
         ):
-            result = await client.call_tool("x_facebook_group_posts", {})
+            result = await client.call_tool("medirus_facebook_group_posts", {})
         assert result["data"] == [{"post_id": "1"}, {"post_id": "2"}]
 
         # Non-list data should be replaced by artifact data
@@ -188,7 +188,7 @@ class TestMedirusMcpClient:
         with patch.object(
             client, "_fetch_artifact", new=AsyncMock(return_value=[{"post_id": "3"}])
         ):
-            result = await client.call_tool("x_facebook_group_posts", {})
+            result = await client.call_tool("medirus_facebook_group_posts", {})
         assert result["data"] == [{"post_id": "3"}]
 
     @pytest.mark.asyncio
@@ -202,7 +202,7 @@ class TestMedirusMcpClient:
         mock_content.text = json.dumps({
             "success": False,
             "error": {
-                "code": "XACT_4291",
+                "code": "MEDIRUS_4291",
                 "message": "rate limited",
                 "retryAfter": 120,
                 "retryAfterMs": 5000,
@@ -211,7 +211,7 @@ class TestMedirusMcpClient:
         mock_result.content = [mock_content]
         client._session.call_tool = AsyncMock(return_value=mock_result)
         with pytest.raises(MedirusMcpError) as exc:
-            await client.call_tool("x_facebook_group_posts", {})
+            await client.call_tool("medirus_facebook_group_posts", {})
         assert exc.value.retry_after == 120  # seconds wins
 
     @pytest.mark.asyncio
@@ -242,11 +242,11 @@ class TestMedirusMcpClient:
         client = MedirusMcpClient()
         client._session = AsyncMock()
         tool_with_schema = MagicMock()
-        tool_with_schema.name = "x_tool"
+        tool_with_schema.name = "medirus_tool"
         tool_with_schema.description = "desc"
         tool_with_schema.inputSchema = {"type": "object"}
         tool_without_schema = MagicMock()
-        tool_without_schema.name = "x_old"
+        tool_without_schema.name = "medirus_old"
         tool_without_schema.description = None
         del tool_without_schema.inputSchema
         client._session.list_tools = AsyncMock(return_value=MagicMock(tools=[tool_with_schema, tool_without_schema]))
@@ -260,7 +260,7 @@ class TestMedirusMcpClient:
         client = MedirusMcpClient()
         client._session = AsyncMock()
         tool = MagicMock()
-        tool.name = "x_tool"
+        tool.name = "medirus_tool"
         tool.description = None
         tool.inputSchema = {}
         client._session.list_tools = AsyncMock(return_value=MagicMock(tools=[tool]))
@@ -350,18 +350,18 @@ class TestMedirusMcpError:
     def test_error_fields(self):
         err = MedirusMcpError(
             message="test",
-            code="XACT_4010",
+            code="MEDIRUS_4010",
             retry_after=30,
             suggested_action="halt",
         )
-        assert err.code == "XACT_4010"
+        assert err.code == "MEDIRUS_4010"
         assert err.retry_after == 30
         assert err.suggested_action == "halt"
 
 
 @pytest.mark.asyncio
 async def test_admin_token_injection_preserves_explicit():
-    """Admin token is injected for x_admin_ tools but never overwrites explicit token."""
+    """Admin token is injected for medirus_admin_ tools but never overwrites explicit token."""
     client = MedirusMcpClient()
     client.admin_token = "default-admin"
     args = client._admin_args({"token": "caller-token"})
@@ -373,7 +373,7 @@ async def test_admin_token_injection_preserves_explicit():
 
 @pytest.mark.asyncio
 async def test_admin_token_injected_for_x_admin_tools():
-    """call_tool injects admin token for x_admin_ tools."""
+    """call_tool injects admin token for medirus_admin_ tools."""
     client = MedirusMcpClient()
     client.admin_token = "admin-token"
     client._session = AsyncMock()
@@ -383,6 +383,6 @@ async def test_admin_token_injected_for_x_admin_tools():
     mock_content.text = '{"success": true, "data": []}'
     mock_result.content = [mock_content]
     client._session.call_tool = AsyncMock(return_value=mock_result)
-    await client.call_tool("x_admin_stream_metrics", {})
+    await client.call_tool("medirus_admin_stream_metrics", {})
     _, call_kwargs = client._session.call_tool.call_args
     assert call_kwargs["arguments"]["token"] == "admin-token"

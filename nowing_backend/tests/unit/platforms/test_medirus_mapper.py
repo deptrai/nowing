@@ -43,19 +43,19 @@ class TestUniversalScrapeTargetMapper:
     @pytest.mark.parametrize(
         "platform,expected_tool",
         [
-            ("facebook_group", "x_facebook_group_posts"),
-            ("facebook_page", "x_facebook_posts"),
-            ("twitter_keyword", "x_search_tweets"),
-            ("twitter_user", "x_get_tweets"),
-            ("tiktok_hashtag", "x_scrape"),
-            ("chotot_category", "x_scrape"),
-            ("shopee_keyword", "x_scrape"),
-            ("topcv_search", "x_scrape"),
-            ("vietnamworks_search", "x_scrape"),
-            ("linkedin_company", "x_scrape"),
-            ("batdongsan_category", "x_scrape"),
-            ("masothue_lookup", "x_scrape"),
-            ("b2b_registry_search", "x_scrape"),
+            ("facebook_group", "medirus_facebook_group_posts"),
+            ("facebook_page", "medirus_facebook_posts"),
+            ("twitter_keyword", "medirus_search_tweets"),
+            ("twitter_user", "medirus_get_tweets"),
+            ("tiktok_hashtag", "medirus_scrape"),
+            ("chotot_category", "medirus_scrape"),
+            ("shopee_keyword", "medirus_scrape"),
+            ("topcv_search", "medirus_scrape"),
+            ("vietnamworks_search", "medirus_scrape"),
+            ("linkedin_company", "medirus_scrape"),
+            ("batdongsan_category", "medirus_scrape"),
+            ("masothue_lookup", "medirus_scrape"),
+            ("b2b_registry_search", "medirus_scrape"),
         ],
     )
     def test_platform_to_tool_mapping(self, platform: str, expected_tool: str):
@@ -111,7 +111,7 @@ class TestUniversalScrapeTargetMapper:
 
 
 class TestUnifiedDispatchFlagOn:
-    """``MEDIRUS_USE_UNIFIED_DISPATCH=true`` — matrix-driven x_scrape envelope."""
+    """``MEDIRUS_USE_UNIFIED_DISPATCH=true`` — matrix-driven medirus_scrape envelope."""
 
     @pytest.fixture(autouse=True)
     def _flag_on(self, monkeypatch: pytest.MonkeyPatch):
@@ -127,7 +127,7 @@ class TestUnifiedDispatchFlagOn:
     def test_map_returns_nested_envelope(self):
         target = _make_target("tiktok_hashtag", "realestate", id=42, workspace_id=7)
         tool, args = UniversalScrapeTargetMapper.map(target)
-        assert tool == "x_scrape"
+        assert tool == "medirus_scrape"
         assert args["platform"] == "tiktok"
         assert args["action"] == "hashtag_feed"
         assert args["args"] == {"tag": "realestate"}
@@ -145,7 +145,7 @@ class TestUnifiedDispatchFlagOn:
     def test_map_masothue_canonical_action(self):
         target = _make_target("masothue_lookup", "0123456789")
         tool, args = UniversalScrapeTargetMapper.map(target)
-        assert tool == "x_scrape"
+        assert tool == "medirus_scrape"
         assert args["platform"] == "masothue"
         assert args["action"] == "detail"
         assert args["args"] == {"taxCode": "0123456789"}
@@ -161,14 +161,14 @@ class TestUnifiedDispatchFlagOn:
         target = _make_target("facebook_group", "grp123", id=1, workspace_id=2)
         tool, args = UniversalScrapeTargetMapper.map(target)
         # Facebook stays on dedicated tool even when flag is ON
-        assert tool == "x_facebook_group_posts"
+        assert tool == "medirus_facebook_group_posts"
         assert "url" in args
         assert "args" not in args  # not nested
 
     def test_map_legacy_twitter_stays_dedicated(self):
         target = _make_target("twitter_keyword", "AI")
         tool, args = UniversalScrapeTargetMapper.map(target)
-        assert tool == "x_search_tweets"
+        assert tool == "medirus_search_tweets"
         assert args["query"] == "AI"
 
     def test_map_unsupported_platform_raises(self):
@@ -193,7 +193,7 @@ class TestUnifiedDispatchFlagOn:
         )
         target = _make_target("tiktok_hashtag", "trending", id=9, workspace_id=3)
         tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
-        assert tool == "x_scrape"
+        assert tool == "medirus_scrape"
         assert args["action"] == "hashtag_feed"
         assert args["args"] == {"tag": "trending"}
         client.call_tool.assert_awaited_once_with("medirus_list", {})
@@ -204,7 +204,7 @@ class TestUnifiedDispatchFlagOn:
         target = _make_target("chotot_category", "nha-dat")
         tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
         # Falls back to static matrix
-        assert tool == "x_scrape"
+        assert tool == "medirus_scrape"
         assert args["platform"] == "chotot"
         assert args["action"] == "search_listings"
 
@@ -216,7 +216,7 @@ class TestUnifiedDispatchFlagOn:
         )
         target = _make_target("facebook_page", "page1")
         tool, _args = await UniversalScrapeTargetMapper.map_async(target, client)
-        assert tool == "x_facebook_posts"
+        assert tool == "medirus_facebook_posts"
         client.call_tool.assert_not_called()
 
 
@@ -230,8 +230,8 @@ class TestUnifiedDispatchFlagOff:
     def test_map_uses_flat_args(self):
         target = _make_target("tiktok_hashtag", "realestate")
         tool, args = UniversalScrapeTargetMapper.map(target)
-        assert tool == "x_scrape"
-        # Flag OFF → nested x_scrape envelope w/ canonical action
+        assert tool == "medirus_scrape"
+        # Flag OFF → nested medirus_scrape envelope w/ canonical action
         assert args["platform"] == "tiktok"
         assert args["action"] == "hashtag_feed"
         assert args["args"] == {"tag": "realestate"}
@@ -239,13 +239,13 @@ class TestUnifiedDispatchFlagOff:
     async def test_map_async_delegates_to_sync(self):
         target = _make_target("tiktok_hashtag", "realestate")
         tool, args = await UniversalScrapeTargetMapper.map_async(target)
-        assert tool == "x_scrape"
+        assert tool == "medirus_scrape"
         assert args["args"]["tag"] == "realestate"
-        assert args["platform"] == "tiktok"  # nested x_scrape envelope
+        assert args["platform"] == "tiktok"  # nested medirus_scrape envelope
 
 
 class TestLegacyToolDeprecation:
-    """Story 36.6b — Route FB/Twitter via Unified x_scrape Dispatch.
+    """Story 36.6b — Route FB/Twitter via Unified medirus_scrape Dispatch.
 
     Gated on BOTH MEDIRUS_USE_UNIFIED_DISPATCH and MEDIRUS_LEGACY_TOOL_DEPRECATION.
     """
@@ -256,25 +256,25 @@ class TestLegacyToolDeprecation:
             (
                 "facebook_group",
                 "grp123",
-                "x_facebook_group_posts",
+                "medirus_facebook_group_posts",
                 {"url": "https://www.facebook.com/groups/grp123", "limit": 20},
             ),
             (
                 "facebook_page",
                 "page456",
-                "x_facebook_posts",
+                "medirus_facebook_posts",
                 {"url": "https://www.facebook.com/page456", "limit": 20},
             ),
             (
                 "twitter_keyword",
                 "AI agents",
-                "x_search_tweets",
+                "medirus_search_tweets",
                 {"query": "AI agents", "limit": 20},
             ),
             (
                 "twitter_user",
                 "@elon",
-                "x_get_tweets",
+                "medirus_get_tweets",
                 {"username": "elon", "limit": 20},
             ),
         ],
@@ -305,10 +305,10 @@ class TestLegacyToolDeprecation:
         CanonicalActionMatrix.reset()
 
         for platform, expected_tool in [
-            ("facebook_group", "x_facebook_group_posts"),
-            ("facebook_page", "x_facebook_posts"),
-            ("twitter_keyword", "x_search_tweets"),
-            ("twitter_user", "x_get_tweets"),
+            ("facebook_group", "medirus_facebook_group_posts"),
+            ("facebook_page", "medirus_facebook_posts"),
+            ("twitter_keyword", "medirus_search_tweets"),
+            ("twitter_user", "medirus_get_tweets"),
         ]:
             target = _make_target(platform, "test_target")
             tool, _ = UniversalScrapeTargetMapper.map(target)
@@ -317,10 +317,10 @@ class TestLegacyToolDeprecation:
     @pytest.mark.parametrize(
         "platform,target_id,expected_tool",
         [
-            ("facebook_group", "grp", "x_facebook_group_posts"),
-            ("facebook_page", "page", "x_facebook_posts"),
-            ("twitter_keyword", "q", "x_search_tweets"),
-            ("twitter_user", "@u", "x_get_tweets"),
+            ("facebook_group", "grp", "medirus_facebook_group_posts"),
+            ("facebook_page", "page", "medirus_facebook_posts"),
+            ("twitter_keyword", "q", "medirus_search_tweets"),
+            ("twitter_user", "@u", "medirus_get_tweets"),
         ],
     )
     async def test_map_async_deprecation_alone_is_noop(
@@ -341,10 +341,10 @@ class TestLegacyToolDeprecation:
     @pytest.mark.parametrize(
         "platform,expected_tool",
         [
-            ("facebook_group", "x_facebook_group_posts"),
-            ("facebook_page", "x_facebook_posts"),
-            ("twitter_keyword", "x_search_tweets"),
-            ("twitter_user", "x_get_tweets"),
+            ("facebook_group", "medirus_facebook_group_posts"),
+            ("facebook_page", "medirus_facebook_posts"),
+            ("twitter_keyword", "medirus_search_tweets"),
+            ("twitter_user", "medirus_get_tweets"),
         ],
     )
     async def test_map_async_unified_on_deprecation_off_preserves_legacy(
@@ -374,7 +374,7 @@ class TestLegacyToolDeprecation:
         def test_facebook_group_urlified(self):
             target = _make_target("facebook_group", "group123", id=10, workspace_id=20)
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
             assert args["args"] == {"groupId": "group123", "limit": 20}
@@ -384,7 +384,7 @@ class TestLegacyToolDeprecation:
             url = "https://www.facebook.com/groups/abc"
             target = _make_target("facebook_group", url, id=10, workspace_id=20)
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
             assert args["args"] == {"groupId": "abc", "limit": 20}
@@ -392,7 +392,7 @@ class TestLegacyToolDeprecation:
         def test_facebook_page_urlified(self):
             target = _make_target("facebook_page", "page456", id=11, workspace_id=21)
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "page_posts"
             assert args["args"] == {"pageId": "page456", "limit": 20}
@@ -402,7 +402,7 @@ class TestLegacyToolDeprecation:
             url = "https://www.facebook.com/page456"
             target = _make_target("facebook_page", url, id=11, workspace_id=21)
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "page_posts"
             assert args["args"] == {"pageId": "page456", "limit": 20}
@@ -412,7 +412,7 @@ class TestLegacyToolDeprecation:
                 "twitter_keyword", "AI agents", id=12, workspace_id=22
             )
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "twitter"
             assert args["action"] == "search"
             assert args["args"] == {"query": "AI agents", "limit": 20}
@@ -421,7 +421,7 @@ class TestLegacyToolDeprecation:
         def test_twitter_user_strips_at_symbol(self):
             target = _make_target("twitter_user", "@elon", id=13, workspace_id=23)
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "twitter"
             assert args["action"] == "search"
             assert args["args"] == {"from": "elon", "limit": 20}
@@ -430,7 +430,7 @@ class TestLegacyToolDeprecation:
         def test_twitter_user_without_at_symbol(self):
             target = _make_target("twitter_user", "elon", id=13, workspace_id=23)
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["args"] == {"from": "elon", "limit": 20}
 
         def test_empty_target_id_raises_value_error(self):
@@ -463,7 +463,7 @@ class TestLegacyToolDeprecation:
             )
             target = _make_target("facebook_group", "group99", id=5, workspace_id=6)
             tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
             assert args["args"] == {"groupId": "group99", "limit": 20}
@@ -486,7 +486,7 @@ class TestLegacyToolDeprecation:
             )
             target = _make_target("twitter_user", "@jack", id=1, workspace_id=2)
             tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "twitter"
             assert args["action"] == "search"
             assert args["args"] == {"from": "jack", "limit": 20}
@@ -495,7 +495,7 @@ class TestLegacyToolDeprecation:
             """map_async(target) without explicit client → STATIC_FALLBACK_MATRIX path."""
             target = _make_target("facebook_group", "grp_none", id=9, workspace_id=11)
             tool, args = await UniversalScrapeTargetMapper.map_async(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
             assert args["args"] == {
@@ -519,7 +519,7 @@ class TestLegacyToolDeprecation:
         def test_non_string_target_id_coerced(self):
             target = _make_target("twitter_user", 12345, id=1, workspace_id=2)  # type: ignore[arg-type]
             tool, args = UniversalScrapeTargetMapper.map(target)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["args"]["from"] == "12345"
 
         def test_multi_required_args_descriptor_raises(self):
@@ -566,6 +566,6 @@ class TestLegacyToolDeprecation:
             )
             target = _make_target(platform_kind, target_id, id=7, workspace_id=8)
             tool, args = await UniversalScrapeTargetMapper.map_async(target, client)
-            assert tool == "x_scrape"
+            assert tool == "medirus_scrape"
             assert args["action"] == expected_action
             assert args["args"][arg_name] == arg_value
