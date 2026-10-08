@@ -271,6 +271,7 @@ export class ZaloCopilotOverlay {
       title="Nowing Co-pilot">⚡</button>`;
   }
 
+  // pi-lens-ignore: high-complexity — drawer states rendered in one place
   private renderDrawer(): string {
     if (this.loading) {
       return `<div class="drawer">

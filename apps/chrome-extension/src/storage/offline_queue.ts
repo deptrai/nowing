@@ -68,6 +68,7 @@ export async function updateBadge(count: number): Promise<void> {
       await chrome.action.setBadgeText({ text: '' });
     }
   } catch (err) {
+    // pi-lens-ignore: console-statement, missing-error-propagation — badge failure is non-fatal, nothing to propagate
     console.error('Failed to update extension badge:', err);
   }
 }

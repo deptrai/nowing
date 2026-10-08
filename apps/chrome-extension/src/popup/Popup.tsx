@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { ExtensionConfig } from '../types/index.js';
 import './popup.css';
 
+const DEFAULT_BACKEND_URL = 'http://localhost:8000';
+
+// pi-lens-ignore: high-complexity — single popup component, splitting adds files for no reuse
 export const Popup: React.FC = () => {
   const [config, setConfig] = useState<ExtensionConfig>({
-    backendUrl: 'http://localhost:8000',
+    backendUrl: DEFAULT_BACKEND_URL,
     patToken: '',
     workspaceId: 1,
     autoDetect: true,
@@ -126,7 +129,7 @@ export const Popup: React.FC = () => {
             type="text"
             value={config.backendUrl}
             onChange={(e) => setConfig({ ...config, backendUrl: e.target.value })}
-            placeholder="http://localhost:8000"
+            placeholder={DEFAULT_BACKEND_URL}
             className="popup-input"
           />
         </div>

@@ -11,6 +11,7 @@ import {
   extractVietnamesePhones,
 } from '../../utils/normalizer.js';
 
+// pi-lens-ignore: high-complexity — one extractor per site, branching mirrors page variants
 export function extractFacebookLead(): LeadClipPayload | null {
   const url = window.location.href;
   if (!url.includes('facebook.com')) return null;

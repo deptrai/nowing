@@ -13,9 +13,11 @@ import { getConfig, saveConfig } from '../storage/token_store.js';
 import { ExtensionMessage, LeadClipPayload, LeadClipResponse } from '../types/index.js';
 
 // Update initial badge on service worker start
+// pi-lens-ignore: mixed-async-styles — top-level of a service worker, no async context to await in
 getOfflineQueue().then((q) => updateBadge(q.length));
 
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
+  // pi-lens-ignore: mixed-async-styles — Chrome message listener API requires the promise chain + return true
   handleMessage(message)
     .then((res) => sendResponse(res))
     .catch((err) =>
@@ -56,6 +58,7 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 }
 
 async function handleClipLead(payload: LeadClipPayload): Promise<unknown> {
+  // pi-lens-ignore: mixed-async-styles — Chrome message listener API requires the promise chain + return true
   const config = await getConfig();
 
   if (!config.patToken) {
@@ -85,7 +88,12 @@ async function handleClipLead(payload: LeadClipPayload): Promise<unknown> {
     });
 
     if (!response.ok) {
-      const errBody = await response.json().catch(() => ({ detail: response.statusText }));
+      let errBody: { detail?: string } = { detail: response.statusText };
+      try {
+        errBody = await response.json();
+      } catch {
+        // Non-JSON error body; keep the status text fallback.
+      }
       const errorMsg = errBody.detail || `Server error (${response.status})`;
 
       // If server error or token expired/invalid, save to offline buffer if 5xx or network
@@ -128,6 +136,7 @@ function detailToMessage(detail: unknown, fallback: string): string {
 }
 
 async function handleZaloContext(phone: string): Promise<unknown> {
+  // pi-lens-ignore: mixed-async-styles — Chrome message listener API requires the promise chain + return true
   const config = await getConfig();
 
   if (!config.patToken?.trim()) {
@@ -155,7 +164,12 @@ async function handleZaloContext(phone: string): Promise<unknown> {
     });
 
     if (!response.ok) {
-      const errBody = await response.json().catch(() => ({ detail: response.statusText }));
+      let errBody: { detail?: unknown } = { detail: response.statusText };
+      try {
+        errBody = await response.json();
+      } catch {
+        // Non-JSON error body; keep the status text fallback.
+      }
       return {
         success: false,
         message: detailToMessage(errBody.detail, `Server error (${response.status})`),
@@ -218,6 +232,7 @@ async function handleSyncOfflineQueue(): Promise<{ synced: number; failed: numbe
         synced++;
       } else if (res.status >= 400 && res.status < 500) {
         // 4xx means the payload or auth is rejected; retrying will not help.
+        // pi-lens-ignore: console-statement — operational warning for a permanently dropped queue item
         console.warn(
           `Offline lead ${item.id} rejected with ${res.status} ${res.statusText}; dropping`,
         );

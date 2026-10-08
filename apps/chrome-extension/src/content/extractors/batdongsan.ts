@@ -12,6 +12,7 @@ import {
   normalizeVietnamesePhone,
 } from '../../utils/normalizer.js';
 
+// pi-lens-ignore: high-complexity — one extractor per site, branching mirrors page variants
 export function extractBatdongsanLead(): LeadClipPayload | null {
   const url = window.location.href;
   if (!url.includes('batdongsan.com.vn')) return null;
