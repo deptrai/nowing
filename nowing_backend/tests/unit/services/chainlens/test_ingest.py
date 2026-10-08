@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 def _make_chunks(count: int) -> list[Any]:
     from app.services.scraper_chunks.schemas import Chunk, ChunkMetadata
 
-    base = {
+    base: dict[str, Any] = {
         "source": "nowing_scraper",
         "sourceId": "src",
         "domain": "bds",

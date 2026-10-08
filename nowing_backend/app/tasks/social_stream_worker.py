@@ -263,10 +263,14 @@ async def _create_lead_from_social_post(
     # Workspace-level privacy overrides for scraped social leads.
     workspace = await session.get(Workspace, workspace_id)
     workspace_settings = (
-        workspace.icp_criteria if isinstance(workspace, Workspace) and workspace.icp_criteria else {}
+        workspace.icp_criteria
+        if isinstance(workspace, Workspace) and workspace.icp_criteria
+        else {}
     )
     consent_status = workspace_settings.get("social_lead_consent_status", "public")
-    legal_basis = workspace_settings.get("social_lead_legal_basis", "legitimate_interest")
+    legal_basis = workspace_settings.get(
+        "social_lead_legal_basis", "legitimate_interest"
+    )
 
     company_name = (
         event.author_name
@@ -350,7 +354,9 @@ async def _create_lead_from_social_post(
             lead_ids=[lead.id],
         )
     except Exception:  # best-effort lead assignment; log exception and continue
-        logger.exception("Failed to auto-assign social lead in workspace %s", workspace_id)
+        logger.exception(
+            "Failed to auto-assign social lead in workspace %s", workspace_id
+        )
 
     try:
         await session.commit()
@@ -642,7 +648,9 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
                 None,
             )
         if isinstance(raw_version, bool):
-            logger.warning("Invalid schema_version %r (boolean not allowed)", raw_version)
+            logger.warning(
+                "Invalid schema_version %r (boolean not allowed)", raw_version
+            )
             return ValidationResult(
                 False,
                 DLQ_REASON_INVALID_SCHEMA_VERSION,
@@ -650,7 +658,9 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
                 None,
             )
         if isinstance(raw_version, float) and not raw_version.is_integer():
-            logger.warning("Invalid schema_version %r (non-integer float not allowed)", raw_version)
+            logger.warning(
+                "Invalid schema_version %r (non-integer float not allowed)", raw_version
+            )
             return ValidationResult(
                 False,
                 DLQ_REASON_INVALID_SCHEMA_VERSION,
@@ -660,7 +670,9 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
         try:
             version = int(raw_version)
         except (ValueError, TypeError):
-            logger.warning("Invalid schema_version %r; cannot parse integer", raw_version)
+            logger.warning(
+                "Invalid schema_version %r; cannot parse integer", raw_version
+            )
             return ValidationResult(
                 False,
                 DLQ_REASON_INVALID_SCHEMA_VERSION,
@@ -694,7 +706,11 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
     has_content = bool(
         (isinstance(content, str) and content.strip())
         or (isinstance(content_snippet, str) and content_snippet.strip())
-        or (content is not None and not isinstance(content, str) and str(content).strip())
+        or (
+            content is not None
+            and not isinstance(content, str)
+            and str(content).strip()
+        )
         or (
             content_snippet is not None
             and not isinstance(content_snippet, str)
@@ -837,7 +853,9 @@ async def _check_stream_lag(redis_client: Any) -> dict[str, Any] | None:
         if isinstance(groups_info, list):
             for g in groups_info:
                 if isinstance(g, dict):
-                    name = g.get("name") if g.get("name") is not None else g.get(b"name")
+                    name = (
+                        g.get("name") if g.get("name") is not None else g.get(b"name")
+                    )
                     if isinstance(name, bytes):
                         name = name.decode("utf-8", errors="replace")
                     if name == CONSUMER_GROUP_NAME:
@@ -958,7 +976,9 @@ async def run_social_stream_consumer(
                     exc,
                 )
                 return 0
-        except Exception as exc:  # consumer group creation failure; log exception and return 0
+        except (
+            Exception
+        ) as exc:  # consumer group creation failure; log exception and return 0
             logger.exception("Failed to create Redis consumer group: %s", exc)
             return 0
 
@@ -996,7 +1016,9 @@ async def run_social_stream_consumer(
                         count=count,
                         block=block_ms,
                     )
-                except Exception as exc:  # stream read failure; log error and break consumer loop
+                except (
+                    Exception
+                ) as exc:  # stream read failure; log error and break consumer loop
                     logger.error("Error reading from social stream: %s", exc)
                     break
 
@@ -1047,7 +1069,9 @@ async def run_social_stream_consumer(
                                         CONSUMER_GROUP_NAME,
                                         msg_id,
                                     )
-                                except Exception:  # best-effort message ACK; log exception
+                                except (
+                                    Exception
+                                ):  # best-effort message ACK; log exception
                                     logger.exception(
                                         "Failed to ACK social stream message %s",
                                         msg_id,
@@ -1070,7 +1094,9 @@ async def run_social_stream_consumer(
                             try:
                                 await session.rollback()
                             except Exception:
-                                logger.exception("Session rollback failed — marking session as broken")
+                                logger.exception(
+                                    "Session rollback failed — marking session as broken"
+                                )
                                 session_broken = True
                             logger.exception(
                                 "Failed processing social stream message %s: %s",

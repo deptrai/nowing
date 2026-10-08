@@ -71,9 +71,12 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                 local_items.extend(page_items)
                 if len(local_items) >= input.max_items:
                     break
-                if raw.get("meta", {}).get("nbPages") is not None and page >= int(
-                    raw["meta"]["nbPages"]
-                ):
+                nb_pages = raw.get("meta", {}).get("nbPages")
+                try:
+                    nb_pages_int = int(nb_pages) if nb_pages is not None else None
+                except (TypeError, ValueError):
+                    nb_pages_int = None
+                if nb_pages_int is not None and page >= nb_pages_int:
                     break
             return {"items": local_items, "degraded": False}
 

@@ -94,9 +94,9 @@ class MedirusMcpClient:
         api_key: str | None = None,
         consumer_id: str | None = None,
     ):
-        self.url = (
-            url or config.MEDIRUS_MCP_URL or "http://medirus:3001/mcp"
-        ).rstrip("/")
+        self.url = (url or config.MEDIRUS_MCP_URL or "http://medirus:3001/mcp").rstrip(
+            "/"
+        )
         self.api_key = api_key or getattr(config, "MEDIRUS_MCP_API_KEY", "")
         self.consumer_id = consumer_id or getattr(
             config, "MEDIRUS_CONSUMER_ID", "nowing"

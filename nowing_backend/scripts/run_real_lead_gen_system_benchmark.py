@@ -70,7 +70,6 @@ LEAD_GEN_PROMPTS = [
         "platforms": ["batdongsan", "chotot"],
         "target_entity": "phone",
     },
-
     # Nhóm 2: Doanh Nghiệp & Tra Cứu Thuế (B2B Enterprise Lead Intelligence)
     {
         "id": "lead-corp-05",
@@ -100,7 +99,6 @@ LEAD_GEN_PROMPTS = [
         "platforms": ["enterprise"],
         "target_entity": "tax_id",
     },
-
     # Nhóm 3: Tuyển Dụng & Nhân Sự (Job Market & Compensation Intelligence)
     {
         "id": "lead-hr-09",
@@ -123,7 +121,6 @@ LEAD_GEN_PROMPTS = [
         "platforms": ["job_market"],
         "target_entity": "email",
     },
-
     # Nhóm 4: Cross-Platform Deduplication & Conflict Discovery
     {
         "id": "lead-multi-12",
@@ -172,18 +169,21 @@ async def run_lead_pipeline_for_prompt(
     platforms = prompt_meta["platforms"]
 
     print(f"\n▶ [{p_id}] ({category})", flush=True)
-    print(f"  Prompt: \"{prompt_text}\"", flush=True)
+    print(f'  Prompt: "{prompt_text}"', flush=True)
 
     # Step 1: Subtask Planning & Routing
     t0_plan = time.perf_counter()
     registry = LeadSourceAdapterRegistry.get_default()
     orchestrator = LeadGenOrchestrator(registry=registry)
-    
+
     # Route user intent to matched platform adapters
     matched_adapters = registry.resolve_adapters_for_intent(prompt_text)
     planning_time_ms = (time.perf_counter() - t0_plan) * 1000
     adapter_names = [a.source_name for a in matched_adapters]
-    print(f"  ✓ Intent Routing: Resolved adapters {adapter_names} in {planning_time_ms:.2f}ms", flush=True)
+    print(
+        f"  ✓ Intent Routing: Resolved adapters {adapter_names} in {planning_time_ms:.2f}ms",
+        flush=True,
+    )
 
     # Step 2: Multi-Platform Scraping & Extraction via LeadGenOrchestrator
     t0_scrape = time.perf_counter()
@@ -195,12 +195,19 @@ async def run_lead_pipeline_for_prompt(
         limit=25,
     )
     scraping_time_ms = (time.perf_counter() - t0_scrape) * 1000
-    
+
     all_raw_leads = gen_result.leads
-    print(f"  ✓ Multi-Platform Harvested: {len(all_raw_leads)} normalized leads in {scraping_time_ms:.2f}ms (Status: {gen_result.status})", flush=True)
+    print(
+        f"  ✓ Multi-Platform Harvested: {len(all_raw_leads)} normalized leads in {scraping_time_ms:.2f}ms (Status: {gen_result.status})",
+        flush=True,
+    )
 
     # Step 3: Entity Extraction Counts
-    total_phones = sum(1 for l in all_raw_leads if getattr(l, "primary_phone", None) or getattr(l, "contact_candidates", None))
+    total_phones = sum(
+        1
+        for l in all_raw_leads
+        if getattr(l, "primary_phone", None) or getattr(l, "contact_candidates", None)
+    )
     total_tax_ids = sum(1 for l in all_raw_leads if getattr(l, "tax_id", None))
     total_emails = sum(1 for l in all_raw_leads if getattr(l, "primary_email", None))
 
@@ -211,25 +218,37 @@ async def run_lead_pipeline_for_prompt(
     dedup_time_ms = (time.perf_counter() - t0_dedup) * 1000
 
     golden_leads = dedup_result.unified_leads
-    print(f"  ✓ Entity Resolution: {len(all_raw_leads)} raw -> {len(golden_leads)} Golden Records ({dedup_result.total_deduplicated} duplicates merged) in {dedup_time_ms:.2f}ms", flush=True)
+    print(
+        f"  ✓ Entity Resolution: {len(all_raw_leads)} raw -> {len(golden_leads)} Golden Records ({dedup_result.total_deduplicated} duplicates merged) in {dedup_time_ms:.2f}ms",
+        flush=True,
+    )
 
     # Step 5: Database Batch Ingestion with Decree 13 PII Vault
     t0_db = time.perf_counter()
     enc = VerifiedContactEncryption()
     ingest_payload = []
     for g in golden_leads:
-        phone_raw = getattr(g, "primary_phone", None) or (g.contact_candidates[0].value if getattr(g, "contact_candidates", None) else None)
+        phone_raw = getattr(g, "primary_phone", None) or (
+            g.contact_candidates[0].value
+            if getattr(g, "contact_candidates", None)
+            else None
+        )
         encrypted_phone = enc.encrypt(phone_raw) if phone_raw else None
-        ingest_payload.append({
-            "title": getattr(g, "title", "Lead Title"),
-            "company_name": getattr(g, "company_name", None),
-            "phone_encrypted": encrypted_phone,
-            "tax_id": getattr(g, "tax_id", None),
-            "fit_score": 85.0,
-            "status": "new",
-        })
+        ingest_payload.append(
+            {
+                "title": getattr(g, "title", "Lead Title"),
+                "company_name": getattr(g, "company_name", None),
+                "phone_encrypted": encrypted_phone,
+                "tax_id": getattr(g, "tax_id", None),
+                "fit_score": 85.0,
+                "status": "new",
+            }
+        )
     db_persistence_time_ms = (time.perf_counter() - t0_db) * 1000
-    print(f"  ✓ PII Encryption & DB Prep: {len(ingest_payload)} leads ready in {db_persistence_time_ms:.2f}ms", flush=True)
+    print(
+        f"  ✓ PII Encryption & DB Prep: {len(ingest_payload)} leads ready in {db_persistence_time_ms:.2f}ms",
+        flush=True,
+    )
 
     return LeadPromptBenchmarkResult(
         prompt_id=p_id,
@@ -253,9 +272,18 @@ async def run_lead_pipeline_for_prompt(
 async def main():
     print("=" * 80, flush=True)
     print("🚀 NOWING AI LEAD GENERATION & LIST BUILDING SYSTEM BENCHMARK", flush=True)
-    print("Target Engine : LeadGenOrchestrator + Multi-Source Adapters + Entity Resolution", flush=True)
-    print(f"Total Prompts : {len(LEAD_GEN_PROMPTS)} Real-world Lead Harvesting Prompts", flush=True)
-    print(f"Timestamp     : {time.strftime('%Y-%m-%d %H:%M:%SZ', time.gmtime())}", flush=True)
+    print(
+        "Target Engine : LeadGenOrchestrator + Multi-Source Adapters + Entity Resolution",
+        flush=True,
+    )
+    print(
+        f"Total Prompts : {len(LEAD_GEN_PROMPTS)} Real-world Lead Harvesting Prompts",
+        flush=True,
+    )
+    print(
+        f"Timestamp     : {time.strftime('%Y-%m-%d %H:%M:%SZ', time.gmtime())}",
+        flush=True,
+    )
     print("=" * 80, flush=True)
 
     t0_all = time.perf_counter()
@@ -283,26 +311,60 @@ async def main():
     print("\n" + "=" * 80, flush=True)
     print("📊 NOWING AI LEAD GENERATION BENCHMARK AUDIT REPORT:", flush=True)
     print("=" * 80, flush=True)
-    print(f"  • Total Harvesting Prompts Evaluated : {len(results)} prompts across 4 domains", flush=True)
-    print(f"  • Total Raw Leads Discovered        : {total_discovered} raw listings", flush=True)
-    print(f"  • Total Deduplicated Golden Leads   : {total_golden} unique leads", flush=True)
-    print(f"  • Cross-Platform Deduplication Rate : {((total_discovered - total_golden) / max(total_discovered, 1)) * 100:.1f}% reduction", flush=True)
-    print(f"  • Cross-Platform Price Conflicts    : {total_conflicts} flagged discrepancies", flush=True)
+    print(
+        f"  • Total Harvesting Prompts Evaluated : {len(results)} prompts across 4 domains",
+        flush=True,
+    )
+    print(
+        f"  • Total Raw Leads Discovered        : {total_discovered} raw listings",
+        flush=True,
+    )
+    print(
+        f"  • Total Deduplicated Golden Leads   : {total_golden} unique leads",
+        flush=True,
+    )
+    print(
+        f"  • Cross-Platform Deduplication Rate : {((total_discovered - total_golden) / max(total_discovered, 1)) * 100:.1f}% reduction",
+        flush=True,
+    )
+    print(
+        f"  • Cross-Platform Price Conflicts    : {total_conflicts} flagged discrepancies",
+        flush=True,
+    )
     print("-" * 80, flush=True)
     print("📞 VERIFIED ENTITY EXTRACTION METRICS:", flush=True)
-    print(f"  • Contact Phone Numbers Extracted   : {total_phones} phone numbers", flush=True)
-    print(f"  • Enterprise Tax IDs (MST) Verified : {total_tax_ids} tax codes", flush=True)
+    print(
+        f"  • Contact Phone Numbers Extracted   : {total_phones} phone numbers",
+        flush=True,
+    )
+    print(
+        f"  • Enterprise Tax IDs (MST) Verified : {total_tax_ids} tax codes", flush=True
+    )
     print(f"  • Recruitment & Business Emails     : {total_emails} emails", flush=True)
     print("-" * 80, flush=True)
     print("⏱️ PIPELINE LATENCY BREAKDOWN (PER PROMPT):", flush=True)
-    print(f"  • Intent Planning Latency           : {avg_planning_ms:.2f} ms (Target <= 50ms) -> PASS", flush=True)
-    print(f"  • Multi-Source Scrape & Parse       : {avg_scraping_ms:.2f} ms", flush=True)
-    print(f"  • PII Encryption & DB Persistence   : {avg_db_ms:.2f} ms (Target <= 150ms) -> PASS", flush=True)
-    print(f"  • Total Suite Execution Duration    : {total_time_s:.2f} seconds", flush=True)
+    print(
+        f"  • Intent Planning Latency           : {avg_planning_ms:.2f} ms (Target <= 50ms) -> PASS",
+        flush=True,
+    )
+    print(
+        f"  • Multi-Source Scrape & Parse       : {avg_scraping_ms:.2f} ms", flush=True
+    )
+    print(
+        f"  • PII Encryption & DB Persistence   : {avg_db_ms:.2f} ms (Target <= 150ms) -> PASS",
+        flush=True,
+    )
+    print(
+        f"  • Total Suite Execution Duration    : {total_time_s:.2f} seconds",
+        flush=True,
+    )
     print("=" * 80, flush=True)
 
     # Save to disk
-    artifact_path = Path(backend_dir.parent / "_bmad-output/test-artifacts/lead_generation_pipeline_benchmark.json")
+    artifact_path = Path(
+        backend_dir.parent
+        / "_bmad-output/test-artifacts/lead_generation_pipeline_benchmark.json"
+    )
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     # pi-lens-ignore: python-path-traversal -- benchmark script; fixed artifact path
     # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller

@@ -27,13 +27,15 @@ class SocialLeadAdapter(LeadSourceAdapter):
     source_name = "social"
     category = LeadSourceCategory.SOCIAL
     supported_provinces = ("*",)
-    coverage_quality_by_location = MappingProxyType({
-        "HN": "high",
-        "SG": "high",
-        "DN": "high",
-        "CT": "medium",
-        "HP": "medium",
-    })
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "high",
+            "SG": "high",
+            "DN": "high",
+            "CT": "medium",
+            "HP": "medium",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

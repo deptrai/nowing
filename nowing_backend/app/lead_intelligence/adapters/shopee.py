@@ -27,18 +27,20 @@ class ShopeeLeadAdapter(LeadSourceAdapter):
     category = LeadSourceCategory.E_COMMERCE
     # Shopee is a national marketplace; most high-volume categories ship nationwide.
     supported_provinces = ("*",)
-    coverage_quality_by_location = MappingProxyType({
-        "HN": "high",
-        "SG": "high",
-        "DN": "high",
-        "HP": "high",
-        "CT": "medium",
-        "BD": "medium",
-        "DNA": "medium",
-        "KH": "medium",
-        "LD": "medium",
-        "VT": "medium",
-    })
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "high",
+            "SG": "high",
+            "DN": "high",
+            "HP": "high",
+            "CT": "medium",
+            "BD": "medium",
+            "DNA": "medium",
+            "KH": "medium",
+            "LD": "medium",
+            "VT": "medium",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

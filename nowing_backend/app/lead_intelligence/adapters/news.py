@@ -27,17 +27,19 @@ class NewsLeadAdapter(LeadSourceAdapter):
     # National news portals cover all provinces; regional dailies bias toward
     # their home province.
     supported_provinces = ("*",)
-    coverage_quality_by_location = MappingProxyType({
-        "HN": "high",
-        "SG": "high",
-        "DN": "medium",
-        "HP": "medium",
-        "CT": "medium",
-        "BD": "low",
-        "DNA": "low",
-        "KH": "low",
-        "LD": "low",
-    })
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "high",
+            "SG": "high",
+            "DN": "medium",
+            "HP": "medium",
+            "CT": "medium",
+            "BD": "low",
+            "DNA": "low",
+            "KH": "low",
+            "LD": "low",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

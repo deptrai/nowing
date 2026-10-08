@@ -398,7 +398,9 @@ class MedirusSocialAdapter:
         if action == "medirus_facebook_group_posts":
             group_id = params.get("group_id")
             if not group_id:
-                raise ValueError("group_id is required for medirus_facebook_group_posts")
+                raise ValueError(
+                    "group_id is required for medirus_facebook_group_posts"
+                )
 
             group_id_str = str(group_id)
             url = (
@@ -616,7 +618,9 @@ class MedirusSocialAdapter:
             timeout=timeout,
         )
         if not res.get("success"):
-            raise MedirusMcpError(res.get("error") or "medirus_facebook_group_posts failed")
+            raise MedirusMcpError(
+                res.get("error") or "medirus_facebook_group_posts failed"
+            )
         raw_items = res.get("data", []) if isinstance(res, dict) else []
         if not isinstance(raw_items, list):
             logger.warning(

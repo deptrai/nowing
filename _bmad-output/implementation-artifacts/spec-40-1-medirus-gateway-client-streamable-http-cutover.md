@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 -->
 ---
 title: "Medirus Gateway Client & Streamable-HTTP Cutover"
 type: "feature"
@@ -23,6 +24,7 @@ deferred: []
 ## Boundaries & Constraints
 
 **Always:**
+
 - Chỉ sửa code trong `nowing_backend/app/proprietary/platforms/medirus/` và file config/feature flag liên quan.
 - Mọi call `x_scrape` phải đóng gói payload `{platform, action, args, context}` với `context.targetId`/`workspaceId` đúng AD-2.
 - Circuit Breaker phải fail-fast với `MedirusMcpError(XACT_4001, "scraper_temporarily_unavailable")` khi OPEN; không giữ worker chờ. (AI-40.4: `MedirusMcpError` là error contract chuẩn — `PlatformError` không tồn tại trong codebase Nowing.)
@@ -30,6 +32,7 @@ deferred: []
 - Giữ nguyên backward compatibility: `x_scrape` chưa có trên Medirus → fallback sang per-platform tools (`x_get_profile`, `x_crawl_post`, …) và log warning.
 
 **Never:**
+
 - Không spawn `node src/mcp/server.js` hoặc dùng stdio transport.
 - Không implement logic cào mới trong Nowing; chỉ điều phối sang Medirus.
 - Không thay đổi schema response hay contract với caller (subagents, Playground, ingest worker).
@@ -38,7 +41,7 @@ deferred: []
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
-|----------|--------------|---------------------------|----------------|
+| -------- | ------------ | ------------------------- | -------------- |
 | HAPPY_PATH | `x_scrape` available, payload hợp lệ | Preview ≤30 records trả về ngay; `stream=true` + pointer cho bulk | None |
 | MEDIRUS_DOWN | `MedirusMcpClient` connect fail / timeout 4s | `MedirusMcpError(XACT_4001)` trả về ngay, circuit breaker OPEN 60s | Log error, không retry trong 60s |
 | TOOL_NOT_FOUND | `x_scrape` trả `tool_not_found` | Fallback sang tool legacy (`x_crawl_post`, `x_get_profile`…) | Log warning, trả kết quả từ fallback |
@@ -59,6 +62,7 @@ deferred: []
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `nowing_backend/app/proprietary/platforms/medirus/mcp_client.py` — Add 4.0s timeout per `call_tool` (read from `MEDIRUS_MCP_TIMEOUT` env, default 60s cho long-running, nhưng áp 4s cho connectivity/health probe). Thêm `_CircuitBreaker` singleton: đếm lỗi liên tiếp, OPEN 60s khi ≥3 lỗi, trả `MedirusMcpError` với code `XACT_4001`.
 - `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` — Đảm bảo `scrape()`/`stream()` gọi `x_scrape` khi `CanonicalActionMatrix` có mapping; fallback sang `PLATFORM_TOOL_MAP` nếu `x_scrape` missing hoặc `tool_not_found`. Log warning khi fallback.
 - `nowing_backend/app/config/entities.py` — `MEDIRUS_USE_UNIFIED_DISPATCH` đã tồn tại (default `false`) — không cần thêm flag mới.
@@ -66,6 +70,7 @@ deferred: []
 - `nowing_backend/tests/unit/proprietary/platforms/medirus/test_adapter_v2.py` — Test `x_scrape` primary path, fallback path, error mapping `XACT_4001`.
 
 **Acceptance Criteria:**
+
 - Given `MEDIRUS_USE_UNIFIED_DISPATCH=true` và Medirus daemon chạy trên `:3001`, when adapter_v2 gọi scrape, then request gửi qua `MedirusMcpClient.call_tool("x_scrape", payload)` với `platform`, `action`, `args`, `context` đúng.
 - Given Medirus trả lỗi 5xx/timeout 3 lần liên tiếp, when lần gọi thứ 4, then client trả `MedirusMcpError(XACT_4001)` ngay lập tức trong vòng 60s mà không gọi mạng.
 - Given `x_scrape` trả `tool_not_found`, when fallback chạy, then `adapter_v2` gọi tool legacy phù hợp và log warning.
@@ -85,10 +90,12 @@ deferred: []
 ## Verification
 
 **Commands:**
+
 - `cd nowing_backend && uv run pytest tests/unit/proprietary/platforms/medirus/test_mcp_client.py tests/unit/proprietary/platforms/medirus/test_adapter_v2.py -q` — expected: all tests pass
 - `cd nowing_backend && uv run python -c "from app.proprietary.platforms.medirus.mcp_client import MedirusMcpClient; print('import ok')"` — expected: no import error
 
 **Manual checks (if no CLI):**
+
 - Start Medirus MCP server locally (`MEDIRUS_MODE=local MCP_TRANSPORT=http PORT=3001`) và chạy một lệnh cào thử qua adapter_v2; kiểm tra log có `x_scrape` call hoặc fallback warning.
 - Kiểm tra Redis stream `stream:social:raw_posts` có event mới khi cào bulk.
 
@@ -98,18 +105,21 @@ deferred: []
 *(AI-40.6: cập nhật từ `in-review` — các critical findings đã fix, 85/85 tests pass; metadata lệch được phát hiện trong Epic 40 retrospective 2026-10-06.)*
 
 **Summary of implemented change:**
+
 - Thêm `MedirusCircuitBreaker` tại `app/proprietary/platforms/medirus/circuit_breaker.py` với 3 states (CLOSED → OPEN → HALF_OPEN), failure_threshold=3, recovery_timeout=60s.
 - Wrap `MedirusMcpClient.call_tool()` qua circuit breaker; circuit open → raise `MedirusMcpError(code="XACT_4001", message="scraper_temporarily_unavailable")`.
 - Thêm `MEDIRUS_CONNECTIVITY_TIMEOUT_SECONDS = 4.0s` cho health_check probes.
 - Giữ nguyên backward compatibility: `get_shared_client()`, `release_shared_client_for_loop()`, `_LOOP_CLIENTS` semantics không đổi.
 
 **Files changed:**
+
 - `nowing_backend/app/proprietary/platforms/medirus/circuit_breaker.py` (new) — Circuit breaker singleton + dataclass stats + reset() API.
 - `nowing_backend/app/proprietary/platforms/medirus/mcp_client.py` — Wrap `call_tool` qua circuit breaker; `health_check` dùng 4s timeout; thêm `XACT_4001` mapping.
 - `nowing_backend/tests/unit/platforms/medirus/test_circuit_breaker.py` (new) — 11 unit tests cho circuit breaker states.
 - `nowing_backend/tests/unit/platforms/medirus/test_mcp_client_circuit.py` (new) — 9 unit tests cho mcp_client + circuit integration.
 
 **Review findings breakdown:**
+
 - Blind-hunter báo 16 findings. Sau khi revert file `mcp_client.py` về nguyên bản (chỉ thêm circuit breaker wrapper minimal), hầu hết findings không còn áp dụng:
   - Các lỗi liên quan tới việc xóa `release_shared_client_for_loop`, `get_client()` tainted-client eviction, failure path leaks, artifact path-traversal → đã fix bằng cách restore file gốc.
   - `_probe_in_flight` được thêm để đảm bảo chỉ 1 probe call trong HALF_OPEN.
@@ -121,11 +131,13 @@ deferred: []
 **Patches applied:** N/A (không có patch triage từ review layers hoàn tất — 3 agents không trả text output rõ ràng; tôi đã tự fix critical issues từ blind-hunter findings)
 
 **Verification performed:**
+
 - `pytest tests/unit/platforms/medirus/` — **85/85 tests pass** (bao gồm cả 21 adapter_v2 tests, 9 circuit breaker tests, 9 mcp_client_circuit tests, 46 pre-existing tests)
 - `python -c "from app.proprietary.platforms.medirus.mcp_client import MedirusMcpClient"` — import OK
 - `python -c "from app.proprietary.platforms.medirus.circuit_breaker import MedirusCircuitBreaker"` — import OK
 
 **Residual risks:**
+
 - Circuit breaker chỉ in-memory, chưa dùng Redis để share giữa multi-process workers (theo design note trong spec — nâng cấp sau).
 - `XACT_4001` mapping qua `MedirusMcpError` — AI-40.4 đã chốt: `MedirusMcpError` là error contract chuẩn vì `PlatformError` không tồn tại trong codebase Nowing.
 - AI-40.3 đã chốt: feature flag chuẩn là `MEDIRUS_USE_UNIFIED_DISPATCH` (`app/config/entities.py:106`); tên `NOWING_MEDIRUS_USE_V2` trong spec đầu là sai và đã được hiệu chỉnh toàn bộ spec này.

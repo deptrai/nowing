@@ -660,7 +660,7 @@ waves:
   - wave: 0
     theme: P0 — Lead Intelligence & DSH Substrate Integration
     status: done
-    evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker 
+    evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker
       active; FastMCP batch ingestion and Daytona Sandbox ready
     stories:
       - 26-1
@@ -668,14 +668,14 @@ waves:
       - 26-5
       - 26-7
       - 26-9
-    notes: Story 26.9 depends on ChainLens 52-2 API contract; executes openpyxl 
+    notes: Story 26.9 depends on ChainLens 52-2 API contract; executes openpyxl
       Pro Formatter in Daytona sandbox without building new container.
   - wave: 1
     theme: P0 — Interactive Browser Operator & Projects Workspace
     status: done
-    evidence_gate: Plasmo extension CDP debugger enabled; 
-      `browser_operator.execute` capability and `web_crawler` prompt-in-UI 
-      working; Human Live Takeover UI partially wired in popup; mission 
+    evidence_gate: Plasmo extension CDP debugger enabled;
+      `browser_operator.execute` capability and `web_crawler` prompt-in-UI
+      working; Human Live Takeover UI partially wired in popup; mission
       pause/resume TTL and dashboard popover still open
     stories:
       - 24-8
@@ -685,12 +685,12 @@ waves:
       - 24-6
       - 24-7
     notes: Story 24.8 extends Lead Clipper 24.4 with chrome.debugger CDP bridge;
-      Story 3.18 provides Master Instructions context injection for all 
+      Story 3.18 provides Master Instructions context injection for all
       downstream agent turns.
   - wave: 2
     theme: P1 — Inbound Mail Gateway & Long-running Automations
     status: done
-    evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat 
+    evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat
       stateful delta snapshots comparing runs
     stories:
       - 6-10
@@ -698,20 +698,20 @@ waves:
       - 25-4
       - 25-5
       - 25-6
-    notes: Story 6.10 integrates into gateway_webhook_routes.py and adds delta 
+    notes: Story 6.10 integrates into gateway_webhook_routes.py and adds delta
       analysis to existing Celery Beat scheduler.
   - wave: 3
     theme: P1/P2 — Creative Studio & Full-Stack Web Builder
     status: done
-    evidence_gate: PPTX export + Marp slides working; pyannote/whisper 
+    evidence_gate: PPTX export + Marp slides working; pyannote/whisper
       diarization working; Next.js scaffolding + *.apps.nowing.net Traefik/Caddy
       routing working
     stories:
       - 27-2a
       - 27-2b
       - 27-1
-    notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a 
-      pattern; Story 27.1 is the largest scope story in the roadmap (new web 
+    notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a
+      pattern; Story 27.1 is the largest scope story in the roadmap (new web
       generator + dynamic hosting).
 action_items:
   - id: "epic-26-retro-item-1-tối-ưu-hóa-bộ-nhớ-đệm-cache-cho-danh-mục"

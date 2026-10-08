@@ -103,18 +103,21 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
 
     source_name = "batdongsan"
     category = LeadSourceCategory.REAL_ESTATE
+    # pi-lens-ignore: python-mutable-class-attr — tuple and MappingProxyType are immutable
     supported_provinces = ("HN", "SG", "DN", "BD", "DNA", "HP", "VT", "KH", "LD", "*")
-    coverage_quality_by_location = MappingProxyType({
-        "HN": "high",
-        "SG": "high",
-        "DN": "high",
-        "BD": "high",
-        "DNA": "medium",
-        "HP": "medium",
-        "VT": "medium",
-        "KH": "medium",
-        "LD": "medium",
-    })
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "high",
+            "SG": "high",
+            "DN": "high",
+            "BD": "high",
+            "DNA": "medium",
+            "HP": "medium",
+            "VT": "medium",
+            "KH": "medium",
+            "LD": "medium",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

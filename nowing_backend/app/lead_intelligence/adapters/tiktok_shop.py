@@ -27,17 +27,19 @@ class TiktokShopLeadAdapter(LeadSourceAdapter):
     category = LeadSourceCategory.E_COMMERCE
     # TikTok Shop ships nationwide; trend products often skew to major metros.
     supported_provinces = ("*",)
-    coverage_quality_by_location = MappingProxyType({
-        "HN": "high",
-        "SG": "high",
-        "DN": "high",
-        "HP": "medium",
-        "CT": "medium",
-        "BD": "medium",
-        "DNA": "medium",
-        "KH": "low",
-        "LD": "low",
-    })
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "high",
+            "SG": "high",
+            "DN": "high",
+            "HP": "medium",
+            "CT": "medium",
+            "BD": "medium",
+            "DNA": "medium",
+            "KH": "low",
+            "LD": "low",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

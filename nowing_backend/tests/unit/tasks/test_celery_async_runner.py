@@ -392,7 +392,9 @@ def test_runner_disposes_mcp_client_around_call_and_before_close() -> None:
 
     with (
         _patch_shared_engine(engine_stub),
-        patch.object(celery_pkg, "_dispose_loop_mcp_client", side_effect=_tracking_dispose),
+        patch.object(
+            celery_pkg, "_dispose_loop_mcp_client", side_effect=_tracking_dispose
+        ),
     ):
         result = run_async_celery_task(_body)
 
