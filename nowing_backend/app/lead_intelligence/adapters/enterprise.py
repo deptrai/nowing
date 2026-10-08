@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 
 from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
@@ -25,12 +26,12 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
 
     source_name = "enterprise"
     category = LeadSourceCategory.ENTERPRISE
-    supported_provinces = ["*"]
-    coverage_quality_by_location = {
+    supported_provinces = ("*",)
+    coverage_quality_by_location = MappingProxyType({
         "HN": "medium",
         "SG": "medium",
         "DN": "low",
-    }
+    })
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

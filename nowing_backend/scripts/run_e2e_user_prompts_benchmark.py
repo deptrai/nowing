@@ -435,7 +435,7 @@ async def run_prompt_turn(
                     elif event_type == "error":
                         error_msg = event.get("message") or str(event)
                 except Exception:
-                    pass
+                    pass  # intentional: ignore non-JSON stream chunks
 
     except Exception as exc:
         error_msg = str(exc)
@@ -583,6 +583,7 @@ async def main():
     # Save benchmark artifact to JSON for memory ratification
     artifact_path = Path(backend_dir.parent / "_bmad-output/test-artifacts/master_e2e_prompts_benchmark.json")
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    # pi-lens-ignore: python-path-traversal -- benchmark script; fixed artifact path
     # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller
     with open(artifact_path, "w", encoding="utf-8") as f:
         json.dump([asdict(r) for r in results], f, ensure_ascii=False, indent=2)

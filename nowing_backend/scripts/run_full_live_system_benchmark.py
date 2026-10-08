@@ -49,6 +49,7 @@ async def evaluate_standard_1_extraction_and_accuracy(cases_file: Path) -> dict[
     
     service = LeadExtractionService()
     cases = []
+    # pi-lens-ignore: python-path-traversal -- benchmark script; reading benchmark cases file
     # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller
     with open(cases_file, encoding="utf-8") as f:
         for line in f:
@@ -145,7 +146,7 @@ def evaluate_standard_2_entity_resolution(total_records: int = 15000) -> dict[st
     unique_target_entities = 5000
     clusters = {}
     conflict_count = 0
-    hmac_secret = "standard-2-secret-key-2026"
+    hmac_secret = "standard-2-secret-key-2026"  # pi-lens-ignore: python-hardcoded-secrets -- benchmark script; synthetic test key
     
     for i in range(total_records):
         ent_id = i % unique_target_entities
@@ -202,7 +203,7 @@ def evaluate_standard_2_entity_resolution(total_records: int = 15000) -> dict[st
 async def evaluate_standard_3_scale_and_concurrency(total_leads: int = 10000, batch_size: int = 100, workers: int = 15) -> dict[str, Any]:
     print(f"\n[Standard 3/5] Evaluating High-Volume Scale, Concurrency & Zero-Deadlock Ingestion ({total_leads:,} leads)...")
     
-    hmac_secret = "standard-3-enterprise-secret-key"
+    hmac_secret = "standard-3-enterprise-secret-key"  # pi-lens-ignore: python-hardcoded-secrets -- benchmark script; synthetic test key
     fernet = Fernet(Fernet.generate_key())
     
     # 1. Synthesize batches
@@ -276,7 +277,7 @@ async def evaluate_standard_3_scale_and_concurrency(total_leads: int = 10000, ba
         unswapped = "".join(chr(((ord(c) & 0x0F) << 4) | ((ord(c) & 0xF0) >> 4)) for c in swapped)
         raw_b64 = base64.b64decode(unswapped.encode("ascii"))
         decomp = gzip.decompress(raw_b64).decode("utf-8")
-        assert len(decomp) == len(sample_txt)
+        assert len(decomp) == len(sample_txt)  # pi-lens-ignore: python-assert-production -- benchmark script; verification assertion
     t_scr = time.perf_counter() - t0_scr
     scr_throughput = 10000 / t_scr
 
@@ -311,8 +312,8 @@ def evaluate_standard_4_pii_compliance_and_unlock() -> dict[str, Any]:
     
     # Preview masking
     masked_preview = f"{raw_phone[:4]} *** {raw_phone[-3:]}"
-    assert masked_preview == "0908 *** 456"
-    assert enc_token != raw_phone.encode()
+    assert masked_preview == "0908 *** 456"  # pi-lens-ignore: python-assert-production -- benchmark script; verification assertion
+    assert enc_token != raw_phone.encode()  # pi-lens-ignore: python-assert-production -- benchmark script; verification assertion
 
     # 2. 50-Contact Decryption Velocity
     contacts_vault = [fernet.encrypt(f"0909{i:06d}".encode()) for i in range(50)]
@@ -329,7 +330,7 @@ def evaluate_standard_4_pii_compliance_and_unlock() -> dict[str, Any]:
 
     t0_tx = time.perf_counter()
     for i in range(n_unlocks):
-        assert wallet_balance_micros >= cost_per_unlock_micros
+        assert wallet_balance_micros >= cost_per_unlock_micros  # pi-lens-ignore: python-assert-production -- benchmark script; verification assertion
         wallet_balance_micros -= cost_per_unlock_micros
         dec_phone = fernet.decrypt(contacts_vault[i]).decode("utf-8")
         audit_logs.append({
@@ -342,8 +343,8 @@ def evaluate_standard_4_pii_compliance_and_unlock() -> dict[str, Any]:
     total_tx_time_ms = (time.perf_counter() - t0_tx) * 1000
     avg_unlock_latency_ms = total_tx_time_ms / n_unlocks
 
-    assert wallet_balance_micros == 150_000 - (50 * 1500)
-    assert len(audit_logs) == 50
+    assert wallet_balance_micros == 150_000 - (50 * 1500)  # pi-lens-ignore: python-assert-production -- benchmark script; verification assertion
+    assert len(audit_logs) == 50  # pi-lens-ignore: python-assert-production -- benchmark script; verification assertion
 
     print(f"  ✓ PII Vault AES-256 Encryption  : 100.0% Compliant (Fernet Token Decryption: {latency_per_dec_ms:.3f} ms/item)")
     print(f"  ✓ Masking Pre-Unlock Security   : Verified ({masked_preview})")
@@ -371,13 +372,13 @@ def evaluate_standard_5_business_intelligence_and_icp() -> dict[str, Any]:
     scores = []
     for i in range(n_sample):
         # Multi-modal distribution simulation
-        mode_pick = random.random()
+        mode_pick = random.random()  # pi-lens-ignore: python-insecure-random -- benchmark script; synthetic distribution simulation
         if mode_pick < 0.25: # High Intent
-            scores.append(random.randint(81, 100))
+            scores.append(random.randint(81, 100))  # pi-lens-ignore: python-insecure-random -- benchmark script; synthetic distribution simulation
         elif mode_pick < 0.70: # Nurture
-            scores.append(random.randint(60, 80))
+            scores.append(random.randint(60, 80))  # pi-lens-ignore: python-insecure-random -- benchmark script; synthetic distribution simulation
         else: # Low Fit
-            scores.append(random.randint(20, 59))
+            scores.append(random.randint(20, 59))  # pi-lens-ignore: python-insecure-random -- benchmark script; synthetic distribution simulation
 
     high_intent = sum(1 for s in scores if s > 80)
     nurture = sum(1 for s in scores if 60 <= s <= 80)
@@ -388,7 +389,7 @@ def evaluate_standard_5_business_intelligence_and_icp() -> dict[str, Any]:
     std_dev = math.sqrt(variance)
 
     # 2. Data Decay Aging Simulation (2.5% monthly decay / 90-day stale lead detection)
-    days_old = [random.randint(1, 180) for _ in range(1000)]
+    days_old = [random.randint(1, 180) for _ in range(1000)]  # pi-lens-ignore: python-insecure-random -- benchmark script; synthetic aging simulation
     stale_leads = sum(1 for d in days_old if d > 90)
     re_enrichment_candidates = stale_leads
 

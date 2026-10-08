@@ -12,139 +12,137 @@ import {
 	Webhook,
 } from "lucide-react";
 import Image from "next/image";
+import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { EnumConnectorName } from "./connector";
 
-export const getConnectorIcon = (connectorType: EnumConnectorName | string, className?: string) => {
-	const iconProps = { className: className || "h-4 w-4" };
-	const imgProps = {
-		className: `${className || "h-5 w-5"} select-none pointer-events-none`,
-		width: 20,
-		height: 20,
-		draggable: false as const,
-	};
+const IMAGE_CONNECTORS: Record<string, { src: string; alt: string }> = {
+	[EnumConnectorName.LINKUP_API]: { src: "/connectors/linkup.svg", alt: "Linkup" },
+	[EnumConnectorName.LINEAR_CONNECTOR]: { src: "/connectors/linear.svg", alt: "Linear" },
+	[EnumConnectorName.GITHUB_CONNECTOR]: { src: "/connectors/github.svg", alt: "GitHub" },
+	[EnumConnectorName.TAVILY_API]: { src: "/connectors/tavily.svg", alt: "Tavily" },
+	[EnumConnectorName.SEARXNG_API]: { src: "/connectors/searxng.svg", alt: "SearXNG" },
+	[EnumConnectorName.BAIDU_SEARCH_API]: { src: "/connectors/baidu-search.svg", alt: "Baidu" },
+	[EnumConnectorName.SLACK_CONNECTOR]: { src: "/connectors/slack.svg", alt: "Slack" },
+	[EnumConnectorName.TEAMS_CONNECTOR]: {
+		src: "/connectors/microsoft-teams.svg",
+		alt: "Microsoft Teams",
+	},
+	[EnumConnectorName.ONEDRIVE_CONNECTOR]: { src: "/connectors/onedrive.svg", alt: "OneDrive" },
+	[EnumConnectorName.NOTION_CONNECTOR]: { src: "/connectors/notion.svg", alt: "Notion" },
+	[EnumConnectorName.DROPBOX_CONNECTOR]: { src: "/connectors/dropbox.svg", alt: "Dropbox" },
+	[EnumConnectorName.DISCORD_CONNECTOR]: { src: "/connectors/discord.svg", alt: "Discord" },
+	[EnumConnectorName.JIRA_CONNECTOR]: { src: "/connectors/jira.svg", alt: "Jira" },
+	[EnumConnectorName.GOOGLE_CALENDAR_CONNECTOR]: {
+		src: "/connectors/google-calendar.svg",
+		alt: "Google Calendar",
+	},
+	[EnumConnectorName.GOOGLE_GMAIL_CONNECTOR]: {
+		src: "/connectors/google-gmail.svg",
+		alt: "Gmail",
+	},
+	[EnumConnectorName.GOOGLE_DRIVE_CONNECTOR]: {
+		src: "/connectors/google-drive.svg",
+		alt: "Google Drive",
+	},
+	[EnumConnectorName.AIRTABLE_CONNECTOR]: { src: "/connectors/airtable.svg", alt: "Airtable" },
+	[EnumConnectorName.CONFLUENCE_CONNECTOR]: {
+		src: "/connectors/confluence.svg",
+		alt: "Confluence",
+	},
+	[EnumConnectorName.BOOKSTACK_CONNECTOR]: {
+		src: "/connectors/bookstack.svg",
+		alt: "BookStack",
+	},
+	[EnumConnectorName.CLICKUP_CONNECTOR]: { src: "/connectors/clickup.svg", alt: "ClickUp" },
+	[EnumConnectorName.LUMA_CONNECTOR]: { src: "/connectors/luma.svg", alt: "Luma" },
+	[EnumConnectorName.ELASTICSEARCH_CONNECTOR]: {
+		src: "/connectors/elasticsearch.svg",
+		alt: "Elasticsearch",
+	},
+	[EnumConnectorName.YOUTUBE_CONNECTOR]: { src: "/connectors/youtube.svg", alt: "YouTube" },
+	[EnumConnectorName.CIRCLEBACK_CONNECTOR]: {
+		src: "/connectors/circleback.svg",
+		alt: "Circleback",
+	},
+	[EnumConnectorName.OBSIDIAN_CONNECTOR]: { src: "/connectors/obsidian.svg", alt: "Obsidian" },
+	[EnumConnectorName.COMPOSIO_GOOGLE_DRIVE_CONNECTOR]: {
+		src: "/connectors/google-drive.svg",
+		alt: "Google Drive",
+	},
+	[EnumConnectorName.COMPOSIO_GMAIL_CONNECTOR]: {
+		src: "/connectors/google-gmail.svg",
+		alt: "Gmail",
+	},
+	[EnumConnectorName.COMPOSIO_GOOGLE_CALENDAR_CONNECTOR]: {
+		src: "/connectors/google-calendar.svg",
+		alt: "Google Calendar",
+	},
+	// Additional cases for non-enum connector types
+	YOUTUBE_VIDEO: { src: "/connectors/youtube.svg", alt: "YouTube" },
+	MICROSOFT_TEAMS: { src: "/connectors/microsoft-teams.svg", alt: "Microsoft Teams" },
+	"ms-teams": { src: "/connectors/microsoft-teams.svg", alt: "Microsoft Teams" },
+	ZOOM: { src: "/connectors/zoom.svg", alt: "Zoom" },
+	zoom: { src: "/connectors/zoom.svg", alt: "Zoom" },
+	GOOGLE_DRIVE_FILE: { src: "/connectors/google-drive.svg", alt: "Google Drive" },
+	DROPBOX_FILE: { src: "/connectors/dropbox.svg", alt: "Dropbox" },
+	ONEDRIVE_FILE: { src: "/connectors/onedrive.svg", alt: "OneDrive" },
+};
 
-	switch (connectorType) {
-		case EnumConnectorName.LINKUP_API:
-			return <Image src="/connectors/linkup.svg" alt="Linkup" {...imgProps} />;
-		case EnumConnectorName.LINEAR_CONNECTOR:
-			return <Image src="/connectors/linear.svg" alt="Linear" {...imgProps} />;
-		case EnumConnectorName.GITHUB_CONNECTOR:
-			return <Image src="/connectors/github.svg" alt="GitHub" {...imgProps} />;
-		case EnumConnectorName.TAVILY_API:
-			return <Image src="/connectors/tavily.svg" alt="Tavily" {...imgProps} />;
-		case EnumConnectorName.SEARXNG_API:
-			return <Image src="/connectors/searxng.svg" alt="SearXNG" {...imgProps} />;
-		case EnumConnectorName.BAIDU_SEARCH_API:
-			return <Image src="/connectors/baidu-search.svg" alt="Baidu" {...imgProps} />;
-		case EnumConnectorName.SLACK_CONNECTOR:
-			return <Image src="/connectors/slack.svg" alt="Slack" {...imgProps} />;
-		case EnumConnectorName.TEAMS_CONNECTOR:
-			return <Image src="/connectors/microsoft-teams.svg" alt="Microsoft Teams" {...imgProps} />;
-		case EnumConnectorName.ONEDRIVE_CONNECTOR:
-			return <Image src="/connectors/onedrive.svg" alt="OneDrive" {...imgProps} />;
-		case EnumConnectorName.NOTION_CONNECTOR:
-			return <Image src="/connectors/notion.svg" alt="Notion" {...imgProps} />;
-		case EnumConnectorName.DROPBOX_CONNECTOR:
-			return <Image src="/connectors/dropbox.svg" alt="Dropbox" {...imgProps} />;
-		case EnumConnectorName.DISCORD_CONNECTOR:
-			return <Image src="/connectors/discord.svg" alt="Discord" {...imgProps} />;
-		case EnumConnectorName.JIRA_CONNECTOR:
-			return <Image src="/connectors/jira.svg" alt="Jira" {...imgProps} />;
-		case EnumConnectorName.GOOGLE_CALENDAR_CONNECTOR:
-			return <Image src="/connectors/google-calendar.svg" alt="Google Calendar" {...imgProps} />;
-		case EnumConnectorName.GOOGLE_GMAIL_CONNECTOR:
-			return <Image src="/connectors/google-gmail.svg" alt="Gmail" {...imgProps} />;
-		case EnumConnectorName.GOOGLE_DRIVE_CONNECTOR:
-			return <Image src="/connectors/google-drive.svg" alt="Google Drive" {...imgProps} />;
-		case EnumConnectorName.AIRTABLE_CONNECTOR:
-			return <Image src="/connectors/airtable.svg" alt="Airtable" {...imgProps} />;
-		case EnumConnectorName.CONFLUENCE_CONNECTOR:
-			return <Image src="/connectors/confluence.svg" alt="Confluence" {...imgProps} />;
-		case EnumConnectorName.BOOKSTACK_CONNECTOR:
-			return <Image src="/connectors/bookstack.svg" alt="BookStack" {...imgProps} />;
-		case EnumConnectorName.CLICKUP_CONNECTOR:
-			return <Image src="/connectors/clickup.svg" alt="ClickUp" {...imgProps} />;
-		case EnumConnectorName.LUMA_CONNECTOR:
-			return <Image src="/connectors/luma.svg" alt="Luma" {...imgProps} />;
-		case EnumConnectorName.ELASTICSEARCH_CONNECTOR:
-			return <Image src="/connectors/elasticsearch.svg" alt="Elasticsearch" {...imgProps} />;
-		case EnumConnectorName.WEBCRAWLER_CONNECTOR:
-			return <Globe {...iconProps} />;
-		case EnumConnectorName.YOUTUBE_CONNECTOR:
-			return <Image src="/connectors/youtube.svg" alt="YouTube" {...imgProps} />;
-		case EnumConnectorName.CIRCLEBACK_CONNECTOR:
-			return <Image src="/connectors/circleback.svg" alt="Circleback" {...imgProps} />;
-		case EnumConnectorName.MCP_CONNECTOR:
-		case EnumConnectorName.EXA_MCP_CONNECTOR:
-		case EnumConnectorName.MEDIRUS_MCP_CONNECTOR:
-			return (
-				<span
-					aria-hidden="true"
-					className={cn("shrink-0 bg-current", className || "size-5")}
-					style={{
-						mask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
-						WebkitMask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
-					}}
-				/>
-			);
-		case EnumConnectorName.OBSIDIAN_CONNECTOR:
-			return <Image src="/connectors/obsidian.svg" alt="Obsidian" {...imgProps} />;
-		case EnumConnectorName.COMPOSIO_GOOGLE_DRIVE_CONNECTOR:
-			return <Image src="/connectors/google-drive.svg" alt="Google Drive" {...imgProps} />;
-		case EnumConnectorName.COMPOSIO_GMAIL_CONNECTOR:
-			return <Image src="/connectors/google-gmail.svg" alt="Gmail" {...imgProps} />;
-		case EnumConnectorName.COMPOSIO_GOOGLE_CALENDAR_CONNECTOR:
-			return <Image src="/connectors/google-calendar.svg" alt="Google Calendar" {...imgProps} />;
-		case EnumConnectorName.RSS_FEED:
-			return <Newspaper {...iconProps} />;
-		// Additional cases for non-enum connector types
-		case "YOUTUBE_CONNECTOR":
-			return <Image src="/connectors/youtube.svg" alt="YouTube" {...imgProps} />;
-		case "CIRCLEBACK":
-			return <IconUsersGroup {...iconProps} />;
-		case "CRAWLED_URL":
-			return <Globe {...iconProps} />;
-		case "YOUTUBE_VIDEO":
-			return <Image src="/connectors/youtube.svg" alt="YouTube" {...imgProps} />;
-		case "MICROSOFT_TEAMS":
-		case "ms-teams":
-			return <Image src="/connectors/microsoft-teams.svg" alt="Microsoft Teams" {...imgProps} />;
-		case "ZOOM":
-		case "zoom":
-			return <Image src="/connectors/zoom.svg" alt="Zoom" {...imgProps} />;
-		case "FILE":
-			return <File {...iconProps} />;
-		case "GOOGLE_DRIVE_FILE":
-			return <Image src="/connectors/google-drive.svg" alt="Google Drive" {...imgProps} />;
-		case "DROPBOX_FILE":
-		case "DROPBOX_CONNECTOR":
-			return <Image src="/connectors/dropbox.svg" alt="Dropbox" {...imgProps} />;
-		case "ONEDRIVE_FILE":
-		case "ONEDRIVE_CONNECTOR":
-			return <Image src="/connectors/onedrive.svg" alt="OneDrive" {...imgProps} />;
-		case "COMPOSIO_GOOGLE_DRIVE_CONNECTOR":
-			return <Image src="/connectors/google-drive.svg" alt="Google Drive" {...imgProps} />;
-		case "COMPOSIO_GMAIL_CONNECTOR":
-			return <Image src="/connectors/google-gmail.svg" alt="Gmail" {...imgProps} />;
-		case "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR":
-			return <Image src="/connectors/google-calendar.svg" alt="Google Calendar" {...imgProps} />;
-		case "NOTE":
-			return <FileText {...iconProps} />;
-		case "EXTENSION":
-			return <Webhook {...iconProps} />;
-		case "USER_MEMORY":
-		case "TEAM_MEMORY":
-			return <Brain {...iconProps} />;
-		case "DEEP":
-			return <Sparkles {...iconProps} />;
-		case "DEEPER":
-			return <Microscope {...iconProps} />;
-		case "DEEPEST":
-			return <Telescope {...iconProps} />;
-		case "LOCAL_FOLDER_FILE":
-			return <File {...iconProps} />;
-		default:
-			return <Search {...iconProps} />;
+const ICON_CONNECTORS: Record<string, ComponentType<{ className?: string }>> = {
+	[EnumConnectorName.WEBCRAWLER_CONNECTOR]: Globe,
+	[EnumConnectorName.RSS_FEED]: Newspaper,
+	CIRCLEBACK: IconUsersGroup,
+	CRAWLED_URL: Globe,
+	FILE: File,
+	LOCAL_FOLDER_FILE: File,
+	NOTE: FileText,
+	EXTENSION: Webhook,
+	USER_MEMORY: Brain,
+	TEAM_MEMORY: Brain,
+	DEEP: Sparkles,
+	DEEPER: Microscope,
+	DEEPEST: Telescope,
+};
+
+const MCP_CONNECTORS = new Set<string>([
+	EnumConnectorName.MCP_CONNECTOR,
+	EnumConnectorName.EXA_MCP_CONNECTOR,
+	EnumConnectorName.MEDIRUS_MCP_CONNECTOR,
+]);
+
+export const getConnectorIcon = (connectorType: EnumConnectorName | string, className?: string) => {
+	const img = IMAGE_CONNECTORS[connectorType];
+	if (img) {
+		return (
+			<Image
+				src={img.src}
+				alt={img.alt}
+				className={`${className || "h-5 w-5"} select-none pointer-events-none`}
+				width={20}
+				height={20}
+				draggable={false}
+			/>
+		);
 	}
+
+	const IconComponent = ICON_CONNECTORS[connectorType];
+	if (IconComponent) {
+		return <IconComponent className={className || "h-4 w-4"} />;
+	}
+
+	if (MCP_CONNECTORS.has(connectorType)) {
+		return (
+			<span
+				aria-hidden="true"
+				className={cn("shrink-0 bg-current", className || "size-5")}
+				style={{
+					mask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
+					WebkitMask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
+				}}
+			/>
+		);
+	}
+
+	return <Search className={className || "h-4 w-4"} />;
 };

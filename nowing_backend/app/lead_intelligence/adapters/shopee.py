@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 
 from app.lead_intelligence.adapters.base import (
@@ -25,8 +26,8 @@ class ShopeeLeadAdapter(LeadSourceAdapter):
     source_name = "shopee"
     category = LeadSourceCategory.E_COMMERCE
     # Shopee is a national marketplace; most high-volume categories ship nationwide.
-    supported_provinces = ["*"]
-    coverage_quality_by_location = {
+    supported_provinces = ("*",)
+    coverage_quality_by_location = MappingProxyType({
         "HN": "high",
         "SG": "high",
         "DN": "high",
@@ -37,7 +38,7 @@ class ShopeeLeadAdapter(LeadSourceAdapter):
         "KH": "medium",
         "LD": "medium",
         "VT": "medium",
-    }
+    })
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

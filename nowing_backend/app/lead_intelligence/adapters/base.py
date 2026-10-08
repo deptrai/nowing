@@ -6,6 +6,7 @@ import re
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -207,8 +208,10 @@ class LeadSourceAdapter(ABC):
     source_name: str
     category: LeadSourceCategory = LeadSourceCategory.GENERAL
     last_execution_status: str = "ok"
-    supported_provinces: ClassVar[list[str]] = ["*"]
-    coverage_quality_by_location: ClassVar[dict[str, str | float]] = {}
+    supported_provinces: ClassVar[tuple[str, ...]] = ("*",)
+    coverage_quality_by_location: ClassVar[MappingProxyType[str, str | float]] = (
+        MappingProxyType({})
+    )
     priority: int = 1
     lead_quota: int = 50
 

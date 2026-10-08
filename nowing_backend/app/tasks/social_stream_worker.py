@@ -721,7 +721,7 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
             if int(raw_ws) > 0:
                 has_workspace = True
         except (ValueError, TypeError):
-            pass
+            logger.debug("Non-integer workspace_id %r in stream event", raw_ws)
 
     raw_target = payload.get("target_id")
     has_target = False
@@ -730,7 +730,7 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
             if int(raw_target) > 0:
                 has_target = True
         except (ValueError, TypeError):
-            pass
+            logger.debug("Non-integer target_id %r in stream event", raw_target)
 
     if not has_target:
         if not has_workspace:

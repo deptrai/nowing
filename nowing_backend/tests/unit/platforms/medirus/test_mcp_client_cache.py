@@ -352,7 +352,7 @@ def test_passive_and_active_memory_recovery():
         return id(temp_loop)
 
     _run_isolated()
-    gc.collect()
+    gc.collect()  # pi-lens-ignore: python-cross-language-method -- stdlib gc.collect()
     with _CLIENTS_LOCK:
         assert len(_LOOP_CLIENTS) == 0
 

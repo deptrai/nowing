@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlparse
 
@@ -71,14 +72,14 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
 
     source_name = "vietnamworks"
     category = LeadSourceCategory.JOB_MARKET
-    supported_provinces = ["HN", "SG", "DN", "BD", "DNA", "HP", "CT", "*"]
-    coverage_quality_by_location = {
+    supported_provinces = ("HN", "SG", "DN", "BD", "DNA", "HP", "CT", "*")
+    coverage_quality_by_location = MappingProxyType({
         "HN": "high",
         "SG": "high",
         "DN": "medium",
         "BD": "medium",
         "DNA": "medium",
-    }
+    })
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

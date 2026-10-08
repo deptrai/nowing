@@ -40,6 +40,11 @@ CORPORATE_CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days (604,800s)
 REDIS_CORP_CACHE_PREFIX = "enrich:corp:"
 AUTO_LINK_CONFIDENCE_THRESHOLD = 0.85
 
+_CHARTER_UNIT_RE = re.compile(
+    r"^([\d\.,\s]+?)\s*(ngàn\s*tỉ|ngàn\s*tỷ|ngan\s*ti|ngan\s*ty|nghìn\s*tỷ|nghin\s*ty|tỉ|ti|tỷ|ty|triệu|trieu|ngàn|ngan|nghìn|nghin|k|m|b)(?:\s*đồng|\s*vnd|\s*vnđ)?$",
+    re.IGNORECASE,
+)
+
 _redis_client: aioredis.Redis | None = None
 
 
@@ -191,8 +196,7 @@ def parse_charter_capital_vnd(val: Any) -> int | None:
 
     # Match Vietnamese text units (e.g., "13 nghìn tỷ", "20 tỷ", "500 triệu", "1.5 tỷ đồng",
     # "500 ngàn tỷ", "2 tỉ"). Southern "ngàn" and short "tỉ" are also accepted.
-    unit_pattern = r"^([\d\.,\s]+?)\s*(ngàn\s*tỉ|ngàn\s*tỷ|ngan\s*ti|ngan\s*ty|nghìn\s*tỷ|nghin\s*ty|tỉ|ti|tỷ|ty|triệu|trieu|ngàn|ngan|nghìn|nghin|k|m|b)(?:\s*đồng|\s*vnd|\s*vnđ)?$"
-    match = re.search(unit_pattern, s, re.IGNORECASE)
+    match = _CHARTER_UNIT_RE.search(s)
     if match:
         num_part = match.group(1).replace(" ", "")
         if "," in num_part and "." in num_part:

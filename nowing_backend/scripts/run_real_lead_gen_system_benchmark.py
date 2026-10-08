@@ -304,6 +304,8 @@ async def main():
     # Save to disk
     artifact_path = Path(backend_dir.parent / "_bmad-output/test-artifacts/lead_generation_pipeline_benchmark.json")
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    # pi-lens-ignore: python-path-traversal -- benchmark script; fixed artifact path
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- benchmark script; open failure propagates to caller
     with open(artifact_path, "w", encoding="utf-8") as f:
         json.dump([asdict(r) for r in results], f, ensure_ascii=False, indent=2)
     print(f"✓ Lead Gen Benchmark Artifacts saved to: {artifact_path}\n", flush=True)

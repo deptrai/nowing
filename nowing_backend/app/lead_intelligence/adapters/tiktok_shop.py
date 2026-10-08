@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 
 from app.lead_intelligence.adapters.base import (
@@ -25,8 +26,8 @@ class TiktokShopLeadAdapter(LeadSourceAdapter):
     source_name = "tiktok_shop"
     category = LeadSourceCategory.E_COMMERCE
     # TikTok Shop ships nationwide; trend products often skew to major metros.
-    supported_provinces = ["*"]
-    coverage_quality_by_location = {
+    supported_provinces = ("*",)
+    coverage_quality_by_location = MappingProxyType({
         "HN": "high",
         "SG": "high",
         "DN": "high",
@@ -36,7 +37,7 @@ class TiktokShopLeadAdapter(LeadSourceAdapter):
         "DNA": "medium",
         "KH": "low",
         "LD": "low",
-    }
+    })
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

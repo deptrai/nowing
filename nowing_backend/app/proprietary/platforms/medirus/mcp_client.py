@@ -374,7 +374,9 @@ class MedirusMcpClient:
             async with httpx.AsyncClient(
                 timeout=httpx.Timeout(MEDIRUS_MCP_DEFAULT_TIMEOUT_SECONDS)
             ) as http_client:
-                resp = await http_client.get(artifact_path, headers=self._headers)
+                resp = await http_client.get(
+                    artifact_path, headers=self._headers
+                )  # pi-lens-ignore: python-path-traversal -- URL artifact from trusted Medirus daemon
                 resp.raise_for_status()
                 try:
                     return resp.json()

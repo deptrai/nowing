@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 
 from app.lead_intelligence.adapters.base import (
@@ -25,8 +26,8 @@ class NewsLeadAdapter(LeadSourceAdapter):
     category = LeadSourceCategory.NEWS
     # National news portals cover all provinces; regional dailies bias toward
     # their home province.
-    supported_provinces = ["*"]
-    coverage_quality_by_location = {
+    supported_provinces = ("*",)
+    coverage_quality_by_location = MappingProxyType({
         "HN": "high",
         "SG": "high",
         "DN": "medium",
@@ -36,7 +37,7 @@ class NewsLeadAdapter(LeadSourceAdapter):
         "DNA": "low",
         "KH": "low",
         "LD": "low",
-    }
+    })
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

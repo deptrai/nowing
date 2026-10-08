@@ -753,9 +753,9 @@ class MedirusSocialAdapter:
 
             author_url = None
             if screen_name:
-                author_url = f"https://x.com/{screen_name}"
+                author_url = f"https://x.com/{screen_name}"  # pi-lens-ignore: python-hardcoded-secrets -- public URL template, not a credential
             elif isinstance(author_name, str) and author_name:
-                author_url = f"https://x.com/{author_name.lstrip('@')}"
+                author_url = f"https://x.com/{author_name.lstrip('@')}"  # pi-lens-ignore: python-hardcoded-secrets -- public URL template, not a credential
 
             post_url = raw.get("post_url") or raw.get("url") or raw.get("permalink")
 

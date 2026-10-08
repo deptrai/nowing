@@ -50,6 +50,7 @@ SUPPORTED_PLATFORMS = [
 ]
 
 _PLATFORM_PATTERN = f"^({'|'.join(SUPPORTED_PLATFORMS)})$"
+_PLATFORM_RE = re.compile(_PLATFORM_PATTERN)
 
 SocialTargetStatus = Literal["active", "paused", "error", "disabled", "unsupported"]
 
@@ -126,7 +127,7 @@ class SocialTargetCreate(BaseModel):
         if getattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", False):
             return v
 
-        if not re.match(_PLATFORM_PATTERN, v):
+        if not _PLATFORM_RE.match(v):
             raise ValueError(
                 f"platform must be one of: {', '.join(SUPPORTED_PLATFORMS)}"
             )

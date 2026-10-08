@@ -290,7 +290,7 @@ def test_runner_runs_shutdown_asyncgens_before_close() -> None:
 
     # Force a GC pass to surface any 'coroutine was never awaited'
     # warnings that would indicate the cleanup is broken.
-    gc.collect()
+    gc.collect()  # pi-lens-ignore: python-cross-language-method -- stdlib gc.collect()
 
 
 @contextmanager
