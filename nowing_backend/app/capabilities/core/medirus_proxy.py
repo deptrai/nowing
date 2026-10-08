@@ -144,7 +144,9 @@ class _ProxyArgs:
 def _is_tool_not_found(exc: MedirusMcpError) -> bool:
     """Mirror adapter_v2's tool_not_found detection (Story 40.2 local fallback)."""
     # Accept legacy XACT_* codes emitted by pre-rename Medirus builds
-    code_str = (str(exc.code) if exc.code is not None else "").replace("XACT_", "MEDIRUS_")
+    code_str = (str(exc.code) if exc.code is not None else "").replace(
+        "XACT_", "MEDIRUS_"
+    )
     if code_str in ("MEDIRUS_404", "tool_not_found", "404"):
         return True
     msg_lower = (exc.message or "").lower()

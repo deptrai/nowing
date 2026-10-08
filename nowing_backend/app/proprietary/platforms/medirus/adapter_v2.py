@@ -48,7 +48,9 @@ def _legacy_scrape_args(
         "action": action,
         "args": action_args,
         "context": {
-            "targetId": target_db_id if target_db_id is not None else getattr(target, "target_id", None),
+            "targetId": target_db_id
+            if target_db_id is not None
+            else getattr(target, "target_id", None),
             "workspaceId": getattr(target, "workspace_id", None),
         },
     }
@@ -61,7 +63,10 @@ def _legacy_scrape_args(
 PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
     "facebook_group": {
         "tool": "medirus_facebook_group_posts",
-        "args_builder": lambda t: {"url": _facebook_group_url(t.target_id), "limit": 20},
+        "args_builder": lambda t: {
+            "url": _facebook_group_url(t.target_id),
+            "limit": 20,
+        },
     },
     "facebook_page": {
         "tool": "medirus_facebook_posts",
@@ -86,39 +91,57 @@ PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
     # the single-writer stream carries tenant routing (REQ-X2).
     "tiktok_hashtag": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "tiktok", "hashtag_feed", {"tag": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "tiktok", "hashtag_feed", {"tag": t.target_id}
+        ),
     },
     "chotot_category": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "chotot", "search_listings", {"category": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "chotot", "search_listings", {"category": t.target_id}
+        ),
     },
     "shopee_keyword": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "shopee", "search_products", {"keyword": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "shopee", "search_products", {"keyword": t.target_id}
+        ),
     },
     "topcv_search": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "topcv", "search_jobs", {"keyword": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "topcv", "search_jobs", {"keyword": t.target_id}
+        ),
     },
     "vietnamworks_search": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "vietnamworks", "search_jobs", {"keyword": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "vietnamworks", "search_jobs", {"keyword": t.target_id}
+        ),
     },
     "linkedin_company": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "linkedin", "company_profile", {"companySlug": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "linkedin", "company_profile", {"companySlug": t.target_id}
+        ),
     },
     "batdongsan_category": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "batdongsan", "search_listings", {"category": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "batdongsan", "search_listings", {"category": t.target_id}
+        ),
     },
     "masothue_lookup": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "masothue", "detail", {"taxCode": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "masothue", "detail", {"taxCode": t.target_id}
+        ),
     },
     "b2b_registry_search": {
         "tool": "medirus_scrape",
-        "args_builder": lambda t: _legacy_scrape_args(t, "b2b_registry_extended", "search", {"q": t.target_id}),
+        "args_builder": lambda t: _legacy_scrape_args(
+            t, "b2b_registry_extended", "search", {"q": t.target_id}
+        ),
     },
 }
 
@@ -183,7 +206,9 @@ class TargetUnsupportedError(RuntimeError):
 
 def _is_tool_not_found_error(exc: MedirusMcpError) -> bool:
     # Accept legacy XACT_* codes emitted by pre-rename Medirus builds
-    code_str = (str(exc.code) if exc.code is not None else "").replace("XACT_", "MEDIRUS_")
+    code_str = (str(exc.code) if exc.code is not None else "").replace(
+        "XACT_", "MEDIRUS_"
+    )
     if code_str in ("MEDIRUS_404", "tool_not_found", "404"):
         return True
     if isinstance(exc.message, str):
@@ -195,12 +220,22 @@ def _is_tool_not_found_error(exc: MedirusMcpError) -> bool:
 
 def _is_permanent_fallback_error(exc: MedirusMcpError) -> bool:
     # Accept legacy XACT_* codes emitted by pre-rename Medirus builds
-    code_str = (str(exc.code) if exc.code is not None else "").replace("XACT_", "MEDIRUS_")
+    code_str = (str(exc.code) if exc.code is not None else "").replace(
+        "XACT_", "MEDIRUS_"
+    )
     if code_str in ("MEDIRUS_404", "MEDIRUS_4001", "tool_not_found", "404", "4001"):
         return True
     if isinstance(exc.message, str):
         msg_lower = exc.message.lower()
-        if any(term in msg_lower for term in ("tool_not_found", "tool not found", "action not available", "unsupported")):
+        if any(
+            term in msg_lower
+            for term in (
+                "tool_not_found",
+                "tool not found",
+                "action not available",
+                "unsupported",
+            )
+        ):
             return True
     return False
 
@@ -345,9 +380,7 @@ class UniversalScrapeTargetMapper:
                 if isinstance(candidate, str) and candidate.strip():
                     target_id_value = candidate
             if target_id_value is None or not str(target_id_value).strip():
-                raise ValueError(
-                    f"target_id required for action {action}"
-                )
+                raise ValueError(f"target_id required for action {action}")
             args = _build_unified_args(
                 platform_kind, target_id_value, descriptor, action
             )
@@ -357,7 +390,9 @@ class UniversalScrapeTargetMapper:
         # not truthiness — ``0`` is a valid DB id in some test fixtures.
         target_db_id = getattr(target, "id", None)
         context = {
-            "targetId": target_db_id if target_db_id is not None else getattr(target, "target_id", None),
+            "targetId": target_db_id
+            if target_db_id is not None
+            else getattr(target, "target_id", None),
             "workspaceId": getattr(target, "workspace_id", None),
         }
 
@@ -391,7 +426,8 @@ class UniversalScrapeTargetMapper:
                 logger.debug(
                     "Unified dispatch: routing legacy tool %s via medirus_scrape "
                     "(platform=%s, MEDIRUS_LEGACY_TOOL_DEPRECATION=on)",
-                    mapping["tool"], platform,
+                    mapping["tool"],
+                    platform,
                 )
             matrix = CanonicalActionMatrix.get_sync()
             return UniversalScrapeTargetMapper._unified_envelope(
@@ -427,13 +463,12 @@ class UniversalScrapeTargetMapper:
             logger.debug(
                 "Unified dispatch: routing legacy tool %s via medirus_scrape "
                 "(platform=%s, MEDIRUS_LEGACY_TOOL_DEPRECATION=on)",
-                mapping["tool"], platform,
+                mapping["tool"],
+                platform,
             )
 
         matrix = await CanonicalActionMatrix.get(client)
-        return UniversalScrapeTargetMapper._unified_envelope(
-            target, platform, matrix
-        )
+        return UniversalScrapeTargetMapper._unified_envelope(target, platform, matrix)
 
     @staticmethod
     def fallback_crawl_post(target: Any) -> tuple[str, dict[str, Any]]:
@@ -446,9 +481,10 @@ class UniversalScrapeTargetMapper:
             raise TargetUnsupportedError(
                 f"Target {getattr(target, 'id', None)} lacks valid platform for medirus_crawl_post fallback"
             )
-        raw_url = str(getattr(target, "target_url", None) or "").strip() or str(
-            getattr(target, "target_id", "") or ""
-        ).strip()
+        raw_url = (
+            str(getattr(target, "target_url", None) or "").strip()
+            or str(getattr(target, "target_id", "") or "").strip()
+        )
         target_url = raw_url
         if not target_url.lower().startswith(("http://", "https://")):
             raise TargetUnsupportedError(
@@ -468,8 +504,8 @@ class MedirusSocialAdapterV2:
         self.client = client
         self._is_shared = client is None
         self._owns_client = not self._is_shared
-        self.default_account_id = (
-            default_account_id or getattr(config, "MEDIRUS_FACEBOOK_ACCOUNT_ID", None)
+        self.default_account_id = default_account_id or getattr(
+            config, "MEDIRUS_FACEBOOK_ACCOUNT_ID", None
         )
 
     async def _get_client(self) -> MedirusMcpClient:
@@ -517,7 +553,9 @@ class MedirusSocialAdapterV2:
                     getattr(target, "id", None),
                     getattr(target, "platform", None),
                 )
-                fallback_tool, fallback_args = UniversalScrapeTargetMapper.fallback_crawl_post(target)
+                fallback_tool, fallback_args = (
+                    UniversalScrapeTargetMapper.fallback_crawl_post(target)
+                )
                 if account_id:
                     fallback_args["accountId"] = account_id
                 if getattr(target, "proxy_url", None):
@@ -577,7 +615,9 @@ class MedirusSocialAdapterV2:
         data = result.get("data", [])
         if isinstance(data, dict):
             data = [data]
-        elif isinstance(data, list) or (hasattr(data, "__iter__") and not isinstance(data, (str, bytes))):
+        elif isinstance(data, list) or (
+            hasattr(data, "__iter__") and not isinstance(data, (str, bytes))
+        ):
             pass
         else:
             data = []
@@ -589,7 +629,9 @@ class MedirusSocialAdapterV2:
             published_at = item.get("publishedAt") or item.get("published_at")
             if isinstance(published_at, str):
                 try:
-                    published_at = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+                    published_at = datetime.fromisoformat(
+                        published_at.replace("Z", "+00:00")
+                    )
                 except (ValueError, TypeError):
                     published_at = None
             elif isinstance(published_at, (int, float)):
@@ -614,7 +656,9 @@ class MedirusSocialAdapterV2:
                 if post_url:
                     post_id = post_url
                 else:
-                    logger.warning("Skipping post without identifiable external ID: %s", item)
+                    logger.warning(
+                        "Skipping post without identifiable external ID: %s", item
+                    )
                     continue
 
             raw_entities = item.get("entities") or item.get("raw_entities") or {}
@@ -625,15 +669,23 @@ class MedirusSocialAdapterV2:
 
             posts.append(
                 SocialPostData(
-                    platform=_normalize_platform_for_post(getattr(target, "platform", "") or ""),
+                    platform=_normalize_platform_for_post(
+                        getattr(target, "platform", "") or ""
+                    ),
                     external_post_id=str(post_id)[:255],
                     author_id=item.get("authorId") or item.get("author_id"),
                     author_name=item.get("authorName") or item.get("author_name"),
                     author_url=item.get("authorUrl") or item.get("author_url"),
-                    post_url=item.get("postUrl") or item.get("post_url") or item.get("url"),
+                    post_url=item.get("postUrl")
+                    or item.get("post_url")
+                    or item.get("url"),
                     content=item.get("content") or item.get("text") or "",
-                    reactions_count=item.get("reactions") or item.get("reactionsCount") or 0,
-                    comments_count=item.get("comments") or item.get("commentsCount") or 0,
+                    reactions_count=item.get("reactions")
+                    or item.get("reactionsCount")
+                    or 0,
+                    comments_count=item.get("comments")
+                    or item.get("commentsCount")
+                    or 0,
                     shares_count=item.get("shares") or item.get("sharesCount") or 0,
                     media_urls=item.get("mediaUrls") or item.get("media_urls") or [],
                     raw_entities=raw_entities,
@@ -641,8 +693,10 @@ class MedirusSocialAdapterV2:
                     category=item.get("category") or item.get("post_category"),
                     storage_ref=item.get("storageRef") or item.get("storage_ref"),
                     scraper_id=item.get("scraperId") or item.get("scraper_id"),
-                    benchmark_health=item.get("benchmarkHealth") or item.get("benchmark_health"),
-                    benchmark_alert=item.get("benchmarkAlert") or item.get("benchmark_alert"),
+                    benchmark_health=item.get("benchmarkHealth")
+                    or item.get("benchmark_health"),
+                    benchmark_alert=item.get("benchmarkAlert")
+                    or item.get("benchmark_alert"),
                     target_id=getattr(target, "id", None),
                     workspace_id=getattr(target, "workspace_id", None),
                 )
@@ -716,8 +770,12 @@ class MedirusSocialAdapterV2:
                 approximate=True,
             )
             return msg_id
-        except Exception as exc:  # best-effort Redis stream publish; doesn't fail caller
-            logger.exception("Redis xadd failed on %s: %s", STREAM_SOCIAL_RAW_POSTS, exc)
+        except (
+            Exception
+        ) as exc:  # best-effort Redis stream publish; doesn't fail caller
+            logger.exception(
+                "Redis xadd failed on %s: %s", STREAM_SOCIAL_RAW_POSTS, exc
+            )
             return None
 
     async def close(self) -> None:

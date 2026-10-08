@@ -41,12 +41,14 @@ def upgrade() -> None:
         END $$;
         """
     )
+    # ::text cast: safe when the enum label does not exist at all
+    # (DBs created before the connector enum value was added)
     op.execute(
         """
         UPDATE search_source_connectors
         SET name = 'Medirus'
         WHERE name = 'XActions'
-          AND connector_type = 'MEDIRUS_MCP_CONNECTOR';
+          AND connector_type::text IN ('XACTIONS_MCP_CONNECTOR', 'MEDIRUS_MCP_CONNECTOR');
         """
     )
 
@@ -74,6 +76,6 @@ def downgrade() -> None:
         UPDATE search_source_connectors
         SET name = 'XActions'
         WHERE name = 'Medirus'
-          AND connector_type = 'XACTIONS_MCP_CONNECTOR';
+          AND connector_type::text IN ('XACTIONS_MCP_CONNECTOR', 'MEDIRUS_MCP_CONNECTOR');
         """
     )
