@@ -61,6 +61,12 @@ def make_medirus_executor(
             },
         }
 
+        # Medirus truncates envelope.data to a 10-item `preview` when its
+        # daemon runs with REDIS_STREAM_ENABLED=true (stream pipeline mode).
+        # Capability executors need items synchronously in-band, so request
+        # dryRun — real scrape, full data, no stream emission.
+        payload["dryRun"] = True
+
         client = await get_shared_client()
 
         try:
@@ -88,7 +94,9 @@ def make_medirus_executor(
                 )
             )
 
-        data = result.get("data", [])
+        # `preview` fallback keeps working if a Medirus build ignores dryRun
+        # and still truncates data to the preview slice.
+        data = result.get("data") or result.get("preview") or []
         return {
             "items": data if isinstance(data, list) else [data],
             "cost_micros": (result.get("meta") or {}).get("cost_micros"),

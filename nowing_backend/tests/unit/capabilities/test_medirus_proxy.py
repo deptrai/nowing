@@ -63,6 +63,10 @@ class TestMedirusProxyExecutor:
                         "targetId": "target-123",
                         "workspaceId": "42",
                     },
+                    # dryRun keeps full data in-band when the Medirus daemon
+                    # runs with REDIS_STREAM_ENABLED (stream truncates data
+                    # to a 10-item preview otherwise).
+                    "dryRun": True,
                 },
             )
 
