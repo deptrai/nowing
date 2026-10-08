@@ -22,8 +22,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   status:
+    name: Check Apple notarization status
     runs-on: macos-latest
     steps:
       - name: List recent notarization submissions

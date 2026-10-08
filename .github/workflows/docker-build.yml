@@ -94,9 +94,11 @@ jobs:
             echo "Calculated next Docker version: $NEXT_VERSION"
           fi
 
-          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
-          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          echo "is_release_tag=$IS_RELEASE_TAG" >> $GITHUB_OUTPUT
+          {
+            echo "next_version=$NEXT_VERSION"
+            echo "commit_sha=$(git rev-parse HEAD)"
+            echo "is_release_tag=$IS_RELEASE_TAG"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: compute_version
@@ -156,7 +158,7 @@ jobs:
 
       - name: Set lowercase image name
         id: image
-        run: echo "name=${REGISTRY_IMAGE,,}" >> $GITHUB_OUTPUT
+        run: echo "name=${REGISTRY_IMAGE,,}" >> "$GITHUB_OUTPUT"
 
       - name: Docker meta
         id: meta
@@ -284,7 +286,7 @@ jobs:
     steps:
       - name: Set lowercase image name
         id: image
-        run: echo "name=${REGISTRY_IMAGE,,}" >> $GITHUB_OUTPUT
+        run: echo "name=${REGISTRY_IMAGE,,}" >> "$GITHUB_OUTPUT"
 
       - name: Download digests
         id: download
@@ -299,13 +301,15 @@ jobs:
         id: check
         run: |
           count=$(find /tmp/digests -type f 2>/dev/null | wc -l | tr -d ' ')
-          echo "digest_count=$count" >> $GITHUB_OUTPUT
+          echo "digest_count=$count" >> "$GITHUB_OUTPUT"
           if [ "$count" -lt 2 ]; then
-            echo "::warning::${{ matrix.variant }}: $count/2 digests, skipping merge"
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "::warning::$MATRIX_VARIANT: $count/2 digests, skipping merge"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          MATRIX_VARIANT: ${{ matrix.variant }}
 
       - name: Set up Docker Buildx
         if: steps.check.outputs.skip != 'true'
@@ -329,7 +333,7 @@ jobs:
           else
             APP_VERSION=""
           fi
-          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
         env:
           NEEDS_COMPUTE_VERSION_OUTPUTS_NEW_TAG: ${{ needs.compute_version.outputs.new_tag }}
 
@@ -353,9 +357,11 @@ jobs:
         working-directory: /tmp/digests
         run: |
           refs=
-          for digest in *; do
+          for digest in ./*; do
+            digest="${digest#./}"
             refs="${refs}${STEPS_IMAGE_OUTPUTS_NAME}@sha256:${digest} "
           done
+          # shellcheck disable=SC2046,SC2086
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $refs
@@ -364,7 +370,7 @@ jobs:
       - name: Inspect image
         if: steps.check.outputs.skip != 'true'
         run: |
-          docker buildx imagetools inspect ${STEPS_IMAGE_OUTPUTS_NAME}:${STEPS_META_OUTPUTS_VERSION}
+          docker buildx imagetools inspect "${STEPS_IMAGE_OUTPUTS_NAME}:${STEPS_META_OUTPUTS_VERSION}"
         env:
           STEPS_IMAGE_OUTPUTS_NAME: ${{ steps.image.outputs.name }}
           STEPS_META_OUTPUTS_VERSION: ${{ steps.meta.outputs.version }}
@@ -372,8 +378,10 @@ jobs:
       - name: Summary
         if: steps.check.outputs.skip != 'true'
         run: |
-          echo "Multi-arch manifest created for ${{ matrix.name }}!"
+          echo "Multi-arch manifest created for $MATRIX_NAME!"
           echo "Tags: $(jq -cr '.tags | join(", ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
 
   # Push the git tag only after build, gate, and manifest publish all succeed.
   finalize_release:

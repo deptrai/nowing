@@ -20,13 +20,20 @@ on:
           - always
         default: 'never'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   build:
+    name: Build and package desktop app
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write  # electron-builder creates/publishes GitHub releases
+      id-token: write  # Azure signing
     strategy:
       fail-fast: false
       matrix:

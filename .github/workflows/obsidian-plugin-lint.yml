@@ -22,8 +22,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
+    name: Lint and build Obsidian plugin
     runs-on: ubuntu-latest
     defaults:
       run:

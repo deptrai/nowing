@@ -16,12 +16,19 @@ on:
           - always
         default: "never"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-and-release:
+    name: Build and release Obsidian plugin
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # mirror manifest/versions and create GitHub release
     defaults:
       run:
         working-directory: nowing_obsidian
@@ -45,9 +52,11 @@ jobs:
 
       - name: Resolve plugin version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           manifest_version=$(node -p "require('./manifest.json').version")
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             # Manual runs derive the release version from manifest.json.
             version="$manifest_version"
             tag="obsidian-v$version"
@@ -68,8 +77,11 @@ jobs:
 
       - name: Resolve publish mode
         id: release_mode
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.publish }}" = "always" ]; then
+          if [ "$EVENT_NAME" = "push" ] || [ "$INPUT_PUBLISH" = "always" ]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
@@ -102,7 +114,7 @@ jobs:
           git add manifest.json versions.json
           git commit -m "chore(obsidian-plugin): mirror manifest+versions for ${STEPS_VERSION_OUTPUTS_TAG}"
           # Push to the default branch so Obsidian can fetch raw files from HEAD.
-          if ! git push origin HEAD:${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}; then
+          if ! git push origin "HEAD:${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}"; then
             echo "::warning::Failed to push mirrored manifest/versions to default branch (likely branch protection). Continuing release."
           fi
         env:

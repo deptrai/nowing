@@ -22,6 +22,9 @@ on:
     # Weekly burn-in on Sundays at 2 AM UTC
     - cron: "0 2 * * 0"
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -31,9 +34,6 @@ env:
   NODE_VERSION: '20'
   EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
 
-permissions:
-  contents: read
-
 jobs:
   changes:
     name: Detect Changes
@@ -42,7 +42,7 @@ jobs:
     # GitHub API on pull_request events; contents: read is for checkout.
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: read  # needed for paths-filter to inspect PR changes on pull_request events
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
@@ -202,11 +202,13 @@ jobs:
 
       - name: Run unit tests (shard ${{ matrix.shard }})
         working-directory: nowing_backend
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
-          idx=$(( ${{ matrix.shard }} - 1 ))
+          idx=$(( "$SHARD" - 1 ))
           shard_file=$(printf "unit-shard-%02d" "$idx")
           uv run pytest --override-ini="addopts=" -v --tb=short "@${shard_file}" \
-            --junitxml=pytest-unit-${{ matrix.shard }}.xml
+            --junitxml="pytest-unit-${SHARD}.xml"
 
       - name: Upload unit test results
         if: always()
@@ -225,7 +227,7 @@ jobs:
 
     services:
       postgres:
-        image: pgvector/pgvector:pg17
+        image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -490,24 +492,30 @@ jobs:
           path: artifacts
 
       - name: Generate summary
+        env:
+          LINT_RESULT: ${{ needs.lint.result }}
+          BACKEND_UNIT_RESULT: ${{ needs.backend-unit.result }}
+          BACKEND_INTEGRATION_RESULT: ${{ needs.backend-integration.result }}
+          FRONTEND_BUILD_RESULT: ${{ needs.frontend-build.result }}
+          BURN_IN_RESULT: ${{ needs.burn-in.result }}
         run: |
-          echo "## Test Execution Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Stage | Result |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Lint | ${{ needs.lint.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Backend Unit | ${{ needs.backend-unit.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Backend Integration | ${{ needs.backend-integration.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Frontend Build | ${{ needs.frontend-build.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Burn-In | ${{ needs.burn-in.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-
-          if [ "${{ needs.burn-in.result }}" == "failure" ]; then
-            echo "⚠️ **Flaky tests detected in burn-in** - Review burn-in artifacts" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          echo "### Artifact files" >> "$GITHUB_STEP_SUMMARY"
-          find artifacts -type f | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY" || true
+          {
+            echo "## Test Execution Summary"
+            echo ""
+            echo "| Stage | Result |"
+            echo "| --- | --- |"
+            echo "| Lint | $LINT_RESULT |"
+            echo "| Backend Unit | $BACKEND_UNIT_RESULT |"
+            echo "| Backend Integration | $BACKEND_INTEGRATION_RESULT |"
+            echo "| Frontend Build | $FRONTEND_BUILD_RESULT |"
+            echo "| Burn-In | $BURN_IN_RESULT |"
+            echo ""
+            if [ "$BURN_IN_RESULT" = "failure" ]; then
+              echo "⚠️ **Flaky tests detected in burn-in** - Review burn-in artifacts"
+            fi
+            echo "### Artifact files"
+            find artifacts -type f | sed 's/^/- /' || true
+          } >> "$GITHUB_STEP_SUMMARY"
 
   quality-gate:
     name: Quality Gate
@@ -580,7 +588,10 @@ jobs:
 
       - name: Notify on failure
         if: failure()
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"❌ Quality gate failed for ${{ github.repository }} on ${GITHUB_REF}"}' \
-            "${{ secrets.SLACK_WEBHOOK_URL }}" || true
+            --data "{\"text\":\"❌ Quality gate failed for ${GITHUB_REPOSITORY} on ${GITHUB_REF}\"}" \
+            "$SLACK_WEBHOOK_URL" || true
