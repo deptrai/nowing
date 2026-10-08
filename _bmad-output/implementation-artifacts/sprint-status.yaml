@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-23-2026 16:00'
+last_updated: '10-08-2026 15:06'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -418,6 +418,18 @@ development_status:
   38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: done
   38-8-voice-billing-realtime-metering-qa-scorecard: done
   epic-38-retrospective: done
+
+  epic-39: done
+  39-1-decisionservice-port-jev-backend-question-registry: done
+  39-2-subagent-routing-via-jev-choice-r2-highest-impact: done
+  39-3-entity-resolution-confidence-scoring-r3: done
+  39-4-content-guardrails-via-jev-noul-battery-r4: done
+  39-5-intent-classification-via-jev-choice-r5-low: done
+  39-6-voice-agent-post-stt-semantic-decisions-r6-deferred: done
+  39-7-decision-telemetry-dashboard-cost-tracking: done
+  39-8-eval-harness-ci-integration: done
+  epic-39-retrospective: optional
+
   epic-40: done
   40-1-xactions-gateway-client-streamable-http-cutover: done
   40-2-scraper-playground-thin-proxy-workspace-billing-gate: done
