@@ -1,6 +1,6 @@
 """Canonical Action Matrix — dynamic dispatch catalog for Medirus unified scrape.
 
-Fetched live from the `x_actions_list` MCP tool with a TTL cache. When Medirus
+Fetched live from the `medirus_list` MCP tool with a TTL cache. When Medirus
 is unavailable or returns a partial catalog, the matrix falls back to a
 conservative `STATIC_FALLBACK_MATRIX` covering only platforms that are known
 to work today (per `PLATFORM_TOOL_MAP`).
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActionDescriptor(BaseModel):
-    """One entry returned by `x_actions_list`.
+    """One entry returned by `medirus_list`.
 
     Field names mirror the Medirus descriptor schema (REQ-X3):
     ``platform``, ``action``, ``description``, ``requiredArgs``, ``optionalArgs``,
@@ -54,7 +54,7 @@ class ActionDescriptor(BaseModel):
 # via `x_scrape` (or legacy tools) today. Action names here use the *canonical*
 # Medirus spelling (per REQ-X4) rather than the legacy mistakes still sitting
 # in ``PLATFORM_TOOL_MAP``.
-# Static fallback matrix — mirrors the live ``x_actions_list`` catalog
+# Static fallback matrix — mirrors the live ``medirus_list`` catalog
 # (Epic 20 / REQ-X4 canonical names). ``requiredArgs[0]`` is the arg name the
 # dispatcher binds ``target_id`` to; ``match.target_kind`` binds a Nowing
 # ``{platform}_{kind}`` platform_kind suffix to the right action.
@@ -170,7 +170,7 @@ STATIC_FALLBACK_MATRIX: dict[str, dict[str, dict[str, Any]]] = {
 
 
 def parse_action_descriptors(raw: Any) -> dict[str, dict[str, dict[str, Any]]]:
-    """Parse `x_actions_list` response into the canonical matrix shape.
+    """Parse `medirus_list` response into the canonical matrix shape.
 
     Accepts the MCP envelope dict ``{"actions": [...]}``, a plain list of
     descriptors, or a dict keyed by platform. Returns
@@ -232,7 +232,7 @@ def _merge_with_static(
 
     if missing_platforms:
         logger.info(
-            "x_actions_list partial catalog — using static fallback for platforms: %s",
+            "medirus_list partial catalog — using static fallback for platforms: %s",
             ", ".join(sorted(missing_platforms)),
         )
 
@@ -256,7 +256,7 @@ def _merge_with_static(
 class CanonicalActionMatrix:
     """TTL-cached registry of platform → action descriptors.
 
-    ``get(client)`` refreshes the cache by calling ``x_actions_list`` via the
+    ``get(client)`` refreshes the cache by calling ``medirus_list`` via the
     provided MCP client, merging the result with ``STATIC_FALLBACK_MATRIX``.
     On fetch failure or empty catalog it serves the stale cache or the static
     matrix — never raises for the catalog path.
@@ -312,7 +312,7 @@ class CanonicalActionMatrix:
     async def get(
         cls, client: Any | None = None
     ) -> dict[str, dict[str, dict[str, Any]]]:
-        """Async read — refresh via ``x_actions_list`` when cache is stale."""
+        """Async read — refresh via ``medirus_list`` when cache is stale."""
         if cls._is_cache_fresh():
             assert cls._cache is not None
             return cls._cache
@@ -330,10 +330,10 @@ class CanonicalActionMatrix:
                 return cls._cache
 
             try:
-                raw = await client.call_tool("x_actions_list", {})
+                raw = await client.call_tool("medirus_list", {})
             except Exception as exc:
                 logger.warning(
-                    "x_actions_list fetch failed (%s); serving stale/static fallback",
+                    "medirus_list fetch failed (%s); serving stale/static fallback",
                     exc,
                 )
                 if cls._cache is not None:
@@ -343,7 +343,7 @@ class CanonicalActionMatrix:
             live = parse_action_descriptors(raw)
             if not live:
                 logger.warning(
-                    "x_actions_list returned empty catalog; serving stale/static fallback"
+                    "medirus_list returned empty catalog; serving stale/static fallback"
                 )
                 if cls._cache is not None:
                     return cls._cache

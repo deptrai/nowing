@@ -63,7 +63,15 @@ def map_event_to_service_category(
     if any(
         k in type_str
         # 'xactions' kept for pre-rename rows emitted before the Medirus rename
-        for k in ["social", "medirus", "xactions", "facebook", "twitter", "fb_group", "signal"]
+        for k in [
+            "social",
+            "medirus",
+            "xactions",
+            "facebook",
+            "twitter",
+            "fb_group",
+            "signal",
+        ]
     ):
         return ServiceCategory.SOCIAL_MEDIA
     if "deep_research" in type_str:

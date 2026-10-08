@@ -76,7 +76,7 @@ PLATFORM_TOOL_MAP: dict[str, dict[str, Any]] = {
         "args_builder": lambda t: {"username": t.target_id.strip("@"), "limit": 20},
     },
     # NOTE (Epic 36 follow-up): these ``x_scrape`` arg_builders now emit the
-    # *canonical* action names + platform keys from the live ``x_actions_list``
+    # *canonical* action names + platform keys from the live ``medirus_list``
     # catalog (24 platforms / 189 actions), in the nested
     # ``{platform, action, args, context}`` envelope per AD-2. The previous
     # guess-names (``posts``/``lookup``/``company``/``search`` and platform
@@ -410,7 +410,7 @@ class UniversalScrapeTargetMapper:
 
         Flag OFF → delegates to :meth:`map` unchanged. Flag ON → awaits
         ``CanonicalActionMatrix.get(client)`` so the TTL cache can refresh
-        from ``x_actions_list`` before resolving ``(platform, action)``.
+        from ``medirus_list`` before resolving ``(platform, action)``.
         """
         if not getattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", False):
             return UniversalScrapeTargetMapper.map(target)

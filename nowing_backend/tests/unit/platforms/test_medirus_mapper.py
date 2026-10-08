@@ -196,7 +196,7 @@ class TestUnifiedDispatchFlagOn:
         assert tool == "x_scrape"
         assert args["action"] == "hashtag_feed"
         assert args["args"] == {"tag": "trending"}
-        client.call_tool.assert_awaited_once_with("x_actions_list", {})
+        client.call_tool.assert_awaited_once_with("medirus_list", {})
 
     async def test_map_async_flag_on_falls_back_when_fetch_fails(self):
         client = AsyncMock()
@@ -467,7 +467,7 @@ class TestLegacyToolDeprecation:
             assert args["platform"] == "facebook"
             assert args["action"] == "group_posts"
             assert args["args"] == {"groupId": "group99", "limit": 20}
-            client.call_tool.assert_awaited_once_with("x_actions_list", {})
+            client.call_tool.assert_awaited_once_with("medirus_list", {})
 
         async def test_map_async_partial_catalog_merges_static_fallback(self):
             # Live catalog returns only tiktok, lacking facebook/twitter

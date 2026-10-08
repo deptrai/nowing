@@ -199,7 +199,7 @@ class TestCanonicalActionMatrixCache:
         )
         matrix = await CanonicalActionMatrix.get(client)
         assert "tiktok" in matrix
-        client.call_tool.assert_awaited_once_with("x_actions_list", {})
+        client.call_tool.assert_awaited_once_with("medirus_list", {})
 
         # Second call within TTL → no refetch
         matrix2 = await CanonicalActionMatrix.get(client)

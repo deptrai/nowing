@@ -100,7 +100,7 @@ MEDIRUS_STREAM_SINGLE_WRITER_ENABLED = (
 MEDIRUS_STREAM_REDIS_URL = os.getenv("MEDIRUS_STREAM_REDIS_URL", "").strip()
 # Unified dispatch gate (Story 36.6a / AD-1, AD-2, AD-6)
 # When ON: UniversalScrapeTargetMapper resolves platform+action from the
-# CanonicalActionMatrix (x_actions_list + static fallback) and dispatches
+# CanonicalActionMatrix (medirus_list + static fallback) and dispatches
 # x_scrape with the nested {platform, action, args, context} envelope.
 # When OFF: legacy PLATFORM_TOOL_MAP path is used unchanged.
 MEDIRUS_USE_UNIFIED_DISPATCH = (
