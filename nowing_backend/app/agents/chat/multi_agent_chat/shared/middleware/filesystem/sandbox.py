@@ -214,7 +214,8 @@ def _schedule_sandbox_delete(sandbox: _TimeoutAwareSandbox) -> None:
             client = _get_client()
             client.delete(sandbox._sandbox)
             logger.info("Deleted evicted sandbox: %s", sandbox._sandbox.id)
-        except Exception:  # evicted sandbox background deletion failure; suppress debug log
+        # evicted sandbox background deletion failure; suppress debug log
+        except Exception:
             logger.debug("Could not delete evicted sandbox", exc_info=True)
 
     try:
@@ -367,7 +368,8 @@ async def persist_and_delete_sandbox(
         if sandbox.state != SandboxState.STARTED:
             try:
                 sandbox.start(timeout=60)
-            except Exception:  # sandbox start failure before persistence; proceed to deletion
+            # sandbox start failure before persistence; proceed to deletion
+            except Exception:
                 logger.warning(
                     "Could not start sandbox %s for file download — deleting anyway",
                     sandbox.id,
@@ -382,9 +384,11 @@ async def persist_and_delete_sandbox(
                 content: bytes = sandbox.fs.download_file(path)
                 local = _local_path_for(thread_id, path)
                 local.parent.mkdir(parents=True, exist_ok=True)
+                # pi-lens-ignore: python-path-traversal — path comes from _local_path_for (base-constrained)
                 local.write_bytes(content)
                 logger.info("Persisted sandbox file %s → %s", path, local)
-            except Exception:  # sandbox file download/write failure; continue remaining files
+            # sandbox file download/write failure; continue remaining files
+            except Exception:
                 logger.warning(
                     "Failed to persist sandbox file %s for thread %s",
                     path,

@@ -77,7 +77,8 @@ def _record_queue_latency(task=None, **_kwargs):
             scheduled=scheduled,
             operation=operation,
         )
-    except Exception as exc:  # queue latency metric recording failure; suppress exception
+    # queue latency metric recording failure; suppress exception
+    except Exception as exc:
         logger.debug("Suppressed %r", exc)
 
 
@@ -113,12 +114,13 @@ async def _run_scraper_rule_subscriber() -> None:
     try:
         redis = await get_redis_client()
         await scraper_rule_pubsub.start_rule_subscriber(redis)
-    except Exception as exc:  # scraper rule pubsub subscriber start failure; fallback to TTL cache
-        # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
+    # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
+    except Exception as exc:  # scraper rule pubsub subscriber start failure
         logger.debug("Suppressed %r", exc)
 
 
 def _start_scraper_rule_subscriber_thread() -> None:
+    # pi-lens-ignore: python-thread-global-write — daemon thread, no shared mutable state
     threading.Thread(
         target=lambda: asyncio.run(_run_scraper_rule_subscriber()),
         daemon=True,

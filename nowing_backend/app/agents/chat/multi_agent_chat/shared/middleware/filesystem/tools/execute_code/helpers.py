@@ -44,7 +44,8 @@ async def execute_in_sandbox(
     timeout: int | None,
 ) -> str:
     """Top-level entry: wraps + retries once on sandbox failure."""
-    assert mw._thread_id is not None
+    if mw._thread_id is None:
+        raise RuntimeError("sandbox execute called before middleware init")
     command = wrap_as_python(command)
     try:
         return await _try_sandbox_execute(mw, command, runtime, timeout)

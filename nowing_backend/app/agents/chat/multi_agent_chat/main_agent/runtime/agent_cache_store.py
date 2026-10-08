@@ -93,6 +93,7 @@ def stable_hash(*parts: Any) -> str:
     security boundary, just a content fingerprint.
     """
     # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
+    # pi-lens-ignore: python-weak-hash — non-security content fingerprint, see docstring
     h = hashlib.sha1(usedforsecurity=False)
     for p in parts:
         h.update(repr(p).encode("utf-8", errors="replace"))
@@ -147,6 +148,7 @@ def flags_signature(flags: Any) -> str:
 def system_prompt_hash(system_prompt: str) -> str:
     """Hash a system prompt string. Cheap, ~30µs for typical prompts."""
     # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
+    # pi-lens-ignore: python-weak-hash — non-security content fingerprint, see docstring
     return hashlib.sha1(
         system_prompt.encode("utf-8", errors="replace"),
         usedforsecurity=False,

@@ -140,6 +140,37 @@ class _AntiBotOutput(BaseModel):
         return 0
 
 
+async def test_executor_exception_group_returns_error_text_instead_of_raising(isolate):
+    """A scraper that raises ExceptionGroup must not escape the tool call.
+
+    LangGraph's default tool-error handler re-raises non-ToolInvocationError
+    exceptions, which kills the whole chat stream. The tool has to hand the
+    failure back as text so the agent can skip the broken source and continue.
+    """
+
+    async def _boom(payload: _EchoInput) -> _EchoOutput:
+        raise ExceptionGroup(
+            "unhandled errors in a TaskGroup", [RuntimeError("mcp down")]
+        )
+
+    cap = Capability(
+        name="topcv.scrape",
+        description="topcv scrape",
+        input_schema=_EchoInput,
+        output_schema=_EchoOutput,
+        executor=_boom,
+        billing_unit=None,
+    )
+    tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
+    tool = _verb_tool(tools, "topcv_scrape")
+
+    result = await _invoke(tool, text="python")
+
+    assert isinstance(result, str)
+    assert "topcv.scrape failed" in result
+    assert "TaskGroup" in result
+
+
 async def test_tool_runs_executor_and_returns_serialized_output(isolate):
     cap = _capability(name="web.scrape", output=_EchoOutput(echoed="hi there"))
     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])

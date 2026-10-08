@@ -59,6 +59,7 @@ def _signature(name: str, args: Any) -> str:
     except (TypeError, ValueError):
         canonical = repr(args)
     # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
+    # pi-lens-ignore: python-weak-hash — non-security tool-call signature
     digest = hashlib.sha1(f"{name}::{canonical}".encode()).hexdigest()
     return digest[:16]
 
@@ -107,7 +108,9 @@ class DoomLoopMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respon
 
         try:
             tid = _from_dict(get_config())
-        except Exception:  # LangGraph config lookup failure; fall back to runtime config
+        except (
+            Exception
+        ):  # LangGraph config lookup failure; fall back to runtime config
             tid = None
         if tid is not None:
             return tid

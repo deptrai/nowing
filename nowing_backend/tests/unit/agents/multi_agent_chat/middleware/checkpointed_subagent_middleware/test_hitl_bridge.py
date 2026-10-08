@@ -79,6 +79,53 @@ def _prime_subagent_at_runtime_thread(subagent, runtime: ToolRuntime) -> dict:
 
 
 @pytest.mark.asyncio
+async def test_subagent_exception_group_returns_error_command_instead_of_raising():
+    """A subagent that raises ExceptionGroup must not kill the parent stream.
+
+    LangGraph's default tool-error handler re-raises non-ToolInvocationError
+    exceptions, which aborts the whole chat. The task tool has to return the
+    failure as a ToolMessage so the parent agent can continue.
+    """
+
+    def boom_node(state):
+        raise ExceptionGroup(
+            "unhandled errors in a TaskGroup", [RuntimeError("topcv mcp down")]
+        )
+
+    graph = StateGraph(_SubagentState)
+    graph.add_node("boom", boom_node)
+    graph.add_edge(START, "boom")
+    graph.add_edge("boom", END)
+    subagent = graph.compile(checkpointer=InMemorySaver())
+
+    task_tool = build_task_tool_with_parent_config(
+        [
+            {
+                "name": "scraper",
+                "description": "scrapes things",
+                "runnable": subagent,
+            }
+        ]
+    )
+    runtime = _make_runtime(
+        {"configurable": {"thread_id": "t1"}, "recursion_limit": 100}
+    )
+
+    result = await task_tool.coroutine(
+        description="scrape topcv",
+        subagent_type="scraper",
+        runtime=runtime,
+    )
+
+    assert isinstance(result, Command)
+    messages = result.update["messages"]
+    assert len(messages) == 1
+    assert "Subagent failed" in messages[0].content
+    assert "TaskGroup" in messages[0].content
+    assert messages[0].tool_call_id == runtime.tool_call_id
+
+
+@pytest.mark.asyncio
 async def test_resume_bridge_dispatches_decision_into_pending_subagent():
     """Side-channel decision must reach the subagent's pending interrupt verbatim."""
     subagent = _build_single_interrupt_subagent()
