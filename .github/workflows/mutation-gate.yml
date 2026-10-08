@@ -34,17 +34,23 @@ concurrency:
 env:
   PYTHON_VERSION: '3.12'
 
+permissions:
+  contents: read
+
 jobs:
   split-services:
     name: Prepare service matrix
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       services: ${{ steps.set.outputs.services }}
     steps:
       - name: Set service matrix
         id: set
+        env:
+          SERVICES: ${{ github.event.inputs.services || 'pricing_registration,token_quota_service,token_tracking_service,provider_registry,model_resolver,auth,llm_service,llm_router_service,web_crawl_credit_service,platform_scrape_credit_service' }}
         run: |
-          SERVICES="${{ github.event.inputs.services || 'pricing_registration,token_quota_service,token_tracking_service,provider_registry,model_resolver,auth,llm_service,llm_router_service,web_crawl_credit_service,platform_scrape_credit_service' }}"
           JSON=$(echo "$SERVICES" | tr ',' '\n' | jq -R . | jq -s -c .)
           echo "services=$JSON" >> "$GITHUB_OUTPUT"
 
@@ -52,6 +58,8 @@ jobs:
     name: Mutation gate ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: split-services
+    permissions:
+      contents: read
     timeout-minutes: 360
     strategy:
       fail-fast: false
@@ -59,18 +67,20 @@ jobs:
         service: ${{ fromJSON(needs.split-services.outputs.services) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -93,26 +103,34 @@ jobs:
       - name: Set safe service name
         id: safe
         run: |
-          SAFE_SERVICE=$(echo '${{ matrix.service }}' | tr '/' '-')
+          SAFE_SERVICE=$(echo '${MATRIX_SERVICE}' | tr '/' '-')
           echo "service=$SAFE_SERVICE" >> "$GITHUB_OUTPUT"
+        env:
+          MATRIX_SERVICE: ${{ matrix.service }}
 
       - name: Run mutation gate
+        env:
+          MATRIX_SERVICE: ${{ matrix.service }}
+          SKIP_NOISE_OPERATORS: ${{ github.event.inputs.skip-noise-operators || 'false' }}
+          MUTATION_TIMEOUT: ${{ github.event.inputs.timeout || '120' }}
+          TEST_FILES: ${{ github.event.inputs.test-files || '' }}
+          FUNCTIONS: ${{ github.event.inputs.functions || '' }}
         run: |
           SKIP_NOISE=""
-          if [ "${{ github.event.inputs.skip-noise-operators || 'false' }}" = "true" ]; then
+          if [ "$SKIP_NOISE_OPERATORS" = "true" ]; then
             SKIP_NOISE="--skip-noise-operators"
           fi
           nowing_backend/.venv/bin/python scripts/mutation-gate.py \
-            --services ${{ matrix.service }} \
-            --timeout ${{ github.event.inputs.timeout || '120' }} \
+            --services "$MATRIX_SERVICE" \
+            --timeout "$MUTATION_TIMEOUT" \
             --project-root . \
-            --test-files "${{ github.event.inputs.test-files || '' }}" \
-            --functions "${{ github.event.inputs.functions || '' }}" \
+            --test-files "$TEST_FILES" \
+            --functions "$FUNCTIONS" \
             $SKIP_NOISE
 
       - name: Upload mutation artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: mutation-nowing-${{ steps.safe.outputs.service }}
           path: |

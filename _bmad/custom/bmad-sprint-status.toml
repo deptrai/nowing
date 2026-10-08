@@ -1,0 +1,11 @@
+[workflow]
+
+# Priority list by dependency impact. Loaded as a persistent fact
+# so the skill carries it as context.
+persistent_facts = [
+  "file:{project-root}/_bmad-output/planning-artifacts/sprint-priority.md",
+]
+
+# Print the next dependency-priority item when the skill exits.
+# This is a terminal instruction run by the skill's final step.
+on_complete = "python3 _bmad/scripts/print_next_priority.py"

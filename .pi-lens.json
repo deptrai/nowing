@@ -65,10 +65,32 @@
         "ast-grep:no-ellipsis-body",
         "no-ellipsis-body"
       ]
+    },
+    "jscpd:duplicate": {
+      "disable": [
+        "jscpd:duplicate",
+        "duplicate"
+      ]
+    },
+    "knip:file": {
+      "disable": [
+        "knip:file"
+      ]
+    },
+    "css:unknownAtRules": {
+      "disable": [
+        "css:unknownAtRules"
+      ]
     }
   },
   "ignore": [
     "nowing_obsidian/eslint.config.mts",
-    "nowing_backend/alembic/versions/**"
+    "nowing_backend/alembic/versions/**",
+    "_bmad/**",
+    "_bmad-output/**",
+    ".cursor/**",
+    ".agents/**",
+    ".claude/**",
+    "**/fixtures/**"
   ]
 }

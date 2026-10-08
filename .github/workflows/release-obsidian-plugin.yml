@@ -27,18 +27,21 @@ jobs:
         working-directory: nowing_obsidian
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
-          # Need write access for the manifest/versions.json mirror commit
-          # back to main further down.
+          # Need the checkout token for the manifest/versions.json mirror
+          # commit and git push back to the default branch further down.
+          # persist-credentials stays true on purpose for that push.
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6.5.0
         with:
           node-version: 22.x
-          cache: npm
-          cache-dependency-path: nowing_obsidian/package-lock.json
+          # Release publishes runtime artifacts; do not read or write the
+          # Actions dependency cache (cache-poisoning sink).
+          package-manager-cache: false
 
       - name: Resolve plugin version
         id: version
@@ -97,23 +100,41 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add manifest.json versions.json
-          git commit -m "chore(obsidian-plugin): mirror manifest+versions for ${{ steps.version.outputs.tag }}"
+          git commit -m "chore(obsidian-plugin): mirror manifest+versions for ${STEPS_VERSION_OUTPUTS_TAG}"
           # Push to the default branch so Obsidian can fetch raw files from HEAD.
-          if ! git push origin HEAD:${{ github.event.repository.default_branch }}; then
+          if ! git push origin HEAD:${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}; then
             echo "::warning::Failed to push mirrored manifest/versions to default branch (likely branch protection). Continuing release."
           fi
+        env:
+          STEPS_VERSION_OUTPUTS_TAG: ${{ steps.version.outputs.tag }}
+          GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
       # Publish release under bare `manifest.json` version (no `obsidian-v` prefix) for BRAT/store compatibility.
-      # `make_latest: "false"` keeps the desktop app's `v*` release headlined since Obsidian and BRAT resolve plugins via getReleaseByTag, not the latest flag.
+      # `--latest=false` keeps the desktop app's `v*` release headlined since Obsidian and BRAT resolve plugins via getReleaseByTag, not the latest flag.
+      # Re-runs update the existing release and overwrite the same assets, matching the previous action.
       - name: Create GitHub release
         if: steps.release_mode.outputs.should_publish == 'true'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: Nowing Obsidian Plugin ${{ steps.version.outputs.version }}
-          generate_release_notes: true
-          make_latest: "false"
-          files: |
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.version }}
+        run: |
+          title="Nowing Obsidian Plugin ${RELEASE_TAG}"
+          assets=(
             nowing_obsidian/main.js
             nowing_obsidian/manifest.json
             nowing_obsidian/styles.css
+          )
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            notes="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f tag_name="$RELEASE_TAG" --jq .body)"
+            gh release edit "$RELEASE_TAG" --title "$title" --notes "$notes"
+            release_id="$(gh release view "$RELEASE_TAG" --json databaseId --jq .databaseId)"
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" -f make_latest=false >/dev/null
+            gh release upload "$RELEASE_TAG" --clobber "${assets[@]}"
+          else
+            gh release create "$RELEASE_TAG" \
+              --title "$title" \
+              --generate-notes \
+              --latest=false \
+              "${assets[@]}"
+          fi

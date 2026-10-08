@@ -1,0 +1,14 @@
+# Nowing quality pipeline override for bmad-testarch-test-review.
+# Team override — committed, applies to every developer.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/custom/nowing-quality-pipeline.md",
+]
+
+on_complete = """
+After the test quality review is complete, output the "Next steps in Nowing quality pipeline" section per the format in nowing-quality-pipeline.md.
+
+Next: 4.10 bmad-nowing-mutation-gate (P0-gated — run if P0 source files touched) → 4.11 bmad-testarch-trace (recommended) → 4.12 bmad-testarch-nfr (recommended) → 4.13 bmad-nowing-human-review-gate (P0-gated).
+"""

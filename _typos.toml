@@ -3,7 +3,16 @@
 # Generated alembic migrations embed revision-hash fragments (e.g. "caf",
 # "SUR") in docstrings that read as typos. Skip the whole generated dir.
 [files]
-extend-exclude = ["nowing_backend/alembic/versions/**"]
+extend-exclude = [
+  "nowing_backend/alembic/versions/**",
+  # Vendored BMAD agent packs contain non-English (French) content by design.
+  "_bmad/**",
+  ".claude/**",
+  ".agents/**",
+  ".cursor/**",
+  # Upstream provider model-catalog snapshot — typos live in vendor data.
+  "nowing_backend/app/config/model_list_fallback.json",
+]
 
 [default]
 # Skip identifiers containing digits entirely — alembic revision hashes like
@@ -69,3 +78,4 @@ som = "som"          # fixture text
 nin = "nin"          # Mongo $nin operator
 shema = "shema"      # intentional typo example in a docstring
 tme = "tme"          # t.me Telegram link prefix (test_clean_tme_url)
+vai = "vai"          # Vietnamese "vai trò" in planning docs

@@ -40,14 +40,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
 
       - name: Extract version
         id: version
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ inputs.version }}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            VERSION="${INPUTS_VERSION}"
           else
             TAG=${GITHUB_REF#refs/tags/}
             VERSION=${TAG#beta-}
@@ -58,6 +60,8 @@ jobs:
             exit 1
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          INPUTS_VERSION: ${{ inputs.version }}
 
       - name: Detect Windows signing eligibility
         id: sign
@@ -65,8 +69,8 @@ jobs:
         run: |
           # Sign Windows builds only on production v* tags (not beta-v*, not workflow_dispatch).
           # This matches the single OIDC federated credential configured in Entra ID.
-          if [ "${{ matrix.os }}" = "windows-latest" ] \
-            && [ "${{ github.event_name }}" = "push" ] \
+          if [ "${MATRIX_OS}" = "windows-latest" ] \
+            && [ "${GITHUB_EVENT_NAME}" = "push" ] \
             && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
             echo "Windows signing: ENABLED (v* tag on windows-latest)"
@@ -74,6 +78,8 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "Windows signing: skipped"
           fi
+        env:
+          MATRIX_OS: ${{ matrix.os }}
 
       - name: Verify Apple notarization credentials
         if: matrix.os == 'macos-latest'
@@ -91,16 +97,16 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5.0.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
         with:
           node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: |
-            nowing_web/pnpm-lock.yaml
-            nowing_desktop/pnpm-lock.yaml
+          # Built-in pnpm caching disabled: release workflows must not restore
+          # potentially poisoned caches (zizmor cache-poisoning remediation).
+          # pnpm install fetches packages fresh; install steps are unchanged.
+          package-manager-cache: false
 
       - name: Install web dependencies
         run: pnpm install
@@ -135,20 +141,20 @@ jobs:
       - name: Package & Publish
         shell: bash
         run: |
-          CMD=(pnpm exec electron-builder ${{ matrix.platform }} \
+          CMD=(pnpm exec electron-builder "${MATRIX_PLATFORM}" \
             --config electron-builder.yml \
-            --publish "${{ inputs.publish || 'always' }}" \
-            -c.extraMetadata.version="${{ steps.version.outputs.VERSION }}")
+            --publish "${INPUTS_PUBLISH}" \
+            -c.extraMetadata.version="${STEPS_VERSION_OUTPUTS_VERSION}")
 
           # node-mac-permissions is the only native dependency and is darwin-only.
           # electron-builder's internal rebuild would try to node-gyp compile it on
           # Windows (no Visual Studio) and Linux, so skip the rebuild there. On macOS
           # the rebuild must stay enabled for per-arch (x64/arm64) builds.
-          if [ "${{ matrix.platform }}" != "--mac" ]; then
+          if [ "${MATRIX_PLATFORM}" != "--mac" ]; then
             CMD+=(-c.npmRebuild=false)
           fi
 
-          if [ "${{ steps.sign.outputs.enabled }}" = "true" ]; then
+          if [ "${STEPS_SIGN_OUTPUTS_ENABLED}" = "true" ]; then
             CMD+=(-c.win.azureSignOptions.publisherName="$WINDOWS_PUBLISHER_NAME")
             CMD+=(-c.win.azureSignOptions.endpoint="$AZURE_CODESIGN_ENDPOINT")
             CMD+=(-c.win.azureSignOptions.codeSigningAccountName="$AZURE_CODESIGN_ACCOUNT")
@@ -184,3 +190,7 @@ jobs:
           AZURE_TENANT_ID: ${{ steps.sign.outputs.enabled == 'true' && secrets.AZURE_TENANT_ID || '' }}
           AZURE_CLIENT_ID: ${{ steps.sign.outputs.enabled == 'true' && secrets.AZURE_CLIENT_ID || '' }}
           AZURE_CLIENT_SECRET: ${{ steps.sign.outputs.enabled == 'true' && secrets.AZURE_CLIENT_SECRET || '' }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+          INPUTS_PUBLISH: ${{ inputs.publish || 'always' }}
+          STEPS_VERSION_OUTPUTS_VERSION: ${{ steps.version.outputs.VERSION }}
+          STEPS_SIGN_OUTPUTS_ENABLED: ${{ steps.sign.outputs.enabled }}

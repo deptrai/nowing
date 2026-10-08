@@ -31,20 +31,30 @@ env:
   NODE_VERSION: '20'
   EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
 
+permissions:
+  contents: read
+
 jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    # pull-requests: read lets dorny/paths-filter list changed files via the
+    # GitHub API on pull_request events; contents: read is for checkout.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Paths filter
         id: filter
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
         with:
           filters: |
             backend:
@@ -64,19 +74,21 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
         if: needs.changes.outputs.backend == 'true'
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -94,17 +106,17 @@ jobs:
 
       - name: Set up Node.js
         if: needs.changes.outputs.web == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6.5.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install pnpm
         if: needs.changes.outputs.web == 'true'
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
 
       - name: Cache pnpm store
         if: needs.changes.outputs.web == 'true'
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.pnpm-store
@@ -139,18 +151,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -160,7 +174,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -196,7 +210,7 @@ jobs:
 
       - name: Upload unit test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: backend-unit-shard-${{ matrix.shard }}
           path: nowing_backend/pytest-unit-${{ matrix.shard }}.xml
@@ -226,18 +240,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -247,7 +263,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -267,7 +283,7 @@ jobs:
 
       - name: Upload integration test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: backend-integration
           path: nowing_backend/pytest-integration.xml
@@ -282,18 +298,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -303,7 +321,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -319,7 +337,7 @@ jobs:
 
       - name: Upload contract test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: backend-contract
           path: nowing_backend/pytest-contract.xml
@@ -334,18 +352,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6.5.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
 
       - name: Cache pnpm store
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.pnpm-store
@@ -355,7 +375,7 @@ jobs:
             pnpm-${{ runner.os }}-
 
       - name: Cache Next.js build
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: nowing_web/.next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('nowing_web/pnpm-lock.yaml') }}-${{ github.sha }}
@@ -373,7 +393,7 @@ jobs:
 
       - name: Upload Next.js build logs on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: frontend-build-failure
           path: |
@@ -394,18 +414,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -415,7 +437,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -448,7 +470,7 @@ jobs:
 
       - name: Upload burn-in failure logs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: burn-in-failures
           path: nowing_backend/.pytest_cache/
@@ -463,7 +485,7 @@ jobs:
 
     steps:
       - name: Download all test artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
         with:
           path: artifacts
 
@@ -496,7 +518,7 @@ jobs:
 
     steps:
       - name: Download all test artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
         with:
           path: artifacts
 
@@ -543,20 +565,22 @@ jobs:
 
       - name: Enforce quality threshold (P1 >= 95%)
         run: |
-          pass_rate="${{ steps.pass-rate.outputs.pass-rate }}"
+          pass_rate="${STEPS_PASS_RATE_OUTPUTS_PASS_RATE}"
           echo "Pass rate: ${pass_rate}%"
           python3 - <<'PY'
           import sys
-          pass_rate = float("${{ steps.pass-rate.outputs.pass-rate }}")
+          pass_rate = float("${STEPS_PASS_RATE_OUTPUTS_PASS_RATE}")
           if pass_rate < 95.0:
               print(f"::error::Pass rate {pass_rate:.2f}% is below P1 threshold (95%)")
               sys.exit(1)
           print(f"::notice::Pass rate {pass_rate:.2f}% meets P1 threshold (>= 95%)")
           PY
+        env:
+          STEPS_PASS_RATE_OUTPUTS_PASS_RATE: ${{ steps.pass-rate.outputs.pass-rate }}
 
       - name: Notify on failure
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"❌ Quality gate failed for ${{ github.repository }} on ${{ github.ref }}"}' \
+            --data '{"text":"❌ Quality gate failed for ${{ github.repository }} on ${GITHUB_REF}"}' \
             "${{ secrets.SLACK_WEBHOOK_URL }}" || true

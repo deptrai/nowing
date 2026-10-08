@@ -1,0 +1,18 @@
+# Nowing quality pipeline override for bmad-testarch-atdd.
+# Team override — committed, applies to every developer.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/custom/nowing-quality-pipeline.md",
+]
+
+on_complete = """
+After ATDD red-phase unit test bodies are generated, output the "Next steps in Nowing quality pipeline" section per the format in nowing-quality-pipeline.md.
+
+Next:
+- 4.6 bmad-nowing-integration-test (P0-gated) — if the ATDD checklist has Pattern 6 (SQL) descriptions, write integration tests against real Postgres before implementing
+- 4.7 bmad-dev-story (BẮT BUỘC) — implement the story to make red tests green
+
+Then: 4.8 bmad-code-review → 4.10 bmad-nowing-mutation-gate (P0-gated) → 4.13 bmad-nowing-human-review-gate (P0-gated).
+"""

@@ -1,0 +1,12 @@
+extends: default
+
+rules:
+  # This repo never enforced a YAML character limit (no yamllint in pre-commit)
+  # and workflows legitimately carry long GHA expressions / shell lines.
+  line-length: disable
+  # GitHub workflows conventionally omit the document start marker.
+  document-start: disable
+  # `on:` is a required mapping key in GitHub Actions; YAML 1.1 parses it as
+  # boolean. Values are still checked.
+  truthy:
+    check-keys: false

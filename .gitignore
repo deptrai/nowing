@@ -73,3 +73,11 @@ nowing_backend/_bmad-output/
 
 # Local env files with real secrets (never commit)
 nowing_backend/.env.local.pre-chainlens-prod-bak
+nowing_backend/.env (1)
+nowing_backend/app/db.py.legacy
+
+# Local logs, pids & test screenshots
+*.log
+*.pid
+/*.png
+session_*_transcript_clean.md

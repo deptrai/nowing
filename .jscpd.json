@@ -1,0 +1,13 @@
+{
+  "threshold": 10,
+  "minLines": 15,
+  "minTokens": 100,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/fixtures/**",
+    "**/*.lock",
+    "**/pnpm-lock.yaml"
+  ]
+}

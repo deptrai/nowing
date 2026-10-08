@@ -33,10 +33,16 @@ concurrency:
 env:
   PYTHON_VERSION: '3.12'
 
+permissions:
+  contents: read
+
 jobs:
   mutation-gate-24-3:
     name: Mutation gate 24.3 - ${{ matrix.service }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # save uv cache and upload mutation artifacts
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     timeout-minutes: 360
     strategy:
@@ -53,7 +59,7 @@ jobs:
 
     services:
       postgres:
-        image: pgvector/pgvector:pg17
+        image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -74,18 +80,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -107,25 +115,30 @@ jobs:
 
       - name: Set safe service name
         id: safe
+        env:
+          SERVICE: ${{ matrix.service }}
         run: |
-          SAFE_SERVICE=$(echo '${{ matrix.service }}' | tr '/' '-')
+          SAFE_SERVICE=$(echo "$SERVICE" | tr '/' '-')
           echo "service=$SAFE_SERVICE" >> "$GITHUB_OUTPUT"
 
       - name: Run mutation gate
+        env:
+          SERVICE: ${{ matrix.service }}
+          TEST_FILES: ${{ matrix.test_files }}
         run: |
           TEST_FILES_ARG=""
-          if [ -n "${{ matrix.test_files }}" ]; then
-            TEST_FILES_ARG="--test-files ${{ matrix.test_files }}"
+          if [ -n "$TEST_FILES" ]; then
+            TEST_FILES_ARG="--test-files $TEST_FILES"
           fi
           python scripts/mutation-gate.py \
-            --services ${{ matrix.service }} \
+            --services "$SERVICE" \
             --timeout 120.0 \
             --project-root . \
             $TEST_FILES_ARG
 
       - name: Upload mutation artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: mutation-nowing-24-3-${{ steps.safe.outputs.service }}
           path: |
