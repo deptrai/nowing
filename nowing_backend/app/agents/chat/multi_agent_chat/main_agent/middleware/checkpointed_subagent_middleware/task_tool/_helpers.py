@@ -63,6 +63,24 @@ async def _ainvoke_with_timeout[T](
         raise SubagentInvokeTimeoutError(subagent_type, elapsed) from exc
 
 
+def _synthesize_error_command(exc: BaseException, *, tool_call_id: str) -> Command:
+    """Turn a subagent failure into a ToolMessage the parent can read.
+
+    A raised exception inside the ``task`` tool is re-raised by LangGraph's
+    default tool-error handler and kills the whole chat stream. The parent
+    agent must instead see the failure and decide what to do next (skip the
+    broken source, answer from the sources that worked).
+    """
+    content = (
+        f"Subagent failed: {type(exc).__name__}: {exc}. "
+        "Treat as status=error; continue with the results you already have "
+        "or re-route to a different specialist."
+    )
+    return Command(
+        update={"messages": [ToolMessage(content=content, tool_call_id=tool_call_id)]}
+    )
+
+
 def _synthesize_timeout_command(
     exc: SubagentInvokeTimeoutError, *, tool_call_id: str
 ) -> Command:

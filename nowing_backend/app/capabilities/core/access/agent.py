@@ -240,9 +240,7 @@ _SYNC_CHAT_ALLOWED_MODES: frozenset[str] = frozenset({"speed", "balanced"})
 # chainlens.code_search modes allowed to run synchronously inside a chat
 # turn. ``balanced``/``auto`` can stall a turn for the full upstream 120s
 # timeout, so they go through the async-run door instead.
-_CODE_SEARCH_SYNC_ALLOWED_MODES: frozenset[str] = frozenset(
-    {"instant", "fast"}
-)
+_CODE_SEARCH_SYNC_ALLOWED_MODES: frozenset[str] = frozenset({"instant", "fast"})
 
 
 def _is_sync_chat_mode_allowed(mode: str | None) -> bool:
@@ -397,13 +395,15 @@ def _capability_tool(
         # State B (opt-in): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is True AND the
         # requested mode is in the allow-list (speed/balanced). quality,
         # deep-research, deep-reasoning, and auto remain async-only in chat.
-        if (name == "chainlens.research" and not (
-            config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
-            and _is_sync_chat_mode_allowed(research_mode)
-        )) or (
+        if (
+            name == "chainlens.research"
+            and not (
+                config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
+                and _is_sync_chat_mode_allowed(research_mode)
+            )
+        ) or (
             name == "chainlens.code_search"
-            and getattr(payload, "mode", None)
-            not in _CODE_SEARCH_SYNC_ALLOWED_MODES
+            and getattr(payload, "mode", None) not in _CODE_SEARCH_SYNC_ALLOWED_MODES
         ):
             async with async_session_maker() as session:
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
@@ -478,7 +478,15 @@ def _capability_tool(
                     output = await execute_with_context(
                         executor, payload=payload, ctx=ctx
                     )
-                except Exception as exc:  # capability executor error → record run error and raise tool error
+                except (
+                    Exception,
+                    BaseExceptionGroup,
+                ) as exc:  # capability executor error → record run error and return tool error
+                    # Return the failure instead of re-raising: a scraper that
+                    # is down (e.g. topcv MCP 501) raises an ExceptionGroup that
+                    # LangGraph's default tool-error handler re-raises, killing
+                    # the whole chat stream. The agent must see the failure and
+                    # continue with the sources that worked.
                     duration_ms = int((time.perf_counter() - started) * 1000)
                     async with async_session_maker() as rec_session:
                         await record_run(
@@ -496,7 +504,7 @@ def _capability_tool(
                             client_id=client_id,
                             run_id=sync_run_id,
                         )
-                    raise
+                    return f"Capability {name} failed: {exc}"
 
                 duration_ms = int((time.perf_counter() - started) * 1000)
                 cost_micros = None
@@ -523,7 +531,9 @@ def _capability_tool(
                         query=payload.query,
                         correlation_id=sync_run_id,
                     )
-                except Exception:  # gap-fill trigger error; best-effort background indexing
+                except (
+                    Exception
+                ):  # gap-fill trigger error; best-effort background indexing
                     logger.exception("gap-fill trigger failed for agent run")
 
             serialized = serialize_output(output)

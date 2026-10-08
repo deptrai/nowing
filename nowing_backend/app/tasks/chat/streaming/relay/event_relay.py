@@ -15,7 +15,10 @@ from app.tasks.chat.streaming.handlers.chat_model_stream import (
 from app.tasks.chat.streaming.handlers.custom_event_dispatch import (
     iter_custom_event_frames,
 )
-from app.tasks.chat.streaming.handlers.tool_end import iter_tool_end_frames
+from app.tasks.chat.streaming.handlers.tool_end import (
+    iter_tool_end_frames,
+    iter_tool_error_frames,
+)
 from app.tasks.chat.streaming.handlers.tool_start import iter_tool_start_frames
 from app.tasks.chat.streaming.relay.state import AgentEventRelayState
 from app.tasks.chat.streaming.relay.thinking_step_completion import (
@@ -82,6 +85,17 @@ class EventRelay:
                     yield frame
             elif event_type == "on_tool_end":
                 for frame in iter_tool_end_frames(
+                    event,
+                    state=state,
+                    streaming_service=self.streaming_service,
+                    content_builder=content_builder,
+                    result=result,
+                    step_prefix=step_prefix,
+                    config=graph_config,
+                ):
+                    yield frame
+            elif event_type == "on_tool_error":
+                for frame in iter_tool_error_frames(
                     event,
                     state=state,
                     streaming_service=self.streaming_service,

@@ -58,6 +58,7 @@ from ._helpers import (
     SubagentInvokeTimeoutError,
     _ainvoke_with_timeout,
     _reraise_stamped_subagent_interrupt,
+    _synthesize_error_command,
     _synthesize_timeout_command,
 )
 
@@ -489,7 +490,10 @@ def build_task_tool_with_parent_config(
                             time.perf_counter() - atask_start,
                         )
                         _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                    except Exception:  # subagent async invoke failure; record metric and re-raise interrupt or bubble
+                    except (
+                        Exception,
+                        BaseExceptionGroup,
+                    ) as exc:  # subagent invoke failure → return error ToolMessage so the parent agent continues
                         ainvoke_outcome = "error"
                         sp.set_attribute("subagent.outcome", ainvoke_outcome)
                         ot_metrics.record_subagent_invoke_duration(
@@ -503,7 +507,14 @@ def build_task_tool_with_parent_config(
                             path=invoke_path,
                             outcome=ainvoke_outcome,
                         )
-                        raise
+                        logger.warning(
+                            "Subagent %r ainvoke (resume) failed",
+                            subagent_type,
+                            exc_info=True,
+                        )
+                        return _synthesize_error_command(
+                            exc, tool_call_id=runtime.tool_call_id
+                        )
             else:
                 with ot.subagent_invoke_span(
                     subagent_type=subagent_type, path=invoke_path
@@ -562,7 +573,10 @@ def build_task_tool_with_parent_config(
                             time.perf_counter() - atask_start,
                         )
                         _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                    except Exception:  # subagent async retry invoke failure; record metric and re-raise interrupt or bubble
+                    except (
+                        Exception,
+                        BaseExceptionGroup,
+                    ) as exc:  # subagent retry invoke failure → return error ToolMessage so the parent agent continues
                         ainvoke_outcome = "error"
                         sp.set_attribute("subagent.outcome", ainvoke_outcome)
                         ot_metrics.record_subagent_invoke_duration(
@@ -576,13 +590,29 @@ def build_task_tool_with_parent_config(
                             path=invoke_path,
                             outcome=ainvoke_outcome,
                         )
-                        raise
+                        logger.warning(
+                            "Subagent %r ainvoke (fresh) failed",
+                            subagent_type,
+                            exc_info=True,
+                        )
+                        return _synthesize_error_command(
+                            exc, tool_call_id=runtime.tool_call_id
+                        )
             ainvoke_elapsed = time.perf_counter() - ainvoke_start
         except GraphInterrupt:
             raise
 
         merge_start = time.perf_counter()
-        cmd = _return_command_with_state_update(result, runtime.tool_call_id)
+        try:
+            cmd = _return_command_with_state_update(result, runtime.tool_call_id)
+        except Exception as exc:
+            logger.warning(
+                "Subagent %r state update failed: %s",
+                subagent_type,
+                exc,
+                exc_info=True,
+            )
+            return _synthesize_error_command(exc, tool_call_id=runtime.tool_call_id)
         merge_elapsed = time.perf_counter() - merge_start
         _perf_log.info(
             "[hitl_route] atask EXIT subagent_type=%r path=%s outcome=%s "

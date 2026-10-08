@@ -150,3 +150,36 @@ def iter_tool_end_frames(
     yield from iter_tool_completion_emission_frames(emission_ctx)
 
     clear_task_span_if_delegating_task_ended(state, tool_name=tool_name, run_id=run_id)
+
+
+def iter_tool_error_frames(
+    event: dict[str, Any],
+    *,
+    state: AgentEventRelayState,
+    streaming_service: Any,
+    content_builder: Any | None,
+    result: Any,
+    step_prefix: str,
+    config: dict[str, Any],
+) -> Iterator[str]:
+    """SSE frames when one tool run fails with an unhandled exception.
+
+    Normalizes ``on_tool_error`` into a completed tool frame carrying the
+    error message so content_builder and the UI never leave the tool call
+    hanging in ``in_progress`` (which later gets marked ``aborted``).
+    """
+    error = event.get("data", {}).get("error", "")
+    err_str = str(error) if error else "Tool execution error"
+    synthesized_event = dict(event)
+    data = dict(event.get("data", {}))
+    data["output"] = {"error": err_str, "status": "error"}
+    synthesized_event["data"] = data
+    return iter_tool_end_frames(
+        synthesized_event,
+        state=state,
+        streaming_service=streaming_service,
+        content_builder=content_builder,
+        result=result,
+        step_prefix=step_prefix,
+        config=config,
+    )
