@@ -21,5 +21,5 @@
 
 ## Infrastructure & Account Profiles
 - **Seed Environment:** SQLite/Postgres test database + Prisma seed (`prisma/seed.js`).
-- **Real Environment:** Twitter session cookies (`XACTIONS_SESSION_COOKIE`), session validator (`src/client/auth/sessionValidator.js`).
+- **Real Environment:** Twitter session cookies (`MEDIRUS_SESSION_COOKIE`), session validator (`src/client/auth/sessionValidator.js`).
 - **Server Ports:** Express API `:3000`, MCP Daemon `:3001`.

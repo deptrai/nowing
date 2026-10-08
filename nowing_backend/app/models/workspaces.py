@@ -386,10 +386,10 @@ class Workspace(BaseModel, TimestampMixin):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    xactions_proxy_bindings = relationship(
-        "XActionsProxyBinding",
+    medirus_proxy_bindings = relationship(
+        "MedirusProxyBinding",
         back_populates="workspace",
-        order_by="XActionsProxyBinding.id",
+        order_by="MedirusProxyBinding.id",
         cascade="all, delete-orphan",
     )
     zalo_connections = relationship(

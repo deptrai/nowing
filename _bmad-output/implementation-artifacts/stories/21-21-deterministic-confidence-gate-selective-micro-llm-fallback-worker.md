@@ -232,7 +232,7 @@ Story này **chạm PII/Contact Vault** (`VerifiedContactEncryption`, `phone_hma
   - `EntityDeduplicationService` (`app/lead_intelligence/services/deduplication_service.py`) đã sẵn sàng — KHÔNG thay đổi dedup.
   - `extract_phones_from_text` / `normalize_vietnamese_phone` (`app/lead_intelligence/adapters/base.py:83-191`) dùng cho re-validation phone.
   - `_parse_price` / `_extract_number_and_unit` / `_split_address` (`app/proprietary/platforms/batdongsan/parsers.py`) có thể dùng cho re-validation price/address.
-  - `SocialEntityExtractor` (`app/proprietary/platforms/xactions/phone_extractor.py:392-436`) trích xuất phones, emails, prices, locations — **có thể là candidate cho re-validation snippet**, nhưng nó nằm trong `xactions` platform (dùng cho social scraping), chưa được kiểm chứng với các adapter BĐS/jobs. Khuyến nghị: evaluate nhưng ưu tiên dùng parser của adapter hiện tại trước.
+  - `SocialEntityExtractor` (`app/proprietary/platforms/medirus/phone_extractor.py:392-436`) trích xuất phones, emails, prices, locations — **có thể là candidate cho re-validation snippet**, nhưng nó nằm trong `medirus` platform (dùng cho social scraping), chưa được kiểm chứng với các adapter BĐS/jobs. Khuyến nghị: evaluate nhưng ưu tiên dùng parser của adapter hiện tại trước.
 - **Kết luận:** Không có alternative đơn giản hơn để thay thế cả `ConfidenceGate` + `MicroExtractionWorker`; implement mới là hợp lý với reuse các service sẵn có.
 
 ### Q3 — Edge cases spec misses (Pattern 3)

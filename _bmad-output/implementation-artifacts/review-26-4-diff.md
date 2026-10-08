@@ -1107,7 +1107,7 @@ index faaea17a0..24affb79e 100644
 +)
  from app.proprietary.platforms.batdongsan.fetch import fetch_detail_phone
  from app.proprietary.platforms.chotot.fetch import fetch_phone as chotot_fetch_phone
- from app.proprietary.platforms.xactions.phone_extractor import (
+ from app.proprietary.platforms.medirus.phone_extractor import (
 @@ -189,17 +193,7 @@ def mask_phone(phone: str | None) -> str:
  
  def hash_phone(phone: str | None) -> str | None:

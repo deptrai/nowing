@@ -1,7 +1,7 @@
 - `multi_source_lead_gen` — The Sales Copilot's unified lead-generation engine.
   Discovers, scores, deduplicates, enriches and persists leads from every available source
   (Batdongsan, Chợ Tốt, Mua Bán, TopCV, ITviec, VietnamWorks, Masothue, Mua Sắm Công,
-  Facebook/Threads/Twitter via XActions, ChainLens Research, public web crawl, and any
+  Facebook/Threads/Twitter via Medirus, ChainLens Research, public web crawl, and any
   connected CRM/connector) in a single call.
 
   Use this tool whenever the user wants to:

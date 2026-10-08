@@ -178,7 +178,7 @@ print(mst_modulo11_accuracy([], []))
 
 ### 6. `extract_tax_ids` cannot extract spaced or formatted tax codes and may extract phone numbers
 
-**File / Line:** `nowing_backend/app/proprietary/platforms/xactions/tax_code.py:42-45, 60-76`
+**File / Line:** `nowing_backend/app/proprietary/platforms/medirus/tax_code.py:42-45, 60-76`
 
 ```python
 _KEYWORD_TAX_PATTERN = re.compile(
@@ -275,7 +275,7 @@ cassette_path = self.cassettes_dir / f"{case_id}.sse.jsonl"
 
 ### 11. `test_tax_code.py` uses only two known-good tax codes and does not test extraction edge cases
 
-**File / Line:** `nowing_backend/tests/unit/proprietary/platforms/xactions/test_tax_code.py:11-83`
+**File / Line:** `nowing_backend/tests/unit/proprietary/platforms/medirus/test_tax_code.py:11-83`
 
 ```python
 # Known valid tax codes
@@ -410,7 +410,7 @@ data = json.loads(first_line)
 
 **File / Line:** `nowing_evals/src/nowing_evals/suites/lead_extraction/regression/metrics.py:7-52`
 
-**Impact:** The legacy 11-digit map and `+84`/`84` normalization are duplicated from `nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py`. If the production extractor changes (e.g. new prefixes), the benchmark will drift out of sync and report false F1/hallucination scores.
+**Impact:** The legacy 11-digit map and `+84`/`84` normalization are duplicated from `nowing_backend/app/proprietary/platforms/medirus/phone_extractor.py`. If the production extractor changes (e.g. new prefixes), the benchmark will drift out of sync and report false F1/hallucination scores.
 
 **Fix:** Export a shared `normalize_vn_phone()` from `phone_extractor.py` and import it in `metrics.py`.
 
@@ -442,7 +442,7 @@ workflow_dispatch:
 ### 21. Dead code and style issues
 
 **File / Line:**
-- `nowing_backend/app/proprietary/platforms/xactions/tax_code.py:11` — `_TAX_CODE_PATTERN` is compiled but never used.
+- `nowing_backend/app/proprietary/platforms/medirus/tax_code.py:11` — `_TAX_CODE_PATTERN` is compiled but never used.
 - `nowing_backend/scripts/chaos_scraper_stress.py:41-55` — `spawn_mock_scraper_worker` is defined but never called.
 - `nowing_evals/src/nowing_evals/suites/lead_extraction/regression/runner.py:341` — `report_section` uses emoji (`✅ PASS` / `❌ FAIL`) in CLI markdown.
 - `nowing_evals/src/nowing_evals/suites/lead_extraction/regression/extractor_client.py:43` — `getattr(self.ctx, "record", False)` is always `False` because `RunContext` has no `record` field.

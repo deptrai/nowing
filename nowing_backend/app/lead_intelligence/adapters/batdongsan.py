@@ -6,7 +6,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.lead_intelligence.adapters._query_parser import (
     extract_listing_type_bds,
     extract_price_range,
@@ -151,7 +151,7 @@ class BatdongsanLeadAdapter(LeadSourceAdapter):
                 "degradation_reason": output.degradation_reason,
             }
 
-        raw = await xactions_scrape_or_local(
+        raw = await medirus_scrape_or_local(
             platform="batdongsan",
             action="search_listings",
             args={

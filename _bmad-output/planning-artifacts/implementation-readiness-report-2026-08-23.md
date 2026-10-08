@@ -59,7 +59,7 @@ greenStampDate: '2026-08-23'
 - `architecture/architecture-shopee-ecommerce-2026-08-15/ARCHITECTURE-SPINE.md`
 - `architecture/architecture-telegram-scraper-2026-08-15/ARCHITECTURE-SPINE.md`
 - `architecture/architecture-socksnode-proxy-integration-2026-08-22/ARCHITECTURE-SPINE.md`
-- `architecture/architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md`
+- `architecture/architecture-medirus-social-integration-2026-08-15/ARCHITECTURE-SPINE.md`
 - `architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md`
 - `architecture-epic23-lead-infrastructure.md`
 - `architecture-epic21-architecture-update.md`
@@ -1886,7 +1886,7 @@ All critical readiness gaps from the 2026-08-23 assessment have been resolved:
 - **FR/NFR traceability:** 100% coverage (82/82) confirmed after mapping 39 missing items.
 - **BDD/AC quality:** Re-validation shows zero ready-for-dev or backlog stories lack Given/When/Then acceptance criteria.
 - **Story 8.14 re-scope:** Re-framed as a concrete `ready-for-dev` v2 follow-up to Story 8.3 with BDD AC and explicit scope boundaries.
-- **External dependencies:** Stories `14.2`, `17.1`, and `17.5` now carry `blocked-by-external` notes in `epics.md` and `sprint-status.yaml`, clearly delegating entity linking / raw scraping to `chainlens-research` / `XActions`.
+- **External dependencies:** Stories `14.2`, `17.1`, and `17.5` now carry `blocked-by-external` notes in `epics.md` and `sprint-status.yaml`, clearly delegating entity linking / raw scraping to `chainlens-research` / `Medirus`.
 - **Tech-debt followups:** `4-8c/d/h`, `8-11`, and `9-6` followup stories remain in `backlog` with trigger conditions; ACs are in BDD form and sufficient for their deferred status.
 
 ### Conditions for Proceeding

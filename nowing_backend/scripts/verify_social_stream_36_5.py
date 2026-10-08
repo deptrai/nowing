@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import config
 from app.db import Lead, SocialMonitoredTarget, SocialPost, User, Workspace
-from app.proprietary.platforms.xactions.constants import (
+from app.proprietary.platforms.medirus.constants import (
     STREAM_SOCIAL_DEAD_LETTER,
     STREAM_SOCIAL_RAW_POSTS,
 )

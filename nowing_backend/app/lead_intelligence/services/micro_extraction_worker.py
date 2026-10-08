@@ -27,7 +27,7 @@ from app.proprietary.platforms.batdongsan.parsers import (
     _parse_area,
     _split_address,
 )
-from app.proprietary.platforms.xactions.phone_extractor import extract_phone_numbers
+from app.proprietary.platforms.medirus.phone_extractor import extract_phone_numbers
 from app.schemas.hybrid_llm import HybridLLMRequest
 from app.services.hybrid_llm_router import HybridLLMError, HybridLLMRouter
 

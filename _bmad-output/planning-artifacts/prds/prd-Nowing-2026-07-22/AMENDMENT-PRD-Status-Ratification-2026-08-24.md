@@ -22,8 +22,8 @@ This amendment ratifies the status of a set of Functional Requirements (FRs) in 
 | FR-47 | `[PROPOSED]` | `[READY-FOR-DEV]` | Epic 12 / Story 12.5; shared PII redaction pipeline for job descriptions/requirements; runs before any `Chunk[]` ingest or `Memory` storage. |
 | FR-49 | `[PROPOSED] — re-scoped …` | `[RE-SCOPED]` | Feed/crawl infrastructure in Nowing is done (Epic 14: Stories 14.1, 14.2a done; 14.2b blocked by `chainlens-research` entity-search contract). Nowing does not keep a local news index. |
 | FR-50 | `[PROPOSED] — re-scoped …` | `[RE-SCOPED]` | Feed/crawl infrastructure in Nowing is done (Epic 15: Stories 15.1, 15.1b, 15.2 done). No local financial index. |
-| FR-51 | `[PROPOSED] — re-scoped …` | `[RE-SCOPED]` | Feed/crawl infrastructure partially done (Epic 16: Story 16.1 masothue and 16.5 public procurement done; 16.2 official business registry delegated to XActions). No local company index. |
-| FR-52 | `[PROPOSED] — re-scoped …` | `[RE-SCOPED]` | Feed/crawl infrastructure partially done (Epic 17: Story 17.2 Shopee done; 17.1 Lazada and 17.5 TikTok Shop blocked-by-external XActions). No local product index. |
+| FR-51 | `[PROPOSED] — re-scoped …` | `[RE-SCOPED]` | Feed/crawl infrastructure partially done (Epic 16: Story 16.1 masothue and 16.5 public procurement done; 16.2 official business registry delegated to Medirus). No local company index. |
+| FR-52 | `[PROPOSED] — re-scoped …` | `[RE-SCOPED]` | Feed/crawl infrastructure partially done (Epic 17: Story 17.2 Shopee done; 17.1 Lazada and 17.5 TikTok Shop blocked-by-external Medirus). No local product index. |
 | FR-54 | `[DEFERRED]` | `[REMOVED]` | ChainLens-only; no Nowing epic (Epic 19 dropped). Google Search/Maps web search is handled by `chainlens-research` generic crawl and Exa MCP (FR-8.1). |
 | FR-56 | `[PROPOSED]` | `[DONE]` | Epic 18 / Story 18.1; public agent-chat endpoints and PAT auth implemented. |
 | FR-57 | `[PROPOSED]` | `[DONE]` | Epic 18 / Story 18.3; `agent_configs` table and `bdsai-listing-assistant` seed implemented. |

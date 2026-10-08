@@ -296,19 +296,19 @@ async def _load_http_mcp_tools(
             disambiguation (e.g. ``linear_25``).
         cached_tools: If provided, skip live discovery and rebuild wrappers
             from the persisted definitions.
-        connector_type: The connector_type string (e.g. ``XACTIONS_MCP_CONNECTOR``).
+        connector_type: The connector_type string (e.g. ``MEDIRUS_MCP_CONNECTOR``).
     """
-    if connector_type == "XACTIONS_MCP_CONNECTOR":
-        from app.agents.chat.multi_agent_chat.shared.tools.mcp.xactions_gateway import (
-            create_xactions_meta_tools,
+    if connector_type == "MEDIRUS_MCP_CONNECTOR":
+        from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+            create_medirus_meta_tools,
         )
 
-        # XActions meta-tools are built from static Pydantic schemas that
+        # Medirus meta-tools are built from static Pydantic schemas that
         # mirror the daemon's tool surface.  We never rely on the persisted
         # ``cached_tools`` shortcut here so daemon-side schema changes are
         # picked up on every (re)discovery instead of being masked by a stale
         # cache.
-        meta_tools = create_xactions_meta_tools(
+        meta_tools = create_medirus_meta_tools(
             connector_id,
             connector_name,
             server_config,
@@ -336,7 +336,7 @@ async def _load_http_mcp_tools(
         await write_cached_tools(
             connector_id,
             tool_definitions,
-            server_name="xactions-meta-gateway",
+            server_name="medirus-meta-gateway",
             server_version="1.0.0",
             transport=server_config.get("transport", "streamable-http"),
         )

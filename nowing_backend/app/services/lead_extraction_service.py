@@ -6,8 +6,8 @@ import asyncio
 import re
 from dataclasses import dataclass, field
 
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
-from app.proprietary.platforms.xactions.tax_code import (
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.tax_code import (
     extract_tax_ids,
     is_valid_vietnam_tax_code,
 )

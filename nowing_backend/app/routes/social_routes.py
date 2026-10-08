@@ -22,7 +22,7 @@ from app.db import (
     get_async_session,
 )
 from app.dependencies.auth import RequirePermission
-from app.proprietary.platforms.xactions.action_matrix import (
+from app.proprietary.platforms.medirus.action_matrix import (
     CanonicalActionMatrix,
     derive_platform_action,
 )
@@ -78,11 +78,11 @@ def _matrix_supported_platform_kinds(
 def _validate_platform_against_matrix(platform: str) -> None:
     """Raise HTTP 422 when ``platform`` isn't in the canonical action matrix.
 
-    Only consulted when ``XACTIONS_USE_UNIFIED_DISPATCH`` is ON — the flag-OFF
+    Only consulted when ``MEDIRUS_USE_UNIFIED_DISPATCH`` is ON — the flag-OFF
     path keeps the legacy ``_PLATFORM_PATTERN`` regex check on the Pydantic
     schema. Uses the cached/static matrix only (never fetches the network).
     """
-    if not getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+    if not getattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", False):
         return
 
     matrix = CanonicalActionMatrix.get_sync()
@@ -100,7 +100,7 @@ def _validate_platform_against_matrix(platform: str) -> None:
 
 class SocialTargetCreate(BaseModel):
     # Pattern enforced via field_validator so it can relax when
-    # XACTIONS_USE_UNIFIED_DISPATCH is ON — the route then validates the
+    # MEDIRUS_USE_UNIFIED_DISPATCH is ON — the route then validates the
     # platform against CanonicalActionMatrix and returns a 422 carrying
     # ``supported_platforms``.
     platform: str = Field(..., min_length=1, max_length=100)
@@ -123,7 +123,7 @@ class SocialTargetCreate(BaseModel):
         When ON, defer to the matrix check in the route handler so it can
         return a 422 with the ``supported_platforms`` list.
         """
-        if getattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", False):
+        if getattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", False):
             return v
 
         if not re.match(_PLATFORM_PATTERN, v):

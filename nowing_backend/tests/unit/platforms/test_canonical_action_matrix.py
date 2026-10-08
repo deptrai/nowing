@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.proprietary.platforms.xactions.action_matrix import (
+from app.proprietary.platforms.medirus.action_matrix import (
     STATIC_FALLBACK_MATRIX,
     ActionDescriptor,
     CanonicalActionMatrix,
@@ -182,7 +182,7 @@ class TestDerivePlatformAction:
         assert tw_user["requiredArgs"] == ["query"]
         assert tw_user["optionalArgs"] == ["limit"]
         assert tw_user["match"]["target_kind"] == "user"
-        assert tw_user["xactions_action"] == "search"
+        assert tw_user["medirus_action"] == "search"
         assert tw_user["arg_override"] == "from"
 
 
@@ -218,7 +218,7 @@ class TestCanonicalActionMatrixCache:
 
     async def test_get_fetch_failure_falls_back_to_static(self):
         client = AsyncMock()
-        client.call_tool = AsyncMock(side_effect=RuntimeError("XActions down"))
+        client.call_tool = AsyncMock(side_effect=RuntimeError("Medirus down"))
         matrix = await CanonicalActionMatrix.get(client)
         assert matrix == STATIC_FALLBACK_MATRIX
 

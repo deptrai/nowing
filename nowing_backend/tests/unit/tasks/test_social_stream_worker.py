@@ -15,7 +15,7 @@ from redis.exceptions import ResponseError
 
 from app.alerts.persistence.models.alert_rule import AlertRule
 from app.db import User
-from app.proprietary.platforms.xactions.constants import (
+from app.proprietary.platforms.medirus.constants import (
     STREAM_SOCIAL_DEAD_LETTER,
     STREAM_SOCIAL_RAW_POSTS,
 )

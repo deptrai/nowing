@@ -1,5 +1,5 @@
 ---
-title: 'Story 36.2: Loop-Scoped XActionsMcpClient Connection Cache'
+title: 'Story 36.2: Loop-Scoped MedirusMcpClient Connection Cache'
 type: 'feature'
 created: '2026-09-13'
 status: 'done'
@@ -12,9 +12,9 @@ context:
 
 ## Intent
 
-**Problem:** Mỗi Celery task / mỗi MCP tool call hiện tự mở một `XActionsMcpClient` mới (TLS handshake + `session.initialize()` mỗi lần). `xactions_gateway.py:203` tạo client per-call trên FastAPI loop; `social_xactions_ingest.py:188` tạo adapter+client per-task trên Celery loop. Không có session keep-alive reuse; khi scale lên nhiều target/call, latency + session churn + socket churn tăng tuyến tính.
+**Problem:** Mỗi Celery task / mỗi MCP tool call hiện tự mở một `MedirusMcpClient` mới (TLS handshake + `session.initialize()` mỗi lần). `medirus_gateway.py:203` tạo client per-call trên FastAPI loop; `social_medirus_ingest.py:188` tạo adapter+client per-task trên Celery loop. Không có session keep-alive reuse; khi scale lên nhiều target/call, latency + session churn + socket churn tăng tuyến tính.
 
-**Approach:** Thêm **loop-scoped shared-client cache** trong `mcp_client.py` — `_LOOP_CLIENTS: weakref.WeakKeyDictionary[AbstractEventLoop, _LoopClientEntry]` bảo vệ bởi `threading.Lock`. `get_shared_client()` trả client đã initialize cho `asyncio.get_running_loop()` hiện tại, re-init khi loop đổi/đóng. `call_tool` và `list_tools` serialize qua `client._serialize_lock` trên client instance. Cleanup hook đồng bộ `_dispose_loop_mcp_client(loop)` đóng client trước `loop.close()` trong `run_async_celery_task`. `XActionsSocialAdapterV2._get_client()` chuyển sang `get_shared_client()`; `adapter.close()`/`__aexit__` là no-op với shared client, bảo vệ session chung.
+**Approach:** Thêm **loop-scoped shared-client cache** trong `mcp_client.py` — `_LOOP_CLIENTS: weakref.WeakKeyDictionary[AbstractEventLoop, _LoopClientEntry]` bảo vệ bởi `threading.Lock`. `get_shared_client()` trả client đã initialize cho `asyncio.get_running_loop()` hiện tại, re-init khi loop đổi/đóng. `call_tool` và `list_tools` serialize qua `client._serialize_lock` trên client instance. Cleanup hook đồng bộ `_dispose_loop_mcp_client(loop)` đóng client trước `loop.close()` trong `run_async_celery_task`. `MedirusSocialAdapterV2._get_client()` chuyển sang `get_shared_client()`; `adapter.close()`/`__aexit__` là no-op với shared client, bảo vệ session chung.
 
 ## Boundaries & Constraints
 
@@ -24,16 +24,16 @@ context:
 - **Atomic entry registration:** `_LoopClientEntry` phải được `setdefault` đồng bộ vào `_LOOP_CLIENTS[loop]` trước khi coroutine `await entry.connecting` để double-checked locking an toàn trên asyncio.
 - **Readiness check:** `get_shared_client()` chỉ trả client khi cờ `entry.ready` bật; coroutine thức dậy sau `entry.connecting` phải kiểm tra lại `_LOOP_CLIENTS.get(loop) is entry` để tránh dùng entry đã bị evict do lỗi handshake trước đó.
 - **Teardown khi init fail:** Nếu `session.initialize()` thất bại hoặc nhận `CancelledError`, bắt buộc gọi `await client.__aexit__(None, None, None)` (bọc suppress) để giải phóng transport, sau đó evict khỏi cache và giải phóng `connecting` lock.
-- **Serialization on client instance:** `call_tool` và `list_tools` serialize qua `self._serialize_lock` gắn trên `XActionsMcpClient` instance (lazy-init trên loop hiện tại) — đảm bảo test unit standalone và unmanaged client không bị `KeyError`. `_fetch_artifact` chạy ngoài lock để tránh nghẽn I/O và deadlock.
+- **Serialization on client instance:** `call_tool` và `list_tools` serialize qua `self._serialize_lock` gắn trên `MedirusMcpClient` instance (lazy-init trên loop hiện tại) — đảm bảo test unit standalone và unmanaged client không bị `KeyError`. `_fetch_artifact` chạy ngoài lock để tránh nghẽn I/O và deadlock.
 - **Re-check session inside lock:** Trong `call_tool`, sau khi acquire `self._serialize_lock`, phải kiểm tra lại `if not self._session or getattr(self, "_tainted", False): raise RuntimeError(...)`.
 - **Taint & evict on fatal transport:** Khi gặp `ConnectionError`, `ClosedResourceError`, `EndOfStream`, `httpx.TransportError` hoặc task bị hủy giữa chừng trong lúc gọi tool, đánh dấu `client._tainted = True` và evict khỏi cache nếu `_LOOP_CLIENTS[loop].client is self`.
 - **Cleanup hook đồng bộ:** `run_async_celery_task` là hàm đồng bộ; khối `finally` phải gọi helper `_dispose_loop_mcp_client(loop)` chạy `loop.run_until_complete(asyncio.wait_for(release_shared_client_for_loop(loop), timeout=2.0))` bọc `contextlib.suppress(Exception)` TRƯỚC `loop.close()`. Trước khi chạy task, cũng gọi `_dispose_loop_mcp_client(loop)` để bảo vệ defense-in-depth như DB engine.
 - **Release waits for in-flight calls:** `release_shared_client_for_loop` phải acquire `client._serialize_lock` trước khi `__aexit__`, và tạm tắt cờ `client._is_managed = False` để teardown thực sự diễn ra.
-- **Adapter ownership:** `XActionsSocialAdapterV2` đặt `self._is_shared = client is None`. Hàm `close()`/`__aexit__` chỉ đóng client khi `not self._is_shared`. `_get_client()` luôn re-resolve qua `get_shared_client()` nếu `_is_shared` là True để không trả về client của loop đã đóng khi adapter được tái sử dụng.
+- **Adapter ownership:** `MedirusSocialAdapterV2` đặt `self._is_shared = client is None`. Hàm `close()`/`__aexit__` chỉ đóng client khi `not self._is_shared`. `_get_client()` luôn re-resolve qua `get_shared_client()` nếu `_is_shared` là True để không trả về client của loop đã đóng khi adapter được tái sử dụng.
 - **Multi-tenant per-call (AD-8):** `accountId`, `proxyUrl`, và `context.workspaceId` truyền per-call trong request arguments — tuyệt đối không lưu trên session hoặc client instance attributes.
 
 **Out of Scope:**
-- Không migrate `xactions_gateway.py` hoặc `xactions_probe.py` trong Story 36.2: `xactions_gateway` truyền `url`/`api_key`/`consumer_id` động theo connector, đòi hỏi cache key phức hợp `(loop, url, consumer_id)` và hook dọn dẹp trong `FastAPI lifespan.py`. Việc này sẽ thực hiện ở story riêng. Story 36.2 chỉ phục vụ `adapter_v2.py` với cấu hình mặc định.
+- Không migrate `medirus_gateway.py` hoặc `medirus_probe.py` trong Story 36.2: `medirus_gateway` truyền `url`/`api_key`/`consumer_id` động theo connector, đòi hỏi cache key phức hợp `(loop, url, consumer_id)` và hook dọn dẹp trong `FastAPI lifespan.py`. Việc này sẽ thực hiện ở story riêng. Story 36.2 chỉ phục vụ `adapter_v2.py` với cấu hình mặc định.
 - Không áp dụng cho các tiến trình không có event loop.
 
 **Never:**
@@ -59,10 +59,10 @@ context:
 
 ## Code Map
 
-- `nowing_backend/app/proprietary/platforms/xactions/mcp_client.py` — Thêm `_LOOP_CLIENTS`, `_CLIENTS_LOCK`, `_LoopClientEntry`, `get_shared_client()`, `release_shared_client_for_loop()`, `self._serialize_lock`, và cờ `_is_managed`.
+- `nowing_backend/app/proprietary/platforms/medirus/mcp_client.py` — Thêm `_LOOP_CLIENTS`, `_CLIENTS_LOCK`, `_LoopClientEntry`, `get_shared_client()`, `release_shared_client_for_loop()`, `self._serialize_lock`, và cờ `_is_managed`.
 - `nowing_backend/app/tasks/celery_tasks/__init__.py` — Thêm helper đồng bộ `_dispose_loop_mcp_client(loop)` và gọi trong `run_async_celery_task` (cả trước và sau task).
-- `nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py` — Cập nhật `_get_client()` dùng `get_shared_client()`; đặt `self._is_shared = client is None`; `close()` chỉ đóng khi `not self._is_shared`.
-- `nowing_backend/tests/unit/platforms/xactions/test_mcp_client_cache.py` (file mới) — Bộ test kiểm thử cache, vòng đời loop, lock serialization, và khả năng thu hồi bộ nhớ.
+- `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` — Cập nhật `_get_client()` dùng `get_shared_client()`; đặt `self._is_shared = client is None`; `close()` chỉ đóng khi `not self._is_shared`.
+- `nowing_backend/tests/unit/platforms/medirus/test_mcp_client_cache.py` (file mới) — Bộ test kiểm thử cache, vòng đời loop, lock serialization, và khả năng thu hồi bộ nhớ.
 - `nowing_backend/tests/unit/tasks/test_celery_async_runner.py` — Bổ sung test kiểm tra `run_async_celery_task` gọi `_dispose_loop_mcp_client` trước khi đóng loop.
 
 ## Tasks & Acceptance
@@ -74,7 +74,7 @@ context:
 - [x] `test_mcp_client_cache.py` & `test_celery_async_runner.py`: Viết đầy đủ 16 kịch bản kiểm thử (7 kịch bản nền tảng + 9 kịch bản ranh giới).
 
 **Acceptance Criteria (verbatim epics.md lines 4818-4829):**
-- Given `run_async_celery_task` creates a `new_event_loop()` per task and closes it, when two ingest tasks run on the same worker, then each gets a working `XActionsMcpClient` session.
+- Given `run_async_celery_task` creates a `new_event_loop()` per task and closes it, when two ingest tasks run on the same worker, then each gets a working `MedirusMcpClient` session.
 - And the client keys its session cache by `asyncio.get_running_loop()` and calls `session.initialize()` whenever the current loop differs from the cached loop or is closed; failed initialize evicts the cache entry rather than leaving a half-initialized client.
 - And the cache is a `weakref.WeakKeyDictionary` keyed on the loop so dead loops and their clients are garbage-collected — no unbounded retention across thousands of tasks.
 - And `call_tool` is serialized through a lock so concurrent coroutines on one loop cannot interleave streamable-http frames.
@@ -86,7 +86,7 @@ context:
    ```python
    class _LoopClientEntry:
        def __init__(self):
-           self.client: XActionsMcpClient | None = None
+           self.client: MedirusMcpClient | None = None
            self.ready: bool = False
            self.connecting: asyncio.Lock = asyncio.Lock()
            self.init_error: BaseException | None = None
@@ -101,14 +101,14 @@ context:
    - Bọc `async with entry.connecting:`
      - Sau khi có lock: kiểm tra lại `with _CLIENTS_LOCK: current = _LOOP_CLIENTS.get(loop)`. Nếu `current is not entry`: coroutine trước đã fail và evict -> đệ quy gọi lại `get_shared_client()`.
      - Nếu `entry.ready`: return `entry.client`.
-     - Tạo `client = XActionsMcpClient()`; gán `client._is_managed = True`.
+     - Tạo `client = MedirusMcpClient()`; gán `client._is_managed = True`.
      - `try: await client.__aenter__(); entry.client = client; entry.ready = True; return client`
      - `except BaseException as exc:`
        - `with _CLIENTS_LOCK: _LOOP_CLIENTS.pop(loop, None)`
        - `with contextlib.suppress(Exception): await client._close_session()`
        - `raise`
 3. **Serialization & Protocol Safety:**
-   - Trên `XActionsMcpClient`:
+   - Trên `MedirusMcpClient`:
      ```python
      @property
      def serialize_lock(self) -> asyncio.Lock:
@@ -157,7 +157,7 @@ context:
    - Trong `run_async_celery_task`: gọi `_dispose_loop_mcp_client(loop)` ở đầu khối `try` (defense-in-depth) và ở khối `finally` trước `loop.shutdown_asyncgens()` và `loop.close()`.
 5. **Adapter V2 Integration:**
    - `self._is_shared = client is None`
-   - `async def _get_client(self) -> XActionsMcpClient:`
+   - `async def _get_client(self) -> MedirusMcpClient:`
      - `if not self._is_shared and self.client: return self.client`
      - `return await get_shared_client()`
    - `async def close(self) -> None:`
@@ -166,8 +166,8 @@ context:
 ## Verification
 
 **Commands:**
-- `pytest nowing_backend/tests/unit/platforms/xactions/test_mcp_client_cache.py -v`
-- `pytest nowing_backend/tests/unit/platforms/test_xactions_adapter_v2.py nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py nowing_backend/tests/unit/tasks/test_celery_async_runner.py -v`
+- `pytest nowing_backend/tests/unit/platforms/medirus/test_mcp_client_cache.py -v`
+- `pytest nowing_backend/tests/unit/platforms/test_medirus_adapter_v2.py nowing_backend/tests/unit/tasks/celery_tasks/test_social_medirus_ingest.py nowing_backend/tests/unit/tasks/test_celery_async_runner.py -v`
 
 **Required Test Scenarios:**
 1. **2-Loop Sequential Lifecycle:** Loop 1 khởi tạo và gọi tool; đóng Loop 1. Loop 2 gọi `get_shared_client()` và gọi tool thành công. Khẳng định không bị lỗi `RuntimeError: Event loop is closed` hoặc `Future attached to a different loop`.
@@ -176,8 +176,8 @@ context:
 4. **Initialization Failure Cleanup & Retry:** Mock `session.initialize()` quăng lỗi. Khẳng định entry bị xóa khỏi cache, transport được `__aexit__`, và lần gọi `get_shared_client()` tiếp theo trên cùng loop khởi tạo lại thành công.
 5. **Stranded Waiters Recovery:** Giả lập 2 coroutine đồng thời gọi `get_shared_client()` trên loop mới; coroutine đầu fail init; khẳng định coroutine thứ hai phục hồi sạch sẽ và re-init thành công.
 6. **Passive & Active Memory Recovery:** Kiểm tra `release_shared_client_for_loop` gọi `_LOOP_CLIENTS.pop`; kiểm tra xóa loop và `gc.collect()` giải phóng toàn bộ entry mà không bị rò rỉ bộ nhớ.
-7. **Default Adapter Integration:** Khẳng định `XActionsSocialAdapterV2()._get_client()` gọi `get_shared_client()`, và `adapter.close()` không làm đóng session dùng chung.
-8. **Injected Standalone Adapter Integration:** Khẳng định `XActionsSocialAdapterV2(client=custom)` đóng `custom` khi `adapter.close()` được gọi.
+7. **Default Adapter Integration:** Khẳng định `MedirusSocialAdapterV2()._get_client()` gọi `get_shared_client()`, và `adapter.close()` không làm đóng session dùng chung.
+8. **Injected Standalone Adapter Integration:** Khẳng định `MedirusSocialAdapterV2(client=custom)` đóng `custom` khi `adapter.close()` được gọi.
 9. **Direct Async With Protection:** Khẳng định gọi `async with client:` trên shared client không làm mất session của các coroutine khác trên cùng loop.
 10. **Fatal Transport Drop Eviction:** Giả lập `httpx.TransportError` trong `call_tool`. Khẳng định client bị đánh dấu `_tainted` và evict khỏi `_LOOP_CLIENTS`.
 11. **Artifact Fetching Outside Lock:** Khẳng định trong lúc `_fetch_artifact` đang chạy, `self.serialize_lock.locked()` là False.
@@ -192,15 +192,15 @@ context:
 **Cache Core & Serialization**
 
 - Loop-scoped WeakKey cache và hàm lấy client dùng chung an toàn đa luồng
-  [`mcp_client.py:378`](../../nowing_backend/app/proprietary/platforms/xactions/mcp_client.py#L378)
+  [`mcp_client.py:378`](../../nowing_backend/app/proprietary/platforms/medirus/mcp_client.py#L378)
 
 - Khóa tuần tự hóa phiên làm việc MCP trên client instance
-  [`mcp_client.py:105`](../../nowing_backend/app/proprietary/platforms/xactions/mcp_client.py#L105)
+  [`mcp_client.py:105`](../../nowing_backend/app/proprietary/platforms/medirus/mcp_client.py#L105)
 
 **Lifecycle & Cleanup Hooks**
 
 - Giải phóng và đóng phiên MCP trước khi event loop kết thúc
-  [`mcp_client.py:457`](../../nowing_backend/app/proprietary/platforms/xactions/mcp_client.py#L457)
+  [`mcp_client.py:457`](../../nowing_backend/app/proprietary/platforms/medirus/mcp_client.py#L457)
 
 - Hook dọn dẹp đồng bộ an toàn trong runner của Celery
   [`celery_tasks/__init__.py:112`](../../nowing_backend/app/tasks/celery_tasks/__init__.py#L112)
@@ -208,15 +208,15 @@ context:
 **Consumer Integration**
 
 - Adapter chuyển sang client dùng chung và bảo vệ phiên khi thoát context
-  [`adapter_v2.py:189`](../../nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py#L189)
+  [`adapter_v2.py:189`](../../nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py#L189)
 
 - Ngăn ngừa đóng sớm phiên kết nối dùng chung trong adapter close
-  [`adapter_v2.py:382`](../../nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py#L382)
+  [`adapter_v2.py:382`](../../nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py#L382)
 
 **Comprehensive Test Suite**
 
 - Bộ kiểm thử toàn diện vòng đời, concurrency, và ranh giới bộ nhớ
-  [`test_mcp_client_cache.py:1`](../../nowing_backend/tests/unit/platforms/xactions/test_mcp_client_cache.py#L1)
+  [`test_mcp_client_cache.py:1`](../../nowing_backend/tests/unit/platforms/medirus/test_mcp_client_cache.py#L1)
 
 - Kiểm thử thứ tự dọn dẹp và giới hạn thời gian trong Celery runner
   [`test_celery_async_runner.py:434`](../../nowing_backend/tests/unit/tasks/test_celery_async_runner.py#L434)

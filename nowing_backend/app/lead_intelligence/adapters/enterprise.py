@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.lead_intelligence.adapters.base import (
     ContactCandidate,
     LeadSourceAdapter,
@@ -56,7 +56,7 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
                 "degradation_reason": output.degradation_reason,
             }
 
-        raw = await xactions_scrape_or_local(
+        raw = await medirus_scrape_or_local(
             platform="masothue",
             action="search",
             args={"query": query, "max_items": min(limit, 20)},

@@ -15,7 +15,7 @@
 Sprint review lại các story còn lại (`backlog` + `ready-for-dev`) phát hiện:
 
 - **5 tech-debt followups** đang ở `ready-for-dev` nhưng chỉ nên làm khi parent feature đã active và pain point xuất hiện.
-- **3 story scraping/enrichment** (Epic 14/17) bị block bởi dependency ngoài (`chainlens-research`, `XActions`) nhưng vẫn nằm trong pipeline sẵn sàng làm.
+- **3 story scraping/enrichment** (Epic 14/17) bị block bởi dependency ngoài (`chainlens-research`, `Medirus`) nhưng vẫn nằm trong pipeline sẵn sàng làm.
 - **1 dashboard story** (`8-14`) chồng chéo với `8.3` và `8.7` đã xong.
 - **1 automation story** (`6-10`) có phần scheduled tasks chồng khả năng với `26.8` (DSH Mission Executor).
 - **3 business-gated splits** (`6-6a`, `6-7a`, `6-9a`) đã đúng là backlog nhưng cần giữ nguyên gating.
@@ -35,7 +35,7 @@ Mục tiêu: dọn backlog, tránh làm trùng/sớm, giải phóng `ready-for-d
 | Epic 8: Workspace Billing & Usage | 8-14 | Chồng với `8.3` + `8.7`; đề xuất merge hoặc re-scope thành dashboard enhancement. |
 | Epic 9: Deep Research | 9-6-followup | Tech debt followup; chuyển về `backlog` với ghi chú trigger. |
 | Epic 14: News | 14-2 | Entity enrichment giao cho `chainlens-research`; chuyển `ready-for-dev` về `backlog`/`blocked`. |
-| Epic 17: E-commerce | 17-1, 17-5 | Raw scraping giao `XActions`; giữ `backlog` với ghi chú dependency. |
+| Epic 17: E-commerce | 17-1, 17-5 | Raw scraping giao `Medirus`; giữ `backlog` với ghi chú dependency. |
 
 ### 2.2 Artifact Impact
 
@@ -103,13 +103,13 @@ Mục tiêu: dọn backlog, tránh làm trùng/sớm, giải phóng `ready-for-d
 | Story | Dependency | Lý do |
 |---|---|---|
 | `14-2` | `chainlens-research` entity linking | `epics.md` giao entity linking/disambiguation cho engine; Nowing chỉ attach metadata. |
-| `17-1` | `XActions` MCP `x_lazada_search` | Raw scraping delegated; adapter Nowing chưa có nền tảng. |
-| `17-5` | `XActions` MCP `x_tiktok_shop_products` | Tương tự `17-1`; codebase hiện chỉ có TikTok video scraper. |
+| `17-1` | `Medirus` MCP `x_lazada_search` | Raw scraping delegated; adapter Nowing chưa có nền tảng. |
+| `17-5` | `Medirus` MCP `x_tiktok_shop_products` | Tương tự `17-1`; codebase hiện chỉ có TikTok video scraper. |
 
 **Epics.md AC updates (applied 2026-08-23):**
 - `14.2`: thêm note `Blocked-by-external`, AC yêu cầu `chainlens-research` expose entity search/ingest trước.
-- `17.1`: thêm note `Blocked-by-external`, AC yêu cầu `XActions` `x_lazada_search`/`x_lazada_product` MCP tool available; không build in-house crawler.
-- `17.5`: thêm note `Blocked-by-external`, AC yêu cầu `XActions` `x_tiktok_shop_products` MCP tool available.
+- `17.1`: thêm note `Blocked-by-external`, AC yêu cầu `Medirus` `x_lazada_search`/`x_lazada_product` MCP tool available; không build in-house crawler.
+- `17.5`: thêm note `Blocked-by-external`, AC yêu cầu `Medirus` `x_tiktok_shop_products` MCP tool available.
 
 **OLD (current):**
 ```yaml
@@ -121,8 +121,8 @@ Mục tiêu: dọn backlog, tránh làm trùng/sớm, giải phóng `ready-for-d
 **NEW (proposed):**
 ```yaml
   14-2: backlog  # blocked-by-external: chainlens-research entity linking not available
-  17-1: backlog  # blocked-by-external: XActions x_lazada_search MCP tool not available
-  17-5: backlog  # blocked-by-external: XActions x_tiktok_shop_products MCP tool not available
+  17-1: backlog  # blocked-by-external: Medirus x_lazada_search MCP tool not available
+  17-5: backlog  # blocked-by-external: Medirus x_tiktok_shop_products MCP tool not available
 ```
 
 ---

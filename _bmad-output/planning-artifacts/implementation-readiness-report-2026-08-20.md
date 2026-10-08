@@ -35,7 +35,7 @@ document_inventory:
     - architecture/unified-scope-chainlens-research-nowing-2026-08-08.md
     - architecture-epic23-lead-infrastructure.md
     notes: Domain-specific architecture spines (linkedin, shopee, telegram, bds, muasamcong,
-      xactions) are available but not selected for core assessment unless user requests.
+      medirus) are available but not selected for core assessment unless user requests.
   epics_and_stories:
     canonical:
     - epics.md

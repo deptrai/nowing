@@ -15,14 +15,14 @@ deferred: []
 
 ## Intent
 
-**Problem:** Nowing duy trì 22 platform crawler directories với code crawler cục bộ, gây tốn kém bảo trì kép song song với XActions Gateway.
-**Approach:** Đưa toàn bộ live execution của các scraper qua `xactions_proxy` (`make_xactions_executor`), đánh dấu decommission 22 internal platform crawlers trong khi bảo toàn các schema/model/parser phục vụ chuẩn hóa dữ liệu.
+**Problem:** Nowing duy trì 22 platform crawler directories với code crawler cục bộ, gây tốn kém bảo trì kép song song với Medirus Gateway.
+**Approach:** Đưa toàn bộ live execution của các scraper qua `medirus_proxy` (`make_medirus_executor`), đánh dấu decommission 22 internal platform crawlers trong khi bảo toàn các schema/model/parser phục vụ chuẩn hóa dữ liệu.
 
 ## Boundaries & Constraints
 
 **Always:**
 - Bảo toàn toàn bộ schemas, models, parsers cho data serialization & test compatibility.
-- Mọi execution thực tế từ Playground và API điều hướng qua `XActionsMcpClient`.
+- Mọi execution thực tế từ Playground và API điều hướng qua `MedirusMcpClient`.
 
 </intent-contract>
 

@@ -12,7 +12,7 @@
 
 As a **Core Crawler & Social Automation Engineer**,  
 I want a **dedicated `SocksNodeProvider` and auto-detection preset in `DynamicTunnelProvider` for SocksNode Residential Network (`*.socksnode.com:9000`)**,  
-So that **XActions and Nowing scrapers can dynamically control Geo-targeting (`-country-vn`), hold multi-account sticky IP sessions (`-session-fb_<id>-lifetime-86400`), automatically rotate on block, and block heavy resources (images/fonts) to save 80–89% bandwidth without leaking origin IPs.**
+So that **Medirus and Nowing scrapers can dynamically control Geo-targeting (`-country-vn`), hold multi-account sticky IP sessions (`-session-fb_<id>-lifetime-86400`), automatically rotate on block, and block heavy resources (images/fonts) to save 80–89% bandwidth without leaking origin IPs.**
 
 ---
 
@@ -41,7 +41,7 @@ So that **XActions and Nowing scrapers can dynamically control Geo-targeting (`-
 ### AC-3: AD-SN-3 Multi-Account 1-to-1 Sticky Session Binding
 * **Given** an execution of Facebook or Twitter automation for a specific `account_id`
 * **When** resolving the proxy for the account
-* **Then** the system checks Redis Hash `xactions:proxy_bindings` for `account_id`
+* **Then** the system checks Redis Hash `medirus:proxy_bindings` for `account_id`
 * **And** if not present or expired, builds a SocksNode URL with `session-fb_<account_id>-lifetime-86400` and saves it to Redis.
 * **And** every request for that account reuses the exact same sticky session string for 24 hours.
 

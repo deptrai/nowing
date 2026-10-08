@@ -29,7 +29,7 @@ Toàn bộ hệ thống Scraper được định vị đồng nhất: **Mỗi Sc
 | Thành Phần Quy Hoạch | Tệp Nguồn / Artifact | Kết Quả Thẩm Định |
 | :--- | :--- | :---: |
 | **PRD & Business Goals** | `_bmad-output/planning-artifacts/prd.md` | 🟢 Hoàn tất |
-| **Architecture Spines** | • `architecture-telegram-scraper-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-shopee-ecommerce-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-muasamcong-procurement-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-linkedin-b2b-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-bds-planning-and-dkkd-2026-08-15/ARCHITECTURE-SPINE.md` | 🟢 Hoàn tất (Đã patch DDL & Invariants) |
+| **Architecture Spines** | • `architecture-telegram-scraper-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-shopee-ecommerce-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-muasamcong-procurement-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-medirus-social-integration-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-linkedin-b2b-2026-08-15/ARCHITECTURE-SPINE.md`<br>• `architecture-bds-planning-and-dkkd-2026-08-15/ARCHITECTURE-SPINE.md` | 🟢 Hoàn tất (Đã patch DDL & Invariants) |
 | **Consolidated Epics** | `_bmad-output/planning-artifacts/epics.md` | 🟢 100% Covered (Epics 10, 12, 16, 17, 21, 22) |
 | **UX Design Contracts** | `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-scrapers-expansion-and-lead-intelligence.md` | 🟢 Đã phê duyệt |
 | **Sprint Tracking** | `_bmad-output/implementation-artifacts/sprint-status.yaml` | 🟢 Đã đồng bộ |
@@ -49,7 +49,7 @@ Tất cả 31 Functional Requirements (FRs) đều có Story và Acceptance Crit
 │ 💼 Tuyển Dụng: Tín hiệu mở rộng & Headcount LinkedIn     │ Epic 12: 12.10    │ 🟢 100% Pass │
 │ 🏛️ Pháp Lý & Đấu Thầu: Doanh nghiệp, Chủ thầu Muasamcong │ Epic 16: 16.2, 16.5│ 🟢 100% Pass │
 │ 🛍️ TMĐT: Nhà bán hàng Top Shop Shopee & TikTok Shop     │ Epic 17: 17.2, 17.5│ 🟢 100% Pass │
-│ 👥 Mạng Xã Hội: Lead bài đăng Facebook/Twitter (XActions) │ Epic 21: 21.8     │ 🟢 100% Pass │
+│ 👥 Mạng Xã Hội: Lead bài đăng Facebook/Twitter (Medirus) │ Epic 21: 21.8     │ 🟢 100% Pass │
 │ 👔 Lãnh Đạo B2B: Danh bạ Decision Makers LinkedIn        │ Epic 21: 21.9     │ 🟢 100% Pass │
 │ 📱 Telegram: SĐT & Lead hội nhóm đầu tư thời gian thực   │ Epic 22: 22.1-22.3│ 🟢 100% Pass │
 └──────────────────────────────────────────────────────────┴───────────────────┴──────────────┘

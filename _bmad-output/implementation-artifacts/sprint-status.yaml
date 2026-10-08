@@ -43,7 +43,7 @@
 generated: "2026-08-21 07:19"
 last_updated: '10-08-2026 15:06'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
-# manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
+# manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
 # - Existing sprint-status.yaml preserved with manual statuses; no backlog story upgraded because all file-backed stories already >= ready-for-dev.
@@ -246,14 +246,14 @@ development_status:
   21-5-crm-integration-lark-base-google-sheets-1-click-sync: done
   21-6-vietnam-outbound-automation: done
   21-7-outcome-based-pricing-transparent-credit-ledger: done
-  21-8-social-ingress-via-xactions-integration-foundation: done
-  21-8a-xactions-universal-ingress-productionization: done
+  21-8-social-ingress-via-medirus-integration-foundation: done
+  21-8a-medirus-universal-ingress-productionization: done
   21-8b-redis-stream-consumer-celery-wiring: done
   21-8c-multi-domain-social-target-expansion: done
   21-8d-universal-scrape-target-mapper: done
   21-8e-per-account-proxy-and-cookie-binding: done
-  21-8f-xactions-governance-and-health-integration: done
-  21-8g-xactions-mcp-chat-connector: done
+  21-8f-medirus-governance-and-health-integration: done
+  21-8g-medirus-mcp-chat-connector: done
   21-9-executive-decision-maker-mapping-b2b-lead-outreach: done
   21-10-1-click-reverse-icp-from-website-project-url: done
   21-11-actionable-turn-dispatches: done
@@ -391,7 +391,7 @@ development_status:
 
   epic-36: done
   36-1-wire-x_crawl_post-fallback-graceful-unsupported-marking-p0-u: done
-  36-2-loop-scoped-xactionsmcpclient-connection-cache: done
+  36-2-loop-scoped-medirusmcpclient-connection-cache: done
   36-3-centralized-xact_-task-behavior-error-map: done
   36-4-single-writer-stream-stop-nowing-publishing-to-stream-social: done
   36-5-stream-consumer-schema-contract-dlq-routing: done
@@ -431,7 +431,7 @@ development_status:
   epic-39-retrospective: optional
 
   epic-40: done
-  40-1-xactions-gateway-client-streamable-http-cutover: done
+  40-1-medirus-gateway-client-streamable-http-cutover: done
   40-2-scraper-playground-thin-proxy-workspace-billing-gate: done
   40-3-decommission-22-internal-platform-crawlers-docker-image-slim: done
   40-4-jev-stream-dedup-pii-guardrail-pipeline: done

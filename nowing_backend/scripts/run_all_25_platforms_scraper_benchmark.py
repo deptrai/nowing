@@ -8,7 +8,7 @@ Audits ALL 25+ proprietary platform scrapers in nowing_backend across 8 business
 4. Địa Điểm & Local: Google Maps, Google Search (SERP)
 5. Tài Chính & Chứng Khoán: Vietstock, CafeF
 6. Thương Mại Điện Tử: Shopee, Amazon, Walmart
-7. Mạng Xã Hội & Cộng Đồng: TikTok, YouTube, Instagram, Telegram, Reddit, XActions
+7. Mạng Xã Hội & Cộng Đồng: TikTok, YouTube, Instagram, Telegram, Reddit, Medirus
 8. Web Crawling Đa Năng: Universal Fast Crawler
 """
 
@@ -27,8 +27,8 @@ from typing import Any
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
-from app.proprietary.platforms.xactions.tax_code import extract_tax_ids
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.tax_code import extract_tax_ids
 
 
 @dataclass
@@ -230,9 +230,9 @@ PLATFORMS_MATRIX: list[PlatformScraperTestCase] = [
         max_items=10,
     ),
     PlatformScraperTestCase(
-        platform_name="xactions",
+        platform_name="medirus",
         domain_category="Mạng Xã Hội",
-        target_description="XActions Social Phone & Contact Extractor",
+        target_description="Medirus Social Phone & Contact Extractor",
         test_query="Chính chủ cần bán gấp nhà O9O8.123.456 Zalo",
         max_items=5,
     ),
@@ -368,7 +368,7 @@ async def run_single_platform_benchmark(
             items_count = len(places_list)
             phones_count = sum(1 for pl in places_list if getattr(pl, "phone", None))
 
-        elif p == "xactions":
+        elif p == "medirus":
             extractor = SocialEntityExtractor()
             phones = extractor.extract_phones(tc.test_query)
             items_count = 1

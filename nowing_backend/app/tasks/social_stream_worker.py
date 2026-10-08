@@ -44,11 +44,11 @@ from app.db import (
     Workspace,
     async_session_maker,
 )
-from app.proprietary.platforms.xactions.constants import (
+from app.proprietary.platforms.medirus.constants import (
     STREAM_SOCIAL_DEAD_LETTER,
     STREAM_SOCIAL_RAW_POSTS,
 )
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
 from app.tasks.jev_guardrails import sanitize_pii_content
 
 logger = logging.getLogger(__name__)
@@ -930,12 +930,12 @@ async def run_social_stream_consumer(
     if redis_client is None:
         import redis.asyncio as aioredis
 
-        # The single-writer social raw-posts stream lives on the XActions-side
+        # The single-writer social raw-posts stream lives on the Medirus-side
         # Redis instance, which can differ from the app REDIS_APP_URL
-        # (cache/queues). Prefer the dedicated XACTIONS_STREAM_REDIS_URL when
+        # (cache/queues). Prefer the dedicated MEDIRUS_STREAM_REDIS_URL when
         # set; fall back to REDIS_APP_URL for same-instance deployments.
         stream_url = (
-            getattr(config, "XACTIONS_STREAM_REDIS_URL", "") or config.REDIS_APP_URL
+            getattr(config, "MEDIRUS_STREAM_REDIS_URL", "") or config.REDIS_APP_URL
         )
         redis_client = aioredis.from_url(stream_url, decode_responses=True)
         created_locally = True

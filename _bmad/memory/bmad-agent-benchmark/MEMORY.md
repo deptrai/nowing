@@ -32,5 +32,5 @@
 | **Tuyển Dụng & HR** | **TopCV.vn** | 🟢 **ONLINE** | **$12,904\text{ ms}$** | **$10\text{ jobs}$** | Cào live HTML thật qua stealth fetcher $\rightarrow$ bóc tách dải lương |
 | **Tuyển Dụng & HR** | **ITviec.com** | 🟢 **ONLINE** | **$579\text{ ms}$** | **$10\text{ jobs}$** | Tốc độ cực nhanh ($<0.6\text{s}$), dữ liệu việc làm Tech chuyên sâu |
 | **Tuyển Dụng & HR** | **VietnamWorks** | 🟢 **ONLINE** | **$1,988\text{ ms}$** | **$10\text{ jobs}$** | Hoạt động ổn định ($<2\text{s}$), tuyển dụng cấp trung & cao |
-| **Mạng Xã Hội** | **XActions Deobfuscator** | 🟢 **ONLINE** | **$1.63\text{ ms}$** | **$1\text{ entity}$** | Bóc tách SĐT ẩn/chữ viết (`O9O8-hai-ba-bốn`) |
+| **Mạng Xã Hội** | **Medirus Deobfuscator** | 🟢 **ONLINE** | **$1.63\text{ ms}$** | **$1\text{ entity}$** | Bóc tách SĐT ẩn/chữ viết (`O9O8-hai-ba-bốn`) |
 | **Universal Web** | **FastCrawler** | 🟢 **ONLINE** | **$45\text{ ms}$** | $1\text{ page}$ | Anti-SSRF, bóc tách OpenGraph, Schema.org JSON-LD |

@@ -23,7 +23,7 @@ So that Nowing's AI Orchestrator automatically plans and triggers parallel searc
    - `ChototLeadAdapter` (Chợ Tốt Nhà, BĐS, Xe, Đồ điện tử)
    - `JobMarketLeadAdapter` (TopCV & ITviec recruitment postings)
    - `EnterpriseProcurementLeadAdapter` (Masothue & Cổng Mua Sắm Công)
-   - `SocialLeadAdapter` (Facebook Groups & Twitter Feed via XActions)
+   - `SocialLeadAdapter` (Facebook Groups & Twitter Feed via Medirus)
 3. **Given** a chat prompt (e.g. *"Tìm 30 công ty IT tại Hà Nội và 20 môi giới BĐS Cầu Giấy"*), **When** `LeadGenOrchestrator` executes, **Then** it decomposes the query into sub-tasks and invokes all relevant scraper adapters concurrently via `asyncio.gather(..., return_exceptions=True)` bounded by `asyncio.Semaphore(5)` with a 12s per-adapter timeout.
 4. **Given** raw multi-source streams, **When** ingested, **Then** `EntityDeduplicationService` unifies duplicates by Phone HMAC, Tax ID, Email, and Canonical Domain, updating `confidence_score` and merging missing attributes into standard `Lead` records.
 5. **Given** any individual adapter experiencing Cloudflare challenge, 429 rate-limit, or timeout, **When** caught, **Then** the adapter retries at most once and falls back gracefully (`status: "degraded"`), ensuring the remaining adapters stream their leads successfully and the chat turn never crashes or returns empty text (AD-19.1).
@@ -40,7 +40,7 @@ So that Nowing's AI Orchestrator automatically plans and triggers parallel searc
   - [x] 2.2 Xây dựng `ChototLeadAdapter` (`app/lead_intelligence/adapters/chotot.py`) bọc `chotot/fetch.py` và `parsers.py`.
   - [x] 2.3 Xây dựng `JobMarketLeadAdapter` (`app/lead_intelligence/adapters/job_market.py`) bọc TopCV & ITviec platform fetchers.
   - [x] 2.4 Xây dựng `EnterpriseProcurementLeadAdapter` (`app/lead_intelligence/adapters/enterprise.py`) bọc Masothue & Cổng Mua Sắm Công.
-  - [x] 2.5 Xây dựng `SocialLeadAdapter` (`app/lead_intelligence/adapters/social.py`) bọc XActions Facebook Groups & Twitter posts.
+  - [x] 2.5 Xây dựng `SocialLeadAdapter` (`app/lead_intelligence/adapters/social.py`) bọc Medirus Facebook Groups & Twitter posts.
 - [x] Task 3: Entity Deduplication & DNC Pipeline Service (AC: 4, 6)
   - [x] 3.1 Xây dựng `nowing_backend/app/lead_intelligence/services/deduplication_service.py` (`EntityDeduplicationService` với Phone HMAC, TaxID, Canonical Domain matching).
   - [x] 3.2 Tích hợp `DncComplianceService` lọc in-stream trước khi persist vào DB.

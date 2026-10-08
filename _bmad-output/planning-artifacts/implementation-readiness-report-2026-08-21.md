@@ -40,7 +40,7 @@ stepsCompleted:
 - `architecture/architecture-shopee-ecommerce-2026-08-15/ARCHITECTURE-SPINE.md`
 - `architecture/architecture-telegram-scraper-2026-08-15/ARCHITECTURE-SPINE.md`
 - `architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/ARCHITECTURE-SPINE.md`
-- `architecture/architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md`
+- `architecture/architecture-medirus-social-integration-2026-08-15/ARCHITECTURE-SPINE.md`
 
 **Architecture Reviews & Updates:**
 - `architecture-reviews/architecture-review-nowing-chainlens-2026-08-08-v6.md`

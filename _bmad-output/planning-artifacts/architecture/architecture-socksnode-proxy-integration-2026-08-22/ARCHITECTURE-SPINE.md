@@ -3,7 +3,7 @@
 **Ngày lập:** 2026-08-22  
 **Trạng thái:** `final`  
 **Quyết định Kiến trúc chi phối (Architectural Invariants):** AD-SN-1 đến AD-SN-6  
-**Epic liên kết:** Epic 21 (Social Automation & XActions Integration), Epic 10 (Real Estate Scraping), Epic 2 (Cross-Platform Crawlers)  
+**Epic liên kết:** Epic 21 (Social Automation & Medirus Integration), Epic 10 (Real Estate Scraping), Epic 2 (Cross-Platform Crawlers)  
 **Tác giả:** Winston (BMAD System Architect)  
 
 ---
@@ -13,7 +13,7 @@
 Tích hợp nền tảng **SocksNode Residential & Mobile Proxy Network** vào toàn bộ hệ sinh thái thu thập dữ liệu và tự động hóa:
 * Cung cấp cơ chế Ingress Gateway đa giao thức (HTTP, HTTPS, SOCKS5) tốc độ cao thông qua cụm Gateway Singapore (`sg.premium.socksnode.com:9000`).
 * Đảm bảo khả năng vượt qua 100% các hệ thống phòng thủ bot (Cloudflare, Akamai, Facebook Checkpoint, TikTok WAF, Google SERP /sorry).
-* Chuẩn hóa mô hình Provider Adapter (`SocksNodeProvider`) tương thích liền mạch với các microservices trong `nowing_backend` và `XActions` (Node.js).
+* Chuẩn hóa mô hình Provider Adapter (`SocksNodeProvider`) tương thích liền mạch với các microservices trong `nowing_backend` và `Medirus` (Node.js).
 * Tối ưu hóa chi phí vận hành thông qua kỹ thuật lọc tài nguyên nặng (Media/Font Blocking) và tái sử dụng session IP cho việc giải Captcha.
 
 ---
@@ -42,7 +42,7 @@ Tích hợp nền tảng **SocksNode Residential & Mobile Proxy Network** vào t
 ### AD-SN-3 [ADOPTED]: Multi-Account 1-to-1 Sticky Session Binding (AD-SOC-3)
 * **Binds**: Quản lý phiên tài khoản bot mạng xã hội (Facebook, X/Twitter, TikTok).
 * **Prevents**: Khóa/Checkpoint tài khoản do IP bị nhảy chéo bất thường giữa các request trong cùng một ngày.
-* **Rule**: Mỗi `account_id` khi thực thi tác vụ automation bắt buộc được cấp một `session_id = fb_<account_id>` (hoặc `x_<account_id>`) cố định với `lifetime = 86400`. Cấu hình này được lưu bền vững trong Redis Hash `xactions:proxy_bindings`. Mọi worker đều phải tái sử dụng proxy binding này.
+* **Rule**: Mỗi `account_id` khi thực thi tác vụ automation bắt buộc được cấp một `session_id = fb_<account_id>` (hoặc `x_<account_id>`) cố định với `lifetime = 86400`. Cấu hình này được lưu bền vững trong Redis Hash `medirus:proxy_bindings`. Mọi worker đều phải tái sử dụng proxy binding này.
 
 ### AD-SN-4 [ADOPTED]: Circuit Breaker & Rotate-on-Block Failure Policy
 * **Binds**: Xử lý lỗi kết nối và phản hồi chặn từ target site (HTTP 403, 429, WAF Challenge).
@@ -71,7 +71,7 @@ sequenceDiagram
     autonumber
     actor Worker as Celery / Node Worker
     participant Provider as SocksNodeProvider
-    participant Redis as Redis (xactions:proxy_bindings)
+    participant Redis as Redis (medirus:proxy_bindings)
     participant Gateway as SocksNode Gateway (sg.premium...:9000)
     participant Target as Target (FB / Google / BĐS)
 
@@ -81,7 +81,7 @@ sequenceDiagram
         Redis-->>Provider: Return cached session URL
     else No binding or expired
         Provider->>Provider: Build URL with session-fb_acc_01-lifetime-86400
-        Provider->>Redis: HSET xactions:proxy_bindings acc_01 <proxy_url>
+        Provider->>Redis: HSET medirus:proxy_bindings acc_01 <proxy_url>
     end
     Provider-->>Worker: Return formatted Proxy URL
 
@@ -101,7 +101,7 @@ sequenceDiagram
 
 ## 4. Đặc Tả Mã Nguồn & Cấu Hình Triển Khai
 
-### 4.1. File Cấu Hình Môi Trường Tập Trung ([`.env`](file:///Users/luisphan/Documents/GitHub/XActions/.env))
+### 4.1. File Cấu Hình Môi Trường Tập Trung ([`.env`](file:///Users/luisphan/Documents/GitHub/Medirus/.env))
 
 ```dotenv
 # Proxy Provider Selection

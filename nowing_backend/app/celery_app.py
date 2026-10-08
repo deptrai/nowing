@@ -216,7 +216,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.rss_tasks",
         "app.tasks.celery_tasks.obsidian_tasks",
         "app.tasks.celery_tasks.schedule_checker_task",
-        "app.tasks.celery_tasks.social_xactions_ingest",
+        "app.tasks.celery_tasks.social_medirus_ingest",
         "app.tasks.celery_tasks.social_stream_worker",
         "app.tasks.celery_tasks.signal_radar_tasks",
         "app.tasks.celery_tasks.decision_telemetry_task",
@@ -322,7 +322,7 @@ celery_app.conf.update(
         "health_probe_messaging": {"queue": HEALTH_QUEUE},
         "health_probe_payment": {"queue": HEALTH_QUEUE},
         "health_probe_storage": {"queue": HEALTH_QUEUE},
-        "health_probe_xactions": {"queue": HEALTH_QUEUE},
+        "health_probe_medirus": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
@@ -350,7 +350,7 @@ celery_app.conf.beat_schedule = {
         },
     },
     # Check social targets (Facebook groups, Twitter keywords) and trigger
-    # XActions ingest tasks for any that are due.
+    # Medirus ingest tasks for any that are due.
     "check-social-monitored-targets": {
         "task": "check_social_monitored_targets",
         "schedule": crontab(minute="*"),
@@ -553,8 +553,8 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {"expires": 120},
     },
-    "health-probe-xactions": {
-        "task": "health_probe_xactions",
+    "health-probe-medirus": {
+        "task": "health_probe_medirus",
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {"expires": 120},
     },

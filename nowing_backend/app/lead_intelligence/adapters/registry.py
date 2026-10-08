@@ -387,7 +387,7 @@ class LeadSourceAdapterRegistry:
         social_keywords = [
             "facebook",
             "twitter",
-            "xactions",
+            "medirus",
             "telegram",
             "tele",
             "tg",

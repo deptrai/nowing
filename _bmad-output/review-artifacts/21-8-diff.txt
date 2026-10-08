@@ -6,26 +6,26 @@ index e7ad149ad..d7b224e5d 100644
    21-5: review  # 2026-08-15: code + unit tests ok; missing integration tests; P0 human review
    21-6: ready-for-dev  # was deferred (Zalo legal/ToS); reopened for scheduling
    21-7: ready-for-dev
--  21-8: done  # Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed)
-+  21-8: done  # 2026-08-15: 32 review patches + XActions Celery scheduler/ingestor applied; ruff/pytest/tsc green
+-  21-8: done  # Social Ingress via Medirus Integration (Facebook Groups & Twitter/X Feed)
++  21-8: done  # 2026-08-15: 32 review patches + Medirus Celery scheduler/ingestor applied; ruff/pytest/tsc green
    21-9: done  # Executive Decision Maker Mapping & B2B Lead Outreach
    epic-21-retrospective: optional
  
-diff --git a/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md b/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md
+diff --git a/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-medirus-integration.md b/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-medirus-integration.md
 index 1b4ea7b2e..99d009583 100644
---- a/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md
-+++ b/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md
+--- a/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-medirus-integration.md
++++ b/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-medirus-integration.md
 @@ -1,6 +1,6 @@
- # Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter/X Feed)
+ # Story 21.8: Social Ingress via Medirus Integration (Facebook Groups & Twitter/X Feed)
  
 -Status: completed
 +Status: done
  
- <!-- Note: Governed by architecture-xactions-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-7) -->
+ <!-- Note: Governed by architecture-medirus-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-7) -->
  
 @@ -56,3 +56,83 @@ So that I can capture real-time social conversations and extract contact numbers
  ### References
- - [Architecture Spine: architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md]
+ - [Architecture Spine: architecture-medirus-social-integration-2026-08-15/ARCHITECTURE-SPINE.md]
  - [UX Contract: ux-contract-scrapers-expansion-and-lead-intelligence.md#U3]
 +
 +### Review Findings — BMAD Code Review 2026-08-15
@@ -33,23 +33,23 @@ index 1b4ea7b2e..99d009583 100644
 +**Summary:** 10 decision-needed, 22 patch, 28 defer, 4 dismissed.
 +
 +#### decision-needed
-+- [x] [Review][Patch] Mock/stub implementation masquerading as real XActions integration — The _execute_xactions_command method checks if XActions directory exists, but if it does, it still only runs a mock Node.js script that returns {success: true, data: []}. There's no actual integration with XActions. (app/proprietary/platforms/xactions/adapter.py:89-132) [high]
++- [x] [Review][Patch] Mock/stub implementation masquerading as real Medirus integration — The _execute_medirus_command method checks if Medirus directory exists, but if it does, it still only runs a mock Node.js script that returns {success: true, data: []}. There's no actual integration with Medirus. (app/proprietary/platforms/medirus/adapter.py:89-132) [high]
 +- [x] [Review][Patch] No authorization check in capability executor — The executor doesn't check if the user has permission to access social posts. It queries all posts in the database without workspace/user filtering. (app/capabilities/social/search_leads/executor.py:24-110) [high]
 +- [x] [Review][Patch] Helper function social_search_posts lacks context — The helper function doesn't accept a workspace_id or user context. It would search across all workspaces if the executor doesn't filter. (app/capabilities/social/search_leads/__init__.py:18-35) [high]
 +- [x] [Review][Patch] No workspace_id in social tables — Neither SocialMonitoredTarget nor SocialPost has a workspace_id column. This violates multi-tenancy principles and makes it impossible to isolate data per workspace. (app/db.py:4864-4936) [high]
 +- [x] [Review][Patch] No foreign key to workspaces violates multi-tenancy — The social tables have no relationship to the workspaces table. This breaks the data model's tenant isolation pattern used throughout the rest of the codebase. (app/db.py:4864-4936) [high]
-+- [x] [Review][Patch] In-memory proxy mapping lost on restart — In-memory proxy mapping _account_proxies is lost on restart. Violates AD-SOC-3 (sticky 1-to-1 proxy binding) if multiple workers process same account - proxy binding not shared across processes. (app/proprietary/platforms/xactions/adapter.py:80) [medium]
++- [x] [Review][Patch] In-memory proxy mapping lost on restart — In-memory proxy mapping _account_proxies is lost on restart. Violates AD-SOC-3 (sticky 1-to-1 proxy binding) if multiple workers process same account - proxy binding not shared across processes. (app/proprietary/platforms/medirus/adapter.py:80) [medium]
 +- [x] [Review][Patch] AlertEngine integration not implemented — AC 4 requires AlertEngine to fire instant notifications when new ingested posts match active AlertRule saved searches. This integration is not present in the code. (app/tasks/social_stream_worker.py) [high]
 +- [x] [Review][Patch] CRM lead creation not implemented — AD-SOC-7 requires real-time Alert & CRM Lead Creation. The code does not create Lead records in the CRM when social posts with intent are detected. (app/tasks/social_stream_worker.py) [high]
-+- [x] [Review][Patch] XActions integration is a stub/mock — The XActions adapter returns mock data {success: true, data: []} instead of actually calling XActions. This violates AC 1 which requires real data fetching via XActions. (app/proprietary/platforms/xactions/adapter.py:89-132) [high]
++- [x] [Review][Patch] Medirus integration is a stub/mock — The Medirus adapter returns mock data {success: true, data: []} instead of actually calling Medirus. This violates AC 1 which requires real data fetching via Medirus. (app/proprietary/platforms/medirus/adapter.py:89-132) [high]
 +- [x] [Review][Patch] Schema deviations from architecture spine — SocialMonitoredTarget has additional fields (category, is_active, realtime_stream, status, last_polled_at, last_scraped_at) not in architecture spine. SocialPost is missing target_id (should be BIGINT per spine but is nullable). (app/db.py:4864-4936) [medium]
 +
 +#### patch
-+- [x] [Review][Patch] Hardcoded local filesystem path for XActions [app/proprietary/platforms/xactions/adapter.py:75] [high]
-+- [x] [Review][Patch] Silent fallback on missing XActions directory [app/proprietary/platforms/xactions/adapter.py:101-106] [medium]
-+- [x] [Review][Patch] Exception handling too broad in XActions execution [app/proprietary/platforms/xactions/adapter.py:129-132] [medium]
-+- [x] [Review][Patch] Unsafe datetime parsing with fallback to current time [app/proprietary/platforms/xactions/adapter.py:157-160, 208-211] [medium]
-+- [x] [Review][Patch] Unsafe int() conversions without error handling [app/proprietary/platforms/xactions/adapter.py:175-177, 226-228] [medium]
++- [x] [Review][Patch] Hardcoded local filesystem path for Medirus [app/proprietary/platforms/medirus/adapter.py:75] [high]
++- [x] [Review][Patch] Silent fallback on missing Medirus directory [app/proprietary/platforms/medirus/adapter.py:101-106] [medium]
++- [x] [Review][Patch] Exception handling too broad in Medirus execution [app/proprietary/platforms/medirus/adapter.py:129-132] [medium]
++- [x] [Review][Patch] Unsafe datetime parsing with fallback to current time [app/proprietary/platforms/medirus/adapter.py:157-160, 208-211] [medium]
++- [x] [Review][Patch] Unsafe int() conversions without error handling [app/proprietary/platforms/medirus/adapter.py:175-177, 226-228] [medium]
 +- [x] [Review][Patch] No input validation on Redis stream payload [app/tasks/social_stream_worker.py:58-133] [medium]
 +- [x] [Review][Patch] Unsafe JSON parsing without error handling [app/tasks/social_stream_worker.py:76-83] [low]
 +- [x] [Review][Patch] Transaction rollback on individual message failure [app/tasks/social_stream_worker.py:186-192] [medium]
@@ -57,10 +57,10 @@ index 1b4ea7b2e..99d009583 100644
 +- [x] [Review][Patch] raw_entities type assumption without validation [app/capabilities/social/search_leads/executor.py:64] [low]
 +- [x] [Review][Patch] Exception handling returns degraded mode with full error details [app/capabilities/social/search_leads/executor.py:85-93] [medium]
 +- [x] [Review][Patch] No migration file included in diff [alembic/versions/] [high]
-+- [x] [Review][Patch] JSONDecodeError not caught in XActions response [app/proprietary/platforms/xactions/adapter.py:128] [medium]
-+- [x] [Review][Patch] external_post_id becomes string 'None' if both id fields missing [app/proprietary/platforms/xactions/adapter.py:169, 220] [medium]
-+- [x] [Review][Patch] Redis connection failure not handled [app/proprietary/platforms/xactions/adapter.py:242-244] [medium]
-+- [x] [Review][Patch] Redis xadd failure not handled [app/proprietary/platforms/xactions/adapter.py:261] [medium]
++- [x] [Review][Patch] JSONDecodeError not caught in Medirus response [app/proprietary/platforms/medirus/adapter.py:128] [medium]
++- [x] [Review][Patch] external_post_id becomes string 'None' if both id fields missing [app/proprietary/platforms/medirus/adapter.py:169, 220] [medium]
++- [x] [Review][Patch] Redis connection failure not handled [app/proprietary/platforms/medirus/adapter.py:242-244] [medium]
++- [x] [Review][Patch] Redis xadd failure not handled [app/proprietary/platforms/medirus/adapter.py:261] [medium]
 +- [x] [Review][Patch] ValueError on non-numeric count strings in stream worker [app/tasks/social_stream_worker.py:72-74] [medium]
 +- [x] [Review][Patch] UPSERT conflicts not handled in stream worker [app/tasks/social_stream_worker.py:117-131] [medium]
 +- [x] [Review][Patch] Message not ACKed on exception in stream worker [app/tasks/social_stream_worker.py:186-192] [medium]
@@ -73,13 +73,13 @@ index 1b4ea7b2e..99d009583 100644
 +- [x] [Review][Defer] Confusing duplicate timing fields in SocialMonitoredTarget [app/db.py:4882-4884] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] Redundant timestamp fields in SocialMonitoredTarget [app/db.py:4886-4887] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] SocialPost.target_id is nullable but has CASCADE relationship [app/db.py:4910-4915] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] No validation of account_id in proxy binding [app/proprietary/platforms/xactions/adapter.py:82-84] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] ReDoS timeout check placement allows partial execution [app/proprietary/platforms/xactions/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] Phone regex allows invalid Vietnamese prefixes [app/proprietary/platforms/xactions/phone_extractor.py:44-46] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] Token pattern may miss valid obfuscated phones [app/proprietary/platforms/xactions/phone_extractor.py:96] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] Intent classification has keyword overlap [app/proprietary/platforms/xactions/phone_extractor.py:148-193] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] Location extraction is hardcoded and incomplete [app/proprietary/platforms/xactions/phone_extractor.py:60-73] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] Email regex is overly simplistic [app/proprietary/platforms/xactions/phone_extractor.py:49-51] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] No validation of account_id in proxy binding [app/proprietary/platforms/medirus/adapter.py:82-84] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] ReDoS timeout check placement allows partial execution [app/proprietary/platforms/medirus/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Phone regex allows invalid Vietnamese prefixes [app/proprietary/platforms/medirus/phone_extractor.py:44-46] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Token pattern may miss valid obfuscated phones [app/proprietary/platforms/medirus/phone_extractor.py:96] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Intent classification has keyword overlap [app/proprietary/platforms/medirus/phone_extractor.py:148-193] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Location extraction is hardcoded and incomplete [app/proprietary/platforms/medirus/phone_extractor.py:60-73] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Email regex is overly simplistic [app/proprietary/platforms/medirus/phone_extractor.py:49-51] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] No dead letter queue for failed messages [app/tasks/social_stream_worker.py:186-192] — deferred, out-of-scope/future improvement [medium]
 +- [x] [Review][Defer] No rate limiting on stream consumer [app/tasks/social_stream_worker.py:142-197] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] No pagination in search results [app/capabilities/social/search_leads/executor.py:59] — deferred, out-of-scope/future improvement [low]
@@ -87,9 +87,9 @@ index 1b4ea7b2e..99d009583 100644
 +- [x] [Review][Defer] ReDoS test has generous timeout [tests/unit/platforms/test_phone_regex_redos_safety.py] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] Integration test uses mock database [tests/integration/platforms/test_social_redis_stream.py] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] No composite index on frequently queried columns [app/db.py:4901-4907] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] XActions subprocess timeout hardcoded at 30s [app/proprietary/platforms/xactions/adapter.py:126] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] Timeout breaks loop mid-processing without indication [app/proprietary/platforms/xactions/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
-+- [x] [Review][Defer] Province regex may exceed engine limits [app/proprietary/platforms/xactions/phone_extractor.py:196-199] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Medirus subprocess timeout hardcoded at 30s [app/proprietary/platforms/medirus/adapter.py:126] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Timeout breaks loop mid-processing without indication [app/proprietary/platforms/medirus/phone_extractor.py:118-121] — deferred, out-of-scope/future improvement [low]
++- [x] [Review][Defer] Province regex may exceed engine limits [app/proprietary/platforms/medirus/phone_extractor.py:196-199] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] No CHECK constraint for platform values in SocialMonitoredTarget [app/db.py:4876] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] No CHECK constraint for interval values in SocialMonitoredTarget [app/db.py:4883-4884] — deferred, out-of-scope/future improvement [low]
 +- [x] [Review][Defer] No CHECK constraint for platform values in SocialPost [app/db.py:4916] — deferred, out-of-scope/future improvement [low]
@@ -101,11 +101,11 @@ index 1b4ea7b2e..99d009583 100644
 +## Verification (2026-08-15)
 +
 +- `uv run ruff check` on changed backend files → passed.
-+- `uv run pytest tests/unit/proprietary/platforms/xactions tests/unit/capabilities/test_social_search_leads.py tests/integration/platforms/test_social_redis_stream.py -q` → 27 passed.
-+- `uv run python` import smoke for `SocialPost`, `SocialMonitoredTarget`, `XActionsSocialAdapter`, `SocialPostData`, `process_social_post_event`, `social_search_posts` → OK.
++- `uv run pytest tests/unit/proprietary/platforms/medirus tests/unit/capabilities/test_social_search_leads.py tests/integration/platforms/test_social_redis_stream.py -q` → 27 passed.
++- `uv run python` import smoke for `SocialPost`, `SocialMonitoredTarget`, `MedirusSocialAdapter`, `SocialPostData`, `process_social_post_event`, `social_search_posts` → OK.
 +- `pnpm tsc --noEmit` from `nowing_web/` → passed (after adding missing `tech_stack` to `SAMPLE_LEADS`).
 +- `alembic.versions.204_add_social_tables` imports successfully; `revision: 204 down_revision: 203`.
-+- Added `check_social_monitored_targets` (Celery Beat every minute) and `ingest_social_target` (per-target connector queue) in `app/tasks/celery_tasks/social_xactions_ingest.py`; 5 unit tests passed.
++- Added `check_social_monitored_targets` (Celery Beat every minute) and `ingest_social_target` (per-target connector queue) in `app/tasks/celery_tasks/social_medirus_ingest.py`; 5 unit tests passed.
 +- End-to-end verification: scheduler → adapter → Redis Stream `stream:social:raw_posts` → worker → `social_posts` multi-tenant UPSERT.
 diff --git a/nowing_backend/app/capabilities/social/search_leads/__init__.py b/nowing_backend/app/capabilities/social/search_leads/__init__.py
 index dd4f33c9a..de2b055f9 100644
@@ -350,7 +350,7 @@ index da22f5e6a..2d7385984 100644
          "app.tasks.celery_tasks.rss_tasks",
          "app.tasks.celery_tasks.obsidian_tasks",
          "app.tasks.celery_tasks.schedule_checker_task",
-+        "app.tasks.celery_tasks.social_xactions_ingest",
++        "app.tasks.celery_tasks.social_medirus_ingest",
          "app.tasks.celery_tasks.document_reindex_tasks",
          "app.tasks.celery_tasks.stale_notification_cleanup_task",
          "app.tasks.celery_tasks.stripe_reconciliation_task",
@@ -367,7 +367,7 @@ index da22f5e6a..2d7385984 100644
          },
      },
 +    # Check social targets (Facebook groups, Twitter keywords) and trigger
-+    # XActions ingest tasks for any that are due.
++    # Medirus ingest tasks for any that are due.
 +    "check-social-monitored-targets": {
 +        "task": "check_social_monitored_targets",
 +        "schedule": crontab(minute="*"),
@@ -384,11 +384,11 @@ index aaf497b62..07e5f6364 100644
              f"exceeds the maximum of 2000 allowed by PGVector."
          )
  
-+    # XActions local social ingress (Story 21.8)
-+    XACTIONS_PATH = os.getenv("XACTIONS_PATH", "")
-+    XACTIONS_TIMEOUT_SECONDS = _env_int("XACTIONS_TIMEOUT_SECONDS", 30)
-+    XACTIONS_FACEBOOK_C_USER = os.getenv("XACTIONS_FACEBOOK_C_USER", "")
-+    XACTIONS_FACEBOOK_XS = os.getenv("XACTIONS_FACEBOOK_XS", "")
++    # Medirus local social ingress (Story 21.8)
++    MEDIRUS_PATH = os.getenv("MEDIRUS_PATH", "")
++    MEDIRUS_TIMEOUT_SECONDS = _env_int("MEDIRUS_TIMEOUT_SECONDS", 30)
++    MEDIRUS_FACEBOOK_C_USER = os.getenv("MEDIRUS_FACEBOOK_C_USER", "")
++    MEDIRUS_FACEBOOK_XS = os.getenv("MEDIRUS_FACEBOOK_XS", "")
 +
      @classmethod
      def get_settings(cls):
@@ -499,10 +499,10 @@ index e007462c3..22f9b8123 100644
      target = relationship("SocialMonitoredTarget", back_populates="posts")
  
  
-diff --git a/nowing_backend/app/proprietary/platforms/xactions/adapter.py b/nowing_backend/app/proprietary/platforms/xactions/adapter.py
+diff --git a/nowing_backend/app/proprietary/platforms/medirus/adapter.py b/nowing_backend/app/proprietary/platforms/medirus/adapter.py
 index 8cf7e2178..ed300b872 100644
---- a/nowing_backend/app/proprietary/platforms/xactions/adapter.py
-+++ b/nowing_backend/app/proprietary/platforms/xactions/adapter.py
+--- a/nowing_backend/app/proprietary/platforms/medirus/adapter.py
++++ b/nowing_backend/app/proprietary/platforms/medirus/adapter.py
 @@ -14,15 +14,32 @@ import asyncio
  import json
  import logging
@@ -525,14 +525,14 @@ index 8cf7e2178..ed300b872 100644
  logger = logging.getLogger(__name__)
  
  STREAM_SOCIAL_RAW_POSTS = "stream:social:raw_posts"
-+XACTIONS_PROXY_REDIS_KEY = "xactions:account_proxies"
-+_LOCAL_DEV_XACTIONS_PATH = "/Users/luisphan/Documents/GitHub/XActions"
-+_XACTIONS_MCP_SERVER = "src/mcp/server.js"
++MEDIRUS_PROXY_REDIS_KEY = "medirus:account_proxies"
++_LOCAL_DEV_MEDIRUS_PATH = "/Users/luisphan/Documents/GitHub/Medirus"
++_MEDIRUS_MCP_SERVER = "src/mcp/server.js"
 +_PROXY_REDIS_FAILURE_BACKOFF_SECONDS = 60.0
 +
 +
-+class XActionsMcpError(RuntimeError):
-+    """Raised when the XActions MCP server returns an error."""
++class MedirusMcpError(RuntimeError):
++    """Raised when the Medirus MCP server returns an error."""
  
  
  @dataclass
@@ -622,34 +622,34 @@ index 8cf7e2178..ed300b872 100644
 +    return None
 +
 +
- class XActionsSocialAdapter:
--    """Orchestrator client interacting with local XActions MCP / Subprocess."""
-+    """Orchestrator client interacting with the XActions MCP server."""
+ class MedirusSocialAdapter:
+-    """Orchestrator client interacting with local Medirus MCP / Subprocess."""
++    """Orchestrator client interacting with the Medirus MCP server."""
  
      def __init__(
          self,
--        xactions_path: str = "/Users/luisphan/Documents/GitHub/XActions",
-+        xactions_path: str | None = None,
+-        medirus_path: str = "/Users/luisphan/Documents/GitHub/Medirus",
++        medirus_path: str | None = None,
          proxy_url: str | None = None,
 +        timeout: float | None = None,
 +        redis_client: Any | None = None,
      ):
--        self.xactions_path = xactions_path
-+        # Resolve XActions installation path: explicit > env/config > local dev fallback.
+-        self.medirus_path = medirus_path
++        # Resolve Medirus installation path: explicit > env/config > local dev fallback.
 +        resolved = (
-+            xactions_path
-+            or getattr(config, "XACTIONS_PATH", "")
++            medirus_path
++            or getattr(config, "MEDIRUS_PATH", "")
 +            or (
-+                _LOCAL_DEV_XACTIONS_PATH
++                _LOCAL_DEV_MEDIRUS_PATH
 +                if config.is_self_hosted()
-+                and os.path.isdir(_LOCAL_DEV_XACTIONS_PATH)
++                and os.path.isdir(_LOCAL_DEV_MEDIRUS_PATH)
 +                else ""
 +            )
 +        )
-+        self.xactions_path = resolved
++        self.medirus_path = resolved
          self.default_proxy_url = proxy_url
 +        self.default_timeout = timeout or getattr(
-+            config, "XACTIONS_TIMEOUT_SECONDS", 30
++            config, "MEDIRUS_TIMEOUT_SECONDS", 30
 +        )
 +
 +        # AD-SOC-3: in-memory cache + durable Redis backing for proxy bindings.
@@ -659,37 +659,37 @@ index 8cf7e2178..ed300b872 100644
 +        self._proxy_redis_last_failure = 0.0
 +
 +    def _resolve_mcp_server_params(self) -> StdioServerParameters:
-+        """Return stdio parameters for the XActions MCP server.
++        """Return stdio parameters for the Medirus MCP server.
 +
 +        ponytail: Spawns a fresh MCP server per call. Reuse would require
-+        per-account proxy/browser isolation that the current XActions server
++        per-account proxy/browser isolation that the current Medirus server
 +        does not expose through its stdio transport.
 +        """
-+        if self.xactions_path:
-+            server_js = os.path.join(self.xactions_path, _XACTIONS_MCP_SERVER)
++        if self.medirus_path:
++            server_js = os.path.join(self.medirus_path, _MEDIRUS_MCP_SERVER)
 +            if not os.path.isfile(server_js):
 +                raise RuntimeError(
-+                    f"XActions MCP server not found at {server_js}. "
-+                    "Set XACTIONS_PATH to a valid XActions checkout or install `npx xactions-mcp`."
++                    f"Medirus MCP server not found at {server_js}. "
++                    "Set MEDIRUS_PATH to a valid Medirus checkout or install `npx medirus-mcp`."
 +                )
 +            return StdioServerParameters(
 +                command="node",
 +                args=["src/mcp/server.js"],
-+                cwd=self.xactions_path,
-+                env={"XACTIONS_MODE": os.getenv("XACTIONS_MODE") or "local"},
++                cwd=self.medirus_path,
++                env={"MEDIRUS_MODE": os.getenv("MEDIRUS_MODE") or "local"},
 +            )
 +
 +        npx = shutil.which("npx")
 +        if npx:
 +            return StdioServerParameters(
 +                command=npx,
-+                args=["xactions-mcp"],
-+                env={"XACTIONS_MODE": os.getenv("XACTIONS_MODE") or "local"},
++                args=["medirus-mcp"],
++                env={"MEDIRUS_MODE": os.getenv("MEDIRUS_MODE") or "local"},
 +            )
 +
 +        raise RuntimeError(
-+            "XActions not configured: set XACTIONS_PATH to a local checkout, "
-+            "or ensure `npx xactions-mcp` is available."
++            "Medirus not configured: set MEDIRUS_PATH to a local checkout, "
++            "or ensure `npx medirus-mcp` is available."
 +        )
 +
 +    def _proxy_redis_connect_timeout(self) -> float:
@@ -725,7 +725,7 @@ index 8cf7e2178..ed300b872 100644
 +            return client
 +        except Exception as exc:
 +            logger.warning(
-+                "XActions proxy binding could not connect to Redis at %s: %s",
++                "Medirus proxy binding could not connect to Redis at %s: %s",
 +                config.REDIS_APP_URL,
 +                exc,
 +            )
@@ -742,7 +742,7 @@ index 8cf7e2178..ed300b872 100644
 +        client = self._get_proxy_redis_client()
 +        if client:
 +            try:
-+                client.hset(XACTIONS_PROXY_REDIS_KEY, account_id, proxy_url)
++                client.hset(MEDIRUS_PROXY_REDIS_KEY, account_id, proxy_url)
 +            except Exception as exc:
 +                logger.warning(
 +                    "Failed to persist proxy for %s to Redis: %s",
@@ -762,7 +762,7 @@ index 8cf7e2178..ed300b872 100644
 +        client = self._get_proxy_redis_client()
 +        if client:
 +            try:
-+                proxy = client.hget(XACTIONS_PROXY_REDIS_KEY, account_id)
++                proxy = client.hget(MEDIRUS_PROXY_REDIS_KEY, account_id)
 +                if proxy:
 +                    self._account_proxies[account_id] = proxy
 +                    return proxy
@@ -807,19 +807,19 @@ index 8cf7e2178..ed300b872 100644
 +        auth_cookie = params.get("auth_cookie") or {}
 +        c_user = (
 +            auth_cookie.get("c_user")
-+            or os.getenv("XACTIONS_FACEBOOK_C_USER", "")
-+            or getattr(config, "XACTIONS_FACEBOOK_C_USER", "")
++            or os.getenv("MEDIRUS_FACEBOOK_C_USER", "")
++            or getattr(config, "MEDIRUS_FACEBOOK_C_USER", "")
 +        )
 +        xs = (
 +            auth_cookie.get("xs")
-+            or os.getenv("XACTIONS_FACEBOOK_XS", "")
-+            or getattr(config, "XACTIONS_FACEBOOK_XS", "")
++            or os.getenv("MEDIRUS_FACEBOOK_XS", "")
++            or getattr(config, "MEDIRUS_FACEBOOK_XS", "")
 +        )
 +        if not c_user or not xs:
 +            raise ValueError(
 +                "Facebook scraping requires an auth cookie with c_user and xs. "
 +                "Pass auth_cookie={'c_user': '...', 'xs': '...'} or set "
-+                "XACTIONS_FACEBOOK_C_USER and XACTIONS_FACEBOOK_XS."
++                "MEDIRUS_FACEBOOK_C_USER and MEDIRUS_FACEBOOK_XS."
 +            )
 +        return {"c_user": str(c_user), "xs": str(xs)}
 +
@@ -864,7 +864,7 @@ index 8cf7e2178..ed300b872 100644
 +                "platform": "twitter",
 +            }
 +
-+        raise ValueError(f"Unsupported XActions tool action: {action}")
++        raise ValueError(f"Unsupported Medirus tool action: {action}")
 +
 +    def _extract_tool_text(self, result: Any) -> str:
 +        pieces = []
@@ -885,7 +885,7 @@ index 8cf7e2178..ed300b872 100644
 +            return json.loads(text)
 +        except json.JSONDecodeError as exc:
 +            logger.warning(
-+                "XActions MCP tool returned non-JSON text: %s",
++                "Medirus MCP tool returned non-JSON text: %s",
 +                exc,
 +            )
 +            raise
@@ -914,7 +914,7 @@ index 8cf7e2178..ed300b872 100644
 +                )
 +        except TimeoutError:
 +            logger.warning(
-+                "XActions MCP tool %s timed out after %.1fs",
++                "Medirus MCP tool %s timed out after %.1fs",
 +                tool_name,
 +                timeout,
 +            )
@@ -922,38 +922,38 @@ index 8cf7e2178..ed300b872 100644
 +
 +        if result.isError:
 +            text = self._extract_tool_text(result) or "unknown MCP error"
-+            raise XActionsMcpError(
-+                f"XActions MCP tool {tool_name} returned error: {text}"
++            raise MedirusMcpError(
++                f"Medirus MCP tool {tool_name} returned error: {text}"
 +            )
 +
 +        return self._extract_tool_result(result)
  
-     async def _execute_xactions_command(
+     async def _execute_medirus_command(
          self,
          action: str,
          params: dict[str, Any],
          account_id: str | None = None,
 +        timeout: float | None = None,
      ) -> dict[str, Any]:
--        """Execute XActions command delegating fingerprinting and stealth (AD-SOC-1, AD-SOC-2)."""
+-        """Execute Medirus command delegating fingerprinting and stealth (AD-SOC-1, AD-SOC-2)."""
 -        proxy = self.get_account_proxy(account_id) if account_id else self.default_proxy_url
 -        if proxy:
 -            params["proxy"] = proxy
-+        """Execute an XActions MCP tool and wrap the result for downstream mapping."""
++        """Execute an Medirus MCP tool and wrap the result for downstream mapping."""
 +        if timeout is None:
 +            timeout = self.default_timeout
  
--        # Check if local XActions installation is present
--        if not os.path.exists(self.xactions_path):
+-        # Check if local Medirus installation is present
+-        if not os.path.exists(self.medirus_path):
 +        try:
 +            tool_name, arguments = self._build_mcp_tool_args(
 +                action, params, account_id
 +            )
 +        except ValueError as exc:
              logger.warning(
--                "XActions directory not found at %s. Falling back to internal engine.",
--                self.xactions_path,
-+                "Invalid XActions tool arguments for %s: %s",
+-                "Medirus directory not found at %s. Falling back to internal engine.",
+-                self.medirus_path,
++                "Invalid Medirus tool arguments for %s: %s",
 +                action,
 +                exc,
              )
@@ -965,20 +965,20 @@ index 8cf7e2178..ed300b872 100644
 -            "-e",
 -            f"""
 -            const params = {json.dumps(params)};
--            // Simulation interface for XActions invocation
+-            // Simulation interface for Medirus invocation
 -            console.log(JSON.stringify({{ success: true, data: [] }}));
 -            """
 -        ]
 +            return {"success": False, "error": str(exc), "data": []}
 +
 +        # Resolve server parameters before the call; this raises a clear error
-+        # if XActions is not configured so we do not silently return empty data.
++        # if Medirus is not configured so we do not silently return empty data.
 +        server_params = self._resolve_mcp_server_params()
  
          try:
 -            proc = await asyncio.create_subprocess_exec(
 -                *cmd,
--                cwd=self.xactions_path,
+-                cwd=self.medirus_path,
 -                stdout=asyncio.subprocess.PIPE,
 -                stderr=asyncio.subprocess.PIPE,
 +            raw = await self._call_mcp_tool(
@@ -993,21 +993,21 @@ index 8cf7e2178..ed300b872 100644
 +        except TimeoutError:
 +            return {
 +                "success": False,
-+                "error": f"XActions MCP tool {tool_name} timed out",
++                "error": f"Medirus MCP tool {tool_name} timed out",
 +                "data": [],
 +            }
 +        except json.JSONDecodeError as exc:
 +            return {
 +                "success": False,
-+                "error": f"Invalid JSON from XActions MCP: {exc}",
++                "error": f"Invalid JSON from Medirus MCP: {exc}",
 +                "data": [],
 +            }
-+        except XActionsMcpError as exc:
++        except MedirusMcpError as exc:
 +            return {"success": False, "error": str(exc), "data": []}
          except Exception as exc:
--            logger.warning("Subprocess XActions call returned: %s. Returning fallback.", exc)
+-            logger.warning("Subprocess Medirus call returned: %s. Returning fallback.", exc)
 +            logger.warning(
-+                "XActions MCP tool %s failed: %s",
++                "Medirus MCP tool %s failed: %s",
 +                tool_name,
 +                exc,
 +                exc_info=True,
@@ -1033,23 +1033,23 @@ index 8cf7e2178..ed300b872 100644
  
      async def fetch_facebook_group_posts(
          self,
-@@ -137,6 +540,8 @@ class XActionsSocialAdapter:
+@@ -137,6 +540,8 @@ class MedirusSocialAdapter:
          limit: int = 20,
          account_id: str | None = None,
          proxy: str | None = None,
 +        auth_cookie: dict[str, str] | None = None,
 +        timeout: float | None = None,
      ) -> list[SocialPostData]:
-         """Ingest raw Facebook group posts using XActions stealth session."""
+         """Ingest raw Facebook group posts using Medirus stealth session."""
          if proxy and account_id:
-@@ -146,36 +551,81 @@ class XActionsSocialAdapter:
+@@ -146,36 +551,81 @@ class MedirusSocialAdapter:
              "group_id": group_id,
              "limit": limit,
              "account_id": account_id,
 +            "auth_cookie": auth_cookie,
          }
--        res = await self._execute_xactions_command("x_facebook_group_posts", payload, account_id)
-+        res = await self._execute_xactions_command(
+-        res = await self._execute_medirus_command("x_facebook_group_posts", payload, account_id)
++        res = await self._execute_medirus_command(
 +            "x_facebook_group_posts",
 +            payload,
 +            account_id,
@@ -1058,7 +1058,7 @@ index 8cf7e2178..ed300b872 100644
          raw_items = res.get("data", []) if isinstance(res, dict) else []
 +        if not isinstance(raw_items, list):
 +            logger.warning(
-+                "XActions facebook group posts returned non-list data: %s",
++                "Medirus facebook group posts returned non-list data: %s",
 +                type(raw_items),
 +            )
 +            return []
@@ -1140,20 +1140,20 @@ index 8cf7e2178..ed300b872 100644
                      published_at=pub_date,
                  )
              )
-@@ -188,6 +638,7 @@ class XActionsSocialAdapter:
+@@ -188,6 +638,7 @@ class MedirusSocialAdapter:
          limit: int = 20,
          account_id: str | None = None,
          proxy: str | None = None,
 +        timeout: float | None = None,
      ) -> list[SocialPostData]:
-         """Ingest Twitter keyword search tweets using XActions."""
+         """Ingest Twitter keyword search tweets using Medirus."""
          if proxy and account_id:
-@@ -198,34 +649,85 @@ class XActionsSocialAdapter:
+@@ -198,34 +649,85 @@ class MedirusSocialAdapter:
              "limit": limit,
              "account_id": account_id,
          }
--        res = await self._execute_xactions_command("x_search_tweets", payload, account_id)
-+        res = await self._execute_xactions_command(
+-        res = await self._execute_medirus_command("x_search_tweets", payload, account_id)
++        res = await self._execute_medirus_command(
 +            "x_search_tweets",
 +            payload,
 +            account_id,
@@ -1162,7 +1162,7 @@ index 8cf7e2178..ed300b872 100644
          raw_items = res.get("data", []) if isinstance(res, dict) else []
 +        if not isinstance(raw_items, list):
 +            logger.warning(
-+                "XActions search tweets returned non-list data: %s",
++                "Medirus search tweets returned non-list data: %s",
 +                type(raw_items),
 +            )
 +            return []
@@ -1250,7 +1250,7 @@ index 8cf7e2178..ed300b872 100644
                      media_urls=raw.get("media_urls") or [],
                      published_at=pub_date,
                  )
-@@ -239,9 +741,17 @@ class XActionsSocialAdapter:
+@@ -239,9 +741,17 @@ class MedirusSocialAdapter:
          redis_client: Any | None = None,
      ) -> str:
          """AD-SOC-4: Push ingested social post to Redis Stream 'stream:social:raw_posts'."""
@@ -1271,7 +1271,7 @@ index 8cf7e2178..ed300b872 100644
  
          payload = {
              "platform": post.platform,
-@@ -254,9 +764,25 @@ class XActionsSocialAdapter:
+@@ -254,9 +764,25 @@ class MedirusSocialAdapter:
              "reactions_count": str(post.reactions_count),
              "comments_count": str(post.comments_count),
              "shares_count": str(post.shares_count),
@@ -1336,8 +1336,8 @@ index f769e3a46..f24436425 100644
  from app.config import config
 -from app.db import SocialPost, async_session_maker
 +from app.db import Lead, SocialMonitoredTarget, SocialPost, async_session_maker
- from app.proprietary.platforms.xactions.adapter import STREAM_SOCIAL_RAW_POSTS
- from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
+ from app.proprietary.platforms.medirus.adapter import STREAM_SOCIAL_RAW_POSTS
+ from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
  
  logger = logging.getLogger(__name__)
  
@@ -2051,19 +2051,19 @@ index 000000000..21b296d80
 +        "DROP TABLE IF EXISTS social_posts CASCADE;",
 +        "DROP TABLE IF EXISTS social_monitored_targets CASCADE;",
 +    )
-diff --git a/nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py b/nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py
+diff --git a/nowing_backend/app/tasks/celery_tasks/social_medirus_ingest.py b/nowing_backend/app/tasks/celery_tasks/social_medirus_ingest.py
 new file mode 100644
 index 000000000..6b7a915b1
 --- /dev/null
-+++ b/nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py
++++ b/nowing_backend/app/tasks/celery_tasks/social_medirus_ingest.py
 @@ -0,0 +1,239 @@
-+"""Celery scheduler & per-target ingest for XActions social targets (Story 21.8).
++"""Celery scheduler & per-target ingest for Medirus social targets (Story 21.8).
 +
 +The meta-scheduler ``check_social_monitored_targets`` runs every minute and
 +spawns ``ingest_social_target`` for each active ``SocialMonitoredTarget`` whose
 +``scrape_interval_minutes`` has elapsed since ``last_scraped_at``.
 +
-+The per-target task uses ``XActionsSocialAdapter`` to fetch posts and pushes
++The per-target task uses ``MedirusSocialAdapter`` to fetch posts and pushes
 +each one to Redis Stream ``stream:social:raw_posts`` with the target's
 +``workspace_id`` and internal ``target_id`` attached. Downstream
 +``social_stream_worker`` picks up the stream, extracts entities, and UPSERTs
@@ -2082,12 +2082,12 @@ index 000000000..6b7a915b1
 +from app.celery_app import CONNECTORS_QUEUE, celery_app
 +from app.config import config
 +from app.db import SocialMonitoredTarget
-+from app.proprietary.platforms.xactions.adapter import XActionsSocialAdapter
++from app.proprietary.platforms.medirus.adapter import MedirusSocialAdapter
 +from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
 +
 +logger = logging.getLogger(__name__)
 +
-+SOCIAL_TARGET_LOCK_KEY = "xactions:social_target_lock:{target_id}"
++SOCIAL_TARGET_LOCK_KEY = "medirus:social_target_lock:{target_id}"
 +SOCIAL_TARGET_LOCK_MIN_TTL_SECONDS = 300  # 5 minutes
 +DEFAULT_FETCH_LIMIT = 20
 +
@@ -2164,7 +2164,7 @@ index 000000000..6b7a915b1
 +                return 0
 +
 +            try:
-+                adapter = XActionsSocialAdapter()
++                adapter = MedirusSocialAdapter()
 +                posts: list = []
 +
 +                if target.platform == "facebook_group":
@@ -2296,13 +2296,13 @@ index 000000000..6b7a915b1
 +    finally:
 +        with contextlib.suppress(Exception):
 +            await redis_client.aclose()
-diff --git a/nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py b/nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py
+diff --git a/nowing_backend/tests/unit/tasks/celery_tasks/test_social_medirus_ingest.py b/nowing_backend/tests/unit/tasks/celery_tasks/test_social_medirus_ingest.py
 new file mode 100644
 index 000000000..ce0c68afc
 --- /dev/null
-+++ b/nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py
++++ b/nowing_backend/tests/unit/tasks/celery_tasks/test_social_medirus_ingest.py
 @@ -0,0 +1,305 @@
-+"""Unit tests for XActions social target scheduler & per-target ingest."""
++"""Unit tests for Medirus social target scheduler & per-target ingest."""
 +
 +from __future__ import annotations
 +
@@ -2313,8 +2313,8 @@ index 000000000..ce0c68afc
 +
 +import pytest
 +
-+from app.proprietary.platforms.xactions.adapter import SocialPostData
-+from app.tasks.celery_tasks import social_xactions_ingest
++from app.proprietary.platforms.medirus.adapter import SocialPostData
++from app.tasks.celery_tasks import social_medirus_ingest
 +
 +pytestmark = pytest.mark.unit
 +
@@ -2411,7 +2411,7 @@ index 000000000..ce0c68afc
 +        yield session
 +
 +    monkeypatch.setattr(
-+        social_xactions_ingest,
++        social_medirus_ingest,
 +        "get_celery_session_maker",
 +        lambda: _session_ctx,
 +    )
@@ -2419,16 +2419,16 @@ index 000000000..ce0c68afc
 +    client = _fake_redis_client()
 +    fake_aioredis = MagicMock()
 +    fake_aioredis.from_url.return_value = client
-+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++    monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 +
 +    delay_mock = MagicMock()
 +    monkeypatch.setattr(
-+        social_xactions_ingest.ingest_social_target_task,
++        social_medirus_ingest.ingest_social_target_task,
 +        "delay",
 +        delay_mock,
 +    )
 +
-+    triggered = await social_xactions_ingest._check_and_trigger_social_targets()
++    triggered = await social_medirus_ingest._check_and_trigger_social_targets()
 +
 +    assert triggered == 1
 +    delay_mock.assert_called_once_with(target.id)
@@ -2448,7 +2448,7 @@ index 000000000..ce0c68afc
 +        yield session
 +
 +    monkeypatch.setattr(
-+        social_xactions_ingest,
++        social_medirus_ingest,
 +        "get_celery_session_maker",
 +        lambda: _session_ctx,
 +    )
@@ -2456,16 +2456,16 @@ index 000000000..ce0c68afc
 +    client = _fake_redis_client()
 +    fake_aioredis = MagicMock()
 +    fake_aioredis.from_url.return_value = client
-+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++    monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 +
 +    delay_mock = MagicMock()
 +    monkeypatch.setattr(
-+        social_xactions_ingest.ingest_social_target_task,
++        social_medirus_ingest.ingest_social_target_task,
 +        "delay",
 +        delay_mock,
 +    )
 +
-+    triggered = await social_xactions_ingest._check_and_trigger_social_targets()
++    triggered = await social_medirus_ingest._check_and_trigger_social_targets()
 +
 +    assert triggered == 0
 +    delay_mock.assert_not_called()
@@ -2484,7 +2484,7 @@ index 000000000..ce0c68afc
 +        yield session
 +
 +    monkeypatch.setattr(
-+        social_xactions_ingest,
++        social_medirus_ingest,
 +        "get_celery_session_maker",
 +        lambda: _session_ctx,
 +    )
@@ -2492,7 +2492,7 @@ index 000000000..ce0c68afc
 +    client = _fake_redis_client()
 +    fake_aioredis = MagicMock()
 +    fake_aioredis.from_url.return_value = client
-+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++    monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 +
 +    post = SocialPostData(
 +        platform="facebook",
@@ -2504,12 +2504,12 @@ index 000000000..ce0c68afc
 +    mock_adapter.ingest_raw_post_to_stream = AsyncMock(return_value="123-0")
 +
 +    monkeypatch.setattr(
-+        social_xactions_ingest,
-+        "XActionsSocialAdapter",
++        social_medirus_ingest,
++        "MedirusSocialAdapter",
 +        lambda: mock_adapter,
 +    )
 +
-+    ingested = await social_xactions_ingest._ingest_social_target(target.id)
++    ingested = await social_medirus_ingest._ingest_social_target(target.id)
 +
 +    assert ingested == 1
 +    assert post.target_id == target.id
@@ -2544,7 +2544,7 @@ index 000000000..ce0c68afc
 +        yield session
 +
 +    monkeypatch.setattr(
-+        social_xactions_ingest,
++        social_medirus_ingest,
 +        "get_celery_session_maker",
 +        lambda: _session_ctx,
 +    )
@@ -2552,7 +2552,7 @@ index 000000000..ce0c68afc
 +    client = _fake_redis_client()
 +    fake_aioredis = MagicMock()
 +    fake_aioredis.from_url.return_value = client
-+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++    monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 +
 +    post = SocialPostData(
 +        platform="twitter",
@@ -2564,12 +2564,12 @@ index 000000000..ce0c68afc
 +    mock_adapter.ingest_raw_post_to_stream = AsyncMock(return_value="456-0")
 +
 +    monkeypatch.setattr(
-+        social_xactions_ingest,
-+        "XActionsSocialAdapter",
++        social_medirus_ingest,
++        "MedirusSocialAdapter",
 +        lambda: mock_adapter,
 +    )
 +
-+    ingested = await social_xactions_ingest._ingest_social_target(target.id)
++    ingested = await social_medirus_ingest._ingest_social_target(target.id)
 +
 +    assert ingested == 1
 +    assert post.target_id == target.id
@@ -2593,7 +2593,7 @@ index 000000000..ce0c68afc
 +        yield session
 +
 +    monkeypatch.setattr(
-+        social_xactions_ingest,
++        social_medirus_ingest,
 +        "get_celery_session_maker",
 +        lambda: _session_ctx,
 +    )
@@ -2601,9 +2601,9 @@ index 000000000..ce0c68afc
 +    client = _fake_redis_client(acquired=False)
 +    fake_aioredis = MagicMock()
 +    fake_aioredis.from_url.return_value = client
-+    monkeypatch.setattr(social_xactions_ingest, "aioredis", fake_aioredis)
++    monkeypatch.setattr(social_medirus_ingest, "aioredis", fake_aioredis)
 +
-+    ingested = await social_xactions_ingest._ingest_social_target(target.id)
++    ingested = await social_medirus_ingest._ingest_social_target(target.id)
 +
 +    assert ingested == 0
 +    assert session.commits == 0

@@ -1,4 +1,4 @@
-"""``topcv.scrape`` executor: proxies to XActions via MCP with local fallback."""
+"""``topcv.scrape`` executor: proxies to Medirus via MCP with local fallback."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from uuid import uuid4
 import httpx
 
 from app.capabilities.core import Executor
+from app.capabilities.core.medirus_proxy import make_medirus_executor
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
-from app.capabilities.core.xactions_proxy import make_xactions_executor
 from app.config import config
 from app.proprietary.platforms.topcv import scrape_topcv
 from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
@@ -43,7 +43,7 @@ def _next_action(degradation_reason: str | None) -> str | None:
 
 
 def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
-    """Return an executor that calls XActions via MCP with fallback to local scraper."""
+    """Return an executor that calls Medirus via MCP with fallback to local scraper."""
 
     _scrape = scrape_fn or scrape_topcv
 
@@ -80,7 +80,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
 
         raw: dict[str, Any] = {}
         try:
-            proxy = make_xactions_executor(
+            proxy = make_medirus_executor(
                 platform="topcv",
                 action="search_jobs",
                 args_mapper=lambda i: {
@@ -97,7 +97,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             raw = await proxy(input, ctx)
         except Exception as exc:
             logger.warning(
-                "XActions topcv search failed (%s); falling back to local scraper",
+                "Medirus topcv search failed (%s); falling back to local scraper",
                 exc,
             )
             try:

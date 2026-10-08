@@ -30,10 +30,10 @@ from .sequences import (
 )
 from .signals import SignalEvent, SignalSubscription
 from .social import (
+    MedirusProxyBinding,
     OutcomeEvent,
     SocialMonitoredTarget,
     SocialPost,
-    XActionsProxyBinding,
     ZaloConnection,
     ZaloMessageLog,
 )
@@ -56,6 +56,7 @@ __all__ = [
     "LeadScore",
     "LinkedinCompany",
     "LinkedinJob",
+    "MedirusProxyBinding",
     "OutboundMessage",
     "OutcomeEvent",
     "PhoneWaterfallLog",
@@ -70,7 +71,6 @@ __all__ = [
     "SocialPost",
     "TelegramCheckpointMessage",
     "VerifiedContact",
-    "XActionsProxyBinding",
     "ZaloConnection",
     "ZaloMessageLog",
 ]

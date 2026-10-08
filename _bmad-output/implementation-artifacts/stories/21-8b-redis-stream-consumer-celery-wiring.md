@@ -10,7 +10,7 @@ story: 8b
 **Status:** `done`  
 **Epic:** Epic 21 — Lead Gen Intelligence  
 **Governed by:** AD-SOC-4, AD-SOC-6, AD-SOC-7  
-**Split from:** Story 21.8 — Social Ingress via XActions Integration (baseline)
+**Split from:** Story 21.8 — Social Ingress via Medirus Integration (baseline)
 
 ---
 
@@ -54,8 +54,8 @@ so that ingested social posts are processed into `SocialPost` and `Lead` records
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-09-xactions-21-8-correction.md]
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-xactions-social-integration-2026-08-15/INTEGRATION-PLAN-2026-09-09.md]
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md]
+- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-09-medirus-21-8-correction.md]
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-medirus-social-integration-2026-08-15/INTEGRATION-PLAN-2026-09-09.md]
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-medirus-social-integration-2026-08-15/ARCHITECTURE-SPINE.md]
 - [Code: nowing_backend/app/tasks/celery_tasks/social_stream_worker.py]
 - [Code: nowing_backend/app/celery_app.py]

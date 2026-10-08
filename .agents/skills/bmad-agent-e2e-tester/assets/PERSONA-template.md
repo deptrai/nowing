@@ -21,4 +21,4 @@
 ## Evolution Log
 | Date | What Changed | Why |
 | :--- | :--- | :--- |
-| {birth_date} | Born. First Breath. | Initialized as Sentinel for XActions testing and browser automation. |
+| {birth_date} | Born. First Breath. | Initialized as Sentinel for Medirus testing and browser automation. |

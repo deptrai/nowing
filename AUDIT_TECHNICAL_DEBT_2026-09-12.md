@@ -108,7 +108,7 @@ Top-level packages mới so với audit cũ: `admin/`, `alerts/`, `automations/`
 - **Đề xuất**: giữ nguyên đề xuất cũ — dependency injection cho RBAC; 268 call sites là audit surface lớn cho authz bugs.
 
 #### 5. Mutation-gate baseline đang hỏng
-- Artifact: `_bmad-output/test-artifacts/mutation-nowing-summary-latest.json` (2026-09-09): verdict **FAIL** — `cosmic-ray baseline failed` cho `proprietary/platforms/xactions/mcp_client` (exit 1), từ `scripts/mutation-gate.py:331`. Reproduce: `python scripts/mutation-gate.py --services proprietary/platforms/xactions/mcp_client --project-root .`.
+- Artifact: `_bmad-output/test-artifacts/mutation-nowing-summary-latest.json` (2026-09-09): verdict **FAIL** — `cosmic-ray baseline failed` cho `proprietary/platforms/medirus/mcp_client` (exit 1), từ `scripts/mutation-gate.py:331`. Reproduce: `python scripts/mutation-gate.py --services proprietary/platforms/medirus/mcp_client --project-root .`.
 - Gate không chạy được = không có tín hiệu test-effectiveness cho surface đó.
 - **Đề xuất**: sửa baseline trước khi gate mất uy tín; thêm alert khi verdict=FAIL.
 
@@ -151,7 +151,7 @@ Top-level packages mới so với audit cũ: `admin/`, `alerts/`, `automations/`
 1. **Xóa dead files** (`db.py.legacy`, `*.bak`, 143 file rác root) — 1 giờ, diff âm lớn.
 2. **Mở rộng PR guard** `except Exception` sang `tasks/`, `agents/`, `gateway/`, `connectors/` — nửa ngày, chặn điểm tăng trưởng thật.
 3. **Codemod 89 block `except: pass`** → `logger.debug`/`logger.exception` — 1–2 ngày, khôi phục observability.
-4. **Fix mutation-gate baseline** xactions/mcp_client — gate hỏng lâu sẽ bị ignore.
+4. **Fix mutation-gate baseline** medirus/mcp_client — gate hỏng lâu sẽ bị ignore.
 5. **`RequirePermission` dependency** — giảm 268 call-site authz thủ công, đây là attack surface thật.
 6. **Tiếp tục tách `services/`/`routes/` theo domain** ở ngưỡng ~800 dòng — duy trì đà refactor đang rất tốt, đừng để thế hệ giant mới hình thành.
 7. **`no-console` rule + alembic downgrade CI** — quick wins còn nợ từ audit trước.

@@ -27,7 +27,7 @@ def test_topcv_scrape_is_registered_and_billable():
 
 class TestTopCVExecutorEscalation:
     """Story 12-2, Item 5: anti-bot escalation un-gated on None run_id / ctx.
-    Story 40.2: Uses XActions proxy instead of local scrape_topcv."""
+    Story 40.2: Uses Medirus proxy instead of local scrape_topcv."""
 
     @pytest.mark.asyncio
     async def test_escalation_triggers_with_fallback_uuid_when_ctx_is_none(
@@ -39,7 +39,7 @@ class TestTopCVExecutorEscalation:
 
         captured_delay: list[dict] = []
 
-        # Mock the XActions proxy to return degraded response
+        # Mock the Medirus proxy to return degraded response
         mock_proxy = AsyncMock(
             return_value={
                 "items": [],
@@ -52,7 +52,7 @@ class TestTopCVExecutorEscalation:
         )
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            "app.capabilities.topcv.scrape.executor.make_medirus_executor",
             lambda **kwargs: mock_proxy,
         )
         monkeypatch.setattr(
@@ -91,7 +91,7 @@ class TestTopCVExecutorEscalation:
         )
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            "app.capabilities.topcv.scrape.executor.make_medirus_executor",
             lambda **kwargs: mock_proxy,
         )
         monkeypatch.setattr(
@@ -131,7 +131,7 @@ class TestTopCVExecutorEscalation:
         )
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            "app.capabilities.topcv.scrape.executor.make_medirus_executor",
             lambda **kwargs: mock_proxy,
         )
         monkeypatch.setattr(
@@ -146,11 +146,11 @@ class TestTopCVExecutorEscalation:
         assert len(captured_delay) == 0
 
     @pytest.mark.asyncio
-    async def test_falls_back_to_local_when_xactions_fails(self, monkeypatch):
+    async def test_falls_back_to_local_when_medirus_fails(self, monkeypatch):
         from app.capabilities.topcv.scrape.executor import build_scrape_executor
 
         mock_proxy = AsyncMock(
-            side_effect=RuntimeError("XActions 501 Unsupported method")
+            side_effect=RuntimeError("Medirus 501 Unsupported method")
         )
         mock_local = AsyncMock(
             return_value={
@@ -160,7 +160,7 @@ class TestTopCVExecutorEscalation:
         )
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            "app.capabilities.topcv.scrape.executor.make_medirus_executor",
             lambda **kwargs: mock_proxy,
         )
 
@@ -175,11 +175,11 @@ class TestTopCVExecutorEscalation:
     async def test_safe_degraded_output_when_both_fail(self, monkeypatch):
         from app.capabilities.topcv.scrape.executor import build_scrape_executor
 
-        mock_proxy = AsyncMock(side_effect=RuntimeError("XActions down"))
+        mock_proxy = AsyncMock(side_effect=RuntimeError("Medirus down"))
         mock_local = AsyncMock(side_effect=RuntimeError("Local scraper network down"))
 
         monkeypatch.setattr(
-            "app.capabilities.topcv.scrape.executor.make_xactions_executor",
+            "app.capabilities.topcv.scrape.executor.make_medirus_executor",
             lambda **kwargs: mock_proxy,
         )
 

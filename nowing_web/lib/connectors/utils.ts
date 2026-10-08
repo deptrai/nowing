@@ -32,7 +32,7 @@ export const getConnectorTypeDisplay = (type: string): string => {
 		OBSIDIAN_CONNECTOR: "Obsidian",
 		DROPBOX_CONNECTOR: "Dropbox",
 		MCP_CONNECTOR: "MCP Server",
-		XACTIONS_MCP_CONNECTOR: "XActions Social",
+		MEDIRUS_MCP_CONNECTOR: "Medirus Social",
 		EXA_MCP_CONNECTOR: "Exa",
 	};
 	return typeMap[type] || type;

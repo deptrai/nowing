@@ -39,7 +39,7 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.proprietary.platforms.batdongsan.fetch import fetch_detail_phone
 from app.proprietary.platforms.chotot.fetch import fetch_phone as chotot_fetch_phone
-from app.proprietary.platforms.xactions.phone_extractor import (
+from app.proprietary.platforms.medirus.phone_extractor import (
     convert_legacy_11_digit,
     extract_phone_numbers,
 )

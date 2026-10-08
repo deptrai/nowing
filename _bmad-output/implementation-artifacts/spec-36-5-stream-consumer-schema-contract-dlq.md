@@ -8,7 +8,7 @@ review_loop_iteration: 1
 context:
   - '../planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md#ad-3'
   - '../planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md#ad-4'
-  - '../planning-artifacts/XACTIONS-REQUIREMENTS-2026-09-13.md#req-x2'
+  - '../planning-artifacts/MEDIRUS-REQUIREMENTS-2026-09-13.md#req-x2'
   - 'epic-36-context.md'
 ---
 
@@ -16,7 +16,7 @@ context:
 
 ## Intent
 
-**Problem:** Khi XActions REQ-X2 live, mọi crawler sẽ emit thin event vào `stream:social:raw_posts` theo schema `{..., content_snippet, workspace_id, schema_version}`. Consumer `social_stream_worker` hiện tại (a) chỉ đọc field `content` (bỏ sót `content_snippet`), (b) `ValidationError` → `return None` → **message vẫn nằm trong PEL** và bị re-deliver mãi, (c) drop ngầm event thiếu `workspace_id`/`target_id` mà không vào DLQ, (d) không có lag probe nên khi consumer chết, stream cứ tích tới `MAXLEN ~1M` rồi truncate mất data.
+**Problem:** Khi Medirus REQ-X2 live, mọi crawler sẽ emit thin event vào `stream:social:raw_posts` theo schema `{..., content_snippet, workspace_id, schema_version}`. Consumer `social_stream_worker` hiện tại (a) chỉ đọc field `content` (bỏ sót `content_snippet`), (b) `ValidationError` → `return None` → **message vẫn nằm trong PEL** và bị re-deliver mãi, (c) drop ngầm event thiếu `workspace_id`/`target_id` mà không vào DLQ, (d) không có lag probe nên khi consumer chết, stream cứ tích tới `MAXLEN ~1M` rồi truncate mất data.
 
 **Approach:** Siết contract ở consumer theo AD-3/AD-4: (1) thêm `AliasChoices("content","content_snippet")` và `schema_version` vào `SocialPostEvent`; (2) phân loại lỗi thành schema-violation (thiếu field bắt buộc, `schema_version` quá max) vs runtime-failure, cả hai đều route sang `stream:social:failed` kèm `dlq_reason` rồi `XACK` — message không bao giờ nằm lại trong PEL; (3) wrap `json.dumps` DLQ bằng try/except fallback `repr()`; (4) thêm lag probe `XINFO GROUPS`/`XPENDING` trong consumer loop log warning khi vượt ngưỡng.
 
@@ -68,7 +68,7 @@ context:
   - Module constants (line ~36-40): thêm `SUPPORTED_SCHEMA_VERSION_MAX = 1`, `SOCIAL_STREAM_LAG_WARN_THRESHOLD = 1000`, và constants `DLQ_REASON_*` cho các reason string.
   - `run_social_stream_consumer` (line ~530-651): bọc `process_social_post_event` bằng `_validate_event_schema(payload)` trước — hàm này trả `(ok, dlq_reason)`; nếu `not ok` → DLQ + XACK, skip `process_social_post_event`. Trong DLQ write path, bọc `json.dumps(payload)` bằng `_safe_serialize_payload(payload)` trả `str`.
   - Thêm `_check_stream_lag(redis_client)` async helper: `XINFO GROUPS` + `XPENDING` count-only, log warning khi `pending > SOCIAL_STREAM_LAG_WARN_THRESHOLD`. Gọi 1 lần mỗi consumer run (không phải mỗi message).
-- `nowing_backend/app/proprietary/platforms/xactions/constants.py` — tái sử dụng `STREAM_SOCIAL_DEAD_LETTER` đã có (hiện tại `social_stream_worker` đang hard-code chuỗi; cân nhắc unify nhưng không bắt buộc).
+- `nowing_backend/app/proprietary/platforms/medirus/constants.py` — tái sử dụng `STREAM_SOCIAL_DEAD_LETTER` đã có (hiện tại `social_stream_worker` đang hard-code chuỗi; cân nhắc unify nhưng không bắt buộc).
 - `nowing_backend/tests/unit/tasks/test_social_stream_worker.py` — thêm unit tests cho `SocialPostEvent` alias + version gate + DLQ routing + lag probe.
 
 ## Tasks & Acceptance
@@ -78,7 +78,7 @@ context:
 - [x] `nowing_backend/tests/unit/tasks/test_social_stream_worker.py` — thêm tests cover I/O matrix: alias content_snippet, missing workspace_id, missing content, schema_version > max, schema_version invalid type, ValidationError → DLQ, `json.dumps` fallback `repr()`, lag probe trigger + NOGROUP case.
 
 **Acceptance Criteria:**
-- Given event XActions-format `{content_snippet, workspace_id, target_id, schema_version:1}`, when consumer parse, then `event.content` chứa giá trị `content_snippet` và upsert `social_post` thành công.
+- Given event Medirus-format `{content_snippet, workspace_id, target_id, schema_version:1}`, when consumer parse, then `event.content` chứa giá trị `content_snippet` và upsert `social_post` thành công.
 - Given event thiếu `workspace_id` VÀ `target_id` không resolve được workspace, when consumer nhận, then message vào `stream:social:failed` với `dlq_reason=MISSING_WORKSPACE_ID` và được XACK (không còn trong PEL).
 - Given event `schema_version=2` khi `SUPPORTED_SCHEMA_VERSION_MAX=1`, when consumer nhận, then message vào DLQ với `dlq_reason=UNSUPPORTED_SCHEMA_VERSION`, XACK, không raise.
 - Given `json.dumps(payload)` throw `TypeError`, when DLQ write path chạy, then `xadd` vẫn thành công với `payload=repr(payload)` và message được XACK.
@@ -88,7 +88,7 @@ context:
 
 ## Design Notes
 
-**Tại sao không feature-flag:** Spec gốc Epic 36 ghi 36.5 "Depends on 36.4 + REQ-X2", nhưng phụ thuộc đó là *thứ tự deploy* (consumer phải sẵn sàng trước khi XActions emit), không phải *toggle runtime*. Schema validation + DLQ routing là pure hardening — event format cũ vẫn parse được (alias + default `schema_version=1`), nên không cần flag.
+**Tại sao không feature-flag:** Spec gốc Epic 36 ghi 36.5 "Depends on 36.4 + REQ-X2", nhưng phụ thuộc đó là *thứ tự deploy* (consumer phải sẵn sàng trước khi Medirus emit), không phải *toggle runtime*. Schema validation + DLQ routing là pure hardening — event format cũ vẫn parse được (alias + default `schema_version=1`), nên không cần flag.
 
 **Tại sao lag probe nhúng trong consumer thay vì Celery beat riêng:** giữ blast radius tối thiểu — một chỗ sửa, một task test. Nếu cần probe độc lập sau, tách ra story riêng.
 
@@ -101,7 +101,7 @@ context:
 
 **Commands:**
 - `cd nowing_backend && uv run pytest tests/unit/tasks/test_social_stream_worker.py -v` — expected: all pass.
-- `cd nowing_backend && uv run pytest tests/unit/tasks/ tests/unit/platforms/xactions/ -q` — expected: no regression.
+- `cd nowing_backend && uv run pytest tests/unit/tasks/ tests/unit/platforms/medirus/ -q` — expected: no regression.
 - `cd nowing_backend && uv run ruff check app/tasks/social_stream_worker.py tests/unit/tasks/test_social_stream_worker.py` — expected: clean.
 
 ## Suggested Review Order
@@ -149,6 +149,6 @@ context:
 
 - [x] [Review][Decision] `process_social_post_event` return type `dict | None` → `ProcessResult` — spec "Never" cấm đổi signature (line 42), impl đã đổi sang `ProcessResult` dataclass. **Resolved 2026-09-14**: reverted code — `process_social_post_event` trả `dict | None` đúng contract; `_validate_event_schema` (trả `ValidationResult` tuple) vẫn là nơi phân loại `dlq_reason` theo spec. Bỏ `ProcessResult` dataclass.
 - [x] [Review][Decision] `DLQ_REASON_MISSING_TARGET_ID` không nằm trong spec I/O matrix — **Resolved 2026-09-14**: spec updated — thêm row "workspace_id valid + target_id missing → DLQ `MISSING_TARGET_ID`" vào I/O matrix. `_validate_event_schema` (schema-layer) giữ `MISSING_TARGET_ID`; `process_social_post_event` chỉ trả `dict | None`.
-- [x] [Review][Patch] Thiếu unit test assert `call_args.args[1]` payload — **Resolved 2026-09-14**: thêm `test_ingest_raw_post_to_stream_payload_has_no_none_values` verify None-filter, ISO datetime, JSON collection, `schema_version="1"`. [`tests/unit/platforms/test_xactions_adapter_v2.py`]
-- [x] [Review][Patch] `adapter_v2.ingest_raw_post_to_stream` không emit `schema_version` — **Resolved 2026-09-14**: thêm `"schema_version": "1"` vào payload. [`app/proprietary/platforms/xactions/adapter_v2.py`]
+- [x] [Review][Patch] Thiếu unit test assert `call_args.args[1]` payload — **Resolved 2026-09-14**: thêm `test_ingest_raw_post_to_stream_payload_has_no_none_values` verify None-filter, ISO datetime, JSON collection, `schema_version="1"`. [`tests/unit/platforms/test_medirus_adapter_v2.py`]
+- [x] [Review][Patch] `adapter_v2.ingest_raw_post_to_stream` không emit `schema_version` — **Resolved 2026-09-14**: thêm `"schema_version": "1"` vào payload. [`app/proprietary/platforms/medirus/adapter_v2.py`]
 - [x] [Review][Defer] `_LAG_STATE` module-global throttle không hiệu quả multi-process — mỗi worker process probe độc lập. Trade-off có chủ đích, probe cost nhỏ (30s interval). [`app/tasks/social_stream_worker.py:64`] — deferred, design trade-off

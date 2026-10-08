@@ -27,8 +27,8 @@ backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
 sys.path.insert(0, str(backend_dir.parent / "nowing_evals/src"))
 
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
-from app.proprietary.platforms.xactions.tax_code import extract_tax_ids
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.tax_code import extract_tax_ids
 
 BASE_URL = os.environ.get("NOWING_API_BASE", "http://localhost:8000")
 USER_EMAIL = os.environ.get("NOWING_USER_EMAIL", "e2e-test@nowing.net")

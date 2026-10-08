@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.capabilities.core import Executor
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
-from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.config import config
 from app.proprietary.platforms.masothue import (
     MasothueAccessBlockedError,
@@ -74,7 +74,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             return await scrape(actor_input)
 
         try:
-            raw = await xactions_scrape_or_local(
+            raw = await medirus_scrape_or_local(
                 platform="masothue",
                 action="search",
                 args=payload.model_dump(exclude_unset=True),

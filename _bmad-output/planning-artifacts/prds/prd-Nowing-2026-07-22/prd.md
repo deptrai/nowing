@@ -15,7 +15,7 @@ canonical: true
 > 
 > * **🔵 Nowing (Product & CRM Hub):** AI Gen Leads Enterprise — Sở hữu User, Auth, Billing, Lead CRM, PII Vault AES-256 (Nghị định 13/2023), Confidence Gate (Story 21.21), Drip Outbound (Zalo OA/Telegram/Email), và Autonomous Workstation UI.
 > * **🟢 ChainLens-Research (Strategy Brain & Market GPS):** Động cơ nghiên cứu sâu/rộng (Deep/Wide Research), phân tích thị trường và phát hiện phân khúc ICP trước khi xuất quân săn lead; cung cấp Search & Citation API độc lập (Exa-like).
-> * **🟣 XActions Microservice (Tactical Execution Engine):** Chuyên trách 100% cào dữ liệu thô, vượt rào cản kỹ thuật (Anti-bot, WAF, Captcha, Signer `a_bogus`/`msToken`, SocksNode Proxy Pool) và phát dữ liệu qua MCP Daemon Port 3001 & Redis Stream.
+> * **🟣 Medirus Microservice (Tactical Execution Engine):** Chuyên trách 100% cào dữ liệu thô, vượt rào cản kỹ thuật (Anti-bot, WAF, Captcha, Signer `a_bogus`/`msToken`, SocksNode Proxy Pool) và phát dữ liệu qua MCP Daemon Port 3001 & Redis Stream.
 
 ---
 
@@ -27,7 +27,7 @@ Tài liệu này là **Bản PRD Hợp Nhất (Canonical PRD)** tích hợp toà
 |---|:---:|---|:---:|
 | **Nền tảng Cốt lõi & Workspace** | **FR-1 .. FR-42** | Auth, RBAC, Connectors, Memory (HNSW), Chat Citations, Deliverables, Automations, Clients | `[DONE / STABLE]` |
 | **HR & Recruitment Intelligence** *(Amendment 1)* | **FR-43 .. FR-47** | Cào tuyển dụng TopCV, VietnamWorks, ITviec, bóc tách lương, PII Redaction (Epic 12) | `[DONE]` |
-| **Multi-Domain Market Scrapers** *(Amendment 1)* | **FR-49 .. FR-55** | BĐS Batdongsan/Chotot, E-com Shopee/TikTok Shop, Đăng ký kinh doanh, Đấu thầu (Epics 14–20) | `[DONE / DELEGATED TO XACTIONS]` |
+| **Multi-Domain Market Scrapers** *(Amendment 1)* | **FR-49 .. FR-55** | BĐS Batdongsan/Chotot, E-com Shopee/TikTok Shop, Đăng ký kinh doanh, Đấu thầu (Epics 14–20) | `[DONE / DELEGATED TO MEDIRUS]` |
 | **Lead Gen Intelligence & Outbound** *(Amendment 1)* | **FR-63 .. FR-69** | Intent Signals, Phone Waterfall 3 tầng, Zalo OA / Telegram Outbound, Credit Unlock (Epic 21) | `[IN-PROGRESS / S21.21 ACTIVE]` |
 | **Telegram Stream Daemon & Bot** *(Amendment 1)* | **FR-70 .. FR-79** | Telegram MTProto Stream, Checkpoint Bot, 3s Inline Callbacks (Epic 22) | `[DONE]` |
 | **Enterprise Lead Infrastructure** *(Amendment 1)* | **FR-89 .. FR-92** | Celery Worker Pool, Zalo OA ZNS, VietQR Affiliate Payout, Lead Partitioning & RLS (Epic 23) | `[DONE]` |
@@ -54,7 +54,7 @@ Gõ từ khóa ──► Cào mù quáng hàng ngàn tin ──► Đốt hàng 
 Phân tích tin tức thị trường, chính sách, đối thủ ──► Nhận diện phân khúc ICP & Bộ từ khóa chuẩn xác.
         │
         ▼ (Tọa độ săn lead chính xác)
-[BƯỚC 2: PRECISION HARVESTING (XActions Engine)]
+[BƯỚC 2: PRECISION HARVESTING (Medirus Engine)]
 Chỉ cào đúng các hội nhóm/sàn mục tiêu ──► Tiết kiệm 80% chi phí cào và token.
         │
         ▼ (Raw Data đúng tệp 100%)
@@ -70,8 +70,8 @@ Kích hoạt tin nhắn Zalo OA / Telegram / Email Drip được cá nhân hóa 
 
 1. 🧠 **Market GPS & Trí Não Chiến Lược (Powered by ChainLens):**
    * Không bắt đầu bằng việc cào bừa bãi. Nowing phân tích bức tranh vĩ mô và vi mô của thị trường, bóc tách chân dung khách hàng tiềm năng cao nhất (ICP), từ đó lập kế hoạch săn lead với độ chính xác tuyệt đối.
-2. 🎯 **Săn Lead & Dữ Liệu Sạch $0 Token COGS (Powered by XActions + Story 21.21):**
-   * Thu thập dữ liệu đa kênh (Facebook Groups, Chợ Tốt, Shopee, TopCV, Đăng ký kinh doanh) qua XActions.
+2. 🎯 **Săn Lead & Dữ Liệu Sạch $0 Token COGS (Powered by Medirus + Story 21.21):**
+   * Thu thập dữ liệu đa kênh (Facebook Groups, Chợ Tốt, Shopee, TopCV, Đăng ký kinh doanh) qua Medirus.
    * Lọc sạch dữ liệu bằng **Confidence Gate** (Pass 1 Deterministic 0 token + Pass 2 Selective Micro-LLM) để đạt độ chính xác SĐT $\ge 95\%$.
    * Bảo mật PII theo tiêu chuẩn Nghị định 13/2023/NĐ-CP với mã hóa AES-256 Fernet và HMAC-SHA256 deduplication.
 3. 💬 **Trạm Làm Việc Bán Hàng & Chốt Sales Đa Kênh (In-house Nowing):**
@@ -364,7 +364,7 @@ So that I can verify business partners and research market players via the Nowin
 - Given a user searches by company name or tax code, when the query is submitted, then `chainlens-research` `POST /api/v1/search` returns the company profile.
 - Given company data contains PII, before ingest, then AD-25 redaction applies.
 
-**Status:** `[RE-SCOPED]` — feed/crawl infrastructure partially done (Epic 16: Story 16.1 masothue and 16.5 public procurement done; 16.2 official business registry delegated to XActions). Nowing does not keep a local company index.
+**Status:** `[RE-SCOPED]` — feed/crawl infrastructure partially done (Epic 16: Story 16.1 masothue and 16.5 public procurement done; 16.2 official business registry delegated to Medirus). Nowing does not keep a local company index.
 
 #### FR-52: E-commerce Intelligence (Epic 17) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As a product researcher,
@@ -376,7 +376,7 @@ So that I can perform pricing analysis and competitor tracking via the Nowing ch
 - Given product `Chunk[]` are produced, when the batch is ready, then `POST /v1/ingest/scraper` on `chainlens-research` is called with `source: 'nowing_scraper'` and a stable `sourceId`.
 - Given products from multiple platforms, when indexed, then `chainlens-research` canonical index handles deduplication.
 
-**Status:** `[RE-SCOPED]` — feed/crawl infrastructure partially done (Epic 17: Story 17.2 Shopee done; 17.1 Lazada and 17.5 TikTok Shop blocked-by-external XActions). Nowing does not keep a local product index.
+**Status:** `[RE-SCOPED]` — feed/crawl infrastructure partially done (Epic 17: Story 17.2 Shopee done; 17.1 Lazada and 17.5 TikTok Shop blocked-by-external Medirus). Nowing does not keep a local product index.
 
 #### FR-53: Social Media Integration (Epic 18 — REMOVED, feature covered by E10)
 As a social media analyst,

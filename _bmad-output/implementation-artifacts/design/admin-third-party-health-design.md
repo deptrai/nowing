@@ -153,7 +153,7 @@ Với mỗi platform trong `nowing_backend/app/proprietary/platforms/`, chạy p
 | vietnamworks | Job search v1.0 | API deprecation / token expiry |
 | vietstock | Ticker `HPG` trading info | Session cookie / RequestVerificationToken |
 | walmart | Search UPC/keyword | PerimeterX / 403 |
-| xactions | Lead resolver test | Upstream outage / throttling |
+| medirus | Lead resolver test | Upstream outage / throttling |
 | youtube | InnerTube search `Nowing` | Consent wall / IP block |
 
 **UI dạng grid 25 ô, mỗi ô có:**

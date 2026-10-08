@@ -21,7 +21,7 @@ _EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\
 
 
 class SocialLeadAdapter(LeadSourceAdapter):
-    """Adapter bridging Facebook Groups and Twitter feed via XActions."""
+    """Adapter bridging Facebook Groups and Twitter feed via Medirus."""
 
     source_name = "social"
     category = LeadSourceCategory.SOCIAL
@@ -44,7 +44,7 @@ class SocialLeadAdapter(LeadSourceAdapter):
         filters: dict[str, Any] | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Call underlying XActions / Facebook / Twitter routines."""
+        """Call underlying Medirus / Facebook / Twitter routines."""
         return []
 
     async def search_leads(

@@ -210,7 +210,7 @@ def main():
         "sanctum_path": str(sanctum_path),
         "agent-title": "Master E2E & Full-Stack Test Marshal",
         "vibe-prompt": "Empirical, rigorous, methodical, unforgiving of unverified claims, zero tolerance for mocks or fake tests.",
-        "bond-summary": f"{config.get('user_name', 'Luis')} (XActions Founder & Lead Developer)",
+        "bond-summary": f"{config.get('user_name', 'Luis')} (Medirus Founder & Lead Developer)",
     }
 
     sanctum_path.mkdir(parents=True, exist_ok=True)

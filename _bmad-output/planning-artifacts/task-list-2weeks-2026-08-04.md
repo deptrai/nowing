@@ -52,7 +52,7 @@
 | **B4** | **Lead management** — CRUD lead, trạng thái, gán listing | `bmad-create-story` | Quản lý người mua liên hệ | P1 | ✅ Story 5.2 + UX spec |
 | **B5** | **AI viết tin đăng** trong form đăng tin | `bmad-create-story` → `bmad-spec` | Hook free mạnh nhất | P1 | ✅ Story 4.3 + UX spec |
 | **B6** | **Nowing engine client** — contract API giữa bdsai và Nowing | `bmad-architecture` → `bmad-spec` | Tích hợp engine | P1 | ✅ Story 7.1 + spec + AD |
-| **B7** | **Browser extension MVP** — lưu listing từ BDS/Chợ Tốt vào workspace | `bmad-create-story` → `bmad-spec` | Thay Xaction proxy, hợp pháp hơn | P2 | ✅ Story 7.2a + 7.2b + UX spec |
+| **B7** | **Browser extension MVP** — lưu listing từ BDS/Chợ Tốt vào workspace | `bmad-create-story` → `bmad-spec` | Thay Medirus proxy, hợp pháp hơn | P2 | ✅ Story 7.2a + 7.2b + UX spec |
 | **B8** | **Public marketplace tinh chỉnh** — listing card, AI summary buyer | `bmad-ux` → `bmad-create-story` | Trang rao vặt hoàn thiện | P2 | ✅ Story 3.6 |
 
 ### Tài liệu đã tạo
@@ -86,7 +86,7 @@
 - [ ] ❌ Thu phí
 - [ ] ❌ Tài khoản ảo / đóng vai môi giới / scrape-viết-lại-giấu-nguồn
 - [ ] ❌ Auto lấy số điện thoại / kho PII tập trung
-- [ ] ❌ Xaction proxy auto-post Facebook/Batdongsan/Chợ Tốt (đã bỏ)
+- [ ] ❌ Medirus proxy auto-post Facebook/Batdongsan/Chợ Tốt (đã bỏ)
 
 ---
 

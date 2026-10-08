@@ -35,8 +35,8 @@ from app.lead_intelligence.services.deduplication_service import (
     EntityDeduplicationService,
 )
 from app.lead_intelligence.services.lead_gen_orchestrator import LeadGenOrchestrator
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
-from app.proprietary.platforms.xactions.tax_code import extract_tax_ids
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.tax_code import extract_tax_ids
 from app.services.lead_batch_service import LeadBatchService
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 

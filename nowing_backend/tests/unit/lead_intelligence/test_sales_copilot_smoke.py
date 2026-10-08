@@ -2,7 +2,7 @@
 
 Verifies the 3 primary pillars of the Sales Copilot Loop:
 1. ChainLens Research Market Analysis (HMAC auth + SSE stream).
-2. XActions Social Intent & Vietnamese Phone Extractor (obfuscated regex + intent mapping).
+2. Medirus Social Intent & Vietnamese Phone Extractor (obfuscated regex + intent mapping).
 3. MultiSourceLeadGen Orchestrator with Buyer Intent & Smoke Test flag.
 """
 
@@ -19,7 +19,7 @@ from app.lead_intelligence.schemas import (
     MultiSourceLeadGenRequest,
 )
 from app.lead_intelligence.services.lead_gen_orchestrator import LeadGenOrchestrator
-from app.proprietary.platforms.xactions.phone_extractor import (
+from app.proprietary.platforms.medirus.phone_extractor import (
     SocialEntityExtractor,
     classify_social_intent,
     extract_phone_numbers,
@@ -53,8 +53,8 @@ async def test_smoke_1_chainlens_auth_and_outbound_headers():
     assert int(parts[1]) > 0
 
 
-async def test_smoke_2_xactions_social_intent_and_phone_extraction():
-    """Smoke Test 2: XActions Social Intent classification & phone extractor."""
+async def test_smoke_2_medirus_social_intent_and_phone_extraction():
+    """Smoke Test 2: Medirus Social Intent classification & phone extractor."""
     # Test post 1: BĐS bán nhà có số điện thoại viết lách
     post_text_bds = "Chính chủ cần bán gấp căn nhà phố Cầu Giấy giá 6.5 tỷ, liên hệ ngay O912.345.678 (không chín một hai)"
     intent_bds = classify_social_intent(post_text_bds)

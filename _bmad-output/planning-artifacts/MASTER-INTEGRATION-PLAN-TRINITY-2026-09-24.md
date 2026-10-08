@@ -1,21 +1,21 @@
 ---
-title: Master Integration Plan — Nowing × XActions × ChainLens (Trinity Ecosystem)
+title: Master Integration Plan — Nowing × Medirus × ChainLens (Trinity Ecosystem)
 type: integration-plan
 status: approved
 created: 2026-09-24
 author: Winston (System Architect)
 repositories:
   - nowing: /Users/luisphan/Documents/GitHub/nowing
-  - xactions: /Users/luisphan/Documents/GitHub/XActions
+  - medirus: /Users/luisphan/Documents/GitHub/Medirus
   - chainlens: /Users/luisphan/Documents/GitHub/chainlens-research
 governed_by:
   - architecture-Nowing-2026-09-13 (AD-1..11, AD-SOC-1..11)
-  - xactions-api-contract-epic46 (AD-14, AD-16..19, FR-116..119)
+  - medirus-api-contract-epic46 (AD-14, AD-16..19, FR-116..119)
   - architecture-jev-decision-service-2026-09-21 (AD-J1..J8)
   - architecture-unified-nowing-chainlens-dsh-2026-08-17 (AD-101..110)
 ---
 
-# Master Integration Plan — Nowing × XActions × ChainLens
+# Master Integration Plan — Nowing × Medirus × ChainLens
 
 **Ngày lập:** 2026-09-24  
 **Kiến trúc sư phụ trách:** Winston (System Architect)  
@@ -29,11 +29,11 @@ Sau khi quét sâu toàn bộ 3 repository, hệ sinh thái đang ở vị thế
 
 1. **Nowing (`nowing/`):**
    * ✅ **Epic 39 (Jev Decision Layer) ĐÃ HOÀN TẤT:** `DecisionService` (`app/services/decision/`), `jev_router.py` (vị trí số 10 trong `stack.py`), entity dedup scoring, voice semantic gate, và telemetry dashboard đã sẵn sàng.
-   * ✅ **Cầu nối XActions đã dựng sẵn:** `app/proprietary/platforms/xactions/adapter_v2.py` và `mcp_client.py` đã code xong logic đóng gói `{platform, action, args, context}` và lắng nghe `stream:social:raw_posts`.
+   * ✅ **Cầu nối Medirus đã dựng sẵn:** `app/proprietary/platforms/medirus/adapter_v2.py` và `mcp_client.py` đã code xong logic đóng gói `{platform, action, args, context}` và lắng nghe `stream:social:raw_posts`.
    * ⚠️ **Tồn dư kỹ thuật:** Vẫn duy trì 22 platform scrapers nội bộ trong `app/proprietary/platforms/` gây phình to Docker image và trùng lặp logic bảo trì.
-   * ⚠️ **API Playground:** Giao diện `nowing_web/app/dashboard/[workspace_id]/playground/` đang nối vào các scraper cục bộ thay vì ủy thác sang XActions.
+   * ⚠️ **API Playground:** Giao diện `nowing_web/app/dashboard/[workspace_id]/playground/` đang nối vào các scraper cục bộ thay vì ủy thác sang Medirus.
 
-2. **XActions (`XActions/`):**
+2. **Medirus (`Medirus/`):**
    * 🔄 **Epic 46 (API Contract & OpenAPI 3.1) ĐANG TRIỂN KHAI:** Đã scaffold schemas trong `api/schemas/` (`auth`, `checkpoints`, `common`, `crm`, `optimizer`, `session`, `viral`) và middleware validation/envelopes.
    * ⚠️ **Điểm nghẽn:** `src/mcp/server.js` hiện chỉ expose các tools mạng xã hội rời rạc; chưa expose tool gom `x_scrape(platform, action, args, context)` và `x_actions_list` theo chuẩn AD-2.
 
@@ -46,12 +46,12 @@ Sau khi quét sâu toàn bộ 3 repository, hệ sinh thái đang ở vị thế
 ## 2. Mục tiêu Kiến trúc (Strategic Architectural Goals)
 
 1. **Quy tắc Single Responsibility:**
-   * **XActions** là động cơ cào duy nhất (Sole Scraping Engine) cho mọi domain (BĐS, Chợ Tốt, Việc làm, Mạng xã hội, E-com).
+   * **Medirus** là động cơ cào duy nhất (Sole Scraping Engine) cho mọi domain (BĐS, Chợ Tốt, Việc làm, Mạng xã hội, E-com).
    * **Nowing** là trung tâm điều phối (Business & Agent Orchestrator), quản lý người dùng, workspace, credits và giao diện người dùng.
    * **ChainLens** là động cơ nghiên cứu sâu (Stateless Deep Research Engine).
-2. **Loại bỏ trùng lặp bảo trì (Zero Double Maintenance):** Toàn bộ việc đối phó với Cloudflare, anti-bot, proxy xoay vòng và thay đổi DOM của website mục tiêu dồn 100% về XActions.
-3. **Bảo toàn trải nghiệm Playground:** Giữ nguyên giao diện API Playground trên `nowing_web`, biến backend thành Thin Proxy chuyển tiếp sang XActions có trừ credits.
-4. **Tối ưu hóa dữ liệu với Jev:** Dữ liệu cào từ XActions đổ về Redis Stream sẽ được Jev (Epic 39) deduplicate và lọc PII tự động trước khi ghi vào Database.
+2. **Loại bỏ trùng lặp bảo trì (Zero Double Maintenance):** Toàn bộ việc đối phó với Cloudflare, anti-bot, proxy xoay vòng và thay đổi DOM của website mục tiêu dồn 100% về Medirus.
+3. **Bảo toàn trải nghiệm Playground:** Giữ nguyên giao diện API Playground trên `nowing_web`, biến backend thành Thin Proxy chuyển tiếp sang Medirus có trừ credits.
+4. **Tối ưu hóa dữ liệu với Jev:** Dữ liệu cào từ Medirus đổ về Redis Stream sẽ được Jev (Epic 39) deduplicate và lọc PII tự động trước khi ghi vào Database.
 
 ---
 
@@ -68,14 +68,14 @@ flowchart TD
     subgraph NOWING ["🟢 NOWING (Backend Orchestrator :8000)"]
         Agent["Main Agent (LangGraph)"]
         JevPreRouter["⭐ Jev Pre-Router (~300ms)"]
-        PlaygroundProxy["Scraper Playground Proxy<br/>(/scrapers/* -> XActions)"]
-        AdapterV2["XActions Adapter v2<br/>(Streamable-HTTP Client)"]
+        PlaygroundProxy["Scraper Playground Proxy<br/>(/scrapers/* -> Medirus)"]
+        AdapterV2["Medirus Adapter v2<br/>(Streamable-HTTP Client)"]
         StreamWorker["social_stream_worker<br/>(Redis Consumer Group)"]
         JevDedup["⚡ Jev Decision Layer (Epic 39)<br/>Entity Dedup & PII Guardrails"]
         DB[("PostgreSQL 16<br/>Leads & SocialPosts")]
     end
 
-    subgraph XACTIONS ["🟣 XACTIONS (Scraping Service :3001)"]
+    subgraph MEDIRUS ["🟣 MEDIRUS (Scraping Service :3001)"]
         XMCP["MCP Server :3001<br/>(x_scrape & x_actions_list)"]
         XDispatcher["scrape() Dispatcher (Epic 25)"]
         XCrawlers["10 Platform Crawlers<br/>(BĐS, Chợ Tốt, TopCV, Social...)"]
@@ -94,14 +94,14 @@ flowchart TD
     Agent --> JevPreRouter
     WebPlayground -->|"Billing Check -> Proxy"| PlaygroundProxy
 
-    %% Scraper Dispatch (Nowing -> XActions)
+    %% Scraper Dispatch (Nowing -> Medirus)
     Agent -->|"task(scraper) / preview"| AdapterV2
     PlaygroundProxy -->|"Test execution"| AdapterV2
     AdapterV2 -->|"x_scrape(platform, action, args, context)"| XMCP
     XMCP --> XDispatcher --> XCrawlers
     XDispatcher --> XProxy
 
-    %% Scraper Data Return (XActions -> Nowing)
+    %% Scraper Data Return (Medirus -> Nowing)
     XMCP --"Sync preview (≤30)"--> AdapterV2
     XCrawlers -->|"Bulk data (XADD)"| XStream
     XStream -->|"XREADGROUP"| StreamWorker
@@ -118,10 +118,10 @@ flowchart TD
 
 ## 4. Kế Hoạch Triển Khai Chi Tiết Theo 4 Giai Đoạn
 
-### 🚀 GIAI ĐOẠN 1: Chuẩn Hóa Cầu Nối `x_scrape` Phía XActions
-*Mục tiêu: Đảm bảo XActions expose đúng tool mà `adapter_v2.py` của Nowing đang chờ.*
+### 🚀 GIAI ĐOẠN 1: Chuẩn Hóa Cầu Nối `x_scrape` Phía Medirus
+*Mục tiêu: Đảm bảo Medirus expose đúng tool mà `adapter_v2.py` của Nowing đang chờ.*
 
-* **Task X1.1: Hoàn thiện Tool `x_scrape` trong `XActions/src/mcp/server.js` (AD-2)**
+* **Task X1.1: Hoàn thiện Tool `x_scrape` trong `Medirus/src/mcp/server.js` (AD-2)**
   * Bổ sung tool `x_scrape` vào mảng `TOOLS` của MCP Server:
     ```javascript
     {
@@ -143,7 +143,7 @@ flowchart TD
   * Map request vào `scrape(platform, action, args, context)` của dispatcher (`src/core/action-registry.js`).
   * Trả về 3-layer envelope: preview tối đa 30 records, báo cờ `stream: true`.
 
-* **Task X1.2: Hoàn thiện Tool `x_actions_list` trong `XActions/src/mcp/server.js` (AD-7)**
+* **Task X1.2: Hoàn thiện Tool `x_actions_list` trong `Medirus/src/mcp/server.js` (AD-7)**
   * Đảm bảo `x_actions_list` trả về danh mục action chuẩn (`platform`, `action`, `requiredArgs`, `optionalArgs`) để `action_matrix.py` bên Nowing có thể tự động đồng bộ (dynamic discovery).
 
 * **Task X1.3: Bảo toàn Hook Đẩy Redis Stream (`base-crawler.js` - AD-3)**
@@ -152,21 +152,21 @@ flowchart TD
 ---
 
 ### 🚀 GIAI ĐOẠN 2: Chuyển Đổi Gateway & Mở Rộng Playground Phía Nowing
-*Mục tiêu: Nowing chuyển sang sử dụng XActions làm động cơ cào mặc định; Playground hoạt động qua proxy.*
+*Mục tiêu: Nowing chuyển sang sử dụng Medirus làm động cơ cào mặc định; Playground hoạt động qua proxy.*
 
 * **Task N2.1: Hoàn tất Kích hoạt `adapter_v2.py` (Story 21.8a)**
-  * Bật cờ môi trường `NOWING_XACTIONS_USE_V2=true` để toàn bộ `task(scraper)` của subagents chuyển sang gọi `XActionsMcpClient.call_tool("x_scrape", ...)`.
-  * Verify luồng kết nối Streamable-HTTP giữa Nowing `:8000` và XActions `:3001/mcp`.
+  * Bật cờ môi trường `NOWING_MEDIRUS_USE_V2=true` để toàn bộ `task(scraper)` của subagents chuyển sang gọi `MedirusMcpClient.call_tool("x_scrape", ...)`.
+  * Verify luồng kết nối Streamable-HTTP giữa Nowing `:8000` và Medirus `:3001/mcp`.
 
 * **Task N2.2: Chuyển đổi các Endpoint Playground thành Thin Proxy**
   * Sửa các route điều khiển scraper trong `nowing_backend/app/routes/` phục vụ Playground UI:
     * Thay vì khởi tạo các class cào nội bộ (`BatdongsanPlatform()`, `ChototPlatform()`), router sẽ kiểm tra số dư credit của Workspace.
-    * Đóng gói tham số và gọi `XActionsMcpClient.call_tool("x_scrape", ...)`.
+    * Đóng gói tham số và gọi `MedirusMcpClient.call_tool("x_scrape", ...)`.
     * Trả kết quả chuẩn hóa về cho frontend Next.js.
   * Giữ nguyên 100% catalog icon và navigation trong `nowing_web/lib/playground/catalog.ts`.
 
-* **Task N2.3: Viết Integration Test Gateway Nowing ↔ XActions**
-  * Viết test tự động: Gửi lệnh cào thử 1 listing Chợ Tốt và 1 bài đăng Facebook qua `adapter_v2.py` $\rightarrow$ Xác nhận XActions nhận lệnh, trả preview $\le 30$ records và đẩy bản ghi vào Redis Stream.
+* **Task N2.3: Viết Integration Test Gateway Nowing ↔ Medirus**
+  * Viết test tự động: Gửi lệnh cào thử 1 listing Chợ Tốt và 1 bài đăng Facebook qua `adapter_v2.py` $\rightarrow$ Xác nhận Medirus nhận lệnh, trả preview $\le 30$ records và đẩy bản ghi vào Redis Stream.
 
 ---
 
@@ -203,16 +203,16 @@ flowchart TD
 
 | Rủi ro kỹ thuật | Mức độ | Biện pháp ngăn chặn (Mitigation) | Kế hoạch dự phòng (Rollback) |
 |---|---|---|---|
-| **XActions sập hoặc hết Proxy pool** | Cao | Cấu hình Circuit Breaker tại `adapter_v2.py`. XActions expose `/api/governor` để Nowing kiểm tra trạng thái proxy trước khi dispatch. | Báo trạng thái `scraper_temporarily_unavailable` thân thiện trên UI, chuyển tác vụ vào hàng đợi Celery để retry sau 10 phút thay vì đâm thẳng sập server. |
-| **Schema drift giữa XActions và Nowing** | Trung bình | XActions có Zod validation và commit spec `openapi.json` trong CI. Nowing dùng Pydantic để validate đầu vào. | `action_matrix.py` tự động fallback về `STATIC_FALLBACK_MATRIX` nếu catalog động bị lỗi format. |
+| **Medirus sập hoặc hết Proxy pool** | Cao | Cấu hình Circuit Breaker tại `adapter_v2.py`. Medirus expose `/api/governor` để Nowing kiểm tra trạng thái proxy trước khi dispatch. | Báo trạng thái `scraper_temporarily_unavailable` thân thiện trên UI, chuyển tác vụ vào hàng đợi Celery để retry sau 10 phút thay vì đâm thẳng sập server. |
+| **Schema drift giữa Medirus và Nowing** | Trung bình | Medirus có Zod validation và commit spec `openapi.json` trong CI. Nowing dùng Pydantic để validate đầu vào. | `action_matrix.py` tự động fallback về `STATIC_FALLBACK_MATRIX` nếu catalog động bị lỗi format. |
 | **Distributed Deadlock Nowing ↔ ChainLens** | Thấp | Cắt ngắn timeout xuống 5s tại `nowing-private-data-client.ts`. Nowing private data search chạy trên read-only replica. | ChainLens tự động fallback về chế độ web-only search nếu private search fail. |
 
 ---
 
 ## 6. Tiêu Chuẩn Nghiệm Thu Hoàn Thành (Definition of Done - DoD)
 
-1. ✅ **Giao tiếp thông suốt:** Nowing Agent và Playground gửi lệnh cào qua `XActionsMcpClient` nhận về preview hợp lệ và dữ liệu đầy đủ chảy qua Redis Stream.
+1. ✅ **Giao tiếp thông suốt:** Nowing Agent và Playground gửi lệnh cào qua `MedirusMcpClient` nhận về preview hợp lệ và dữ liệu đầy đủ chảy qua Redis Stream.
 2. ✅ **UI nhất quán:** Giao diện Playground trên `nowing_web` chạy mượt mà, người dùng test cào dữ liệu bình thường, credit trừ chính xác.
 3. ✅ **Codebase sạch sẽ:** 22 scraper cũ trong Nowing được giải phóng phần code cào, dung lượng Docker Nowing giảm rõ rệt.
-4. ✅ **Dữ liệu được làm sạch bởi Jev:** 100% bài post cào từ XActions về Nowing được phân loại và dedup qua Jev Decision Layer trước khi ghi DB.
+4. ✅ **Dữ liệu được làm sạch bởi Jev:** 100% bài post cào từ Medirus về Nowing được phân loại và dedup qua Jev Decision Layer trước khi ghi DB.
 5. ✅ **Test suites pass 100%:** Toàn bộ test suites liên quan đến scraper adapter v2, Jev decision service và ChainLens search chạy pass.

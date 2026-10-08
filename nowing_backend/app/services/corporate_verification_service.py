@@ -420,7 +420,7 @@ class CorporateVerificationService:
         ponytail: uses the same Vietnamese province regex as phone_extractor.
         If a recognized province is on one side of the comma, that side is the city.
         """
-        from app.proprietary.platforms.xactions.phone_extractor import (
+        from app.proprietary.platforms.medirus.phone_extractor import (
             _PROVINCES_COMBINED_REGEX,
         )
 

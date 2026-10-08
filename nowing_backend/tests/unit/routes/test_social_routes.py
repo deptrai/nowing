@@ -330,9 +330,9 @@ def test_create_social_target_matrix_422_unsupported_platform(
 ) -> None:
     """Flag ON + unsupported platform → 422 with ``detail.supported_platforms``."""
     from app.config import config
-    from app.proprietary.platforms.xactions.action_matrix import CanonicalActionMatrix
+    from app.proprietary.platforms.medirus.action_matrix import CanonicalActionMatrix
 
-    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+    monkeypatch.setattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", True)
     CanonicalActionMatrix.reset()
 
     session = _FakeSession(workspace=fake_workspace)
@@ -363,9 +363,9 @@ def test_create_social_target_matrix_422_ambiguous_platform(
 ) -> None:
     """Flag ON + ambiguous bare platform with multiple actions → 422."""
     from app.config import config
-    from app.proprietary.platforms.xactions.action_matrix import CanonicalActionMatrix
+    from app.proprietary.platforms.medirus.action_matrix import CanonicalActionMatrix
 
-    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+    monkeypatch.setattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", True)
     CanonicalActionMatrix.reset()
 
     session = _FakeSession(workspace=fake_workspace)
@@ -396,9 +396,9 @@ def test_create_social_target_matrix_success_supported_platform(
 ) -> None:
     """Flag ON + valid platform_kind → creates target successfully."""
     from app.config import config
-    from app.proprietary.platforms.xactions.action_matrix import CanonicalActionMatrix
+    from app.proprietary.platforms.medirus.action_matrix import CanonicalActionMatrix
 
-    monkeypatch.setattr(config, "XACTIONS_USE_UNIFIED_DISPATCH", True)
+    monkeypatch.setattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", True)
     CanonicalActionMatrix.reset()
 
     session = _FakeSession(workspace=fake_workspace)

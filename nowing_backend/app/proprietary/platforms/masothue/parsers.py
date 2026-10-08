@@ -220,7 +220,7 @@ def _extract_city_district_from_address(
     if not address:
         return None, None
 
-    from app.proprietary.platforms.xactions.phone_extractor import (
+    from app.proprietary.platforms.medirus.phone_extractor import (
         _PROVINCES_COMBINED_REGEX,
     )
 

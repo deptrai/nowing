@@ -7,7 +7,7 @@
 
 ## decision_needed
 
-- [x] [Review][Decision] **Working tree chứa scope-creep không thuộc Story 24.3**: `masothue/10.8` parser/tests, `MissionControlWidget.tsx` build fix, và toàn bộ `.agents/skills/bmad-agent-e2e-tester/` mới (XActions). Cần quyết định: (a) tách khỏi diff trước khi merge, (b) merge và chỉ định story sở hữu riêng, hay (c) giữ nguyên vì đã chọn review working tree.
+- [x] [Review][Decision] **Working tree chứa scope-creep không thuộc Story 24.3**: `masothue/10.8` parser/tests, `MissionControlWidget.tsx` build fix, và toàn bộ `.agents/skills/bmad-agent-e2e-tester/` mới (Medirus). Cần quyết định: (a) tách khỏi diff trước khi merge, (b) merge và chỉ định story sở hữu riêng, hay (c) giữ nguyên vì đã chọn review working tree.
 - [x] [Review][Decision] **Hình dạng response 409 OCC conflict**: backend trả `{"detail": {"current_version": ..., "current_stage_id": ...}}`, frontend `LeadKanbanBoard.tsx` đọc `err.data.current_version`. Sửa ở backend (trả flat body) hay frontend (đọc `err.data.detail.current_version / current_stage_id`)?
 - [x] [Review][Decision] **INV-23.6 role/assignment visibility**: chỉ owner/admin xem toàn bộ lead; member chỉ xem lead được assign. Enforce ở RLS policy (thêm `assigned_to_user_id` predicate) hay ở route query layer?
 
@@ -46,7 +46,7 @@
 - [x] [Review][Defer] `nowing_backend/tests/unit/services/test_billing_event_service.py` / `tests/unit/capabilities/test_billing.py` — monkeypatch `record_spend`. Đã ghi trong `test-review-24-3.md`; xử lý trong 4.9/4.10.
 - [x] [Review][Defer] Các call site trực tiếp `wallet_credit.apply_debit` trong `phone_waterfall_service.py`, `outcome_pricing_service.py`, `etl_credit_service.py`, `zns_client.py`, `web_crawl_credit_service.py`, `platform_scrape_credit_service.py` — chưa route qua `WorkspaceCreditService.record_spend`. Là nợ kỹ thuật pre-existing/nằm trong scope story khác; revisit khi sửa từng service.
 - [x] [Review][Defer] `nowing_web/components/leads/MissionControlWidget.tsx:239` — pre-existing TS build fix, không thuộc 24.3.
-- [x] [Review][Defer] `.agents/skills/bmad-agent-e2e-tester/` và `_bmad/memory/bmad-agent-e2e-tester/` — skill mới liên quan XActions, hoàn toàn ngoài scope 24.3; xử lý trong story agent/skill riêng.
+- [x] [Review][Defer] `.agents/skills/bmad-agent-e2e-tester/` và `_bmad/memory/bmad-agent-e2e-tester/` — skill mới liên quan Medirus, hoàn toàn ngoài scope 24.3; xử lý trong story agent/skill riêng.
 
 ## dismissed
 

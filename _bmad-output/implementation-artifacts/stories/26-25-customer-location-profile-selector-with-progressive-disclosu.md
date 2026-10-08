@@ -10,7 +10,7 @@ story: 25
 
 **Status:** `done`  
 **Epic:** 26 — Lead Intelligence  
-**Governed by:** FR-69.2, FR-85, AD-31, `epics.md` lines 3249–3265, `architecture-xactions-social-integration-2026-08-15`.  
+**Governed by:** FR-69.2, FR-85, AD-31, `epics.md` lines 3249–3265, `architecture-medirus-social-integration-2026-08-15`.  
 **Dependencies:** `app/services/location_normalize/` (Vietnamese geo normalization), Playbook Builder.
 
 ---

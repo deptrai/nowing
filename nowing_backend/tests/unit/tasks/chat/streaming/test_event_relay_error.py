@@ -42,7 +42,7 @@ async def test_event_relay_handles_on_tool_error_without_hanging():
             "event": "on_tool_error",
             "name": "topcv_scrape",
             "run_id": "run-topcv-1",
-            "data": {"error": RuntimeError("XActions connection refused")},
+            "data": {"error": RuntimeError("Medirus connection refused")},
             "tags": [],
             "metadata": {"langgraph_step": 1},
         }

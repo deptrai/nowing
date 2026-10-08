@@ -316,9 +316,9 @@ Full report: `_bmad-output/implementation-artifacts/e2e-gate-24-3.md`.
 
 Tổng hợp đã được lưu tại `_bmad-output/implementation-artifacts/review-24-3-triaged-findings.md`.
 
-- **decision_needed (3):** scope-creep trong working tree (masothue, MissionControl, XActions skill); hình dạng response 409 (backend vs frontend); cách enforce INV-23.6 role/assignment visibility (RLS vs route).
+- **decision_needed (3):** scope-creep trong working tree (masothue, MissionControl, Medirus skill); hình dạng response 409 (backend vs frontend); cách enforce INV-23.6 role/assignment visibility (RLS vs route).
 - **patch (25):** các vấn đề P0 về credit atomicity (`deduct_credits`, `refund_credits`, `record_spend`), exception contract `SpendCapExceededError`, lead assignment TOCTOU/capacity, RLS, Kanban 409 merge, E2E gaps, masothue parser regression, `mutation-gate.py` exec check.
-- **defer (6):** FakeAsyncSession seam, stub integration tests, monkeypatch tests, direct-debit paths thuộc story khác, MissionControl build fix, XActions skill.
+- **defer (6):** FakeAsyncSession seam, stub integration tests, monkeypatch tests, direct-debit paths thuộc story khác, MissionControl build fix, Medirus skill.
 - **dismissed (0).
 
 ### Review Patch Application — 2026-08-22

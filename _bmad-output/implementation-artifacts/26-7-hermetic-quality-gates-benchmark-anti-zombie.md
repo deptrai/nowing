@@ -39,10 +39,10 @@ baseline_commit: "f53475690"
 
 6. **MST Modulo 11 validator.**
    - No `is_valid_vietnam_tax_code` exists in the backend.
-   - **Decision:** Implement the validator in `nowing_backend/app/proprietary/platforms/xactions/tax_code.py` so the test endpoint can return `tax_ids_valid`. The `nowing_evals` benchmark does **not** re-implement or import the validator; it computes `mst_modulo11_accuracy` directly from the `tax_ids_valid` field in the endpoint/cassette response.
+   - **Decision:** Implement the validator in `nowing_backend/app/proprietary/platforms/medirus/tax_code.py` so the test endpoint can return `tax_ids_valid`. The `nowing_evals` benchmark does **not** re-implement or import the validator; it computes `mst_modulo11_accuracy` directly from the `tax_ids_valid` field in the endpoint/cassette response.
 
 7. **Phone extraction already has unit tests; do not duplicate.**
-   - `tests/unit/proprietary/platforms/xactions/test_phone_extractor.py` already covers 12+ phone variants, ReDoS, and entity extraction.
+   - `tests/unit/proprietary/platforms/medirus/test_phone_extractor.py` already covers 12+ phone variants, ReDoS, and entity extraction.
    - **Decision:** Extend the existing file with a `TestPhoneExtractionHermetic` class and a tax-code validator test. Do **not** create a new `test_phone_extractor_hermetic.py`.
 
 8. **Container lifecycle (AD-108) is already implemented.**
@@ -96,12 +96,12 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
   - [x] Subtask 1.5: Update the `Benchmark` protocol docstring and ensure any benchmark that does not implement replay rejects `mode=replay` with a clear `RuntimeError`.
 
 - [x] **Task 2: Backend extraction test endpoint (AC-1)**
-  - [x] Subtask 2.1: Create `nowing_backend/app/proprietary/platforms/xactions/tax_code.py` with:
+  - [x] Subtask 2.1: Create `nowing_backend/app/proprietary/platforms/medirus/tax_code.py` with:
     - `extract_tax_ids(text: str) -> list[str]` — returns candidate 10/13 digit tax IDs found in the text.
     - `is_valid_vietnam_tax_code(tax_id: str) -> bool` — implements the Vietnamese MST Modulo-11 check (10/13 digit variants). Validate against 100 known-good tax codes from masothue fixtures before ratifying.
   - [x] Subtask 2.2: Create `nowing_backend/app/services/lead_extraction_service.py` `LeadExtractionService.extract_from_text(text)`:
-    - Uses `app.proprietary.platforms.xactions.phone_extractor.SocialEntityExtractor` for phones and company-name heuristics.
-    - Uses `app.proprietary.platforms.xactions.tax_code` for tax IDs and validation.
+    - Uses `app.proprietary.platforms.medirus.phone_extractor.SocialEntityExtractor` for phones and company-name heuristics.
+    - Uses `app.proprietary.platforms.medirus.tax_code` for tax IDs and validation.
     - Does **not** call external APIs, write to DB, or debit credits.
     - Returns `ExtractedEntities(phones, tax_ids, company_name, tax_ids_valid)`.
   - [x] Subtask 2.3: Create schemas in `nowing_backend/app/schemas/extract_entities.py`: `ExtractEntitiesRequest` (`source_text: str`, `source_url: str | None`) and `ExtractEntitiesResponse` (`phones: list[str]`, `tax_ids: list[str]`, `tax_ids_valid: list[bool]`, `company_name: str | None`).
@@ -163,13 +163,13 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
   - [x] Subtask 6.3: Add unit tests that simulate a 61s hang and assert the call is cancelled/terminated.
 
 - [x] **Task 7: Hermetic backend unit/integration tests**
-  - [x] Subtask 7.1: Extend `tests/unit/proprietary/platforms/xactions/test_phone_extractor.py`:
+  - [x] Subtask 7.1: Extend `tests/unit/proprietary/platforms/medirus/test_phone_extractor.py`:
     - Add `TestPhoneExtractionHermetic` covering F1-style phone sets (legacy 11-digit, punctuation, +84 prefix, non-phone noise).
-    - Add `TestTaxCodeValidation` with known-good and known-bad MSTs if the validator is placed in `xactions/tax_code.py`.
+    - Add `TestTaxCodeValidation` with known-good and known-bad MSTs if the validator is placed in `medirus/tax_code.py`.
   - [x] Subtask 7.2: Add `tests/integration/services/test_lead_extraction_hermetic.py`:
     - Tests `LeadExtractionService.extract_from_text` with the test endpoint.
     - Uses `tests/e2e/fakes/mcp_runtime.py` to fake any MCP calls if `dsh_worker` is involved.
-  - [x] Subtask 7.3: Add `tests/unit/proprietary/platforms/xactions/test_tax_code.py` for `is_valid_vietnam_tax_code`.
+  - [x] Subtask 7.3: Add `tests/unit/proprietary/platforms/medirus/test_tax_code.py` for `is_valid_vietnam_tax_code`.
   - [x] Subtask 7.4: Add `nowing_evals/tests/suites/test_lead_extraction_regression.py` covering metric math, missing cassette handling, and gate pass/fail.
 
 - [x] **Task 8: CI / quality pipeline wiring**
@@ -197,7 +197,7 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
 - [x] [Review][Patch] Global `--mode` flag leaks into `extra_kwargs` and breaks `chat/quality` [`nowing_evals/src/nowing_evals/core/cli.py:1004-1009`, `nowing_evals/src/nowing_evals/suites/chat/quality/runner.py:475`]. Exclude `"mode"` from `extra_kwargs` in `_cmd_run` and rely on `ctx.mode`; or remove the `opts.get("mode")` fallback in chat/quality.
 - [x] [Review][Patch] `requires_auth_for_run = False` contradicts the spec design decision [`nowing_evals/src/nowing_evals/suites/lead_extraction/regression/runner.py:170`]. Set `True`, use `NOWING_JWT=dummy` for replay, and update `run-hermetic-gate.sh`.
 - [x] [Review][Patch] `hallucination_rate` treats `+84` / `84` / obfuscated phones as hallucinations [`nowing_evals/src/nowing_evals/suites/lead_extraction/regression/metrics.py:88`, `metrics.py:32-52`]. Normalize the source text with the same letter-to-digit, `+84`/`84`, and legacy-prefix pipeline before membership tests.
-- [x] [Review][Patch] `extract_tax_ids` cannot match spaced/dashed tax codes and may extract arbitrary 10-digit numbers [`nowing_backend/app/proprietary/platforms/xactions/tax_code.py:42-45, 60-76`]. Allow optional `[.\s-]` delimiters inside the main 10-digit group; exclude phone-pattern matches; add per-call timeout.
+- [x] [Review][Patch] `extract_tax_ids` cannot match spaced/dashed tax codes and may extract arbitrary 10-digit numbers [`nowing_backend/app/proprietary/platforms/medirus/tax_code.py:42-45, 60-76`]. Allow optional `[.\s-]` delimiters inside the main 10-digit group; exclude phone-pattern matches; add per-call timeout.
 - [x] [Review][Patch] Cassette recording writes unsanitized PII and has no usable `--record` flag [`nowing_evals/src/nowing_evals/suites/lead_extraction/regression/extractor_client.py:33, 42-53`]. Add a `--record` / `--record-cassettes` CLI flag wired to `RunContext`, sanitize phones/tax/company, and add a CI pre-commit check.
 - [x] [Review][Patch] `case_id` is used directly in a filesystem path, allowing cassette path traversal [`nowing_evals/src/nowing_evals/suites/lead_extraction/regression/extractor_client.py:23, 46`]. Validate `case_id` against `[a-zA-Z0-9_-]+` or `Path.resolve()` within `cassettes_dir` and reject escapes.
 - [x] [Review][Patch] CLI `--mode replay` is accepted by every benchmark, even those without replay support [`nowing_evals/src/nowing_evals/core/cli.py:1004-1012`]. Add `supports_replay: bool = False` to the `Benchmark` protocol; reject `mode=replay` for benchmarks that do not opt in.
@@ -215,15 +215,15 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
 - [x] [Review][Patch] `run-hermetic-gate.sh` skips the `ingest` step and `NOWING_JWT=dummy` [`nowing_evals/scripts/run-hermetic-gate.sh:1-11`]. Add the explicit `ingest` step and `NOWING_JWT=dummy` export (or align with the auth decision).
 - [x] [Review][Patch] `RunContext.mode` is typed as `str`, not `Literal["live", "replay"]` [`nowing_evals/src/nowing_evals/core/registry.py:50`]. Use `Literal` or add runtime validation in `cli.py`.
 - [x] [Review][Patch] `run_artifact.json` omits `raw_path` [`nowing_evals/src/nowing_evals/suites/lead_extraction/regression/runner.py:311-322`]. Include `raw_path` and use an atomic write helper.
-- [x] [Review][Patch] `test_tax_code.py` only uses 2 known-good fixtures and does not test `extract_tax_ids` edge cases [`nowing_backend/tests/unit/proprietary/platforms/xactions/test_tax_code.py:1-83`]. Add extraction tests for dot/space/dash/prefix MSTs and negative phone false-positives.
+- [x] [Review][Patch] `test_tax_code.py` only uses 2 known-good fixtures and does not test `extract_tax_ids` edge cases [`nowing_backend/tests/unit/proprietary/platforms/medirus/test_tax_code.py:1-83`]. Add extraction tests for dot/space/dash/prefix MSTs and negative phone false-positives.
 - [x] [Review][Patch] `nowing_evals` suite tests do not cover replay flow or `ExtractorClient` [`nowing_evals/tests/suites/test_lead_extraction_regression.py:1-93`]. Add end-to-end replay tests against committed cassettes, missing cassette handling, and a no-network/live-call assertion with `respx`.
 - [x] [Review][Patch] GitHub workflow `mode` input is ignored [`.github/workflows/lead-extraction-regression-gate.yml:17-21, 47-49`]. Pass the input to the script or remove it.
 - [x] [Review][Patch] `report_section` lacks the per-tag breakdown required by Subtask 3.8 [`nowing_evals/src/nowing_evals/suites/lead_extraction/regression/runner.py:329-356`]. Aggregate and print per-tag F1, hallucination, and MST averages.
 
 #### Deferred
 
-- [x] [Review][Defer] Pre-compile regex token pattern at module level in `phone_extractor.py` [`nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py:220-224`] — deferred, pre-existing
-- [x] [Review][Defer] Validate `is_valid_vietnam_tax_code` against 100 known-good masothue fixtures before ratifying [`nowing_backend/tests/unit/proprietary/platforms/xactions/test_tax_code.py:1-83`] — deferred, fixtures not yet available
+- [x] [Review][Defer] Pre-compile regex token pattern at module level in `phone_extractor.py` [`nowing_backend/app/proprietary/platforms/medirus/phone_extractor.py:220-224`] — deferred, pre-existing
+- [x] [Review][Defer] Validate `is_valid_vietnam_tax_code` against 100 known-good masothue fixtures before ratifying [`nowing_backend/tests/unit/proprietary/platforms/medirus/test_tax_code.py:1-83`] — deferred, fixtures not yet available
 - [x] [Review][Defer] Add FastMCP hermetic integration test for `dsh_worker` / `nowing_mcp` reusing `tests/e2e/fakes/mcp_runtime.py` — deferred, out of scope for the `nowing_evals` cassette suite; revisit when FastMCP transport is explicitly required
 
 ---
@@ -262,7 +262,7 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
 - `nowing_evals/data/lead_extraction/regression/cassettes/*.sse.jsonl` (recorded in live, sanitized, committed)
 - `nowing_evals/tests/suites/test_lead_extraction_regression.py`
 - `nowing_evals/scripts/run-hermetic-gate.sh`
-- `nowing_backend/app/proprietary/platforms/xactions/tax_code.py`
+- `nowing_backend/app/proprietary/platforms/medirus/tax_code.py`
 - `nowing_backend/app/services/lead_extraction_service.py`
 - `nowing_backend/app/schemas/extract_entities.py`
 - `nowing_backend/app/routes/extract_entities_routes.py`
@@ -278,7 +278,7 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
 - `nowing_evals/src/nowing_evals/core/registry.py` — add `mode` to `RunContext`.
 - `nowing_evals/data/.gitignore` — whitelist cassettes.
 - `nowing_backend/app/routes/__init__.py` — wire `extract_entities_routes`.
-- `nowing_backend/tests/unit/proprietary/platforms/xactions/test_phone_extractor.py` — extend.
+- `nowing_backend/tests/unit/proprietary/platforms/medirus/test_phone_extractor.py` — extend.
 - `nowing_backend/app/tasks/dsh_worker.py` — add 60s timeouts if missing.
 - `nowing_backend/app/proprietary/platforms/*/scraper.py` — add 60s browser/page timeouts if missing.
 - `nowing_backend/app/services/phone_waterfall_service.py` — add 60s timeout if missing.
@@ -295,7 +295,7 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
 - **CLI parser:** `nowing_evals/src/nowing_evals/core/cli.py:993-1004`.
 - **Chat regression gate pattern:** `nowing_evals/src/nowing_evals/suites/chat/regression/runner.py:504-514` and `1087-1090`.
 - **Generic gate limitation:** `nowing_evals/src/nowing_evals/core/gate.py:42-63`.
-- **Extraction code:** `nowing_backend/app/proprietary/platforms/xactions/phone_extractor.py`.
+- **Extraction code:** `nowing_backend/app/proprietary/platforms/medirus/phone_extractor.py`.
 - **Batch ingestion contract:** `nowing_backend/app/routes/lead_batch_routes.py:61-107`.
 - **Resolve phone endpoint (existing, not suitable for the benchmark):** `nowing_backend/app/routes/leads_routes.py:664-746`.
 - **Docker/tini/WAL (already in place):**
@@ -310,8 +310,8 @@ so that Epic 26 ships with automated quality gates (F1 Phone ≥ 98.0%, Hallucin
 # Backend unit/integration tests
 cd nowing_backend
 uv run ruff check .
-uv run pytest tests/unit/proprietary/platforms/xactions/test_phone_extractor.py -q
-uv run pytest tests/unit/proprietary/platforms/xactions/test_tax_code.py -q
+uv run pytest tests/unit/proprietary/platforms/medirus/test_phone_extractor.py -q
+uv run pytest tests/unit/proprietary/platforms/medirus/test_tax_code.py -q
 uv run pytest tests/integration/services/test_lead_extraction_hermetic.py -q
 
 # Eval suite tests
@@ -349,17 +349,17 @@ cd nowing_backend
 
 ### Q1 — Already implemented?
 
-- **Phone extraction helper exists in two places.** `app/proprietary/platforms/xactions/phone_extractor.py` (`SocialEntityExtractor`) is the most comprehensive (legacy 11-digit, obfuscated letters, ReDoS guard). `app/proprietary/platforms/telegram/entity_extractor.py` has a similar but less capable phone extractor. **Recommendation:** The test endpoint must use `xactions/phone_extractor.py`; do not create a third extractor or silently fall back to the Telegram version.
-- **Tax code extraction regex exists in masothue.** `app/proprietary/platforms/masothue/parsers.py:104-111` has `_extract_tax_code` (regex `\d{10,}` with dash stripping, no Modulo-11 validation). **Recommendation:** Refactor this into `app/proprietary/platforms/xactions/tax_code.py` and import it from masothue to avoid two regex sources of truth. If not, at least align the regexes.
+- **Phone extraction helper exists in two places.** `app/proprietary/platforms/medirus/phone_extractor.py` (`SocialEntityExtractor`) is the most comprehensive (legacy 11-digit, obfuscated letters, ReDoS guard). `app/proprietary/platforms/telegram/entity_extractor.py` has a similar but less capable phone extractor. **Recommendation:** The test endpoint must use `medirus/phone_extractor.py`; do not create a third extractor or silently fall back to the Telegram version.
+- **Tax code extraction regex exists in masothue.** `app/proprietary/platforms/masothue/parsers.py:104-111` has `_extract_tax_code` (regex `\d{10,}` with dash stripping, no Modulo-11 validation). **Recommendation:** Refactor this into `app/proprietary/platforms/medirus/tax_code.py` and import it from masothue to avoid two regex sources of truth. If not, at least align the regexes.
 - **No cassette/replay system exists in `nowing_evals`.** Safe to add new `core/cassette.py` and `ReplayClient`.
 - **No chaos/zombie monitor script exists.** `scripts/stress_google_search.py` is a live stress test but does not monitor `ps aux`; the new `chaos_scraper_stress.py` should reuse its logging/arg style but not its live scraping logic.
 
-**Verdict:** No exact duplicate that blocks the story, but extraction helpers are scattered. Dev must pick the canonical `xactions` phone extractor and decide whether to unify tax-code extraction with `masothue`.
+**Verdict:** No exact duplicate that blocks the story, but extraction helpers are scattered. Dev must pick the canonical `medirus` phone extractor and decide whether to unify tax-code extraction with `masothue`.
 
 ### Q2 — Simpler alternative?
 
-- **Phone:** `SocialEntityExtractor` from `xactions/phone_extractor.py` is the right tool; no simpler alternative.
-- **Tax code:** The regex already exists in `masothue/parsers.py`; the simpler alternative is to extract a shared `xactions/tax_code.py` and import it. This is simpler than writing a brand-new private regex and later discovering divergence.
+- **Phone:** `SocialEntityExtractor` from `medirus/phone_extractor.py` is the right tool; no simpler alternative.
+- **Tax code:** The regex already exists in `masothue/parsers.py`; the simpler alternative is to extract a shared `medirus/tax_code.py` and import it. This is simpler than writing a brand-new private regex and later discovering divergence.
 - **Stress test:** `scripts/stress_google_search.py` provides a proven pattern for long-running scraper stress tests; use it as a template for argument parsing and logging.
 - **Cassette loading:** `nowing_evals` suites already write JSONL artifacts and `RunArtifact` objects; a small `Cassette` dataclass in `core/cassette.py` is simpler than adding a full VCR-like dependency.
 

@@ -7,7 +7,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.lead_intelligence.adapters.base import (
     ContactCandidate,
     LeadSourceAdapter,
@@ -66,7 +66,7 @@ class JobMarketLeadAdapter(LeadSourceAdapter):
         async def _local() -> dict[str, Any]:
             return await scrape_topcv(params)
 
-        raw = await xactions_scrape_or_local(
+        raw = await medirus_scrape_or_local(
             platform="topcv",
             action="search_jobs",
             args={

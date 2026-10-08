@@ -262,10 +262,10 @@ MCP_SERVICES: dict[str, MCPServiceConfig] = {
         readonly_tools=frozenset({"web_search_exa", "web_fetch_exa"}),
         account_metadata_keys=["user_email"],
     ),
-    "xactions": MCPServiceConfig(
-        name="XActions",
-        mcp_url=getattr(config, "XACTIONS_MCP_URL", "http://localhost:3001/mcp"),
-        connector_type="XACTIONS_MCP_CONNECTOR",
+    "medirus": MCPServiceConfig(
+        name="Medirus",
+        mcp_url=getattr(config, "MEDIRUS_MCP_URL", "http://localhost:3333/mcp"),
+        connector_type="MEDIRUS_MCP_CONNECTOR",
         supports_dcr=False,
         allowed_tools=[
             "x_scrape",
@@ -302,7 +302,7 @@ LIVE_CONNECTOR_TYPES: frozenset[SearchSourceConnectorType] = frozenset(
         SearchSourceConnectorType.NOTION_CONNECTOR,
         SearchSourceConnectorType.CONFLUENCE_CONNECTOR,
         SearchSourceConnectorType.EXA_MCP_CONNECTOR,
-        SearchSourceConnectorType.XACTIONS_MCP_CONNECTOR,
+        SearchSourceConnectorType.MEDIRUS_MCP_CONNECTOR,
     }
 )
 

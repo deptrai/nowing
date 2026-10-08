@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.lead_intelligence.adapters._query_parser import (
     extract_listing_type_chotot,
     extract_price_range,
@@ -79,7 +79,7 @@ class ChototLeadAdapter(LeadSourceAdapter):
                 "degradation_reason": output.degradation_reason,
             }
 
-        raw = await xactions_scrape_or_local(
+        raw = await medirus_scrape_or_local(
             platform="chotot",
             action="search_listings",
             args={

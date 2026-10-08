@@ -27,7 +27,7 @@ Trong quá trình chạy thử end-to-end (E2E) tính năng **Sales Copilot / Qu
 - `playbooks` table đã tồn tại với `PlaybookScope.WORKSPACE` và `PlaybookScope.SYSTEM` (`nowing_backend/app/automations/persistence/models/playbook.py`).
 - Epic 21 stories (21.15, 21.20) và Epic 24.5 đã xây **Vertical Playbook Marketplace** với các preset sẵn.
 - Epic 6.6/6.7/6.9 đang **business-gated** (`gated sau pilot BĐS`) nhưng kỹ thuật đã có `AutomationDefinition.inputs.schema`, `PlanStep.params`, Jinja sandbox.
-- Architecture Spine ghi rõ: **anti-bot / social scraping thuộc `app/proprietary/platforms/{reddit,tiktok,instagram}`**, và Nowing phải **delegate raw scraping tới XActions** (`AD-SOC-1`, `AD-SOC-9`), không build headless crawler mới trong repo.
+- Architecture Spine ghi rõ: **anti-bot / social scraping thuộc `app/proprietary/platforms/{reddit,tiktok,instagram}`**, và Nowing phải **delegate raw scraping tới Medirus** (`AD-SOC-1`, `AD-SOC-9`), không build headless crawler mới trong repo.
 - `LeadGenOrchestrator` đã hỗ trợ `target_sources` và `MultiSourceLeadGenRequest`, dễ mở rộng thêm adapter.
 
 ### 1.3 Evidence
@@ -45,7 +45,7 @@ Trong quá trình chạy thử end-to-end (E2E) tính năng **Sales Copilot / Qu
 | Epic | Impact | Required Change |
 |---|---|---|
 | **Epic 6 — Automations** | Cao | Bổ sung AC cho user-defined playbooks, `scope` mở rộng, UI tạo playbook, RBAC enforcement. Cần mở lại 6-6a/6-7a/6-9a từ `backlog` nếu user-gated decision được dỡ. |
-| **Epic 21 — Lead Gen Intelligence** | Cao | Thêm adapter family `KOL Social Comment/Post` (YouTube/TikTok/Instagram) hoặc tích hợp XActions MCP; enrich `RawLeadRecord` với author, content, engagement. |
+| **Epic 21 — Lead Gen Intelligence** | Cao | Thêm adapter family `KOL Social Comment/Post` (YouTube/TikTok/Instagram) hoặc tích hợp Medirus MCP; enrich `RawLeadRecord` với author, content, engagement. |
 | **Epic 22 — Telegram** | Trung bình | Pattern MTProto / public web preview có thể tái dùng cho public social APIs; cần tránh duplicate. |
 | **Epic 24 — Lead Conversion / Marketplace** | Cao | Playbook Marketplace UI cần tab/filter `User / Admin / All`; cần phân quyền install & run. |
 | **Epic 18 — AgentConfig / Chat** | Trung bình | `AgentConfig` cần đọc `playbook.resources` / resource snippets để inject vào system prompt. |
@@ -67,7 +67,7 @@ Cần thêm hoặc sửa các story:
 |---|---|---|
 | **PRD §4.10** | Không định nghĩa KOL/social source, không định nghĩa user playbook scope | Bổ sung FR-69.x và FR-6.x |
 | **Epics.md 6.6 / 6.9** | Chỉ có `workspace` vs `system`; không có `user` (owner-only) | Cập nhật AC |
-| **Architecture Spine** | Đã có rule XActions delegation cho raw scraper; cần thêm adapter contract cho KOL social | AD mới hoặc cập nhật AD-19.1 |
+| **Architecture Spine** | Đã có rule Medirus delegation cho raw scraper; cần thêm adapter contract cho KOL social | AD mới hoặc cập nhật AD-19.1 |
 | **UX wireframes** | Không có UX cho user tạo playbook, không có filter user/admin | Bổ sung UX |
 | **DB schema** | `playbooks.scope` enum 2 giá trị; cần mở rộng 3 giá trị hoặc thêm `is_private` | Alembic migration |
 
@@ -76,7 +76,7 @@ Cần thêm hoặc sửa các story:
 - **Backend**: `PlaybookScope` enum mở rộng; API `POST /playbooks` cho phép user tạo; `GET /playbooks` filter by scope + workspace + user; `LeadGenOrchestrator` thêm `KolSocialAdapter`.
 - **Frontend**: `quickstart-playbook-builder.tsx` thêm tab "Của tôi" / "Hệ thống" / "Workspace" + form tạo playbook; `PlaybooksContent` thêm filter chip.
 - **Prompt engineering**: `AgentConfig` hoặc chat orchestrator đọc `playbook.resources` (markdown/JSONB) và append vào `system_instructions`.
-- **XActions contract**: Đề xuất MCP tools `x_youtube_comments`, `x_tiktok_search`, `x_instagram_hashtag` (read-only, public data).
+- **Medirus contract**: Đề xuất MCP tools `x_youtube_comments`, `x_tiktok_search`, `x_instagram_hashtag` (read-only, public data).
 - **Legal/Compliance**: PDPD, ToS của YouTube/TikTok/Instagram, DNC whitelist, PII redaction.
 
 ---
@@ -102,12 +102,12 @@ Cần thêm hoặc sửa các story:
   4. **KOL Social Comment/Post adapter** — bắt đầu với **1 nền tảng pilot** (đề xuất YouTube public comments trước vì dữ liệu công khai, API/feed ổn định hơn TikTok/Instagram anti-bot).
 
 - **P2 / Backlog**:
-  5. Mở rộng sang TikTok/Instagram khi XActions MCP tool sẵn sàng hoặc sau khi pilot YouTube chứng minh retention.
+  5. Mở rộng sang TikTok/Instagram khi Medirus MCP tool sẵn sàng hoặc sau khi pilot YouTube chứng minh retention.
 
 ### 3.3 Rationale
 - User-defined playbooks + visibility là **low-hanging fruit**: backend đã có 80% (`Playbook` model, `AutomationDefinition.inputs.schema`, parameterized automation engine); chỉ cần mở rộng enum, UI, RBAC.
 - System prompt resource injection **không phá vỡ architecture**: thêm trường `resources` vào `Playbook.definition`/`AgentConfig`.
-- KOL social scraping **rủi ro cao** (ToS, anti-bot, PII) — cần XActions PoC và legal review, không nên ép vào cùng sprint.
+- KOL social scraping **rủi ro cao** (ToS, anti-bot, PII) — cần Medirus PoC và legal review, không nên ép vào cùng sprint.
 
 ### 3.4 Effort / Risk / Timeline
 
@@ -115,7 +115,7 @@ Cần thêm hoặc sửa các story:
 |---|---|---|---|
 | User-defined playbooks + visibility | M | L | 3–5 ngày |
 | System prompt resource injection | S | L | 1–2 ngày |
-| KOL YouTube comment adapter (Spike) | M | H | 1–2 tuần (phụ thuộc XActions) |
+| KOL YouTube comment adapter (Spike) | M | H | 1–2 tuần (phụ thuộc Medirus) |
 | KOL TikTok/Instagram (post-spike) | L–XL | H | 2–4 tuần mỗi nền tảng |
 
 ---
@@ -138,12 +138,12 @@ So that I can reach high-intent prospects who already engage with industry exper
 
 Acceptance Criteria:
 - Given a KOL channel/post URL and vertical keywords, when KolSocialAdapter runs, then it returns RawLeadRecords containing: author handle, comment/post text, phone/email if publicly exposed, source URL, timestamp, engagement signal.
-- Given YouTube/TikTok/Instagram anti-bot protections, when scraping, then it delegates to XActions MCP tools (x_youtube_comments, x_tiktok_search, x_instagram_hashtag) and ingests structured results.
+- Given YouTube/TikTok/Instagram anti-bot protections, when scraping, then it delegates to Medirus MCP tools (x_youtube_comments, x_tiktok_search, x_instagram_hashtag) and ingests structured results.
 - Given PII/consent constraints, when processing comments, then it redacts non-public PII, applies DNC/whitelist, and logs provenance.
 - Given a comment without phone/email, when displayed, then the lead still surfaces the author handle, content snippet, and source URL so sales can engage manually.
 ```
 
-**Rationale:** Mở nguồn khách hàng mà user chỉ ra; tái dùng XActions anti-bot stack; bắt đầu với public data & opt-in PII handling.
+**Rationale:** Mở nguồn khách hàng mà user chỉ ra; tái dùng Medirus anti-bot stack; bắt đầu với public data & opt-in PII handling.
 
 ---
 
@@ -218,7 +218,7 @@ As a sales rep, I want to discover leads from comments and posts under KOL/influ
 
 Acceptance Criteria:
 - Given a vertical and a KOL channel/post URL, when the KOL Social adapter runs, then it returns public author handles, content snippets, and any publicly exposed contact info.
-- Given platform anti-bot or rate limits, when scraping, then it delegates to XActions MCP tools and gracefully degrades with partial results.
+- Given platform anti-bot or rate limits, when scraping, then it delegates to Medirus MCP tools and gracefully degrades with partial results.
 - Given PII/consent requirements, when processing, then it redacts non-public PII and applies DNC/whitelist.
 
 #### FR-6.10: User-Created Playbook Library
@@ -259,7 +259,7 @@ Acceptance Criteria:
    app/lead_intelligence/adapters/kol_social_adapter.py
    - KolSocialAdapter(BaseLeadAdapter)
    - supports source keys: youtube_comments, tiktok_search, instagram_hashtag
-   - calls XActions MCP: x_youtube_comments, x_tiktok_search, x_instagram_hashtag
+   - calls Medirus MCP: x_youtube_comments, x_tiktok_search, x_instagram_hashtag
    - maps to RawLeadRecord: author, content_snippet, source_url, timestamp, engagement
    ```
 
@@ -271,7 +271,7 @@ Acceptance Criteria:
    - append playbook examples to few-shot context
    ```
 
-**Rationale:** Kiến trúc tận dụng sẵn có; không vi phạm AD-SOC-1 (XActions delegation); RBAC rõ ràng.
+**Rationale:** Kiến trúc tận dụng sẵn có; không vi phạm AD-SOC-1 (Medirus delegation); RBAC rõ ràng.
 
 ---
 
@@ -309,17 +309,17 @@ Acceptance Criteria:
 **Moderate to Major.**
 
 - **Moderate** nếu chỉ làm P0 (user playbooks + visibility + prompt resources).
-- **Major** nếu kéo theo KOL social scraping đầy đủ 3 nền tảng, vì tác động XActions, legal, ToS, anti-bot.
+- **Major** nếu kéo theo KOL social scraping đầy đủ 3 nền tảng, vì tác động Medirus, legal, ToS, anti-bot.
 
 ### 5.2 Recommended Handoff
 
 | Role | Responsibility |
 |---|---|
 | **Product Owner / PM** | Quyết định dỡ business gate 6-6a/6-7a/6-9a; phê duyệt P0 vs P1 scope; chốt ToS/legal cho KOL public data. |
-| **Solution Architect** | Review AD cho KOL social adapter, XActions contract, prompt injection design, RBAC scope. |
+| **Solution Architect** | Review AD cho KOL social adapter, Medirus contract, prompt injection design, RBAC scope. |
 | **UX Designer (Sally)** | Wireframe tab User/Workspace/System, form tạo playbook, resource editor preview. |
 | **Developer agent** | Implement backend scope migration, API filter, frontend tabs, prompt injection. |
-| **XActions team / MCP owner** | Build `x_youtube_comments`, `x_tiktok_search`, `x_instagram_hashtag` tools (P1 spike). |
+| **Medirus team / MCP owner** | Build `x_youtube_comments`, `x_tiktok_search`, `x_instagram_hashtag` tools (P1 spike). |
 | **QA / Legal** | Review PII redaction, DNC, ToS compliance cho social comments. |
 
 ### 5.3 Success Criteria
@@ -329,13 +329,13 @@ Acceptance Criteria:
 - [ ] UI hiển thị 3 tab Hệ thống / Workspace / Của tôi.
 - [ ] User tạo playbook mới qua form và chạy được.
 - [ ] System prompt của playbook run chứa `resources` content.
-- [ ] (P1) XActions PoC trả về ≥1 lead từ YouTube public comments.
+- [ ] (P1) Medirus PoC trả về ≥1 lead từ YouTube public comments.
 - [ ] (P2) Mở rộng TikTok/Instagram sau khi pilot thành công.
 
 ### 5.4 Sequencing
 
 1. **Sprint A (P0)**: user playbook scope + visibility + resource injection.
-2. **Sprint B (P1)**: YouTube comment adapter PoC via XActions.
+2. **Sprint B (P1)**: YouTube comment adapter PoC via Medirus.
 3. **Sprint C (P2)**: TikTok/Instagram + marketplace community templates.
 
 ---

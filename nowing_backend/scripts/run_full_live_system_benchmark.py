@@ -33,8 +33,8 @@ sys.path.insert(0, str(backend_dir.parent / "nowing_evals/src"))
 from cryptography.fernet import Fernet
 
 from app.lead_intelligence.services.circuit_breaker import PlatformCircuitBreaker
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
-from app.proprietary.platforms.xactions.tax_code import (
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.tax_code import (
     extract_tax_ids,
     is_valid_vietnam_tax_code,
 )

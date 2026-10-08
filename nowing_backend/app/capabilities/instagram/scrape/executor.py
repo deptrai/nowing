@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from app.capabilities.core import Executor
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.capabilities.core.progress import emit_progress
-from app.capabilities.core.xactions_proxy import xactions_scrape_or_local
 from app.capabilities.instagram.scrape.schemas import ScrapeInput, ScrapeOutput
 from app.exceptions import ForbiddenError
 from app.proprietary.platforms.instagram import (
@@ -53,7 +53,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                     code="INSTAGRAM_ACCESS_BLOCKED",
                 ) from exc
 
-        raw = await xactions_scrape_or_local(
+        raw = await medirus_scrape_or_local(
             platform="instagram",
             action="user" if payload.urls or payload.search_queries else "hashtag",
             args={

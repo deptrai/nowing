@@ -422,7 +422,7 @@ def test_runner_swallows_mcp_client_dispose_errors() -> None:
     with (
         _patch_shared_engine(engine_stub),
         patch(
-            "app.proprietary.platforms.xactions.mcp_client.release_shared_client_for_loop",
+            "app.proprietary.platforms.medirus.mcp_client.release_shared_client_for_loop",
             side_effect=_angry_release,
         ),
     ):
@@ -450,7 +450,7 @@ def test_runner_mcp_client_timeout_protection() -> None:
     with (
         _patch_shared_engine(engine_stub),
         patch(
-            "app.proprietary.platforms.xactions.mcp_client.release_shared_client_for_loop",
+            "app.proprietary.platforms.medirus.mcp_client.release_shared_client_for_loop",
             side_effect=_hanging_release,
         ),
         patch("asyncio.wait_for", side_effect=_fast_wait_for),

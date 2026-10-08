@@ -45,4 +45,4 @@ So that I can quickly qualify incoming multi-domain leads and take immediate sal
 
 ### References
 - [UX Contract: ux-contract-scrapers-expansion-and-lead-intelligence.md#U3]
-- [Architecture Spine: architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md]
+- [Architecture Spine: architecture-medirus-social-integration-2026-08-15/ARCHITECTURE-SPINE.md]

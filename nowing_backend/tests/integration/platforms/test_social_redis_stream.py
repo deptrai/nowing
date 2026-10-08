@@ -1,4 +1,4 @@
-"""Integration tests for XActions Redis Stream social posts buffer & processor (Story 36.5).
+"""Integration tests for Medirus Redis Stream social posts buffer & processor (Story 36.5).
 
 Requires PostgreSQL and Redis. Skipped automatically when either is unavailable.
 """
@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.tasks.social_stream_worker as stream_worker
 from app.config import config
 from app.db import Lead, SocialMonitoredTarget, SocialPost
-from app.proprietary.platforms.xactions.constants import (
+from app.proprietary.platforms.medirus.constants import (
     STREAM_SOCIAL_DEAD_LETTER,
     STREAM_SOCIAL_RAW_POSTS,
 )
@@ -184,11 +184,11 @@ async def test_social_redis_stream_content_snippet_alias_processing(
         post_url = f"https://facebook.com/groups/bds/posts/{post_id}"
         snippet_text = "Cần bán gấp shophouse Vinhomes Grand Park, SĐT 0918123456, giá 8 tỷ."
 
-        # Emit thin event matching XActions REQ-X2 contract
+        # Emit thin event matching Medirus REQ-X2 contract
         payload = {
             "platform": "facebook",
             "external_post_id": post_id,
-            "author_id": "usr_xactions",
+            "author_id": "usr_medirus",
             "author_name": "Lê Văn C",
             "content": "",  # Empty content should be coalesced to content_snippet
             "content_snippet": snippet_text,
