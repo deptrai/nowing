@@ -29,9 +29,9 @@ def test_execution_uses_production_defaults_when_no_overrides_provided() -> None
 
 def test_execution_rejects_unknown_retry_backoff_strategy() -> None:
     """``retry_backoff`` is constrained to a closed set — typos like
-    ``"exponential"`` must fail validation, not silently coerce."""
+    ``"expontential"`` must fail validation, not silently coerce."""
     with pytest.raises(ValidationError):
-        Execution(retry_backoff="exponential")  # type: ignore[arg-type]
+        Execution(retry_backoff="expontential")  # type: ignore[arg-type]
 
 
 def test_execution_rejects_unknown_concurrency_strategy() -> None:

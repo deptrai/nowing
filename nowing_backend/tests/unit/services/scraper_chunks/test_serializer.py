@@ -250,7 +250,8 @@ def test_to_chunks_redacts_pii_before_chunking(sample_job_entity):
 
 
 def test_to_chunks_maps_job_domain_and_content_type():
-    """Story 12.3 AC-9: job chunks expose canonical domain and contentType='job'."""
+    """Story 12.3 AC-9: job chunks expose canonical domain; contentType is the
+    IANA MIME type per ChainLens v4 (domain semantic lives in ``category``)."""
     from app.services.scraper_chunks.serializer import to_chunks
 
     data = {
@@ -281,7 +282,7 @@ def test_to_chunks_maps_job_domain_and_content_type():
     for chunk in chunks:
         assert chunk.metadata.source == "nowing_scraper"
         assert chunk.metadata.domain == "itviec.com"
-        assert chunk.metadata.contentType == "job"
+        assert chunk.metadata.contentType == "text/markdown"
         assert chunk.metadata.category == "job_posting"
         assert chunk.metadata.title == data["title"]
         assert chunk.metadata.url == data["source_url"]
