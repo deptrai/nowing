@@ -167,7 +167,15 @@ class MedirusMcpClient:
             self._session = None
             try:
                 if self._transport_cm is not None:
-                    await self._transport_cm.__aexit__(exc_type, exc, tb)
+                    try:
+                        await self._transport_cm.__aexit__(exc_type, exc, tb)
+                    except RuntimeError as teardown_exc:
+                        # streamablehttp_client teardown races its internal
+                        # receive generator → "athrow()/aclose(): asynchronous
+                        # generator is already running". Session is ending
+                        # anyway; only swallow that specific race.
+                        if "asynchronous generator" not in str(teardown_exc):
+                            raise
             finally:
                 self._transport_cm = None
 

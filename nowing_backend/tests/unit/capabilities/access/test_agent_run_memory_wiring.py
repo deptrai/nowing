@@ -131,9 +131,12 @@ async def test_failed_agent_run_does_not_enqueue(door):
     tools = door.module.build_capability_tools(workspace_id=7, capabilities=[cap])
     tool = next(t for t in tools if t.name == "amazon_scrape")
 
-    with pytest.raises(RuntimeError):
-        await tool.coroutine(text="hello")
+    # Executor failures are returned to the agent (not raised) so a dead
+    # scraper cannot kill the chat stream — agent.py catches Exception and
+    # BaseExceptionGroup around execute_with_context.
+    result = await tool.coroutine(text="hello")
 
+    assert "upstream is down" in result
     assert door.enqueued == []
     assert door.recorded[0]["status"] == "error"
 
