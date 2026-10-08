@@ -142,9 +142,15 @@ class TestHybridLLMPublicRoute:
     async def test_invoke_rejects_missing_permission(
         self, client_as_regular_user, db_workspace, monkeypatch
     ) -> None:
+        # Permission is enforced by RequirePermission (Depends) which calls
+        # check_permission imported in app.dependencies.auth.
+        from fastapi import HTTPException
+
         with patch(
-            "app.routes.hybrid_llm_routes.check_permission",
-            new=AsyncMock(side_effect=Exception("forbidden")),
+            "app.dependencies.auth.check_permission",
+            new=AsyncMock(
+                side_effect=HTTPException(status_code=403, detail="forbidden")
+            ),
         ):
             resp = await client_as_regular_user.post(
                 f"/api/v1/workspaces/{db_workspace.id}/hybrid-llm/invoke",

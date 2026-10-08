@@ -147,7 +147,11 @@ async def test_news_entity_chunk_metadata_ingested_to_chainlens(
 
     assert len(chunks) >= 1
     for chunk in chunks:
-        assert chunk.metadata.contentType == "news", chunk.metadata.contentType
+        # contentType is IANA MIME since the v4 ingest contract (domain
+        # semantic lives in category="news_article").
+        assert (
+            chunk.metadata.contentType == "text/markdown"
+        ), chunk.metadata.contentType
         assert chunk.metadata.domain == "vnexpress.net", chunk.metadata.domain
         assert chunk.metadata.pubDate == article.pub_date, chunk.metadata.pubDate
         assert chunk.metadata.source == "nowing_scraper", chunk.metadata.source
@@ -185,13 +189,13 @@ async def test_news_entity_chunk_metadata_ingested_to_chainlens(
 
     request = route.calls.last.request
     body = json.loads(request.content)
-    assert body["source"] == "nowing_scraper"
-    assert body["scraperId"] == "news.rss"
-    assert body["workspaceId"] == db_workspace.id
+    # v4 ScraperIngestDto: only chunks at top level — scraper/workspace identity
+    # live inside each chunk's metadata (stripped by e9f847eac).
+    assert set(body.keys()) == {"chunks"}
     assert len(body["chunks"]) == len(chunks)
     for sent, _ in zip(body["chunks"], chunks, strict=True):
         meta = sent["metadata"]
-        assert meta["contentType"] == "news"
+        assert meta["contentType"] == "text/markdown"
         assert meta["domain"] == "vnexpress.net"
         assert meta["pubDate"] == article.pub_date
         assert meta["source"] == "nowing_scraper"

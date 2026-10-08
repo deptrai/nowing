@@ -62,7 +62,7 @@ PROVINCES_DATA: list[ProvinceRecord] = [
     {
         "code": "SG",
         "name": "TP. Hồ Chí Minh",
-        "aliases": ["saigon", "sai-gon", "hcm", "tphcm", "ho-chi-minh", "sg"],
+        "aliases": ["saigon", "sai-gon", "hcm", "tphcm", "ho-chi-minh", "ho chi minh", "sg"],
         "districts": [
             {"code": "760", "name": "Quận 1"},
             {"code": "761", "name": "Quận 12"},

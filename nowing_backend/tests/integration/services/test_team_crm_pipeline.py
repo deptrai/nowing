@@ -50,11 +50,18 @@ async def test_pipeline_stages_auto_seeding(
     db_session: AsyncSession,
     db_workspace: Workspace,
 ):
-    """Pipeline stages are auto-seeded with 5 default stages ordered by position."""
+    """Pipeline stages are auto-seeded with 6 default stages ordered by position."""
     stages = await _ensure_default_stages(db_session, db_workspace.id)
-    assert len(stages) == 5
-    assert [s.slug for s in stages] == ["new", "approaching", "qualified", "won", "lost"]
-    assert [s.position for s in stages] == [0, 1, 2, 3, 4]
+    assert len(stages) == 6
+    assert [s.slug for s in stages] == [
+        "new",
+        "approaching",
+        "qualified",
+        "meeting_scheduled",
+        "won",
+        "lost",
+    ]
+    assert [s.position for s in stages] == [0, 1, 2, 3, 4, 5]
 
 
 async def test_occ_stage_transition_success_and_activity_log(

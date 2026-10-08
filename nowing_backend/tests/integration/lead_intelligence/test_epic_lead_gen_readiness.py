@@ -35,7 +35,7 @@ from app.lead_intelligence.services.lead_gen_orchestrator import (
     LeadGenOrchestrator,
     LeadGenOrchestratorResult,
 )
-from app.users import require_session_context
+from app.users import get_auth_context, require_session_context
 
 pytestmark = [pytest.mark.integration]
 
@@ -54,9 +54,13 @@ def override_auth_owner(
         yield db_session
 
     app.dependency_overrides[require_session_context] = _mock_auth
+    # RequirePermission(Permission.LEADS_READ) depends on get_auth_context —
+    # without this override the real cookie auth runs and returns 401.
+    app.dependency_overrides[get_auth_context] = _mock_auth
     app.dependency_overrides[get_async_session] = _mock_session
     yield auth
     app.dependency_overrides.pop(require_session_context, None)
+    app.dependency_overrides.pop(get_auth_context, None)
     app.dependency_overrides.pop(get_async_session, None)
 
 

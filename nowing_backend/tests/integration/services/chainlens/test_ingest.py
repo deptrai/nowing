@@ -173,7 +173,9 @@ async def test_vn_jobs_aggregate_to_chunks_to_ingest(
 
     assert len(chunks) > 0
     assert all(chunk.metadata.source == "nowing_scraper" for chunk in chunks)
-    assert all(chunk.metadata.domain == "vn_jobs" for chunk in chunks)
+    # vn_jobs aggregates multi-source jobs; canonical wire domain is nowing.net
+    # (Story 12.3 _DOMAIN_CANONICAL).
+    assert all(chunk.metadata.domain == "nowing.net" for chunk in chunks)
 
     with respx.mock:
         route = respx.post("https://chainlens.test/v1/ingest/scraper").mock(

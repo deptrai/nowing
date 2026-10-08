@@ -45,12 +45,24 @@ async def _fixture_fetcher(**_payload: Any) -> dict:
     return _load_fixture()
 
 
+async def _stub_load_regions() -> dict[str, Any]:
+    """Hermetic loadRegions payload: one region is enough to resolve HCM."""
+    return {
+        "regionFollowId": {
+            "entities": {"regions": {"12000": {"name": "Hồ Chí Minh"}}}
+        }
+    }
+
+
 @pytest.mark.asyncio
 async def test_recorded_fixture_roundtrip_typed_listings():
     """AC-1/AC-2/AC-3: fixture replay yields typed listings with parsed fields."""
     output = await scrape_chotot_bds(
         ChototBdsScrapeInput(listing_type="buy", city="ho chi minh", max_items=10),
         fetch_fn=_fixture_fetcher,
+        # load_regions hits the real gateway through the proxy — stub it so the
+        # "recorded fixture" test stays hermetic (fetch_fn covers list pages).
+        regions_fn=_stub_load_regions,
     )
 
     assert output.degraded is False
