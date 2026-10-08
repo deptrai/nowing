@@ -242,7 +242,8 @@ def _drop_policies(table: str) -> None:
 def _create_rls(table: str) -> None:
     _drop_policies(table)
     predicate = _tenant_predicate(table)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
             FOR SELECT
@@ -250,7 +251,8 @@ def _create_rls(table: str) -> None:
             USING ({_workspace_predicate(table)});
     """)
     # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
             FOR ALL

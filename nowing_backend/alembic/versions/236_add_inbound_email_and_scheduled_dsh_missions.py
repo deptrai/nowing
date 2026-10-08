@@ -41,7 +41,8 @@ def _create_rls(table: str) -> None:
             TO PUBLIC
             USING ({_workspace_predicate(table)});
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
             FOR ALL

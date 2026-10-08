@@ -44,7 +44,8 @@ def _create_rls(table: str, *, include_memory_id: bool) -> None:
     extras = ""
     if include_memory_id:
         extras = f" OR {_memory_id_predicate(table)}"
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
             FOR SELECT
@@ -55,7 +56,8 @@ def _create_rls(table: str, *, include_memory_id: bool) -> None:
                 OR {_internal_service_predicate(table)}
             );
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
             FOR ALL
@@ -63,7 +65,8 @@ def _create_rls(table: str, *, include_memory_id: bool) -> None:
             USING ({_memory_tenant_predicate(table)})
             WITH CHECK ({_memory_tenant_predicate(table)});
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_internal_service_policy ON {table}
             AS PERMISSIVE
             FOR ALL
@@ -116,7 +119,8 @@ def _create_legacy_rls(table: str, *, include_memory_id: bool) -> None:
     extras = ""
     if include_memory_id:
         extras = f" OR {_memory_id_predicate(table)}"
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
             FOR SELECT
@@ -127,7 +131,8 @@ def _create_legacy_rls(table: str, *, include_memory_id: bool) -> None:
                 OR {_internal_service_predicate(table)}
             );
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
             FOR ALL
@@ -135,7 +140,8 @@ def _create_legacy_rls(table: str, *, include_memory_id: bool) -> None:
             USING ({_legacy_tenant_predicate(table)})
             WITH CHECK ({_legacy_tenant_predicate(table)});
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_internal_service_policy ON {table}
             AS PERMISSIVE
             FOR ALL

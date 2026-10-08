@@ -269,14 +269,17 @@ def _create_rls(table: str) -> None:
             else _tenant_predicate(table)
         )
 
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+
+        f"""
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
             FOR SELECT
             TO PUBLIC
             USING ({read_predicate});
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
             FOR ALL

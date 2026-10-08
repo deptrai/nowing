@@ -157,7 +157,8 @@ def upgrade() -> None:
                 # Use direct SQL with string interpolation for the enum since CAST doesn't work
                 # The enum value comes from trusted source (our own code), not user input
                 connection.execute(
-                    sa.text(f"""  # nosemgrep
+                    sa.text(  # nosemgrep
+                        f"""
                         INSERT INTO new_chat_messages 
                         (thread_id, role, content, created_at)
                         VALUES (:thread_id, '{role}', CAST(:content AS jsonb), :created_at)

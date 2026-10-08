@@ -138,7 +138,8 @@ def upgrade():
             )
 
             result = connection.execute(
-                sa.text(f"""  # nosemgrep
+                sa.text(  # nosemgrep
+                    f"""
                     INSERT INTO search_space_roles 
                     (name, description, permissions, is_default, is_system_role, search_space_id)
                     VALUES (:name, :description, {perms_literal}, :is_default, :is_system_role, :search_space_id)

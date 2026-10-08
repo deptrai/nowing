@@ -47,7 +47,8 @@ def _internal_service_predicate(_table: str) -> str:
 
 def _create_rls(table: str) -> None:
     _drop_policies(table)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_read_policy ON {table}
             AS PERMISSIVE
             FOR SELECT
@@ -58,7 +59,8 @@ def _create_rls(table: str) -> None:
                 OR {_internal_service_predicate(table)}
             );
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_tenant_write_policy ON {table}
             AS PERMISSIVE
             FOR ALL
@@ -66,7 +68,8 @@ def _create_rls(table: str) -> None:
             USING ({_tenant_write_predicate(table)})
             WITH CHECK ({_tenant_write_predicate(table)});
     """)
-    op.execute(f"""  # nosemgrep
+    op.execute(  # nosemgrep
+        f"""
         CREATE POLICY {table}_internal_service_policy ON {table}
             AS PERMISSIVE
             FOR ALL

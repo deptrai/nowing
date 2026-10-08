@@ -107,7 +107,8 @@ def upgrade():
         "ARRAY[" + ",".join(f"'{p}'" for p in NEW_EDITOR_PERMISSIONS) + "]::TEXT[]"
     )
     connection.execute(
-        sa.text(f"""  # nosemgrep
+        sa.text(  # nosemgrep
+            f"""
             UPDATE search_space_roles 
             SET permissions = {editor_perms_literal},
                 description = 'Can create and update content (no delete, role management, or settings access)'
@@ -120,7 +121,8 @@ def upgrade():
         "ARRAY[" + ",".join(f"'{p}'" for p in NEW_VIEWER_PERMISSIONS) + "]::TEXT[]"
     )
     connection.execute(
-        sa.text(f"""  # nosemgrep
+        sa.text(  # nosemgrep
+            f"""
             UPDATE search_space_roles 
             SET permissions = {viewer_perms_literal}
             WHERE name = 'Viewer' AND is_system_role = TRUE
@@ -238,7 +240,8 @@ def downgrade():
 
         if not existing:
             connection.execute(
-                sa.text(f"""  # nosemgrep
+                sa.text(  # nosemgrep
+                    f"""
                     INSERT INTO search_space_roles 
                     (name, description, permissions, is_default, is_system_role, search_space_id)
                     VALUES (
@@ -258,7 +261,8 @@ def downgrade():
         "ARRAY[" + ",".join(f"'{p}'" for p in old_editor_permissions) + "]::TEXT[]"
     )
     connection.execute(
-        sa.text(f"""  # nosemgrep
+        sa.text(  # nosemgrep
+            f"""
             UPDATE search_space_roles 
             SET permissions = {editor_perms_literal},
                 description = 'Can create and edit documents, chats, and podcasts'
@@ -271,7 +275,8 @@ def downgrade():
         "ARRAY[" + ",".join(f"'{p}'" for p in old_viewer_permissions) + "]::TEXT[]"
     )
     connection.execute(
-        sa.text(f"""  # nosemgrep
+        sa.text(  # nosemgrep
+            f"""
             UPDATE search_space_roles 
             SET permissions = {viewer_perms_literal}
             WHERE name = 'Viewer' AND is_system_role = TRUE
