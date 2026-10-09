@@ -23,7 +23,11 @@ interface EnvPreset {
 const PRESETS: Record<TargetEnvironment, EnvPreset> = {
 	local: {
 		baseURL: `http://localhost:${process.env.PORT || "3000"}`,
-		backendURL: `http://localhost:${process.env.BACKEND_PORT || "8000"}`,
+		// Prefer the shared backend env var so fixtures and helpers can never
+		// disagree about which port the e2e backend is on.
+		backendURL:
+			process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ||
+			`http://localhost:${process.env.BACKEND_PORT || "8000"}`,
 		zeroCacheURL: `http://localhost:${process.env.ZERO_CACHE_PORT || "4848"}`,
 		noWebServer: false,
 		authType: "LOCAL",

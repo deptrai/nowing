@@ -40,6 +40,13 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		});
 	});
 
+	// The contextual right dock starts closed (dockOpenAtom default) — leads
+	// mode shows a FloatingReopenPill until the user opens it.
+	async function openDock(page: import("@playwright/test").Page) {
+		const pill = page.getByRole("button", { name: /open canvas/i });
+		if (await pill.isVisible()) await pill.click();
+	}
+
 	test("should redirect /leads to /new-chat?mode=leads", async ({ page, workspace }) => {
 		await page.goto(`/dashboard/${workspace.id}/leads`);
 		await expect(page).toHaveURL(new RegExp(`/dashboard/${workspace.id}/new-chat\\?mode=leads`));
@@ -50,6 +57,7 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		workspace,
 	}) => {
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
 
 		// AC1: Split canvas panels exist
 		await expect(page.locator("[data-testid='nowing-split-canvas']")).toBeVisible();
@@ -62,6 +70,7 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		workspace,
 	}) => {
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
 
 		const checkboxes = page.locator("input[type='checkbox'][data-lead-checkbox]");
 		await checkboxes.nth(0).check();
@@ -76,6 +85,7 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 
 	test("should open flyout detail drawer on row click", async ({ page, workspace }) => {
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
 
 		await page.click("[data-testid='lead-row-lead-1']");
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toBeVisible();

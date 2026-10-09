@@ -7,10 +7,7 @@ import {
 	setWorkspaceModelRoles,
 } from "../helpers/api/workspaces";
 
-async function markWorkspaceSetupReady(
-	page: import("@playwright/test").Page,
-	workspaceId: number
-) {
+async function markWorkspaceSetupReady(page: import("@playwright/test").Page, workspaceId: number) {
 	await page.route(`**/api/v1/workspaces/${workspaceId}/llm-setup-status`, async (route) => {
 		await route.fulfill({
 			status: 200,
@@ -35,9 +32,10 @@ test.describe("Automation manual run — web handles new backend run", () => {
 		const workspace = await createWorkspace(request, ownerToken, `E2E Manual Run ${Date.now()}`);
 		workspaceId = workspace.id;
 		// Automations require explicit (billable) model selections.
+		// image_gen 0 = auto: portable across CI and local dev configs.
 		await setWorkspaceModelRoles(request, ownerToken, workspaceId, {
 			chat_model_id: -1,
-			image_gen_model_id: -101,
+			image_gen_model_id: 0,
 			vision_model_id: -1,
 		});
 		const automation = await createAutomation(

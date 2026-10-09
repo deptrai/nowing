@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openContextualDock } from "../helpers/ui/dock";
 
 test.describe("Mission Control — research_mode=wide (26.9a)", () => {
 	test("should not crash when a wide-research mission includes a wide_research_matrix", async ({
@@ -109,6 +110,7 @@ test.describe("Mission Control — research_mode=wide (26.9a)", () => {
 		});
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		// The mission control widget appears.
 		await expect(page.getByTestId("mission-control-widget")).toBeVisible({

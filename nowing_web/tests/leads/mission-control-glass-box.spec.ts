@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openContextualDock } from "../helpers/ui/dock";
 import { authHeaders, BACKEND_URL } from "../helpers/api/auth";
 
 function listMissionsPattern(workspaceId: number) {
@@ -44,6 +45,7 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 
 		// Act: load the Split Canvas / Lead Intelligence view
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		// Assert: Glass Box widget appears with the 4-stage stepper
 		await expect(page.getByTestId("mission-control-widget")).toBeVisible({
@@ -77,6 +79,8 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 						},
 					],
 					total: 1,
+					limit: 1,
+					offset: 0,
 				}),
 			});
 		});
@@ -95,6 +99,7 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 		});
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 		await expect(page.getByTestId("mission-control-widget")).toBeVisible({
 			timeout: 10000,
 		});
@@ -119,6 +124,8 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 						},
 					],
 					total: 1,
+					limit: 1,
+					offset: 0,
 				}),
 			});
 		});
@@ -162,6 +169,7 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 		});
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 		await expect(page.getByTestId("mission-control-widget")).toBeVisible({
 			timeout: 10000,
 		});
@@ -188,11 +196,14 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 						},
 					],
 					total: 1,
+					limit: 1,
+					offset: 0,
 				}),
 			});
 		});
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		const shimmers = page.getByTestId("shimmer-skeleton-row");
 		await expect(shimmers.first()).toBeVisible({ timeout: 10000 });
@@ -226,12 +237,15 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 							},
 						],
 						total: 1,
+						limit: 1,
+						offset: 0,
 					}),
 				});
 			}
 		);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 		await expect(page.getByText("Đang giải mã SĐT...")).toBeVisible({
 			timeout: 10000,
 		});

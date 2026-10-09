@@ -101,7 +101,9 @@ test.describe("Write-back automation builder (Story 6.4)", () => {
 		await taskSection.getByLabel(/content/i).fill("Body");
 
 		await page.getByRole("button", { name: "Create automation" }).click();
-		await page.waitForURL(`/dashboard/${workspace.id}/automations/*`);
+		// /automations/* also matches the current /automations/new URL — require
+		// a numeric id so waitForURL actually waits for the post-create redirect.
+		await page.waitForURL(`/dashboard/${workspace.id}/automations/\\d+`);
 
 		const automationId = page.url().split("/").pop();
 		const response = await request.get(`${BACKEND_URL}/api/v1/automations/${automationId}`, {

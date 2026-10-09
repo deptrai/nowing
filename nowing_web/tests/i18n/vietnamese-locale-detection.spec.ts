@@ -41,8 +41,11 @@ test.describe("Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection E2E"
 		browser,
 		workspace,
 	}) => {
-		// Create a new context with Asia/Ho_Chi_Minh timezone and generic English language
+		// Create a new context with Asia/Ho_Chi_Minh timezone and generic English language.
+		// Needs the auth storageState or the request lands on /login where the
+		// dashboard's locale detection does not reflect the first-visit path.
 		const context = await browser.newContext({
+			storageState: "playwright/.auth/user.json",
 			timezoneId: "Asia/Ho_Chi_Minh",
 			locale: "en-US",
 		});
@@ -116,10 +119,18 @@ test.describe("Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection E2E"
 	});
 
 	test("[P1] defaults to English for unsupported locale on first visit", async ({
-		page,
+		browser,
 		workspace,
 	}) => {
-		// Emulate an unsupported browser locale (e.g. de-DE / German) with non-VN timezone
+		// Emulate an unsupported browser locale (e.g. de-DE / German) — and pin a
+		// non-VN timezone: detection checks timezone FIRST, so on a machine in
+		// Asia/Ho_Chi_Minh a German locale would still resolve to 'vi'.
+		const context = await browser.newContext({
+			storageState: "playwright/.auth/user.json",
+			timezoneId: "Europe/Berlin",
+			locale: "de-DE",
+		});
+		const page = await context.newPage();
 		await page.addInitScript(() => {
 			Object.defineProperty(navigator, "languages", {
 				get: () => ["de-DE", "de"],
@@ -136,5 +147,7 @@ test.describe("Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection E2E"
 
 		const storedLocale = await page.evaluate(() => window.localStorage.getItem("nowing-locale"));
 		expect(storedLocale).toBe("en");
+
+		await context.close();
 	});
 });

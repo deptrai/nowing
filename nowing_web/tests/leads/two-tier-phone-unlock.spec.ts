@@ -1,5 +1,6 @@
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "../fixtures";
+import { openContextualDock } from "../helpers/ui/dock";
 import { authHeaders, BACKEND_URL } from "../helpers/api/auth";
 
 test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () => {
@@ -60,6 +61,7 @@ test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () =>
 		const { contactId } = await createLeadWithMaskedPhone(request, apiToken, workspace.id);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 		const pill = page.getByTestId(`phone-pill-${contactId}`);
 		await expect(pill).toContainText("0908***456", { timeout: 10000 });
 		await pill.click();
@@ -83,6 +85,7 @@ test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () =>
 		const second = await createLeadWithMaskedPhone(request, apiToken, workspace.id);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		// First unlock: enable fast-unlock toggle
 		await page.getByTestId(`phone-pill-${first.contactId}`).click();
@@ -109,6 +112,7 @@ test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () =>
 		const { leadId, contactId } = await createLeadWithMaskedPhone(request, apiToken, workspace.id);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		const pill = page.getByTestId(`phone-pill-${contactId}`);
 		await pill.click();
@@ -145,6 +149,7 @@ test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () =>
 		const { contactId } = await createLeadWithMaskedPhone(request, apiToken, workspace.id);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		const pill = page.getByTestId(`phone-pill-${contactId}`);
 		await pill.click();
@@ -175,6 +180,7 @@ test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () =>
 		const _second = await createLeadWithMaskedPhone(request, apiToken, workspace.id);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		// Select two leads
 		const rows = page.locator("[data-lead-row]");
@@ -201,6 +207,7 @@ test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () =>
 		const { leadId } = await createLeadWithMaskedPhone(request, apiToken, workspace.id);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		// Click the company-name cell to open the flyout without hitting the checkbox/pill
 		await page
@@ -229,6 +236,7 @@ test.describe("Story 26.5: Two-Tier Phone Unlock, Fast Unlock & Undo E2E", () =>
 		const { contactId } = await createLeadWithMaskedPhone(request, apiToken, workspace.id);
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 		const pill = page.getByTestId(`phone-pill-${contactId}`);
 		await pill.click();
 		const popover = page.getByTestId("smart-unlock-popover");
