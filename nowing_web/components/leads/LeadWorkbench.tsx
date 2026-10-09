@@ -170,7 +170,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 				unqualified: t("marked_reset"),
 			};
 			toast.success(labelMap[status]);
-		} catch (_err) {
+		} catch {
 			toast.error(t("sdr_update_failed"));
 		}
 	};
@@ -490,7 +490,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 												</div>
 												{lead.content_snippet && (
 													<p className="text-[11px] text-zinc-400 italic line-clamp-1 max-w-[260px]">
-														"{lead.content_snippet}"
+														&ldquo;{lead.content_snippet}&rdquo;
 													</p>
 												)}
 											</td>
@@ -531,7 +531,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 
 											{/* Contact Info */}
 											<td className="p-3 space-y-1">
-												{lead.phone ? (
+												{lead.phone || lead.is_new_from_zero ? (
 													<div className="flex items-center gap-1">
 														<PhoneUnlockPill
 															lead={lead}
@@ -787,7 +787,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 									<div className="pt-2 border-t border-zinc-800">
 										<span className="text-[10px] text-zinc-500">Trích đoạn nội dung:</span>
 										<p className="text-xs italic text-zinc-300 mt-1 bg-zinc-950 p-2.5 rounded border border-zinc-800">
-											"{selectedLeadForRationale.content_snippet}"
+											&ldquo;{selectedLeadForRationale.content_snippet}&rdquo;
 										</p>
 									</div>
 								)}
@@ -817,7 +817,7 @@ export const LeadWorkbench: React.FC<LeadWorkbenchProps> = ({
 									</button>
 								</div>
 								<p className="text-xs text-zinc-300 italic">
-									"{selectedLeadForRationale.ai_rationale.suggested_icebreaker}"
+									&ldquo;{selectedLeadForRationale.ai_rationale.suggested_icebreaker}&rdquo;
 								</p>
 							</div>
 						)}

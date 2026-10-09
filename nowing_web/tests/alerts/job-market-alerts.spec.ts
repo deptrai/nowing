@@ -44,12 +44,14 @@ test.describe("Job Market Alerts", () => {
 
 		// 2. Load the dashboard and open the notifications popover.
 		await page.goto(`${FRONTEND_URL}/dashboard`);
-		const bell = page.locator('button[aria-label="Notifications"]').first();
+		const bell = page.getByRole("button", { name: /notifications|thông báo/i }).first();
 		await expect(bell).toBeVisible({ timeout: 30_000 });
 		await bell.click();
 
-		// Wait for the popover panel to render.
-		await expect(page.locator("text=Notifications").first()).toBeVisible({ timeout: 15_000 });
+		// Wait for the popover panel to render (translated header).
+		await expect(page.getByText(/notifications|thông báo/i).first()).toBeVisible({
+			timeout: 15_000,
+		});
 
 		// 3. Assert the grouped alert entry is rendered.
 		const alertItem = page.getByRole("button").filter({ hasText: /Python HCMC/ });

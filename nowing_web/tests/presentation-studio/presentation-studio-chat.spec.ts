@@ -20,6 +20,20 @@ async function mockWorkspaceSubscription(
 			}),
 		});
 	});
+
+	// The entitlement hook used by presentation-studio reads /entitlement,
+	// not /subscription — mirror the same tier there so chips/gates resolve.
+	await page.route(`**/api/v1/workspaces/${workspaceId}/entitlement`, async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify({
+				plan_tier: planTier,
+				can_use_pptx: planTier !== "free",
+				self_hosted: false,
+			}),
+		});
+	});
 }
 
 async function markWorkspaceSetupReady(page: import("@playwright/test").Page, workspaceId: number) {

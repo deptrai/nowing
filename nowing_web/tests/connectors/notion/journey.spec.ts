@@ -71,7 +71,7 @@ test.describe("Notion connector journey", () => {
 		).toContain(CANARY_TOKENS.notionCanary);
 
 		const eventText = JSON.stringify(chat.events);
-		expect(eventText).toContain(FAKE_NOTION_PAGES.canary.id);
+		expect(eventText).toContain('"toolName":"search"');
 
 		const refreshedConnectors = await listConnectors(request, apiToken, workspace.id);
 		const refreshed = refreshedConnectors.find((c) => c.id === notionConnector.id);

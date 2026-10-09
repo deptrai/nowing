@@ -114,7 +114,9 @@ def _table(workspace_id: int = _WORKSPACE_ID) -> SimpleNamespace:
     )
 
 
-def _lead(workspace_id: int = _WORKSPACE_ID, table_id: UUID | None = None) -> SimpleNamespace:
+def _lead(
+    workspace_id: int = _WORKSPACE_ID, table_id: UUID | None = None
+) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid4(),
         workspace_id=workspace_id,
@@ -152,7 +154,9 @@ def _client(session: _FakeSession) -> TestClient:
     # RequirePermission instances are per-route callables; override every
     # dependency that resolves a WorkspaceMembership so authz is not exercised.
     for route in app.routes:
-        for dep in (getattr(route, "dependant", None) and route.dependant.dependencies) or []:
+        for dep in (
+            getattr(route, "dependant", None) and route.dependant.dependencies
+        ) or []:
             call = dep.call
             if getattr(call, "__class__", type).__name__ == "RequirePermission":
                 app.dependency_overrides[call] = _membership
@@ -238,7 +242,9 @@ def test_export_csv_streams_header_and_masked_contact() -> None:
     assert session.added == []
 
 
-def test_export_lark_creates_pending_job_and_dispatches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_export_lark_creates_pending_job_and_dispatches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     session = _FakeSession()
     lead = _lead()
     session.leads = [lead]

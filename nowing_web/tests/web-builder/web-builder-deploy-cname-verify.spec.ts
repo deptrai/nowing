@@ -54,7 +54,8 @@ const setupBaseRoutes = async (page: Page, app: MockApp, detailToken: string | n
 			url.pathname === "/api/v1/web-builder/apps" &&
 			url.searchParams.get("workspace_id") === String(workspaceId),
 		async (route: Route) => {
-			const { custom_domain_verify_token: _omit, ...listShape } = app;
+			const listShape: Record<string, unknown> = { ...app };
+			delete listShape.custom_domain_verify_token;
 			await route.fulfill({
 				status: 200,
 				contentType: "application/json",
@@ -162,7 +163,10 @@ test.describe("Story 31.2: CNAME DNS Ownership Verification — Web E2E", () => 
 		await fillAndSaveDomain(page, "landing.pulseai.io");
 
 		await expect(
-			page.locator("[data-sonner-toast]").or(page.getByText(/CNAME does not point/i))
+			page
+				.locator("[data-sonner-toast]")
+				.or(page.getByText(/CNAME does not point/i))
+				.first()
 		).toBeVisible({ timeout: 8000 });
 	});
 
@@ -190,7 +194,10 @@ test.describe("Story 31.2: CNAME DNS Ownership Verification — Web E2E", () => 
 		await fillAndSaveDomain(page, "landing.pulseai.io");
 
 		await expect(
-			page.locator("[data-sonner-toast]").or(page.getByText(/redeploy failed|failed/i))
+			page
+				.locator("[data-sonner-toast]")
+				.or(page.getByText(/redeploy failed|failed/i))
+				.first()
 		).toBeVisible({ timeout: 8000 });
 		await expect(page.locator("body")).not.toContainText(/application error/i);
 	});
@@ -226,7 +233,10 @@ test.describe("Story 31.2: CNAME DNS Ownership Verification — Web E2E", () => 
 		await fillAndSaveDomain(page, "landing.pulseai.io");
 
 		await expect(
-			page.locator("[data-sonner-toast]").or(page.getByText(/configured|cname-ingress/i))
+			page
+				.locator("[data-sonner-toast]")
+				.or(page.getByText(/configured|cname-ingress/i))
+				.first()
 		).toBeVisible({ timeout: 8000 });
 	});
 });

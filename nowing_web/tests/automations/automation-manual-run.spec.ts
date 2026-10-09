@@ -1,11 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { acquireTestToken } from "../helpers/api/auth";
 import { createAutomation, deleteAutomation, runAutomation } from "../helpers/api/automations";
-import {
-	createWorkspace,
-	deleteWorkspace,
-	setWorkspaceModelRoles,
-} from "../helpers/api/workspaces";
+import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
 
 async function markWorkspaceSetupReady(page: import("@playwright/test").Page, workspaceId: number) {
 	await page.route(`**/api/v1/workspaces/${workspaceId}/llm-setup-status`, async (route) => {
@@ -31,13 +27,6 @@ test.describe("Automation manual run — web handles new backend run", () => {
 		ownerToken = await acquireTestToken(request);
 		const workspace = await createWorkspace(request, ownerToken, `E2E Manual Run ${Date.now()}`);
 		workspaceId = workspace.id;
-		// Automations require explicit (billable) model selections.
-		// image_gen 0 = auto: portable across CI and local dev configs.
-		await setWorkspaceModelRoles(request, ownerToken, workspaceId, {
-			chat_model_id: -1,
-			image_gen_model_id: 0,
-			vision_model_id: -1,
-		});
 		const automation = await createAutomation(
 			request,
 			ownerToken,
@@ -71,8 +60,9 @@ test.describe("Automation manual run — web handles new backend run", () => {
 		await expect(page.getByTestId("automation-detail-name")).toBeVisible();
 		await expect(page.getByTestId("automation-recent-runs-heading")).toBeVisible();
 
-		// The PENDING run should appear in the list.
-		await expect(page.getByText("Pending").first()).toBeVisible();
+		// The PENDING run should appear in the list. Rows arrive via Zero
+		// replication, so allow for lag beyond the default expect timeout.
+		await expect(page.getByText("Pending").first()).toBeVisible({ timeout: 60_000 });
 
 		// No Next.js error overlay.
 		await expect(page.getByText(/application error|failed to compile/i)).toHaveCount(0);

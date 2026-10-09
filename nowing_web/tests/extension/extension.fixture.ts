@@ -9,10 +9,10 @@ export type ExtensionFixtures = {
 const pathToExtension = path.resolve(__dirname, "../../../apps/chrome-extension/dist");
 
 export const test = base.extend<ExtensionFixtures>({
-	context: async ({}, use) => {
+	context: async (_fixtures, provide) => {
 		const context = await chromium.launchPersistentContext("", {
 			headless: true,
-			channel: "chromium",
+			channel: "chrome",
 			args: [
 				`--disable-extensions-except=${pathToExtension}`,
 				`--load-extension=${pathToExtension}`,
@@ -20,16 +20,16 @@ export const test = base.extend<ExtensionFixtures>({
 				"--disable-setuid-sandbox",
 			],
 		});
-		await use(context);
+		await provide(context);
 		await context.close();
 	},
-	extensionId: async ({ context }, use) => {
+	extensionId: async ({ context }, provide) => {
 		let [background] = context.serviceWorkers();
 		if (!background) {
 			background = await context.waitForEvent("serviceworker", { timeout: 15_000 });
 		}
 		const extensionId = background.url().split("/")[2];
-		await use(extensionId);
+		await provide(extensionId);
 	},
 });
 

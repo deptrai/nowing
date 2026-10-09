@@ -50,4 +50,11 @@ export async function mockAdminAuth(page: Page) {
 	await page.route("**/api/v1/broadcasts/active*", async (route: Route) => {
 		await fulfillJson(route, 200, []);
 	});
+
+	await page.route("**/auth/jwt/refresh*", async (route: Route) => {
+		await fulfillJson(route, 200, {
+			access_token: "mock-admin-token",
+			token_type: "bearer",
+		});
+	});
 }

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { acquireTestToken } from "../helpers/api/auth";
 import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
+import { mockScraperRun } from "../helpers/mock-scraper-run";
 
 /**
  * End-to-end smoke tests for the CafeF capability in the API Playground.
@@ -12,45 +13,39 @@ import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
  *   4. A successful financial-data response renders new fields without crashing.
  */
 
+const degradedPayload = {
+	quote: null,
+	financials: null,
+	news: [],
+	cost_micros: 0,
+	degraded: true,
+	degradation_reason: "api_error",
+	total_items: 0,
+};
+
+const successPayload = {
+	quote: {
+		symbol: "VCB",
+		price: 92.5,
+		change: 1.2,
+		change_percent: 1.31,
+	},
+	financials: null,
+	news: [],
+	cost_micros: 5000,
+	degraded: false,
+	degradation_reason: null,
+	total_items: 1,
+};
+
 test.describe("Playground CafeF scrape", () => {
 	let workspaceId: number;
 	let ownerToken: string;
 
-	test.beforeEach(async ({ page, request }) => {
+	test.beforeEach(async ({ request }) => {
 		ownerToken = await acquireTestToken(request);
 		const workspace = await createWorkspace(request, ownerToken, `E2E CafeF ${Date.now()}`);
 		workspaceId = workspace.id;
-
-		await page.route(
-			/.*\/api\/v1\/workspaces\/\d+\/scrapers\/cafef\/scrape(\?.*)?$/,
-			async (route) => {
-				const req = route.request();
-				if (req.method() === "OPTIONS") {
-					await route.fulfill({ status: 204 });
-					return;
-				}
-
-				// Force the first call to degrade (mimics isSuccess: false from CafeF API).
-				if (req.method() === "POST") {
-					await route.fulfill({
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							quote: null,
-							financials: null,
-							news: [],
-							cost_micros: 0,
-							degraded: true,
-							degradation_reason: "api_error",
-							total_items: 0,
-						}),
-					});
-					return;
-				}
-
-				await route.continue();
-			}
-		);
 	});
 
 	test.afterEach(async ({ request }) => {
@@ -76,6 +71,14 @@ test.describe("Playground CafeF scrape", () => {
 	});
 
 	test("should surface a degraded result without crashing", async ({ page }) => {
+		await mockScraperRun(page, {
+			platform: "cafef",
+			verb: "scrape",
+			payload: degradedPayload,
+			input: { symbol: "VCB" },
+			itemCount: 0,
+		});
+
 		await page.goto(`/dashboard/${workspaceId}/playground/cafef/scrape`);
 
 		const symbolInput = page.locator("#field-symbol");
@@ -86,56 +89,47 @@ test.describe("Playground CafeF scrape", () => {
 		await runButton.click();
 
 		await expect(page.getByText(/application error/i)).toHaveCount(0);
-		await expect(page.getByText(/degraded|api_error|api error/i).first()).toBeVisible({
-			timeout: 30_000,
-		});
+		// The output viewer defaults to a table when the payload has items —
+		// switch to the JSON tab before asserting raw output text.
+		const jsonTab = page.getByRole("tab", { name: /^json$/i });
+		await expect(jsonTab).toBeVisible({ timeout: 30_000 });
+		await jsonTab.click();
+		await expect(
+			page
+				.locator("pre:visible")
+				.getByText(/degraded|api_error|api error/i)
+				.first()
+		).toBeVisible({ timeout: 15_000 });
 	});
 
 	test("should render a successful result with quote and financials", async ({ page }) => {
-		await page.unroute(/.*\/api\/v1\/workspaces\/\d+\/scrapers\/cafef\/scrape(\?.*)?$/);
-
-		await page.route(
-			/.*\/api\/v1\/workspaces\/\d+\/scrapers\/cafef\/scrape(\?.*)?$/,
-			async (route) => {
-				const req = route.request();
-				if (req.method() === "OPTIONS") {
-					await route.fulfill({ status: 204 });
-					return;
-				}
-				if (req.method() === "POST") {
-					await route.fulfill({
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							quote: {
-								symbol: "VCB",
-								price: 92.5,
-								change: 1.2,
-								change_percent: 1.31,
-							},
-							financials: null,
-							news: [],
-							cost_micros: 5000,
-							degraded: false,
-							degradation_reason: null,
-							total_items: 1,
-						}),
-					});
-					return;
-				}
-				await route.continue();
-			}
-		);
+		await mockScraperRun(page, {
+			platform: "cafef",
+			verb: "scrape",
+			payload: successPayload,
+			input: { symbol: "VCB" },
+		});
 
 		await page.goto(`/dashboard/${workspaceId}/playground/cafef/scrape`);
 
 		const symbolInput = page.locator("#field-symbol");
+		await expect(symbolInput).toBeVisible();
 		await symbolInput.fill("VCB");
 
 		const runButton = page.getByRole("button", { name: /run|chạy/i });
 		await runButton.click();
 
 		await expect(page.getByText(/application error/i)).toHaveCount(0);
-		await expect(page.getByText(/VCB|92\.5|quote/i).first()).toBeVisible({ timeout: 30_000 });
+		const jsonTab = page.getByRole("tab", { name: /^json$/i });
+		await expect(jsonTab).toBeVisible({ timeout: 30_000 });
+		await jsonTab.click();
+		await expect(
+			page
+				.locator("pre:visible")
+				.getByText(/VCB|92\.5|quote/i)
+				.first()
+		).toBeVisible({
+			timeout: 15_000,
+		});
 	});
 });

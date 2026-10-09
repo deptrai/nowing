@@ -659,7 +659,7 @@ async def get_company_graph(
 
     if lead_obj:
         int_seed = int(
-            hashlib.md5(lead_obj.company_name.encode("utf-8")).hexdigest()[:8], 16
+            hashlib.sha256(lead_obj.company_name.encode("utf-8")).hexdigest()[:8], 16
         )
         rep_name = mask_name(db_contacts[0].name) if db_contacts else "Chưa cập nhật"
         legal_entity = LegalEntityRead(
@@ -715,7 +715,7 @@ async def resolve_lead_phone_endpoint(
     Debits 1.5 credits (1,500,000 micros) via BillingEvent only upon success.
     """
     # RBAC: Enforce LEADS_ENRICH or LEADS_WRITE (Viewer LEADS_READ alone cannot trigger paid mutations)
-    perms = await get_user_permissions(session, auth, workspace_id)
+    perms = await get_user_permissions(session, auth.user.id, workspace_id)
     has_enrich = has_permission(perms, Permission.LEADS_ENRICH.value)
     has_write = has_permission(perms, Permission.LEADS_WRITE.value)
     if not (has_enrich or has_write):
@@ -724,7 +724,9 @@ async def resolve_lead_phone_endpoint(
             detail="You don't have permission to resolve lead contacts in this workspace (requires LEADS_ENRICH or LEADS_WRITE)",
         )
 
-    client_id = auth.current_client_id
+    client_id = getattr(auth, "current_client_id", None) or session.info.get(
+        "current_client_id"
+    )
 
     if body.async_mode:
         task = resolve_phone_waterfall_task.delay(

@@ -1,10 +1,7 @@
 import { expect, test } from "../fixtures";
 import { BACKEND_URL } from "../helpers/api/auth";
 
-async function markWorkspaceSetupReady(
-	page: import("@playwright/test").Page,
-	workspaceId: number
-) {
+async function markWorkspaceSetupReady(page: import("@playwright/test").Page, workspaceId: number) {
 	await page.route(`**/api/v1/workspaces/${workspaceId}/llm-setup-status`, async (route) => {
 		await route.fulfill({
 			status: 200,
@@ -20,12 +17,62 @@ async function markWorkspaceSetupReady(
 }
 
 /**
+ * The builder blocks submit until all three model slots resolve, and omits
+ * `definition.models` when unresolved (backend then 422s on Auto-mode
+ * workspace roles). A fake BYOK connection gives every slot a positive
+ * (always-billable) id regardless of which global models the env has.
+ */
+async function mockAutomationEligibleModels(page: import("@playwright/test").Page) {
+	await page.route("**/api/v1/model-connections?workspace_id=*", async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify([
+				{
+					id: 9101,
+					provider: "openai",
+					base_url: null,
+					api_key: null,
+					extra: {},
+					scope: "SEARCH_SPACE",
+					workspace_id: null,
+					user_id: null,
+					enabled: true,
+					has_api_key: true,
+					models: [
+						{
+							id: 91001,
+							connection_id: 9101,
+							model_id: "e2e-byok-all-capable",
+							display_name: "E2E BYOK Model",
+							source: "MANUAL",
+							supports_chat: true,
+							supports_image_input: true,
+							supports_image_generation: true,
+							max_input_tokens: 128000,
+							supports_tools: true,
+							capabilities_override: {},
+							enabled: true,
+							billing_tier: "byok",
+							catalog: {},
+							created_at: "2025-01-01T00:00:00Z",
+						},
+					],
+					created_at: "2025-01-01T00:00:00Z",
+				},
+			]),
+		});
+	});
+}
+
+/**
  * Red-phase ATDD tests for Story 6.4: Direct Write-Back Actions.
  */
 
 test.describe("Write-back automation builder (Story 6.4)", () => {
 	test("[P0] user can add a write-back Notion step", async ({ page, workspace }) => {
 		await markWorkspaceSetupReady(page, workspace.id);
+		await mockAutomationEligibleModels(page);
 		await page.goto(`/dashboard/${workspace.id}/automations/new`);
 		await expect(page.getByRole("heading", { name: "New automation" })).toBeVisible();
 
@@ -45,6 +92,7 @@ test.describe("Write-back automation builder (Story 6.4)", () => {
 
 	test("[P0] user can add a write-back Slack step", async ({ page, workspace }) => {
 		await markWorkspaceSetupReady(page, workspace.id);
+		await mockAutomationEligibleModels(page);
 		await page.goto(`/dashboard/${workspace.id}/automations/new`);
 		await page.getByRole("button", { name: "Add task" }).click();
 
@@ -90,10 +138,10 @@ test.describe("Write-back automation builder (Story 6.4)", () => {
 		apiToken,
 	}) => {
 		await markWorkspaceSetupReady(page, workspace.id);
+		await mockAutomationEligibleModels(page);
 		await page.goto(`/dashboard/${workspace.id}/automations/new`);
 		await page.getByLabel(/name/i).fill("Notion write-back test");
 
-		await page.getByRole("button", { name: "Add task" }).click();
 		const taskSection = page.getByTestId("task-item-0");
 		await taskSection.getByRole("combobox", { name: /action/i }).click();
 		await page.getByRole("option", { name: /write back to notion/i }).click();
@@ -103,7 +151,7 @@ test.describe("Write-back automation builder (Story 6.4)", () => {
 		await page.getByRole("button", { name: "Create automation" }).click();
 		// /automations/* also matches the current /automations/new URL — require
 		// a numeric id so waitForURL actually waits for the post-create redirect.
-		await page.waitForURL(`/dashboard/${workspace.id}/automations/\\d+`);
+		await page.waitForURL(new RegExp(`/dashboard/${workspace.id}/automations/\\d+`));
 
 		const automationId = page.url().split("/").pop();
 		const response = await request.get(`${BACKEND_URL}/api/v1/automations/${automationId}`, {

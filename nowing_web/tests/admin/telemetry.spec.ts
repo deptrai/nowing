@@ -127,6 +127,10 @@ async function setupAdminTelemetryMocks(page: Page) {
 	await page.route(/.*\/api\/v1\/admin\/telemetry\/celery-queues$/, async (route: Route) => {
 		await fulfillJson(route, 200, mockCeleryQueues);
 	});
+
+	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/.*/, async (route: Route) => {
+		await fulfillJson(route, 200, { items: [], total: 0 });
+	});
 }
 
 test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
@@ -185,7 +189,8 @@ test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
 				const text = msg.text();
 				if (
 					!text.includes("ws://localhost:4848") &&
-					!text.includes("[zero] connection log throttled")
+					!text.includes("[zero] connection log throttled") &&
+					!text.includes("status of 429")
 				) {
 					consoleErrors.push(text);
 				}

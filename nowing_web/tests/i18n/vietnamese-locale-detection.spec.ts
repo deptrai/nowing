@@ -49,7 +49,13 @@ test.describe("Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection E2E"
 			timezoneId: "Asia/Ho_Chi_Minh",
 			locale: "en-US",
 		});
+		// The persisted auth state carries a NEXT_LOCALE=en cookie which would
+		// beat timezone detection — drop it to simulate a true first visit.
+		await context.clearCookies({ name: "NEXT_LOCALE" });
 		const page = await context.newPage();
+		await page.addInitScript(() => {
+			window.localStorage.clear();
+		});
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat`);
 
@@ -132,6 +138,7 @@ test.describe("Story 7.8: Vietnamese i18n & Smart Geo-Locale Auto-Detection E2E"
 		});
 		const page = await context.newPage();
 		await page.addInitScript(() => {
+			window.localStorage.clear();
 			Object.defineProperty(navigator, "languages", {
 				get: () => ["de-DE", "de"],
 			});

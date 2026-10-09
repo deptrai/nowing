@@ -593,6 +593,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										>
 											<input
 												type="checkbox"
+												data-lead-checkbox=""
 												checked={isSelected}
 												onChange={() => {}}
 												className="rounded border-border text-emerald-600 focus:ring-emerald-500 size-3.5 cursor-pointer align-middle"
@@ -731,7 +732,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										>
 											<div className="flex flex-col gap-1">
 												{/* Phone */}
-												{rowLead.phone ? (
+												{rowLead.phone || rowLead.is_new_from_zero ? (
 													<PhoneUnlockPill
 														lead={rowLead}
 														workspaceId={workspaceId}
@@ -764,7 +765,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 												) : null}
 
 												{/* Fallback if no phone and no email: show domain/source link or subtitle */}
-												{!rowLead.phone && !rowLead.email ? (
+												{!rowLead.phone && !rowLead.email && !rowLead.is_new_from_zero ? (
 													rowLead.source_url ? (
 														<a
 															href={rowLead.source_url}

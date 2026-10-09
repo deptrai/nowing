@@ -292,10 +292,14 @@ test.describe("Story 29.2: Workspace Health & Adoption Analytics Dashboard", () 
 		await expect(gapTrigger).toBeVisible();
 		await gapTrigger.click();
 
-		// Drawer heading
-		await expect(page.getByRole("heading", { name: "Knowledge Coverage Gaps" })).toBeVisible();
+		// Drawer heading — SheetTitle renders t("coverage_gaps")
 		await expect(
-			page.getByRole("dialog", { name: "Knowledge Coverage Gaps" }).getByText("google drive")
+			page.getByRole("heading", { name: /Coverage Gaps|Khoảng trống coverage/i })
+		).toBeVisible();
+		await expect(
+			page
+				.getByRole("dialog", { name: /Coverage Gaps|Khoảng trống coverage/i })
+				.getByText("google drive")
 		).toBeVisible();
 		await expect(
 			page.getByText("Trigger manual sync or verify connector credentials")

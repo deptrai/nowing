@@ -115,14 +115,15 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 		test.slow();
 
 		const appId = "mock-building-app";
-		let callCount = 0;
+		// The page polls the DETAIL endpoint every 2s while isBuilding, so the
+		// transition must be driven by detail calls: call 1 stays "building" long
+		// enough to assert the indicator, call 2+ returns preview_ready.
+		let detailCalls = 0;
 
-		// First response is building; after a poll, become preview_ready
 		await page.route(
 			(url) => url.pathname === "/api/v1/web-builder/apps",
 			async (route: Route) => {
-				callCount += 1;
-				const status = callCount >= 2 ? "preview_ready" : "building";
+				const status = detailCalls >= 2 ? "preview_ready" : "building";
 				const app = mockApp({ id: appId, status });
 				await route.fulfill({
 					status: 200,
@@ -135,8 +136,8 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 		await page.route(
 			(url) => url.pathname === `/api/v1/web-builder/apps/${appId}`,
 			async (route: Route) => {
-				callCount += 1;
-				const status = callCount >= 2 ? "preview_ready" : "building";
+				detailCalls += 1;
+				const status = detailCalls >= 2 ? "preview_ready" : "building";
 				const app = mockApp({ id: appId, status });
 				await route.fulfill({
 					status: 200,
@@ -218,7 +219,7 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 		await expect(logsPanel).toBeVisible();
 		await expect(logsPanel).toContainText(/Error|Module not found|npm ERR/i);
 
-		const retryBtn = page.getByRole("button", { name: /Rebuild|Retry/i });
+		const retryBtn = page.getByRole("button", { name: /Rebuild|Retry/i }).first();
 		await expect(retryBtn).toBeVisible();
 	});
 
@@ -232,9 +233,36 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 			"app/page.tsx": "export default function Home() {}",
 		});
 
+		// Once the rebuild POST fires, subsequent list/detail polls must report
+		// "building" — otherwise selectedApp stays build_failed and the indicator
+		// never renders. Registered after setupAppRoutes so they take precedence.
+		let rebuildTriggered = false;
+		const rebuiltApp = () => mockApp({ id: appId, status: "building" });
+		await page.route(
+			(url) => url.pathname === "/api/v1/web-builder/apps",
+			async (route: Route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify([rebuildTriggered ? rebuiltApp() : app]),
+				});
+			}
+		);
+		await page.route(
+			(url) => url.pathname === `/api/v1/web-builder/apps/${appId}`,
+			async (route: Route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify(rebuildTriggered ? rebuiltApp() : app),
+				});
+			}
+		);
+
 		await page.route(
 			(url) => url.pathname === `/api/v1/web-builder/apps/${appId}/build`,
 			async (route: Route) => {
+				rebuildTriggered = true;
 				await route.fulfill({
 					status: 202,
 					contentType: "application/json",
@@ -260,8 +288,7 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 
 		await page.route(
 			(url) =>
-				url.pathname === "/api/v1/web-builder/apps" &&
-				url.searchParams.get("workspace_id") === "999",
+				url.pathname === "/api/v1/web-builder/apps" && url.searchParams.get("workspace_id") === "1",
 			async (route: Route) => {
 				await route.fulfill({
 					status: 403,
@@ -271,7 +298,9 @@ test.describe("Story 27.1b — Web App Build & Preview Runner", () => {
 			}
 		);
 
-		await page.goto("/dashboard/999/web-builder");
+		// Workspace 999 does not exist in the signed-in user's list, which
+		// redirected away before the gate could render — use workspace 1.
+		await page.goto("/dashboard/1/web-builder");
 
 		const upgradeBanner = page.getByTestId("web-builder-disabled-gate");
 		await expect(upgradeBanner).toBeVisible();

@@ -225,7 +225,7 @@ test.describe("Story 26.5: Glass Box Mission Control & Shimmer Influx E2E", () =
 					body: JSON.stringify({
 						items: [
 							{
-								id: "lead-0000",
+								id: "00000000-0000-4000-8000-000000000001",
 								workspace_id: workspace.id,
 								company_name: "Công ty BĐS Mới",
 								domain: "moi.vn",

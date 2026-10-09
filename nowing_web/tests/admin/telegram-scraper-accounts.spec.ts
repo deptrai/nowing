@@ -25,6 +25,11 @@ test.describe("Admin Scraper Accounts - Telegram Tab", () => {
 	}) => {
 		await page.goto("/admin/scraper-accounts");
 
+		// Wait for heading to ensure page has loaded past auth check
+		await expect(
+			page.getByRole("heading", { name: /platform accounts|tài khoản/i })
+		).toBeVisible({ timeout: 15_000 });
+
 		// Click on Telegram tab
 		const telegramTab = page.getByRole("tab", { name: /telegram/i });
 		await expect(telegramTab).toBeVisible();

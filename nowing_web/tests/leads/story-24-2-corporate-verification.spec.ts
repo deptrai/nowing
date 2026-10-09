@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { acquireTestToken, BACKEND_URL } from "../helpers/api/auth";
 import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
+import { openContextualDock } from "../helpers/ui/dock";
 
 /**
  * Story 24.2 — Waterfall Phone & B2B Tax Code (MST) Corporate Verification Engine
@@ -103,16 +104,17 @@ test.describe("Story 24.2: Waterfall Phone & MST Corporate Verification Engine",
 		});
 
 		await page.goto(`/dashboard/${workspaceId}/leads`);
+		await openContextualDock(page);
 
 		// Matrix should load the lead
 		await expect(page.getByText("Công ty Thăng Long E2E")).toBeVisible();
 
 		// New 24.2 badges should render
-		await expect(page.getByText("MST Verified")).toBeVisible();
+		await expect(page.getByText(/MST Verified|Đã xác thực MST/i)).toBeVisible();
 		await expect(page.getByText("Zalo Active")).toBeVisible();
 
 		// Hover MST badge and verify tooltip content
-		const mstBadge = page.getByText("MST Verified").first();
+		const mstBadge = page.getByText(/MST Verified|Đã xác thực MST/i).first();
 		await mstBadge.hover();
 		await expect(page.getByText("MST: 0123456789").last()).toBeVisible();
 		await expect(page.getByText("Đại diện: Nguyễn Văn A").last()).toBeVisible();
@@ -130,6 +132,6 @@ test.describe("Story 24.2: Waterfall Phone & MST Corporate Verification Engine",
 		await context.clearCookies();
 		await page.reload();
 		await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
-		await expect(page.getByRole("heading", { name: /Sign in/i })).toBeVisible();
+		await expect(page.getByRole("heading", { name: /Sign in|Đăng nhập/i })).toBeVisible();
 	});
 });

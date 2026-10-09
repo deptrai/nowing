@@ -168,7 +168,7 @@ test.describe("Story 29.1: Custom Workspace Roles & Permissions Builder", () => 
 		});
 	});
 
-	test("AC-2 & AC-3: Displays template selector, populates permissions, and validates reserved Admin name", async ({
+	test("AC-2 & AC-3: Preset cards populate name/permissions; reserved Admin name rejected on save", async ({
 		page,
 	}) => {
 		await page.goto("/dashboard/1/workspace-settings/team-roles");
@@ -178,30 +178,25 @@ test.describe("Story 29.1: Custom Workspace Roles & Permissions Builder", () => 
 		await expect(createBtn).toBeVisible({ timeout: 10000 });
 		await createBtn.click();
 
-		// Verify Template selector is present
-		const templateTrigger = page.getByTestId("template-preset-trigger");
-		await expect(templateTrigger).toBeVisible();
+		const dialog = page.getByRole("dialog");
 
-		// Select "Analyst" template
-		await templateTrigger.click();
-		await page.getByRole("option", { name: /analyst/i }).click();
+		// Click the "Analyst" preset card — fills name + permissions
+		await dialog.getByRole("button", { name: /^analyst/i }).click();
 
-		// Verify Name was pre-filled with "Analyst"
-		const nameInput = page.getByTestId("role-name-input");
-		await expect(nameInput).toHaveValue("Analyst");
+		// Name was pre-filled with the preset name
+		const nameInput = dialog.locator("#role-name");
+		await expect(nameInput).toHaveValue(/analyst/i);
 
-		// Test Reserved "Admin" name inline validation
+		const saveBtn = dialog.getByRole("button", { name: /^create role$/i });
+		await expect(saveBtn).toBeEnabled();
+
+		// Reserved "Admin" name → backend 400 → failure toast
 		await nameInput.fill("Admin");
-		const errorMsg = page.getByTestId("admin-reserved-error");
-		await expect(errorMsg).toBeVisible();
-		await expect(errorMsg).toHaveText("The role name 'Admin' is reserved");
+		await saveBtn.click();
+		await expect(page.getByText(/failed to create role/i).first()).toBeVisible();
 
-		const saveBtn = page.getByTestId("create-role-save-btn");
-		await expect(saveBtn).toBeDisabled();
-
-		// Fix name to valid
+		// Fix name to valid → save succeeds
 		await nameInput.fill("Business Analyst");
-		await expect(errorMsg).not.toBeVisible();
 		await expect(saveBtn).toBeEnabled();
 	});
 
@@ -211,23 +206,21 @@ test.describe("Story 29.1: Custom Workspace Roles & Permissions Builder", () => 
 		await page.goto("/dashboard/1/workspace-settings/team-roles");
 
 		await page.getByRole("button", { name: /create custom role/i }).click();
-		await page.getByTestId("template-preset-trigger").click();
-		await page.getByRole("option", { name: /analyst/i }).click();
 
-		// Expand members category or check permission outside Analyst baseline (e.g. members:remove)
-		const membersCategoryBtn = page.getByRole("button", { name: /Team Members/i });
-		if (await membersCategoryBtn.isVisible()) {
-			await membersCategoryBtn.click();
-			const removeMemberCheckbox = page.getByRole("checkbox", {
-				name: /Remove members from workspace/i,
-			});
-			if (await removeMemberCheckbox.isVisible()) {
-				await removeMemberCheckbox.click();
-				const warningChip = page.getByTestId("exceeds-warning-members");
-				await expect(warningChip).toBeVisible();
-				await expect(warningChip).toHaveText(/This exceeds the recommended template/i);
-			}
-		}
+		const dialog = page.getByRole("dialog");
+		await dialog.getByRole("button", { name: /^analyst/i }).click();
+
+		// Expand the members category and pick a permission outside the Analyst baseline.
+		const membersCategoryBtn = dialog.getByRole("button", { name: /Team Members/i });
+		await membersCategoryBtn.click();
+
+		// Permission rows render a labelled toggle Button + a nameless Checkbox.
+		const removeMemberBtn = dialog.getByRole("button", {
+			name: /Remove members from workspace/i,
+		});
+		await removeMemberBtn.click();
+
+		await expect(dialog.getByTestId("exceeds-warning-members").first()).toBeVisible();
 	});
 
 	test("AC-4: Clone Role action opens dialog pre-filled with '{name} (Copy)' and identical permissions", async ({
@@ -235,24 +228,20 @@ test.describe("Story 29.1: Custom Workspace Roles & Permissions Builder", () => 
 	}) => {
 		await page.goto("/dashboard/1/workspace-settings/team-roles");
 
-		// Find Custom Analyst role dropdown
+		// Open the "..." menu on the Custom Analyst row (non-system role).
+		// The trigger is the icon-only ghost button inside the same role-header flex row.
+		const analystRow = page
+			.getByRole("button", { name: /custom analyst/i })
+			.locator("xpath=ancestor::*[contains(@class,'role-header')]")
+			.first();
+		await analystRow.locator("button[aria-haspopup]").click();
+
 		const cloneTrigger = page.getByTestId("clone-role-3");
-		// If dropdown needs opening first
-		const moreActionsBtn = page
-			.locator("div")
-			.filter({ hasText: /^Custom Analyst/ })
-			.getByRole("button")
-			.filter({ has: page.locator("svg.lucide-more-horizontal") });
-
-		if (await moreActionsBtn.isVisible()) {
-			await moreActionsBtn.click();
-		}
-
 		await expect(cloneTrigger).toBeVisible();
 		await cloneTrigger.click();
 
-		// Dialog opens with pre-filled name
-		const nameInput = page.getByTestId("role-name-input");
-		await expect(nameInput).toHaveValue("Custom Analyst (Copy)");
+		// Dialog opens with pre-filled name "Custom Analyst (Copy)"
+		const dialog = page.getByRole("dialog");
+		await expect(dialog.locator("#role-name")).toHaveValue(/Custom Analyst \(Copy\)/);
 	});
 });

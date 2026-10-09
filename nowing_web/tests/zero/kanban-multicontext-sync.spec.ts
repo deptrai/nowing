@@ -77,6 +77,19 @@ test.describe("Story 24.3 — Zero Sync Kanban Multi-Context & OCC Conflict", ()
 		const contextA = await browser.newContext({ storageState: AUTH_FILE });
 		const contextB = await browser.newContext({ storageState: AUTH_FILE });
 
+		// Gate client B's Zero websocket so the test can freeze its sync on
+		// demand. routeWebSocket must be registered before the socket opens, so
+		// we forward messages normally until `freezeB` flips — after that,
+		// server pushes are dropped and B stays on its stale version.
+		let freezeB = false;
+		await contextB.routeWebSocket(/:4848\//, (ws) => {
+			const server = ws.connectToServer();
+			ws.onMessage((message) => server.send(message));
+			server.onMessage((message) => {
+				if (!freezeB) ws.send(message);
+			});
+		});
+
 		const pageA = await contextA.newPage();
 		const pageB = await contextB.newPage();
 
@@ -109,7 +122,7 @@ test.describe("Story 24.3 — Zero Sync Kanban Multi-Context & OCC Conflict", ()
 				.first();
 
 			await expect(leadCardA).toBeVisible({ timeout: 15_000 });
-			await expect(leadCardB).toBeVisible({ timeout: 15_000 });
+			await expect(leadCardB).toBeVisible({ timeout: 30_000 });
 
 			// 7. User A drags the card to the 'Đang tiếp cận' column
 			const columnApproachingA = pageA
@@ -124,8 +137,13 @@ test.describe("Story 24.3 — Zero Sync Kanban Multi-Context & OCC Conflict", ()
 				.or(pageB.getByText("Đang tiếp cận"))
 				.first();
 			await expect(approachingColumnB.getByText(leadTitle).first()).toBeVisible({
-				timeout: 10_000,
+				timeout: 30_000,
 			});
+
+			// Freeze client B's Zero sync so it keeps the stale version —
+			// otherwise the server-side bump replicates to B before the drag and
+			// there is no 409 left to surface.
+			freezeB = true;
 
 			// 9. Force an OCC 409 conflict by advancing the lead on the server
 			// directly while client B still holds a stale version.

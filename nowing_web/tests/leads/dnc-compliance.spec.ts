@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openContextualDock } from "../helpers/ui/dock";
 import { acquireTestToken, registerUser } from "../helpers/api/auth";
 import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
 
@@ -69,12 +70,13 @@ test.describe("Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engin
 		// in leads mode (hasActiveThread=true) so the contextual dock mounts.
 		await page.goto(`/dashboard/${workspaceId}/leads`);
 		await expect(page.getByTestId("nowing-split-canvas")).toBeVisible({ timeout: 15000 });
+		await openContextualDock(page);
 
 		// 4. Open DNC Management Modal. The DNC button label is "DNC" (en) or
 		// "DNC" (vi) with a tooltip; match the stable short label.
 		const dncBtn = page.getByRole("button", { name: /^DNC$/i });
 		await expect(dncBtn).toBeVisible();
-		await dncBtn.click();
+		await dncBtn.evaluate((el: HTMLElement) => el.click());
 
 		// 5. Verify DNC Management Modal Tabs and Entries (bilingual: en/vi).
 		await expect(

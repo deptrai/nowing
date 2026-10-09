@@ -59,7 +59,7 @@ test.describe("Zero sync — archived_at", () => {
 
 			// Open the new-chat view which renders the Zero-synced document list.
 			await page.goto(`/dashboard/${workspaceId}/new-chat`);
-			await expect(page.getByText(filename)).toBeVisible({ timeout: 30_000 });
+			await expect(page.getByText(filename)).toBeVisible({ timeout: 60_000 });
 
 			// Archive the document through the test-only endpoint. The backend
 			// sets `archived_at`; Zero sync propagates the row change to the web

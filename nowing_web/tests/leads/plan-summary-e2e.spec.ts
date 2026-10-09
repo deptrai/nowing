@@ -73,34 +73,19 @@ test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 		// 2. Render PlanSummaryCard via campaign builder wizard
 		await page.goto(`/dashboard/${workspaceId}/leads/campaigns/new`);
 
-		// Fill campaign name
+		// Step 1 -> Step 2
+		await page.getByRole("button", { name: /tiếp tục: nguồn/i }).click();
+
+		// Step 2 -> Step 3
+		await page.getByRole("button", { name: /tiếp tục: launch/i }).click();
+
+		// Step 3: Fill campaign name
 		await page
-			.getByPlaceholder("Tên chiến dịch")
+			.getByPlaceholder(/ví dụ: sdr outbound/i)
 			.or(page.getByLabel(/tên chiến dịch/i))
 			.fill("E2E Pre-Flight Plan");
 
-		// Step 1: select source(s) — check batdongsan and chotot if visible
-		const sourceCheckbox = page
-			.getByTestId("source-toggle-batdongsan")
-			.or(page.getByText("batdongsan", { exact: false }));
-		if (await sourceCheckbox.isVisible().catch(() => false)) {
-			await sourceCheckbox.click();
-		}
-
-		// Step 2: location
-		await page.getByRole("button", { name: /tiếp theo|next/i }).click();
-		const locationTrigger = page
-			.getByTestId("location-selector-trigger")
-			.or(page.getByPlaceholder(/tinh\/thanh/i).or(page.getByPlaceholder(/tỉnh\/thành/i)));
-		if (await locationTrigger.isVisible().catch(() => false)) {
-			await locationTrigger.click();
-			await page.getByText("Hồ Chí Minh", { exact: false }).first().click();
-		}
-
-		// Step 3: launch / plan
-		await page.getByRole("button", { name: /tiếp theo|next|xem kế hoạch/i }).click();
-
-		// Click "Xem trước kế hoạch phân bổ" or similar
+		// 3. Trigger plan generation via UI button on Step 3
 		const planButton = page
 			.getByTestId("btn-generate-plan")
 			.or(page.getByRole("button", { name: /pre-flight|xem trước kế hoạch/i }));

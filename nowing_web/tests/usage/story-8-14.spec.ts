@@ -25,8 +25,10 @@ test.describe("Story 8.14 — Usage & Credit Dashboard v2", () => {
 
 		await expect(page.getByRole("heading", { name: /usage|credit/i, level: 1 })).toBeVisible();
 
-		// Story 8.14 — per-turn cost section
-		await expect(page.getByText(/per-turn cost/i)).toBeVisible();
+		// Story 8.14 — per-turn cost section (lazy chunk may take a while to compile in dev server)
+		await expect(page.getByText(/per-turn cost|chi phí theo lượt/i)).toBeVisible({
+			timeout: 30_000,
+		});
 
 		// Story 8.14 — auto-extract budget card
 		await expect(page.getByText(/auto-extract budget/i)).toBeVisible();

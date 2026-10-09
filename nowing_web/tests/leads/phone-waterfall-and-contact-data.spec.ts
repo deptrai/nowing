@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { acquireTestToken, registerUser } from "../helpers/api/auth";
 import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
+import { openContextualDock } from "../helpers/ui/dock";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -99,7 +100,27 @@ test.describe("Story 21.3: Vietnam Phone & Contact Waterfall Engine E2E", () => 
 
 	test("UI: Lead Intelligence Table renders masked phone copy pills and company graph", async ({
 		page,
+		request,
 	}) => {
+		const backendUrl = process.env.NOWING_BACKEND_INTERNAL_URL || "http://localhost:8000";
+
+		// Seed a sample lead into the workspace
+		await request.post(`${backendUrl}/api/v1/workspaces/${workspaceId}/leads/batch-ingest`, {
+			headers: { Authorization: `Bearer ${ownerToken}` },
+			data: {
+				leads: [
+					{
+						company_name: "Tập đoàn Vingroup E2E",
+						source: "batdongsan",
+						source_url: "https://batdongsan.com.vn/vingroup",
+						location: "Hà Nội",
+						phone: "0908123456",
+						domain: "vingroup.example.vn",
+					},
+				],
+			},
+		});
+
 		// Log in as test user
 		await page.goto("/login");
 		// i18n-safe: the login form is Vietnamese ("Mật khẩu" / "Đăng nhập"),
@@ -110,27 +131,36 @@ test.describe("Story 21.3: Vietnam Phone & Contact Waterfall Engine E2E", () => 
 
 		// Navigate to Leads view
 		await page.waitForURL(/\/dashboard\/\d+/);
-		await page.goto(`http://localhost:3000/dashboard/${workspaceId}/leads`);
+		await page.goto(`/dashboard/${workspaceId}/leads`);
+		await openContextualDock(page);
 
 		// Assert table header & columns
-		await expect(page.getByRole("heading", { name: /Lead Intelligence Panel/i })).toBeVisible({
-			timeout: 10000,
+		await expect(page.locator("[data-testid='nowing-lead-matrix']")).toBeVisible({
+			timeout: 15000,
 		});
-		await expect(page.getByRole("columnheader", { name: /Doanh nghiệp \/ Nguồn/i })).toBeVisible();
-		await expect(page.getByRole("columnheader", { name: /Liên hệ \(SĐT\)/i })).toBeVisible();
+		await expect(page.getByRole("columnheader", { name: /TÊN DOANH NGHIỆP/i })).toBeVisible();
+		await expect(page.getByRole("columnheader", { name: /LIÊN HỆ & THÔNG TIN/i })).toBeVisible();
 
 		// Verify phone copy pill is present and clickable
-		const phonePill = page.getByRole("button", { name: /Copy phone number/i }).first();
-		if (await phonePill.isVisible()) {
+		const phonePill = page
+			.locator(
+				"[data-testid='phone-unlock-pill'], [data-testid='phone-reveal-btn'], button:has-text('09')"
+			)
+			.first();
+		if (await phonePill.isVisible({ timeout: 5000 }).catch(() => false)) {
 			await phonePill.click();
 		}
 
 		// Verify Company Graph button and modal interaction
-		const graphBtn = page.getByRole("button", { name: /Xem Company Graph/i }).first();
-		if (await graphBtn.isVisible()) {
+		const graphBtn = page
+			.getByTitle(/Xem sơ đồ liên kết doanh nghiệp|View company link graph/i)
+			.first();
+		if (await graphBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
 			await graphBtn.click();
-			await expect(page.getByRole("heading", { name: /Enterprise Graph/i })).toBeVisible();
-			await page.getByRole("button", { name: /Đóng/i }).first().click();
+			await expect(
+				page.getByRole("heading", { name: /Tập đoàn Vingroup|Enterprise Graph|sơ đồ liên kết/i })
+			).toBeVisible();
+			await page.keyboard.press("Escape");
 		}
 	});
 });

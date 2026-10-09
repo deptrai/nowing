@@ -29,7 +29,9 @@ async def _download_files_parallel_core(
     connector_id: int,
     workspace_id: int,
     user_id: str,
-    extract_fn: Callable[..., Awaitable[tuple[str | None, dict[str, Any] | None, str | None]]],
+    extract_fn: Callable[
+        ..., Awaitable[tuple[str | None, dict[str, Any] | None, str | None]]
+    ],
     build_connector_doc_fn: BuildDocFn,
     max_concurrency: int = 3,
     on_heartbeat: HeartbeatCallbackType | None = None,
@@ -152,3 +154,65 @@ async def _download_and_index_core(
         )
 
     return batch_indexed, len(failed_files) + batch_failed
+
+
+async def download_files_parallel(
+    drive_client: Any,
+    files: list[dict],
+    *,
+    connector_id: int,
+    workspace_id: int,
+    user_id: str,
+    max_concurrency: int = 3,
+    on_heartbeat: HeartbeatCallbackType | None = None,
+    extract_fn: Any | None = None,
+    vision_llm: Any | None = None,
+) -> tuple[list[Any], list[tuple[str, str]]]:
+    """Wired helper for parallel download and extraction."""
+    from app.connectors.google_drive import download_and_extract_content
+    from app.tasks.connector_indexers.google_drive.document import _build_connector_doc
+
+    return await _download_files_parallel_core(
+        drive_client,
+        files,
+        connector_id=connector_id,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        extract_fn=extract_fn or download_and_extract_content,
+        build_connector_doc_fn=_build_connector_doc,
+        max_concurrency=max_concurrency,
+        on_heartbeat=on_heartbeat,
+        vision_llm=vision_llm,
+        heartbeat_interval=HEARTBEAT_INTERVAL_SECONDS,
+    )
+
+
+async def download_and_index(
+    drive_client: Any,
+    session: Any,
+    files: list[dict],
+    *,
+    connector_id: int,
+    workspace_id: int,
+    user_id: str,
+    on_heartbeat: HeartbeatCallbackType | None = None,
+    extract_fn: Any | None = None,
+    vision_llm: Any | None = None,
+    pipeline_cls: Any = IndexingPipelineService,
+) -> tuple[int, int]:
+    """Wired helper for downloading and indexing files."""
+    from app.connectors.google_drive import download_and_extract_content
+
+    return await _download_and_index_core(
+        drive_client,
+        session,
+        files,
+        connector_id=connector_id,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        download_files_parallel_fn=download_files_parallel,
+        on_heartbeat=on_heartbeat,
+        extract_fn=extract_fn or download_and_extract_content,
+        vision_llm=vision_llm,
+        pipeline_cls=pipeline_cls,
+    )

@@ -936,6 +936,9 @@ function CreateRoleDialog({
 	const [description, setDescription] = useState("");
 	const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 	const [isDefault, setIsDefault] = useState(false);
+	const [appliedPreset, setAppliedPreset] = useState<
+		keyof ReturnType<typeof getRolePresets> | null
+	>(null);
 	const rolePresets = useMemo(() => getRolePresets(t), [t]);
 
 	useEffect(() => {
@@ -953,6 +956,7 @@ function CreateRoleDialog({
 		setDescription("");
 		setSelectedPermissions([]);
 		setIsDefault(false);
+		setAppliedPreset(null);
 	};
 
 	const handleCreate = async () => {
@@ -1001,6 +1005,7 @@ function CreateRoleDialog({
 		(presetKey: keyof ReturnType<typeof getRolePresets>) => {
 			const preset = rolePresets[presetKey];
 			setSelectedPermissions(preset.permissions);
+			setAppliedPreset(presetKey);
 			if (!name.trim()) {
 				setName(preset.name);
 				setDescription(preset.description);
@@ -1090,6 +1095,7 @@ function CreateRoleDialog({
 							selectedPermissions={selectedPermissions}
 							onTogglePermission={togglePermission}
 							onToggleCategory={toggleCategory}
+							templateBaseline={appliedPreset ? rolePresets[appliedPreset].permissions : null}
 						/>
 					</div>
 				</div>

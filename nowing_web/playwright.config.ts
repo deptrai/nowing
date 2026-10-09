@@ -1,4 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env.local" });
+dotenv.config();
+
+if (!process.env.NOWING_BACKEND_INTERNAL_URL) {
+	process.env.NOWING_BACKEND_INTERNAL_URL =
+		process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ||
+		process.env.FASTAPI_BACKEND_INTERNAL_URL ||
+		`http://localhost:${process.env.BACKEND_PORT || "8000"}`;
+}
 
 /**
  * Environment profile presets for E2E testing:
@@ -151,18 +162,18 @@ export default defineConfig({
 		activePreset.noWebServer
 			? undefined
 			: {
-				// Local stays on webpack dev (Turbopack caused stale-lock panics in E2E).
-				command: process.env.CI ? "pnpm build && pnpm start" : "pnpm exec next dev",
-				url: `http://localhost:${PORT}`,
-				reuseExistingServer: !process.env.CI,
-				timeout: process.env.CI ? 300_000 : 180_000,
-				stdout: "pipe",
-				stderr: "pipe",
-				env: {
-					NEXT_PUBLIC_FASTAPI_BACKEND_URL: process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL,
-					NOWING_BACKEND_INTERNAL_URL: process.env.NOWING_BACKEND_INTERNAL_URL,
-					AUTH_TYPE: process.env.AUTH_TYPE,
-					NEXT_PUBLIC_ZERO_CACHE_URL: process.env.NEXT_PUBLIC_ZERO_CACHE_URL,
+					// Local stays on webpack dev (Turbopack caused stale-lock panics in E2E).
+					command: process.env.CI ? "pnpm build && pnpm start" : "pnpm exec next dev",
+					url: `http://localhost:${PORT}`,
+					reuseExistingServer: !process.env.CI,
+					timeout: process.env.CI ? 300_000 : 180_000,
+					stdout: "pipe",
+					stderr: "pipe",
+					env: {
+						NEXT_PUBLIC_FASTAPI_BACKEND_URL: process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL,
+						NOWING_BACKEND_INTERNAL_URL: process.env.NOWING_BACKEND_INTERNAL_URL,
+						AUTH_TYPE: process.env.AUTH_TYPE,
+						NEXT_PUBLIC_ZERO_CACHE_URL: process.env.NEXT_PUBLIC_ZERO_CACHE_URL,
+					},
 				},
-			},
 });

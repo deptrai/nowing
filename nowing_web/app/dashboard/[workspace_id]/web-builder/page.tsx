@@ -453,6 +453,7 @@ export default function WebBuilderPage() {
 
 						<button
 							type="button"
+							data-testid="custom-domain-btn"
 							onClick={() => setIsDomainModalOpen(true)}
 							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors"
 						>
@@ -462,6 +463,7 @@ export default function WebBuilderPage() {
 
 						<button
 							type="button"
+							data-testid="publish-btn"
 							onClick={() => publishMutation.mutate(selectedApp.id)}
 							disabled={publishMutation.isPending || selectedApp.status === "published"}
 							className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors disabled:opacity-50"
@@ -544,6 +546,7 @@ export default function WebBuilderPage() {
 								<button
 									type="button"
 									key={app.id}
+									data-testid={`app-card-${app.id}`}
 									onClick={() => {
 										setSelectedApp(app);
 										setIsMarkToolActive(false);
