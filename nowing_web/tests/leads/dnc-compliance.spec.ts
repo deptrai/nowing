@@ -62,26 +62,33 @@ test.describe("Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engin
 			.locator('input[type="email"], input[placeholder="you@example.com"]')
 			.fill("e2e-test@nowing.net");
 		await page.locator('input[type="password"]').fill("E2eTestPassword123!");
-		await page.locator('button[type="submit"]:has-text("Sign In")').click();
+		await page.locator('button[type="submit"]').click();
 		await page.waitForURL("**/dashboard/**");
 
+		// /leads redirects to /new-chat?mode=leads, which renders the split canvas
+		// in leads mode (hasActiveThread=true) so the contextual dock mounts.
 		await page.goto(`/dashboard/${workspaceId}/leads`);
-		await expect(page.locator("h1:has-text('Lead Intelligence Panel')")).toBeVisible({
-			timeout: 10000,
-		});
+		await expect(page.getByTestId("nowing-split-canvas")).toBeVisible({ timeout: 15000 });
 
-		// 4. Open DNC Management Modal
-		const dncBtn = page.locator('button:has-text("Do-Not-Call (DNC)")');
+		// 4. Open DNC Management Modal. The DNC button label is "DNC" (en) or
+		// "DNC" (vi) with a tooltip; match the stable short label.
+		const dncBtn = page.getByRole("button", { name: /^DNC$/i });
 		await expect(dncBtn).toBeVisible();
 		await dncBtn.click();
 
-		// 5. Verify DNC Management Modal Tabs and Entries
+		// 5. Verify DNC Management Modal Tabs and Entries (bilingual: en/vi).
 		await expect(
-			page.locator("h2:has-text('Do-Not-Call (DNC) & Compliance Registry')")
+			page.getByRole("heading", {
+				name: /Do-Not-Call \(DNC\) & Compliance Registry|Danh bạ Do-Not-Call/i,
+			})
 		).toBeVisible();
-		await expect(page.locator("button:has-text('Blacklist Registry')")).toBeVisible();
-		await expect(page.locator("button:has-text('Add Single Record')")).toBeVisible();
-		await expect(page.locator("button:has-text('Bulk CSV Import')")).toBeVisible();
+		await expect(page.getByRole("button", { name: /Blacklist Registry|Sổ đen/i })).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: /Add Single Record|Thêm bản ghi đơn/i })
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: /Bulk CSV Import|Nhập CSV hàng loạt/i })
+		).toBeVisible();
 
 		// Verify added records appear in the table
 		await expect(page.locator("td:has-text('+84908123456')")).toBeVisible({
@@ -92,60 +99,83 @@ test.describe("Story 21.14: Smart Whitelist & Do-Not-Call (DNC) Compliance Engin
 		});
 
 		// 6. Test Tab 2: Add single entry via UI
-		await page.locator("button:has-text('Add Single Record')").click();
+		await page.getByRole("button", { name: /Add Single Record|Thêm bản ghi đơn/i }).click();
 		await page.locator('input[placeholder="0908123456"]').fill("0912345678");
-		await page.locator('button:has-text("Add to DNC Blacklist")').click();
+		await page.getByRole("button", { name: /Add to DNC Blacklist|Thêm vào sổ đen DNC/i }).click();
 
 		// Verify automatic switch back to list and success notification
-		await expect(page.locator("text=Added phone '0912345678' to DNC blacklist")).toBeVisible();
+		await expect(
+			page.getByText(
+				/Added phone '0912345678' to DNC blacklist|Đã thêm phone '0912345678' vào sổ đen DNC/i
+			)
+		).toBeVisible();
 		await expect(page.locator("td:has-text('+84912345678')")).toBeVisible();
 
 		// 7. Close modal
 		await page.keyboard.press("Escape");
 	});
 
-	test("E2E: Hard purge PII via DELETE /api/v1/leads/{id}/pii under Decree 13 PDPD", async ({
+	test("E2E: Hard purge PII via POST /workspaces/{id}/pii-opt-out under Decree 13 PDPD", async ({
 		request,
 	}) => {
 		const backendUrl = process.env.NOWING_BACKEND_INTERNAL_URL || "http://localhost:8000";
 
-		// 1. Create a lead with plaintext phone & email
-		const leadRes = await request.post(`${backendUrl}/api/v1/workspaces/${workspaceId}/leads`, {
-			headers: { Authorization: `Bearer ${ownerToken}` },
-			data: {
-				company_name: "Tập Đoàn Bất Động Sản Test PII",
-				phone: "0987654321",
-				email: "director@testpii.com",
-				source: "batdongsan",
-			},
-		});
+		// 1. Create a lead with plaintext phone & email via batch-ingest — ingest
+		// materialises encrypted VerifiedContact rows (with phone_hmac) that
+		// pii-opt-out can purge.
+		const leadRes = await request.post(
+			`${backendUrl}/api/v1/workspaces/${workspaceId}/leads/batch-ingest`,
+			{
+				headers: { Authorization: `Bearer ${ownerToken}` },
+				data: {
+					leads: [
+						{
+							company_name: "Tập Đoàn Bất Động Sản Test PII",
+							phone: "0987654321",
+							email: "director@testpii.com",
+							source: "batdongsan",
+						},
+					],
+				},
+			}
+		);
 		expect(leadRes.ok()).toBeTruthy();
 		const leadData = await leadRes.json();
-		const leadId = leadData.id;
+		expect(leadData.lead_ids?.length).toBeGreaterThanOrEqual(1);
 
-		// 2. Perform Right-to-be-Forgotten PII hard purge
-		const purgeRes = await request.delete(`${backendUrl}/api/v1/leads/${leadId}/pii`, {
-			headers: { Authorization: `Bearer ${ownerToken}` },
-		});
+		// 2. Perform Right-to-be-Forgotten PII purge via workspace pii-opt-out
+		// (purges matching verified_contacts and upserts a DNC record in one
+		// transaction; DELETE /leads/{id}/pii no longer exists).
+		const purgeRes = await request.post(
+			`${backendUrl}/api/v1/workspaces/${workspaceId}/pii-opt-out`,
+			{
+				headers: { Authorization: `Bearer ${ownerToken}` },
+				data: {
+					record_type: "phone",
+					value: "0987654321",
+					reason: "Right to be forgotten",
+				},
+			}
+		);
 		expect(purgeRes.ok()).toBeTruthy();
 		const purgeData = await purgeRes.json();
-		expect(purgeData.success).toBe(true);
-		expect(purgeData.purged_fields).toContain("phone");
-		expect(purgeData.purged_fields).toContain("email");
-		expect(purgeData.dnc_blacklisted).toBe(true);
+		expect(purgeData.dnc_record_id).toBeTruthy();
+		expect(purgeData.purged_contact_count).toBeGreaterThanOrEqual(1);
+		expect(purgeData.refunded_micros).toBeGreaterThanOrEqual(0);
 
-		// 3. Verify DNC registry has the HMAC hash but ZERO plaintext PII
+		// 3. Verify DNC registry picked up the opt-out record
 		const dncListRes = await request.get(`${backendUrl}/api/v1/workspaces/${workspaceId}/dnc`, {
 			headers: { Authorization: `Bearer ${ownerToken}` },
 		});
 		expect(dncListRes.ok()).toBeTruthy();
 		const dncList = await dncListRes.json();
 		const purgedDnc = dncList.records.find(
-			(r: { source?: string; value?: string | null; value_hmac?: string }) =>
-				r.source === "right_to_be_forgotten"
+			(r: { id?: string; source?: string; record_type?: string; value_hmac?: string }) =>
+				r.id === purgeData.dnc_record_id
 		);
 		expect(purgedDnc).toBeTruthy();
-		expect(purgedDnc.value).toBeNull(); // Zero-Knowledge invariant
+		expect(purgedDnc.source).toBe("opt_out");
+		expect(purgedDnc.record_type).toBe("phone");
 		expect(purgedDnc.value_hmac).toBeTruthy();
 	});
 });

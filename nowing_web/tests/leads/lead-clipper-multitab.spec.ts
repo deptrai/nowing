@@ -44,7 +44,7 @@ test.describe("Story 24.4: Nowing Lead Clipper — Chrome Extension Multi-Tab E2
 		// 1. Open Extension Settings / Options simulation page
 		await page.goto("/login");
 		await page.locator('input[placeholder="you@example.com"]').fill("e2e-test@nowing.net");
-		await page.locator('input[placeholder="Enter your password"]').fill("E2eTestPassword123!");
+		await page.locator("input#password").fill("E2eTestPassword123!");
 		await page.locator('button[type="submit"]').click();
 
 		// 2. Simulate Extension popup initialization with PAT

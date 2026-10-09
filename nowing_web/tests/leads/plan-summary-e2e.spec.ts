@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { acquireTestToken, registerUser } from "../helpers/api/auth";
 
 /**
  * Story 26.27: Pre-Flight Lead Plan Summary — AC-4 Smoke Test E2E
@@ -7,9 +8,18 @@ import { expect, test } from "@playwright/test";
 test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 	test.use({ storageState: "playwright/.auth/user.json" });
 
-	test("AC-4: Run pre-flight plan, smoke test 5 leads, and transition to full-launch CTA", async ({ page, request }) => {
+	test("AC-4: Run pre-flight plan, smoke test 5 leads, and transition to full-launch CTA", async ({
+		page,
+		request,
+	}) => {
 		const workspaceId = 1;
-		const planApi = `/api/v1/workspaces/${workspaceId}/campaigns/plan`;
+		// Bearer auth bypasses the backend CSRF origin check; relative /api/v1
+		// paths resolve against the Next.js frontend, which does not proxy them,
+		// so hit the e2e backend directly.
+		const backendUrl = process.env.NOWING_BACKEND_INTERNAL_URL || "http://localhost:8000";
+		await registerUser(request, "e2e-test@nowing.net", "E2eTestPassword123!").catch(() => {});
+		const ownerToken = await acquireTestToken(request);
+		const planApi = `${backendUrl}/api/v1/workspaces/${workspaceId}/campaigns/plan`;
 
 		// 1. Validate plan API contract with mocked spec
 		const planPayload = {
@@ -46,7 +56,10 @@ test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 			},
 		};
 
-		const planResponse = await request.post(planApi, { data: planPayload });
+		const planResponse = await request.post(planApi, {
+			data: planPayload,
+			headers: { Authorization: `Bearer ${ownerToken}` },
+		});
 		await expect(planResponse).toBeOK();
 		const plan = await planResponse.json();
 
@@ -61,17 +74,24 @@ test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 		await page.goto(`/dashboard/${workspaceId}/leads/campaigns/new`);
 
 		// Fill campaign name
-		await page.getByPlaceholder("Tên chiến dịch").or(page.getByLabel(/tên chiến dịch/i)).fill("E2E Pre-Flight Plan");
+		await page
+			.getByPlaceholder("Tên chiến dịch")
+			.or(page.getByLabel(/tên chiến dịch/i))
+			.fill("E2E Pre-Flight Plan");
 
 		// Step 1: select source(s) — check batdongsan and chotot if visible
-		const sourceCheckbox = page.getByTestId("source-toggle-batdongsan").or(page.getByText("batdongsan", { exact: false }));
+		const sourceCheckbox = page
+			.getByTestId("source-toggle-batdongsan")
+			.or(page.getByText("batdongsan", { exact: false }));
 		if (await sourceCheckbox.isVisible().catch(() => false)) {
 			await sourceCheckbox.click();
 		}
 
 		// Step 2: location
 		await page.getByRole("button", { name: /tiếp theo|next/i }).click();
-		const locationTrigger = page.getByTestId("location-selector-trigger").or(page.getByPlaceholder(/tinh\/thanh/i).or(page.getByPlaceholder(/tỉnh\/thành/i)));
+		const locationTrigger = page
+			.getByTestId("location-selector-trigger")
+			.or(page.getByPlaceholder(/tinh\/thanh/i).or(page.getByPlaceholder(/tỉnh\/thành/i)));
 		if (await locationTrigger.isVisible().catch(() => false)) {
 			await locationTrigger.click();
 			await page.getByText("Hồ Chí Minh", { exact: false }).first().click();
@@ -81,7 +101,9 @@ test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 		await page.getByRole("button", { name: /tiếp theo|next|xem kế hoạch/i }).click();
 
 		// Click "Xem trước kế hoạch phân bổ" or similar
-		const planButton = page.getByTestId("btn-generate-plan").or(page.getByRole("button", { name: /pre-flight|xem trước kế hoạch/i }));
+		const planButton = page
+			.getByTestId("btn-generate-plan")
+			.or(page.getByRole("button", { name: /pre-flight|xem trước kế hoạch/i }));
 		await expect(planButton).toBeVisible({ timeout: 10000 });
 		await planButton.click();
 
@@ -95,20 +117,26 @@ test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 		await expect(page.getByTestId(/coverage-quality-badge-.*/).first()).toBeVisible();
 
 		// 3. Smoke test
-		const smokeButton = page.getByTestId("btn-smoke-test").or(page.getByRole("button", { name: /chạy thử 5 lead/i }));
+		const smokeButton = page
+			.getByTestId("btn-smoke-test")
+			.or(page.getByRole("button", { name: /chạy thử 5 lead/i }));
 		await expect(smokeButton).toBeVisible();
 
 		// Stub execute? E2E will call real backend. Use smokeTest with persist=false.
 		await smokeButton.click();
 
 		// Wait for loading state
-		await expect(page.getByTestId("plan-summary-loading")).toBeVisible({ timeout: 10000 }).catch(() => null);
+		await expect(page.getByTestId("plan-summary-loading"))
+			.toBeVisible({ timeout: 10000 })
+			.catch(() => null);
 
 		// After execution, success toast or plan card updates
 		await expect(page.getByTestId("plan-summary-card")).toBeVisible({ timeout: 60000 });
 
 		// 4. Full launch CTA should be visible
-		const fullLaunchButton = page.getByTestId("btn-apply-plan").or(page.getByRole("button", { name: /chạy chiến dịch đầy đủ/i }));
+		const fullLaunchButton = page
+			.getByTestId("btn-apply-plan")
+			.or(page.getByRole("button", { name: /chạy chiến dịch đầy đủ/i }));
 		await expect(fullLaunchButton).toBeVisible({ timeout: 15000 });
 	});
 });

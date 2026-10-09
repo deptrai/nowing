@@ -14,7 +14,7 @@ test.describe("Smoke Test Feedback Loop (Story 26.29)", () => {
 
 		// Select the real-estate playbook preset from the new-chat page
 		await page
-			.getByRole("heading", { name: /Bất động sản/i })
+			.getByRole("heading", { name: /Bất động sản|Real Estate/i })
 			.first()
 			.click();
 

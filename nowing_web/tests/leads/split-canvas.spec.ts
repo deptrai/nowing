@@ -43,8 +43,14 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 	// The contextual right dock starts closed (dockOpenAtom default) — leads
 	// mode shows a FloatingReopenPill until the user opens it.
 	async function openDock(page: import("@playwright/test").Page) {
-		const pill = page.getByRole("button", { name: /open canvas/i });
-		if (await pill.isVisible()) await pill.click();
+		// i18n: en "Open canvas" / vi "Mở canvas"; pill mounts async — waitFor avoids
+		// the isVisible() race right after page.goto.
+		const pill = page.getByRole("button", { name: /open canvas|mở canvas/i });
+		const visible = await pill
+			.waitFor({ state: "visible", timeout: 5000 })
+			.then(() => true)
+			.catch(() => false);
+		if (visible) await pill.click();
 	}
 
 	test("should redirect /leads to /new-chat?mode=leads", async ({ page, workspace }) => {

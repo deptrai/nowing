@@ -8,6 +8,8 @@ import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Lead scoring API", () => {
+	// E2E backend listens on :4445, not :8000 — honor the playwright env var.
+	const backendUrl = process.env.NOWING_BACKEND_INTERNAL_URL || "http://localhost:8000";
 	let workspaceId: number;
 	let ownerToken: string;
 
@@ -28,7 +30,7 @@ test.describe("Lead scoring API", () => {
 		request,
 	}) => {
 		const response = await request.post(
-			`http://localhost:8000/api/v1/workspaces/${workspaceId}/leads/score`,
+			`${backendUrl}/api/v1/workspaces/${workspaceId}/leads/score`,
 			{
 				headers: { Authorization: `Bearer ${ownerToken}` },
 				data: {},
@@ -43,7 +45,7 @@ test.describe("Lead scoring API", () => {
 
 	test("GET /workspaces/{id}/leads/scores returns a list", async ({ request }) => {
 		const response = await request.get(
-			`http://localhost:8000/api/v1/workspaces/${workspaceId}/leads/scores`,
+			`${backendUrl}/api/v1/workspaces/${workspaceId}/leads/scores`,
 			{
 				headers: { Authorization: `Bearer ${ownerToken}` },
 			}
@@ -54,19 +56,16 @@ test.describe("Lead scoring API", () => {
 	});
 
 	test("PUT /workspaces/{id}/icp updates ICP criteria", async ({ request }) => {
-		const response = await request.put(
-			`http://localhost:8000/api/v1/workspaces/${workspaceId}/icp`,
-			{
-				headers: { Authorization: `Bearer ${ownerToken}` },
-				data: {
-					target_industries: ["saas"],
-					target_locations: ["us"],
-					target_company_sizes: { min: 11, max: 50 },
-					target_tech_stack: ["python"],
-					weights: { fit: 0.5, intent: 0.5 },
-				},
-			}
-		);
+		const response = await request.put(`${backendUrl}/api/v1/workspaces/${workspaceId}/icp`, {
+			headers: { Authorization: `Bearer ${ownerToken}` },
+			data: {
+				target_industries: ["saas"],
+				target_locations: ["us"],
+				target_company_sizes: { min: 11, max: 50 },
+				target_tech_stack: ["python"],
+				weights: { fit: 0.5, intent: 0.5 },
+			},
+		});
 		expect(response.status()).toBe(200);
 		const body = await response.json();
 		expect(body.target_industries).toContain("saas");

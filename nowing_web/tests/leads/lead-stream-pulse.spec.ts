@@ -27,7 +27,7 @@ test.describe("Story 23.1: Hardware-Accelerated Realtime Ingestion Pulse & Matri
 		// 1. Log in to dashboard
 		await page.goto("/login");
 		await page.locator('input[placeholder="you@example.com"]').fill("e2e-test@nowing.net");
-		await page.locator('input[placeholder="Enter your password"]').fill("E2eTestPassword123!");
+		await page.locator("input#password").fill("E2eTestPassword123!");
 		await page.locator('button[type="submit"]').click();
 
 		// 2. Navigate to workspace leads page
@@ -55,7 +55,7 @@ test.describe("Story 23.1: Hardware-Accelerated Realtime Ingestion Pulse & Matri
 	}) => {
 		await page.goto("/login");
 		await page.locator('input[placeholder="you@example.com"]').fill("e2e-test@nowing.net");
-		await page.locator('input[placeholder="Enter your password"]').fill("E2eTestPassword123!");
+		await page.locator("input#password").fill("E2eTestPassword123!");
 		await page.locator('button[type="submit"]').click();
 
 		await page.goto(`/dashboard/${workspaceId}/leads`);
