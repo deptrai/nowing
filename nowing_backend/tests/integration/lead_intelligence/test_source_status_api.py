@@ -81,7 +81,12 @@ class TestSourceStatusApi:
                 assert "status" in s
                 assert s["status"] in ("ready", "degraded", "offline")
                 assert "location_coverage_quality" in s
-                assert s["location_coverage_quality"] in ("high", "medium", "low", "none")
+                assert s["location_coverage_quality"] in (
+                    "high",
+                    "medium",
+                    "low",
+                    "none",
+                )
                 assert isinstance(s["supported_provinces"], list)
 
     @pytest.mark.asyncio

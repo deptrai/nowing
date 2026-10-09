@@ -62,7 +62,15 @@ PROVINCES_DATA: list[ProvinceRecord] = [
     {
         "code": "SG",
         "name": "TP. Hồ Chí Minh",
-        "aliases": ["saigon", "sai-gon", "hcm", "tphcm", "ho-chi-minh", "ho chi minh", "sg"],
+        "aliases": [
+            "saigon",
+            "sai-gon",
+            "hcm",
+            "tphcm",
+            "ho-chi-minh",
+            "ho chi minh",
+            "sg",
+        ],
         "districts": [
             {"code": "760", "name": "Quận 1"},
             {"code": "761", "name": "Quận 12"},
@@ -264,7 +272,11 @@ def format_location_summary(
     if not target_prov:
         p_code_lower = province_code.lower().strip()
         target_prov = next(
-            (p for p in PROVINCES_DATA if any(alias == p_code_lower for alias in p["aliases"])),
+            (
+                p
+                for p in PROVINCES_DATA
+                if any(alias == p_code_lower for alias in p["aliases"])
+            ),
             None,
         )
     if not target_prov:
@@ -285,4 +297,3 @@ def format_location_summary(
     if parts:
         return f"{p_name} ({', '.join(parts)})"
     return p_name
-

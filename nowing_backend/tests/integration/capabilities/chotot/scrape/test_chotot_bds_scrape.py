@@ -48,9 +48,7 @@ async def _fixture_fetcher(**_payload: Any) -> dict:
 async def _stub_load_regions() -> dict[str, Any]:
     """Hermetic loadRegions payload: one region is enough to resolve HCM."""
     return {
-        "regionFollowId": {
-            "entities": {"regions": {"12000": {"name": "Hồ Chí Minh"}}}
-        }
+        "regionFollowId": {"entities": {"regions": {"12000": {"name": "Hồ Chí Minh"}}}}
     }
 
 

@@ -149,9 +149,7 @@ async def test_news_entity_chunk_metadata_ingested_to_chainlens(
     for chunk in chunks:
         # contentType is IANA MIME since the v4 ingest contract (domain
         # semantic lives in category="news_article").
-        assert (
-            chunk.metadata.contentType == "text/markdown"
-        ), chunk.metadata.contentType
+        assert chunk.metadata.contentType == "text/markdown", chunk.metadata.contentType
         assert chunk.metadata.domain == "vnexpress.net", chunk.metadata.domain
         assert chunk.metadata.pubDate == article.pub_date, chunk.metadata.pubDate
         assert chunk.metadata.source == "nowing_scraper", chunk.metadata.source

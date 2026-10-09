@@ -509,8 +509,12 @@ async def test_usage_summary_start_equals_end(client, db_workspace, seed_token_u
         f"{BASE}/summary",
         params={
             "workspace_id": db_workspace.id,
-            "start_date": day.replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
-            "end_date": day.replace(hour=23, minute=59, second=59, microsecond=0).isoformat(),
+            "start_date": day.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ).isoformat(),
+            "end_date": day.replace(
+                hour=23, minute=59, second=59, microsecond=0
+            ).isoformat(),
         },
     )
     assert resp.status_code == 200

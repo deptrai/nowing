@@ -234,14 +234,22 @@ class TestOrchestratorPerformanceAndTelemetry:
             RawLeadRecord(
                 source_name="src_fast",
                 source_id="f2",
-                data={"title": "Backend Dev", "phone": "0901112234", "location": "Hanoi"},
+                data={
+                    "title": "Backend Dev",
+                    "phone": "0901112234",
+                    "location": "Hanoi",
+                },
             ),
         ]
         raw_records_2 = [
             RawLeadRecord(
                 source_name="src_slow",
                 source_id="s1",
-                data={"title": "Tech Lead duplicate", "phone": "0901112233", "location": "Hanoi"},
+                data={
+                    "title": "Tech Lead duplicate",
+                    "phone": "0901112233",
+                    "location": "Hanoi",
+                },
             ),
         ]
 
@@ -338,7 +346,10 @@ class TestCrmAndConversionTracking:
     ) -> None:
         """CrmSyncService.log_conversion should persist OutcomeEvent and create context Memory."""
         from app.config import config
-        monkeypatch.setattr(config, "SECRET_KEY", "test-secret-key-crm-conversion-secure-32chars")
+
+        monkeypatch.setattr(
+            config, "SECRET_KEY", "test-secret-key-crm-conversion-secure-32chars"
+        )
 
         lead = Lead(
             workspace_id=db_workspace.id,
@@ -403,7 +414,10 @@ class TestCrmAndConversionTracking:
     ) -> None:
         """Test POST and GET /workspaces/{id}/crm/conversions REST endpoints."""
         from app.config import config
-        monkeypatch.setattr(config, "SECRET_KEY", "test-secret-key-crm-routes-secure-32chars")
+
+        monkeypatch.setattr(
+            config, "SECRET_KEY", "test-secret-key-crm-routes-secure-32chars"
+        )
 
         lead = Lead(
             workspace_id=db_workspace.id,
