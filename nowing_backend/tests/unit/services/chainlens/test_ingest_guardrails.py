@@ -164,8 +164,8 @@ async def test_ingest_mask_without_masked_text_drops(_enabled, monkeypatch):
     assert out == []
 
 
-async def test_ingest_filter_raise_returns_input(_enabled, monkeypatch):
-    """Fail-open: filter_passages raising must not break ingest."""
+async def test_ingest_filter_raise_drops_batch(_enabled, monkeypatch):
+    """Fail-closed: filter_passages raising drops batch."""
 
     async def _boom(*_a, **_k):
         raise RuntimeError("guardrail exploded")
@@ -175,7 +175,7 @@ async def test_ingest_filter_raise_returns_input(_enabled, monkeypatch):
     out = await ingest_mod._guardrail_filter_chunks(
         chunks, scraper_id="bds", workspace_id=1
     )
-    assert out == chunks
+    assert out == []
 
 
 async def test_ingest_end_to_end_all_dropped_returns_noop(

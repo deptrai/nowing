@@ -130,8 +130,15 @@ async def _async_process_post_call_qa(
         sync_call_to_lead_activity_log,
     )
 
-    parsed_lead_id = UUID(lead_id)
-    parsed_user_id = UUID(user_id) if user_id else None
+    try:
+        parsed_lead_id = UUID(str(lead_id)) if lead_id else None
+    except (ValueError, TypeError):
+        parsed_lead_id = None
+
+    try:
+        parsed_user_id = UUID(str(user_id)) if user_id else None
+    except (ValueError, TypeError):
+        parsed_user_id = None
 
     session_maker = get_celery_session_maker()
     async with session_maker() as session:
@@ -219,3 +226,25 @@ def process_post_call_qa_task(
             room_name=room_name,
         )
     )
+
+
+@celery_app.task(
+    name="consume_prospect_engagement_stream",
+    bind=True,
+    default_retry_delay=30,
+    max_retries=2,
+)
+def consume_prospect_engagement_stream_task(self: Any) -> int:
+    """Consume a bounded batch from `stream:prospect:engagement` (Story 38.7 / AI-38.2)."""
+
+    async def _consume() -> int:
+        from app.services.voice.outbound_trigger import (
+            consume_prospect_engagement_stream,
+        )
+
+        return await consume_prospect_engagement_stream()
+
+    try:
+        return run_async_celery_task(_consume)
+    except Exception as exc:
+        raise self.retry(exc=exc) from exc

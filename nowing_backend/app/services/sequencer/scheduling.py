@@ -23,6 +23,10 @@ VOICE_WINDOW_AFTERNOON_END = 17 * 60  # 17:00 ICT
 # Monday=0 … Sunday=6. Telephone solicitation is banned at the weekend.
 VOICE_ALLOWED_WEEKDAYS = frozenset({0, 1, 2, 3, 4})
 
+# Fixed solar VN public holidays: (1, 1) Tết Dương, (4, 30) Giải phóng, (5, 1) Lao động, (9, 2) Quốc khánh.
+# shortcut: static solar holidays only; lunar Tet needs a lunar calendar or per-year table, upgrade when voice volume justifies it
+VN_SOLAR_PUBLIC_HOLIDAYS = frozenset({(1, 1), (4, 30), (5, 1), (9, 2)})
+
 # Post-window dispatch time: 09:05 and 13:35 ICT (5 min after each block opens)
 # so we never dial exactly on the boundary, plus the shared 0-1800s jitter.
 _VOICE_MORNING_REOPEN = time(hour=9, minute=5)
@@ -65,6 +69,9 @@ def is_voice_curfew(now: datetime | None = None) -> bool:
         now = now.replace(tzinfo=UTC).astimezone(VN_TZ)
     else:
         now = now.astimezone(VN_TZ)
+
+    if (now.month, now.day) in VN_SOLAR_PUBLIC_HOLIDAYS:
+        return True
 
     if now.weekday() not in VOICE_ALLOWED_WEEKDAYS:
         return True

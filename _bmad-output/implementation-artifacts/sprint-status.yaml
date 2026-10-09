@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '10-08-2026 15:06'
+last_updated: '10-09-2026 12:00'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -428,7 +428,7 @@ development_status:
   39-6-voice-agent-post-stt-semantic-decisions-r6-deferred: done
   39-7-decision-telemetry-dashboard-cost-tracking: done
   39-8-eval-harness-ci-integration: done
-  epic-39-retrospective: optional
+  epic-39-retrospective: done
 
   epic-40: done
   40-1-medirus-gateway-client-streamable-http-cutover: done
@@ -660,7 +660,7 @@ waves:
   - wave: 0
     theme: P0 — Lead Intelligence & DSH Substrate Integration
     status: done
-    evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker
+    evidence_gate: ChainLens Epic 52 output=wide_research live; dsh-worker 
       active; FastMCP batch ingestion and Daytona Sandbox ready
     stories:
       - 26-1
@@ -668,14 +668,14 @@ waves:
       - 26-5
       - 26-7
       - 26-9
-    notes: Story 26.9 depends on ChainLens 52-2 API contract; executes openpyxl
+    notes: Story 26.9 depends on ChainLens 52-2 API contract; executes openpyxl 
       Pro Formatter in Daytona sandbox without building new container.
   - wave: 1
     theme: P0 — Interactive Browser Operator & Projects Workspace
     status: done
-    evidence_gate: Plasmo extension CDP debugger enabled;
-      `browser_operator.execute` capability and `web_crawler` prompt-in-UI
-      working; Human Live Takeover UI partially wired in popup; mission
+    evidence_gate: Plasmo extension CDP debugger enabled; 
+      `browser_operator.execute` capability and `web_crawler` prompt-in-UI 
+      working; Human Live Takeover UI partially wired in popup; mission 
       pause/resume TTL and dashboard popover still open
     stories:
       - 24-8
@@ -685,12 +685,12 @@ waves:
       - 24-6
       - 24-7
     notes: Story 24.8 extends Lead Clipper 24.4 with chrome.debugger CDP bridge;
-      Story 3.18 provides Master Instructions context injection for all
+      Story 3.18 provides Master Instructions context injection for all 
       downstream agent turns.
   - wave: 2
     theme: P1 — Inbound Mail Gateway & Long-running Automations
     status: done
-    evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat
+    evidence_gate: Webhook task@nowing.ai processing attachments; Celery Beat 
       stateful delta snapshots comparing runs
     stories:
       - 6-10
@@ -698,20 +698,20 @@ waves:
       - 25-4
       - 25-5
       - 25-6
-    notes: Story 6.10 integrates into gateway_webhook_routes.py and adds delta
+    notes: Story 6.10 integrates into gateway_webhook_routes.py and adds delta 
       analysis to existing Celery Beat scheduler.
   - wave: 3
     theme: P1/P2 — Creative Studio & Full-Stack Web Builder
     status: done
-    evidence_gate: PPTX export + Marp slides working; pyannote/whisper
+    evidence_gate: PPTX export + Marp slides working; pyannote/whisper 
       diarization working; Next.js scaffolding + *.apps.nowing.net Traefik/Caddy
       routing working
     stories:
       - 27-2a
       - 27-2b
       - 27-1
-    notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a
-      pattern; Story 27.1 is the largest scope story in the roadmap (new web
+    notes: Story 27.2a/27.2b are chat-first deliverables following 27.1a 
+      pattern; Story 27.1 is the largest scope story in the roadmap (new web 
       generator + dynamic hosting).
 action_items:
   - id: "epic-26-retro-item-1-tối-ưu-hóa-bộ-nhớ-đệm-cache-cho-danh-mục"
@@ -742,3 +742,70 @@ action_items:
     owner: "Winston"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-39-retro-item-5-raise-voice_decide_timeout_seconds-defau"
+    epic: 39
+    action: "Raise VOICE_DECIDE_TIMEOUT_SECONDS default to ~0.8s or split timeout
+      for transfer_to_human"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-6-switch-ingest-filter-to-fail-closed-drop"
+    epic: 39
+    action: "Switch ingest filter to fail-closed (drop/requeue flagged batch on Jev
+      error)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-7-_env_float-math-isfinite-for-voice-env-p"
+    epic: 39
+    action: "_env_float+math.isfinite for voice env parse; strip code fences in llm_json.py;
+      thread_id+turn in jev_router dedup key"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-8-trim-entity-resolution-candidate-fields"
+    epic: 39
+    action: "Trim entity-resolution candidate fields; add develop to jev-eval-gate.yml
+      branches"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-9-decide-telemetry-schema-for-background-d"
+    epic: 39
+    action: "Decide telemetry schema for background decisions missing user_id (nullable
+      vs service-account)"
+    owner: "architect"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-10-remove-or-refactor-app-tasks-jev_guardra"
+    epic: 39
+    action: "Remove or refactor app/tasks/jev_guardrails.py stub to use DecisionService"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-11-add-passes_positive-to-confidencegate-co"
+    epic: 39
+    action: "Add passes_positive to ConfidenceGate; consider splitting decision/service.py
+      (662 lines)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-12-pull-epic-38-open-items-ai-38-1-38-5-int"
+    epic: 39
+    action: "Pull Epic 38 open items (AI-38.1..38.5) into backlog before Epic 41;
+      add pre-epic gate check"
+    owner: "pm"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-13-upgrade-inboundintentclassifier-regex-to"
+    epic: 39
+    action: "Upgrade InboundIntentClassifier regex to Jev when slot available"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-14-measure-context-token-delta-of-demote-no"
+    epic: 39
+    action: "Measure context-token delta of demote-not-drop RAG; decide cap"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"

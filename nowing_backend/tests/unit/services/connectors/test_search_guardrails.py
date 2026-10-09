@@ -47,9 +47,7 @@ async def test_flags_off_returns_input_untouched(monkeypatch):
         raise AssertionError("filter_passages must not run when flags off")
 
     monkeypatch.setattr(core, "filter_passages", _boom)
-    out = await core._filter_rag_results(
-        docs, query_text="q", workspace_id=1
-    )
+    out = await core._filter_rag_results(docs, query_text="q", workspace_id=1)
     assert out == docs
 
 
@@ -72,9 +70,7 @@ async def test_irrelevant_drop_demotes_to_tail(_enabled, monkeypatch):
 
     def _route(_doc, text):
         if "off-topic" in text:
-            return PassageVerdict(
-                action=GuardrailAction.DROP, reasons=("irrelevant",)
-            )
+            return PassageVerdict(action=GuardrailAction.DROP, reasons=("irrelevant",))
         return PassageVerdict(action=GuardrailAction.PASS)
 
     _patch_filter(monkeypatch, _route)
@@ -96,9 +92,7 @@ async def test_injection_still_hard_drops_when_mixed(_enabled, monkeypatch):
                 action=GuardrailAction.DROP, reasons=("prompt_injection",)
             )
         if "weak" in text:
-            return PassageVerdict(
-                action=GuardrailAction.DROP, reasons=("irrelevant",)
-            )
+            return PassageVerdict(action=GuardrailAction.DROP, reasons=("irrelevant",))
         return PassageVerdict(action=GuardrailAction.PASS)
 
     _patch_filter(monkeypatch, _route)
@@ -107,9 +101,7 @@ async def test_injection_still_hard_drops_when_mixed(_enabled, monkeypatch):
     assert [d["content"] for d in out] == ["good", "weak match"]
 
 
-async def test_mask_rewrites_doc_and_chunk_fields_separately(
-    _enabled, monkeypatch
-):
+async def test_mask_rewrites_doc_and_chunk_fields_separately(_enabled, monkeypatch):
     """MASK: parent content gets masked_text; each chunk masked per-field."""
 
     def _route(_doc, _text):
@@ -121,9 +113,7 @@ async def test_mask_rewrites_doc_and_chunk_fields_separately(
 
     _patch_filter(monkeypatch, _route)
     doc = _doc("call 0901234567 now", chunks=["phone 0901234567"])
-    out = await core._filter_rag_results(
-        [doc], query_text="q", workspace_id=1
-    )
+    out = await core._filter_rag_results([doc], query_text="q", workspace_id=1)
     assert len(out) == 1
     assert out[0]["content"] == "MASKED-PARENT"
     # Nested chunk masked via redact_pii — NOT the concatenated masked_text.
@@ -146,12 +136,13 @@ async def test_query_and_surface_forwarded(_enabled, monkeypatch):
     async def _fake(items, *, query, surface, **_kwargs):
         seen["query"] = query
         seen["surface"] = surface
-        return ([(i, PassageVerdict(action=GuardrailAction.PASS)) for i, _ in items], None)
+        return (
+            [(i, PassageVerdict(action=GuardrailAction.PASS)) for i, _ in items],
+            None,
+        )
 
     monkeypatch.setattr(core, "filter_passages", _fake)
-    await core._filter_rag_results(
-        [_doc("x")], query_text="nhà Q7", workspace_id=1
-    )
+    await core._filter_rag_results([_doc("x")], query_text="nhà Q7", workspace_id=1)
     assert seen == {"query": "nhà Q7", "surface": "rag"}
 
 
@@ -171,9 +162,7 @@ async def test_mask_without_masked_text_drops_doc(_enabled, monkeypatch):
     """MASK + empty masked_text → drop, never pass unmasked (mask_failed parity)."""
     _patch_filter(
         monkeypatch,
-        lambda _d, _t: PassageVerdict(
-            action=GuardrailAction.MASK, masked_text=None
-        ),
+        lambda _d, _t: PassageVerdict(action=GuardrailAction.MASK, masked_text=None),
     )
     out = await core._filter_rag_results(
         [_doc("sensitive")], query_text="q", workspace_id=1
@@ -181,9 +170,39 @@ async def test_mask_without_masked_text_drops_doc(_enabled, monkeypatch):
     assert out == []
 
 
-async def test_combined_rrf_search_invokes_guardrail_filter(
+async def test_filter_failure_mid_loop_does_not_mutate_input_docs(
     _enabled, monkeypatch
 ):
+    """Cloning doc/chunks prevents in-place mutation when an exception happens mid-loop."""
+    calls = 0
+
+    def _exploding_redact(text, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            raise RuntimeError("redact failed mid-loop")
+        return SimpleNamespace(text="[REDACTED]")
+
+    monkeypatch.setattr(core, "redact_pii", _exploding_redact)
+    _patch_filter(
+        monkeypatch,
+        lambda _d, _t: PassageVerdict(
+            action=GuardrailAction.MASK, masked_text="[MASKED]"
+        ),
+    )
+    docs = [
+        _doc("orig-1", chunks=["chunk-1"]),
+        _doc("orig-2", chunks=["chunk-2"]),
+    ]
+    out = await core._filter_rag_results(docs, query_text="q", workspace_id=1)
+    # Filter failed mid-loop, original input docs returned untouched
+    assert out[0]["content"] == "orig-1"
+    assert out[0]["chunks"][0]["content"] == "chunk-1"
+    assert out[1]["content"] == "orig-2"
+    assert out[1]["chunks"][0]["content"] == "chunk-2"
+
+
+async def test_combined_rrf_search_invokes_guardrail_filter(_enabled, monkeypatch):
     """Wire check: deleting the _filter_rag_results call must fail this."""
     seen: dict = {}
 
@@ -193,9 +212,7 @@ async def test_combined_rrf_search_invokes_guardrail_filter(
 
     monkeypatch.setattr(core, "_filter_rag_results", _spy)
 
-    chunk_results = [
-        {"document": {"id": 1}, "chunks": [{"content": "a"}]}
-    ]
+    chunk_results = [{"document": {"id": 1}, "chunks": [{"content": "a"}]}]
     doc_results = [{"document": {"id": 2}, "chunks": [{"content": "b"}]}]
 
     class _CM:
@@ -209,16 +226,12 @@ async def test_combined_rrf_search_invokes_guardrail_filter(
     monkeypatch.setattr(
         core,
         "ChunksHybridSearchRetriever",
-        lambda _s: SimpleNamespace(
-            hybrid_search=AsyncMock(return_value=chunk_results)
-        ),
+        lambda _s: SimpleNamespace(hybrid_search=AsyncMock(return_value=chunk_results)),
     )
     monkeypatch.setattr(
         core,
         "DocumentHybridSearchRetriever",
-        lambda _s: SimpleNamespace(
-            hybrid_search=AsyncMock(return_value=doc_results)
-        ),
+        lambda _s: SimpleNamespace(hybrid_search=AsyncMock(return_value=doc_results)),
     )
 
     service = core.ConnectorSearchCore(MagicMock())

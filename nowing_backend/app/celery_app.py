@@ -251,6 +251,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.health_retention_task",
         "app.tasks.celery_tasks.workspace_health_tasks",
         "app.tasks.celery_tasks.bulk_op_tasks",
+        "app.tasks.celery_tasks.voice_tasks",
     ],
 )
 
@@ -384,6 +385,12 @@ celery_app.conf.beat_schedule = {
         "task": "evaluate_decision_daily_cost_alert",
         "schedule": crontab(minute="*/15"),
         "options": {"expires": 300},
+    },
+    # Consume `stream:prospect:engagement` for pitch portal speed-to-lead (AI-38.2).
+    "consume-prospect-engagement-stream": {
+        "task": "consume_prospect_engagement_stream",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup

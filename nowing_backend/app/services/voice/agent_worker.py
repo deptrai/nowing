@@ -29,6 +29,7 @@ import json
 import logging
 import os
 import sys
+import time
 from collections.abc import AsyncIterable, AsyncIterator
 from typing import Any
 from uuid import UUID
@@ -231,8 +232,14 @@ class _WhisperSTTAdapter(stt.STT):
             tmp.write(wav_bytes)
 
         try:
-            result = await asyncio.to_thread(self._service.transcribe_file, tmp_path, language=lang)
-            text = result.get("text", "") if isinstance(result, dict) else getattr(result, "text", "")
+            result = await asyncio.to_thread(
+                self._service.transcribe_file, tmp_path, language=lang
+            )
+            text = (
+                result.get("text", "")
+                if isinstance(result, dict)
+                else getattr(result, "text", "")
+            )
             return stt.SpeechEvent(
                 type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                 alternatives=[stt.SpeechData(text=text, language=lang)],
@@ -290,6 +297,7 @@ class _KokoroTTSAdapter(tts.TTS):
         conn_options: Any = None,
     ) -> tts.ChunkedStream:
         from livekit.agents import APIConnectOptions
+
         return _KokoroChunkedStream(
             tts=self,
             input_text=text,
@@ -432,9 +440,7 @@ class VoiceSDRAgent(Agent):
             # has no "speech_event" emission, so no session-level listener is
             # registered here.
             if self._barge_in_engine is None:
-                logger.debug(
-                    "Barge-in engine not activated (flag disabled or absent)"
-                )
+                logger.debug("Barge-in engine not activated (flag disabled or absent)")
         except Exception as exc:
             logger.debug("on_enter initialization notice: %s", exc)
 
@@ -475,9 +481,7 @@ class VoiceSDRAgent(Agent):
         # Story 38.4: Decree 91 immediate opt-out. Customer refusal wins over
         # every other branch — register permanent DNC, apologise, and hang up
         # within the 2-second legal deadline.
-        if is_opt_out_utterance(
-            getattr(new_message, "text_content", "") or ""
-        ):
+        if is_opt_out_utterance(getattr(new_message, "text_content", "") or ""):
             self._cancel_filler_watchdog()
             await self._handle_immediate_opt_out(session)
             raise StopResponse()
@@ -729,9 +733,7 @@ class VoiceSDRAgent(Agent):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _evaluate_turn(
-        self, new_message: llm.ChatMessage
-    ) -> VoiceTurnAssessment:
+    async def _evaluate_turn(self, new_message: llm.ChatMessage) -> VoiceTurnAssessment:
         """Run the Story 39.6 semantic gate over the turn's transcript.
 
         Fail-open absolute: ``evaluate_voice_turn`` never raises by
@@ -885,6 +887,8 @@ class VoiceSDRAgent(Agent):
 
 def _parse_room_metadata(raw: Any) -> dict[str, Any]:
     """Parse room metadata JSON into a dict; ``{}`` on any failure."""
+    if isinstance(raw, dict):
+        return raw
     if not isinstance(raw, str) or not raw.strip():
         return {}
     try:
@@ -947,26 +951,84 @@ async def entrypoint(ctx: JobContext) -> None:
     # from create_call_room, ``workspace_id``/``user_id`` when the
     # orchestrator attaches them. Missing/malformed keys degrade to
     # log-only telemetry; they never block the call.
-    metadata = _parse_room_metadata(getattr(ctx.room, "metadata", None))
-    session_id_meta = metadata.get("session_id")
+    room_meta = _parse_room_metadata(getattr(ctx.room, "metadata", None))
+    job_meta = _parse_room_metadata(
+        getattr(getattr(ctx, "job", None), "metadata", None)
+    )
+    metadata = {k: v for k, v in job_meta.items() if v is not None}
+    metadata.update({k: v for k, v in room_meta.items() if v is not None})
+
+    session_id_meta = metadata.get("session_id") or metadata.get("call_session_id")
     phone_meta = metadata.get("phone_e164") or metadata.get("phone")
     agent = VoiceSDRAgent(
         workspace_id=_coerce_int(metadata.get("workspace_id")),
         user_id=_coerce_uuid(metadata.get("user_id")),
-        call_session_id=(
-            session_id_meta if isinstance(session_id_meta, str) else None
-        ),
+        call_session_id=(str(session_id_meta) if session_id_meta is not None else None),
         room_name=ctx.room.name,
-        phone_e164=phone_meta if isinstance(phone_meta, str) else None,
+        phone_e164=str(phone_meta) if phone_meta is not None else None,
     )
+    call_start_time = time.monotonic()
     await session.start(agent=agent, room=ctx.room)
 
     # Keep session alive until room disconnects or job shuts down
     disconnect_event = asyncio.Event()
+    qa_dispatched = False
 
     @ctx.room.on("disconnected")
     def _on_room_disconnected(*args: Any, **kwargs: Any) -> None:
+        nonlocal qa_dispatched
         disconnect_event.set()
+        if qa_dispatched:
+            return
+        qa_dispatched = True
+
+        try:
+            ws_id = _coerce_int(metadata.get("workspace_id"))
+            lead_id = metadata.get("lead_id")
+            if not ws_id or not lead_id:
+                logger.info(
+                    "Skipping post-call QA dispatch: missing workspace_id or lead_id (ws=%s, lead=%s)",
+                    ws_id,
+                    lead_id,
+                )
+                return
+
+            duration_seconds = max(0.0, time.monotonic() - call_start_time)
+            user_id = metadata.get("user_id")
+            call_session_id = (
+                metadata.get("session_id")
+                or metadata.get("call_session_id")
+                or getattr(agent, "_call_session_id", None)
+                or ""
+            )
+            campaign_id = metadata.get("campaign_id")
+
+            from app.tasks.celery_tasks.voice_tasks import process_post_call_qa_task
+
+            process_post_call_qa_task.delay(
+                workspace_id=ws_id,
+                lead_id=str(lead_id),
+                user_id=str(user_id) if user_id else None,
+                call_session_id=str(call_session_id),
+                duration_seconds=float(duration_seconds),
+                transcript="",
+                campaign_id=str(campaign_id) if campaign_id is not None else None,
+                hangup_cause="completed",
+                room_name=getattr(ctx.room, "name", None),
+            )
+            logger.info(
+                "Dispatched post-call QA task for room %s (ws=%s, lead=%s, duration=%.1fs)",
+                getattr(ctx.room, "name", None),
+                ws_id,
+                lead_id,
+                duration_seconds,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to dispatch post-call QA task for room %s: %s",
+                getattr(ctx.room, "name", None),
+                exc,
+            )
 
     ctx.add_shutdown_callback(lambda: disconnect_event.set())
 

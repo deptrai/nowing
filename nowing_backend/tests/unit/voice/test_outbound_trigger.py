@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
-from app.services.voice.outbound_trigger import OutboundTriggerEngine
+from app.services.voice.outbound_trigger import (
+    PROSPECT_ENGAGEMENT_CONSUMER_GROUP,
+    STREAM_PROSPECT_ENGAGEMENT,
+    OutboundTriggerEngine,
+    consume_prospect_engagement_stream,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -23,7 +28,9 @@ def engine():
 class TestSpeedToLead:
     """Prospect engagement on Mini-Pitch portal >= 45s triggers Voice SDR call."""
 
-    async def test_duration_above_45s_triggers_call(self, engine: OutboundTriggerEngine):
+    async def test_duration_above_45s_triggers_call(
+        self, engine: OutboundTriggerEngine
+    ):
         lead_id = uuid4()
         event_data = {
             "workspace_id": 15,
@@ -144,3 +151,119 @@ class TestHiringRadar:
         res = await engine.handle_hiring_radar_signal(signal_event)
         assert res.triggered is False
         assert "not an outbound trigger type" in res.reason
+
+
+class TestProspectEngagementConsumer:
+    """Redis stream consumer for `stream:prospect:engagement` (AI-38.2)."""
+
+    async def test_consumer_processes_and_acks_batch(self):
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock()
+        mock_redis.xreadgroup = AsyncMock(
+            return_value=[
+                (
+                    STREAM_PROSPECT_ENGAGEMENT,
+                    [
+                        (
+                            "msg-1",
+                            {
+                                "workspace_id": "15",
+                                "phone_e164": "+84901234567",
+                                "view_duration_seconds": "50.0",
+                            },
+                        ),
+                        (
+                            "msg-2",
+                            {
+                                "workspace_id": "15",
+                                "phone_e164": "+84901234567",
+                                "view_duration_seconds": "10.0",
+                            },
+                        ),
+                    ],
+                )
+            ]
+        )
+        mock_redis.xack = AsyncMock()
+
+        mock_engine = MagicMock()
+        mock_engine.handle_prospect_engagement = AsyncMock()
+
+        processed = await consume_prospect_engagement_stream(
+            redis_client=mock_redis,
+            engine=mock_engine,
+        )
+
+        assert processed == 2
+        assert mock_engine.handle_prospect_engagement.await_count == 2
+        assert mock_redis.xack.await_count == 2
+        mock_redis.xack.assert_any_await(
+            STREAM_PROSPECT_ENGAGEMENT, PROSPECT_ENGAGEMENT_CONSUMER_GROUP, "msg-1"
+        )
+        mock_redis.xack.assert_any_await(
+            STREAM_PROSPECT_ENGAGEMENT, PROSPECT_ENGAGEMENT_CONSUMER_GROUP, "msg-2"
+        )
+
+    async def test_consumer_ignores_busygroup(self):
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock(
+            side_effect=Exception("BUSYGROUP Consumer Group name already exists")
+        )
+        mock_redis.xreadgroup = AsyncMock(return_value=[])
+
+        processed = await consume_prospect_engagement_stream(
+            redis_client=mock_redis,
+        )
+        assert processed == 0
+
+    async def test_consumer_error_on_one_message_does_not_ack_failure(self):
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock()
+        mock_redis.xreadgroup = AsyncMock(
+            return_value=[
+                (
+                    STREAM_PROSPECT_ENGAGEMENT,
+                    [
+                        (
+                            "msg-bad",
+                            {
+                                "workspace_id": "15",
+                                "phone_e164": "+84901234567",
+                                "view_duration_seconds": "50.0",
+                            },
+                        ),
+                        (
+                            "msg-good",
+                            {
+                                "workspace_id": "15",
+                                "phone_e164": "+84901234567",
+                                "view_duration_seconds": "50.0",
+                            },
+                        ),
+                    ],
+                )
+            ]
+        )
+        mock_redis.xack = AsyncMock()
+
+        mock_engine = MagicMock()
+        mock_engine.handle_prospect_engagement = AsyncMock(
+            side_effect=[RuntimeError("Engine failure"), None]
+        )
+
+        processed = await consume_prospect_engagement_stream(
+            redis_client=mock_redis,
+            engine=mock_engine,
+        )
+
+        assert processed == 1
+        assert mock_redis.xack.await_count == 1
+        mock_redis.xack.assert_awaited_once_with(
+            STREAM_PROSPECT_ENGAGEMENT, PROSPECT_ENGAGEMENT_CONSUMER_GROUP, "msg-good"
+        )
+
+        assert processed == 1
+        assert mock_redis.xack.await_count == 1
+        mock_redis.xack.assert_awaited_once_with(
+            STREAM_PROSPECT_ENGAGEMENT, PROSPECT_ENGAGEMENT_CONSUMER_GROUP, "msg-good"
+        )

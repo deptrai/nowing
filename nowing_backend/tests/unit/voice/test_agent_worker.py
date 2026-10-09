@@ -25,6 +25,7 @@ from app.services.voice.worker_pool import VoiceWorkerPool
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def filler_dir(tmp_path: Path) -> Path:
     """Create a temp dir with minimal WAV files for FillerAudioBank."""
@@ -33,9 +34,19 @@ def filler_dir(tmp_path: Path) -> Path:
     def _make_wav(path: Path, n_samples: int = 100) -> None:
         header = struct.pack(
             "<4sI4s4sIHHIIHH4sI",
-            b"RIFF", 36 + n_samples * 2, b"WAVE",
-            b"fmt ", 16, 1, 1, 24000, 48000, 2, 16,
-            b"data", n_samples * 2,
+            b"RIFF",
+            36 + n_samples * 2,
+            b"WAVE",
+            b"fmt ",
+            16,
+            1,
+            1,
+            24000,
+            48000,
+            2,
+            16,
+            b"data",
+            n_samples * 2,
         )
         path.write_bytes(header + b"\x00" * (n_samples * 2))
 
@@ -54,6 +65,7 @@ def filler_bank(filler_dir: Path) -> FillerAudioBank:
 # ---------------------------------------------------------------------------
 # FillerAudioBank tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestFillerAudioBank:
@@ -78,13 +90,24 @@ class TestFillerAudioBank:
     def test_get_filler_fallback_when_kind_missing(self, tmp_path: Path):
         """Missing kind falls back to first available clip."""
         import struct
+
         # Only create 'ack' file
         n = 50
         header = struct.pack(
             "<4sI4s4sIHHIIHH4sI",
-            b"RIFF", 36 + n * 2, b"WAVE",
-            b"fmt ", 16, 1, 1, 24000, 48000, 2, 16,
-            b"data", n * 2,
+            b"RIFF",
+            36 + n * 2,
+            b"WAVE",
+            b"fmt ",
+            16,
+            1,
+            1,
+            24000,
+            48000,
+            2,
+            16,
+            b"data",
+            n * 2,
         )
         (tmp_path / "ack_da_vang.wav").write_bytes(header + b"\x00" * (n * 2))
 
@@ -113,6 +136,7 @@ class TestFillerAudioBank:
 # ---------------------------------------------------------------------------
 # VoiceWorkerPool tests
 # ---------------------------------------------------------------------------
+
 
 def _stub_worker(worker_id: int) -> None:
     """Module-level stub worker — picklable by multiprocessing."""
@@ -175,12 +199,22 @@ class TestVoiceWorkerPool:
         class _StubProc:
             def __init__(self, **kw):
                 pass
-            def start(self): pass
-            def join(self, timeout=None): pass
-            def is_alive(self): return True
-            def kill(self): pass
+
+            def start(self):
+                pass
+
+            def join(self, timeout=None):
+                pass
+
+            def is_alive(self):
+                return True
+
+            def kill(self):
+                pass
+
             @property
-            def pid(self): return 9999
+            def pid(self):
+                return 9999
 
         with patch(
             "app.services.voice.worker_pool.multiprocessing.Process",
@@ -196,13 +230,24 @@ class TestVoiceWorkerPool:
         pool = VoiceWorkerPool(num_workers=1)
 
         class _StubProc:
-            def __init__(self, **kw): self._alive = False
-            def start(self): self._alive = True
-            def join(self, timeout=None): self._alive = False
-            def is_alive(self): return self._alive
-            def kill(self): self._alive = False
+            def __init__(self, **kw):
+                self._alive = False
+
+            def start(self):
+                self._alive = True
+
+            def join(self, timeout=None):
+                self._alive = False
+
+            def is_alive(self):
+                return self._alive
+
+            def kill(self):
+                self._alive = False
+
             @property
-            def pid(self): return 9998
+            def pid(self):
+                return 9998
 
         with patch(
             "app.services.voice.worker_pool.multiprocessing.Process",
@@ -218,13 +263,24 @@ class TestVoiceWorkerPool:
         pool = VoiceWorkerPool(num_workers=3)
 
         class _StubProc:
-            def __init__(self, **kw): pass
-            def start(self): pass
-            def join(self, timeout=None): pass
-            def is_alive(self): return True
-            def kill(self): pass
+            def __init__(self, **kw):
+                pass
+
+            def start(self):
+                pass
+
+            def join(self, timeout=None):
+                pass
+
+            def is_alive(self):
+                return True
+
+            def kill(self):
+                pass
+
             @property
-            def pid(self): return 9997
+            def pid(self):
+                return 9997
 
         with patch(
             "app.services.voice.worker_pool.multiprocessing.Process",
@@ -240,14 +296,26 @@ class TestVoiceWorkerPool:
 
     def test_context_manager_spawns_and_shuts_down(self):
         """Pool works as context manager."""
+
         class _StubProc:
-            def __init__(self, **kw): self._alive = False
-            def start(self): self._alive = True
-            def join(self, timeout=None): self._alive = False
-            def is_alive(self): return self._alive
-            def kill(self): self._alive = False
+            def __init__(self, **kw):
+                self._alive = False
+
+            def start(self):
+                self._alive = True
+
+            def join(self, timeout=None):
+                self._alive = False
+
+            def is_alive(self):
+                return self._alive
+
+            def kill(self):
+                self._alive = False
+
             @property
-            def pid(self): return 9996
+            def pid(self):
+                return 9996
 
         with patch(
             "app.services.voice.worker_pool.multiprocessing.Process",
@@ -261,6 +329,7 @@ class TestVoiceWorkerPool:
 # ---------------------------------------------------------------------------
 # Feature gate tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestSequencerVoiceEnabledGate:
@@ -292,6 +361,7 @@ class TestSequencerVoiceEnabledGate:
 # ---------------------------------------------------------------------------
 # Sequencer channel validation
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestVoiceChannelCompliance:
@@ -338,6 +408,7 @@ class TestVoiceChannelCompliance:
 # Story 38.2 Review Patch Tests: VoiceSDRAgent, Providers, VAD Isolation
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestVoiceSDRAgentLifecycle:
     """Tests for VoiceSDRAgent lifecycle hooks and provider factories."""
@@ -346,20 +417,26 @@ class TestVoiceSDRAgentLifecycle:
         """_build_stt returns deepgram STT when API key is present."""
         from app.services.voice import agent_worker
 
-        with patch.object(agent_worker, "VOICE_STT_PROVIDER", "deepgram"), \
-             patch.object(agent_worker, "DEEPGRAM_API_KEY", "mock-key"), \
-             patch("livekit.plugins.deepgram.STT") as mock_dg:
+        with (
+            patch.object(agent_worker, "VOICE_STT_PROVIDER", "deepgram"),
+            patch.object(agent_worker, "DEEPGRAM_API_KEY", "mock-key"),
+            patch("livekit.plugins.deepgram.STT") as mock_dg,
+        ):
             res = agent_worker._build_stt()
-            mock_dg.assert_called_once_with(model="nova-2", language="vi", api_key="mock-key")
+            mock_dg.assert_called_once_with(
+                model="nova-2", language="vi", api_key="mock-key"
+            )
             assert res == mock_dg.return_value
 
     def test_build_stt_fallback_whisper(self):
         """_build_stt falls back to WhisperSTTAdapter when Deepgram key missing."""
         from app.services.voice import agent_worker
 
-        with patch.object(agent_worker, "VOICE_STT_PROVIDER", "deepgram"), \
-             patch.object(agent_worker, "DEEPGRAM_API_KEY", ""), \
-             patch("app.services.stt_service.STTService"):
+        with (
+            patch.object(agent_worker, "VOICE_STT_PROVIDER", "deepgram"),
+            patch.object(agent_worker, "DEEPGRAM_API_KEY", ""),
+            patch("app.services.stt_service.STTService"),
+        ):
             res = agent_worker._build_stt()
             assert isinstance(res, agent_worker._WhisperSTTAdapter)
 
@@ -367,11 +444,15 @@ class TestVoiceSDRAgentLifecycle:
         """_build_tts returns OpenAI TTS when API key is present."""
         from app.services.voice import agent_worker
 
-        with patch.object(agent_worker, "VOICE_TTS_PROVIDER", "openai"), \
-             patch.object(agent_worker, "OPENAI_API_KEY", "mock-key"), \
-             patch("livekit.plugins.openai.TTS") as mock_tts:
+        with (
+            patch.object(agent_worker, "VOICE_TTS_PROVIDER", "openai"),
+            patch.object(agent_worker, "OPENAI_API_KEY", "mock-key"),
+            patch("livekit.plugins.openai.TTS") as mock_tts,
+        ):
             res = agent_worker._build_tts()
-            mock_tts.assert_called_once_with(model="tts-1", voice="nova", api_key="mock-key")
+            mock_tts.assert_called_once_with(
+                model="tts-1", voice="nova", api_key="mock-key"
+            )
             assert res == mock_tts.return_value
 
     def test_build_tts_missing_key_raises(self):
@@ -388,11 +469,15 @@ class TestVoiceSDRAgentLifecycle:
         """_build_llm returns Anthropic LLM when API key is present."""
         from app.services.voice import agent_worker
 
-        with patch.object(agent_worker, "VOICE_LLM_PROVIDER", "anthropic"), \
-             patch.object(agent_worker, "ANTHROPIC_API_KEY", "mock-key"), \
-             patch("livekit.plugins.anthropic.LLM") as mock_llm:
+        with (
+            patch.object(agent_worker, "VOICE_LLM_PROVIDER", "anthropic"),
+            patch.object(agent_worker, "ANTHROPIC_API_KEY", "mock-key"),
+            patch("livekit.plugins.anthropic.LLM") as mock_llm,
+        ):
             res = agent_worker._build_llm()
-            mock_llm.assert_called_once_with(model="claude-sonnet-4-6", api_key="mock-key")
+            mock_llm.assert_called_once_with(
+                model="claude-sonnet-4-6", api_key="mock-key"
+            )
             assert res == mock_llm.return_value
 
     def test_build_vad_state_tensor_isolation(self):
@@ -475,16 +560,16 @@ class TestVoiceSDRAgentSemanticGate:
         session = self._session_with_say()
         assessment = VoiceTurnAssessment(suppress_response=True)
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            agent_worker,
-            "evaluate_voice_turn",
-            AsyncMock(return_value=assessment),
-        ) as mock_eval, pytest.raises(StopResponse):
-            await agent.on_user_turn_completed(
-                MagicMock(), self._msg("vâng ạ")
-            )
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(
+                agent_worker,
+                "evaluate_voice_turn",
+                AsyncMock(return_value=assessment),
+            ) as mock_eval,
+            pytest.raises(StopResponse),
+        ):
+            await agent.on_user_turn_completed(MagicMock(), self._msg("vâng ạ"))
 
         mock_eval.assert_awaited_once()
         assert agent._first_token_event.is_set()
@@ -516,17 +601,20 @@ class TestVoiceSDRAgentSemanticGate:
         telephony_client = MagicMock()
         telephony_client.__aenter__.return_value.end_call = AsyncMock()
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            agent_worker,
-            "evaluate_voice_turn",
-            AsyncMock(return_value=assessment),
-        ) as mock_eval, patch.object(
-            agent_worker,
-            "LiveKitTelephonyClient",
-            return_value=telephony_client,
-        ) as client_cls, pytest.raises(StopResponse):
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(
+                agent_worker,
+                "evaluate_voice_turn",
+                AsyncMock(return_value=assessment),
+            ) as mock_eval,
+            patch.object(
+                agent_worker,
+                "LiveKitTelephonyClient",
+                return_value=telephony_client,
+            ) as client_cls,
+            pytest.raises(StopResponse),
+        ):
             await agent.on_user_turn_completed(
                 MagicMock(), self._msg("cho tôi nói chuyện với người thật")
             )
@@ -569,20 +657,21 @@ class TestVoiceSDRAgentSemanticGate:
         telephony_client = MagicMock()
         telephony_client.__aenter__.return_value.end_call = AsyncMock()
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            agent_worker,
-            "evaluate_voice_turn",
-            AsyncMock(return_value=assessment),
-        ), patch.object(
-            agent_worker,
-            "LiveKitTelephonyClient",
-            return_value=telephony_client,
-        ), pytest.raises(StopResponse):
-            await agent.on_user_turn_completed(
-                MagicMock(), self._msg("gặp người thật")
-            )
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(
+                agent_worker,
+                "evaluate_voice_turn",
+                AsyncMock(return_value=assessment),
+            ),
+            patch.object(
+                agent_worker,
+                "LiveKitTelephonyClient",
+                return_value=telephony_client,
+            ),
+            pytest.raises(StopResponse),
+        ):
+            await agent.on_user_turn_completed(MagicMock(), self._msg("gặp người thật"))
 
         # Escalation ran — the canned line was played, not just silence.
         session.say.assert_called_once()
@@ -601,17 +690,16 @@ class TestVoiceSDRAgentSemanticGate:
         session = self._session_with_say()
         assessment = VoiceTurnAssessment(transfer=True)
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            agent_worker,
-            "evaluate_voice_turn",
-            AsyncMock(return_value=assessment),
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(
+                agent_worker,
+                "evaluate_voice_turn",
+                AsyncMock(return_value=assessment),
+            ),
         ):
             # Returns normally — no StopResponse, no say(), no end_call.
-            await agent.on_user_turn_completed(
-                MagicMock(), self._msg("gặp người thật")
-            )
+            await agent.on_user_turn_completed(MagicMock(), self._msg("gặp người thật"))
 
         session.say.assert_not_called()
         await self._cleanup(agent)
@@ -634,20 +722,20 @@ class TestVoiceSDRAgentSemanticGate:
             side_effect=RuntimeError("livekit down")
         )
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            agent_worker,
-            "evaluate_voice_turn",
-            AsyncMock(return_value=assessment),
-        ), patch.object(
-            agent_worker,
-            "LiveKitTelephonyClient",
-            return_value=telephony_client,
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(
+                agent_worker,
+                "evaluate_voice_turn",
+                AsyncMock(return_value=assessment),
+            ),
+            patch.object(
+                agent_worker,
+                "LiveKitTelephonyClient",
+                return_value=telephony_client,
+            ),
         ):
-            await agent.on_user_turn_completed(
-                MagicMock(), self._msg("gặp người thật")
-            )
+            await agent.on_user_turn_completed(MagicMock(), self._msg("gặp người thật"))
 
         session.say.assert_called_once()  # line played, teardown failed
         # Fail-open re-arms the filler watchdog for the generation path —
@@ -672,15 +760,11 @@ class TestVoiceSDRAgentSemanticGate:
         service.decide = AsyncMock(
             return_value=DecisionResult(
                 answers={
-                    "should_respond": Answer(
-                        kind="noul", value=0.9, confidence=0.9
-                    ),
+                    "should_respond": Answer(kind="noul", value=0.9, confidence=0.9),
                     "caller_frustration": Answer(
                         kind="score", value=2.5, confidence=0.8
                     ),
-                    "transfer_to_human": Answer(
-                        kind="noul", value=0.1, confidence=0.1
-                    ),
+                    "transfer_to_human": Answer(kind="noul", value=0.1, confidence=0.1),
                 },
                 model="jev-1.13.0",
                 backend="jev",
@@ -688,11 +772,11 @@ class TestVoiceSDRAgentSemanticGate:
             )
         )
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            semantic_gate, "get_decision_service", return_value=service
-        ), caplog.at_level("INFO", logger="app.services.voice.semantic_gate"):
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(semantic_gate, "get_decision_service", return_value=service),
+            caplog.at_level("INFO", logger="app.services.voice.semantic_gate"),
+        ):
             # Returns normally — generation proceeds. (Note: the transcript
             # must NOT contain a hard opt-out phrase — "phiền quá" now routes
             # to the Decree 91 opt-out handler before the semantic gate.)
@@ -720,11 +804,11 @@ class TestVoiceSDRAgentSemanticGate:
         service = MagicMock()
         service.decide = AsyncMock()
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            semantic_gate, "get_decision_service", return_value=service
-        ), pytest.raises(StopResponse):
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(semantic_gate, "get_decision_service", return_value=service),
+            pytest.raises(StopResponse),
+        ):
             await agent.on_user_turn_completed(MagicMock(), self._msg("ừ"))
 
         service.decide.assert_not_called()
@@ -741,12 +825,13 @@ class TestVoiceSDRAgentSemanticGate:
         agent = VoiceSDRAgent()
         session = self._session_with_say()
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            agent_worker,
-            "evaluate_voice_turn",
-            AsyncMock(side_effect=RuntimeError("decide timeout")),
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(
+                agent_worker,
+                "evaluate_voice_turn",
+                AsyncMock(side_effect=RuntimeError("decide timeout")),
+            ),
         ):
             await agent.on_user_turn_completed(
                 MagicMock(), self._msg("cho tôi hỏi giá nhà")
@@ -767,14 +852,11 @@ class TestVoiceSDRAgentSemanticGate:
         service = MagicMock()
         service.decide = AsyncMock()
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            semantic_gate, "get_decision_service", return_value=service
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(semantic_gate, "get_decision_service", return_value=service),
         ):
-            await agent.on_user_turn_completed(
-                MagicMock(), self._msg("vâng ạ")
-            )
+            await agent.on_user_turn_completed(MagicMock(), self._msg("vâng ạ"))
 
         service.decide.assert_not_called()
         session.say.assert_not_called()
@@ -793,14 +875,11 @@ class TestVoiceSDRAgentSemanticGate:
         service = MagicMock()
         service.decide = AsyncMock()
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ), patch.object(
-            semantic_gate, "get_decision_service", return_value=service
+        with (
+            patch.object(VoiceSDRAgent, "session", property(lambda self: session)),
+            patch.object(semantic_gate, "get_decision_service", return_value=service),
         ):
-            await agent.on_user_turn_completed(
-                MagicMock(), self._msg("   ")
-            )
+            await agent.on_user_turn_completed(MagicMock(), self._msg("   "))
 
         service.decide.assert_not_called()
         await self._cleanup(agent)
@@ -841,17 +920,15 @@ class TestEntrypointMetadataPlumbing:
         session.start = AsyncMock()
         session.aclose = AsyncMock()
 
-        with patch.object(
-            agent_worker, "SEQUENCER_VOICE_ENABLED", True
-        ), patch.object(
-            agent_worker, "AgentSession", return_value=session
-        ), patch.object(agent_worker, "_build_stt"), patch.object(
-            agent_worker, "_build_llm"
-        ), patch.object(agent_worker, "_build_tts"), patch.object(
-            agent_worker, "_build_vad"
-        ), patch.object(
-            agent_worker, "VoiceSDRAgent"
-        ) as agent_cls:
+        with (
+            patch.object(agent_worker, "SEQUENCER_VOICE_ENABLED", True),
+            patch.object(agent_worker, "AgentSession", return_value=session),
+            patch.object(agent_worker, "_build_stt"),
+            patch.object(agent_worker, "_build_llm"),
+            patch.object(agent_worker, "_build_tts"),
+            patch.object(agent_worker, "_build_vad"),
+            patch.object(agent_worker, "VoiceSDRAgent") as agent_cls,
+        ):
             await agent_worker.entrypoint(ctx)
 
         kwargs = agent_cls.call_args.kwargs
@@ -883,17 +960,15 @@ class TestEntrypointMetadataPlumbing:
         session.start = AsyncMock()
         session.aclose = AsyncMock()
 
-        with patch.object(
-            agent_worker, "SEQUENCER_VOICE_ENABLED", True
-        ), patch.object(
-            agent_worker, "AgentSession", return_value=session
-        ), patch.object(agent_worker, "_build_stt"), patch.object(
-            agent_worker, "_build_llm"
-        ), patch.object(agent_worker, "_build_tts"), patch.object(
-            agent_worker, "_build_vad"
-        ), patch.object(
-            agent_worker, "VoiceSDRAgent"
-        ) as agent_cls:
+        with (
+            patch.object(agent_worker, "SEQUENCER_VOICE_ENABLED", True),
+            patch.object(agent_worker, "AgentSession", return_value=session),
+            patch.object(agent_worker, "_build_stt"),
+            patch.object(agent_worker, "_build_llm"),
+            patch.object(agent_worker, "_build_tts"),
+            patch.object(agent_worker, "_build_vad"),
+            patch.object(agent_worker, "VoiceSDRAgent") as agent_cls,
+        ):
             await agent_worker.entrypoint(ctx)
 
         kwargs = agent_cls.call_args.kwargs
@@ -925,23 +1000,81 @@ class TestEntrypointMetadataPlumbing:
         session.start = AsyncMock()
         session.aclose = AsyncMock()
 
-        with patch.object(
-            agent_worker, "SEQUENCER_VOICE_ENABLED", True
-        ), patch.object(
-            agent_worker, "AgentSession", return_value=session
-        ), patch.object(agent_worker, "_build_stt"), patch.object(
-            agent_worker, "_build_llm"
-        ), patch.object(agent_worker, "_build_tts"), patch.object(
-            agent_worker, "_build_vad"
-        ), patch.object(
-            agent_worker, "VoiceSDRAgent"
-        ) as agent_cls:
+        with (
+            patch.object(agent_worker, "SEQUENCER_VOICE_ENABLED", True),
+            patch.object(agent_worker, "AgentSession", return_value=session),
+            patch.object(agent_worker, "_build_stt"),
+            patch.object(agent_worker, "_build_llm"),
+            patch.object(agent_worker, "_build_tts"),
+            patch.object(agent_worker, "_build_vad"),
+            patch.object(agent_worker, "VoiceSDRAgent") as agent_cls,
+        ):
             await agent_worker.entrypoint(ctx)
 
         kwargs = agent_cls.call_args.kwargs
         assert kwargs["workspace_id"] is None
         assert kwargs["call_session_id"] == "s1"
         session.start.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_entrypoint_dispatches_post_call_qa_on_disconnect(self):
+        """Room disconnect dispatches process_post_call_qa_task with call metadata."""
+        from app.services.voice import agent_worker
+
+        user_id = uuid4()
+        lead_id = uuid4()
+        ctx = MagicMock()
+        ctx.room.name = "call_qa_room"
+        ctx.room.metadata = json.dumps(
+            {
+                "session_id": "sess-qa-1",
+                "workspace_id": 42,
+                "lead_id": str(lead_id),
+                "user_id": str(user_id),
+                "campaign_id": "camp-99",
+            }
+        )
+        ctx.connect = AsyncMock()
+
+        def _on(_event: str):
+            def _deco(fn):
+                fn()
+                return fn
+
+            return _deco
+
+        ctx.room.on = MagicMock(side_effect=_on)
+        session = MagicMock()
+        session.start = AsyncMock()
+        session.aclose = AsyncMock()
+
+        mock_qa_task = MagicMock()
+
+        with (
+            patch.object(agent_worker, "SEQUENCER_VOICE_ENABLED", True),
+            patch.object(agent_worker, "AgentSession", return_value=session),
+            patch.object(agent_worker, "_build_stt"),
+            patch.object(agent_worker, "_build_llm"),
+            patch.object(agent_worker, "_build_tts"),
+            patch.object(agent_worker, "_build_vad"),
+            patch.object(agent_worker, "VoiceSDRAgent"),
+            patch(
+                "app.tasks.celery_tasks.voice_tasks.process_post_call_qa_task.delay",
+                mock_qa_task,
+            ),
+        ):
+            await agent_worker.entrypoint(ctx)
+
+        mock_qa_task.assert_called_once()
+        call_kwargs = mock_qa_task.call_args.kwargs
+        assert call_kwargs["workspace_id"] == 42
+        assert call_kwargs["lead_id"] == str(lead_id)
+        assert call_kwargs["user_id"] == str(user_id)
+        assert call_kwargs["call_session_id"] == "sess-qa-1"
+        assert call_kwargs["duration_seconds"] >= 0.0
+        assert call_kwargs["campaign_id"] == "camp-99"
+        assert call_kwargs["hangup_cause"] == "completed"
+        assert call_kwargs["room_name"] == "call_qa_room"
 
 
 # ---------------------------------------------------------------------------
@@ -1037,9 +1170,9 @@ class TestVoiceSDRAgentBargeIn:
             # Frame 2: after customer speaks, -14dB gain applied
             res2 = np.frombuffer(frames[1].data, dtype=np.int16)
             factor = 10.0 ** (-14.0 / 20.0)
-            expected = np.clip(
-                np.round(samples * factor), -32768, 32767
-            ).astype(np.int16)
+            expected = np.clip(np.round(samples * factor), -32768, 32767).astype(
+                np.int16
+            )
             np.testing.assert_array_equal(res2, expected)
 
         # After tts_node generator completes, bot speech is stopped
@@ -1093,9 +1226,7 @@ class TestVoiceSDRAgentBargeIn:
         engine = BargeInEngine(enabled=True)
         agent = VoiceSDRAgent(barge_in_engine=engine)
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ):
+        with patch.object(VoiceSDRAgent, "session", property(lambda self: session)):
             # Bot speech started 1 second ago
             t0 = 1000.0
             engine.on_bot_speech_started(timestamp=t0)
@@ -1123,7 +1254,9 @@ class TestVoiceSDRAgentBargeIn:
             # _user_silence_event (the customer is mid-barge-in, not silent).
             session.say.assert_called_once()
             say_kwargs = session.say.call_args
-            text_arg = say_kwargs.kwargs.get("text", say_kwargs.args[0] if say_kwargs.args else "")
+            text_arg = say_kwargs.kwargs.get(
+                "text", say_kwargs.args[0] if say_kwargs.args else ""
+            )
             assert text_arg == ""
             assert say_kwargs.kwargs["allow_interruptions"] is False
             assert say_kwargs.kwargs["add_to_chat_ctx"] is False
@@ -1143,9 +1276,7 @@ class TestVoiceSDRAgentBargeIn:
         engine = BargeInEngine(enabled=True)
         agent = VoiceSDRAgent(barge_in_engine=engine)
 
-        with patch.object(
-            VoiceSDRAgent, "session", property(lambda self: session)
-        ):
+        with patch.object(VoiceSDRAgent, "session", property(lambda self: session)):
             t0 = 1000.0
             engine.on_bot_speech_started(timestamp=t0)
 
@@ -1187,9 +1318,7 @@ class TestVoiceSDRAgentBargeIn:
         event = livekit_stt.SpeechEvent(
             type=livekit_stt.SpeechEventType.INTERIM_TRANSCRIPT,
             alternatives=[
-                livekit_stt.SpeechData(
-                    language="vi", text="khoan đã", confidence=0.95
-                )
+                livekit_stt.SpeechData(language="vi", text="khoan đã", confidence=0.95)
             ],
         )
 
@@ -1223,9 +1352,7 @@ class TestVoiceSDRAgentBargeIn:
         agent = VoiceSDRAgent()
         event = livekit_stt.SpeechEvent(
             type=livekit_stt.SpeechEventType.INTERIM_TRANSCRIPT,
-            alternatives=[
-                livekit_stt.SpeechData(language="vi", text="khoan đã")
-            ],
+            alternatives=[livekit_stt.SpeechData(language="vi", text="khoan đã")],
         )
 
         async def _default_stt_node(agent_inst, audio, model_settings):
@@ -1422,5 +1549,3 @@ class TestVoiceSDRAgentCompliance:
 
         cancel_spy.assert_called_once()
         opt_out_mock.assert_awaited_once_with(session)
-
-

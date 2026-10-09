@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -277,6 +278,15 @@ def _to_answer(question: Question, item: dict[str, Any]) -> Answer:
     )
 
 
+def _strip_code_fence(text: str) -> str:
+    """Strip leading/trailing markdown code fences (```json / ```)."""
+    s = text.strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
+        s = re.sub(r"\s*```$", "", s)
+    return s.strip()
+
+
 def _parse_payload(payload: Any, questions: dict[str, Question]) -> dict[str, Answer]:
     items = payload.get("answers") if isinstance(payload, dict) else None
     if not isinstance(items, list):
@@ -402,7 +412,7 @@ class LLMJsonBackend:
         latency_ms = (time.perf_counter() - start) * 1000
 
         try:
-            content = response.choices[0].message.content
+            content = _strip_code_fence(response.choices[0].message.content or "")
             answers = _parse_payload(json.loads(content), questions)
         except InvalidDecisionAnswer:
             raise

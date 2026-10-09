@@ -1,7 +1,12 @@
 """Unit tests for Jev Guardrails (Story 40.4)."""
 
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
+from app.services.decision.types import Answer, BackendResult
 from app.tasks.jev_guardrails import evaluate_entity_dedup, sanitize_pii_content
 
 
@@ -45,3 +50,30 @@ async def test_evaluate_entity_dedup_new_entity():
     res = await evaluate_entity_dedup(candidate, existing)
     assert res["action"] == "create"
     assert res["score"] < 0.5
+
+
+@pytest.mark.asyncio
+async def test_evaluate_entity_dedup_via_decision_service(monkeypatch):
+    monkeypatch.setenv("DECISION_ENABLED", "true")
+    monkeypatch.setenv("DECISION_ENTITY_ENABLED", "true")
+
+    mock_service = MagicMock()
+    answer = Answer(
+        kind="choice", value="42", confidence=0.95, probabilities={"42": 0.95}
+    )
+    mock_service.decide = AsyncMock(
+        return_value=BackendResult(
+            answers={"match_decision": answer}, model="m", latency_ms=1.0
+        )
+    )
+
+    monkeypatch.setattr(
+        "app.tasks.jev_guardrails.get_decision_service", lambda: mock_service
+    )
+
+    candidate = {"company_name": "New Corp"}
+    existing = [{"id": 42, "company_name": "Old Corp"}]
+    res = await evaluate_entity_dedup(candidate, existing)
+    assert res["action"] == "merge"
+    assert res["matched_id"] == 42
+    assert res["score"] == 2.0

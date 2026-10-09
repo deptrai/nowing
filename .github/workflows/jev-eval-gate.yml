@@ -11,7 +11,7 @@ name: Jev Eval Gate
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, develop]
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'nowing_backend/scripts/jev_eval/**'

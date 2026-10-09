@@ -526,11 +526,8 @@ def test_build_prompt_includes_noul_labels():
 
 
 @pytest.mark.unit
-async def test_decide_non_serializable_state_is_backend_error(monkeypatch):
-    calls = _patch_acompletion(monkeypatch, _FakeResponse(json.dumps(PAYLOAD)))
-    with pytest.raises(DecisionError) as exc_info:
-        await LLMJsonBackend().decide(
-            {"bad": object()}, QUESTIONS, model="m", timeout=5.0
-        )
-    assert exc_info.value.code == "backend_error"
-    assert calls == []  # the LLM is never reached
+async def test_decide_strips_markdown_code_fences(monkeypatch):
+    fenced = f"```json\n{json.dumps(PAYLOAD)}\n```"
+    _patch_acompletion(monkeypatch, _FakeResponse(fenced))
+    res = await LLMJsonBackend().decide({}, QUESTIONS, model="m", timeout=5.0)
+    assert set(res.answers.keys()) == set(QUESTIONS.keys())

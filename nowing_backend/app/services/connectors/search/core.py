@@ -55,6 +55,7 @@ class ConnectorSearchCore:
 
         result = await self.session.execute(query)
         return result.scalars().first()
+
     def __init__(self, session: AsyncSession, workspace_id: int | None = None):
         self.session = session
         self.chunk_retriever = ChunksHybridSearchRetriever(session)
@@ -66,6 +67,7 @@ class ConnectorSearchCore:
         self.counter_lock = (
             asyncio.Lock()
         )  # Lock to protect counter in multithreaded environments
+
     def _build_chunk_sources_from_documents(
         self,
         documents: list[dict[str, Any]],
@@ -111,6 +113,7 @@ class ConnectorSearchCore:
                     source.update(extra_fields_fn(chunk, doc_info, metadata) or {})
                 sources.append(source)
         return sources
+
     async def initialize_counter(self):
         """
         Initialize the source_id_counter based on the total number of chunks for the workspace.
@@ -137,6 +140,7 @@ class ConnectorSearchCore:
                 # Fallback to default value when the database is unreachable or
                 # the schema relationship is temporarily inconsistent.
                 self.source_id_counter = 1
+
     async def search_files(
         self,
         user_query: str,
@@ -202,6 +206,7 @@ class ConnectorSearchCore:
         }
 
         return result_object, files_docs
+
     def _get_doc_url(self, metadata: dict[str, Any]) -> str:
         return (
             metadata.get("url")
@@ -210,6 +215,7 @@ class ConnectorSearchCore:
             or metadata.get("VisitedWebPageURL")
             or ""
         )
+
     async def _combined_rrf_search(
         self,
         query_text: str,
@@ -387,6 +393,7 @@ class ConnectorSearchCore:
             workspace_id,
         )
         return combined_results
+
     def _chunk_preview(self, text: str, limit: int = 200) -> str:
         if not text:
             return ""
@@ -441,20 +448,25 @@ async def _filter_rag_results(
                 # unmasked — drop the doc (mask_failed parity).
                 if not verdict.masked_text:
                     continue
+                doc = dict(doc)
                 doc["content"] = verdict.masked_text
-                for chunk in doc.get("chunks") or []:
-                    if isinstance(chunk, dict) and isinstance(
-                        chunk.get("content"), str
-                    ):
-                        chunk["content"] = redact_pii(
-                            chunk["content"], context="lead_enrichment"
-                        ).text
+                if doc.get("chunks"):
+                    masked_chunks = []
+                    for chunk in doc.get("chunks") or []:
+                        if isinstance(chunk, dict) and isinstance(
+                            chunk.get("content"), str
+                        ):
+                            chunk = dict(chunk)
+                            chunk["content"] = redact_pii(
+                                chunk["content"], context="lead_enrichment"
+                            ).text
+                        masked_chunks.append(chunk)
+                    doc["chunks"] = masked_chunks
             kept.append(doc)
         return kept + demoted
     except Exception:
         logger.warning(
-            "[content_filter] rag filter failed — returning unfiltered "
-            "results",
+            "[content_filter] rag filter failed — returning unfiltered results",
             exc_info=True,
         )
         return results

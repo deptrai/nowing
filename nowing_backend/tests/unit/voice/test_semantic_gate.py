@@ -17,6 +17,7 @@ from app.services.decision.questions import get_question_registry
 from app.services.decision.types import Answer, DecisionResult
 from app.services.voice import semantic_gate
 from app.services.voice.semantic_gate import (
+    VOICE_DECIDE_TIMEOUT_SECONDS,
     VoiceTurnAssessment,
     evaluate_voice_turn,
 )
@@ -62,9 +63,7 @@ def mock_decide(flags_on):
     """Patch the decision service singleton; yield its decide mock."""
     service = MagicMock()
     service.decide = AsyncMock(return_value=_result(_answers()))
-    with patch.object(
-        semantic_gate, "get_decision_service", return_value=service
-    ):
+    with patch.object(semantic_gate, "get_decision_service", return_value=service):
         yield service.decide
 
 
@@ -107,17 +106,13 @@ class TestEvaluateVoiceTurnGating:
         monkeypatch.setenv("DECISION_VOICE_ENABLED", "false")
         service = MagicMock()
         service.decide = AsyncMock()
-        with patch.object(
-            semantic_gate, "get_decision_service", return_value=service
-        ):
+        with patch.object(semantic_gate, "get_decision_service", return_value=service):
             assessment = await evaluate_voice_turn("cho tôi hỏi giá nhà quận 7")
         assert assessment == VoiceTurnAssessment()
         service.decide.assert_not_called()
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "transcript", ["", "   ", "ab", "a ", None, 123]
-    )
+    @pytest.mark.parametrize("transcript", ["", "   ", "ab", "a ", None, 123])
     async def test_short_or_noise_transcript_skips_decide(
         self, mock_decide, transcript
     ):
@@ -140,9 +135,7 @@ class TestEvaluateVoiceTurnGating:
         mock_decide.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_non_backchannel_short_utterance_still_skips(
-        self, mock_decide
-    ):
+    async def test_non_backchannel_short_utterance_still_skips(self, mock_decide):
         """A short non-backchannel ('ab') skips decide AND responds."""
         assessment = await evaluate_voice_turn("ab")
         assert assessment == VoiceTurnAssessment()
@@ -178,18 +171,14 @@ class TestEvaluateVoiceTurnDecisions:
 
     @pytest.mark.asyncio
     async def test_uncertain_noul_responds(self, mock_decide):
-        mock_decide.return_value = _result(
-            _answers(should_respond=0.5, transfer=0.5)
-        )
+        mock_decide.return_value = _result(_answers(should_respond=0.5, transfer=0.5))
         assessment = await evaluate_voice_turn("thì ừm chắc là")
         assert assessment == VoiceTurnAssessment(frustration_score=0.0)
 
     @pytest.mark.asyncio
     async def test_transfer_when_confident(self, mock_decide):
         mock_decide.return_value = _result(_answers(transfer=0.8))
-        assessment = await evaluate_voice_turn(
-            "cho tôi nói chuyện với người thật"
-        )
+        assessment = await evaluate_voice_turn("cho tôi nói chuyện với người thật")
         assert assessment.transfer is True
         assert assessment.suppress_response is False
 
@@ -204,12 +193,8 @@ class TestEvaluateVoiceTurnDecisions:
     async def test_transfer_and_suppress_both_set(self, mock_decide):
         # Both fire — the assessment carries both flags; the consumer
         # escalates first and ignores suppression (spec precedence).
-        mock_decide.return_value = _result(
-            _answers(should_respond=0.0, transfer=0.95)
-        )
-        assessment = await evaluate_voice_turn(
-            "cho tôi gặp người thật, đừng nói nữa"
-        )
+        mock_decide.return_value = _result(_answers(should_respond=0.0, transfer=0.95))
+        assessment = await evaluate_voice_turn("cho tôi gặp người thật, đừng nói nữa")
         assert assessment.transfer is True
         assert assessment.suppress_response is True
 
@@ -226,16 +211,12 @@ class TestEvaluateVoiceTurnDecisions:
     async def test_frustration_score_logged(self, mock_decide, caplog):
         """The [voice_turn] frustration=N structured line is emitted."""
         mock_decide.return_value = _result(_answers(frustration=2.4))
-        with caplog.at_level(
-            "INFO", logger="app.services.voice.semantic_gate"
-        ):
+        with caplog.at_level("INFO", logger="app.services.voice.semantic_gate"):
             await evaluate_voice_turn("sao gọi hoài vậy, phiền quá")
         assert "[voice_turn] frustration=2.4" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_decide_called_with_voice_task_no_fallback(
-        self, mock_decide
-    ):
+    async def test_decide_called_with_voice_task_no_fallback(self, mock_decide):
         workspace_id, user_id = 42, uuid4()
         await evaluate_voice_turn(
             "cho tôi hỏi giá nhà",
@@ -248,7 +229,7 @@ class TestEvaluateVoiceTurnDecisions:
         assert args[0] == {"transcript": "cho tôi hỏi giá nhà"}
         assert kwargs["task"] == "voice"
         assert kwargs["use_fallback"] is False
-        assert kwargs["timeout"] == 0.45
+        assert kwargs["timeout"] == VOICE_DECIDE_TIMEOUT_SECONDS
         assert kwargs["question_set"] == "voice_turn@1.0.0"
         assert kwargs["required_state_keys"] == ("transcript",)
         assert kwargs["workspace_id"] == workspace_id
@@ -259,9 +240,7 @@ class TestEvaluateVoiceTurnDecisions:
         assert "session" not in kwargs
 
     @pytest.mark.asyncio
-    async def test_long_transcript_truncated_before_paid_call(
-        self, mock_decide
-    ):
+    async def test_long_transcript_truncated_before_paid_call(self, mock_decide):
         """Transcripts are capped at _MAX_TRANSCRIPT_CHARS (4000)."""
         await evaluate_voice_turn("x" * 5000)
         args, _ = mock_decide.call_args
@@ -291,13 +270,9 @@ class TestEvaluateVoiceTurnFailOpen:
         assert assessment == VoiceTurnAssessment()
 
     @pytest.mark.asyncio
-    async def test_missing_answer_keys_fail_open_per_field(
-        self, mock_decide
-    ):
+    async def test_missing_answer_keys_fail_open_per_field(self, mock_decide):
         # Backend answered but only returned one key — treated as
         # uncertain for the missing fields, never an action.
-        mock_decide.return_value = _result(
-            {"should_respond": _noul(0.9)}
-        )
+        mock_decide.return_value = _result({"should_respond": _noul(0.9)})
         assessment = await evaluate_voice_turn("cho tôi hỏi giá nhà")
         assert assessment == VoiceTurnAssessment()

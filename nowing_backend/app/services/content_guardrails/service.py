@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -98,12 +97,7 @@ class FilterStats:
 
 def _noul_yes(answer: Answer | None, threshold: float) -> bool:
     """True when a ``noul`` answer's ``value`` (P(yes)) >= threshold."""
-    if answer is None or answer.kind != "noul":
-        return False
-    value = answer.value
-    if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
-        return False
-    return float(value) >= threshold
+    return ConfidenceGate(threshold).passes_positive(answer)
 
 
 async def check_passage(
@@ -152,7 +146,7 @@ async def check_passage(
         reasons: list[str] = []
         action = GuardrailAction.PASS
         masked_text: str | None = None
-        if _noul_yes(injection, gate.threshold):
+        if gate.passes_positive(injection):
             action = GuardrailAction.DROP
             reasons.append("prompt_injection")
         elif (
@@ -162,7 +156,7 @@ async def check_passage(
         ):
             action = GuardrailAction.DROP
             reasons.append("irrelevant")
-        elif _noul_yes(sensitive, gate.threshold):
+        elif gate.passes_positive(sensitive):
             try:
                 masked_text = redact_pii(passage, context=_MASK_CONTEXT).text
             except Exception:
@@ -235,9 +229,7 @@ async def filter_passages[T](
     ):
         return [(item, _PASS_VERDICT) for item, _ in items], stats
 
-    check_positions = [
-        i for i, (_, text) in enumerate(items) if text and text.strip()
-    ]
+    check_positions = [i for i, (_, text) in enumerate(items) if text and text.strip()]
     stats.skipped_cap = max(0, len(check_positions) - max_calls)
     to_check = check_positions[: max(0, max_calls)]
 

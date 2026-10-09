@@ -69,6 +69,45 @@ _HINT_MARKER = "<jev_routing_hint>"
 _COMMIT_TIMEOUT_SECONDS = 2.0
 
 
+def _extract_thread_id(
+    runtime: Any,
+    state: Any,
+    default_thread_id: int | None = None,
+) -> str | None:
+    """Resolve thread_id from configured default, LangGraph config, runtime, or state."""
+    if default_thread_id is not None:
+        return str(default_thread_id)
+
+    def _from_dict(cfg: Any) -> str | None:
+        if not isinstance(cfg, dict):
+            return None
+        tid = (cfg.get("configurable") or {}).get("thread_id")
+        return str(tid) if tid is not None else None
+
+    try:
+        from langgraph.config import get_config
+
+        tid = _from_dict(get_config())
+        if tid is not None:
+            return tid
+    except Exception:
+        pass
+
+    tid = _from_dict(getattr(runtime, "config", None))
+    if tid is not None:
+        return tid
+
+    if isinstance(state, dict):
+        tid = _from_dict(state)
+        if tid is not None:
+            return tid
+        tid = state.get("thread_id")
+        if tid is not None:
+            return str(tid)
+
+    return None
+
+
 class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, ResponseT]):
     """Pre-route user messages via DecisionService before the LLM decides.
 
@@ -184,7 +223,10 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
         )
         if not telemetry_ok:
             return await service.decide(
-                state, self._questions, session=None, **decide_kwargs  # pyright: ignore[reportArgumentType]
+                state,
+                self._questions,
+                session=None,
+                **decide_kwargs,  # pyright: ignore[reportArgumentType]
             )
 
         from app.db import async_session_maker
@@ -192,7 +234,10 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
         async with async_session_maker() as session:
             try:
                 return await service.decide(
-                    state, self._questions, session=session, **decide_kwargs  # pyright: ignore[reportArgumentType]
+                    state,
+                    self._questions,
+                    session=session,
+                    **decide_kwargs,  # pyright: ignore[reportArgumentType]
                 )
             finally:
                 try:
@@ -247,8 +292,13 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
 
             # Once per user message. Dedup prefers the message id — a
             # shared (agent-cache) instance can see identical text from
-            # different threads — and falls back to the stripped text.
-            dedup_key = getattr(last_human, "id", None) or user_text
+            # different threads — and falls back to thread_id + turn index + text.
+            msg_id = getattr(last_human, "id", None)
+            if msg_id:
+                dedup_key = msg_id
+            else:
+                tid = _extract_thread_id(runtime, state, self._thread_id)
+                dedup_key = f"{tid}:{user_text}" if tid else user_text
             if dedup_key == self._last_classified:
                 return None
             # The marker scan only looks at messages AFTER the last
@@ -257,9 +307,7 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
             # other direction — failure and below-threshold outcomes
             # must not re-fire (and re-pay) on every model call.
             for msg in messages[last_human_idx + 1 :]:
-                if isinstance(msg, SystemMessage) and _HINT_MARKER in str(
-                    msg.content
-                ):
+                if isinstance(msg, SystemMessage) and _HINT_MARKER in str(msg.content):
                     # Record the key too — if context editing later
                     # evicts the marker, a rebuilt middleware still
                     # won't re-pay for this message.
@@ -275,8 +323,7 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
             gate = ConfidenceGate.for_task("routing")
             if not gate.passes(answer):
                 logger.debug(
-                    "Jev router below threshold: %s (%.2f < %.2f) — "
-                    "skipping hint",
+                    "Jev router below threshold: %s (%.2f < %.2f) — skipping hint",
                     answer.value,
                     answer.confidence,
                     gate.threshold,
@@ -298,7 +345,7 @@ class JevRouterMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Respo
                 hint = (
                     f"{_HINT_MARKER}\n"
                     f"Jev pre-classification suggests routing to `{choice}` "
-                    f"(confidence={confidence:.0%}). Use `task(subagent_type=\"{choice}\", ...)` "
+                    f'(confidence={confidence:.0%}). Use `task(subagent_type="{choice}", ...)` '
                     f"if this matches the user's intent. You may override if the "
                     f"suggestion is wrong.\n"
                     f"</jev_routing_hint>"

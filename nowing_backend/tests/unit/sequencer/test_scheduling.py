@@ -64,6 +64,18 @@ class TestIsVoiceCurfew:
     def test_weekend_is_always_curfew(self, moment: datetime) -> None:
         assert is_voice_curfew(moment) is True
 
+    @pytest.mark.parametrize(
+        "moment",
+        [
+            _ict(2026, 1, 1, 10, 0),  # Tết Dương lịch (Thursday)
+            _ict(2026, 4, 30, 10, 0),  # Giải phóng (Thursday)
+            _ict(2026, 5, 1, 10, 0),  # Lao động (Friday)
+            _ict(2026, 9, 2, 10, 0),  # Quốc khánh (Wednesday)
+        ],
+    )
+    def test_solar_public_holidays_are_always_curfew(self, moment: datetime) -> None:
+        assert is_voice_curfew(moment) is True
+
     def test_naive_datetime_treated_as_utc(self) -> None:
         naive = datetime(2026, 10, 5, 2, 0)  # 09:00 ICT when read as UTC
         assert is_voice_curfew(naive) is False

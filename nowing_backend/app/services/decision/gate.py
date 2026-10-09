@@ -85,6 +85,20 @@ class ConfidenceGate:
             return False
         return float(confidence) >= self.threshold
 
+    def passes_positive(self, answer: Answer | None) -> bool:
+        """True when a ``noul`` answer is confidently TRUE.
+
+        A noul value IS P(yes) — "confidently yes" therefore means
+        ``value >= threshold``. Non-noul kinds, missing answers, and
+        non-finite values return False.
+        """
+        if answer is None or answer.kind != "noul":
+            return False
+        value = answer.value
+        if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+            return False
+        return float(value) >= self.threshold
+
     def passes_negative(self, answer: Answer | None) -> bool:
         """True when a ``noul`` answer is confidently FALSE.
 

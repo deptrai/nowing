@@ -17,6 +17,8 @@ Constraints:
 
 from __future__ import annotations
 
+import contextlib
+import json
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -105,7 +107,9 @@ class OutboundTriggerEngine:
             workspace_id=int(workspace_id),
             phone_e164=str(phone_e164),
             lead_id=str(lead_id) if lead_id else None,
-            user_id=str(event_data.get("user_id")) if event_data.get("user_id") else None,
+            user_id=str(event_data.get("user_id"))
+            if event_data.get("user_id")
+            else None,
         )
 
         task_id = getattr(async_result, "id", None) or "dispatched_async"
@@ -190,7 +194,9 @@ class OutboundTriggerEngine:
             workspace_id=int(workspace_id),
             phone_e164=str(phone_e164),
             lead_id=str(lead_id) if lead_id else None,
-            user_id=str(signal_event.get("user_id")) if signal_event.get("user_id") else None,
+            user_id=str(signal_event.get("user_id"))
+            if signal_event.get("user_id")
+            else None,
         )
 
         task_id = getattr(async_result, "id", None) or "dispatched_async"
@@ -211,3 +217,131 @@ class OutboundTriggerEngine:
             phone_e164=str(phone_e164),
             task_id=task_id,
         )
+
+
+STREAM_PROSPECT_ENGAGEMENT = "stream:prospect:engagement"
+PROSPECT_ENGAGEMENT_CONSUMER_GROUP = "prospect_engagement_voice_trigger"
+
+
+def _parse_stream_payload(raw_payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract event dict from raw Redis stream entry fields."""
+    if "payload" in raw_payload:
+        try:
+            parsed = json.loads(raw_payload["payload"])
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+    if "data" in raw_payload:
+        try:
+            parsed = json.loads(raw_payload["data"])
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+    return raw_payload
+
+
+async def handle_prospect_engagement(
+    event_data: dict[str, Any],
+    *,
+    engine: OutboundTriggerEngine | None = None,
+) -> TriggerResult:
+    """Convenience module function evaluating pitch portal engagement."""
+    active_engine = engine or OutboundTriggerEngine()
+    return await active_engine.handle_prospect_engagement(event_data)
+
+
+async def consume_prospect_engagement_stream(
+    redis_client: Any | None = None,
+    consumer_name: str | None = None,
+    batch_size: int = 50,
+    block_ms: int = 1000,
+    engine: OutboundTriggerEngine | None = None,
+) -> int:
+    """Consume a bounded batch of engagement events from Redis stream (AI-38.2).
+
+    Idempotently ensures consumer group exists, reads up to `batch_size` events via
+    XREADGROUP, evaluates each via `handle_prospect_engagement`, and XACKs on success.
+    Per-message failures are logged and left unacknowledged.
+    """
+    created_locally = False
+    if redis_client is None:
+        import redis.asyncio as aioredis
+
+        from app.config import config
+
+        if not getattr(config, "REDIS_APP_URL", None):
+            logger.info(
+                "REDIS_APP_URL not configured; skipping engagement stream consume"
+            )
+            return 0
+        redis_client = aioredis.from_url(config.REDIS_APP_URL, decode_responses=True)
+        created_locally = True
+
+    consumer_name = consumer_name or "voice_trigger_worker"
+
+    try:
+        try:
+            await redis_client.xgroup_create(
+                name=STREAM_PROSPECT_ENGAGEMENT,
+                groupname=PROSPECT_ENGAGEMENT_CONSUMER_GROUP,
+                id="0",
+                mkstream=True,
+            )
+        except Exception as exc:
+            if "BUSYGROUP" not in str(exc).upper():
+                logger.warning(
+                    "Failed to create consumer group %s for stream %s: %s",
+                    PROSPECT_ENGAGEMENT_CONSUMER_GROUP,
+                    STREAM_PROSPECT_ENGAGEMENT,
+                    exc,
+                )
+
+        count = max(1, min(batch_size, 50))
+        entries = None
+        try:
+            entries = await redis_client.xreadgroup(
+                groupname=PROSPECT_ENGAGEMENT_CONSUMER_GROUP,
+                consumername=consumer_name,
+                streams={STREAM_PROSPECT_ENGAGEMENT: ">"},
+                count=count,
+                block=block_ms,
+            )
+        except Exception as exc:
+            logger.error("Error reading %s stream: %s", STREAM_PROSPECT_ENGAGEMENT, exc)
+            return 0
+
+        if not entries:
+            return 0
+
+        processed = 0
+        trigger_engine = engine or OutboundTriggerEngine()
+
+        for _stream, messages in entries:
+            for msg_id, raw_fields in messages:
+                try:
+                    event_data = (
+                        _parse_stream_payload(raw_fields)
+                        if isinstance(raw_fields, dict)
+                        else {}
+                    )
+                    await trigger_engine.handle_prospect_engagement(event_data)
+                    await redis_client.xack(
+                        STREAM_PROSPECT_ENGAGEMENT,
+                        PROSPECT_ENGAGEMENT_CONSUMER_GROUP,
+                        msg_id,
+                    )
+                    processed += 1
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to process engagement event %s: %s",
+                        msg_id,
+                        exc,
+                    )
+
+        return processed
+    finally:
+        if created_locally:
+            with contextlib.suppress(Exception):
+                await redis_client.aclose()

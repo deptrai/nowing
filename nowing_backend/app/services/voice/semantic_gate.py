@@ -41,16 +41,25 @@ VOICE_SUPPRESS_MIN_CONFIDENCE = 0.7
 # Escalation bar: transfer only on a confident, explicit request.
 VOICE_TRANSFER_MIN_CONFIDENCE = 0.7
 
-# Per-turn decide() budget — keeps the added latency under the 500ms
-# acceptance bound. The fallback leg is disabled for voice
-# (``use_fallback=False``) because it would double the worst case to
-# ~0.9s; a missed decision is preferable to a stalled turn.
-# Env-tunable: real Jev 3-question batched calls observed at
-# 313-765ms (spec-39-6 live verify), so ops may raise this — the 80ms
-# filler watchdog masks the wait for the caller anyway.
-VOICE_DECIDE_TIMEOUT_SECONDS = float(
-    os.environ.get("VOICE_DECIDE_TIMEOUT_SECONDS", "0.45")
-)
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        val = float(raw)
+        return val if math.isfinite(val) else default
+    except (ValueError, TypeError, OverflowError):
+        return default
+
+
+# Per-turn decide() budget. The fallback leg is disabled for voice
+# (``use_fallback=False``) because it would double the worst case; a
+# missed decision is preferable to a stalled turn. Real Jev 3-question
+# batched calls observed at 313-765ms (spec-39-6 live verify), so default
+# is 0.8s and ops may raise this — the 80ms filler watchdog masks the wait
+# for the caller anyway.
+VOICE_DECIDE_TIMEOUT_SECONDS = _env_float("VOICE_DECIDE_TIMEOUT_SECONDS", 0.8)
 
 # Below this stripped length a transcript is STT noise/debris — not
 # worth a paid call, the turn responds per existing behavior. Note the
@@ -138,9 +147,7 @@ async def evaluate_voice_turn(
         return _FAIL_OPEN
     normalized = _normalize_transcript(transcript)
     if normalized in LOCAL_BACKCHANNELS:
-        logger.info(
-            "[voice_turn] local backchannel suppressed: %r", normalized
-        )
+        logger.info("[voice_turn] local backchannel suppressed: %r", normalized)
         return VoiceTurnAssessment(suppress_response=True)
     if len(transcript.strip()) < _MIN_TRANSCRIPT_CHARS:
         return _FAIL_OPEN
@@ -162,17 +169,13 @@ async def evaluate_voice_turn(
             client_id=client_id,
         )
     except Exception:
-        logger.warning(
-            "[voice_turn] decide failed — fail-open respond", exc_info=True
-        )
+        logger.warning("[voice_turn] decide failed — fail-open respond", exc_info=True)
         return _FAIL_OPEN
 
     try:
         gate = ConfidenceGate.for_task("voice")
         suppress = _confidently_no_respond(result.answers.get("should_respond"))
-        transfer = _confident_transfer(
-            result.answers.get("transfer_to_human"), gate
-        )
+        transfer = _confident_transfer(result.answers.get("transfer_to_human"), gate)
         frustration = _score_value(result.answers.get("caller_frustration"))
     except Exception:
         logger.warning(
