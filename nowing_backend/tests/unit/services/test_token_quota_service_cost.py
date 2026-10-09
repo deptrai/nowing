@@ -588,3 +588,39 @@ async def test_scoped_turn_resets_to_none_when_no_outer():
         assert get_current_accumulator() is None
     finally:
         _turn_accumulator.reset(token)
+
+
+@pytest.mark.asyncio
+async def test_record_token_usage_allows_none_user_id():
+    """record_token_usage allows user_id=None for system-level calls (AI-39.5)."""
+    from app.services.token_tracking_service import record_token_usage
+
+    added_objects = []
+
+    class _MockSession:
+        async def execute(self, *args, **kwargs):
+            return None
+
+        def add(self, obj):
+            added_objects.append(obj)
+
+    session = _MockSession()
+    record = await record_token_usage(
+        session,
+        usage_type="decision",
+        workspace_id=123,
+        user_id=None,
+        prompt_tokens=50,
+        completion_tokens=20,
+        total_tokens=70,
+        cost_micros=100,
+        external_metadata={"system": True},
+    )
+
+    assert record is not None
+    assert record.user_id is None
+    assert record.workspace_id == 123
+    assert record.external_metadata == {"system": True}
+    assert len(added_objects) == 1
+    assert added_objects[0] is record
+

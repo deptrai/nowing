@@ -91,10 +91,11 @@ class DecisionService:
         key raises ``invalid_request`` BEFORE the backend is resolved —
         a malformed call never reaches a paid leg.
 
-        ``session``/``workspace_id``/``user_id`` are optional; when all
-        are provided the call's token usage is persisted to
-        ``TokenUsage`` (fail-open). ``thread_id`` is forwarded to that
-        row so decision spend can be joined back to the chat thread.
+        ``session``/``workspace_id``/``user_id`` are optional; when
+        ``workspace_id`` is provided the call's token usage is persisted to
+        ``TokenUsage`` (fail-open, ``user_id=None`` for system-level calls).
+        ``thread_id`` is forwarded to that row so decision spend can be
+        joined back to the chat thread.
 
         ``model`` is validated against the ACTIVE backend's pin (AD-J3):
         for a Jev primary it must equal ``DECISION_JEV_MODEL`` — passing
@@ -396,9 +397,9 @@ class DecisionService:
         ``extra_call_details`` is merged over the standard call_details
         keys — callers use it for per-leg traces and failure markers.
         """
-        if workspace_id is None or user_id is None:
+        if workspace_id is None:
             logger.debug(
-                "Decision usage not persisted — missing workspace_id/user_id"
+                "Decision usage not persisted — missing workspace_id"
             )
             return
         if session is None:
@@ -461,7 +462,7 @@ class DecisionService:
         question_set: str | None,
         questions: dict[str, Question],
         workspace_id: int,
-        user_id: UUID,
+        user_id: UUID | None,
         client_id: str | None,
         thread_id: int | None = None,
         extra_call_details: dict[str, Any] | None = None,
@@ -481,6 +482,7 @@ class DecisionService:
                 input_tokens,
                 output_tokens,
             )
+            external_metadata = {"system": True} if user_id is None else None
             await record_token_usage(
                 session,
                 usage_type=UsageType.DECISION,
@@ -503,6 +505,7 @@ class DecisionService:
                 },
                 client_id=client_id,
                 thread_id=thread_id,
+                external_metadata=external_metadata,
             )
         except Exception:  # best-effort telemetry; never abort a decision
             logger.warning(

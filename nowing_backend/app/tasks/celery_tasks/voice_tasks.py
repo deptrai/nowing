@@ -123,8 +123,8 @@ async def _async_process_post_call_qa(
     from uuid import UUID
 
     from app.services.voice.billing import (
+        aevaluate_bant_score,
         calculate_telecom_block_charge,
-        evaluate_bant_score,
         evaluate_hangup_protection,
         finalize_call_billing,
         sync_call_to_lead_activity_log,
@@ -164,7 +164,12 @@ async def _async_process_post_call_qa(
             )
 
         # 4. Evaluate BANT scorecard
-        bant_score, bant_breakdown = evaluate_bant_score(transcript)
+        bant_score, bant_breakdown = await aevaluate_bant_score(
+            transcript,
+            session=session,
+            workspace_id=workspace_id,
+            user_id=parsed_user_id,
+        )
 
         # 5. Sync results into LeadActivityLog (CRM timeline)
         log_entry = None

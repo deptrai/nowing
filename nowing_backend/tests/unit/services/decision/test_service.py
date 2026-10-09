@@ -276,6 +276,32 @@ async def test_decide_records_token_usage(_enabled, monkeypatch):
 
 
 @pytest.mark.unit
+async def test_decide_records_token_usage_system_level_user_id_none(
+    _enabled, monkeypatch
+):
+    """System-level decision calls have no user_id (AI-39.5) — telemetry must still record."""
+    recorded = _patch_record(monkeypatch)
+    service = DecisionService(_StubBackend(_result()))
+    session = object()
+    await service.decide(
+        {},
+        {"q": NOUL_Q},
+        task="filter",
+        question_set="content_filter@1.0.0",
+        session=session,
+        workspace_id=42,
+        user_id=None,
+        client_id="system",
+    )
+    assert recorded["session"] is session
+    assert recorded["usage_type"] == "decision"
+    assert recorded["workspace_id"] == 42
+    assert recorded["user_id"] is None
+    assert recorded["client_id"] == "system"
+    assert recorded["external_metadata"] == {"system": True}
+
+
+@pytest.mark.unit
 async def test_decide_thread_id_reaches_record_token_usage(
     _enabled, monkeypatch
 ):

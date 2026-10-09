@@ -106,6 +106,61 @@ class InboundIntentClassifier:
         is_hot = highest_score >= 0.80
         return highest_score, primary_reason, is_hot
 
+    async def aevaluate_intent(
+        self,
+        text: str,
+        *,
+        session: AsyncSession | None = None,
+        workspace_id: int | None = None,
+        user_id: UUID | None = None,
+        client_id: str | None = None,
+    ) -> tuple[float, str, bool]:
+        """Evaluates text using DecisionService Jev intent classification when enabled,
+        falling back to regex evaluate_intent (AI-39.9)."""
+        clean_text = (text or "").strip()
+        if not clean_text:
+            return 0.0, "Không có nội dung", False
+
+        try:
+            from app.config import decision as decision_config
+
+            if (
+                decision_config.decision_enabled()
+                and decision_config.decision_task_enabled("intent")
+            ):
+                from app.services.intent_classification import classify_intent
+
+                payload = await classify_intent(
+                    clean_text,
+                    session=session,
+                    workspace_id=workspace_id,
+                    user_id=user_id,
+                    client_id=client_id,
+                )
+                if payload is not None:
+                    label = payload.get("label")
+                    conf = float(payload.get("confidence", 0.0))
+                    if label == "action":
+                        return 0.95, "Ý định hành động / chốt cọc (Jev)", True
+                    if label == "recommendation":
+                        return 0.85, "Yêu cầu tư vấn / gợi ý (Jev)", True
+                    if label in ("question", "search", "comparison"):
+                        return (
+                            max(0.50, min(0.79, conf)),
+                            f"Tra cứu thông tin: {label} (Jev)",
+                            False,
+                        )
+                    if label in ("chitchat", "complaint", "feedback"):
+                        return 0.20, f"Tương tác: {label} (Jev)", False
+        except Exception:
+            logger.warning(
+                "[InboundIntentClassifier] Jev classify failed, falling back to regex",
+                exc_info=True,
+            )
+
+        return self.evaluate_intent(clean_text)
+
+
 
 class AutoReplyAgent:
     """2-Way AI Auto-Reply Agent grounded in Workspace Knowledge Base."""
@@ -669,7 +724,15 @@ class AutoReplyAgent:
             )
 
         # 2. Evaluate Buying Intent
-        intent_score, intent_reason, is_hot = self.classifier.evaluate_intent(text)
+        if hasattr(self.classifier, "aevaluate_intent"):
+            intent_score, intent_reason, is_hot = await self.classifier.aevaluate_intent(
+                text,
+                session=session,
+                workspace_id=workspace_id,
+                user_id=user_id,
+            )
+        else:
+            intent_score, intent_reason, is_hot = self.classifier.evaluate_intent(text)
 
         # 2b. Story 37.3: Smart Meeting Booking — propose/confirm soft-locked
         # calendar slots before falling back to generic RAG answering.

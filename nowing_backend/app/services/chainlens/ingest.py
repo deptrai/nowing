@@ -98,9 +98,9 @@ async def _guardrail_filter_chunks(
     storing it unmasked is the worst outcome.
 
     Only ``workspace_id`` is forwarded — ingest runs in background tasks
-    with no attributable user, and TokenUsage.user_id is NOT NULL, so
-    telemetry stays log-only here (a session is never shared across the
-    FILTER_CONCURRENCY fan-out regardless).
+    with no attributable user, recorded as system-level usage
+    (TokenUsage.user_id is nullable per AI-39.5; a session is never shared
+    across the FILTER_CONCURRENCY fan-out regardless).
     """
     if not chunks or not (
         decision_config.decision_enabled()

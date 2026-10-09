@@ -212,4 +212,60 @@ class TestBANTScorecard:
         # Budget: "báo giá" ✓ (25), Timeline: "tuần này" ✓ (25)
         assert score == 100
 
+    async def test_bant_score_via_decision_service(self, monkeypatch):
+        from app.services.decision.types import Answer, DecisionResult
+        from app.services.voice.billing import aevaluate_bant_score
+
+        monkeypatch.setattr("app.config.decision.decision_enabled", lambda: True)
+        monkeypatch.setattr(
+            "app.config.decision.decision_task_enabled", lambda task: task == "voice"
+        )
+
+        class _MockDecisionService:
+            async def decide(self, **kwargs):
+                return DecisionResult(
+                    answers={
+                        "budget": Answer(kind="score", value=3.0, confidence=0.9),
+                        "authority": Answer(kind="score", value=2.0, confidence=0.8),
+                        "need": Answer(kind="score", value=2.0, confidence=0.85),
+                        "timeline": Answer(kind="score", value=1.0, confidence=0.7),
+                    },
+                    model="jev-1.13.0",
+                    backend="jev",
+                    latency_ms=15.0,
+                )
+
+        monkeypatch.setattr(
+            "app.services.decision.service.get_decision_service",
+            lambda: _MockDecisionService(),
+        )
+
+        total, breakdown = await aevaluate_bant_score("Khách hàng trao đổi qua điện thoại")
+        assert breakdown == {"budget": 25, "authority": 17, "need": 17, "timeline": 8}
+        assert total == 67
+
+    async def test_bant_score_decision_failure_falls_back_to_keywords(self, monkeypatch):
+        from app.services.voice.billing import aevaluate_bant_score
+
+        monkeypatch.setattr("app.config.decision.decision_enabled", lambda: True)
+        monkeypatch.setattr(
+            "app.config.decision.decision_task_enabled", lambda task: task == "voice"
+        )
+
+        class _FailingDecisionService:
+            async def decide(self, **kwargs):
+                raise RuntimeError("Jev backend unavailable")
+
+        monkeypatch.setattr(
+            "app.services.decision.service.get_decision_service",
+            lambda: _FailingDecisionService(),
+        )
+
+        transcript = "ngân sách khoảng 200 triệu, anh quyết được"
+        total, breakdown = await aevaluate_bant_score(transcript)
+        assert breakdown["budget"] == 25
+        assert breakdown["authority"] == 25
+        assert total >= 50
+
+
 

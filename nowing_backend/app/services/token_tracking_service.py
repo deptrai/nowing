@@ -576,7 +576,7 @@ async def record_token_usage(
     *,
     usage_type: str,
     workspace_id: int,
-    user_id: UUID,
+    user_id: UUID | None = None,
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
     total_tokens: int = 0,

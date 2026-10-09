@@ -16,6 +16,7 @@ Implements telecom-standard unit economics and post-call CRM sync:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 import unicodedata
@@ -248,17 +249,11 @@ async def finalize_call_billing(
     return cost_to_commit
 
 
-def evaluate_bant_score(
+def _evaluate_bant_score_keywords(
     transcript: str,
     call_metadata: dict[str, Any] | None = None,
 ) -> tuple[int, dict[str, int]]:
-    """Evaluate BANT (Budget, Authority, Need, Timeline) score from 0 to 100.
-
-    Each pillar contributes 0 to 25 points.
-
-    Returns:
-        tuple[total_score, breakdown_dict]
-    """
+    """Keyword heuristic fallback for BANT scoring."""
     if not transcript or not transcript.strip():
         return 0, {"budget": 0, "authority": 0, "need": 0, "timeline": 0}
 
@@ -284,6 +279,116 @@ def evaluate_bant_score(
         "timeline": t_score,
     }
     return total, breakdown
+
+
+async def aevaluate_bant_score(
+    transcript: str,
+    call_metadata: dict[str, Any] | None = None,
+    *,
+    session: AsyncSession | None = None,
+    workspace_id: int | None = None,
+    user_id: UUID | None = None,
+) -> tuple[int, dict[str, int]]:
+    """Evaluate BANT (Budget, Authority, Need, Timeline) score via DecisionService (AI-38.5).
+
+    When DECISION_ENABLED and DECISION_VOICE_ENABLED are on, evaluates the
+    transcript using the 'bant_scoring' SCORE question set (task='voice').
+    Each pillar contributes 0 to 25 points from graduated 0-3 levels.
+    Falls back to keyword heuristics on error or when disabled.
+    """
+    if not transcript or not transcript.strip():
+        return 0, {"budget": 0, "authority": 0, "need": 0, "timeline": 0}
+
+    try:
+        from app.config import decision as decision_config
+
+        if (
+            decision_config.decision_enabled()
+            and decision_config.decision_task_enabled("voice")
+        ):
+            from app.services.decision.questions import get_question_registry
+            from app.services.decision.service import get_decision_service
+
+            registry = get_question_registry()
+            qs = registry.get_set("bant_scoring")
+            decision_service = get_decision_service()
+
+            result = await decision_service.decide(
+                state={"transcript": transcript[:4000]},
+                questions=dict(qs.questions),
+                task="voice",
+                question_set=f"{qs.name}@{qs.version}",
+                required_state_keys=qs.required_state_keys,
+                session=session,
+                workspace_id=workspace_id,
+                user_id=user_id,
+            )
+
+            breakdown: dict[str, int] = {}
+            for dim in ("budget", "authority", "need", "timeline"):
+                ans = result.answers.get(dim)
+                if ans is not None and isinstance(ans.value, (int, float)):
+                    # Scale score from [0.0, 3.0] to [0, 25] points
+                    pts = round(float(ans.value) / 3.0 * 25.0)
+                    breakdown[dim] = max(0, min(25, pts))
+                else:
+                    breakdown[dim] = 0
+
+            total = sum(breakdown.values())
+            return total, breakdown
+    except Exception:
+        logger.warning(
+            "[VoiceBilling] BANT Jev scoring failed, falling back to keyword heuristic",
+            exc_info=True,
+        )
+
+    return _evaluate_bant_score_keywords(transcript, call_metadata)
+
+
+def evaluate_bant_score(
+    transcript: str,
+    call_metadata: dict[str, Any] | None = None,
+) -> tuple[int, dict[str, int]]:
+    """Evaluate BANT (Budget, Authority, Need, Timeline) score from 0 to 100.
+
+    When DECISION_ENABLED and DECISION_VOICE_ENABLED are active, runs graduated
+    scoring via DecisionService (falling back to keyword heuristics).
+
+    Returns:
+        tuple[total_score, breakdown_dict]
+    """
+    if not transcript or not transcript.strip():
+        return 0, {"budget": 0, "authority": 0, "need": 0, "timeline": 0}
+
+    try:
+        from app.config import decision as decision_config
+
+        if (
+            decision_config.decision_enabled()
+            and decision_config.decision_task_enabled("voice")
+        ):
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is not None:
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    return pool.submit(
+                        asyncio.run,
+                        aevaluate_bant_score(transcript, call_metadata),
+                    ).result(timeout=2.0)
+            else:
+                return asyncio.run(aevaluate_bant_score(transcript, call_metadata))
+    except Exception:
+        logger.warning(
+            "[VoiceBilling] BANT synchronous evaluation failed, falling back to keyword heuristic",
+            exc_info=True,
+        )
+
+    return _evaluate_bant_score_keywords(transcript, call_metadata)
 
 
 async def sync_call_to_lead_activity_log(
