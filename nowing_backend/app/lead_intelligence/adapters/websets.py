@@ -6,6 +6,8 @@ import logging
 import secrets
 from typing import Any, ClassVar
 
+from sqlalchemy import select
+
 from app.config.urls import BACKEND_URL
 from app.db import async_session_maker
 from app.lead_intelligence.adapters.base import (
@@ -139,6 +141,30 @@ class WebsetsAdapter(LeadSourceAdapter):
 
         self.last_execution_status = "pending"
         return []
+
+    async def get_workspace_status(self, workspace_id: int) -> str | None:
+        """DB-backed per-workspace status from the latest webset campaign.
+
+        Planner/registry call this via ``resolve_exec_status`` instead of the
+        mutable singleton attribute, so a 'pending'/'failed' build for one
+        workspace never bleeds into another tenant's source status.
+        """
+        async with async_session_maker() as session:
+            stmt = (
+                select(WebsetCampaign.status)
+                .where(WebsetCampaign.workspace_id == workspace_id)
+                .order_by(WebsetCampaign.created_at.desc())
+                .limit(1)
+            )
+            status = (await session.execute(stmt)).scalar_one_or_none()
+        if status == "completed":
+            return "ok"
+        if status == "pending":
+            return "pending"
+        if status is None:
+            return "ok"
+        # failed / quota_exceeded / bất kỳ trạng thái terminal lỗi nào khác
+        return "failed"
 
     def normalize_lead(self, raw_record: RawLeadRecord) -> NormalizedLead:
         """Transform a raw webset record into NormalizedLead format."""

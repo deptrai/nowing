@@ -172,3 +172,58 @@ class TestWebsetsAdapter:
         )
         # Failure mới ghi đè lên 'pending' cũ thay vì giữ nguyên
         assert adapter.last_execution_status == "degraded"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "db_status,expected",
+        [
+            ("pending", "pending"),
+            ("completed", "ok"),
+            ("failed", "failed"),
+            ("quota_exceeded", "failed"),
+            (None, "ok"),
+        ],
+    )
+    async def test_get_workspace_status_maps_latest_campaign(
+        self, mock_service: WebsetsService, db_status, expected
+    ) -> None:
+        """DB-backed per-workspace status — không rò rỉ cross-tenant."""
+        adapter = WebsetsAdapter(service=mock_service)
+        adapter.last_execution_status = "failed"  # attr giả lập run khác
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=db_status)
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        with patch(
+            "app.lead_intelligence.adapters.websets.async_session_maker",
+            return_value=mock_session_cm,
+        ):
+            assert await adapter.get_workspace_status(workspace_id=7) == expected
+
+    @pytest.mark.asyncio
+    async def test_resolve_exec_status_prefers_db_backed_getter(self) -> None:
+        """resolve_exec_status duck-type: DB getter thắng singleton attr."""
+        from app.lead_intelligence.adapters.base import resolve_exec_status
+
+        adapter = WebsetsAdapter(service=MagicMock(spec=WebsetsService))
+        adapter.last_execution_status = "pending"
+        adapter.get_workspace_status = AsyncMock(return_value="ok")
+
+        assert await resolve_exec_status(adapter, workspace_id=1) == "ok"
+        adapter.get_workspace_status.assert_awaited_once_with(1)
+
+    @pytest.mark.asyncio
+    async def test_resolve_exec_status_falls_back_on_db_error(self) -> None:
+        """DB lỗi / getter raise -> fallback về last_execution_status."""
+        from app.lead_intelligence.adapters.base import resolve_exec_status
+
+        adapter = WebsetsAdapter(service=MagicMock(spec=WebsetsService))
+        adapter.last_execution_status = "pending"
+        adapter.get_workspace_status = AsyncMock(side_effect=RuntimeError("db down"))
+
+        assert await resolve_exec_status(adapter, workspace_id=1) == "pending"

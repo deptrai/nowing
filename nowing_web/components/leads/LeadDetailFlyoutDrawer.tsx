@@ -44,6 +44,17 @@ export interface LeadDetailFlyoutDrawerProps {
 	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
 }
 
+/** Extract `metadata.websets` from a lead, returning undefined for malformed
+ * (null / array / non-object) payloads so the enrichments section stays safe. */
+export function resolveWebsetsMetadata(
+	lead: Pick<Lead, "metadata" | "extra_metadata"> | null | undefined
+): Record<string, unknown> | undefined {
+	const raw = lead?.metadata?.websets || lead?.extra_metadata?.websets;
+	return typeof raw === "object" && raw !== null && !Array.isArray(raw)
+		? (raw as Record<string, unknown>)
+		: undefined;
+}
+
 export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	lead,
 	isOpen,
@@ -67,13 +78,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	const displayPhone = localUnlockedPhone ?? lead?.phone ?? null;
 	const isContactUnlocked = leadUnlocked;
 
-	const rawWebsetsMetadata = lead?.metadata?.websets || lead?.extra_metadata?.websets;
-	const websetsMetadata =
-		typeof rawWebsetsMetadata === "object" &&
-		rawWebsetsMetadata !== null &&
-		!Array.isArray(rawWebsetsMetadata)
-			? (rawWebsetsMetadata as Record<string, unknown>)
-			: undefined;
+	const websetsMetadata = resolveWebsetsMetadata(lead);
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
@@ -10,6 +11,8 @@ from types import MappingProxyType
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
+
+logger = logging.getLogger(__name__)
 
 
 class LeadSourceCategory(StrEnum):
@@ -237,3 +240,31 @@ class LeadSourceAdapter(ABC):
     ) -> list[ContactCandidate]:
         """Extract phone numbers, emails, and social profiles from raw lead data."""
         ...
+
+
+async def resolve_exec_status(
+    adapter: LeadSourceAdapter, workspace_id: int | None
+) -> str:
+    """Resolve an adapter's execution status per workspace.
+
+    Adapters backed by persistent per-tenant state (e.g. ``websets``) may
+    implement ``get_workspace_status(workspace_id)`` to report DB-backed
+    status; everything else falls back to the singleton ``last_execution_status``
+    attribute. DB/lookup failures degrade to the attribute rather than raising.
+    """
+    if workspace_id is not None:
+        getter = getattr(adapter, "get_workspace_status", None)
+        if callable(getter):
+            try:
+                status = await getter(workspace_id)
+            except Exception as exc:
+                logger.warning(
+                    "get_workspace_status failed for %s (workspace %s): %s",
+                    adapter.source_name,
+                    workspace_id,
+                    exc,
+                )
+            else:
+                if status is not None:
+                    return status
+    return getattr(adapter, "last_execution_status", "ok")

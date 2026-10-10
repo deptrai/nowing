@@ -1,6 +1,16 @@
 "use client";
 
-import { Briefcase, Globe, Home, Landmark, Send, Share2, ShoppingBag, Users } from "lucide-react";
+import {
+	Briefcase,
+	Globe,
+	Home,
+	Landmark,
+	Send,
+	Share2,
+	ShoppingBag,
+	Store,
+	Users,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import type React from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -91,6 +101,16 @@ export function resolveSourceConfig(source: string): SourceVisualConfig {
 			className:
 				"bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800",
 			fallbackTooltip: "E-commerce Platform",
+		};
+	}
+	if (s.includes("chotot")) {
+		return {
+			key: "chotot",
+			label: "Chợ Tốt",
+			icon: Store,
+			className:
+				"bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800",
+			fallbackTooltip: "Chợ Tốt Classifieds",
 		};
 	}
 	if (s.includes("linkedin")) {

@@ -10,6 +10,7 @@ from typing import Any, ClassVar
 from app.lead_intelligence.adapters.base import (
     LeadSourceAdapter,
     LeadSourceCategory,
+    resolve_exec_status,
 )
 
 logger = logging.getLogger(__name__)
@@ -749,7 +750,11 @@ class LeadSourceAdapterRegistry:
 
         return [a for _, a in ranked], location_fallback
 
-    def get_all_source_statuses(self, location_profile: Any | None = None) -> list[Any]:
+    async def get_all_source_statuses(
+        self,
+        location_profile: Any | None = None,
+        workspace_id: int | None = None,
+    ) -> list[Any]:
         """Compute status, latency, and location coverage across all registered adapters (AC-4)."""
         from app.lead_intelligence.campaign.schemas import SourcePlanAllocation
 
@@ -770,7 +775,7 @@ class LeadSourceAdapterRegistry:
             else:
                 coverage_quality = "none"
 
-            exec_status = getattr(adapter, "last_execution_status", "ok")
+            exec_status = await resolve_exec_status(adapter, workspace_id)
             if exec_status == "offline":
                 status = "offline"
                 degraded_reason = f"Adapter {src_name} đang ngoại tuyến (offline)"

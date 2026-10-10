@@ -2749,9 +2749,10 @@
 			"tender": "Tender Portal (Public Procurement)",
 			"linkedin": "LinkedIn Search",
 			"other": "Other data source",
-			"ecommerce": "E-commerce Platform"
+			"ecommerce": "E-commerce Platform",
+			"chotot": "Chotot Classifieds"
 		},
-				"sourceBadgeLabel": {
+		"sourceBadgeLabel": {
 			"websets": "Websets",
 			"facebook": "Facebook",
 			"telegram": "Telegram",
@@ -2760,6 +2761,7 @@
 			"tender": "Tender",
 			"ecommerce": "E-commerce",
 			"linkedin": "LinkedIn",
+			"chotot": "Chotot",
 			"other": "Other"
 		},
 		"status_all": "All statuses",

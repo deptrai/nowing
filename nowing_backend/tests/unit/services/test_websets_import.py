@@ -39,7 +39,7 @@ class TestMapWebsetEntity:
         assert payload["company_name"] == "Công ty TNHH Phần mềm"
         assert payload["source"] == "websets"
         assert payload["source_url"] == "https://example.com/company"
-        assert payload["phone"] == "+84 987 654 321"
+        assert payload["phone"] == "+84987654321"  # E.164 normalized (AI-41.10)
         assert payload["email"] == "contact@example.com"
         assert payload["raw"]["entity_id"] == "it_123"
         assert payload["raw"]["webset_id"] == "wbs_999"
@@ -72,7 +72,7 @@ class TestMapWebsetEntity:
         payload = map_webset_entity(raw_item)
         assert payload is not None
         assert payload["company_name"] == "Webset Lead it_fallback"
-        assert payload["phone"] == "0912345678"
+        assert payload["phone"] == "+84912345678"
 
     def test_map_webset_entity_enrichments_full(self) -> None:
         raw_item: dict[str, Any] = {
@@ -91,7 +91,7 @@ class TestMapWebsetEntity:
         payload = map_webset_entity(raw_item, webset_id="wbs_456")
         assert payload is not None
         assert payload["company_name"] == "Tech Corp Vietnam"
-        assert payload["phone"] == "+84 901 234 567"
+        assert payload["phone"] == "+84901234567"
         assert payload["email"] == "hr@techcorp.vn"
         assert payload["title"] == "Managing Director"
         assert payload["domain"] == "techcorp.vn"
@@ -142,6 +142,7 @@ class TestMapWebsetEntity:
         payload = map_webset_entity(raw_item)
         assert payload is not None
         assert payload["company_name"] == "Grounding Test"
+        assert payload["phone"] == "+84987654321"
         assert payload["source_url"] == "https://yellowpages.vn/listing/123"
 
     def test_map_webset_entity_truncates_to_varchar_bounds(self) -> None:
@@ -955,7 +956,7 @@ class TestWebsetsImportBilling:
 
         assert res["status"] == "completed"
         expected_id = uuid5(
-            NAMESPACE_URL, "wbs_123:lead:Acme Corp|None|0987111222|None"
+            NAMESPACE_URL, "wbs_123:lead:Acme Corp|None|+84987111222|None"
         )
         assert added_event_ids == [expected_id]
         mock_commit.assert_awaited_once_with(
@@ -1058,3 +1059,207 @@ class TestWebsetsImportBilling:
             mock_session, owner_id, 2 * WEBSET_LEAD_IMPORT_COST_MICROS
         )
         assert call_order == ["rollback", "release"]
+
+    @pytest.mark.asyncio
+    async def test_billing_commit_failure_rolls_back_then_releases(self) -> None:
+        """session.commit fail sau commit_reserved -> rollback -> release phần còn lại.
+
+        Regression cho AI-41.11 test gap: exception ở commit (sau cả commit và
+        release trong try) vẫn phải release phần reservation chưa settle.
+        """
+        owner_id = UUID("11111111-1111-1111-1111-111111111111")
+        existing_event_id = uuid5(NAMESPACE_URL, "wbs_123:it_dupe")
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_new",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+            yield {
+                "id": "it_dupe",
+                "status": "ready",
+                "data": {"name": "Dupe LLC", "phone": "0987222333"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        call_order: list[str] = []
+        mock_session = AsyncMock()
+        mock_session.new = []
+        mock_session.rollback.side_effect = lambda: call_order.append("rollback")
+        mock_session.commit.side_effect = [RuntimeError("commit exploded"), None, None]
+
+        def _mock_execute(stmt):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "webset_campaigns" in stmt_str:
+                res.scalar_one_or_none.return_value = mock_campaign
+            elif "billing_events" in stmt_str:
+                res.scalars.return_value.all.return_value = [existing_event_id]
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+
+        mock_session.execute.side_effect = _mock_execute
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        mock_batch_svc.ingest_batch.return_value = {
+            "ingested_count": 2,
+            "accepted": [True, True],
+        }
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch("app.services.wallet_credit.reserve_credit", new=AsyncMock()),
+            patch(
+                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
+            ),
+            patch(
+                "app.services.wallet_credit.release_credit",
+                new=AsyncMock(
+                    side_effect=lambda *a, **k: call_order.append("release")
+                ),
+            ) as mock_release,
+            pytest.raises(RuntimeError, match="commit exploded"),
+        ):
+            await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert mock_campaign.status == "failed"
+        # in-try release (dupe) -> rollback -> except release (reserve - committed)
+        assert call_order == ["release", "rollback", "release"]
+        release_amounts = [c.args[2] for c in mock_release.await_args_list]
+        assert release_amounts == [
+            WEBSET_LEAD_IMPORT_COST_MICROS,
+            WEBSET_LEAD_IMPORT_COST_MICROS,
+        ]
+
+    @pytest.mark.asyncio
+    async def test_import_retry_after_quota_exceeded_completes(self) -> None:
+        """Campaign ở quota_exceeded vẫn được retry: run 2 reserve thành công -> completed.
+
+        Regression cho AI-41.11 partial-retry gap: quota_exceeded KHÔNG phải
+        terminal state — import lại phải đi tiếp (khác với completed -> skip).
+        """
+        owner_id = UUID("11111111-1111-1111-1111-111111111111")
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_session.new = []
+
+        def _mock_execute(stmt):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "webset_campaigns" in stmt_str:
+                res.scalar_one_or_none.return_value = mock_campaign
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+
+        mock_session.execute.side_effect = _mock_execute
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        mock_batch_svc.ingest_batch.return_value = {
+            "ingested_count": 1,
+            "accepted": [True],
+        }
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        # Run 1: reserve fails -> quota_exceeded
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit",
+                side_effect=InsufficientCreditsError(
+                    required_micros=WEBSET_LEAD_IMPORT_COST_MICROS,
+                    balance_micros=0,
+                ),
+            ),
+        ):
+            res1 = await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+        assert res1["status"] == "quota_exceeded"
+        assert mock_campaign.status == "quota_exceeded"
+
+        # Run 2 (retry): reserve succeeds -> drains and completes
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit", new=AsyncMock()
+            ) as mock_reserve,
+            patch(
+                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
+            ) as mock_commit,
+            patch("app.services.wallet_credit.release_credit", new=AsyncMock()),
+        ):
+            res2 = await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert res2["status"] == "completed"
+        assert res2["imported_count"] == 1
+        assert mock_campaign.status == "completed"
+        mock_reserve.assert_awaited_once_with(
+            mock_session, owner_id, WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        mock_commit.assert_awaited_once()

@@ -7,9 +7,15 @@ from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.core.billing import _resolve_workspace_owner
 from app.db import async_session_maker
+from app.lead_intelligence.dnc.normalizer import (
+    normalize_domain,
+    normalize_email,
+    normalize_phone_e164,
+)
 from app.models.billing import BillingEvent
 from app.models.webset_campaign import WebsetCampaign
 from app.services import wallet_credit
@@ -124,6 +130,16 @@ def map_webset_entity(
 
     extra_metadata = {"websets": unmapped_enrichments}
 
+    # Reuse the DNC normalizers so stored values match the canonical form used
+    # for value_hmac dedup and DNC checks. Fall back to the raw value when it
+    # cannot be normalized — losing displayable data is worse than a hmac miss.
+    if phone:
+        phone = normalize_phone_e164(str(phone)) or phone
+    if email:
+        email = normalize_email(str(email)) or email
+    if domain:
+        domain = normalize_domain(str(domain)) or domain
+
     # Truncate to Lead VARCHAR bounds — a longer value would raise
     # StringDataRightTruncationError and abort the whole 100-lead batch.
     return {
@@ -224,6 +240,7 @@ class WebsetsImportService:
         imported_count = 0
         drained_count = 0  # mapped leads (đã qua map_webset_entity)
         raw_count = 0  # raw items ChainLens trả về (kể cả bị mapper loại)
+        skipped_count = 0  # raw items bị mapper drop (None)
         try:
             async with maker() as session:
                 buffer: list[dict[str, Any]] = []
@@ -234,165 +251,21 @@ class WebsetsImportService:
                         return
                     batch = list(buffer)
                     buffer.clear()
-                    batch_size = len(batch)
+                    imported_count += await self._flush_batch(
+                        session=session,
+                        batch=batch,
+                        webset_id=webset_id,
+                        workspace_id=workspace_id,
+                        campaign_id=campaign_id,
+                        owner_user_id=owner_user_id,
+                        stats_counts={
+                            "raw_items_count": raw_count,
+                            "drained_count": drained_count,
+                            "skipped_count": skipped_count,
+                            "imported_count": imported_count,
+                        },
+                    )
 
-                    credit_reserved = False
-                    reserve_micros = batch_size * WEBSET_LEAD_IMPORT_COST_MICROS
-                    if owner_user_id is not None:
-                        try:
-                            await wallet_credit.reserve_credit(
-                                session, owner_user_id, reserve_micros
-                            )
-                            credit_reserved = True
-                        except InsufficientCreditsError as ice:
-                            logger.warning(
-                                "Insufficient credits to import webset batch: %s", ice
-                            )
-                            stmt = select(WebsetCampaign).where(
-                                WebsetCampaign.webset_id == str(webset_id),
-                                WebsetCampaign.status != "completed",
-                            )
-                            res = await session.execute(stmt)
-                            camp = res.scalar_one_or_none()
-                            if camp:
-                                camp.status = "quota_exceeded"
-                                camp.imported_count = imported_count
-                                current_stats = dict(camp.stats or {})
-                                current_stats["raw_items_count"] = raw_count
-                                current_stats["drained_count"] = drained_count
-                                current_stats["imported_count"] = imported_count
-                                camp.stats = current_stats
-                                await session.commit()
-                            raise _QuotaExceededError() from ice
-
-                    committed_micros = 0
-                    try:
-                        ingest_res = await self._batch_service.ingest_batch(
-                            session=session,
-                            workspace_id=workspace_id,
-                            leads=batch,
-                        )
-                        batch_imported = ingest_res.get("ingested_count", batch_size)
-
-                        if owner_user_id is not None and credit_reserved:
-                            accepted = ingest_res.get("accepted", [True] * batch_size)
-
-                            # Dedup key per lead: entity id / source_url, else a
-                            # content-derived fallback — a per-batch index would
-                            # collide across flushes (batch 2 idx 0 == batch 1 idx 0)
-                            # while identical entities must dedup to the same id.
-                            accepted_flags: list[bool] = []
-                            event_ids: list[Any] = []
-                            for idx, lead in enumerate(batch):
-                                accepted_flags.append(
-                                    accepted[idx] if idx < len(accepted) else True
-                                )
-                                entity_id = (
-                                    lead.get("_entity_id")
-                                    or (lead.get("raw") or {}).get("entity_id")
-                                    or lead.get("source_url")
-                                    or f"lead:{lead.get('company_name')}|{lead.get('domain')}|{lead.get('phone')}|{lead.get('email')}"
-                                )
-                                event_ids.append(
-                                    uuid5(NAMESPACE_URL, f"{webset_id}:{entity_id}")
-                                )
-
-                            candidates = [
-                                eid
-                                for eid, ok in zip(
-                                    event_ids, accepted_flags, strict=True
-                                )
-                                if ok
-                            ]
-                            existing_ids: set[Any] = set()
-                            if candidates:
-                                rows = (
-                                    (
-                                        await session.execute(
-                                            select(BillingEvent.event_id).where(
-                                                BillingEvent.event_entity_type
-                                                == "webset",
-                                                BillingEvent.event_type
-                                                == "lead_import",
-                                                BillingEvent.event_id.in_(candidates),
-                                            )
-                                        )
-                                    )
-                                    .scalars()
-                                    .all()
-                                )
-                                existing_ids = set(rows)
-
-                            to_commit_count = 0
-                            to_release_count = 0
-                            seen: set[Any] = set()
-                            for idx, _lead in enumerate(batch):
-                                event_id = event_ids[idx]
-                                if (
-                                    not accepted_flags[idx]
-                                    or event_id in existing_ids
-                                    or event_id in seen
-                                ):
-                                    to_release_count += 1
-                                    continue
-                                seen.add(event_id)
-                                session.add(
-                                    BillingEvent(
-                                        workspace_id=workspace_id,
-                                        client_id=campaign_id,
-                                        user_id=owner_user_id,
-                                        event_entity_type="webset",
-                                        event_type="lead_import",
-                                        event_id=event_id,
-                                        cost_micros=WEBSET_LEAD_IMPORT_COST_MICROS,
-                                        currency="USD",
-                                        cost_basis="actual",
-                                    )
-                                )
-                                to_commit_count += 1
-
-                            to_commit_micros = (
-                                to_commit_count * WEBSET_LEAD_IMPORT_COST_MICROS
-                            )
-                            to_release_micros = (
-                                to_release_count * WEBSET_LEAD_IMPORT_COST_MICROS
-                            )
-
-                            if to_commit_micros > 0:
-                                await wallet_credit.commit_reserved_credit(
-                                    session, owner_user_id, to_commit_micros
-                                )
-                                committed_micros = to_commit_micros
-                            if to_release_micros > 0:
-                                await wallet_credit.release_credit(
-                                    session, owner_user_id, to_release_micros
-                                )
-
-                        # Commit inside the guarded block: a commit failure must
-                        # also release the reservation instead of stranding it.
-                        await session.commit()
-                        # Count only after commit: a rolled-back batch left no leads.
-                        imported_count += batch_imported
-                    except Exception:
-                        # Release whatever reservation is left so a mid-flush
-                        # failure never strands locked credits. Roll back first:
-                        # the session is in a failed transaction, so release_credit
-                        # would raise InFailedSqlTransactionError and the reserved
-                        # credits would stay locked forever.
-                        if owner_user_id is not None and credit_reserved:
-                            try:
-                                await session.rollback()
-                                await wallet_credit.release_credit(
-                                    session,
-                                    owner_user_id,
-                                    reserve_micros - committed_micros,
-                                )
-                            except Exception:
-                                logger.warning(
-                                    "Failed to release reserved webset import credits",
-                                    exc_info=True,
-                                )
-                        raise
 
                 async for item in self._websets_service.iter_ready_items(
                     webset_id=webset_id,
@@ -407,6 +280,8 @@ class WebsetsImportService:
                         drained_count += 1
                         if len(buffer) >= 100:
                             await flush()
+                    else:
+                        skipped_count += 1
                 await flush()
         except _QuotaExceededError:
             logger.info(
@@ -438,6 +313,7 @@ class WebsetsImportService:
                     current_stats = dict(campaign.stats or {})
                     current_stats["raw_items_count"] = raw_count
                     current_stats["drained_count"] = drained_count
+                    current_stats["skipped_count"] = skipped_count
                     current_stats["imported_count"] = imported_count
                     campaign.stats = current_stats
                     await session.commit()
@@ -455,6 +331,7 @@ class WebsetsImportService:
                 current_stats = dict(campaign.stats or {})
                 current_stats["raw_items_count"] = raw_count
                 current_stats["drained_count"] = drained_count
+                current_stats["skipped_count"] = skipped_count
                 current_stats["imported_count"] = imported_count
                 campaign.stats = current_stats
                 await session.commit()
@@ -469,3 +346,186 @@ class WebsetsImportService:
             "webset_id": webset_id,
             "imported_count": imported_count,
         }
+    async def _flush_batch(
+        self,
+        *,
+        session: AsyncSession,
+        batch: list[dict[str, Any]],
+        webset_id: str,
+        workspace_id: int,
+        campaign_id: str | None,
+        owner_user_id: str | None,
+        stats_counts: dict[str, int],
+    ) -> int:
+        """Ingest one mapped-lead batch and settle its billing.
+
+        Reserves 1.5 credits/lead up front; on success commits credits for new
+        BillingEvent rows and releases dupes/rejects; on any failure rolls the
+        session back then releases the uncommitted remainder so reserved
+        credits are never stranded. Returns the ingested lead count.
+        """
+        batch_size = len(batch)
+        credit_reserved = False
+        reserve_micros = batch_size * WEBSET_LEAD_IMPORT_COST_MICROS
+        if owner_user_id is not None:
+            try:
+                await wallet_credit.reserve_credit(
+                    session, owner_user_id, reserve_micros
+                )
+                credit_reserved = True
+            except InsufficientCreditsError as ice:
+                logger.warning(
+                    "Insufficient credits to import webset batch: %s", ice
+                )
+                stmt = select(WebsetCampaign).where(
+                    WebsetCampaign.webset_id == str(webset_id),
+                    WebsetCampaign.status != "completed",
+                )
+                res = await session.execute(stmt)
+                camp = res.scalar_one_or_none()
+                if camp:
+                    camp.status = "quota_exceeded"
+                    current_stats = dict(camp.stats or {})
+                    current_stats.update(stats_counts)
+                    camp.stats = current_stats
+                    camp.imported_count = stats_counts.get("imported_count", 0)
+                    await session.commit()
+                raise _QuotaExceededError() from ice
+
+        committed_micros = 0
+        try:
+            ingest_res = await self._batch_service.ingest_batch(
+                session=session,
+                workspace_id=workspace_id,
+                leads=batch,
+            )
+            batch_imported = ingest_res.get("ingested_count", batch_size)
+
+            if owner_user_id is not None and credit_reserved:
+                accepted = ingest_res.get("accepted", [True] * batch_size)
+                committed_micros = await self._settle_batch_credits(
+                    session,
+                    batch=batch,
+                    accepted=accepted,
+                    owner_user_id=owner_user_id,
+                    webset_id=webset_id,
+                    campaign_id=campaign_id,
+                    workspace_id=workspace_id,
+                )
+
+            # Commit inside the guarded block: a commit failure must also
+            # release the reservation instead of stranding it.
+            await session.commit()
+            # Count only after commit: a rolled-back batch left no leads.
+            return batch_imported
+        except Exception:
+            # Release whatever reservation is left so a mid-flush failure never
+            # strands locked credits. Roll back first: the session is in a
+            # failed transaction, so release_credit would raise
+            # InFailedSqlTransactionError and the credits would stay locked.
+            if owner_user_id is not None and credit_reserved:
+                try:
+                    await session.rollback()
+                    await wallet_credit.release_credit(
+                        session,
+                        owner_user_id,
+                        reserve_micros - committed_micros,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to release reserved webset import credits",
+                        exc_info=True,
+                    )
+            raise
+
+    async def _settle_batch_credits(
+        self,
+        session: AsyncSession,
+        *,
+        batch: list[dict[str, Any]],
+        accepted: list[Any],
+        owner_user_id: str,
+        webset_id: str,
+        campaign_id: str | None,
+        workspace_id: int,
+    ) -> int:
+        """Bill each accepted lead exactly once.
+
+        Dedup key per lead: entity id / source_url, else a content-derived
+        fallback — a per-batch index would collide across flushes while
+        identical entities must dedup to the same event id. Commits reserved
+        credits for new (webset_id, entity) BillingEvent rows and releases
+        credits for duplicates/rejects. Returns committed micros.
+        """
+        accepted_flags: list[bool] = []
+        event_ids: list[Any] = []
+        for idx, lead in enumerate(batch):
+            accepted_flags.append(accepted[idx] if idx < len(accepted) else True)
+            entity_id = (
+                lead.get("_entity_id")
+                or (lead.get("raw") or {}).get("entity_id")
+                or lead.get("source_url")
+                or f"lead:{lead.get('company_name')}|{lead.get('domain')}|{lead.get('phone')}|{lead.get('email')}"
+            )
+            event_ids.append(uuid5(NAMESPACE_URL, f"{webset_id}:{entity_id}"))
+
+        candidates = [
+            eid for eid, ok in zip(event_ids, accepted_flags, strict=True) if ok
+        ]
+        existing_ids: set[Any] = set()
+        if candidates:
+            rows = (
+                (
+                    await session.execute(
+                        select(BillingEvent.event_id).where(
+                            BillingEvent.event_entity_type == "webset",
+                            BillingEvent.event_type == "lead_import",
+                            BillingEvent.event_id.in_(candidates),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            existing_ids = set(rows)
+
+        to_commit_count = 0
+        to_release_count = 0
+        seen: set[Any] = set()
+        for idx, _lead in enumerate(batch):
+            event_id = event_ids[idx]
+            if (
+                not accepted_flags[idx]
+                or event_id in existing_ids
+                or event_id in seen
+            ):
+                to_release_count += 1
+                continue
+            seen.add(event_id)
+            session.add(
+                BillingEvent(
+                    workspace_id=workspace_id,
+                    client_id=campaign_id,
+                    user_id=owner_user_id,
+                    event_entity_type="webset",
+                    event_type="lead_import",
+                    event_id=event_id,
+                    cost_micros=WEBSET_LEAD_IMPORT_COST_MICROS,
+                    currency="USD",
+                    cost_basis="actual",
+                )
+            )
+            to_commit_count += 1
+
+        to_commit_micros = to_commit_count * WEBSET_LEAD_IMPORT_COST_MICROS
+        to_release_micros = to_release_count * WEBSET_LEAD_IMPORT_COST_MICROS
+
+        if to_commit_micros > 0:
+            await wallet_credit.commit_reserved_credit(
+                session, owner_user_id, to_commit_micros
+            )
+        if to_release_micros > 0:
+            await wallet_credit.release_credit(
+                session, owner_user_id, to_release_micros
+            )
+        return to_commit_micros

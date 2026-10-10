@@ -217,3 +217,135 @@ class TestWebsetsService:
         with pytest.raises(WebsetsUnavailableError):
             async for _ in websets_service.iter_ready_items("wbs_1", workspace_id=1):
                 pass
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_breaks_on_multi_hop_cursor_cycle(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """Vòng cursor A->B->A->B... (revisit cursor đã thấy) -> break."""
+        route = respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
+            side_effect=[
+                httpx.Response(200, json={"items": [{"id": "a"}], "nextCursor": "B"}),
+                httpx.Response(200, json={"items": [{"id": "b"}], "nextCursor": "A"}),
+                httpx.Response(200, json={"items": [{"id": "c"}], "nextCursor": "B"}),
+            ]
+        )
+
+        items = [
+            it
+            async for it in websets_service.iter_ready_items("wbs_1", workspace_id=1)
+        ]
+        assert [it["id"] for it in items] == ["a", "b", "c"]
+        assert route.call_count == 3
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_rotates_token_once_on_401(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """401 -> rotate token qua auth singleton + retry cùng request 1 lần."""
+        from unittest.mock import MagicMock, patch
+
+        route = respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
+            side_effect=[
+                httpx.Response(401, json={"error": "token expired"}),
+                httpx.Response(200, json={"items": [{"id": "a"}], "nextCursor": None}),
+            ]
+        )
+
+        with patch(
+            "app.services.chainlens.websets.get_chainlens_auth"
+        ) as mock_auth_getter:
+            mock_auth = mock_auth_getter.return_value
+            mock_auth.get_outbound_headers = MagicMock(
+                return_value={"Authorization": "Bearer x"}
+            )
+            mock_auth.rotate = MagicMock(return_value="new-token")
+            items = [
+                it
+                async for it in websets_service.iter_ready_items(
+                    "wbs_1", workspace_id=1
+                )
+            ]
+
+        assert [it["id"] for it in items] == ["a"]
+        assert route.call_count == 2
+        mock_auth.rotate.assert_called_once_with(
+            workspace_id=1, reason="401_response"
+        )
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_401_no_rotation_raises_terminal(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """401 khi rotate trả None (hết token) -> raise retryable=False ngay."""
+        from unittest.mock import MagicMock, patch
+
+        route = respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
+            return_value=httpx.Response(401, json={"error": "unauthorized"})
+        )
+
+        with patch(
+            "app.services.chainlens.websets.get_chainlens_auth"
+        ) as mock_auth_getter:
+            mock_auth = mock_auth_getter.return_value
+            mock_auth.get_outbound_headers = MagicMock(return_value={})
+            mock_auth.rotate = MagicMock(return_value=None)
+            with pytest.raises(WebsetsUnavailableError) as exc_info:
+                async for _ in websets_service.iter_ready_items(
+                    "wbs_1", workspace_id=1
+                ):
+                    pass
+
+        assert exc_info.value.retryable is False
+        assert route.call_count == 1
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_retries_5xx_then_succeeds(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """5xx transient -> backoff retry, page sau thành công."""
+        from unittest.mock import AsyncMock, patch
+
+        route = respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
+            side_effect=[
+                httpx.Response(500, json={"error": "upstream"}),
+                httpx.Response(200, json={"items": [{"id": "a"}], "nextCursor": None}),
+            ]
+        )
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            items = [
+                it
+                async for it in websets_service.iter_ready_items(
+                    "wbs_1", workspace_id=1
+                )
+            ]
+
+        assert [it["id"] for it in items] == ["a"]
+        assert route.call_count == 2
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_5xx_exhausted_raises_retryable(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """5xx hết attempts -> WebsetsUnavailable retryable=True."""
+        from unittest.mock import AsyncMock, patch
+
+        route = respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
+            return_value=httpx.Response(500, json={"error": "upstream"})
+        )
+
+        with (
+            patch("asyncio.sleep", new_callable=AsyncMock),
+            pytest.raises(WebsetsUnavailableError) as exc_info,
+        ):
+            async for _ in websets_service.iter_ready_items("wbs_1", workspace_id=1):
+                pass
+
+        assert exc_info.value.retryable is True
+        assert route.call_count == 3

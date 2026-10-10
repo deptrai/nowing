@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -14,8 +15,20 @@ from app.services.chainlens.auth import get_chainlens_auth
 logger = logging.getLogger(__name__)
 
 
+_PAGE_MAX_ATTEMPTS = 3
+_PAGE_RETRY_BASE_DELAY = 1.0
+
+
 class WebsetsUnavailableError(Exception):
-    """Raised when ChainLens Websets API is unreachable or returns an error response."""
+    """Raised when ChainLens Websets API is unreachable or returns an error response.
+
+    ``retryable=True`` marks transient failures (5xx, 429, network) a caller may
+    retry; other 4xx are terminal and flagged False.
+    """
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 WebsetsUnavailable = WebsetsUnavailableError
@@ -144,10 +157,6 @@ class WebsetsService:
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             while True:
-                # x-user-ctx HMAC có TTL 60s — regen mỗi page để drain dài không 401
-                headers = get_chainlens_auth().get_outbound_headers(
-                    workspace_id=workspace_id
-                )
                 params: dict[str, Any] = {
                     "status": "ready,verified",
                     "limit": 100,
@@ -155,28 +164,9 @@ class WebsetsService:
                 if cursor:
                     params["cursor"] = cursor
 
-                try:
-                    res = await client.get(url, params=params, headers=headers)
-                    if res.status_code >= 400:
-                        logger.error(
-                            "ChainLens iter_ready_items failed: status=%s body=%s",
-                            res.status_code,
-                            res.text,
-                        )
-                        raise WebsetsUnavailable(
-                            f"ChainLens iter_ready_items failed with status {res.status_code}: {res.text}"
-                        )
-                    try:
-                        data = res.json()
-                    except Exception as exc:
-                        raise WebsetsUnavailable(
-                            f"ChainLens iter_ready_items returned non-JSON body: {exc}"
-                        ) from exc
-                except httpx.HTTPError as exc:
-                    logger.error("ChainLens iter_ready_items connection error: %s", exc)
-                    raise WebsetsUnavailable(
-                        f"ChainLens service unreachable: {exc}"
-                    ) from exc
+                data = await self._get_items_page(
+                    client, url, params, workspace_id
+                )
 
                 items = data.get("items") or data.get("data") or []
                 for item in items:
@@ -197,3 +187,67 @@ class WebsetsService:
                 if cursor is not None:
                     seen_cursors.add(cursor)
                 cursor = next_cursor
+
+    async def _get_items_page(
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        params: dict[str, Any],
+        workspace_id: int,
+    ) -> dict[str, Any]:
+        """Fetch one items page with bounded retry + a single 401 token rotation.
+
+        Retries transient failures (5xx, 429, network) up to _PAGE_MAX_ATTEMPTS
+        with exponential backoff. On 401, rotates the outbound token once via the
+        shared ChainLensServiceAuth singleton — x-user-ctx has a 60s TTL so a
+        long drain can legitimately hit an expired token.
+        """
+        auth = get_chainlens_auth()
+        delay = _PAGE_RETRY_BASE_DELAY
+        retried_401 = False
+
+        for attempt in range(_PAGE_MAX_ATTEMPTS):
+            # x-user-ctx HMAC TTL 60s — regen mỗi attempt để drain dài không 401
+            headers = auth.get_outbound_headers(workspace_id=workspace_id)
+            try:
+                res = await client.get(url, params=params, headers=headers)
+            except httpx.HTTPError as exc:
+                logger.error("ChainLens iter_ready_items connection error: %s", exc)
+                if attempt == _PAGE_MAX_ATTEMPTS - 1:
+                    raise WebsetsUnavailable(
+                        f"ChainLens service unreachable: {exc}", retryable=True
+                    ) from exc
+                await asyncio.sleep(delay)
+                delay *= 2
+                continue
+
+            if res.status_code == 401 and not retried_401:
+                retried_401 = True
+                if auth.rotate(workspace_id=workspace_id, reason="401_response"):
+                    continue
+                # Không còn token để rotate — rơi xuống nhánh 4xx terminal
+
+            if res.status_code >= 400:
+                retryable = res.status_code == 429 or res.status_code >= 500
+                logger.error(
+                    "ChainLens iter_ready_items failed: status=%s body=%s",
+                    res.status_code,
+                    res.text,
+                )
+                if retryable and attempt < _PAGE_MAX_ATTEMPTS - 1:
+                    await asyncio.sleep(delay)
+                    delay *= 2
+                    continue
+                raise WebsetsUnavailable(
+                    f"ChainLens iter_ready_items failed with status {res.status_code}: {res.text}",
+                    retryable=retryable,
+                )
+
+            try:
+                return res.json()
+            except Exception as exc:
+                raise WebsetsUnavailable(
+                    f"ChainLens iter_ready_items returned non-JSON body: {exc}"
+                ) from exc
+
+        raise WebsetsUnavailable("ChainLens iter_ready_items exhausted retries")

@@ -5,7 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.lead_intelligence.adapters.base import LeadSourceCategory
+from app.lead_intelligence.adapters.base import (
+    LeadSourceCategory,
+    resolve_exec_status,
+)
 from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
 from app.lead_intelligence.campaign.schemas import (
     CampaignPlanResponse,
@@ -114,7 +117,7 @@ class LeadGenPlanner:
             return "low"
         return "none"
 
-    def _build_source_allocations(
+    async def _build_source_allocations(
         self, spec: CampaignSpec, resolved_adapters: list[Any]
     ) -> list[SourcePlanAllocation]:
         """Build pre-flight source allocations with coverage metadata."""
@@ -135,9 +138,11 @@ class LeadGenPlanner:
             )
             coverage_quality = self._map_coverage_quality(coverage_score)
 
+            exec_status = await resolve_exec_status(adapter, spec.workspace_id)
+
             status: str = "ready"
             degraded_reason: str | None = None
-            if getattr(adapter, "last_execution_status", "ok") == "pending":
+            if exec_status == "pending":
                 status = "pending"
                 degraded_reason = "Asynchronous webset build in progress"
             elif coverage_quality in ("low", "none"):
@@ -146,11 +151,11 @@ class LeadGenPlanner:
                     f"Location coverage for {src_name} is {coverage_quality} "
                     f"for the targeted province/districts."
                 )
-            elif getattr(adapter, "last_execution_status", "ok") != "ok":
+            elif exec_status != "ok":
                 status = "degraded"
                 degraded_reason = (
                     f"Adapter {src_name} reported last execution status: "
-                    f"{adapter.last_execution_status}"
+                    f"{exec_status}"
                 )
 
             supported_provinces = list(
@@ -194,7 +199,7 @@ class LeadGenPlanner:
         cost_micros = cost_vnd * 40
         return cost_vnd, cost_micros
 
-    def create_preflight_plan(self, spec: CampaignSpec) -> CampaignPlanResponse:
+    async def create_preflight_plan(self, spec: CampaignSpec) -> CampaignPlanResponse:
         """Build an enriched CampaignPlanResponse without mutating plan_from_campaign."""
         subtasks, expected_sources = self.plan_from_campaign(spec)
 
@@ -211,7 +216,7 @@ class LeadGenPlanner:
             )
             warnings.append(warning_msg)
 
-        source_allocations = self._build_source_allocations(spec, resolved_adapters)
+        source_allocations = await self._build_source_allocations(spec, resolved_adapters)
         estimated_reachable_leads = self._estimate_reachable_leads(
             spec, source_allocations
         )

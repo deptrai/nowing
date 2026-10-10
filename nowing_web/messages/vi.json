@@ -2749,9 +2749,10 @@
 			"tender": "Cổng Đấu Thầu (Mua Sắm Công)",
 			"linkedin": "LinkedIn Search",
 			"other": "Nguồn dữ liệu khác",
-			"ecommerce": "Sàn thương mại điện tử"
+			"ecommerce": "Sàn thương mại điện tử",
+			"chotot": "Chợ Tốt (Rao vặt)"
 		},
-				"sourceBadgeLabel": {
+		"sourceBadgeLabel": {
 			"websets": "Websets",
 			"facebook": "Facebook",
 			"telegram": "Telegram",
@@ -2760,6 +2761,7 @@
 			"tender": "Đấu Thầu",
 			"ecommerce": "Sàn TMĐT",
 			"linkedin": "LinkedIn",
+			"chotot": "Chợ Tốt",
 			"other": "Nguồn khác"
 		},
 		"status_all": "Tất cả trạng thái",
