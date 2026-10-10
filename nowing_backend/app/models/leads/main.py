@@ -112,6 +112,14 @@ class Lead(Base, TimestampMixin):
         nullable=True,
         doc="Optional semantic embedding for ICP / natural-language lead matching.",
     )
+    extra_metadata = Column(
+        "metadata",
+        JSONB,
+        key="extra_metadata",
+        nullable=True,
+        server_default=text("'{}'::jsonb"),
+        doc="Arbitrary lead metadata, e.g. websets unmapped columns (Story 41.2).",
+    )
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=True,

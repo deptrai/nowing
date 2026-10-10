@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import {
+	type CampaignPlanResponse,
 	campaignPlanResponseSchema,
 	sourcePlanAllocationSchema,
-	type CampaignPlanResponse,
 } from "../../contracts/types/campaign.types";
 
 const mockPlanData: CampaignPlanResponse = {
@@ -64,9 +64,7 @@ const mockPlanData: CampaignPlanResponse = {
 	estimated_reachable_leads: 100,
 	estimated_cost_vnd: 150000,
 	estimated_cost_micros: 6000000,
-	warnings: [
-		"Adapter degraded_social đang hoạt động ở chế độ suy giảm hiệu năng.",
-	],
+	warnings: ["Adapter degraded_social đang hoạt động ở chế độ suy giảm hiệu năng."],
 };
 
 function assertParsesPlan() {
@@ -98,6 +96,16 @@ function assertSourceAllocations() {
 	if (degraded.success) {
 		assert.equal(degraded.data.status, "degraded");
 		assert.ok(degraded.data.degraded_reason?.includes("degraded"));
+	}
+
+	const pending = sourcePlanAllocationSchema.safeParse({
+		...mockPlanData.source_allocations[0],
+		source_name: "websets",
+		status: "pending",
+	});
+	assert.equal(pending.success, true);
+	if (pending.success) {
+		assert.equal(pending.data.status, "pending");
 	}
 }
 

@@ -63,6 +63,39 @@ class TestChainLensWebsetIdleWebhook:
             mock_session.commit.assert_awaited_once()
             mock_delay.assert_called_once_with("wbs_123")
 
+    def test_webhook_cost_dollars_converted_to_micros(self) -> None:
+        mock_session = AsyncMock()
+        campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            webhook_secret="super-secret-token",
+            status="pending",
+            last_delivery_id=None,
+            stats={"readyCount": 10},
+        )
+        res_mock = MagicMock()
+        res_mock.scalar_one_or_none.return_value = campaign
+        mock_session.execute.return_value = res_mock
+
+        app = _make_test_app(mock_session)
+        client = TestClient(app)
+
+        with patch("app.routes.chainlens_webhooks.import_webset_leads.delay"):
+            response = client.post(
+                "/api/v1/webhooks/chainlens/webset-idle?t=super-secret-token",
+                json={
+                    "event": "webset.idle",
+                    "websetId": "wbs_123",
+                    "id": "del_cost_1",
+                    "costDollars": 2.5,
+                },
+            )
+
+            assert response.status_code == 200
+            assert campaign.stats["cost_micros"] == 2_500_000
+            assert campaign.stats["readyCount"] == 10
+
     def test_webhook_deduplication_same_delivery_id(self) -> None:
         mock_session = AsyncMock()
         campaign = WebsetCampaign(

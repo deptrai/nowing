@@ -21,6 +21,36 @@ test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 		const ownerToken = await acquireTestToken(request);
 		const planApi = `${backendUrl}/api/v1/workspaces/${workspaceId}/campaigns/plan`;
 
+		// Story 41.2: intercept the wizard's plan fetch with a websets pending
+		// allocation — a real backend never yields `status:"pending"` hermetically.
+		await page.route("**/api/v1/workspaces/*/campaigns/plan", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					campaign_name: "E2E Websets Pending Plan",
+					total_planned_sources: 1,
+					source_allocations: [
+						{
+							source_name: "websets",
+							category: "general",
+							allocated_limit: 50,
+							priority: 1,
+							location_coverage_quality: "none",
+							location_coverage_score: 0,
+							supported_provinces: ["*"],
+							status: "pending",
+							degraded_reason: null,
+						},
+					],
+					estimated_reachable_leads: 50,
+					estimated_cost_vnd: 75000,
+					estimated_cost_micros: 3000000,
+					warnings: [],
+				}),
+			});
+		});
+
 		// 1. Validate plan API contract with mocked spec
 		const planPayload = {
 			name: "E2E Smoke Test Campaign",
@@ -100,6 +130,11 @@ test.describe("Story 26.27: Pre-Flight Plan Summary Smoke Test", () => {
 		await expect(firstAllocation).toBeVisible();
 		await firstAllocation.click();
 		await expect(page.getByTestId(/coverage-quality-badge-.*/).first()).toBeVisible();
+
+		// Story 41.2: pending websets allocation renders a distinct "building
+		// dataset" badge — not the degraded (error) badge.
+		await expect(page.getByTestId("badge-pending-websets")).toBeVisible();
+		await expect(page.getByTestId("badge-degraded-websets")).toHaveCount(0);
 
 		// 3. Smoke test
 		const smokeButton = page

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import type { FilterPresets } from "@/contracts/types/leads.types";
 import { useLeads } from "@/lib/hooks/use-leads";
 import { useWorkspaceTables } from "@/lib/hooks/use-workspace-tables";
+import { CompanyGraphDrawer } from "./CompanyGraphDrawer";
 import { CampaignBuilder } from "./campaign-builder/CampaignBuilder";
 import { DncManagementModal } from "./DncManagementModal";
 import { LeadCard } from "./LeadCard";
@@ -29,6 +30,8 @@ import { ReverseIcpModal } from "./ReverseIcpModal";
 
 // Map LLM-returned platform names to canonical source filter values.
 const PLATFORM_MAP: Record<string, string> = {
+	websets: "websets",
+	webset: "websets",
 	facebook: "facebook",
 	telegram: "telegram",
 	batdongsan: "batdongsan",
@@ -69,8 +72,8 @@ export const LeadsContent: React.FC = () => {
 	const [sourceFilter, setSourceFilter] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [searchQuery, setSearchQuery] = useState("");
-	const [_selectedCompany, setSelectedCompany] = useState<string | null>(null);
-	const [_isDrawerOpen, setIsDrawerOpen] = useState(false);
+	const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const [isReverseIcpOpen, setIsReverseIcpOpen] = useState(false);
 	const [isDncModalOpen, setIsDncModalOpen] = useState(false);
 	const [activeTableId, setActiveTableId] = useState<string | null>(searchParams.get("table"));
@@ -488,6 +491,14 @@ export const LeadsContent: React.FC = () => {
 				isOpen={isDncModalOpen}
 				onClose={() => setIsDncModalOpen(false)}
 				workspaceId={workspaceId}
+			/>
+
+			{/* Company Graph Drawer */}
+			<CompanyGraphDrawer
+				workspaceId={workspaceId}
+				companyName={selectedCompany}
+				isOpen={isDrawerOpen}
+				onClose={() => setIsDrawerOpen(false)}
 			/>
 		</div>
 	);

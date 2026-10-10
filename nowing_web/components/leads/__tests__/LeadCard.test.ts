@@ -82,6 +82,7 @@ test("Intent tag formatting returns correct badge labels (Widget U3 & U4)", () =
 
 function getSourceDisplay(source: string): string {
 	const s = source.toLowerCase();
+	if (s.includes("webset")) return "🌐 Websets";
 	if (s.includes("facebook")) return "👥 Facebook";
 	if (s.includes("telegram")) return "✈️ Telegram";
 	if (s.includes("bds") || s.includes("batdongsan")) return "🏠 Batdongsan";
@@ -94,6 +95,8 @@ function getSourceDisplay(source: string): string {
 }
 
 test("Source platform icon mapping covers all scraper expansion channels", () => {
+	assert.equal(getSourceDisplay("websets"), "🌐 Websets");
+	assert.equal(getSourceDisplay("websets_campaign"), "🌐 Websets");
 	assert.equal(getSourceDisplay("facebook_group"), "👥 Facebook");
 	assert.equal(getSourceDisplay("telegram_channel"), "✈️ Telegram");
 	assert.equal(getSourceDisplay("batdongsan_vn"), "🏠 Batdongsan");

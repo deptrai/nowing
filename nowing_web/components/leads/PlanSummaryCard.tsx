@@ -373,6 +373,16 @@ export function PlanSummaryCard({
 													{t("status_degraded")}
 												</Badge>
 											)}
+											{alloc.status === "pending" && (
+												<Badge
+													data-testid={`badge-pending-${alloc.source_name}`}
+													variant="outline"
+													className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-[9px] py-0 flex items-center gap-1"
+												>
+													<Loader2 className="w-2.5 h-2.5 animate-spin" />
+													<span>{t("status_building_dataset")}</span>
+												</Badge>
+											)}
 										</div>
 										<div className="flex items-center gap-2">
 											{renderQualityBadge(

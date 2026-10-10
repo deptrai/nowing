@@ -248,8 +248,26 @@ async def receive_chainlens_webset_idle_webhook(
 
     if delivery_id:
         campaign.last_delivery_id = str(delivery_id)
+    stats = dict(campaign.stats or {})
     if "stats" in payload and isinstance(payload["stats"], dict):
-        campaign.stats = payload["stats"]
+        stats.update(payload["stats"])
+    cost_dollars = payload.get("costDollars")
+    if cost_dollars is None:
+        cost_dollars = payload.get("cost_dollars")
+    if cost_dollars is not None:
+        try:
+            from app.services.chainlens.auth import ChainLensServiceAuth
+
+            stats["cost_micros"] = ChainLensServiceAuth.cost_dollars_to_micros(
+                float(cost_dollars)
+            )
+        except Exception as exc:
+            logger.warning(
+                "[ChainLensWebsetWebhook] Failed to convert costDollars=%s: %s",
+                cost_dollars,
+                exc,
+            )
+    campaign.stats = stats
     await session.commit()
     logger.info(
         "[ChainLensWebsetWebhook] Enqueued import_webset_leads for webset_id=%s delivery_id=%s",

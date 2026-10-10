@@ -77,6 +77,7 @@ const getIntentBadge = (intent: string | null | undefined) => {
 
 const getSourceIcon = (source: string) => {
 	const s = (source || "").toLowerCase();
+	if (s.includes("webset")) return "🌐 Websets";
 	if (s.includes("facebook")) return "👥 Facebook";
 	if (s.includes("telegram")) return "✈️ Telegram";
 	if (s.includes("bds") || s.includes("batdongsan")) return "🏠 Batdongsan";
@@ -207,7 +208,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
 				{lead.content_snippet && (
 					<p className="text-xs text-zinc-400 mt-1.5 line-clamp-2 italic bg-zinc-950/40 p-2 rounded-md border border-zinc-800/40">
-						"{lead.content_snippet}"
+						&ldquo;{lead.content_snippet}&rdquo;
 					</p>
 				)}
 			</div>

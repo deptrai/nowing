@@ -390,3 +390,34 @@ class TestHermeticAndCostGate:
 
         assert httpx_client_mock.call_count == 0
         assert embed_mock.call_count == 0
+
+
+class TestExtraMetadataForwarding:
+    """Story 41.2: ``extra_metadata`` (leads.metadata JSONB) survives ingest."""
+
+    def test_prepare_lead_record_forwards_extra_metadata(self) -> None:
+        record = lead_batch_service._prepare_lead_record(
+            1,
+            {
+                "company_name": "Acme",
+                "extra_metadata": {"websets": {"opening_hours": {"value": "9-18"}}},
+            },
+            "test-secret",
+        )
+        assert record["extra_metadata"] == {
+            "websets": {"opening_hours": {"value": "9-18"}}
+        }
+
+    def test_prepare_lead_record_metadata_fallback(self) -> None:
+        record = lead_batch_service._prepare_lead_record(
+            1,
+            {"company_name": "Acme", "metadata": {"websets": {"col": "v"}}},
+            "test-secret",
+        )
+        assert record["extra_metadata"] == {"websets": {"col": "v"}}
+
+    def test_upsert_set_includes_extra_metadata(self) -> None:
+        leads = [_make_lead(value_hmac="h", extra_metadata={"websets": {"c": 1}})]
+        stmt = lead_batch_service._build_batch_upsert_stmt(leads)
+        sql = str(stmt.compile())
+        assert "metadata = coalesce(excluded.metadata" in sql

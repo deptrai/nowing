@@ -13,6 +13,7 @@ import {
 	RefreshCw,
 	Sparkles,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ export const SourceStatusPanel: React.FC<SourceStatusPanelProps> = ({
 	className,
 	onOpenPlanBuilder,
 }) => {
+	const t = useTranslations("leads");
 	const [activePlan, setActivePlan] = useAtom(activeCampaignPlanAtom);
 	const [activeSpec, setActivePlanSpec] = useAtom(activePlanSpecAtom);
 	const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
@@ -130,7 +132,7 @@ export const SourceStatusPanel: React.FC<SourceStatusPanelProps> = ({
 			toast.success(
 				`Đã cập nhật kế hoạch: ${replanned.total_planned_sources} nguồn đang hoạt động.`
 			);
-		} catch (_err) {
+		} catch {
 			toast.error("Không thể tính toán lại kế hoạch. Đã khôi phục trạng thái cũ.");
 			// Revert to original spec
 			setActivePlanSpec(activeSpec);
@@ -246,6 +248,16 @@ export const SourceStatusPanel: React.FC<SourceStatusPanelProps> = ({
 														className="bg-amber-500/10 text-amber-500 border-amber-500/30 text-[9px] py-0"
 													>
 														Degraded
+													</Badge>
+												)}
+												{source.status === "pending" && (
+													<Badge
+														data-testid={`badge-pending-${source.source_name}`}
+														variant="outline"
+														className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-[9px] py-0 flex items-center gap-1"
+													>
+														<Loader2 className="w-2.5 h-2.5 animate-spin" />
+														<span>{t("status_building_dataset")}</span>
 													</Badge>
 												)}
 											</div>

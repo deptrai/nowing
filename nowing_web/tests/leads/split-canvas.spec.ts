@@ -33,8 +33,25 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 							price: "50 Triệu/tháng",
 							created_at: new Date().toISOString(),
 						},
+						{
+							id: "33333333-3333-4333-8333-333333333333",
+							workspace_id: 1,
+							company_name: "Công ty TNHH Websets Corp",
+							title: "Webset verified lead Q7",
+							source: "websets",
+							phone: "0912345678",
+							fit_score: 88,
+							location: "Quận 7, TP.HCM",
+							price: "3 Tỷ",
+							created_at: new Date().toISOString(),
+							extra_metadata: {
+								websets: {
+									district: { value: "Quận 7", groundingUrl: "https://example.com" },
+								},
+							},
+						},
 					],
-					total: 2,
+					total: 3,
 					limit: 20,
 					offset: 0,
 				}),
@@ -100,5 +117,32 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toContainText(
 			"Nguyễn Văn Hùng"
 		);
+	});
+
+	test("Story 41.2: websets source filter shows only websets leads", async ({
+		page,
+		workspace,
+	}) => {
+		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
+
+		const matrix = page.locator("[data-testid='nowing-lead-matrix']");
+		await expect(matrix).toBeVisible();
+		await expect(page.locator("[data-testid^='lead-row-']")).toHaveCount(3);
+
+		// Open source dropdown (trigger shows current option label "Tất cả nguồn"/"All sources")
+		await page
+			.getByRole("button", { name: /tất cả nguồn|all sources/i })
+			.first()
+			.click();
+		await page.getByRole("button", { name: /ChainLens Websets/i }).click();
+
+		await expect(page.locator("[data-testid^='lead-row-']")).toHaveCount(1);
+		await expect(matrix).toContainText("Công ty TNHH Websets Corp");
+		await expect(matrix).not.toContainText("Nguyễn Văn Hùng");
+
+		// Open the websets lead → drawer shows unmapped enrichment cells
+		await page.locator("[data-testid^='lead-row-']").first().click();
+		await expect(page.locator("[data-testid='websets-enrichments-section']")).toBeVisible();
 	});
 });

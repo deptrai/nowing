@@ -61,6 +61,10 @@ def _prepare_lead_record(
         workspace_id, company, domain
     )
 
+    extra_metadata = item.get("extra_metadata")
+    if extra_metadata is None:
+        extra_metadata = item.get("metadata") or {}
+
     return {
         "id": uuid4(),
         "workspace_id": workspace_id,
@@ -84,6 +88,7 @@ def _prepare_lead_record(
         "phone": item.get("phone"),
         "email": item.get("email"),
         "tax_id": item.get("tax_id"),
+        "extra_metadata": extra_metadata,
     }
 
 
@@ -138,6 +143,9 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
             "client_id": stmt.excluded.client_id,
             "table_id": func.coalesce(stmt.excluded.table_id, Lead.table_id),
             "source_url": func.coalesce(stmt.excluded.source_url, Lead.source_url),
+            "extra_metadata": func.coalesce(
+                stmt.excluded.extra_metadata, Lead.extra_metadata
+            ),
             "industry": func.coalesce(stmt.excluded.industry, Lead.industry),
             "location": func.coalesce(stmt.excluded.location, Lead.location),
             "intent_score": stmt.excluded.intent_score,

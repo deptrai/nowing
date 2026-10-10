@@ -91,6 +91,7 @@ class LeadRead(BaseModel):
     is_unlocked: bool = False
     is_valid: bool | None = None
     consent_status: str | None = None
+    extra_metadata: dict[str, Any] | None = None
 
 
 class LeadListResponse(BaseModel):

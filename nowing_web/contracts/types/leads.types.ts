@@ -58,6 +58,8 @@ export const leadSchema = z.object({
 	charter_capital_vnd: z.number().nullable().optional(),
 	company_status: z.string().nullable().optional(),
 	is_zalo_active: z.boolean().nullable().optional(),
+	metadata: z.record(z.string(), z.any()).nullable().optional(),
+	extra_metadata: z.record(z.string(), z.any()).nullable().optional(),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional(),
 });

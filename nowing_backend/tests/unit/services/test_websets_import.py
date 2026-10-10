@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 import pytest
 
+from app.models.billing import BillingEvent
 from app.models.webset_campaign import WebsetCampaign
 from app.services.chainlens.websets import WebsetsService
-from app.services.websets_import import WebsetsImportService, map_webset_entity
+from app.services.etl_credit_service import InsufficientCreditsError
+from app.services.websets_import import (
+    WEBSET_LEAD_IMPORT_COST_MICROS,
+    WebsetsImportService,
+    map_webset_entity,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -66,6 +73,76 @@ class TestMapWebsetEntity:
         assert payload is not None
         assert payload["company_name"] == "Webset Lead it_fallback"
         assert payload["phone"] == "0912345678"
+
+    def test_map_webset_entity_enrichments_full(self) -> None:
+        raw_item: dict[str, Any] = {
+            "id": "ent_101",
+            "status": "ready",
+            "canonical_url": "https://techcorp.vn",
+            "enrichments": {
+                "company_name": {"value": "Tech Corp Vietnam", "status": "verified"},
+                "phone": {"value": "+84 901 234 567", "status": "verified"},
+                "email": {"value": "hr@techcorp.vn", "status": "verified"},
+                "title": {"value": "Managing Director", "status": "verified"},
+                "website": {"value": "techcorp.vn", "status": "verified"},
+            },
+        }
+
+        payload = map_webset_entity(raw_item, webset_id="wbs_456")
+        assert payload is not None
+        assert payload["company_name"] == "Tech Corp Vietnam"
+        assert payload["phone"] == "+84 901 234 567"
+        assert payload["email"] == "hr@techcorp.vn"
+        assert payload["title"] == "Managing Director"
+        assert payload["domain"] == "techcorp.vn"
+        assert payload["source"] == "websets"
+        assert payload["source_url"] == "https://techcorp.vn"
+        assert payload["_entity_id"] == "ent_101"
+        assert payload["raw"]["entity_id"] == "ent_101"
+        assert payload["raw"]["webset_id"] == "wbs_456"
+        assert payload["extra_metadata"] == {"websets": {}}
+
+    def test_map_webset_entity_unmapped_enrichments_stored_in_metadata(self) -> None:
+        raw_item: dict[str, Any] = {
+            "id": "ent_102",
+            "status": "verified",
+            "url": "https://store.vn",
+            "enrichments": {
+                "company_name": {"value": "Retail Store", "status": "verified"},
+                "opening_hours": {"value": "08:00 - 21:00", "status": "verified"},
+                "annual_revenue": {"value": "$5M", "status": "verified"},
+            },
+        }
+
+        payload = map_webset_entity(raw_item)
+        assert payload is not None
+        assert payload["company_name"] == "Retail Store"
+        assert payload["extra_metadata"]["websets"]["opening_hours"] == {
+            "value": "08:00 - 21:00",
+            "status": "verified",
+        }
+        assert payload["extra_metadata"]["websets"]["annual_revenue"] == {
+            "value": "$5M",
+            "status": "verified",
+        }
+
+    def test_map_webset_entity_fallback_grounding_url_as_source_url(self) -> None:
+        raw_item: dict[str, Any] = {
+            "id": "ent_103",
+            "status": "ready",
+            "enrichments": {
+                "company_name": {
+                    "value": "Grounding Test",
+                    "groundingUrl": "https://yellowpages.vn/listing/123",
+                },
+                "phone": {"value": "0987654321"},
+            },
+        }
+
+        payload = map_webset_entity(raw_item)
+        assert payload is not None
+        assert payload["company_name"] == "Grounding Test"
+        assert payload["source_url"] == "https://yellowpages.vn/listing/123"
 
 
 class TestWebsetsImportService:
@@ -294,3 +371,439 @@ class TestWebsetsImportTaskRegistration:
         from app.celery_app import celery_app
 
         assert "app.tasks.webset_import.import_webset_leads" in celery_app.tasks
+
+
+class TestWebsetsImportBilling:
+    @pytest.mark.asyncio
+    async def test_billing_reserve_and_commit_success(self) -> None:
+        owner_id = UUID("11111111-1111-1111-1111-111111111111")
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+            yield {
+                "id": "it_2",
+                "status": "verified",
+                "data": {"name": "Beta LLC", "email": "info@beta.vn"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.new = []
+
+        def _mock_execute(stmt):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "webset_campaigns" in stmt_str:
+                res.scalar_one_or_none.return_value = mock_campaign
+            elif "billing_events" in stmt_str:
+                res.scalar_one_or_none.return_value = None
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+
+        mock_session.execute.side_effect = _mock_execute
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        mock_batch_svc.ingest_batch.return_value = {
+            "ingested_count": 2,
+            "accepted": [True, True],
+        }
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit", new=AsyncMock()
+            ) as mock_reserve,
+            patch(
+                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
+            ) as mock_commit,
+            patch(
+                "app.services.wallet_credit.release_credit", new=AsyncMock()
+            ) as mock_release,
+        ):
+            res = await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert res["status"] == "completed"
+        assert res["imported_count"] == 2
+        mock_reserve.assert_awaited_once_with(
+            mock_session, owner_id, 2 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        mock_commit.assert_awaited_once_with(
+            mock_session, owner_id, 2 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        mock_release.assert_not_called()
+
+        added_billing_events = [
+            call.args[0]
+            for call in mock_session.add.call_args_list
+            if isinstance(call.args[0], BillingEvent)
+        ]
+        assert len(added_billing_events) == 2
+        assert added_billing_events[0].event_entity_type == "webset"
+        assert added_billing_events[0].event_type == "lead_import"
+        assert (
+            added_billing_events[0].event_id
+            == uuid5(NAMESPACE_URL, "wbs_123:it_1")
+        )
+        assert (
+            added_billing_events[1].event_id
+            == uuid5(NAMESPACE_URL, "wbs_123:it_2")
+        )
+
+    @pytest.mark.asyncio
+    async def test_billing_quota_exceeded_stops_import(self) -> None:
+        owner_id = UUID("11111111-1111-1111-1111-111111111111")
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = mock_campaign
+        mock_session.execute.return_value = mock_res
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit",
+                side_effect=InsufficientCreditsError(
+                    required_micros=WEBSET_LEAD_IMPORT_COST_MICROS,
+                    balance_micros=0,
+                ),
+            ),
+        ):
+            res = await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert res["status"] == "quota_exceeded"
+        assert res["imported_count"] == 0
+        assert mock_campaign.status == "quota_exceeded"
+        mock_batch_svc.ingest_batch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_billing_dnc_blocked_releases_credit(self) -> None:
+        owner_id = UUID("11111111-1111-1111-1111-111111111111")
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+            yield {
+                "id": "it_2",
+                "status": "ready",
+                "data": {"name": "Blocked Corp", "phone": "0987999888"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.new = []
+
+        def _mock_execute(stmt):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "webset_campaigns" in stmt_str:
+                res.scalar_one_or_none.return_value = mock_campaign
+            elif "billing_events" in stmt_str:
+                res.scalar_one_or_none.return_value = None
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+
+        mock_session.execute.side_effect = _mock_execute
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        # First lead accepted, second blocked by DNC
+        mock_batch_svc.ingest_batch.return_value = {
+            "ingested_count": 1,
+            "accepted": [True, False],
+        }
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit", new=AsyncMock()
+            ) as mock_reserve,
+            patch(
+                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
+            ) as mock_commit,
+            patch(
+                "app.services.wallet_credit.release_credit", new=AsyncMock()
+            ) as mock_release,
+        ):
+            res = await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert res["status"] == "completed"
+        assert res["imported_count"] == 1
+        mock_reserve.assert_awaited_once_with(
+            mock_session, owner_id, 2 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        mock_commit.assert_awaited_once_with(
+            mock_session, owner_id, 1 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        mock_release.assert_awaited_once_with(
+            mock_session, owner_id, 1 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+
+    @pytest.mark.asyncio
+    async def test_billing_idempotency_duplicate_event_releases_credit(self) -> None:
+        owner_id = UUID("11111111-1111-1111-1111-111111111111")
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.new = []
+
+        existing_event = BillingEvent(
+            id=UUID("22222222-2222-2222-2222-222222222222"),
+            workspace_id=42,
+            event_entity_type="webset",
+            event_type="lead_import",
+            event_id=uuid5(NAMESPACE_URL, "wbs_123:it_1"),
+        )
+
+        def _mock_execute(stmt):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "webset_campaigns" in stmt_str:
+                res.scalar_one_or_none.return_value = mock_campaign
+            elif "billing_events" in stmt_str:
+                res.scalars.return_value.all.return_value = [existing_event.event_id]
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+
+        mock_session.execute.side_effect = _mock_execute
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        mock_batch_svc.ingest_batch.return_value = {
+            "ingested_count": 1,
+            "accepted": [True],
+        }
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit", new=AsyncMock()
+            ) as mock_reserve,
+            patch(
+                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
+            ) as mock_commit,
+            patch(
+                "app.services.wallet_credit.release_credit", new=AsyncMock()
+            ) as mock_release,
+        ):
+            res = await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert res["status"] == "completed"
+        mock_reserve.assert_awaited_once_with(
+            mock_session, owner_id, 1 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        # Existing event -> released, not committed!
+        mock_commit.assert_not_called()
+        mock_release.assert_awaited_once_with(
+            mock_session, owner_id, 1 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+
+    @pytest.mark.asyncio
+    async def test_billing_owner_none_skips_billing(self) -> None:
+        """Workspace without resolvable owner -> import completes, no wallet calls."""
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.new = []
+
+        def _mock_execute(stmt):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "webset_campaigns" in stmt_str:
+                res.scalar_one_or_none.return_value = mock_campaign
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+
+        mock_session.execute.side_effect = _mock_execute
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        mock_batch_svc.ingest_batch.return_value = {
+            "ingested_count": 1,
+            "accepted": [True],
+        }
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit", new=AsyncMock()
+            ) as mock_reserve,
+            patch(
+                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
+            ) as mock_commit,
+            patch(
+                "app.services.wallet_credit.release_credit", new=AsyncMock()
+            ) as mock_release,
+        ):
+            res = await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert res["status"] == "completed"
+        assert res["imported_count"] == 1
+        mock_reserve.assert_not_called()
+        mock_commit.assert_not_called()
+        mock_release.assert_not_called()

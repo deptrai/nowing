@@ -34,7 +34,7 @@ import {
 } from "@/atoms/leads/leads-canvas.atoms";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Lead } from "@/contracts/types/leads.types";
-import { cn, copyToClipboard } from "@/lib/utils";
+import { cn, copyToClipboard, isAllowedUrl } from "@/lib/utils";
 import { PhoneUnlockPill } from "./PhoneUnlockPill";
 import { ShimmerSkeletonRow } from "./ShimmerSkeletonRow";
 import { SendExportDropdown } from "./send-export-dropdown";
@@ -62,6 +62,7 @@ export interface NowingLeadMatrixProps {
 
 const SOURCE_OPTIONS: Array<{ id: string; icon: string }> = [
 	{ id: "all", icon: "🔍" },
+	{ id: "websets", icon: "🌐" },
 	{ id: "batdongsan", icon: "🏠" },
 	{ id: "chotot", icon: "🛒" },
 	{ id: "facebook", icon: "👥" },
@@ -158,18 +159,16 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 		return leads.filter((lead) => {
 			// Source filter
 			if (sourceFilter !== "all") {
-				if (sourceFilter === "batdongsan" && !lead.source.includes("batdongsan")) return false;
-				if (sourceFilter === "chotot" && !lead.source.includes("chotot")) return false;
-				if (sourceFilter === "facebook" && !lead.source.includes("facebook")) return false;
-				if (sourceFilter === "telegram" && !lead.source.includes("telegram")) return false;
-				if (
-					sourceFilter === "topcv" &&
-					!lead.source.includes("topcv") &&
-					!lead.source.includes("itviec")
-				)
+				const src = (lead.source || "").toLowerCase();
+				if (sourceFilter === "websets" && !src.includes("webset")) return false;
+				if (sourceFilter === "batdongsan" && !src.includes("batdongsan")) return false;
+				if (sourceFilter === "chotot" && !src.includes("chotot")) return false;
+				if (sourceFilter === "facebook" && !src.includes("facebook")) return false;
+				if (sourceFilter === "telegram" && !src.includes("telegram")) return false;
+				if (sourceFilter === "topcv" && !src.includes("topcv") && !src.includes("itviec"))
 					return false;
-				if (sourceFilter === "tender" && !lead.source.includes("muasamcong")) return false;
-				if (sourceFilter === "linkedin" && !lead.source.includes("linkedin")) return false;
+				if (sourceFilter === "tender" && !src.includes("muasamcong")) return false;
+				if (sourceFilter === "linkedin" && !src.includes("linkedin")) return false;
 			}
 			// Status filter
 			if (statusFilter !== "all" && lead.status !== statusFilter) {
@@ -245,11 +244,15 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	};
 
 	const handleOpenLarkSync = () => {
-		window.open("https://open.larksuite.com/", "_blank");
+		if (isAllowedUrl("https://open.larksuite.com/")) {
+			window.open("https://open.larksuite.com/", "_blank", "noopener,noreferrer");
+		}
 	};
 
 	const handleOpenGoogleSheetsSync = () => {
-		window.open("https://sheets.google.com/", "_blank");
+		if (isAllowedUrl("https://sheets.google.com/")) {
+			window.open("https://sheets.google.com/", "_blank", "noopener,noreferrer");
+		}
 	};
 
 	const handleShareLink = async () => {

@@ -22,11 +22,11 @@ from app.services.chainlens.websets import WebsetsService
 logger = logging.getLogger(__name__)
 
 DEFAULT_WEBSET_COLUMNS: list[dict[str, Any]] = [
-    {"name": "company_name", "type": "text"},
-    {"name": "phone", "type": "phone"},
-    {"name": "email", "type": "email"},
-    {"name": "title", "type": "text"},
-    {"name": "website", "type": "url"},
+    {"key": "company_name", "type": "text"},
+    {"key": "phone", "type": "phone"},
+    {"key": "email", "type": "email"},
+    {"key": "title", "type": "text"},
+    {"key": "website", "type": "url"},
 ]
 
 

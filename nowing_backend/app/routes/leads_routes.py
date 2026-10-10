@@ -240,6 +240,7 @@ def _map_lead_to_read(lead: Lead) -> LeadRead:
         is_unlocked=is_unlocked,
         is_valid=getattr(first_contact, "is_valid", None),
         consent_status=getattr(first_contact, "consent_status", None),
+        extra_metadata=getattr(lead, "extra_metadata", None),
     )
 
 

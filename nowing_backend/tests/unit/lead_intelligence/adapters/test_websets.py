@@ -63,6 +63,10 @@ class TestWebsetsAdapter:
             "http://localhost:8000/api/v1/webhooks/chainlens/webset-idle?t="
             in kwargs["metadata"]["webhookUrl"]
         )
+        # Verify columns contract uses 'key' instead of 'name' (Story 41.2)
+        for col in kwargs["columns"]:
+            assert "key" in col
+            assert "name" not in col
 
         # Verify DB row WebsetCampaign was added and committed
         mock_session.add.assert_called_once()

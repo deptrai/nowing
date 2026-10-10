@@ -5,9 +5,9 @@
 
 import assert from "node:assert/strict";
 import {
+	type CampaignPlanResponse,
 	campaignPlanResponseSchema,
 	sourcePlanAllocationSchema,
-	type CampaignPlanResponse,
 } from "../../contracts/types/campaign.types";
 
 const mockPlanData: CampaignPlanResponse = {
@@ -69,9 +69,7 @@ const mockPlanData: CampaignPlanResponse = {
 	estimated_reachable_leads: 100,
 	estimated_cost_vnd: 150000,
 	estimated_cost_micros: 6000000,
-	warnings: [
-		"Adapter degraded_social đang hoạt động ở chế độ suy giảm hiệu năng.",
-	],
+	warnings: ["Adapter degraded_social đang hoạt động ở chế độ suy giảm hiệu năng."],
 };
 
 function testCampaignPlanResponseSchema() {
@@ -105,6 +103,17 @@ function testSourcePlanAllocationSchema() {
 	if (parsedDegraded.success) {
 		assert.equal(parsedDegraded.data.status, "degraded");
 		assert.ok(parsedDegraded.data.degraded_reason?.includes("degraded"));
+	}
+
+	const pendingAlloc = {
+		...mockPlanData.source_allocations[0],
+		source_name: "websets",
+		status: "pending",
+	};
+	const parsedPending = sourcePlanAllocationSchema.safeParse(pendingAlloc);
+	assert.ok(parsedPending.success, "sourcePlanAllocationSchema must parse pending allocation");
+	if (parsedPending.success) {
+		assert.equal(parsedPending.data.status, "pending");
 	}
 }
 
