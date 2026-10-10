@@ -747,61 +747,61 @@ action_items:
     action: "Raise VOICE_DECIDE_TIMEOUT_SECONDS default to ~0.8s or split timeout
       for transfer_to_human"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-6-switch-ingest-filter-to-fail-closed-drop"
     epic: 39
     action: "Switch ingest filter to fail-closed (drop/requeue flagged batch on Jev
       error)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-7-_env_float-math-isfinite-for-voice-env-p"
     epic: 39
     action: "_env_float+math.isfinite for voice env parse; strip code fences in llm_json.py;
       thread_id+turn in jev_router dedup key"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-8-trim-entity-resolution-candidate-fields"
     epic: 39
     action: "Trim entity-resolution candidate fields; add develop to jev-eval-gate.yml
       branches"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-9-decide-telemetry-schema-for-background-d"
     epic: 39
     action: "Decide telemetry schema for background decisions missing user_id (nullable
       vs service-account)"
     owner: "architect"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-10-remove-or-refactor-app-tasks-jev_guardra"
     epic: 39
     action: "Remove or refactor app/tasks/jev_guardrails.py stub to use DecisionService"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-11-add-passes_positive-to-confidencegate-co"
     epic: 39
     action: "Add passes_positive to ConfidenceGate; consider splitting decision/service.py
       (662 lines)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-12-pull-epic-38-open-items-ai-38-1-38-5-int"
     epic: 39
     action: "Pull Epic 38 open items (AI-38.1..38.5) into backlog before Epic 41;
       add pre-epic gate check"
     owner: "pm"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-13-upgrade-inboundintentclassifier-regex-to"
     epic: 39
     action: "Upgrade InboundIntentClassifier regex to Jev when slot available"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
   - id: "epic-39-retro-item-14-measure-context-token-delta-of-demote-no"
     epic: 39
