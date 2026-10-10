@@ -135,6 +135,11 @@ warnings: []
   - intent-alignment: [medium,patch] adapter error surface (dup); [low,patch] duplicate-string (dup).
 - DEFER thêm: `limit` không forward sang webset create (contract ChainLens chưa rõ → 41.2; maybe-false→medium nếu đúng).
 
+### 2026-10-10 — Review pass 3 (follow-up: verify reorder/restructure at integration level)
+- verdict: **PASS** — không critical; reorder `delay()`-trước-commit an toàn (retry-storm & concurrent deliveries absorbed bởi completed-guard + `ingest_batch` UPSERT `ON CONFLICT (workspace_id, value_hmac)` sorted ASC; `.delay()` <1ms chuẩn codebase); session không giữ transaction mở khi paginate; except-block mở session mới ghi failed; task reraise qua `self.retry` exp-backoff max_retries=3; model↔migration 246 khớp 11 cột/3 index; `pending` tương thích `SourceStatusPanel` (chỉ degraded/offline vàng).
+- suggestions (đã patch, commit `41436a0a3`): [medium] bọc `WebsetCampaign` DB commit → `last_execution_status="failed"`+log+return [] (webset ChainLens đã tạo nhưng không track → webhook 'ignored', tránh hiện ready giả); [low] `seen_cursors` set chặn vòng cursor đa điểm A→B→A; [low] `raw_items_count` trong stats phân biệt raw items vs drained(mapped) vs imported.
+- Jev `code_review_gate` trên diff suggestions: needs_deep_review p=0.75 — user duyệt commit luôn.
+
 ## Auto Run Result
 
 ### Summary of Implemented Change
