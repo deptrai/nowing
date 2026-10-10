@@ -774,6 +774,10 @@ class LeadSourceAdapterRegistry:
             if exec_status == "offline":
                 status = "offline"
                 degraded_reason = f"Adapter {src_name} đang ngoại tuyến (offline)"
+            elif exec_status == "pending":
+                # Async build (vd. websets) — trạng thái bình thường, không phải lỗi
+                status = "pending"
+                degraded_reason = "Đang xây dataset qua ChainLens…"
             elif exec_status != "ok":
                 status = "degraded"
                 degraded_reason = f"Adapter {src_name} báo cáo lỗi: {exec_status}"

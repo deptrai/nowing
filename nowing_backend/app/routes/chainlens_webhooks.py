@@ -167,6 +167,12 @@ async def receive_chainlens_webset_idle_webhook(
             detail=f"Malformed JSON body: {exc}",
         ) from exc
 
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Expected JSON object body",
+        )
+
     event = payload.get("event")
     item_status = payload.get("status")
     if not (event == "webset.idle" or item_status == "idle"):
@@ -232,17 +238,19 @@ async def receive_chainlens_webset_idle_webhook(
             webset_id,
         )
         return {
-            "status": "already_processed",
+            "status": "duplicate",
             "webset_id": str(webset_id),
         }
+
+    # Enqueue trước khi ghi last_delivery_id: nếu broker fail → 5xx để
+    # ChainLens retry, tránh đánh dấu đã xử lý mà mất luôn job import.
+    import_webset_leads.delay(str(webset_id))
 
     if delivery_id:
         campaign.last_delivery_id = str(delivery_id)
     if "stats" in payload and isinstance(payload["stats"], dict):
         campaign.stats = payload["stats"]
     await session.commit()
-
-    import_webset_leads.delay(str(webset_id))
     logger.info(
         "[ChainLensWebsetWebhook] Enqueued import_webset_leads for webset_id=%s delivery_id=%s",
         webset_id,

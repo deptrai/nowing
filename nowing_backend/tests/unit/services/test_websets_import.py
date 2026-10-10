@@ -197,3 +197,103 @@ class TestWebsetsImportTask:
             }
             mock_instance.import_webset.assert_awaited_once_with("wbs_123")
 
+
+    @pytest.mark.asyncio
+    async def test_import_webset_ingest_failure_marks_campaign_failed(self) -> None:
+        """ingest_batch raise -> campaign.status='failed' và exception propagate."""
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme", "phone": "0987111222"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = mock_campaign
+        mock_session.execute.return_value = mock_res
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        mock_batch_svc.ingest_batch.side_effect = RuntimeError("db exploded")
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with pytest.raises(RuntimeError, match="db exploded"):
+            await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert mock_campaign.status == "failed"
+
+    @pytest.mark.asyncio
+    async def test_import_webset_completed_campaign_skipped(self) -> None:
+        """Campaign status='completed' -> skip sớm, không drain lại."""
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        called = False
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            nonlocal called
+            called = True
+            yield {"id": "it_1", "status": "ready", "data": {"name": "X"}}
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="completed",
+            imported_count=7,
+            stats={},
+        )
+
+        mock_session = AsyncMock()
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = mock_campaign
+        mock_session.execute.return_value = mock_res
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=AsyncMock(),
+        )
+
+        result = await import_service.import_webset(
+            "wbs_123",
+            session_factory=lambda: mock_session_cm,
+        )
+
+        assert result["status"] == "skipped"
+        assert result["imported_count"] == 7
+        assert called is False
+
+
+class TestWebsetsImportTaskRegistration:
+    def test_celery_task_registered(self) -> None:
+        from app.celery_app import celery_app
+
+        assert (
+            "app.tasks.webset_import.import_webset_leads" in celery_app.tasks
+        )

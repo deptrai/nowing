@@ -12,11 +12,17 @@ deferred:
     location: >-
       nowing_backend/app/tasks/webset_import.py:25
     severity: medium (unverified)
+  - summary: >-
+      `limit` từ search_leads không được forward sang create_webset
+    evidence: |-
+      ChainLens webset contract chưa rõ field limit/maxItems — adapter hiện bỏ qua limit; nếu contract thật sự hỗ trợ thì leads bị over-fetch (severity medium).
+    location: >-
+      nowing_backend/app/lead_intelligence/adapters/websets.py
+    severity: medium (unverified) → settle in Story 41.2
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: []
-deferred: []
 ---
 
 <intent-contract>
@@ -119,6 +125,16 @@ deferred: []
   - `[false]` `[reject]` Verification Gap: Celery task entrypoint unit test — refutation: import_webset_leads task delegates directly to WebsetsImportService.drain_and_ingest which is exhaustively unit tested in test_websets_import.py.
   - `[low]` `[reject]` Intent Alignment: reading selection — cosmetic: diff implements Reading A completely matching intent contract.
 
+### 2026-10-10 — Review pass 2 (step-04 four-layer pass, parent session)
+- verdicts: 37 findings — high 0, medium 13, low 20 (4 rejected), false 3, maybe-false 1
+- Lưu ý: một số verdict `[reject]` ở pass 1 bị đảo sau khi verify code thực tế — cursor-repeat loop (đã thêm `next_cursor == cursor: break`), fallback `Webset Lead` va `value_hmac` (đã thêm entity fragment), commit `last_delivery_id` trước `delay()` (đã reorder để broker-failure không mất import), `already_processed` ≠ spec `duplicate` (đã đổi tên).
+- findings (theo layer):
+  - blind-hunter: [medium,patch] stale x-user-ctx headers 1 lần/vòng (TTL 60s thật) → regen mỗi page; [medium,patch] WebsetsUnavailable propagate từ adapter (spec: degraded không raise) → try/except+degraded+[]; [medium,patch] singleton `last_execution_status` không reset → leak cross-run → reset ở entry; [low,reject] webset-id enumeration oracle (inherent per-webset-secret); [low,patch] import thiếu completed-check → status guard skip; [low,patch] buffer vô hạn → stream+flush mỗi 100; [medium,patch] ingest_batch ngoài try → stuck pending → unify try→failed; [low,patch] fallback name va `value_hmac` → +entity fragment; [low,patch] entity chỉ-có-domain bị drop → +domain/source_url trong guard; [low,reject] adapter normalize bỏ qua alias (dead path — seam 41.2); [maybe-false,defer] `limit` không forward sang create_webset → contract ChainLens chưa rõ → chốt ở 41.2; [low,patch] model dup index decls + `updated_at` thiếu default → fix model khớp migration 246; [low,patch] nextCursor lặp → break; [low,patch] `already_processed`→`duplicate`; [false] phone/email unnormalized → LeadBatchService đã normalize.
+  - edge-hunter: [low,patch] non-dict JSON → 500 → isinstance guard→400; [medium,patch] commit last_delivery_id trước delay → reorder delay-trước; [low,patch] non-dict `data` → guard; [medium,dup] ingest-stuck-pending; [medium,patch] `get_all_source_statuses` coerce pending→degraded (hiện như lỗi ở `/campaigns/sources/status`) → pending branch "Đang xây dataset qua ChainLens…"; [low,dup] cursor cycle; [low,patch] email whitespace → strip; [medium,dup] adapter uncaught; [low,dup] duplicate-string.
+  - verification-gap: [medium,patch] planner test qua mock → dùng real WebsetsAdapter; [medium,dup] ingest-failure; [medium,patch] migration 246 thiếu roundtrip → `test_migration_246_roundtrip.py`; [medium,patch] adapter error branches untested → thêm tests; [low,patch] celery registration assert; [false] dummy-app route mounting (router.prefix đã mang `/api/v1`); [low,reject] oracle (dup); [false] `API_BASE_URL` không tồn tại — code dùng `BACKEND_URL`; [low,patch] non-JSON res wrap + tests; [low,reject] normalize edge tests (dead path); [low,patch] singleton-leak test (folded).
+  - intent-alignment: [medium,patch] adapter error surface (dup); [low,patch] duplicate-string (dup).
+- DEFER thêm: `limit` không forward sang webset create (contract ChainLens chưa rõ → 41.2; maybe-false→medium nếu đúng).
+
 ## Auto Run Result
 
 ### Summary of Implemented Change
@@ -144,18 +160,22 @@ Story 41.1 implemented full foundational integration between Nowing and ChainLen
 - Unit test files covering all newly introduced services, routes, adapters, and planner changes (24 tests total).
 
 ### Review Findings Breakdown
-- Patches applied: 1 (WebsetsAdapter singleton state reset).
-- Items deferred: 1 (Celery worker ChainLens API timeout retry telemetry).
-- Rejected findings: 15 (refuted by explicit code contracts, idempotency guarantees, and existing safeguards).
+- Layer pass 2 (step-04): 37 findings — 13 medium, 20 low (4 rejected), 3 false, 1 maybe-false→defer.
+- Patches applied post-review: adapter status reset + degraded-surface; registry/planner pending branch; headers regen per page; cursor-cycle guard; non-JSON wrap; webhook dict guard + `duplicate` rename + delay-trước-commit reorder; import stream-flush + unify try→failed + completed-skip; mapper guards; model index dedup + `updated_at` default.
+- Tests added post-review: 3 adapter error-branch, 3 client pagination, 2 webhook (non-dict 400, broker-failure no-commit), 3 import (ingest-fail→failed, completed-skip, celery registration), planner real-adapter swap, migration 246 roundtrip (integration).
+- Items deferred: 2 (Celery ChainLens timeout telemetry; `limit`→create_webset contract — chốt ở 41.2).
 
 ### Verification Performed
-- `ruff check`: All files clean.
-- `alembic upgrade head`: Revision 246 applied cleanly to current head.
-- `pytest tests/unit -k "webset"`: 24/24 tests passed cleanly.
-- `pytest tests/unit/lead_intelligence`: 38/39 tests passed (1 unrelated local proxy connection failure on Batdongsan).
+- `ruff check` trên toàn bộ file đổi: clean.
+- `alembic current`: `246 (head)` — migration applied.
+- `pytest tests/unit -k "webset"`: **35/35 pass** (24 gốc + 11 thêm).
+- `pytest tests/unit/lead_intelligence`: 292 pass / 1 fail `test_sales_copilot_smoke` — environmental (batdongsan adapter hit live network qua proxy 407), pre-existing không liên quan.
+- `pytest tests/integration/db/test_migration_246_roundtrip.py`: **2/2 pass**.
 
 ### Residual Risks
-None. Integration is fully isolated behind `websets` source selection and protected by cryptographically random per-webset webhook secret tokens.
+- Webhook reorder (delay-trước-commit) chưa được verify ở integration level — follow-up review nên kiểm tra lại.
+- `followup_review_recommended: true` — nhiều medium patched trong pass 2.
+- Commit: base implementation ở `448d1ef83` (worker); review patches ở commit kế tiếp.
 
 ## Design Notes
 

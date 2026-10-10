@@ -59,6 +59,9 @@ class WebsetsAdapter(LeadSourceAdapter):
         returns an empty list (leads are delivered asynchronously).
         """
         filters = filters or {}
+        # Singleton adapter: status chỉ phản ánh run gần nhất, reset để không
+        # rò rỉ "pending"/"failed" sang campaign/workspace kế tiếp.
+        self.last_execution_status = "ok"
         webhook_secret = secrets.token_urlsafe(32)
 
         base_url = (
@@ -86,13 +89,22 @@ class WebsetsAdapter(LeadSourceAdapter):
             campaign_id,
         )
 
-        res = await self._service.create_webset(
-            source=source,
-            columns=columns,
-            criteria=criteria,
-            metadata=metadata,
-            workspace_id=workspace_id,
-        )
+        try:
+            res = await self._service.create_webset(
+                source=source,
+                columns=columns,
+                criteria=criteria,
+                metadata=metadata,
+                workspace_id=workspace_id,
+            )
+        except Exception as exc:  # typed degradation, không raise qua orchestrator
+            logger.warning(
+                "ChainLens create_webset failed for workspace_id=%s: %s",
+                workspace_id,
+                exc,
+            )
+            self.last_execution_status = "degraded"
+            return []
 
         webset_id = str(
             res.get("webset_id") or res.get("websetId") or res.get("id") or ""
@@ -150,7 +162,7 @@ class WebsetsAdapter(LeadSourceAdapter):
                 )
 
         email = data.get("email")
-        if email:
+        if email and str(email).strip():
             candidates.append(
                 ContactCandidate(
                     channel="email",

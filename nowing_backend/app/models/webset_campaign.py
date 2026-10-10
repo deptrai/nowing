@@ -27,24 +27,21 @@ class WebsetCampaign(Base, TimestampMixin):
         primary_key=True,
         default=uuid.uuid4,
     )
+    # Indexes khai báo tập trung ở __table_args__ (trùng khớp migration 246)
     webset_id = Column(
         String(255),
-        unique=True,
         nullable=False,
-        index=True,
         doc="ChainLens Webset ID (e.g. wbs_...)",
     )
     campaign_id = Column(
         String(255),
         nullable=True,
-        index=True,
         doc="Associated Nowing campaign ID or client_id",
     )
     workspace_id = Column(
         Integer,
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     webhook_secret = Column(
         String(255),
@@ -79,6 +76,7 @@ class WebsetCampaign(Base, TimestampMixin):
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=True,
+        default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
 

@@ -117,3 +117,54 @@ class TestWebsetsAdapter:
 
         email_cand = next(c for c in candidates if c.channel == "email")
         assert email_cand.value == "contact@example.com"
+
+    @pytest.mark.asyncio
+    async def test_search_leads_chainlens_unavailable_returns_degraded(
+        self, mock_service: WebsetsService
+    ) -> None:
+        """ChainLens 5xx/timeout -> adapter degraded, không raise (spec CHAINLENS_DOWN)."""
+        from app.services.chainlens.websets import WebsetsUnavailable
+
+        adapter = WebsetsAdapter(service=mock_service)
+        mock_service.create_webset.side_effect = WebsetsUnavailable("503 down")
+
+        leads = await adapter.search_leads(
+            workspace_id=1,
+            query="test",
+            filters={"base_webhook_url": "http://localhost:8000"},
+        )
+
+        assert leads == []
+        assert adapter.last_execution_status == "degraded"
+
+    @pytest.mark.asyncio
+    async def test_search_leads_missing_webset_id_raises_and_marks_failed(
+        self, mock_service: WebsetsService
+    ) -> None:
+        mock_service.create_webset.return_value = {"status": "running"}
+        adapter = WebsetsAdapter(service=mock_service)
+
+        with pytest.raises(ValueError, match="missing webset_id"):
+            await adapter.search_leads(
+                workspace_id=1,
+                query="test",
+                filters={"base_webhook_url": "http://localhost:8000"},
+            )
+        assert adapter.last_execution_status == "failed"
+
+    @pytest.mark.asyncio
+    async def test_search_leads_resets_status_from_previous_run(
+        self, mock_service: WebsetsService
+    ) -> None:
+        """Singleton adapter không rò rỉ status 'pending'/'failed' run trước."""
+        adapter = WebsetsAdapter(service=mock_service)
+        adapter.last_execution_status = "pending"
+        mock_service.create_webset.side_effect = RuntimeError("boom")
+
+        await adapter.search_leads(
+            workspace_id=1,
+            query="test",
+            filters={"base_webhook_url": "http://localhost:8000"},
+        )
+        # Failure mới ghi đè lên 'pending' cũ thay vì giữ nguyên
+        assert adapter.last_execution_status == "degraded"

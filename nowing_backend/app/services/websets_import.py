@@ -34,6 +34,8 @@ def map_webset_entity(
     data = entity.get("data")
     if not isinstance(data, dict):
         data = entity.get("properties") or entity.get("fields") or entity
+    if not isinstance(data, dict):
+        return None
 
     entity_id = str(
         entity.get("id") or entity.get("entity_id") or entity.get("entityId") or ""
@@ -57,11 +59,14 @@ def map_webset_entity(
     email = data.get("email")
     domain = data.get("domain") or data.get("website")
 
-    if not company_name and not title and not phone and not email:
+    if not any([company_name, title, phone, email, domain, source_url]):
         return None
 
     if not company_name:
-        company_name = f"Webset Lead {entity_id}" if entity_id else "Webset Lead"
+        # Fallback phải unique theo entity để không va value_hmac
+        # (hash workspace+domain+company_name) khi nhiều entity cùng thiếu tên
+        fragment = entity_id or phone or email or title or "unknown"
+        company_name = f"Webset Lead {fragment}"
 
     return {
         "company_name": company_name,
@@ -110,23 +115,59 @@ class WebsetsImportService:
                     "imported_count": 0,
                 }
 
+            if campaign.status == "completed":
+                logger.info(
+                    "Webset %s already imported (status=completed); skipping",
+                    webset_id,
+                )
+                return {
+                    "status": "skipped",
+                    "webset_id": webset_id,
+                    "imported_count": campaign.imported_count or 0,
+                }
+
             workspace_id = campaign.workspace_id
             campaign_id = campaign.campaign_id
 
-        leads_to_ingest: list[dict[str, Any]] = []
+        # Drain theo stream + flush ingest mỗi 100 leads — không buffer toàn bộ,
+        # và mọi lỗi (drain lẫn ingest) đều đánh dấu campaign failed.
+        imported_count = 0
+        drained_count = 0
         try:
-            async for item in self._websets_service.iter_ready_items(
-                webset_id=webset_id,
-                workspace_id=workspace_id,
-            ):
-                mapped = map_webset_entity(item, webset_id=webset_id)
-                if mapped:
-                    if campaign_id and "client_id" not in mapped:
-                        mapped["client_id"] = campaign_id
-                    leads_to_ingest.append(mapped)
+            async with maker() as session:
+                buffer: list[dict[str, Any]] = []
+
+                async def flush() -> None:
+                    nonlocal imported_count
+                    if not buffer:
+                        return
+                    ingest_res = await self._batch_service.ingest_batch(
+                        session=session,
+                        workspace_id=workspace_id,
+                        leads=list(buffer),
+                    )
+                    imported_count += ingest_res.get(
+                        "ingested_count", len(buffer)
+                    )
+                    buffer.clear()
+                    await session.commit()
+
+                async for item in self._websets_service.iter_ready_items(
+                    webset_id=webset_id,
+                    workspace_id=workspace_id,
+                ):
+                    mapped = map_webset_entity(item, webset_id=webset_id)
+                    if mapped:
+                        if campaign_id and "client_id" not in mapped:
+                            mapped["client_id"] = campaign_id
+                        buffer.append(mapped)
+                        drained_count += 1
+                        if len(buffer) >= 100:
+                            await flush()
+                await flush()
         except Exception as exc:
             logger.exception(
-                "Error draining items for webset_id=%s: %s", webset_id, exc
+                "Error importing items for webset_id=%s: %s", webset_id, exc
             )
             async with maker() as session:
                 stmt = select(WebsetCampaign).where(
@@ -139,20 +180,6 @@ class WebsetsImportService:
                     await session.commit()
             raise
 
-        imported_count = 0
-        if leads_to_ingest:
-            async with maker() as session:
-                batch_size = 100
-                for i in range(0, len(leads_to_ingest), batch_size):
-                    chunk = leads_to_ingest[i : i + batch_size]
-                    ingest_res = await self._batch_service.ingest_batch(
-                        session=session,
-                        workspace_id=workspace_id,
-                        leads=chunk,
-                    )
-                    imported_count += ingest_res.get("ingested_count", len(chunk))
-                await session.commit()
-
         async with maker() as session:
             stmt = select(WebsetCampaign).where(
                 WebsetCampaign.webset_id == str(webset_id)
@@ -163,7 +190,7 @@ class WebsetsImportService:
                 campaign.imported_count = imported_count
                 campaign.status = "completed"
                 current_stats = dict(campaign.stats or {})
-                current_stats["drained_count"] = len(leads_to_ingest)
+                current_stats["drained_count"] = drained_count
                 current_stats["imported_count"] = imported_count
                 campaign.stats = current_stats
                 await session.commit()

@@ -94,7 +94,7 @@ class TestChainLensWebsetIdleWebhook:
 
             assert response.status_code == 200
             assert response.json() == {
-                "status": "already_processed",
+                "status": "duplicate",
                 "webset_id": "wbs_123",
             }
             # Must NOT enqueue again
@@ -171,3 +171,51 @@ class TestChainLensWebsetIdleWebhook:
             "status": "ignored",
             "webset_id": "wbs_nonexistent",
         }
+
+    def test_webhook_non_dict_body_returns_400(self) -> None:
+        """Valid JSON nhưng không phải object (list/scalar) -> 400, không 500."""
+        mock_session = AsyncMock()
+        app = _make_test_app(mock_session)
+        client = TestClient(app)
+
+        response = client.post(
+            "/api/v1/webhooks/chainlens/webset-idle?t=token",
+            json=["not", "a", "dict"],
+        )
+        assert response.status_code == 400
+
+    def test_webhook_broker_failure_does_not_commit_delivery_id(self) -> None:
+        """delay() raise -> non-2xx và last_delivery_id KHÔNG được commit,
+        để retry của ChainLens vẫn import được."""
+        mock_session = AsyncMock()
+        campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            webhook_secret="super-secret-token",
+            status="pending",
+            last_delivery_id=None,
+        )
+        res_mock = MagicMock()
+        res_mock.scalar_one_or_none.return_value = campaign
+        mock_session.execute.return_value = res_mock
+
+        app = _make_test_app(mock_session)
+        client = TestClient(app, raise_server_exceptions=False)
+
+        with patch(
+            "app.routes.chainlens_webhooks.import_webset_leads.delay",
+            side_effect=ConnectionError("broker down"),
+        ):
+            response = client.post(
+                "/api/v1/webhooks/chainlens/webset-idle?t=super-secret-token",
+                json={
+                    "event": "webset.idle",
+                    "websetId": "wbs_123",
+                    "id": "del_001",
+                },
+            )
+
+        assert response.status_code >= 500
+        assert campaign.last_delivery_id is None
+        mock_session.commit.assert_not_awaited()

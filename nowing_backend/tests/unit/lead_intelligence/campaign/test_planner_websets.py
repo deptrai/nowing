@@ -84,7 +84,10 @@ class MockDegradedAdapter(LeadSourceAdapter):
 class TestLeadGenPlannerWebsets:
     def test_planner_sets_pending_status_for_async_adapter(self) -> None:
         reg = LeadSourceAdapterRegistry()
-        reg.register(MockPendingWebsetsAdapter())
+        # Real WebsetsAdapter: pending là trạng thái sau khi search_leads() OK
+        real_adapter = WebsetsAdapter()
+        real_adapter.last_execution_status = "pending"
+        reg.register(real_adapter)
 
         planner = LeadGenPlanner(registry=reg)
         spec = CampaignSpec(
@@ -107,7 +110,9 @@ class TestLeadGenPlannerWebsets:
 
     def test_planner_distinguishes_pending_from_degraded(self) -> None:
         reg = LeadSourceAdapterRegistry()
-        reg.register(MockPendingWebsetsAdapter())
+        real_adapter = WebsetsAdapter()
+        real_adapter.last_execution_status = "pending"
+        reg.register(real_adapter)
         reg.register(MockDegradedAdapter())
 
         planner = LeadGenPlanner(registry=reg)

@@ -139,11 +139,14 @@ class WebsetsService:
             WebsetsUnavailable: On communication failure or non-2xx status code.
         """
         url = f"{self.base_url}/v1/websets/{webset_id}/items"
-        headers = get_chainlens_auth().get_outbound_headers(workspace_id=workspace_id)
         cursor: str | None = None
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             while True:
+                # x-user-ctx HMAC có TTL 60s — regen mỗi page để drain dài không 401
+                headers = get_chainlens_auth().get_outbound_headers(
+                    workspace_id=workspace_id
+                )
                 params: dict[str, Any] = {
                     "status": "ready,verified",
                     "limit": 100,
@@ -162,7 +165,12 @@ class WebsetsService:
                         raise WebsetsUnavailable(
                             f"ChainLens iter_ready_items failed with status {res.status_code}: {res.text}"
                         )
-                    data = res.json()
+                    try:
+                        data = res.json()
+                    except Exception as exc:
+                        raise WebsetsUnavailable(
+                            f"ChainLens iter_ready_items returned non-JSON body: {exc}"
+                        ) from exc
                 except httpx.HTTPError as exc:
                     logger.error("ChainLens iter_ready_items connection error: %s", exc)
                     raise WebsetsUnavailable(
@@ -177,6 +185,6 @@ class WebsetsService:
                         yield item
 
                 next_cursor = data.get("nextCursor") or data.get("next_cursor")
-                if not next_cursor or not items:
+                if not next_cursor or not items or next_cursor == cursor:
                     break
                 cursor = next_cursor

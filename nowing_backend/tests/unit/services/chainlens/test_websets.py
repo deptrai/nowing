@@ -139,3 +139,87 @@ class TestWebsetsService:
         assert len(yielded_items) == 3
         ids = [it["id"] for it in yielded_items]
         assert ids == ["it_1", "it_3", "it_4"]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_regenerates_headers_per_page(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """x-user-ctx HMAC có TTL 60s — headers phải regen mỗi page, không reuse."""
+        respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
+            side_effect=[
+                httpx.Response(
+                    200,
+                    json={
+                        "items": [{"id": "a", "status": "ready"}],
+                        "nextCursor": "p2",
+                    },
+                ),
+                httpx.Response(
+                    200,
+                    json={
+                        "items": [{"id": "b", "status": "ready"}],
+                        "nextCursor": None,
+                    },
+                ),
+            ]
+        )
+
+        from unittest.mock import MagicMock, patch
+
+        with patch(
+            "app.services.chainlens.websets.get_chainlens_auth"
+        ) as mock_auth_getter:
+            mock_auth_getter.return_value.get_outbound_headers = MagicMock(
+                return_value={"Authorization": "Bearer x"}
+            )
+            async for _ in websets_service.iter_ready_items(
+                "wbs_1", workspace_id=1
+            ):
+                pass
+
+        assert mock_auth_getter.return_value.get_outbound_headers.call_count == 2
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_breaks_on_repeated_cursor(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """nextCursor lặp lại giá trị cũ -> break, không infinite loop."""
+        route = respx.get(
+            "http://test-chainlens:3001/v1/websets/wbs_1/items"
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "items": [{"id": "a", "status": "ready"}],
+                    "nextCursor": "same-cursor",
+                },
+            )
+        )
+
+        count = 0
+        async for _ in websets_service.iter_ready_items("wbs_1", workspace_id=1):
+            count += 1
+            if count > 10:
+                break
+
+        # Page 1 cursor=None -> page 2 cursor=same -> page 3 same -> break
+        assert route.call_count == 2
+        assert count == 2
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_iter_ready_items_non_json_raises_unavailable(
+        self, websets_service: WebsetsService
+    ) -> None:
+        """Proxy trả HTML/non-JSON -> WebsetsUnavailable, không raw decode error."""
+        respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
+            return_value=httpx.Response(200, text="<html>502 Bad Gateway</html>")
+        )
+
+        with pytest.raises(WebsetsUnavailableError):
+            async for _ in websets_service.iter_ready_items(
+                "wbs_1", workspace_id=1
+            ):
+                pass
