@@ -33,7 +33,9 @@ class LeadGenPlanner:
         Returns:
             A tuple of (subtask_plans, expected_sources).
         """
-        resolved_adapters, location_fallback = self.registry.resolve_adapters_for_campaign(spec)
+        resolved_adapters, location_fallback = (
+            self.registry.resolve_adapters_for_campaign(spec)
+        )
 
         warnings: list[str] = []
         if location_fallback:
@@ -70,9 +72,7 @@ class LeadGenPlanner:
 
             # Determine query for this specific adapter
             adapter_query = self._build_query_for_adapter(spec, adapter.category)
-            adapter_limit = budget_map.get(
-                src_key, min(50, spec.max_total_leads)
-            )
+            adapter_limit = budget_map.get(src_key, min(50, spec.max_total_leads))
             adapter_priority = priority_map.get(src_key, 1)
 
             # Build platform specific filters from ICP
@@ -137,7 +137,10 @@ class LeadGenPlanner:
 
             status: str = "ready"
             degraded_reason: str | None = None
-            if coverage_quality in ("low", "none"):
+            if getattr(adapter, "last_execution_status", "ok") == "pending":
+                status = "pending"
+                degraded_reason = "Asynchronous webset build in progress"
+            elif coverage_quality in ("low", "none"):
                 status = "degraded"
                 degraded_reason = (
                     f"Location coverage for {src_name} is {coverage_quality} "
@@ -150,13 +153,17 @@ class LeadGenPlanner:
                     f"{adapter.last_execution_status}"
                 )
 
-            supported_provinces = list(getattr(adapter, "supported_provinces", ["*"]) or ["*"])
+            supported_provinces = list(
+                getattr(adapter, "supported_provinces", ["*"]) or ["*"]
+            )
 
             allocations.append(
                 SourcePlanAllocation(
                     source_name=src_name,
                     category=adapter.category.value,
-                    allocated_limit=budget_map.get(src_key, min(50, spec.max_total_leads)),
+                    allocated_limit=budget_map.get(
+                        src_key, min(50, spec.max_total_leads)
+                    ),
                     priority=priority_map.get(src_key, 1),
                     location_coverage_quality=coverage_quality,
                     location_coverage_score=round(coverage_score, 4),
@@ -179,9 +186,8 @@ class LeadGenPlanner:
     def _estimate_cost(self, spec: CampaignSpec) -> tuple[int, int]:
         """Return (cost_vnd, cost_micros) for the campaign."""
         # FR-69: base lead 1,500 VND; verified unlock 5,000 VND.
-        auto_unlock = (
-            spec.source_budgets
-            and any(getattr(b, "auto_unlock", False) for b in spec.source_budgets)
+        auto_unlock = spec.source_budgets and any(
+            getattr(b, "auto_unlock", False) for b in spec.source_budgets
         )
         cost_per_lead = 5000 if auto_unlock else 1500
         cost_vnd = spec.max_total_leads * cost_per_lead
@@ -192,7 +198,9 @@ class LeadGenPlanner:
         """Build an enriched CampaignPlanResponse without mutating plan_from_campaign."""
         subtasks, expected_sources = self.plan_from_campaign(spec)
 
-        resolved_adapters, location_fallback = self.registry.resolve_adapters_for_campaign(spec)
+        resolved_adapters, location_fallback = (
+            self.registry.resolve_adapters_for_campaign(spec)
+        )
 
         warnings: list[str] = []
         if location_fallback:
@@ -204,7 +212,9 @@ class LeadGenPlanner:
             warnings.append(warning_msg)
 
         source_allocations = self._build_source_allocations(spec, resolved_adapters)
-        estimated_reachable_leads = self._estimate_reachable_leads(spec, source_allocations)
+        estimated_reachable_leads = self._estimate_reachable_leads(
+            spec, source_allocations
+        )
         estimated_cost_vnd, estimated_cost_micros = self._estimate_cost(spec)
 
         return CampaignPlanResponse(
@@ -270,9 +280,7 @@ class LeadGenPlanner:
             district_codes = list(
                 getattr(spec.location_profile, "district_codes", []) or []
             )
-            ward_names = list(
-                getattr(spec.location_profile, "ward_names", []) or []
-            )
+            ward_names = list(getattr(spec.location_profile, "ward_names", []) or [])
             if district_codes:
                 recovery.append(f"Mở rộng ra toàn tỉnh {province}")
             if ward_names:

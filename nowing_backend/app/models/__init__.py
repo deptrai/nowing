@@ -23,6 +23,7 @@ from app.models import (
     projects as projects,
     scraper as scraper,
     users as users,
+    webset_campaign as webset_campaign,
     workspaces as workspaces,
 )
 
@@ -42,5 +43,6 @@ __all__ = [
     "projects",
     "scraper",
     "users",
+    "webset_campaign",
     "workspaces",
 ]

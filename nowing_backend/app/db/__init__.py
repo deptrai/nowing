@@ -229,6 +229,7 @@ from app.etl_pipeline.cache.persistence.models import CachedParse
 from app.file_storage.persistence import DocumentFile
 from app.indexing_pipeline.cache.persistence.models import CachedEmbeddingSet
 from app.models.browser_operator_audit import BrowserOperatorAuditEvent
+from app.models.webset_campaign import WebsetCampaign
 from app.models.workspace_health import WorkspaceHealthDaily
 from app.models.workspace_sip import WorkspaceSipTrunk
 from app.models.workspaces import (
@@ -402,6 +403,7 @@ __all__ = [
     "VerticalClient",
     "VideoPresentation",
     "VideoPresentationStatus",
+    "WebsetCampaign",
     "Workspace",
     "WorkspaceApp",
     "WorkspaceDncRecord",

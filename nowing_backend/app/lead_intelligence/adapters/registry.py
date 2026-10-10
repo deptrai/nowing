@@ -87,6 +87,7 @@ class LeadSourceAdapterRegistry:
         from app.lead_intelligence.adapters.tiktok_shop import TiktokShopLeadAdapter
         from app.lead_intelligence.adapters.vietnamworks import VietnamWorksLeadAdapter
         from app.lead_intelligence.adapters.vn_jobs import VnJobsLeadAdapter
+        from app.lead_intelligence.adapters.websets import WebsetsAdapter
 
         self.register(BatdongsanLeadAdapter())
         self.register(ChototLeadAdapter())
@@ -102,6 +103,8 @@ class LeadSourceAdapterRegistry:
         self.register(ShopeeLeadAdapter())
         self.register(TiktokShopLeadAdapter())
         self.register(NewsLeadAdapter())
+        # Story 41.1: Websets adapter
+        self.register(WebsetsAdapter())
 
     def register(self, adapter: LeadSourceAdapter) -> None:
         """Register a concrete adapter."""
@@ -141,7 +144,8 @@ class LeadSourceAdapterRegistry:
         # 1. Handle explicit target_sources if provided
         target_sources = getattr(campaign_spec, "target_sources", None) or []
         excluded_sources = {
-            s.lower().strip() for s in (getattr(campaign_spec, "excluded_sources", None) or [])
+            s.lower().strip()
+            for s in (getattr(campaign_spec, "excluded_sources", None) or [])
         }
 
         if target_sources:
@@ -166,12 +170,16 @@ class LeadSourceAdapterRegistry:
             target_categories = getattr(icp_criteria, "target_categories", []) or []
             for cat in target_categories:
                 for a in self.find_by_category(cat):
-                    if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                    if (
+                        a not in matched_adapters
+                        and a.source_name.lower() not in excluded_sources
+                    ):
                         matched_adapters.append(a)
 
             # Check target industries & keywords for vertical intent
             target_industries = [
-                i.lower() for i in (getattr(icp_criteria, "target_industries", []) or [])
+                i.lower()
+                for i in (getattr(icp_criteria, "target_industries", []) or [])
             ]
             target_keywords = [
                 k.lower() for k in (getattr(icp_criteria, "target_keywords", []) or [])
@@ -182,59 +190,142 @@ class LeadSourceAdapterRegistry:
                 plain_lower = _strip_vietnamese_diacritics(raw_lower)
                 # Only add if specifically matched keywords
                 bds_keywords = [
-                    "bđs", "bds", "bất động sản", "bat dong san", "nhà đất", "nha dat",
-                    "chung cư", "chung cu", "biệt thự", "biet thu", "căn hộ", "can ho",
-                    "mặt bằng", "mat bang", "nhà phố", "nha pho", "đất nền", "dat nen",
-                    "cho thuê", "cho thue", "ocean park", "vinhome", "vinhomes",
+                    "bđs",
+                    "bds",
+                    "bất động sản",
+                    "bat dong san",
+                    "nhà đất",
+                    "nha dat",
+                    "chung cư",
+                    "chung cu",
+                    "biệt thự",
+                    "biet thu",
+                    "căn hộ",
+                    "can ho",
+                    "mặt bằng",
+                    "mat bang",
+                    "nhà phố",
+                    "nha pho",
+                    "đất nền",
+                    "dat nen",
+                    "cho thuê",
+                    "cho thue",
+                    "ocean park",
+                    "vinhome",
+                    "vinhomes",
                 ]
                 if any(k in raw_lower or k in plain_lower for k in bds_keywords):
                     for a in self.find_by_category(LeadSourceCategory.REAL_ESTATE):
-                        if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                        if (
+                            a not in matched_adapters
+                            and a.source_name.lower() not in excluded_sources
+                        ):
                             matched_adapters.append(a)
 
                 job_keywords = [
-                    "tuyển dụng", "tuyen dung", "tuyen", "hiring", "developer", "engineer",
-                    "nhân sự", "nhan su", "việc làm", "viec lam", "topcv", "itviec",
-                    "vietnamworks", "vn_jobs", "vnjobs", "recruitment", "software",
-                    "information technology", "công nghệ thông tin", "lap trinh",
+                    "tuyển dụng",
+                    "tuyen dung",
+                    "tuyen",
+                    "hiring",
+                    "developer",
+                    "engineer",
+                    "nhân sự",
+                    "nhan su",
+                    "việc làm",
+                    "viec lam",
+                    "topcv",
+                    "itviec",
+                    "vietnamworks",
+                    "vn_jobs",
+                    "vnjobs",
+                    "recruitment",
+                    "software",
+                    "information technology",
+                    "công nghệ thông tin",
+                    "lap trinh",
                 ]
-                if any(k in raw_lower or k in plain_lower for k in job_keywords) or re.search(r"\bhr\b", raw_lower):
+                if any(
+                    k in raw_lower or k in plain_lower for k in job_keywords
+                ) or re.search(r"\bhr\b", raw_lower):
                     for a in self.find_by_category(LeadSourceCategory.JOB_MARKET):
-                        if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                        if (
+                            a not in matched_adapters
+                            and a.source_name.lower() not in excluded_sources
+                        ):
                             matched_adapters.append(a)
 
         # 4. Resolve via buying signal triggers and intent tags
         signal_triggers = [
-            s.lower().strip() for s in (getattr(campaign_spec, "signal_triggers", []) or [])
+            s.lower().strip()
+            for s in (getattr(campaign_spec, "signal_triggers", []) or [])
         ]
         intent_tags = [
             t.lower().strip() for t in (getattr(campaign_spec, "intent_tags", []) or [])
         ]
         all_signals = set(signal_triggers + intent_tags)
 
-        if "hiring" in all_signals or "recruitment" in all_signals or "jobs" in all_signals:
+        if (
+            "hiring" in all_signals
+            or "recruitment" in all_signals
+            or "jobs" in all_signals
+        ):
             for a in self.find_by_category(LeadSourceCategory.JOB_MARKET):
-                if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                if (
+                    a not in matched_adapters
+                    and a.source_name.lower() not in excluded_sources
+                ):
                     matched_adapters.append(a)
 
-        if "tender" in all_signals or "bidding" in all_signals or "procurement" in all_signals or "muasamcong" in all_signals:
+        if (
+            "tender" in all_signals
+            or "bidding" in all_signals
+            or "procurement" in all_signals
+            or "muasamcong" in all_signals
+        ):
             for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
-                if a.source_name == "muasamcong" and a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                if (
+                    a.source_name == "muasamcong"
+                    and a not in matched_adapters
+                    and a.source_name.lower() not in excluded_sources
+                ):
                     matched_adapters.append(a)
 
-        if "enterprise" in all_signals or "funding" in all_signals or "tax" in all_signals or "mst" in all_signals:
+        if (
+            "enterprise" in all_signals
+            or "funding" in all_signals
+            or "tax" in all_signals
+            or "mst" in all_signals
+        ):
             for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
-                if a.source_name == "enterprise" and a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                if (
+                    a.source_name == "enterprise"
+                    and a not in matched_adapters
+                    and a.source_name.lower() not in excluded_sources
+                ):
                     matched_adapters.append(a)
 
-        if "real_estate" in all_signals or "bds" in all_signals or "property" in all_signals:
+        if (
+            "real_estate" in all_signals
+            or "bds" in all_signals
+            or "property" in all_signals
+        ):
             for a in self.find_by_category(LeadSourceCategory.REAL_ESTATE):
-                if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                if (
+                    a not in matched_adapters
+                    and a.source_name.lower() not in excluded_sources
+                ):
                     matched_adapters.append(a)
 
-        if "social" in all_signals or "community" in all_signals or "telegram" in all_signals:
+        if (
+            "social" in all_signals
+            or "community" in all_signals
+            or "telegram" in all_signals
+        ):
             for a in self.find_by_category(LeadSourceCategory.SOCIAL):
-                if a not in matched_adapters and a.source_name.lower() not in excluded_sources:
+                if (
+                    a not in matched_adapters
+                    and a.source_name.lower() not in excluded_sources
+                ):
                     matched_adapters.append(a)
 
         # 5. If query is provided and nothing or few matched, check query intent
@@ -245,11 +336,15 @@ class LeadSourceAdapterRegistry:
         # 6. Fallback: if still empty, return all registered non-excluded adapters
         if not matched_adapters:
             matched_adapters = [
-                a for a in self.list_all() if a.source_name.lower() not in excluded_sources
+                a
+                for a in self.list_all()
+                if a.source_name.lower() not in excluded_sources
             ]
         else:
             matched_adapters = [
-                a for a in matched_adapters if a.source_name.lower() not in excluded_sources
+                a
+                for a in matched_adapters
+                if a.source_name.lower() not in excluded_sources
             ]
 
         # Prioritize and deduplicate JOB_MARKET adapters if multiple are present
@@ -259,7 +354,11 @@ class LeadSourceAdapterRegistry:
 
         deduped: list[LeadSourceAdapter] = []
         for category, adapters in by_category.items():
-            if category == LeadSourceCategory.JOB_MARKET and len(adapters) > 1 and query:
+            if (
+                category == LeadSourceCategory.JOB_MARKET
+                and len(adapters) > 1
+                and query
+            ):
                 selected: list[LeadSourceAdapter] = [
                     a for a in adapters if _source_keyword_present(a.source_name, query)
                 ]
@@ -363,9 +462,9 @@ class LeadSourceAdapterRegistry:
             "chủ đầu tư",
             "chu dau tu",
         ]
-        if any(
-            k in raw_lower or k in plain_lower for k in proc_keywords
-        ) or re.search(r"\bmuasamcong\b", raw_lower):
+        if any(k in raw_lower or k in plain_lower for k in proc_keywords) or re.search(
+            r"\bmuasamcong\b", raw_lower
+        ):
             for a in self.find_by_category(LeadSourceCategory.ENTERPRISE):
                 if a.source_name == "muasamcong" and a not in matched:
                     matched.append(a)
@@ -449,6 +548,17 @@ class LeadSourceAdapterRegistry:
                 if a not in matched:
                     matched.append(a)
 
+        # Websets / ChainLens keywords (Story 41.1)
+        webset_keywords = [
+            "webset",
+            "websets",
+            "chainlens",
+        ]
+        if any(k in raw_lower or k in plain_lower for k in webset_keywords):
+            for a in self.find_by_category(LeadSourceCategory.GENERAL):
+                if a.source_name == "websets" and a not in matched:
+                    matched.append(a)
+
         # ponytail: job-market category now has multiple overlapping adapters
         # (vn_jobs aggregate, job_market direct, vietnamworks direct). For a
         # generic job query we want one call; for an explicit source keyword we
@@ -465,7 +575,9 @@ class LeadSourceAdapterRegistry:
         for category, adapters in by_category.items():
             if category == LeadSourceCategory.JOB_MARKET and len(adapters) > 1:
                 selected: list[LeadSourceAdapter] = [
-                    a for a in adapters if _source_keyword_present(a.source_name, prompt)
+                    a
+                    for a in adapters
+                    if _source_keyword_present(a.source_name, prompt)
                 ]
                 if not selected:
                     for name in _JOB_MARKET_PRIORITY:
@@ -495,14 +607,18 @@ class LeadSourceAdapterRegistry:
             return 1.0
 
         p_code = (
-            getattr(location_profile, "province_code", None)
-            or (
-                location_profile.get("province_code")
-                if isinstance(location_profile, dict)
-                else None
+            (
+                getattr(location_profile, "province_code", None)
+                or (
+                    location_profile.get("province_code")
+                    if isinstance(location_profile, dict)
+                    else None
+                )
+                or ""
             )
-            or ""
-        ).upper().strip()
+            .upper()
+            .strip()
+        )
 
         if not p_code:
             return 1.0
@@ -572,17 +688,29 @@ class LeadSourceAdapterRegistry:
         keyword argument set. Always returns a tuple of (ranked adapters, location_fallback).
         """
         campaign_spec = None
-        if not isinstance(prompt, str) and (hasattr(prompt, "__dict__") or isinstance(prompt, dict)):
+        if not isinstance(prompt, str) and (
+            hasattr(prompt, "__dict__") or isinstance(prompt, dict)
+        ):
             campaign_spec = prompt
             query_text = str(getattr(campaign_spec, "query", "") or "")
             icp_criteria = getattr(campaign_spec, "icp_criteria", None)
             if icp_criteria is not None:
-                category = category or getattr(icp_criteria, "target_categories", [None])[0] if getattr(icp_criteria, "target_categories", []) else category
-            location_profile = location_profile or getattr(campaign_spec, "location_profile", None)
+                category = (
+                    category or getattr(icp_criteria, "target_categories", [None])[0]
+                    if getattr(icp_criteria, "target_categories", [])
+                    else category
+                )
+            location_profile = location_profile or getattr(
+                campaign_spec, "location_profile", None
+            )
         else:
             query_text = str(prompt or "")
 
-        candidates = self.resolve_adapters_for_spec(campaign_spec) if campaign_spec is not None else []
+        candidates = (
+            self.resolve_adapters_for_spec(campaign_spec)
+            if campaign_spec is not None
+            else []
+        )
         if not candidates:
             if category:
                 candidates = self.find_by_category(category)
@@ -621,17 +749,16 @@ class LeadSourceAdapterRegistry:
 
         return [a for _, a in ranked], location_fallback
 
-
-    def get_all_source_statuses(
-        self, location_profile: Any | None = None
-    ) -> list[Any]:
+    def get_all_source_statuses(self, location_profile: Any | None = None) -> list[Any]:
         """Compute status, latency, and location coverage across all registered adapters (AC-4)."""
         from app.lead_intelligence.campaign.schemas import SourcePlanAllocation
 
         results: list[SourcePlanAllocation] = []
         for adapter in self._adapters.values():
             src_name = adapter.source_name
-            coverage_score = self.calculate_location_coverage_score(adapter, location_profile)
+            coverage_score = self.calculate_location_coverage_score(
+                adapter, location_profile
+            )
 
             # Map score to tier
             if coverage_score >= 0.9:
@@ -652,13 +779,21 @@ class LeadSourceAdapterRegistry:
                 degraded_reason = f"Adapter {src_name} báo cáo lỗi: {exec_status}"
             elif coverage_quality in ("low", "none") and location_profile:
                 status = "degraded"
-                degraded_reason = f"Độ phủ địa bàn thấp ({coverage_quality}) tại khu vực mục tiêu"
+                degraded_reason = (
+                    f"Độ phủ địa bàn thấp ({coverage_quality}) tại khu vực mục tiêu"
+                )
             else:
                 status = "ready"
                 degraded_reason = None
 
-            supported_provinces = list(getattr(adapter, "supported_provinces", ["*"]) or ["*"])
-            category_val = adapter.category.value if hasattr(adapter.category, "value") else str(adapter.category)
+            supported_provinces = list(
+                getattr(adapter, "supported_provinces", ["*"]) or ["*"]
+            )
+            category_val = (
+                adapter.category.value
+                if hasattr(adapter.category, "value")
+                else str(adapter.category)
+            )
 
             results.append(
                 SourcePlanAllocation(

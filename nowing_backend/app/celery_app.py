@@ -252,6 +252,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.workspace_health_tasks",
         "app.tasks.celery_tasks.bulk_op_tasks",
         "app.tasks.celery_tasks.voice_tasks",
+        "app.tasks.webset_import",
     ],
 )
 
