@@ -132,7 +132,8 @@ class WebsetsImportService:
         # Drain theo stream + flush ingest mỗi 100 leads — không buffer toàn bộ,
         # và mọi lỗi (drain lẫn ingest) đều đánh dấu campaign failed.
         imported_count = 0
-        drained_count = 0
+        drained_count = 0  # mapped leads (đã qua map_webset_entity)
+        raw_count = 0  # raw items ChainLens trả về (kể cả bị mapper loại)
         try:
             async with maker() as session:
                 buffer: list[dict[str, Any]] = []
@@ -146,9 +147,7 @@ class WebsetsImportService:
                         workspace_id=workspace_id,
                         leads=list(buffer),
                     )
-                    imported_count += ingest_res.get(
-                        "ingested_count", len(buffer)
-                    )
+                    imported_count += ingest_res.get("ingested_count", len(buffer))
                     buffer.clear()
                     await session.commit()
 
@@ -156,6 +155,7 @@ class WebsetsImportService:
                     webset_id=webset_id,
                     workspace_id=workspace_id,
                 ):
+                    raw_count += 1
                     mapped = map_webset_entity(item, webset_id=webset_id)
                     if mapped:
                         if campaign_id and "client_id" not in mapped:
@@ -190,6 +190,7 @@ class WebsetsImportService:
                 campaign.imported_count = imported_count
                 campaign.status = "completed"
                 current_stats = dict(campaign.stats or {})
+                current_stats["raw_items_count"] = raw_count
                 current_stats["drained_count"] = drained_count
                 current_stats["imported_count"] = imported_count
                 campaign.stats = current_stats

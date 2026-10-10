@@ -197,7 +197,6 @@ class TestWebsetsImportTask:
             }
             mock_instance.import_webset.assert_awaited_once_with("wbs_123")
 
-
     @pytest.mark.asyncio
     async def test_import_webset_ingest_failure_marks_campaign_failed(self) -> None:
         """ingest_batch raise -> campaign.status='failed' và exception propagate."""
@@ -294,6 +293,4 @@ class TestWebsetsImportTaskRegistration:
     def test_celery_task_registered(self) -> None:
         from app.celery_app import celery_app
 
-        assert (
-            "app.tasks.webset_import.import_webset_leads" in celery_app.tasks
-        )
+        assert "app.tasks.webset_import.import_webset_leads" in celery_app.tasks

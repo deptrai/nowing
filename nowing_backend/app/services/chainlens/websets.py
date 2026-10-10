@@ -140,6 +140,7 @@ class WebsetsService:
         """
         url = f"{self.base_url}/v1/websets/{webset_id}/items"
         cursor: str | None = None
+        seen_cursors: set[str] = set()
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             while True:
@@ -185,6 +186,14 @@ class WebsetsService:
                         yield item
 
                 next_cursor = data.get("nextCursor") or data.get("next_cursor")
-                if not next_cursor or not items or next_cursor == cursor:
+                # Chặn cả self-loop (A->A) lẫn vòng đa điểm (A->B->A)
+                if (
+                    not next_cursor
+                    or not items
+                    or next_cursor == cursor
+                    or next_cursor in seen_cursors
+                ):
                     break
+                if cursor is not None:
+                    seen_cursors.add(cursor)
                 cursor = next_cursor

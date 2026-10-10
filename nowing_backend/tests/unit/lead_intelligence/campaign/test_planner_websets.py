@@ -140,6 +140,8 @@ class TestLeadGenPlannerWebsets:
         assert isinstance(adapter, WebsetsAdapter)
 
         # Match intent
-        matches = reg.resolve_adapters_for_intent("Tạo webset tìm kiếm công ty công nghệ")
+        matches = reg.resolve_adapters_for_intent(
+            "Tạo webset tìm kiếm công ty công nghệ"
+        )
         source_names = [a.source_name for a in matches]
         assert "websets" in source_names

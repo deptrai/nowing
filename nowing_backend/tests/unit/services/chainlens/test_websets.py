@@ -173,9 +173,7 @@ class TestWebsetsService:
             mock_auth_getter.return_value.get_outbound_headers = MagicMock(
                 return_value={"Authorization": "Bearer x"}
             )
-            async for _ in websets_service.iter_ready_items(
-                "wbs_1", workspace_id=1
-            ):
+            async for _ in websets_service.iter_ready_items("wbs_1", workspace_id=1):
                 pass
 
         assert mock_auth_getter.return_value.get_outbound_headers.call_count == 2
@@ -186,9 +184,7 @@ class TestWebsetsService:
         self, websets_service: WebsetsService
     ) -> None:
         """nextCursor lặp lại giá trị cũ -> break, không infinite loop."""
-        route = respx.get(
-            "http://test-chainlens:3001/v1/websets/wbs_1/items"
-        ).mock(
+        route = respx.get("http://test-chainlens:3001/v1/websets/wbs_1/items").mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -219,7 +215,5 @@ class TestWebsetsService:
         )
 
         with pytest.raises(WebsetsUnavailableError):
-            async for _ in websets_service.iter_ready_items(
-                "wbs_1", workspace_id=1
-            ):
+            async for _ in websets_service.iter_ready_items("wbs_1", workspace_id=1):
                 pass

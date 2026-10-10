@@ -114,17 +114,28 @@ class WebsetsAdapter(LeadSourceAdapter):
             self.last_execution_status = "failed"
             raise ValueError(f"ChainLens response missing webset_id: {res}")
 
-        async with async_session_maker() as session:
-            campaign = WebsetCampaign(
-                webset_id=webset_id,
-                campaign_id=str(campaign_id) if campaign_id else None,
-                workspace_id=workspace_id,
-                webhook_secret=webhook_secret,
-                status="pending",
-                stats={"initial_response": res},
+        try:
+            async with async_session_maker() as session:
+                campaign = WebsetCampaign(
+                    webset_id=webset_id,
+                    campaign_id=str(campaign_id) if campaign_id else None,
+                    workspace_id=workspace_id,
+                    webhook_secret=webhook_secret,
+                    status="pending",
+                    stats={"initial_response": res},
+                )
+                session.add(campaign)
+                await session.commit()
+        except Exception as exc:
+            # Webset đã tạo trên ChainLens nhưng không lưu được tracking row —
+            # webhook sẽ bị 'ignored'; báo failed để nguồn không hiện ready giả
+            logger.error(
+                "Failed to persist WebsetCampaign for webset_id=%s: %s",
+                webset_id,
+                exc,
             )
-            session.add(campaign)
-            await session.commit()
+            self.last_execution_status = "failed"
+            return []
 
         self.last_execution_status = "pending"
         return []
