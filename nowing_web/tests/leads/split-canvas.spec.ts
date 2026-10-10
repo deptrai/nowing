@@ -10,7 +10,8 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 				body: JSON.stringify({
 					items: [
 						{
-							id: "lead-1",
+							id: "11111111-1111-4111-8111-111111111111",
+							workspace_id: 1,
 							company_name: "Nguyễn Văn Hùng",
 							title: "Bán nhà mặt tiền Thủ Đức 8.5 Tỷ",
 							source: "batdongsan",
@@ -21,7 +22,8 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 							created_at: new Date().toISOString(),
 						},
 						{
-							id: "lead-2",
+							id: "22222222-2222-4222-8222-222222222222",
+							workspace_id: 1,
 							company_name: "Công ty TNHH BĐS An Phú",
 							title: "Cần thuê kho xưởng 1000m2 Bình Dương",
 							source: "facebook",
@@ -93,7 +95,7 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
 		await openDock(page);
 
-		await page.click("[data-testid='lead-row-lead-1']");
+		await page.locator("[data-testid^='lead-row-']").first().click();
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toBeVisible();
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toContainText(
 			"Nguyễn Văn Hùng"

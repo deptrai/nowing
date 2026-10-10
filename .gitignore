@@ -81,3 +81,9 @@ nowing_backend/app/db.py.legacy
 *.pid
 /*.png
 session_*_transcript_clean.md
+
+# Pi runtime tasks dir
+.pi/
+
+# Pi runtime tasks dir
+.pi/

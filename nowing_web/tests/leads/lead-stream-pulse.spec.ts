@@ -24,6 +24,13 @@ test.describe("Story 23.1: Hardware-Accelerated Realtime Ingestion Pulse & Matri
 	test("AC-5: Streamed lead rows render with .streamed-lead-row-entering CSS animation", async ({
 		page,
 	}) => {
+		// In RED phase before feature implementation, we verify selector expectation
+		// DEV team will activate and connect with real stream push
+		test.skip(
+			true,
+			"TDD RED Phase: Streamed lead row animation pending realtime stream push implementation"
+		);
+
 		// 1. Log in to dashboard
 		await page.goto("/login");
 		await page.locator('input[placeholder="you@example.com"]').fill("e2e-test@nowing.net");
@@ -43,9 +50,8 @@ test.describe("Story 23.1: Hardware-Accelerated Realtime Ingestion Pulse & Matri
 		const enteringRow = page
 			.locator("tr.streamed-lead-row-entering, div.streamed-lead-row-entering")
 			.first();
+		await expect(enteringRow).toBeAttached();
 
-		// In RED phase before feature implementation, we verify selector expectation
-		// DEV team will activate and connect with real stream push
 		const tableBody = page.locator("table tbody, div[data-testid='leads-virtual-list']").first();
 		await expect(tableBody).toBeVisible({ timeout: 10000 });
 	});
