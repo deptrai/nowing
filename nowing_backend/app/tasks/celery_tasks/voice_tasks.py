@@ -54,10 +54,26 @@ async def _async_dispatch_voice_call(
         from uuid import uuid4
 
         room_name = f"call_{uuid4().hex}"
+        # Story 39.6 producer: attach call context to the room so the
+        # agent worker can read workspace_id/user_id from room metadata.
+        import json
+
+        room_metadata = json.dumps(
+            {
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                "session_id": room_name,
+                "phone_e164": check.phone_e164 or phone_e164,
+                "lead_id": lead_id,
+            }
+        )
 
         try:
             async with LiveKitTelephonyClient() as telephony:
-                part_info = await telephony.dispatch_call(
+                await telephony.create_call_room(
+                    session_id=room_name, metadata=room_metadata
+                )
+                part_info = await telephony.dispatch_sip_outbound(
                     phone_number=check.phone_e164 or phone_e164,
                     trunk_id=trunk.trunk_id,
                     room_name=room_name,

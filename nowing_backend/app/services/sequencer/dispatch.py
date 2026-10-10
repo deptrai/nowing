@@ -91,9 +91,7 @@ class SequencerDispatchMixin:
                 SequenceEnrollment.id == enrollment.id,
                 SequenceEnrollment.workspace_id == enrollment.workspace_id,
                 SequenceEnrollment.version == current_version,
-                SequenceEnrollment.status.in_(
-                    ["scheduled", "executing", "paused"]
-                ),
+                SequenceEnrollment.status.in_(["scheduled", "executing", "paused"]),
             )
             .values(
                 status="scheduled",
@@ -267,7 +265,10 @@ class SequencerDispatchMixin:
 
         try:
             async with LiveKitTelephonyClient() as telephony:
-                part_info = await telephony.dispatch_call(
+                await telephony.create_call_room(
+                    session_id=room_name, metadata=room_metadata
+                )
+                part_info = await telephony.dispatch_sip_outbound(
                     phone_number=result.phone_e164,
                     trunk_id=trunk.trunk_id,
                     room_name=room_name,
@@ -294,9 +295,7 @@ class SequencerDispatchMixin:
                 await gate.release_frequency_lock(workspace_id, result.phone_e164)
             if user_id is not None and result.reserved_micros > 0:
                 with contextlib.suppress(Exception):
-                    await gate.release_deposit(
-                        session, user_id, result.reserved_micros
-                    )
+                    await gate.release_deposit(session, user_id, result.reserved_micros)
             raise
 
     async def _handle_send_step(
@@ -346,7 +345,9 @@ class SequencerDispatchMixin:
                     if self.encryption.is_encrypted(contact.email)
                     else contact.email
                 )
-            except Exception:  # decrypt failure → raw value fallback keeps dispatch attemptable
+            except (
+                Exception
+            ):  # decrypt failure → raw value fallback keeps dispatch attemptable
                 raw_email = contact.email
             if not raw_email:
                 return await self._skip_step(
@@ -364,7 +365,9 @@ class SequencerDispatchMixin:
                     if self.encryption.is_encrypted(contact.phone)
                     else contact.phone
                 )
-            except Exception:  # decrypt failure → raw value fallback keeps dispatch attemptable
+            except (
+                Exception
+            ):  # decrypt failure → raw value fallback keeps dispatch attemptable
                 raw_phone = contact.phone
             if step.channel == "telegram":
                 telegram_chat_id = (contact.external_chat_ids or {}).get(
@@ -485,9 +488,7 @@ class SequencerDispatchMixin:
             if portal_url:
                 context_vars["pitch_portal_url"] = portal_url
         except Exception:  # portal injection must never block dispatch
-            logger.exception(
-                "pitch portal injection failed for lead %s", lead.id
-            )
+            logger.exception("pitch portal injection failed for lead %s", lead.id)
 
         # AC-4 (Story 37.2 / Decree 91/2020/NĐ-CP): hard halt 21:00-08:00 ICT.
         # Checked after consent/DNC/billing gates so those skip/fail outcomes

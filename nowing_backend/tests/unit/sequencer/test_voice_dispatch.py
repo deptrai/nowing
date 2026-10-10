@@ -222,7 +222,10 @@ class TestSendVoiceDispatch:
             async def __aexit__(self, *args):
                 return False
 
-            async def dispatch_call(self, **kwargs):
+            async def create_call_room(self, **kwargs):
+                return MagicMock(name="call_x")
+
+            async def dispatch_sip_outbound(self, **kwargs):
                 raise RuntimeError("SIP 503 unavailable")
 
         monkeypatch.setattr(
