@@ -398,9 +398,7 @@ class DecisionService:
         keys — callers use it for per-leg traces and failure markers.
         """
         if workspace_id is None:
-            logger.debug(
-                "Decision usage not persisted — missing workspace_id"
-            )
+            logger.debug("Decision usage not persisted — missing workspace_id")
             return
         if session is None:
             # Caller has billing context but no session — fan-out paths

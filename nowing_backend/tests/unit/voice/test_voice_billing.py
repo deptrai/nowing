@@ -66,7 +66,9 @@ class TestTelecomBlockCharge:
         assert billed == 7  # 6s block + 1s
 
     def test_custom_rate(self):
-        billed, cost = calculate_telecom_block_charge(60.0, rate_per_minute_micros=6_000_000)
+        billed, cost = calculate_telecom_block_charge(
+            60.0, rate_per_minute_micros=6_000_000
+        )
         assert billed == 60
         assert cost == 6_000_000
 
@@ -91,7 +93,9 @@ class TestHangupProtection:
         mock_redis.hgetall.return_value = {"total_calls": "50", "short_calls": "11"}
 
         with patch("app.services.voice.billing.get_redis", return_value=mock_redis):
-            waived = await evaluate_hangup_protection(campaign_id=2, duration_seconds=5.0)
+            waived = await evaluate_hangup_protection(
+                campaign_id=2, duration_seconds=5.0
+            )
 
         assert waived is False
 
@@ -104,7 +108,9 @@ class TestHangupProtection:
 
     async def test_redis_failure_fails_safe_to_waiver(self):
         with patch("app.services.voice.billing.get_redis", return_value=None):
-            waived = await evaluate_hangup_protection(campaign_id=1, duration_seconds=5.0)
+            waived = await evaluate_hangup_protection(
+                campaign_id=1, duration_seconds=5.0
+            )
         assert waived is True
 
 
@@ -127,7 +133,10 @@ class TestFinalizeCallBilling:
             ) as release_mock,
         ):
             committed = await finalize_call_billing(
-                mock_session, user_id, reserved_micros=7_500_000, actual_cost_micros=1_875_000
+                mock_session,
+                user_id,
+                reserved_micros=7_500_000,
+                actual_cost_micros=1_875_000,
             )
 
         assert committed == 1_875_000
@@ -139,11 +148,14 @@ class TestFinalizeCallBilling:
         mock_session = MagicMock()
         user_id = uuid4()
 
-        with patch(
-            "app.services.voice.billing.commit_reserved_credit", AsyncMock()
-        ) as commit_mock, patch(
-            "app.services.voice.billing.release_credit", AsyncMock()
-        ) as release_mock:
+        with (
+            patch(
+                "app.services.voice.billing.commit_reserved_credit", AsyncMock()
+            ) as commit_mock,
+            patch(
+                "app.services.voice.billing.release_credit", AsyncMock()
+            ) as release_mock,
+        ):
             committed = await finalize_call_billing(
                 mock_session, user_id, reserved_micros=7_500_000, actual_cost_micros=0
             )
@@ -157,13 +169,19 @@ class TestFinalizeCallBilling:
         mock_session = MagicMock()
         user_id = uuid4()
 
-        with patch(
-            "app.services.voice.billing.commit_reserved_credit", AsyncMock()
-        ) as commit_mock, patch(
-            "app.services.voice.billing.release_credit", AsyncMock()
-        ) as release_mock:
+        with (
+            patch(
+                "app.services.voice.billing.commit_reserved_credit", AsyncMock()
+            ) as commit_mock,
+            patch(
+                "app.services.voice.billing.release_credit", AsyncMock()
+            ) as release_mock,
+        ):
             committed = await finalize_call_billing(
-                mock_session, user_id, reserved_micros=7_500_000, actual_cost_micros=9_000_000
+                mock_session,
+                user_id,
+                reserved_micros=7_500_000,
+                actual_cost_micros=9_000_000,
             )
 
         # Commit capped at reserved amount; nothing left to release
@@ -173,8 +191,12 @@ class TestFinalizeCallBilling:
 
     async def test_zero_reserved_is_noop(self):
         mock_session = MagicMock()
-        with patch("app.services.voice.billing.commit_reserved_credit", AsyncMock()) as c, \
-             patch("app.services.voice.billing.release_credit", AsyncMock()) as r:
+        with (
+            patch(
+                "app.services.voice.billing.commit_reserved_credit", AsyncMock()
+            ) as c,
+            patch("app.services.voice.billing.release_credit", AsyncMock()) as r,
+        ):
             committed = await finalize_call_billing(mock_session, uuid4(), 0, 500)
 
         assert committed == 0
@@ -240,11 +262,15 @@ class TestBANTScorecard:
             lambda: _MockDecisionService(),
         )
 
-        total, breakdown = await aevaluate_bant_score("Khách hàng trao đổi qua điện thoại")
+        total, breakdown = await aevaluate_bant_score(
+            "Khách hàng trao đổi qua điện thoại"
+        )
         assert breakdown == {"budget": 25, "authority": 17, "need": 17, "timeline": 8}
         assert total == 67
 
-    async def test_bant_score_decision_failure_falls_back_to_keywords(self, monkeypatch):
+    async def test_bant_score_decision_failure_falls_back_to_keywords(
+        self, monkeypatch
+    ):
         from app.services.voice.billing import aevaluate_bant_score
 
         monkeypatch.setattr("app.config.decision.decision_enabled", lambda: True)
@@ -266,6 +292,3 @@ class TestBANTScorecard:
         assert breakdown["budget"] == 25
         assert breakdown["authority"] == 25
         assert total >= 50
-
-
-

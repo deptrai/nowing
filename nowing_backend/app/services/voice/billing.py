@@ -302,9 +302,8 @@ async def aevaluate_bant_score(
     try:
         from app.config import decision as decision_config
 
-        if (
-            decision_config.decision_enabled()
-            and decision_config.decision_task_enabled("voice")
+        if decision_config.decision_enabled() and decision_config.decision_task_enabled(
+            "voice"
         ):
             from app.services.decision.questions import get_question_registry
             from app.services.decision.service import get_decision_service
@@ -363,9 +362,8 @@ def evaluate_bant_score(
     try:
         from app.config import decision as decision_config
 
-        if (
-            decision_config.decision_enabled()
-            and decision_config.decision_task_enabled("voice")
+        if decision_config.decision_enabled() and decision_config.decision_task_enabled(
+            "voice"
         ):
             try:
                 loop = asyncio.get_running_loop()

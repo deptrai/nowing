@@ -302,9 +302,7 @@ async def test_decide_records_token_usage_system_level_user_id_none(
 
 
 @pytest.mark.unit
-async def test_decide_thread_id_reaches_record_token_usage(
-    _enabled, monkeypatch
-):
+async def test_decide_thread_id_reaches_record_token_usage(_enabled, monkeypatch):
     """thread_id is a first-class TokenUsage field — the usage row must
     be joinable back to the chat thread that paid for the decision."""
     recorded = _patch_record(monkeypatch)
@@ -371,9 +369,7 @@ async def test_decide_skips_telemetry_without_session(_enabled, monkeypatch):
 
 
 @pytest.mark.unit
-async def test_decide_no_session_opens_own_for_telemetry(
-    _enabled, monkeypatch
-):
+async def test_decide_no_session_opens_own_for_telemetry(_enabled, monkeypatch):
     """Fan-out callers (filter_passages, persist_user_turn) pass
     workspace/user context but no session — sharing one AsyncSession across
     concurrent asyncio.gather calls would break asyncpg. The service opens
@@ -681,13 +677,9 @@ async def test_decide_use_fallback_false_skips_resolution_fallback(
 @pytest.mark.unit
 async def test_decide_jev_records_cost_micros(_enabled, monkeypatch):
     """Jev legs are priced $42/Btok input, output free (eval-runner parity)."""
-    monkeypatch.setattr(
-        decision_config, "DECISION_JEV_COST_PER_BTOK_INPUT_USD", 42.0
-    )
+    monkeypatch.setattr(decision_config, "DECISION_JEV_COST_PER_BTOK_INPUT_USD", 42.0)
     recorded = _patch_record(monkeypatch)
-    backend = _StubBackend(
-        _result(input_tokens=500, output_tokens=10), name="jev"
-    )
+    backend = _StubBackend(_result(input_tokens=500, output_tokens=10), name="jev")
     service = DecisionService(backend)
     await service.decide(
         {},
@@ -703,13 +695,9 @@ async def test_decide_jev_records_cost_micros(_enabled, monkeypatch):
 @pytest.mark.unit
 async def test_decide_jev_cost_honors_env_price(_enabled, monkeypatch):
     """DECISION_JEV_COST_PER_BTOK_INPUT_USD drives the jev formula."""
-    monkeypatch.setattr(
-        decision_config, "DECISION_JEV_COST_PER_BTOK_INPUT_USD", 100.0
-    )
+    monkeypatch.setattr(decision_config, "DECISION_JEV_COST_PER_BTOK_INPUT_USD", 100.0)
     recorded = _patch_record(monkeypatch)
-    backend = _StubBackend(
-        _result(input_tokens=500, output_tokens=10), name="jev"
-    )
+    backend = _StubBackend(_result(input_tokens=500, output_tokens=10), name="jev")
     service = DecisionService(backend)
     await service.decide(
         {},
@@ -790,9 +778,7 @@ async def test_decide_fallback_records_winning_leg(_enabled, monkeypatch):
 
     # The winning leg is llm_json → _record_usage prices it via litellm;
     # stub the pricing call so the test never depends on the pricing table.
-    monkeypatch.setattr(
-        litellm, "cost_per_token", lambda **kw: (0.0, 0.0)
-    )
+    monkeypatch.setattr(litellm, "cost_per_token", lambda **kw: (0.0, 0.0))
     recorded = _patch_record(monkeypatch)
     primary = _StubBackend(exc=DecisionError("down", code="missing_api_key"))
     _patch_fallback(monkeypatch, _StubBackend(_llm_result(), name="llm_json"))
@@ -999,9 +985,7 @@ async def test_decide_both_legs_fail_records_failed_attempt(_enabled, monkeypatc
 
     # The failed fallback leg is llm_json → _record_usage prices it via
     # litellm; stub the pricing call for determinism.
-    monkeypatch.setattr(
-        litellm, "cost_per_token", lambda **kw: (0.0, 0.0)
-    )
+    monkeypatch.setattr(litellm, "cost_per_token", lambda **kw: (0.0, 0.0))
     recorded = _patch_record(monkeypatch)
     primary = _StubBackend(
         exc=DecisionError("primary down", code="timeout"), name="jev"

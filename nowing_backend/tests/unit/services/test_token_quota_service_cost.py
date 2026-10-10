@@ -623,4 +623,3 @@ async def test_record_token_usage_allows_none_user_id():
     assert record.external_metadata == {"system": True}
     assert len(added_objects) == 1
     assert added_objects[0] is record
-

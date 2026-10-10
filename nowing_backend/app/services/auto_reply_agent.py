@@ -62,8 +62,12 @@ async def pause_auto_reply(thread_id: str, duration_seconds: int = 86400) -> Non
         redis = await get_redis_client()
         key = f"auto_reply_paused:{thread_id}"
         await redis.setex(key, duration_seconds, "1")
-        logger.info("Paused auto-reply for thread %s for %ds", thread_id, duration_seconds)
-    except Exception as e:  # best-effort pause write; failure only means auto-reply stays active
+        logger.info(
+            "Paused auto-reply for thread %s for %ds", thread_id, duration_seconds
+        )
+    except (
+        Exception
+    ) as e:  # best-effort pause write; failure only means auto-reply stays active
         logger.error("Error pausing auto_reply for %s: %s", thread_id, e)
 
 
@@ -82,11 +86,41 @@ class InboundIntentClassifier:
     """Classifies buying signals and high-intent requests from prospects."""
 
     HOT_INTENT_PATTERNS = [
-        (re.compile(r"(bảng giá|báo giá|giá bao nhiêu|bao nhiêu tiền|chi phí|báo phí)", re.IGNORECASE), 0.90, "Yêu cầu báo giá / bảng giá"),
-        (re.compile(r"(hẹn xem|xem nhà|đi xem|lịch xem|coi nhà|xem thực tế)", re.IGNORECASE), 0.95, "Yêu cầu lịch hẹn xem nhà"),
-        (re.compile(r"(số điện thoại|sđt|liên hệ|gọi cho tôi|gọi lại|alo|tư vấn trực tiếp)", re.IGNORECASE), 0.85, "Yêu cầu liên hệ / gọi tư vấn"),
-        (re.compile(r"(đặt cọc|giữ chỗ|hợp đồng|mua ngay|thanh toán thế nào)", re.IGNORECASE), 0.95, "Ý định chốt cọc / hợp đồng"),
-        (re.compile(r"(trả góp|vay ngân hàng|lãi suất|hỗ trợ vay)", re.IGNORECASE), 0.80, "Hỏi chính sách vay & tài chính"),
+        (
+            re.compile(
+                r"(bảng giá|báo giá|giá bao nhiêu|bao nhiêu tiền|chi phí|báo phí)",
+                re.IGNORECASE,
+            ),
+            0.90,
+            "Yêu cầu báo giá / bảng giá",
+        ),
+        (
+            re.compile(
+                r"(hẹn xem|xem nhà|đi xem|lịch xem|coi nhà|xem thực tế)", re.IGNORECASE
+            ),
+            0.95,
+            "Yêu cầu lịch hẹn xem nhà",
+        ),
+        (
+            re.compile(
+                r"(số điện thoại|sđt|liên hệ|gọi cho tôi|gọi lại|alo|tư vấn trực tiếp)",
+                re.IGNORECASE,
+            ),
+            0.85,
+            "Yêu cầu liên hệ / gọi tư vấn",
+        ),
+        (
+            re.compile(
+                r"(đặt cọc|giữ chỗ|hợp đồng|mua ngay|thanh toán thế nào)", re.IGNORECASE
+            ),
+            0.95,
+            "Ý định chốt cọc / hợp đồng",
+        ),
+        (
+            re.compile(r"(trả góp|vay ngân hàng|lãi suất|hỗ trợ vay)", re.IGNORECASE),
+            0.80,
+            "Hỏi chính sách vay & tài chính",
+        ),
     ]
 
     def evaluate_intent(self, text: str) -> tuple[float, str, bool]:
@@ -161,13 +195,10 @@ class InboundIntentClassifier:
         return self.evaluate_intent(clean_text)
 
 
-
 class AutoReplyAgent:
     """2-Way AI Auto-Reply Agent grounded in Workspace Knowledge Base."""
 
-    SAFE_FALLBACK_TEXT = (
-        "Dạ em xin phép ghi nhận thông tin và chuyển chuyên viên phụ trách liên hệ tư vấn chi tiết cho anh/chị ngay ạ!"
-    )
+    SAFE_FALLBACK_TEXT = "Dạ em xin phép ghi nhận thông tin và chuyển chuyên viên phụ trách liên hệ tư vấn chi tiết cho anh/chị ngay ạ!"
     COSINE_SIMILARITY_THRESHOLD = 0.75
 
     def __init__(self, intent_classifier: InboundIntentClassifier | None = None):
@@ -186,7 +217,9 @@ class AutoReplyAgent:
             async with async_session_maker() as session:
                 workspace = await session.get(Workspace, workspace_id)
                 if workspace is None:
-                    logger.warning("Workspace %s not found for auto-reply RAG", workspace_id)
+                    logger.warning(
+                        "Workspace %s not found for auto-reply RAG", workspace_id
+                    )
                     return []
 
                 # Find matching documents in workspace, optionally filtered to selected collections.
@@ -221,7 +254,9 @@ class AutoReplyAgent:
                     for row in rows
                     if row[0] is not None
                 ]
-        except Exception as e:  # RAG retrieval best-effort; empty context still allows LLM reply
+        except (
+            Exception
+        ) as e:  # RAG retrieval best-effort; empty context still allows LLM reply
             logger.warning("RAG retrieval failed in auto-reply agent: %s", e)
             return []
 
@@ -351,11 +386,7 @@ class AutoReplyAgent:
                     enc = VerifiedContactEncryption()
                     for field_name in ("name", "title"):
                         value = getattr(contact, field_name, None)
-                        if (
-                            isinstance(value, str)
-                            and value
-                            and enc.is_encrypted(value)
-                        ):
+                        if isinstance(value, str) and value and enc.is_encrypted(value):
                             try:
                                 value = enc.decrypt(value)
                             except Exception:  # never propagate ciphertext
@@ -396,16 +427,16 @@ class AutoReplyAgent:
 
             router = LLMRouterService.get_router()
             if not router:
-                logger.warning("LLM router not initialized for auto-reply; using fallback")
+                logger.warning(
+                    "LLM router not initialized for auto-reply; using fallback"
+                )
                 return self.SAFE_FALLBACK_TEXT
 
             # Story 37.2 / AC-2: inject the resolved {salutation} honorific pair.
             if honorific is not None:
                 pronoun_rule = f"2. {honorific.prompt_directive()}"
             else:
-                pronoun_rule = (
-                    "2. Xưng hô lịch sự, thân thiện (Dạ/em chào anh/chị)."
-                )
+                pronoun_rule = "2. Xưng hô lịch sự, thân thiện (Dạ/em chào anh/chị)."
             system_prompt = (
                 "Bạn là trợ lý tư vấn bán hàng chuyên nghiệp, tận tâm và ngắn gọn.\n"
                 "QUY TẮC BẮT BUỘC:\n"
@@ -440,8 +471,12 @@ class AutoReplyAgent:
                 total_tokens = getattr(usage, "total_tokens", 0) or 0
                 cost_usd = 0.0
                 try:
-                    cost_usd = float(completion_cost(completion_response=response) or 0.0)
-                except Exception:  # litellm cost computation best-effort; cost defaults to 0
+                    cost_usd = float(
+                        completion_cost(completion_response=response) or 0.0
+                    )
+                except (
+                    Exception
+                ):  # litellm cost computation best-effort; cost defaults to 0
                     logger.debug("Could not compute auto-reply cost via litellm")
                 cost_micros = round(cost_usd * 1_000_000)
                 model_name = getattr(response, "model", None) or model or "unknown"
@@ -473,7 +508,9 @@ class AutoReplyAgent:
                 return ""
 
             return content or self.SAFE_FALLBACK_TEXT
-        except Exception as e:  # LLM failure → safe canned fallback so thread still gets a reply
+        except (
+            Exception
+        ) as e:  # LLM failure → safe canned fallback so thread still gets a reply
             logger.warning("LLM completion failed for auto-reply: %s", e)
             return self.SAFE_FALLBACK_TEXT
 
@@ -499,14 +536,19 @@ class AutoReplyAgent:
 
             workspace = await session.get(Workspace, workspace_id)
             if workspace is None:
-                logger.warning("Hot lead alert skipped: workspace %s not found", workspace_id)
+                logger.warning(
+                    "Hot lead alert skipped: workspace %s not found", workspace_id
+                )
                 return
 
             # Resolve the Telegram chat id to notify from workspace settings.
             target_chat_id = recipient_chat_id or workspace.auto_reply_recipient_chat_id
 
             if not target_chat_id:
-                logger.warning("Hot lead alert skipped: no recipient chat id for workspace %s", workspace_id)
+                logger.warning(
+                    "Hot lead alert skipped: no recipient chat id for workspace %s",
+                    workspace_id,
+                )
                 return
 
             # Validate the chat id belongs to a bound workspace Telegram channel
@@ -566,7 +608,9 @@ class AutoReplyAgent:
                 sender_id,
                 thread_id,
             )
-        except Exception as e:  # best-effort alert dispatch; auto-reply flow already completed
+        except (
+            Exception
+        ) as e:  # best-effort alert dispatch; auto-reply flow already completed
             logger.error("Failed to dispatch hot lead alert: %s", e, exc_info=True)
 
     def _build_nhan_tu_van_callback_data(
@@ -624,7 +668,9 @@ class AutoReplyAgent:
                 workspace_id,
             )
             return lead
-        except Exception:  # best-effort lead upsert; reply flow continues without lead linkage
+        except (
+            Exception
+        ):  # best-effort lead upsert; reply flow continues without lead linkage
             logger.exception("Failed to get or create lead for auto-reply")
             return None
 
@@ -716,7 +762,9 @@ class AutoReplyAgent:
         """Processes incoming prospect message, runs intent detection, RAG retrieval, and generates reply."""
         # 1. Check if thread is paused
         if thread_id and await is_auto_reply_paused(thread_id):
-            logger.info("Auto-reply is paused for thread %s. Skipping reply.", thread_id)
+            logger.info(
+                "Auto-reply is paused for thread %s. Skipping reply.", thread_id
+            )
             return AutoReplyResult(
                 reply_text="",
                 is_answered=False,
@@ -725,7 +773,11 @@ class AutoReplyAgent:
 
         # 2. Evaluate Buying Intent
         if hasattr(self.classifier, "aevaluate_intent"):
-            intent_score, intent_reason, is_hot = await self.classifier.aevaluate_intent(
+            (
+                intent_score,
+                intent_reason,
+                is_hot,
+            ) = await self.classifier.aevaluate_intent(
                 text,
                 session=session,
                 workspace_id=workspace_id,
@@ -772,14 +824,24 @@ class AutoReplyAgent:
         if session is not None:
             workspace = await session.get(Workspace, workspace_id)
             if workspace is not None:
-                fallback_text = fallback_text or workspace.auto_reply_fallback or self.SAFE_FALLBACK_TEXT
+                fallback_text = (
+                    fallback_text
+                    or workspace.auto_reply_fallback
+                    or self.SAFE_FALLBACK_TEXT
+                )
                 collection_ids = workspace.auto_reply_collections or []
 
         fallback = fallback_text or self.SAFE_FALLBACK_TEXT
 
         # 4. Retrieve Workspace Knowledge Chunks (RAG)
-        chunks = await self._retrieve_knowledge_chunks(workspace_id, text, collection_ids=collection_ids)
-        valid_chunks = [c for c in chunks if c.get("similarity", 0.0) >= self.COSINE_SIMILARITY_THRESHOLD]
+        chunks = await self._retrieve_knowledge_chunks(
+            workspace_id, text, collection_ids=collection_ids
+        )
+        valid_chunks = [
+            c
+            for c in chunks
+            if c.get("similarity", 0.0) >= self.COSINE_SIMILARITY_THRESHOLD
+        ]
 
         # 5. Determine Answer vs Safe Fallback
         if not valid_chunks:

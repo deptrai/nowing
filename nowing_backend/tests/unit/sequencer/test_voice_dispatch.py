@@ -260,3 +260,80 @@ class TestSendVoiceDispatch:
         assert "lock" in released
         assert "deposit" in released
 
+    async def test_send_voice_dispatch_happy_path_metadata_and_dispatch(
+        self, monkeypatch
+    ):
+        """Happy path: create_call_room called with metadata JSON, then dispatch_sip_outbound."""
+        import json
+
+        from app.services.voice.compliance_gate import ComplianceCheckResult
+
+        mixin = _make_mixin()
+        user_id = uuid4()
+        lead_id = uuid4()
+
+        async def _approved(self, session, workspace_id, raw_phone, **kwargs):
+            return ComplianceCheckResult.allow(
+                phone_e164="+84901234567", lock_key="k", reserved_micros=7_500_000
+            )
+
+        async def _resolve_trunk(self, session, workspace_id):
+            return MagicMock(trunk_id="trunk_99")
+
+        calls = {}
+
+        class _MockTelephony:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def create_call_room(self, session_id, metadata=None, **kwargs):
+                calls["created_room"] = {
+                    "session_id": session_id,
+                    "metadata": json.loads(metadata) if metadata else None,
+                }
+                return MagicMock(name=session_id)
+
+            async def dispatch_sip_outbound(self, **kwargs):
+                calls["dispatched"] = kwargs
+                return MagicMock(sip_call_id="sip_call_999", participant_id="part_1")
+
+        monkeypatch.setattr(
+            "app.services.voice.compliance_gate.TelephonyComplianceGate.evaluate_preflight",
+            _approved,
+        )
+        monkeypatch.setattr(
+            "app.services.voice.sip_manager.SipTrunkManager.resolve_workspace_trunk",
+            _resolve_trunk,
+        )
+        monkeypatch.setattr(
+            "app.services.voice.telephony_client.LiveKitTelephonyClient",
+            _MockTelephony,
+        )
+
+        call_id = await mixin._send_voice_dispatch(
+            MagicMock(),
+            workspace_id=42,
+            user_id=user_id,
+            phone_e164="+84901234567",
+            lead_id=lead_id,
+        )
+
+        assert call_id == "sip_call_999"
+        assert "created_room" in calls
+        room_meta = calls["created_room"]["metadata"]
+        assert room_meta["workspace_id"] == 42
+        assert room_meta["user_id"] == str(user_id)
+        assert room_meta["lead_id"] == str(lead_id)
+        assert room_meta["phone_e164"] == "+84901234567"
+        assert room_meta["session_id"].startswith("call_")
+
+        assert "dispatched" in calls
+        disp_kwargs = calls["dispatched"]
+        assert disp_kwargs["phone_number"] == "+84901234567"
+        assert disp_kwargs["trunk_id"] == "trunk_99"
+        assert disp_kwargs["participant_identity"] == "sip_+84901234567"
+        assert "headers" in disp_kwargs
+        assert "X-Nowing-Metadata" in disp_kwargs["headers"]

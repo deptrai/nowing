@@ -276,7 +276,9 @@ def start_turn() -> TurnTokenAccumulator:
     """
     acc = TurnTokenAccumulator()
     _turn_accumulator.set(acc)
-    logger.info("[TokenTracking] start_turn: new accumulator created (id=%s)", id(acc))  # nosemgrep
+    logger.info(
+        "[TokenTracking] start_turn: new accumulator created (id=%s)", id(acc)
+    )  # nosemgrep
     return acc
 
 
@@ -531,7 +533,12 @@ class TokenTrackingCallback(CustomLogger):
             if start_time is not None and end_time is not None:
                 delta = end_time - start_time
                 call_latency_s = getattr(delta, "total_seconds", lambda: float(delta))()
-        except (TypeError, ValueError, AttributeError, Exception):  # latency delta calculation fallback
+        except (
+            TypeError,
+            ValueError,
+            AttributeError,
+            Exception,
+        ):  # latency delta calculation fallback
             call_latency_s = None
 
         cache_hit_ratio: float | None = None

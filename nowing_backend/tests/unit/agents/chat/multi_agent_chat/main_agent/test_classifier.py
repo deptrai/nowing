@@ -87,7 +87,9 @@ async def test_inbound_intent_classifier_aevaluate_intent_jev(monkeypatch):
         _mock_classify,
     )
 
-    score, reason, is_hot = await classifier.aevaluate_intent("Tôi muốn mua ngay căn này")
+    score, reason, is_hot = await classifier.aevaluate_intent(
+        "Tôi muốn mua ngay căn này"
+    )
     assert score == 0.95
     assert is_hot is True
     assert "Jev" in reason
@@ -97,7 +99,9 @@ async def test_inbound_intent_classifier_aevaluate_intent_jev(monkeypatch):
     assert is_hot is True
     assert "Jev" in reason
 
-    score, reason, is_hot = await classifier.aevaluate_intent("Thời tiết hôm nay đẹp nhỉ")
+    score, reason, is_hot = await classifier.aevaluate_intent(
+        "Thời tiết hôm nay đẹp nhỉ"
+    )
     assert score == 0.20
     assert is_hot is False
 
@@ -119,7 +123,9 @@ async def test_inbound_intent_classifier_fallback_on_error(monkeypatch):
         _failing_classify,
     )
 
-    score, _reason, is_hot = await classifier.aevaluate_intent("Gửi tôi báo giá và đặt cọc ngay")
+    score, _reason, is_hot = await classifier.aevaluate_intent(
+        "Gửi tôi báo giá và đặt cọc ngay"
+    )
     # Regex fallback catches "báo giá" and "đặt cọc"
     assert is_hot is True
     assert score >= 0.80

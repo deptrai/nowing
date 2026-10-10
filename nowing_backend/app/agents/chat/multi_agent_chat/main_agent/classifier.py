@@ -51,9 +51,8 @@ async def is_researchy(
     if not text or not isinstance(text, str):
         return False
 
-    if (
-        decision_config.decision_enabled()
-        and decision_config.decision_task_enabled("intent")
+    if decision_config.decision_enabled() and decision_config.decision_task_enabled(
+        "intent"
     ):
         try:
             payload = await classify_intent(
