@@ -5519,3 +5519,56 @@ So that private knowledge base searches and deep web research never trigger dist
 - **No Modification to Billing Ledger Primitives:** Credit wallet pricing (1.5 credits/lead) and soft-lock deduction semantics remain unchanged.
 
 > **⚠️ Websets Integration (2026-10-10):** ChainLens Epic 57 introduces `websets` — standalone dataset builder with `Medirus` as bounded discovery channel (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam). `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API; `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting). **Port note:** `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10).
+
+---
+
+## Epic 41: Websets Integration `[new]`
+
+**Source:** `_bmad-output/planning-artifacts/prds/PRD-ECOSYSTEM-TRINITY-ALIGNMENT.md` (§2.5 Websets Integration); upstream product spec: `chainlens-research/_bmad-output/planning-artifacts/epics.md` Epic 57 "Websets — Dataset Builder".
+**Upstream Status (verified 2026-10-10):** ChainLens `/v1/websets` REST surface is live — `apps/api/src/websets/` + `apps/worker/src/processors/webset-run.processor.ts`; Epic 57 stories 57-1..57-3, 57-5..57-8 done (only 57-4 Exa v0 SDK parity backlog). Websets dashboard UI belongs to the ChainLens web app (DASHBOARD.md Flow Q).
+
+**Goal:** Biến Nowing thành consumer của ChainLens Websets — tạo webset (discovery + criteria + enrichment đã do ChainLens xử lý), nhận webhook `webset.idle` khi pipeline drain, import các entity `verified`/`ready` vào Lead pipeline của Nowing, và debit credit workspace theo số lead nhập thành công. Nowing KHÔNG scrape, KHÔNG enrich, KHÔNG xây webset dashboard.
+
+**Contract với ChainLens:**
+- `POST /v1/websets` — body: `source {type: 'web'|'medirus', platform?, action?}`, `columns[]` (key `^[a-z0-9_]{1,64}$`, type ∈ text/number/date/options/email/phone/url), `criteria` (prompt ≤ 10_000 chars, rules ≤ 50, operators eq/gt/gte/lt/lte/contains), `metadata.webhookUrl` để nhận drain webhook.
+- `GET /v1/websets/:id` — metadata + stats only (KHÔNG trả entity rows).
+- `GET /v1/websets/:id/items?limit≤100&cursor=&status=` — keyset cursor pagination; entity status ∈ pending_verification/rejected/verified/enriching/ready/failed/quota_exceeded.
+- `POST /v1/websets/:id/import` — CSV import vào webset.
+- Outbound webhook `webset.idle`: plain JSON POST `{event, id, websetId, runId, stats, costDollars, completedAt}`, `User-Agent: ChainLens-Webhook/1.0`, retry 3 attempts (2s/8s/32s), **KHÔNG có signature/auth header** → Nowing tự bảo mật bằng secret token nhúng trong webhook URL.
+
+### Story 41.1: Websets API Client & Idle Webhook Handler
+
+As a Lead Generation Engine,
+I want a `WebsetsService` in `app/services/` that creates websets via `POST /v1/websets` with `metadata.webhookUrl`, lists items via `GET /v1/websets/:id/items` (keyset cursor), and a webhook endpoint that receives `webset.idle` events,
+So that Nowing can launch a ChainLens dataset build and be notified when verified entities are ready to import — without any local scraping or enrichment.
+
+**Acceptance Criteria:**
+- **Given** `CHAINLENS_API_KEY` configured, **When** Nowing creates a webset, **Then** the client sends `Authorization: Bearer <key>` (reusing `app/services/chainlens/auth.py` outbound headers + timeout/circuit-breaker conventions from Story 40.5) and passes `metadata.webhookUrl = {BACKEND_URL}/api/v1/webhooks/chainlens/webset-idle?t=<per_webset_secret>` — reusing `app/config/urls.py` `BACKEND_URL` (prod: `BACKEND_URL=https://api.nowing.net`, no new env var).
+- **And** `GET /v1/websets/:id/items` is consumed with keyset cursor pagination (`limit ≤ 100`, `status=ready,verified` filter) — full drain loops until `nextCursor` absent.
+- **And** a new `LeadSourceAdapter` at `app/lead_intelligence/adapters/websets.py` registered in `LeadSourceAdapterRegistry` (Story 21.15 pattern): when a campaign spec selects source `websets`, the adapter calls `POST /v1/websets`, inserts the `webset_campaigns` row, and returns `status='pending'` — websets is async, so leads do NOT appear in the `execute` response; they arrive via webhook import into the same campaign.
+- **And** inbound `POST /api/v1/webhooks/chainlens/webset-idle` mounts on the existing `app/routes/chainlens_webhooks.py` router (prefix `/api/v1/webhooks/chainlens`, Story 20.8) and validates the per-webset secret token from the `t` query param (constant-time compare, stored in a new `webset_campaigns` table — alembic migration with `webset_id` UNIQUE indexed, `campaign_id`, `workspace_id`, `webhook_secret`, `stats` JSONB, `last_delivery_id`, `imported_count`; the indexed `webset_id` lookup is required because the webhook payload carries only `websetId`) and returns 2xx quickly (< 1s); invalid/missing token → 401 without touching business logic.
+- **And** token-in-URL is the primary auth because ChainLens `webset.idle` delivery (`apps/worker/src/lib/webhook-delivery.service.ts`) sends plain JSON with no signature header — unlike monitor webhooks which are HMAC-SHA256 signed via `X-ChainLens-Signature` (`pulse-webhook.processor.ts`, `subscription.hmacSecret`). Adding HMAC signing to webset.idle is a cross-repo follow-up on the ChainLens side, not a blocker for this story.
+- **And** a valid `webset.idle` payload (`websetId`, `stats`, `costDollars`) enqueues a Celery import task idempotently — duplicate deliveries (retry 2s/8s/32s) must not trigger duplicate imports (dedup by `id` UUID stored in Redis/DB).
+- **And** if ChainLens is unreachable or returns 5xx, the client fails fast per the 40.5 timeout contract; workspace callers receive a typed `degraded` result, never a hang.
+
+### Story 41.2: Websets→Lead Mapper, Billing Gate & Source Badge
+
+As a Workspace Member,
+I want verified webset entities to be mapped into Nowing leads with per-lead credit debit and a `websets` source badge on the Lead Matrix,
+So that dataset results flow into the same campaign/lead pipeline as every other source with correct billing and provenance.
+
+**Acceptance Criteria:**
+- **Given** an import task for a `webset.idle` event, **When** items are fetched with `status=ready`, **Then** each entity's `enrichments` cells (Record<colKey, {value, status, groundingUrl}>) are mapped onto the Nowing `Lead` schema: `source = 'websets'`, `source_url` = entity/grounding URL, company/contact fields from mapped columns; unmapped columns land in lead `metadata.websets` for forward-compat.
+- **And** only `ready`/`verified` entities import — `pending_verification`, `rejected`, `failed`, `quota_exceeded` are skipped and counted in the import summary.
+- **And** the billing gate soft-locks credits before import and debits **per successfully imported lead** at the existing 1.5 credits/lead rate (Epic 40 pricing unchanged); insufficient balance stops import with `quota_exceeded` surfaced to the campaign result.
+- **And** import is idempotent per (websetId, entityId) — re-running a drained webset never duplicates leads or double-debits credits.
+- **And** UX surface covers three points: (a) a `websets` entry added to the `SOURCE_FILTERS` chip list and the filter predicate in `nowing_web/components/leads/NowingLeadMatrix.tsx` (~lines 65-66 chips, ~lines 160-172 predicate); (b) a `websets` source badge/tag on imported leads in Lead Matrix / Split-Canvas; (c) `PlanSummaryCard` renders `status='pending'` for the websets allocation as a non-error state (e.g. "Đang xây dataset qua ChainLens…" badge with spinner/pulse styling) — distinct from `degraded`, since async dataset build is the normal path, not a failure. No new pages, no webset management UI (webset CRUD/build UX lives in the ChainLens dashboard).
+
+---
+
+### Epic 41 Non-Goals
+
+- **No webset dashboard/builder UI in Nowing** — webset creation UX, criteria editor, and dataset browsing live in the ChainLens web app (`/dashboard/websets`). Nowing only stores the webset↔campaign mapping and shows imported leads.
+- **No local discovery/enrichment** — SearchProviderChain, Medirus bounded channel, criteria verification, and enrichment all execute inside ChainLens; Nowing never re-scrapes webset entities.
+- **No Medirus bypass changes** — `MedirusMcpClient`/`adapter_v2.py` remain for non-websets scraping (Scraper Playground, outbound prospecting).
+- **No new billing model** — existing wallet soft-lock/debit and 1.5 credits/lead pricing apply; ChainLens-side `costDollars` is recorded as telemetry only, not billed twice.

@@ -444,12 +444,10 @@ development_status:
   # `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API
   # `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting)
   # Port note: `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10)
-  epic-41-websets-integration: backlog
-  41-1-websets-api-client: backlog
-  41-2-websets-webhook-handler: backlog
-  41-3-websets-lead-mapper: backlog
-  41-4-websets-billing-gate: backlog
-  41-5-websets-dashboard-frontend: backlog
+  epic-41: backlog
+  41-1-websets-api-client-idle-webhook-handler: backlog
+  41-2-websets-lead-mapper-billing-gate-source-badge: backlog
+  epic-41-retrospective: optional
 validation_reports:
   - story: "3.18"
     type: "code-review"
