@@ -807,5 +807,5 @@ action_items:
     epic: 39
     action: "Measure context-token delta of demote-not-drop RAG; decide cap"
     owner: "dev"
-    status: done
+    status: open
     ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
