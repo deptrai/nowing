@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '10-11-2026 03:34'
+last_updated: '10-11-2026 04:04'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -859,10 +859,10 @@ action_items:
   - id: "epic-41-retro-item-20-them-partial-unique-index-billingevent-e"
     epic: 41
     action: "Them partial unique index BillingEvent.event_id cho event_entity_type=webset
-      + with_for_update() campaign row trong import_webset (billing.py:247-256).
-      DONE=index only (alembic 248); with_for_update SKIPPED by design — per-flush
-      commits release row locks, unique index + conditional status writes du chong
-      double-debit (commit d3893c777)"
+      + with_for_update() campaign row trong import_webset (billing.py:247-256). DONE=index
+      only (alembic 248); with_for_update SKIPPED by design — per-flush commits release
+      row locks, unique index + conditional status writes du chong double-debit (commit
+      d3893c777)"
     owner: "dev"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
@@ -871,46 +871,46 @@ action_items:
     action: "WebsetsService hardening: 401 x-user-ctx rotation, build_retry, circuit
       breaker theo convention Story 40.5 + cursor A->B->A test (websets.py)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-22-bo-mutable-last_execution_status-khoi-ad"
     epic: 41
     action: "Bo mutable last_execution_status khoi adapter singleton - SourceStatusPanel/planner
       doc WebsetCampaign.status per workspace (adapters/websets.py:62-64,140)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-23-map_webset_entity-reuse-dnc-normalizer-p"
     epic: 41
     action: "map_webset_entity reuse dnc/normalizer.py (phone_e164, domain, email)
       de cung co value_hmac dedup va DNC (websets_import.py:29-142)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-24-hygiene-migration-them-ix_webset_campaig"
     epic: 41
     action: "Hygiene: migration them ix_webset_campaigns_created_at; xoa duplicate
       LeadCard.test.ts; them chotot key + badge config sang i18n-map"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-25-test-gaps-release-on-exception-partial-r"
     epic: 41
     action: "Test gaps: release-on-exception, partial-retry reservation, drawer malformed
       metadata, en/vi key parity"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-26-refactor-import_webset-282-lines-nested"
     epic: 41
     action: "Refactor import_webset (282 lines + nested flush 154) thanh staged methods
       khi cham lan toi (websets_import.py:155-369)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-27-them-skipped_count-explicit-vao-camp-sta"
     epic: 41
     action: "Them skipped_count explicit vao camp.stats (websets_import.py:422-424)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
