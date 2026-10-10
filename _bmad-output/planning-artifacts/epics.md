@@ -5444,6 +5444,8 @@ So that model upgrades (new `jev-x.y.z`) are validated against the 80-case Vietn
 
 **Goal:** Chuyển đổi Nowing thành tầng điều phối và gateway cào dữ liệu duy nhất thông qua Medirus (`:3001`), đóng gói các endpoint Scraper Playground thành thin proxy có kiểm soát billing, giải phóng 22 scraper cũ trong Nowing để giảm tải bảo trì và thu gọn Docker image; đồng thời cắm tầng quyết định Jev (Epic 39) vào luồng stream ingest để tự động dedup và lọc PII, và gia cố bảo vệ timeout cho kết nối với ChainLens.
 
+> **⚠️ Websets Integration (2026-10-10):** ChainLens Epic 57 introduces `websets` — standalone dataset builder with `Medirus` as bounded discovery channel (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam). `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API; `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting). **Port note:** `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10).
+
 ### Story 40.1: Medirus Gateway Client & Streamable-HTTP Cutover
 
 As a Lead Generation Engine,
@@ -5515,3 +5517,5 @@ So that private knowledge base searches and deep web research never trigger dist
 - **No New Custom Crawlers in Nowing:** Nowing will never implement platform-specific web scraping logic again; any new data source must be authored as a crawler inside `Medirus`.
 - **No Direct Raw Scraping in Chat Hot-Path:** Subagent chat turns will not synchronously wait $>5$s for live web scraping; scraping is either served from indexed cache or dispatched asynchronously via Redis Streams.
 - **No Modification to Billing Ledger Primitives:** Credit wallet pricing (1.5 credits/lead) and soft-lock deduction semantics remain unchanged.
+
+> **⚠️ Websets Integration (2026-10-10):** ChainLens Epic 57 introduces `websets` — standalone dataset builder with `Medirus` as bounded discovery channel (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam). `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API; `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting). **Port note:** `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10).

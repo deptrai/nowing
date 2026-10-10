@@ -21,7 +21,7 @@ Nowing, Medirus và ChainLens-Research là 3 dự án phát triển song song, b
 |---|---|---|
 | 🔵 **Nowing** (`nowing`) | Python FastAPI + Next.js 16 + Zero-Cache + PostgreSQL pgvector | **AI Gen Leads Enterprise (Product & CRM Hub)** — Sở hữu User, Billing, Lead Intelligence, PII Vault, Team CRM & Outbound. |
 | 🟣 **Medirus** (`Medirus`) | Node.js ESM + Prisma + Playwright Signer Pool + SocksNode | **Tactical Execution Engine** — Chuyên trách 100% việc cào dữ liệu thô, Anti-Bot, Proxy Management, Session Pool. |
-| 🟢 **ChainLens-Research** (`chainlens-research`) | NestJS + Next.js + BullMQ + pgvector + Drizzle ORM | **Strategic Intelligence Engine** — Deep/Wide Research, Market GPS, Vector Retrieval, Citation & Evidence Hub. |
+| 🟢 **ChainLens-Research** (`chainlens-research`) | NestJS + Next.js + BullMQ + pgvector + Drizzle ORM | **Strategic Intelligence Engine** — Deep/Wide Research, Market GPS, Vector Retrieval, Citation & Evidence Hub. **NEW (2026-10-10):** `Websets` — standalone dataset builder with `Medirus` as bounded discovery channel (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam). |
 
 ### 1.2 Vấn đề
 Hiện tại, PRD của mỗi dự án được viết rời rạc theo từng giai đoạn. Không có một bản đặc tả liên dự án chính thức nào quy định:
@@ -53,6 +53,8 @@ Nowing chỉ cào đúng tọa độ mục tiêu (thay vì cào mù quáng):
 • Tiết kiệm 70–90% token so với cào bừa.
          │
          ▼ (Raw Data từ đúng phễu mục tiêu)
+[BƯỚC 2.5: WEBSETS INTEGRATION — ChainLens `websets` API]
+Nowing consumes `chainlens` `websets` for processed, verified, and enriched data (VN business platforms only). `Nowing` does NOT interact with `Medirus` for `websets` — `chainlens` handles discovery (SearchProviderChain + Medirus bounded channel) and enrichment (Jev + Medirus social). `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting).
 [BƯỚC 3: ZERO-TOKEN DATA GATE — Nowing Confidence Gate (Story 21.21)]
 Pass 1 Regex lọc 85%+ record (0 token), chỉ 10-15% đi vào Micro-LLM.
          │
@@ -71,7 +73,40 @@ Nhờ có insight từ ChainLens, Nowing tạo thông điệp cá nhân hóa ch�
                     │   ICP Discovery, Citation & Evidence          │
                     └──────▲───────────────────────────┬───────────┘
                            │                            │
-        (A) Live Domain    │                            │ (B) Strategic Market GPS
+         ┌─────────────────┘                            │
+         │                                              │
+         ▼                                              ▼
+┌─────────────────┐                            ┌─────────────────┐
+│   🔵 NOWING     │                            │   🟢 CHAINLENS  │
+│  (Product & CRM │                            │  (Strategy Brain│
+│   Hub)          │                            │   & Data Aggregator)│
+│                 │                            │                 │
+│  • User/Billing │                            │  • Deep/Wide    │
+│  • Lead Intel   │                            │    Research     │
+│  • PII Vault    │                            │  • Market GPS   │
+│  • Team CRM     │                            │  • Vector       │
+│  • Outbound     │                            │    Retrieval    │
+│                 │                            │  • Citation &   │
+│                 │                            │    Evidence     │
+│                 │                            │  • Websets      │
+│                 │                            │    (NEW 2026-10)│
+└─────────────────┘                            └─────────────────┘
+         │                                              │
+         │                                              │
+         ▼                                              ▼
+┌─────────────────┐                            ┌─────────────────┐
+│   🟣 MEDIRUS    │                            │   🟣 MEDIRUS    │
+│  (Tactical Exec │                            │  (Tactical Exec │
+│   Engine)       │                            │   Engine)       │
+│                 │                            │                 │
+│  • Raw scraping │                            │  • Raw scraping │
+│  • Anti-Bot     │                            │  • Anti-Bot     │
+│  • Proxy Mgmt   │                            │  • Proxy Mgmt   │
+│  • Session Pool │                            │  • Session Pool │
+│                 │                            │  • Websets      │
+│                 │                            │    Discovery    │
+│                 │                            │    (NEW 2026-10)│
+└─────────────────┘                            └─────────────────┘        (A) Live Domain    │                            │ (B) Strategic Market GPS
         Grounding: Gọi     │                            │ Output: Phân khúc ICP,
         Medirus tools     │                            │ Kế hoạch từ khóa
         khi cần dữ liệu   │                            │ săn lead chuẩn xác

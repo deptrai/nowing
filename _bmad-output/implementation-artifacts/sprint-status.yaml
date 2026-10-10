@@ -437,6 +437,19 @@ development_status:
   40-4-jev-stream-dedup-pii-guardrail-pipeline: done
   40-5-chainlens-s2s-circuit-breaker-timeout-hardening: done
   epic-40-retrospective: done
+
+  # ChainLens Websets Integration (NEW 2026-10-10)
+  # Epic 57 introduces `websets` — standalone dataset builder with `Medirus` as bounded discovery channel
+  # (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam)
+  # `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API
+  # `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting)
+  # Port note: `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10)
+  epic-41-websets-integration: backlog
+  41-1-websets-api-client: backlog
+  41-2-websets-webhook-handler: backlog
+  41-3-websets-lead-mapper: backlog
+  41-4-websets-billing-gate: backlog
+  41-5-websets-dashboard-frontend: backlog
 validation_reports:
   - story: "3.18"
     type: "code-review"

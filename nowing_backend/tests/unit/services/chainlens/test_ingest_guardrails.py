@@ -135,9 +135,7 @@ async def test_ingest_query_uses_scraper_id(_enabled, monkeypatch):
     assert seen["max_calls"] == ingest_mod.MAX_INGEST_FILTER_CALLS
 
 
-async def test_ingest_immutable_sensitive_chunk_dropped(
-    _enabled, monkeypatch
-):
+async def test_ingest_immutable_sensitive_chunk_dropped(_enabled, monkeypatch):
     """A MASK verdict on an object with no content field → drop, not pass."""
     _patch_filter(
         ingest_mod,
@@ -178,9 +176,7 @@ async def test_ingest_filter_raise_drops_batch(_enabled, monkeypatch):
     assert out == []
 
 
-async def test_ingest_end_to_end_all_dropped_returns_noop(
-    _enabled, monkeypatch
-):
+async def test_ingest_end_to_end_all_dropped_returns_noop(_enabled, monkeypatch):
     """Wire check: ingest() must reach _guardrail_filter_chunks — all DROP
     short-circuits to the same noop result as empty input."""
     _patch_filter(
@@ -199,15 +195,11 @@ async def test_ingest_end_to_end_all_dropped_returns_noop(
 
     monkeypatch.setattr(ingest_mod, "_post_batch", _no_post)
     service = ingest_mod.NowingIngestService()
-    result = await service.ingest(
-        "bds", [_chunk("bad")], workspace_id=1
-    )
+    result = await service.ingest("bds", [_chunk("bad")], workspace_id=1)
     assert result.status == "noop"
 
 
-async def test_ingest_end_to_end_pass_posts_masked_content(
-    _enabled, monkeypatch
-):
+async def test_ingest_end_to_end_pass_posts_masked_content(_enabled, monkeypatch):
     """Wire check: surviving masked chunks reach the batch POST."""
     _patch_filter(
         ingest_mod,
@@ -227,9 +219,7 @@ async def test_ingest_end_to_end_pass_posts_masked_content(
 
     monkeypatch.setattr(ingest_mod, "_post_batch", _fake_post)
     service = ingest_mod.NowingIngestService()
-    result = await service.ingest(
-        "bds", [_chunk("raw")], workspace_id=1
-    )
+    result = await service.ingest("bds", [_chunk("raw")], workspace_id=1)
     assert result.status == "ok"
     assert posted and posted[0].content == "MASKED"
 
@@ -297,9 +287,7 @@ async def test_provider_drop_removes_chunks(_enabled, monkeypatch):
                 (
                     c,
                     _verdict(
-                        GuardrailAction.DROP
-                        if "drop" in t
-                        else GuardrailAction.PASS
+                        GuardrailAction.DROP if "drop" in t else GuardrailAction.PASS
                     ),
                 )
                 for c, t in items
@@ -309,9 +297,7 @@ async def test_provider_drop_removes_chunks(_enabled, monkeypatch):
 
     monkeypatch.setattr(pp, "filter_passages", _fake_filter)
     monkeypatch.setattr(pp, "embed_text", lambda _t: [0.1] * 8)
-    monkeypatch.setattr(
-        pp, "set_request_tenant_context", AsyncMock()
-    )
+    monkeypatch.setattr(pp, "set_request_tenant_context", AsyncMock())
 
     response = await service.search(_make_request(), workspace)
     assert [c.content for c in response.chunks] == ["keep"]
