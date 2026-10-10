@@ -446,7 +446,7 @@ development_status:
   # Port note: `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10)
   epic-41: backlog
   41-1-websets-api-client-idle-webhook-handler: done
-  41-2-websets-lead-mapper-billing-gate-source-badge: backlog
+  41-2-websets-lead-mapper-billing-gate-source-badge: done
   epic-41-retrospective: optional
 validation_reports:
   - story: "3.18"
