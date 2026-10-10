@@ -384,6 +384,38 @@ async def test_provider_irrelevant_demotes_not_drops(_enabled, monkeypatch):
     assert [c.content for c in response.chunks] == ["good hit", "weak match"]
 
 
+async def test_provider_irrelevant_demote_capped(_enabled, monkeypatch):
+    """Relevance-negative chunks at tail are capped by DECISION_RAG_DEMOTED_CAP."""
+    fake_session = MagicMock()
+    workspace = SimpleNamespace(id=7, user_id=None)
+    chunks = [
+        _provider_chunk("good hit", 1),
+        _provider_chunk("weak 1", 2),
+        _provider_chunk("weak 2", 3),
+        _provider_chunk("weak 3", 4),
+    ]
+    service = _stubbed_search_service(fake_session, chunks)
+
+    async def _fake_filter(items, **_kwargs):
+        def _route(_c, text):
+            if "weak" in text:
+                return PassageVerdict(
+                    action=GuardrailAction.DROP, reasons=("irrelevant",)
+                )
+            return _verdict(GuardrailAction.PASS)
+
+        return ([(c, _route(c, t)) for c, t in items], None)
+
+    monkeypatch.setattr(pp, "filter_passages", _fake_filter)
+    monkeypatch.setattr(pp, "embed_text", lambda _t: [0.1] * 8)
+    monkeypatch.setattr(pp, "set_request_tenant_context", AsyncMock())
+    monkeypatch.setenv("DECISION_RAG_DEMOTED_CAP", "1")
+
+    response = await service.search(_make_request(), workspace)
+    # Only 1 demoted chunk kept at the tail
+    assert [c.content for c in response.chunks] == ["good hit", "weak 1"]
+
+
 async def test_provider_filter_raise_returns_chunks(_enabled, monkeypatch):
     """Fail-open: filter_passages raising must not 500 the search."""
     fake_session = MagicMock()

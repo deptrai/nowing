@@ -243,7 +243,10 @@ class PrivateProviderService:
                     if verdict.action is GuardrailAction.DROP:
                         # Relevance-negative demotes to the tail instead of
                         # dropping (same recall-safe rule as connector RAG).
-                        if "irrelevant" in verdict.reasons:
+                        if (
+                            "irrelevant" in verdict.reasons
+                            and not decision_config.decision_drop_irrelevant()
+                        ):
                             demoted.append(chunk)
                         continue
                     if verdict.action is GuardrailAction.MASK:
@@ -253,7 +256,8 @@ class PrivateProviderService:
                             continue
                         chunk.content = verdict.masked_text
                     kept_chunks.append(chunk)
-                chunks = kept_chunks + demoted
+                cap = decision_config.decision_rag_demoted_cap()
+                chunks = kept_chunks + demoted[:cap]
             except Exception:
                 logger.warning(
                     "[content_filter] private_provider filter failed — "

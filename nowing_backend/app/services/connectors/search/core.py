@@ -440,7 +440,10 @@ async def _filter_rag_results(
                 # dropping: live Jev verdicts over-drop VN content whose
                 # text lacks the query's literal geo terms (Story 39.4
                 # real-data finding). Injection/mask_failed still hard-drop.
-                if "irrelevant" in verdict.reasons:
+                if (
+                    "irrelevant" in verdict.reasons
+                    and not decision_config.decision_drop_irrelevant()
+                ):
                     demoted.append(doc)
                 continue
             if verdict.action is GuardrailAction.MASK:
@@ -463,7 +466,8 @@ async def _filter_rag_results(
                         masked_chunks.append(chunk)
                     doc["chunks"] = masked_chunks
             kept.append(doc)
-        return kept + demoted
+        cap = decision_config.decision_rag_demoted_cap()
+        return kept + demoted[:cap]
     except Exception:
         logger.warning(
             "[content_filter] rag filter failed — returning unfiltered results",

@@ -101,6 +101,44 @@ async def test_injection_still_hard_drops_when_mixed(_enabled, monkeypatch):
     assert [d["content"] for d in out] == ["good", "weak match"]
 
 
+async def test_irrelevant_drop_demote_capped_by_env(_enabled, monkeypatch):
+    """Demoted docs at tail are capped to bound context tokens (AI-39.10)."""
+
+    def _route(_doc, text):
+        if text.startswith("weak"):
+            return PassageVerdict(action=GuardrailAction.DROP, reasons=("irrelevant",))
+        return PassageVerdict(action=GuardrailAction.PASS)
+
+    _patch_filter(monkeypatch, _route)
+    # Set cap to 2 demoted docs
+    monkeypatch.setenv("DECISION_RAG_DEMOTED_CAP", "2")
+    docs = [
+        _doc("good 1"),
+        _doc("weak 1"),
+        _doc("weak 2"),
+        _doc("weak 3"),
+        _doc("weak 4"),
+        _doc("good 2"),
+    ]
+    out = await core._filter_rag_results(docs, query_text="q", workspace_id=1)
+    assert [d["content"] for d in out] == ["good 1", "good 2", "weak 1", "weak 2"]
+
+
+async def test_irrelevant_drop_hard_drops_when_configured(_enabled, monkeypatch):
+    """Setting DECISION_FILTER_DROP_IRRELEVANT=true flips demote back to hard-drop."""
+
+    def _route(_doc, text):
+        if "weak" in text:
+            return PassageVerdict(action=GuardrailAction.DROP, reasons=("irrelevant",))
+        return PassageVerdict(action=GuardrailAction.PASS)
+
+    _patch_filter(monkeypatch, _route)
+    monkeypatch.setenv("DECISION_FILTER_DROP_IRRELEVANT", "true")
+    docs = [_doc("good 1"), _doc("weak 1"), _doc("good 2")]
+    out = await core._filter_rag_results(docs, query_text="q", workspace_id=1)
+    assert [d["content"] for d in out] == ["good 1", "good 2"]
+
+
 async def test_mask_rewrites_doc_and_chunk_fields_separately(_enabled, monkeypatch):
     """MASK: parent content gets masked_text; each chunk masked per-field."""
 
