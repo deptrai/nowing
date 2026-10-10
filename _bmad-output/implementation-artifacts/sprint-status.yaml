@@ -859,7 +859,10 @@ action_items:
   - id: "epic-41-retro-item-20-them-partial-unique-index-billingevent-e"
     epic: 41
     action: "Them partial unique index BillingEvent.event_id cho event_entity_type=webset
-      + with_for_update() campaign row trong import_webset (billing.py:247-256)"
+      + with_for_update() campaign row trong import_webset (billing.py:247-256).
+      DONE=index only (alembic 248); with_for_update SKIPPED by design — per-flush
+      commits release row locks, unique index + conditional status writes du chong
+      double-debit (commit d3893c777)"
     owner: "dev"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
