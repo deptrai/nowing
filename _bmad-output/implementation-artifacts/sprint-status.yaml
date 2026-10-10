@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '10-11-2026 03:16'
+last_updated: '10-11-2026 03:34'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -840,28 +840,28 @@ action_items:
     action: "BillingEvent event_id fallback dung global raw position hoac content
       hash thay idx per-batch de tranh cross-batch collision (websets_import.py:276-280)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-18-truncate-mapped-strings-theo-schema-limi"
     epic: 41
     action: "Truncate mapped strings theo schema limits trong map_webset_entity (company_name<=200)
       va persist imported_count tren failure path (websets_import.py)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-19-owner-none-billing-fail-closed-status-fa"
     epic: 41
     action: "owner-None billing: fail-closed status=failed reason=no_workspace_owner
       thay import free (decided by user) + update test_billing_owner_none_skips_billing"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-20-them-partial-unique-index-billingevent-e"
     epic: 41
     action: "Them partial unique index BillingEvent.event_id cho event_entity_type=webset
       + with_for_update() campaign row trong import_webset (billing.py:247-256)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
   - id: "epic-41-retro-item-21-websetsservice-hardening-401-x-user-ctx"
     epic: 41
