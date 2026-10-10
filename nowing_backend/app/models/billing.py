@@ -257,6 +257,12 @@ class BillingEvent(Base, TimestampMixin):
             unique=True,
             postgresql_where=text("event_entity_type = 'outcome_event'"),
         ),
+        Index(
+            "ix_billing_events_webset_event_unique",
+            "event_id",
+            unique=True,
+            postgresql_where=text("event_entity_type = 'webset'"),
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

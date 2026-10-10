@@ -124,12 +124,14 @@ def map_webset_entity(
 
     extra_metadata = {"websets": unmapped_enrichments}
 
+    # Truncate to Lead VARCHAR bounds — a longer value would raise
+    # StringDataRightTruncationError and abort the whole 100-lead batch.
     return {
-        "company_name": company_name,
+        "company_name": str(company_name)[:200],
         "title": title,
         "phone": phone,
         "email": email,
-        "domain": domain,
+        "domain": str(domain)[:255] if domain else domain,
         "source": "websets",
         "source_url": source_url,
         "extra_metadata": extra_metadata,
@@ -199,10 +201,23 @@ class WebsetsImportService:
                         owner_user_id = None
 
             if owner_user_id is None:
+                # Fail-closed (retro AI-41.5, decided): importing without an owner
+                # means free leads — fail instead of silently skipping billing.
                 logger.warning(
-                    "No owner found for workspace_id=%s; skipping credit billing",
+                    "No owner found for workspace_id=%s; failing webset import "
+                    "(billing requires a workspace owner)",
                     workspace_id,
                 )
+                campaign.status = "failed"
+                current_stats = dict(campaign.stats or {})
+                current_stats["failure_reason"] = "no_workspace_owner"
+                campaign.stats = current_stats
+                await session.commit()
+                return {
+                    "status": "failed",
+                    "webset_id": webset_id,
+                    "imported_count": campaign.imported_count or 0,
+                }
 
         # Drain theo stream + flush ingest mỗi 100 leads — không buffer toàn bộ,
         # và mọi lỗi (drain lẫn ingest) đều đánh dấu campaign failed.
@@ -234,7 +249,8 @@ class WebsetsImportService:
                                 "Insufficient credits to import webset batch: %s", ice
                             )
                             stmt = select(WebsetCampaign).where(
-                                WebsetCampaign.webset_id == str(webset_id)
+                                WebsetCampaign.webset_id == str(webset_id),
+                                WebsetCampaign.status != "completed",
                             )
                             res = await session.execute(stmt)
                             camp = res.scalar_one_or_none()
@@ -261,8 +277,10 @@ class WebsetsImportService:
                         if owner_user_id is not None and credit_reserved:
                             accepted = ingest_res.get("accepted", [True] * batch_size)
 
-                            # Dedup key per lead: entity id, else a stable per-slot
-                            # fallback so idless items never share one event_id.
+                            # Dedup key per lead: entity id / source_url, else a
+                            # content-derived fallback — a per-batch index would
+                            # collide across flushes (batch 2 idx 0 == batch 1 idx 0)
+                            # while identical entities must dedup to the same id.
                             accepted_flags: list[bool] = []
                             event_ids: list[Any] = []
                             for idx, lead in enumerate(batch):
@@ -273,7 +291,7 @@ class WebsetsImportService:
                                     lead.get("_entity_id")
                                     or (lead.get("raw") or {}).get("entity_id")
                                     or lead.get("source_url")
-                                    or f"idx:{idx}"
+                                    or f"lead:{lead.get('company_name')}|{lead.get('domain')}|{lead.get('phone')}|{lead.get('email')}"
                                 )
                                 event_ids.append(
                                     uuid5(NAMESPACE_URL, f"{webset_id}:{entity_id}")
@@ -406,13 +424,22 @@ class WebsetsImportService:
                 "Error importing items for webset_id=%s: %s", webset_id, exc
             )
             async with maker() as session:
+                # Skip the write if a concurrent import already completed — a
+                # late failure must not clobber a terminal success status.
                 stmt = select(WebsetCampaign).where(
-                    WebsetCampaign.webset_id == str(webset_id)
+                    WebsetCampaign.webset_id == str(webset_id),
+                    WebsetCampaign.status != "completed",
                 )
                 res = await session.execute(stmt)
                 campaign = res.scalar_one_or_none()
                 if campaign:
                     campaign.status = "failed"
+                    campaign.imported_count = imported_count
+                    current_stats = dict(campaign.stats or {})
+                    current_stats["raw_items_count"] = raw_count
+                    current_stats["drained_count"] = drained_count
+                    current_stats["imported_count"] = imported_count
+                    campaign.stats = current_stats
                     await session.commit()
             raise
 
