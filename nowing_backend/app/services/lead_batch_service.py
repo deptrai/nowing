@@ -13,7 +13,7 @@ import time
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import case, not_, or_
+from sqlalchemy import case, not_, or_, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
@@ -143,9 +143,12 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
             "client_id": stmt.excluded.client_id,
             "table_id": func.coalesce(stmt.excluded.table_id, Lead.table_id),
             "source_url": func.coalesce(stmt.excluded.source_url, Lead.source_url),
+            # JSONB top-level merge: excluded keys win, existing keys preserved.
+            # Plain coalesce(excluded, existing) would wipe metadata whenever an
+            # item carries an empty-or-new dict instead of the full old payload.
             "extra_metadata": func.coalesce(
-                stmt.excluded.extra_metadata, Lead.extra_metadata
-            ),
+                Lead.extra_metadata, text("'{}'::jsonb")
+            ).concat(func.coalesce(stmt.excluded.extra_metadata, text("'{}'::jsonb"))),
             "industry": func.coalesce(stmt.excluded.industry, Lead.industry),
             "location": func.coalesce(stmt.excluded.location, Lead.location),
             "intent_score": stmt.excluded.intent_score,

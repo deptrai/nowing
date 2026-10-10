@@ -257,7 +257,6 @@ class WebsetsImportService:
                             leads=batch,
                         )
                         batch_imported = ingest_res.get("ingested_count", batch_size)
-                        imported_count += batch_imported
 
                         if owner_user_id is not None and credit_reserved:
                             accepted = ingest_res.get("accepted", [True] * batch_size)
@@ -350,11 +349,21 @@ class WebsetsImportService:
                                 await wallet_credit.release_credit(
                                     session, owner_user_id, to_release_micros
                                 )
+
+                        # Commit inside the guarded block: a commit failure must
+                        # also release the reservation instead of stranding it.
+                        await session.commit()
+                        # Count only after commit: a rolled-back batch left no leads.
+                        imported_count += batch_imported
                     except Exception:
                         # Release whatever reservation is left so a mid-flush
-                        # failure never strands locked credits.
+                        # failure never strands locked credits. Roll back first:
+                        # the session is in a failed transaction, so release_credit
+                        # would raise InFailedSqlTransactionError and the reserved
+                        # credits would stay locked forever.
                         if owner_user_id is not None and credit_reserved:
                             try:
+                                await session.rollback()
                                 await wallet_credit.release_credit(
                                     session,
                                     owner_user_id,
@@ -366,8 +375,6 @@ class WebsetsImportService:
                                     exc_info=True,
                                 )
                         raise
-
-                    await session.commit()
 
                 async for item in self._websets_service.iter_ready_items(
                     webset_id=webset_id,

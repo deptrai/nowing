@@ -117,7 +117,9 @@ class TestBatchLeadIngestion:
     """AC-1: POST /api/v1/workspaces/:workspace_id/leads/batch-ingest"""
 
     @pytest.mark.asyncio
-    async def test_batch_ingest_returns_summary_fields(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_batch_ingest_returns_summary_fields(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """should return BatchLeadIngestResponse with summary fields."""
         from app.config import config
 
@@ -129,7 +131,9 @@ class TestBatchLeadIngestion:
 
         lead_id = uuid4()
         value_hmac = "hmac1"
-        session = _FakeSession(rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)])
+        session = _FakeSession(
+            rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)]
+        )
         service = lead_batch_service.LeadBatchService()
 
         result = await service.ingest_batch(
@@ -145,7 +149,9 @@ class TestBatchLeadIngestion:
         assert result["lead_ids"] == [lead_id]
 
     @pytest.mark.asyncio
-    async def test_batch_ingest_does_not_leak_pii(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_batch_ingest_does_not_leak_pii(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """should NOT return phone, email, or value_hmac in response."""
         from app.config import config
 
@@ -157,13 +163,17 @@ class TestBatchLeadIngestion:
 
         lead_id = uuid4()
         value_hmac = "hmac1"
-        session = _FakeSession(rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)])
+        session = _FakeSession(
+            rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)]
+        )
         service = lead_batch_service.LeadBatchService()
 
         result = await service.ingest_batch(
             session,
             workspace_id=1,
-            leads=[_make_lead(value_hmac=value_hmac, phone="+1234567890", email="a@b.com")],
+            leads=[
+                _make_lead(value_hmac=value_hmac, phone="+1234567890", email="a@b.com")
+            ],
         )
 
         assert "phone" not in result
@@ -179,7 +189,9 @@ class TestBatchLeadIngestion:
             await service.ingest_batch(_FakeSession(), workspace_id=1, leads=[{}])
 
     @pytest.mark.asyncio
-    async def test_batch_ingest_accepts_domain_only_lead(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_batch_ingest_accepts_domain_only_lead(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """should accept a lead with only domain and store without verified_contacts."""
         from app.config import config
 
@@ -191,7 +203,9 @@ class TestBatchLeadIngestion:
 
         lead_id = uuid4()
         value_hmac = "domain_only_hmac"
-        session = _FakeSession(rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)])
+        session = _FakeSession(
+            rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)]
+        )
         service = lead_batch_service.LeadBatchService()
 
         result = await service.ingest_batch(
@@ -206,7 +220,9 @@ class TestBatchLeadIngestion:
         assert "verified_contacts" not in str(session.executed[0]).lower()
 
     @pytest.mark.asyncio
-    async def test_batch_ingest_uses_dnc_service_fail_closed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_batch_ingest_uses_dnc_service_fail_closed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """should call DncComplianceService.batch_filter_leads and mark blocked leads as blacklisted."""
         from app.config import config
 
@@ -344,7 +360,9 @@ class TestHermeticAndCostGate:
     """AC-5: All external calls mocked, $0 cost."""
 
     @pytest.mark.asyncio
-    async def test_embedding_uses_configured_model_instance(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_embedding_uses_configured_model_instance(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """should call config.embedding_model_instance.embed_texts with 1536-dim fake."""
         from app.config import config
 
@@ -358,7 +376,9 @@ class TestHermeticAndCostGate:
         assert config.embedding_model_instance.dimension == 1536
 
     @pytest.mark.asyncio
-    async def test_no_external_api_calls_made(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_no_external_api_calls_made(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """should not call OpenAI/OpenRouter/ChainLens during unit tests."""
         from app.config import config
 
@@ -379,7 +399,9 @@ class TestHermeticAndCostGate:
 
         lead_id = uuid4()
         value_hmac = "hmac1"
-        session = _FakeSession(rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)])
+        session = _FakeSession(
+            rows=[SimpleNamespace(id=lead_id, value_hmac=value_hmac)]
+        )
         service = lead_batch_service.LeadBatchService()
 
         await service.ingest_batch(
@@ -420,4 +442,8 @@ class TestExtraMetadataForwarding:
         leads = [_make_lead(value_hmac="h", extra_metadata={"websets": {"c": 1}})]
         stmt = lead_batch_service._build_batch_upsert_stmt(leads)
         sql = str(stmt.compile())
-        assert "metadata = coalesce(excluded.metadata" in sql
+        # JSONB merge (existing || excluded): excluded keys win, existing keys
+        # survive — a bare coalesce(excluded, existing) would wipe old metadata.
+        assert "coalesce(leads.metadata" in sql
+        assert "coalesce(excluded.metadata" in sql
+        assert "||" in sql

@@ -472,14 +472,8 @@ class TestWebsetsImportBilling:
         assert len(added_billing_events) == 2
         assert added_billing_events[0].event_entity_type == "webset"
         assert added_billing_events[0].event_type == "lead_import"
-        assert (
-            added_billing_events[0].event_id
-            == uuid5(NAMESPACE_URL, "wbs_123:it_1")
-        )
-        assert (
-            added_billing_events[1].event_id
-            == uuid5(NAMESPACE_URL, "wbs_123:it_2")
-        )
+        assert added_billing_events[0].event_id == uuid5(NAMESPACE_URL, "wbs_123:it_1")
+        assert added_billing_events[1].event_id == uuid5(NAMESPACE_URL, "wbs_123:it_2")
 
     @pytest.mark.asyncio
     async def test_billing_quota_exceeded_stops_import(self) -> None:
@@ -807,3 +801,98 @@ class TestWebsetsImportBilling:
         mock_reserve.assert_not_called()
         mock_commit.assert_not_called()
         mock_release.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_billing_failure_rolls_back_then_releases(self) -> None:
+        """ingest_batch raise sau khi reserve -> session.rollback() TRƯỚC release_credit.
+
+        Regression cho AI-41.2: release trên aborted session (không rollback) ném
+        InFailedSqlTransactionError -> nuốt trong inner except -> credit lock vĩnh viễn.
+        """
+        owner_id = UUID("11111111-1111-1111-1111-111111111111")
+        mock_websets_svc = MagicMock(spec=WebsetsService)
+
+        async def _mock_iter(webset_id: str, workspace_id: int):
+            yield {
+                "id": "it_1",
+                "status": "ready",
+                "data": {"name": "Acme Corp", "phone": "0987111222"},
+            }
+            yield {
+                "id": "it_2",
+                "status": "verified",
+                "data": {"name": "Beta LLC", "email": "info@beta.vn"},
+            }
+
+        mock_websets_svc.iter_ready_items = _mock_iter
+
+        mock_campaign = WebsetCampaign(
+            webset_id="wbs_123",
+            campaign_id="camp_abc",
+            workspace_id=42,
+            status="pending",
+            imported_count=0,
+            stats={},
+        )
+
+        call_order: list[str] = []
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.new = []
+        mock_session.rollback.side_effect = lambda: call_order.append("rollback")
+
+        def _mock_execute(stmt):
+            res = MagicMock()
+            stmt_str = str(stmt)
+            if "webset_campaigns" in stmt_str:
+                res.scalar_one_or_none.return_value = mock_campaign
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+
+        mock_session.execute.side_effect = _mock_execute
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        mock_batch_svc = AsyncMock()
+        mock_batch_svc.ingest_batch.side_effect = RuntimeError("db exploded")
+
+        import_service = WebsetsImportService(
+            websets_service=mock_websets_svc,
+            batch_service=mock_batch_svc,
+        )
+
+        with (
+            patch(
+                "app.services.websets_import._resolve_workspace_owner",
+                new=AsyncMock(return_value=owner_id),
+            ),
+            patch(
+                "app.services.wallet_credit.reserve_credit", new=AsyncMock()
+            ) as mock_reserve,
+            patch(
+                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
+            ) as mock_commit,
+            patch(
+                "app.services.wallet_credit.release_credit",
+                new=AsyncMock(side_effect=lambda *a, **k: call_order.append("release")),
+            ) as mock_release,
+            pytest.raises(RuntimeError, match="db exploded"),
+        ):
+            await import_service.import_webset(
+                "wbs_123",
+                session_factory=lambda: mock_session_cm,
+            )
+
+        assert mock_campaign.status == "failed"
+        mock_reserve.assert_awaited_once_with(
+            mock_session, owner_id, 2 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        mock_commit.assert_not_called()
+        # Full reservation released, and rollback strictly precedes release.
+        mock_release.assert_awaited_once_with(
+            mock_session, owner_id, 2 * WEBSET_LEAD_IMPORT_COST_MICROS
+        )
+        assert call_order == ["rollback", "release"]
