@@ -724,7 +724,11 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 										{/* Industry */}
 										<td className="px-3 text-muted-foreground text-xs min-w-[90px] max-w-[140px]">
-											<span className="truncate block">{lead.industry || "Bất động sản"}</span>
+											{lead.industry ? (
+												<span className="truncate block">{lead.industry}</span>
+											) : (
+												<span className="text-muted-foreground/40 text-xs">—</span>
+											)}
 										</td>
 
 										{/* Contact & Multi-channel Info */}
