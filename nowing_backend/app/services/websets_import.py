@@ -315,43 +315,35 @@ class WebsetsImportService:
             logger.exception(
                 "Error importing items for webset_id=%s: %s", webset_id, exc
             )
-            async with maker() as session:
-                # Skip the write if a concurrent import already completed — a
-                # late failure must not clobber a terminal success status.
-                stmt = select(WebsetCampaign).where(
-                    WebsetCampaign.webset_id == str(webset_id),
-                    WebsetCampaign.status != "completed",
-                )
-                res = await session.execute(stmt)
-                campaign = res.scalar_one_or_none()
-                if campaign:
-                    campaign.status = "failed"
-                    campaign.imported_count = imported_count
-                    current_stats = dict(campaign.stats or {})
-                    current_stats["raw_items_count"] = raw_count
-                    current_stats["drained_count"] = drained_count
-                    current_stats["skipped_count"] = skipped_count
-                    current_stats["imported_count"] = imported_count
-                    campaign.stats = current_stats
-                    await session.commit()
+            stats = {
+                "raw_items_count": raw_count,
+                "drained_count": drained_count,
+                "skipped_count": skipped_count,
+                "imported_count": imported_count,
+            }
+            await self._update_campaign_status(
+                maker,
+                webset_id,
+                status="failed",
+                imported_count=imported_count,
+                stats=stats,
+                skip_if_completed=True,
+            )
             raise
 
-        async with maker() as session:
-            stmt = select(WebsetCampaign).where(
-                WebsetCampaign.webset_id == str(webset_id)
-            )
-            res = await session.execute(stmt)
-            campaign = res.scalar_one_or_none()
-            if campaign:
-                campaign.imported_count = imported_count
-                campaign.status = "completed"
-                current_stats = dict(campaign.stats or {})
-                current_stats["raw_items_count"] = raw_count
-                current_stats["drained_count"] = drained_count
-                current_stats["skipped_count"] = skipped_count
-                current_stats["imported_count"] = imported_count
-                campaign.stats = current_stats
-                await session.commit()
+        stats = {
+            "raw_items_count": raw_count,
+            "drained_count": drained_count,
+            "skipped_count": skipped_count,
+            "imported_count": imported_count,
+        }
+        await self._update_campaign_status(
+            maker,
+            webset_id,
+            status="completed",
+            imported_count=imported_count,
+            stats=stats,
+        )
 
         logger.info(
             "Completed webset import for webset_id=%s: imported=%s leads",
@@ -363,6 +355,34 @@ class WebsetsImportService:
             "webset_id": webset_id,
             "imported_count": imported_count,
         }
+
+    @staticmethod
+    async def _update_campaign_status(
+        session_factory: Any,
+        webset_id: str,
+        status: str,
+        imported_count: int,
+        stats: dict[str, Any] | None = None,
+        *,
+        skip_if_completed: bool = False,
+    ) -> None:
+        """Update WebsetCampaign status, imported_count, and merge stats."""
+        async with session_factory() as session:
+            stmt = select(WebsetCampaign).where(
+                WebsetCampaign.webset_id == str(webset_id)
+            )
+            if skip_if_completed:
+                stmt = stmt.where(WebsetCampaign.status != "completed")
+            res = await session.execute(stmt)
+            campaign = res.scalar_one_or_none()
+            if campaign:
+                campaign.status = status
+                campaign.imported_count = imported_count
+                current_stats = dict(campaign.stats or {})
+                if stats:
+                    current_stats.update(stats)
+                campaign.stats = current_stats
+                await session.commit()
 
     async def _flush_batch(
         self,

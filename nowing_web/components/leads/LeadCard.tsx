@@ -6,6 +6,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import type { Lead } from "@/contracts/types/leads.types";
 import { cn, isAllowedUrl } from "@/lib/utils";
+import { LeadSourceBadge } from "./LeadSourceBadge";
 import { PhoneCopyPill } from "./PhoneCopyPill";
 import { ZaloOutreachButton } from "./zalo-outreach-button";
 
@@ -75,20 +76,6 @@ const getIntentBadge = (intent: string | null | undefined) => {
 	};
 };
 
-const getSourceIcon = (source: string) => {
-	const s = (source || "").toLowerCase();
-	if (s.includes("webset")) return "🌐 Websets";
-	if (s.includes("facebook")) return "👥 Facebook";
-	if (s.includes("telegram")) return "✈️ Telegram";
-	if (s.includes("bds") || s.includes("batdongsan")) return "🏠 Batdongsan";
-	if (s.includes("topcv") || s.includes("itviec") || s.includes("job")) return "💼 Jobs";
-	if (s.includes("tender") || s.includes("muasamcong")) return "🏛️ Đấu Thầu";
-	if (s.includes("shopee") || s.includes("tiktok")) return "🛍️ E-commerce";
-	if (s.includes("linkedin")) return "💼 LinkedIn";
-	if (s.includes("x") || s.includes("twitter")) return "𝕏 Twitter/X";
-	return `🌐 ${source || "Nguồn khác"}`;
-};
-
 export const LeadCard: React.FC<LeadCardProps> = ({
 	lead,
 	onOpenCompanyGraph,
@@ -120,7 +107,6 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
 	const fitBadge = getFitScoreBadge(lead.fit_score, t);
 	const intentBadge = getIntentBadge(lead.intent);
-	const sourceLabel = getSourceIcon(lead.source);
 
 	return (
 		<div
@@ -133,9 +119,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 			{/* Header: Badges & Status */}
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<div className="flex flex-wrap items-center gap-1.5">
-					<span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 border border-zinc-700">
-						{sourceLabel}
-					</span>
+					<LeadSourceBadge source={lead.source} showTooltip={false} />
 
 					{intentBadge && (
 						<span
