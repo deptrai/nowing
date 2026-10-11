@@ -245,12 +245,14 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 	const handleOpenLarkSync = () => {
 		if (isAllowedUrl("https://open.larksuite.com/")) {
+			// pi-lens-ignore: ast-grep:no-open-redirect -- literal trusted larksuite URL
 			window.open("https://open.larksuite.com/", "_blank", "noopener,noreferrer");
 		}
 	};
 
 	const handleOpenGoogleSheetsSync = () => {
 		if (isAllowedUrl("https://sheets.google.com/")) {
+			// pi-lens-ignore: ast-grep:no-open-redirect -- literal trusted google sheets URL
 			window.open("https://sheets.google.com/", "_blank", "noopener,noreferrer");
 		}
 	};

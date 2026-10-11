@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -82,11 +83,14 @@ class MockDegradedAdapter(LeadSourceAdapter):
 
 
 class TestLeadGenPlannerWebsets:
-    def test_planner_sets_pending_status_for_async_adapter(self) -> None:
+    async def test_planner_sets_pending_status_for_async_adapter(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         reg = LeadSourceAdapterRegistry()
         # Real WebsetsAdapter: pending là trạng thái sau khi search_leads() OK
         real_adapter = WebsetsAdapter()
         real_adapter.last_execution_status = "pending"
+        monkeypatch.setattr(real_adapter, "get_workspace_status", AsyncMock(return_value="pending"))
         reg.register(real_adapter)
 
         planner = LeadGenPlanner(registry=reg)
@@ -100,7 +104,7 @@ class TestLeadGenPlannerWebsets:
             ],
         )
 
-        plan = planner.create_preflight_plan(spec)
+        plan = await planner.create_preflight_plan(spec)
         allocations = {a.source_name: a for a in plan.source_allocations}
 
         assert "websets" in allocations
@@ -108,10 +112,13 @@ class TestLeadGenPlannerWebsets:
         assert webset_alloc.status == "pending"
         assert webset_alloc.degraded_reason == "Asynchronous webset build in progress"
 
-    def test_planner_distinguishes_pending_from_degraded(self) -> None:
+    async def test_planner_distinguishes_pending_from_degraded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         reg = LeadSourceAdapterRegistry()
         real_adapter = WebsetsAdapter()
         real_adapter.last_execution_status = "pending"
+        monkeypatch.setattr(real_adapter, "get_workspace_status", AsyncMock(return_value="pending"))
         reg.register(real_adapter)
         reg.register(MockDegradedAdapter())
 
@@ -127,7 +134,7 @@ class TestLeadGenPlannerWebsets:
             ],
         )
 
-        plan = planner.create_preflight_plan(spec)
+        plan = await planner.create_preflight_plan(spec)
         allocations = {a.source_name: a for a in plan.source_allocations}
 
         assert allocations["websets"].status == "pending"
