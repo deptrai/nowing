@@ -1263,3 +1263,34 @@ class TestWebsetsImportBilling:
             mock_session, owner_id, WEBSET_LEAD_IMPORT_COST_MICROS
         )
         mock_commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_campaign_status_updates_fields_and_merges_stats(self) -> None:
+        """_update_campaign_status cập nhật status, imported_count và merge dict stats."""
+        campaign = WebsetCampaign(
+            webset_id="wbs_999",
+            status="pending",
+            imported_count=0,
+            stats={"initial": "val"},
+        )
+        mock_session = AsyncMock()
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = campaign
+        mock_session.execute.return_value = mock_res
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+
+        await WebsetsImportService._update_campaign_status(
+            lambda: mock_session_cm,
+            webset_id="wbs_999",
+            status="completed",
+            imported_count=10,
+            stats={"imported_count": 10, "extra": "info"},
+        )
+
+        assert campaign.status == "completed"
+        assert campaign.imported_count == 10
+        assert campaign.stats == {"initial": "val", "imported_count": 10, "extra": "info"}
+        mock_session.commit.assert_awaited_once()
