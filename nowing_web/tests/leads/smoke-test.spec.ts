@@ -7,7 +7,9 @@ import { safeClick } from "../helpers/safe-click";
  */
 
 test.describe("Smoke Test Feedback Loop (Story 26.29)", () => {
-	test.use({ baseURL: process.env.BASE_URL || "http://localhost:3000" });
+	test.use({
+		baseURL: process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || "http://localhost:3000",
+	});
 
 	test("PlanSummaryCard renders smoke test preview and feedback banner", async ({ page }) => {
 		// Mock campaign execution response so smoke test has leads in local test env

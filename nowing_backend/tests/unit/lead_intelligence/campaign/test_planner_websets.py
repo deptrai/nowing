@@ -90,7 +90,9 @@ class TestLeadGenPlannerWebsets:
         # Real WebsetsAdapter: pending là trạng thái sau khi search_leads() OK
         real_adapter = WebsetsAdapter()
         real_adapter.last_execution_status = "pending"
-        monkeypatch.setattr(real_adapter, "get_workspace_status", AsyncMock(return_value="pending"))
+        monkeypatch.setattr(
+            real_adapter, "get_workspace_status", AsyncMock(return_value="pending")
+        )
         reg.register(real_adapter)
 
         planner = LeadGenPlanner(registry=reg)
@@ -118,7 +120,9 @@ class TestLeadGenPlannerWebsets:
         reg = LeadSourceAdapterRegistry()
         real_adapter = WebsetsAdapter()
         real_adapter.last_execution_status = "pending"
-        monkeypatch.setattr(real_adapter, "get_workspace_status", AsyncMock(return_value="pending"))
+        monkeypatch.setattr(
+            real_adapter, "get_workspace_status", AsyncMock(return_value="pending")
+        )
         reg.register(real_adapter)
         reg.register(MockDegradedAdapter())
 
