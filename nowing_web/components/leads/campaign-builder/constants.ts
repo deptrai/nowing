@@ -108,4 +108,10 @@ export const AVAILABLE_SOURCES = [
 		icon: "🏛️",
 		description: "Hồ sơ mời thầu, gói thầu nhà nước & tập đoàn",
 	},
+	{
+		id: "websets",
+		name: "ChainLens Websets",
+		icon: "🌐",
+		description: "Trích xuất & xác minh thực thể từ web qua criteria AI",
+	},
 ];

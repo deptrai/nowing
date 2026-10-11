@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { CampaignIntent, IcpVerticalTemplate } from "@/contracts/types/campaign.types";
 import type { LocationProfile } from "@/contracts/types/leads.types";
@@ -337,6 +338,36 @@ export function IcpBuilderStep({
 									</span>
 								))}
 							</div>
+						</div>
+
+						{/* Custom Instructions / Websets Criteria Prompt */}
+						<div className="space-y-1.5 pt-2 border-t border-zinc-800/60">
+							<Label className="text-xs text-zinc-300">
+								Chỉ dẫn bổ sung / Prompt tìm kiếm tự do (Custom Instructions)
+							</Label>
+							<Input
+								value={builder.customInstructions}
+								onChange={(e) => builder.setCustomInstructions(e.target.value)}
+								placeholder="Vd: Tìm các quán cafe có không gian làm việc rộng rãi tại Quận 10..."
+								className="bg-zinc-950 border-zinc-800 text-xs"
+							/>
+							<p className="text-[11px] text-zinc-500">
+								Chỉ dẫn này sẽ được gửi trực tiếp làm criteria prompt cho nguồn ChainLens Websets
+								hoặc định hình câu lệnh tìm kiếm chuyên sâu.
+							</p>
+						</div>
+
+						<div>
+							<Label className="text-xs text-zinc-300">
+								Mô tả nhu cầu tìm lead (Custom Instructions)
+							</Label>
+							<Textarea
+								value={builder.customInstructions}
+								onChange={(e) => builder.setCustomInstructions(e.target.value)}
+								placeholder="VD: quán bún bò ngon ở quận 5 — dùng làm tiêu chí truy vấn cho nguồn ChainLens Websets"
+								rows={2}
+								className="mt-1.5 text-xs bg-zinc-950/70 border-zinc-800"
+							/>
 						</div>
 					</CardContent>
 				</Card>
