@@ -1134,14 +1134,10 @@ class TestWebsetsImportBilling:
                 new=AsyncMock(return_value=owner_id),
             ),
             patch("app.services.wallet_credit.reserve_credit", new=AsyncMock()),
-            patch(
-                "app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()
-            ),
+            patch("app.services.wallet_credit.commit_reserved_credit", new=AsyncMock()),
             patch(
                 "app.services.wallet_credit.release_credit",
-                new=AsyncMock(
-                    side_effect=lambda *a, **k: call_order.append("release")
-                ),
+                new=AsyncMock(side_effect=lambda *a, **k: call_order.append("release")),
             ) as mock_release,
             pytest.raises(RuntimeError, match="commit exploded"),
         ):
@@ -1292,5 +1288,9 @@ class TestWebsetsImportBilling:
 
         assert campaign.status == "completed"
         assert campaign.imported_count == 10
-        assert campaign.stats == {"initial": "val", "imported_count": 10, "extra": "info"}
+        assert campaign.stats == {
+            "initial": "val",
+            "imported_count": 10,
+            "extra": "info",
+        }
         mock_session.commit.assert_awaited_once()
