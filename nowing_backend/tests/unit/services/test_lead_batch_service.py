@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import Select
 
 import app.services.lead_batch_service as lead_batch_service
 from app.db import Lead
@@ -60,6 +61,10 @@ class _FakeSession:
 
     async def execute(self, stmt: Any, _params: Any | None = None) -> _FakeResult:
         self.executed.append(stmt)
+        # Plain SELECTs (e.g. the verified_contacts client_id FK guard) see
+        # no rows; the leads upsert RETURNING keeps the fixture rows.
+        if isinstance(stmt, Select):
+            return _FakeResult(self._scalar, [])
         return _FakeResult(self._scalar, self._rows)
 
     async def get(self, model: type, ident: Any) -> Any | None:

@@ -45,11 +45,12 @@ class WebsetsService:
 
     async def create_webset(
         self,
-        source: dict[str, Any],
-        columns: list[dict[str, Any]],
+        source: dict[str, Any] | None = None,
+        columns: list[dict[str, Any]] | None = None,
         criteria: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
         *,
+        sources: list[dict[str, Any]] | None = None,
         workspace_id: int,
     ) -> dict[str, Any]:
         """Create a new asynchronous webset build in ChainLens.
@@ -72,12 +73,33 @@ class WebsetsService:
             workspace_id=workspace_id,
             content_type="application/json",
         )
+        # ChainLens CreateWebsetDto requires:
+        # 1. sources: list of source dicts (not singular source)
+        # 2. criteria with explicit mode ('natural_language' or 'structured_rules')
+        # Support both legacy single source and modern sources list:
+        if sources is not None:
+            norm_sources = sources
+        elif source is not None:
+            norm_sources = [source] if isinstance(source, dict) else list(source)
+        else:
+            norm_sources = [{"type": "web"}]
+
+        # Normalize criteria: must contain mode
+        norm_criteria: dict[str, Any] = dict(criteria or {})
+        if "mode" not in norm_criteria:
+            if norm_criteria.get("rules"):
+                norm_criteria["mode"] = "structured_rules"
+            else:
+                norm_criteria["mode"] = "natural_language"
+                if "prompt" not in norm_criteria:
+                    norm_criteria["prompt"] = "Find relevant business leads"
+                norm_criteria.pop("rules", None)
+
         payload: dict[str, Any] = {
-            "source": source,
+            "sources": norm_sources,
             "columns": columns,
+            "criteria": norm_criteria,
         }
-        if criteria is not None:
-            payload["criteria"] = criteria
         if metadata is not None:
             payload["metadata"] = metadata
 
@@ -157,16 +179,16 @@ class WebsetsService:
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             while True:
+                # ChainLens ListItemsQueryDto accepts a single status enum value:
+                # query ready items (verified entities with enrichment complete).
                 params: dict[str, Any] = {
-                    "status": "ready,verified",
+                    "status": "ready",
                     "limit": 100,
                 }
                 if cursor:
                     params["cursor"] = cursor
 
-                data = await self._get_items_page(
-                    client, url, params, workspace_id
-                )
+                data = await self._get_items_page(client, url, params, workspace_id)
 
                 items = data.get("items") or data.get("data") or []
                 for item in items:

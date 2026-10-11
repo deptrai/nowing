@@ -73,10 +73,11 @@ class WebsetsAdapter(LeadSourceAdapter):
 
         columns = filters.get("columns") or DEFAULT_WEBSET_COLUMNS
         criteria = filters.get("criteria") or {
+            "mode": "natural_language",
             "prompt": query or "Find relevant business leads",
-            "rules": [],
         }
-        source = filters.get("source") or {"type": filters.get("source_type", "web")}
+        source = filters.get("source") or {"type": "web"}
+        sources = filters.get("sources") or [source]
 
         metadata = dict(filters.get("metadata") or {})
         metadata["webhookUrl"] = webhook_url
@@ -93,7 +94,7 @@ class WebsetsAdapter(LeadSourceAdapter):
 
         try:
             res = await self._service.create_webset(
-                source=source,
+                sources=sources,
                 columns=columns,
                 criteria=criteria,
                 metadata=metadata,

@@ -6,7 +6,7 @@ import logging
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.core.billing import _resolve_workspace_owner
@@ -18,6 +18,7 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.models.billing import BillingEvent
 from app.models.webset_campaign import WebsetCampaign
+from app.models.workspaces import VerticalClient
 from app.services import wallet_credit
 from app.services.chainlens.websets import WebsetsService
 from app.services.etl_credit_service import InsufficientCreditsError
@@ -205,6 +206,23 @@ class WebsetsImportService:
             workspace_id = campaign.workspace_id
             campaign_id = campaign.campaign_id
 
+            # Only propagate campaign_id into lead.client_id when it points at a
+            # real vertical client — verified_contacts enforces an FK on
+            # client_id, so a synthetic id would abort the whole ingest batch.
+            if campaign_id is not None:
+                client_exists = await session.scalar(
+                    select(func.count(VerticalClient.id)).where(
+                        VerticalClient.client_id == campaign_id
+                    )
+                )
+                if not client_exists:
+                    logger.warning(
+                        "campaign_id %s is not a vertical client; leads import "
+                        "without client_id propagation",
+                        campaign_id,
+                    )
+                    campaign_id = None
+
             raw_owner = await _resolve_workspace_owner(session, workspace_id)
             owner_user_id: UUID | None = None
             if raw_owner is not None:
@@ -265,7 +283,6 @@ class WebsetsImportService:
                             "imported_count": imported_count,
                         },
                     )
-
 
                 async for item in self._websets_service.iter_ready_items(
                     webset_id=webset_id,
@@ -346,6 +363,7 @@ class WebsetsImportService:
             "webset_id": webset_id,
             "imported_count": imported_count,
         }
+
     async def _flush_batch(
         self,
         *,
@@ -374,9 +392,7 @@ class WebsetsImportService:
                 )
                 credit_reserved = True
             except InsufficientCreditsError as ice:
-                logger.warning(
-                    "Insufficient credits to import webset batch: %s", ice
-                )
+                logger.warning("Insufficient credits to import webset batch: %s", ice)
                 stmt = select(WebsetCampaign).where(
                     WebsetCampaign.webset_id == str(webset_id),
                     WebsetCampaign.status != "completed",
@@ -494,11 +510,7 @@ class WebsetsImportService:
         seen: set[Any] = set()
         for idx, _lead in enumerate(batch):
             event_id = event_ids[idx]
-            if (
-                not accepted_flags[idx]
-                or event_id in existing_ids
-                or event_id in seen
-            ):
+            if not accepted_flags[idx] or event_id in existing_ids or event_id in seen:
                 to_release_count += 1
                 continue
             seen.add(event_id)

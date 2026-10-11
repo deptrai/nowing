@@ -13,7 +13,7 @@ import time
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import case, not_, or_, text
+from sqlalchemy import case, not_, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
@@ -30,6 +30,7 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.lead_intelligence.dnc.service import DncComplianceService
 from app.lead_intelligence.services.lead_stream_service import generate_lead_hmac
+from app.models.workspaces import VerticalClient
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
 logger = logging.getLogger(__name__)
@@ -220,6 +221,33 @@ class LeadBatchService:
         self._cipher = VerifiedContactEncryption()
         self._dnc = DncComplianceService(secret_key=config.SECRET_KEY)
 
+    async def _null_nonexistent_client_ids(
+        self, session: AsyncSession, contacts: list[dict[str, Any]]
+    ) -> None:
+        """Null out verified_contacts client_id values missing from vertical_clients.
+
+        Leads may carry synthetic client ids ("default", campaign slugs) while
+        verified_contacts enforces an FK on client_id — resolve real ids once
+        per batch so a fake id cannot abort the whole insert.
+        """
+        candidate_ids = {c["client_id"] for c in contacts if c.get("client_id")}
+        if not candidate_ids:
+            return
+        valid_client_ids = set(
+            (
+                await session.execute(
+                    select(VerticalClient.client_id).where(
+                        VerticalClient.client_id.in_(candidate_ids)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for c in contacts:
+            if c["client_id"] not in valid_client_ids:
+                c["client_id"] = None
+
     async def ingest_batch(
         self,
         session: AsyncSession,
@@ -318,6 +346,8 @@ class LeadBatchService:
             contacts_to_insert.append(contact)
 
         if contacts_to_insert:
+            await self._null_nonexistent_client_ids(session, contacts_to_insert)
+
             contact_upsert = _build_contacts_upsert_stmt(contacts_to_insert)
             if contact_upsert is not None:
                 await session.execute(contact_upsert)
