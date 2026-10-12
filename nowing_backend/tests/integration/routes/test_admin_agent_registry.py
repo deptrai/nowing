@@ -266,3 +266,81 @@ class TestAdminAgentRegistry:
             f"/api/v1/admin/agent-registry/{_TEST_INVALID_AGENT_UUID}"
         )
         assert resp.status_code == 404, resp.text
+
+    async def test_system_instructions_boundary_char_count(
+        self,
+        admin_client: AsyncClient,
+        db_session: AsyncSession,
+    ) -> None:
+        """Boundary check for system_instructions: 7999, 8000 pass; 8001 rejects 422."""
+        await _ensure_vertical_client(db_session)
+
+        # 7999 chars: pass
+        resp_7999 = await admin_client.post(
+            "/api/v1/admin/agent-registry",
+            json=_payload(
+                name="agent-7999",
+                slug="agent-7999",
+                system_instructions="a" * 7999,
+            ),
+        )
+        assert resp_7999.status_code == 201, resp_7999.text
+
+        # 8000 chars: pass
+        resp_8000 = await admin_client.post(
+            "/api/v1/admin/agent-registry",
+            json=_payload(
+                name="agent-8000",
+                slug="agent-8000",
+                system_instructions="a" * 8000,
+            ),
+        )
+        assert resp_8000.status_code == 201, resp_8000.text
+
+        # 8001 chars: 422
+        resp_8001 = await admin_client.post(
+            "/api/v1/admin/agent-registry",
+            json=_payload(
+                name="agent-8001",
+                slug="agent-8001",
+                system_instructions="a" * 8001,
+            ),
+        )
+        assert resp_8001.status_code == 422, resp_8001.text
+
+    async def test_create_rejects_overlapping_enabled_and_disabled_tools(
+        self,
+        admin_client: AsyncClient,
+        db_session: AsyncSession,
+    ) -> None:
+        """Reject 422 when enabled_tools and disabled_tools overlap."""
+        await _ensure_vertical_client(db_session)
+        resp = await admin_client.post(
+            "/api/v1/admin/agent-registry",
+            json=_payload(
+                enabled_tools=["update_memory"],
+                disabled_tools=["update_memory"],
+            ),
+        )
+        assert resp.status_code == 422, resp.text
+        assert "disjoint" in resp.text
+
+    async def test_create_trims_client_id_whitespace(
+        self,
+        admin_client: AsyncClient,
+        db_session: AsyncSession,
+    ) -> None:
+        """client_id with leading/trailing whitespace is trimmed on creation."""
+        await _ensure_vertical_client(db_session)
+        resp = await admin_client.post(
+            "/api/v1/admin/agent-registry",
+            json=_payload(
+                client_id=f"  {_TEST_CLIENT_ID}  ",
+                name="agent-trimmed-client",
+                slug="agent-trimmed-client",
+            ),
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["client_id"] == _TEST_CLIENT_ID
+

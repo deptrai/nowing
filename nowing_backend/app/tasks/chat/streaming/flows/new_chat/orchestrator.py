@@ -233,6 +233,15 @@ async def stream_new_chat(
         thread_metadata = getattr(chat_thread, "platform_metadata", None)
         if platform_metadata:
             chat_thread.platform_metadata = platform_metadata
+            logger.info(
+                "audit: updated platform_metadata for thread_id=%s workspace_id=%s actor_id=%s keys=%s",
+                chat_id,
+                workspace_id,
+                user_id,
+                sorted(platform_metadata.keys())
+                if isinstance(platform_metadata, dict)
+                else [],
+            )
         elif thread_metadata is not None:
             platform_metadata = thread_metadata
     research_thread_id = (

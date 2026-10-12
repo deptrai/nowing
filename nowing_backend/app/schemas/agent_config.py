@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.agents.chat.multi_agent_chat.main_agent.tools.index import (
     MAIN_AGENT_NOWING_TOOL_NAMES,
@@ -101,10 +102,29 @@ class AgentConfigCreate(BaseModel):
     def _validate_tool_names(cls, v):
         if not v:
             return v
+        seen = set()
+        duplicates = set()
+        for item in v:
+            if item in seen:
+                duplicates.add(item)
+            seen.add(item)
+        if duplicates:
+            raise ValueError(f"duplicate tool names: {sorted(duplicates)}")
         unknown = [n for n in v if n not in _VALID_TOOL_NAMES]
         if unknown:
             raise ValueError(f"unknown tool names: {unknown}")
         return v
+
+    @model_validator(mode="after")
+    def _validate_tools_disjoint(self) -> Self:
+        enabled = set(self.enabled_tools or [])
+        disabled = set(self.disabled_tools or [])
+        overlap = enabled & disabled
+        if overlap:
+            raise ValueError(
+                f"enabled_tools and disabled_tools must be disjoint; overlapping: {sorted(overlap)}"
+            )
+        return self
 
 
 class AgentConfigUpdate(BaseModel):
@@ -154,10 +174,29 @@ class AgentConfigUpdate(BaseModel):
     def _validate_tool_names(cls, v):
         if not v:
             return v
+        seen = set()
+        duplicates = set()
+        for item in v:
+            if item in seen:
+                duplicates.add(item)
+            seen.add(item)
+        if duplicates:
+            raise ValueError(f"duplicate tool names: {sorted(duplicates)}")
         unknown = [n for n in v if n not in _VALID_TOOL_NAMES]
         if unknown:
             raise ValueError(f"unknown tool names: {unknown}")
         return v
+
+    @model_validator(mode="after")
+    def _validate_tools_disjoint(self) -> Self:
+        enabled = set(self.enabled_tools or [])
+        disabled = set(self.disabled_tools or [])
+        overlap = enabled & disabled
+        if overlap:
+            raise ValueError(
+                f"enabled_tools and disabled_tools must be disjoint; overlapping: {sorted(overlap)}"
+            )
+        return self
 
 
 class AgentConfigRead(BaseModel):

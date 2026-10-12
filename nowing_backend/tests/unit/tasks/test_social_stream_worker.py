@@ -190,213 +190,250 @@ async def test_create_lead_from_social_post_skips_existing_lead(
     assert session.added == []
 
 
-
 def test_social_post_event_alias_and_version():
     # 1. Alias content_snippet alone
-    e1 = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Snippet only",
-        "workspace_id": 1,
-    })
+    e1 = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Snippet only",
+            "workspace_id": 1,
+        }
+    )
     assert e1.content == "Snippet only"
     assert e1.schema_version == 1
 
     # 2. Both content and content_snippet: content wins when non-empty
-    e2 = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p2",
-        "content": "Original content",
-        "content_snippet": "Snippet content",
-        "workspace_id": 1,
-        "schema_version": 1,
-    })
+    e2 = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p2",
+            "content": "Original content",
+            "content_snippet": "Snippet content",
+            "workspace_id": 1,
+            "schema_version": 1,
+        }
+    )
     assert e2.content == "Original content"
     assert e2.schema_version == 1
 
     # P1 cases: coalesce prefers non-empty values
     # content="" + content_snippet="real" -> event.content == "real"
-    e_empty = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p_empty",
-        "content": "",
-        "content_snippet": "real",
-        "workspace_id": 1,
-    })
+    e_empty = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_empty",
+            "content": "",
+            "content_snippet": "real",
+            "workspace_id": 1,
+        }
+    )
     assert e_empty.content == "real"
 
     # content=None + content_snippet="real" -> event.content == "real"
-    e_none = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p_none",
-        "content": None,
-        "content_snippet": "real",
-        "workspace_id": 1,
-    })
+    e_none = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_none",
+            "content": None,
+            "content_snippet": "real",
+            "workspace_id": 1,
+        }
+    )
     assert e_none.content == "real"
 
     # content="real" + content_snippet="other" -> event.content == "real"
-    e_both = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p_both",
-        "content": "real",
-        "content_snippet": "other",
-        "workspace_id": 1,
-    })
+    e_both = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_both",
+            "content": "real",
+            "content_snippet": "other",
+            "workspace_id": 1,
+        }
+    )
     assert e_both.content == "real"
 
     # content="real" + content_snippet="" -> event.content == "real"
-    e_reverse = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p_rev",
-        "content": "real",
-        "content_snippet": "",
-        "workspace_id": 1,
-    })
+    e_reverse = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_rev",
+            "content": "real",
+            "content_snippet": "",
+            "workspace_id": 1,
+        }
+    )
     assert e_reverse.content == "real"
 
     # 3. Legacy content alone
-    e3 = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p3",
-        "content": "Legacy content",
-        "workspace_id": 1,
-    })
+    e3 = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p3",
+            "content": "Legacy content",
+            "workspace_id": 1,
+        }
+    )
     assert e3.content == "Legacy content"
     assert e3.schema_version == 1
 
     # 4. Explicit schema_version
-    e4 = SocialPostEvent.model_validate({
-        "platform": "facebook",
-        "external_post_id": "p4",
-        "content_snippet": "Snippet",
-        "workspace_id": 1,
-        "schema_version": 2,
-    })
+    e4 = SocialPostEvent.model_validate(
+        {
+            "platform": "facebook",
+            "external_post_id": "p4",
+            "content_snippet": "Snippet",
+            "workspace_id": 1,
+            "schema_version": 2,
+        }
+    )
     assert e4.schema_version == 2
 
 
 def test_validate_event_schema_cases():
     # Happy paths
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": 1,
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": 1,
+        }
+    )
     assert ok is True
     assert reason is None
 
     # Missing workspace_id and target_id null
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_MISSING_WORKSPACE_ID
 
     # Missing workspace_id and target_id invalid
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "target_id": "not_an_int",
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "target_id": "not_an_int",
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_MISSING_WORKSPACE_ID
 
     # P3: Missing target_id when workspace_id is provided
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": None,
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": None,
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_MISSING_TARGET_ID
 
     # Missing content (both content and content_snippet missing)
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "workspace_id": 1,
-        "target_id": 1,
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "workspace_id": 1,
+            "target_id": 1,
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_MISSING_CONTENT
 
     # Missing content (both empty strings or whitespace)
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "workspace_id": 1,
-        "target_id": 1,
-        "content": "",
-        "content_snippet": "   ",
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "workspace_id": 1,
+            "target_id": 1,
+            "content": "",
+            "content_snippet": "   ",
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_MISSING_CONTENT
 
     # Unsupported schema_version > max
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": SUPPORTED_SCHEMA_VERSION_MAX + 1,
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": SUPPORTED_SCHEMA_VERSION_MAX + 1,
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_UNSUPPORTED_SCHEMA_VERSION
 
     # P2: Non-positive schema_version (0 and -1)
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": 0,
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": 0,
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_INVALID_SCHEMA_VERSION
 
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": -1,
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": -1,
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_INVALID_SCHEMA_VERSION
 
     # Invalid schema_version (cannot parse int)
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": "abc",
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": "abc",
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_INVALID_SCHEMA_VERSION
 
     # Invalid schema_version (boolean)
-    ok, reason = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": True,
-    })
+    ok, reason = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": True,
+        }
+    )
     assert ok is False
     assert reason == DLQ_REASON_INVALID_SCHEMA_VERSION
 
@@ -406,13 +443,15 @@ def test_validate_event_schema_cases():
     assert reason == DLQ_REASON_SCHEMA_VALIDATION_ERROR
 
     # Pydantic validation error: empty platform
-    res = _validate_event_schema({
-        "platform": "",
-        "external_post_id": "p1",
-        "content_snippet": "Hi there",
-        "workspace_id": 1,
-        "target_id": 1,
-    })
+    res = _validate_event_schema(
+        {
+            "platform": "",
+            "external_post_id": "p1",
+            "content_snippet": "Hi there",
+            "workspace_id": 1,
+            "target_id": 1,
+        }
+    )
     assert res.ok is False
     assert res.dlq_reason == DLQ_REASON_SCHEMA_VALIDATION_ERROR
     assert res.errors is not None
@@ -444,7 +483,9 @@ def test_safe_serialize_payload():
 @pytest.mark.asyncio
 async def test_consumer_schema_violation_routes_to_dlq_and_xacks():
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     bad_msg = (
@@ -481,7 +522,9 @@ async def test_consumer_schema_violation_routes_to_dlq_and_xacks():
 @pytest.mark.asyncio
 async def test_consumer_missing_workspace_routes_to_dlq_and_xacks():
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     bad_msg = (
@@ -501,15 +544,24 @@ async def test_consumer_missing_workspace_routes_to_dlq_and_xacks():
 
     assert processed == 0
     assert mock_redis.xadd.await_count == 1
-    assert mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_MISSING_WORKSPACE_ID
+    assert (
+        mock_redis.xadd.await_args.args[1]["dlq_reason"]
+        == DLQ_REASON_MISSING_WORKSPACE_ID
+    )
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "1002-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "1002-0",
+    )
 
 
 @pytest.mark.asyncio
 async def test_consumer_unresolvable_target_id_in_db_routes_to_dlq_and_xacks():
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg = (
@@ -538,9 +590,16 @@ async def test_consumer_unresolvable_target_id_in_db_routes_to_dlq_and_xacks():
 
     assert processed == 0
     assert mock_redis.xadd.await_count == 1
-    assert mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_MISSING_WORKSPACE_ID
+    assert (
+        mock_redis.xadd.await_args.args[1]["dlq_reason"]
+        == DLQ_REASON_MISSING_WORKSPACE_ID
+    )
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "1003-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "1003-0",
+    )
 
 
 @pytest.mark.asyncio
@@ -557,13 +616,19 @@ async def test_dlq_xadd_failure_still_attempts_xack():
 
     # Even though xadd raised, xack was still called in finally block
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "1004-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "1004-0",
+    )
 
 
 @pytest.mark.asyncio
 async def test_consumer_runtime_failure_routes_to_dlq_and_xacks():
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg = (
@@ -599,10 +664,16 @@ async def test_consumer_runtime_failure_routes_to_dlq_and_xacks():
 
     assert processed == 0
     assert mock_redis.xadd.await_count == 1
-    assert mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    assert (
+        mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    )
     assert "Unexpected runtime crash" in mock_redis.xadd.await_args.args[1]["error"]
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "1005-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "1005-0",
+    )
 
 
 @pytest.mark.asyncio
@@ -622,8 +693,7 @@ async def test_check_stream_lag_warns_when_pending_exceeds_threshold(caplog):
     assert metrics["consumer_count"] == 3
 
     assert any(
-        "pending=2500" in record.message
-        and "consumer_count=3" in record.message
+        "pending=2500" in record.message and "consumer_count=3" in record.message
         for record in caplog.records
         if record.levelno == logging.WARNING
     )
@@ -632,7 +702,9 @@ async def test_check_stream_lag_warns_when_pending_exceeds_threshold(caplog):
 @pytest.mark.asyncio
 async def test_check_stream_lag_handles_nogroup_gracefully(caplog):
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.side_effect = ResponseError("NOGROUP No such consumer group")
+    mock_redis.xinfo_groups.side_effect = ResponseError(
+        "NOGROUP No such consumer group"
+    )
 
     with caplog.at_level(logging.WARNING):
         metrics = await _check_stream_lag(mock_redis)
@@ -658,7 +730,9 @@ async def test_check_stream_lag_handles_generic_exception_gracefully(caplog):
 @pytest.mark.asyncio
 async def test_consumer_happy_path_with_content_snippet_xacks():
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg = (
@@ -696,7 +770,11 @@ async def test_consumer_happy_path_with_content_snippet_xacks():
     assert processed == 1
     assert mock_process.await_count == 1
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "1006-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "1006-0",
+    )
     assert mock_redis.xadd.await_count == 0
 
 
@@ -706,7 +784,9 @@ async def test_consumer_upsert_sqlalchemy_error_routes_to_runtime_failure():
     from sqlalchemy.exc import SQLAlchemyError
 
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg = (
@@ -723,7 +803,9 @@ async def test_consumer_upsert_sqlalchemy_error_routes_to_runtime_failure():
     mock_redis.xreadgroup.return_value = [(STREAM_SOCIAL_RAW_POSTS, [msg])]
 
     fake_session = _FakeSession()
-    fake_session.execute = mock.AsyncMock(side_effect=SQLAlchemyError("DB deadlock/timeout"))
+    fake_session.execute = mock.AsyncMock(
+        side_effect=SQLAlchemyError("DB deadlock/timeout")
+    )
 
     with mock.patch("app.tasks.social_stream_worker.async_session_maker") as mock_maker:
         mock_ctx = mock.AsyncMock()
@@ -738,17 +820,25 @@ async def test_consumer_upsert_sqlalchemy_error_routes_to_runtime_failure():
 
     assert processed == 0
     assert mock_redis.xadd.await_count == 1
-    assert mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    assert (
+        mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    )
     assert "DB deadlock/timeout" in mock_redis.xadd.await_args.args[1]["error"]
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "1007-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "1007-0",
+    )
 
 
 @pytest.mark.asyncio
 async def test_consumer_rollback_failure_does_not_crash_consumer():
     """P5: session.rollback() raising in exception handler does not crash consumer."""
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg = (
@@ -782,9 +872,15 @@ async def test_consumer_rollback_failure_does_not_crash_consumer():
 
     assert processed == 0
     assert mock_redis.xadd.await_count == 1
-    assert mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    assert (
+        mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    )
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "1008-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "1008-0",
+    )
 
 
 @pytest.mark.asyncio
@@ -813,7 +909,9 @@ async def test_check_stream_lag_warns_when_lag_exceeds_threshold(caplog):
 async def test_consumer_throttles_lag_probe():
     """P7: _check_stream_lag is throttled to once every 30 seconds."""
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
     mock_redis.xreadgroup.return_value = []
 
@@ -908,7 +1006,9 @@ async def test_process_social_post_event_reuses_event_instance():
         workspace_id=1,
         target_id=1,
     )
-    with mock.patch("app.tasks.social_stream_worker.SocialPostEvent.model_validate") as mock_val:
+    with mock.patch(
+        "app.tasks.social_stream_worker.SocialPostEvent.model_validate"
+    ) as mock_val:
         res = await process_social_post_event(
             payload={"any": "payload"},
             event=event,
@@ -922,7 +1022,9 @@ async def test_process_social_post_event_reuses_event_instance():
 async def test_consumer_sleep_outside_session_context():
     """P13: asyncio.sleep is invoked outside async_session_maker context manager."""
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
     mock_redis.xreadgroup.return_value = [
         (
@@ -963,7 +1065,9 @@ async def test_consumer_sleep_outside_session_context():
         session_active_during_sleep.append(ctx.in_context)
 
     with (
-        mock.patch("app.tasks.social_stream_worker.async_session_maker", return_value=ctx),
+        mock.patch(
+            "app.tasks.social_stream_worker.async_session_maker", return_value=ctx
+        ),
         mock.patch(
             "app.tasks.social_stream_worker.process_social_post_event",
             return_value={"id": 1},
@@ -993,7 +1097,9 @@ def test_validation_result_bool():
 async def test_consumer_persists_lag_check_across_invocations():
     """P15: _LAG_STATE persists across run_social_stream_consumer invocations."""
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
     mock_redis.xreadgroup.return_value = []
 
@@ -1035,13 +1141,15 @@ async def test_check_stream_lag_warns_when_both_pending_and_lag_exceed(caplog):
 
 def test_validate_event_schema_pydantic_error_is_valid_json():
     """P17: ValidationError.errors() is serialized as valid JSON."""
-    res = _validate_event_schema({
-        "platform": "",
-        "external_post_id": "p1",
-        "content": "Valid content",
-        "workspace_id": 1,
-        "target_id": 1,
-    })
+    res = _validate_event_schema(
+        {
+            "platform": "",
+            "external_post_id": "p1",
+            "content": "Valid content",
+            "workspace_id": 1,
+            "target_id": 1,
+        }
+    )
     assert res.ok is False
     assert res.dlq_reason == DLQ_REASON_SCHEMA_VALIDATION_ERROR
     assert res.errors is not None
@@ -1071,38 +1179,44 @@ async def test_route_to_dlq_ensures_error_and_errors_keys_always_present():
 def test_validate_event_schema_rejects_float_and_none_versions():
     """P19 & P20: Reject non-integer float versions and schema_version=None."""
     # P19: float version 1.5
-    res_float = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_float",
-        "content": "Hi",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": 1.5,
-    })
+    res_float = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_float",
+            "content": "Hi",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": 1.5,
+        }
+    )
     assert res_float.ok is False
     assert res_float.dlq_reason == DLQ_REASON_INVALID_SCHEMA_VERSION
 
     # integer float like 1.0 is valid
-    res_float_int = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_float_int",
-        "content": "Hi",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": 1.0,
-    })
+    res_float_int = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_float_int",
+            "content": "Hi",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": 1.0,
+        }
+    )
     assert res_float_int.ok is True
     assert res_float_int.event.schema_version == 1
 
     # P20: schema_version is None
-    res_none = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_none",
-        "content": "Hi",
-        "workspace_id": 1,
-        "target_id": 1,
-        "schema_version": None,
-    })
+    res_none = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_none",
+            "content": "Hi",
+            "workspace_id": 1,
+            "target_id": 1,
+            "schema_version": None,
+        }
+    )
     assert res_none.ok is False
     assert res_none.dlq_reason == DLQ_REASON_INVALID_SCHEMA_VERSION
 
@@ -1161,7 +1275,9 @@ async def test_consumer_session_corruption_breaks_batch_early():
     from sqlalchemy.exc import SQLAlchemyError
 
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg1 = (
@@ -1187,8 +1303,12 @@ async def test_consumer_session_corruption_breaks_batch_early():
     mock_redis.xreadgroup.return_value = [(STREAM_SOCIAL_RAW_POSTS, [msg1, msg2])]
 
     fake_session = _FakeSession()
-    fake_session.execute = mock.AsyncMock(side_effect=SQLAlchemyError("Connection closed unexpectedly"))
-    fake_session.rollback = mock.AsyncMock(side_effect=SQLAlchemyError("Rollback failed on dead connection"))
+    fake_session.execute = mock.AsyncMock(
+        side_effect=SQLAlchemyError("Connection closed unexpectedly")
+    )
+    fake_session.rollback = mock.AsyncMock(
+        side_effect=SQLAlchemyError("Rollback failed on dead connection")
+    )
 
     with mock.patch("app.tasks.social_stream_worker.async_session_maker") as mock_maker:
         mock_ctx = mock.AsyncMock()
@@ -1205,10 +1325,16 @@ async def test_consumer_session_corruption_breaks_batch_early():
     # Exactly one message was routed to DLQ (the first message)
     assert mock_redis.xadd.await_count == 1
     assert mock_redis.xadd.await_args.args[1]["original_id"] == "2001-0"
-    assert mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    assert (
+        mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_RUNTIME_FAILURE
+    )
     # Exactly one message was ACK'd (the first message during DLQ routing)
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "2001-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "2001-0",
+    )
 
 
 @pytest.mark.asyncio
@@ -1218,7 +1344,9 @@ async def test_consumer_process_returns_none_routes_to_dlq():
     row 51 — `target_id`-null fallback is handled inside _validate_event_schema,
     so process-layer failure means workspace_id could not be resolved."""
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg = (
@@ -1255,17 +1383,29 @@ async def test_consumer_process_returns_none_routes_to_dlq():
     assert processed == 0
     assert mock_redis.xadd.await_count == 1
     assert mock_redis.xadd.await_args.args[1]["original_id"] == "2003-0"
-    assert mock_redis.xadd.await_args.args[1]["dlq_reason"] == DLQ_REASON_MISSING_WORKSPACE_ID
-    assert "workspace_id could not be resolved" in mock_redis.xadd.await_args.args[1]["error"]
+    assert (
+        mock_redis.xadd.await_args.args[1]["dlq_reason"]
+        == DLQ_REASON_MISSING_WORKSPACE_ID
+    )
+    assert (
+        "workspace_id could not be resolved"
+        in mock_redis.xadd.await_args.args[1]["error"]
+    )
     assert mock_redis.xack.await_count == 1
-    assert mock_redis.xack.await_args.args == (STREAM_SOCIAL_RAW_POSTS, CONSUMER_GROUP_NAME, "2003-0")
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "2003-0",
+    )
 
 
 @pytest.mark.asyncio
 async def test_lag_probe_throttled_across_iterations():
     """P26: _check_stream_lag is throttled across iterations in the same consumer run with non-empty entries."""
     mock_redis = mock.AsyncMock()
-    mock_redis.xinfo_groups.return_value = [{"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}]
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
     mock_redis.xpending.return_value = {"pending": 0}
 
     msg1 = (
@@ -1471,35 +1611,41 @@ def test_validate_event_schema_zero_and_negative_ids_count_as_missing():
     """G6 [P1]: target_id=0 / workspace_id=0 (and negatives) fail the int>0 gate
     and are treated as missing rather than valid identifiers."""
     # target_id=0 -> missing target; workspace_id present -> MISSING_TARGET_ID
-    res = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_zero_t",
-        "content_snippet": "Hello",
-        "workspace_id": 1,
-        "target_id": 0,
-    })
+    res = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_zero_t",
+            "content_snippet": "Hello",
+            "workspace_id": 1,
+            "target_id": 0,
+        }
+    )
     assert res.ok is False
     assert res.dlq_reason == DLQ_REASON_MISSING_TARGET_ID
 
     # workspace_id=0 and target_id=0 -> both missing -> MISSING_WORKSPACE_ID
-    res = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_zero_both",
-        "content_snippet": "Hello",
-        "workspace_id": 0,
-        "target_id": 0,
-    })
+    res = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_zero_both",
+            "content_snippet": "Hello",
+            "workspace_id": 0,
+            "target_id": 0,
+        }
+    )
     assert res.ok is False
     assert res.dlq_reason == DLQ_REASON_MISSING_WORKSPACE_ID
 
     # negative target_id -> missing target
-    res = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_neg_t",
-        "content_snippet": "Hello",
-        "workspace_id": 1,
-        "target_id": -5,
-    })
+    res = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_neg_t",
+            "content_snippet": "Hello",
+            "workspace_id": 1,
+            "target_id": -5,
+        }
+    )
     assert res.ok is False
     assert res.dlq_reason == DLQ_REASON_MISSING_TARGET_ID
 
@@ -1509,13 +1655,15 @@ def test_validate_event_schema_non_string_truthy_content_passes():
     has_content gate via str(content).strip() — so it is NOT dropped as
     MISSING_CONTENT. It then fails Pydantic type coercion and routes to DLQ as
     SCHEMA_VALIDATION_ERROR instead (the stage-4 contract, not the stage-2 gate)."""
-    res = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_int_content",
-        "content": 123,
-        "workspace_id": 1,
-        "target_id": 1,
-    })
+    res = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_int_content",
+            "content": 123,
+            "workspace_id": 1,
+            "target_id": 1,
+        }
+    )
     # Stage-2 content gate passed (str(123).strip() is truthy), but stage-4
     # Pydantic validation rejects int for a `str` field -> SCHEMA_VALIDATION_ERROR.
     assert res.ok is False
@@ -1598,14 +1746,16 @@ async def test_consumer_mixed_batch_valid_and_invalid_messages():
 def test_validate_event_schema_string_schema_version_from_stream():
     """G9 [P1]: Redis xadd emits every field as a string — schema_version arriving
     as "1" must parse to int 1 and validate successfully (REQ-X2 realistic shape)."""
-    res = _validate_event_schema({
-        "platform": "facebook",
-        "external_post_id": "p_str_ver",
-        "content_snippet": "String version event",
-        "workspace_id": "1",  # also arrives as string from Redis
-        "target_id": "1",
-        "schema_version": "1",
-    })
+    res = _validate_event_schema(
+        {
+            "platform": "facebook",
+            "external_post_id": "p_str_ver",
+            "content_snippet": "String version event",
+            "workspace_id": "1",  # also arrives as string from Redis
+            "target_id": "1",
+            "schema_version": "1",
+        }
+    )
     assert res.ok is True
     assert res.dlq_reason is None
     assert res.event is not None
@@ -1650,3 +1800,42 @@ async def test_route_to_dlq_entry_shape_and_payload_deserializable():
     assert call_data["original_id"] == "4006-0"
     # failed_at is an ISO-8601 timestamp string
     datetime.fromisoformat(call_data["failed_at"])
+
+
+def test_social_post_event_target_id_safe_coercion():
+    """target_id in SocialPostEvent coerces int strings and cleanly handles invalid types."""
+    # String integer coerces to positive int
+    ev = SocialPostEvent(
+        platform="facebook",
+        external_post_id="p1",
+        content="test",
+        target_id="123",
+    )
+    assert ev.target_id == 123
+
+    # Non-integer string slug coerces to None
+    ev_slug = SocialPostEvent(
+        platform="facebook",
+        external_post_id="p2",
+        content="test",
+        target_id="my-slug-url",
+    )
+    assert ev_slug.target_id is None
+
+    # Negative / zero int coerces to None
+    ev_neg = SocialPostEvent(
+        platform="facebook",
+        external_post_id="p3",
+        content="test",
+        target_id="-1",
+    )
+    assert ev_neg.target_id is None
+
+    # None remains None
+    ev_none = SocialPostEvent(
+        platform="facebook",
+        external_post_id="p4",
+        content="test",
+        target_id=None,
+    )
+    assert ev_none.target_id is None

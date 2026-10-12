@@ -79,6 +79,10 @@ class RunService:
         If an ``idempotency_key`` is provided, we first check the database for
         an existing run with that key so the replay survives Redis restarts.
         """
+        # Note: _authorize loads Automation to verify workspace permissions. Downstream,
+        # launch_run -> resolve_automation performs an intentional defensive re-query
+        # for fresh status/config. launch_run signature is kept stable across >10 callers
+        # (Telegram, webhooks, triggers, crons) rather than passing loaded entity.
         await self._authorize(automation_id, Permission.AUTOMATIONS_EXECUTE.value)
 
         # Permanent idempotency lookup (survives Redis restarts)
@@ -126,7 +130,9 @@ class RunService:
                     cached_val = await redis.get(lock_key)
                     if cached_val and str(cached_val).isdigit():
                         cached_run_id = int(cached_val)
-                        cached_run = await self.session.get(AutomationRun, cached_run_id)
+                        cached_run = await self.session.get(
+                            AutomationRun, cached_run_id
+                        )
                         if cached_run is not None:
                             return cached_run
 

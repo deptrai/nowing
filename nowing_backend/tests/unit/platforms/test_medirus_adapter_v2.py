@@ -200,7 +200,9 @@ class TestMedirusSocialAdapterV2:
         assert posts[0].post_url == "https://www.chotot.com/mua-ban-laptop/123"
 
     @pytest.mark.asyncio
-    async def test_fetch_posts_for_target_fallback_non_url_raises_target_unsupported(self):
+    async def test_fetch_posts_for_target_fallback_non_url_raises_target_unsupported(
+        self,
+    ):
         client = MedirusMcpClientWithAdmin()
         adapter = MedirusSocialAdapterV2(client=client)
         target = FakeTarget(
@@ -209,14 +211,18 @@ class TestMedirusSocialAdapterV2:
         )
 
         client.call_tool = AsyncMock(
-            side_effect=MedirusMcpError("Tool medirus_scrape not found", code="MEDIRUS_404")
+            side_effect=MedirusMcpError(
+                "Tool medirus_scrape not found", code="MEDIRUS_404"
+            )
         )
 
         with pytest.raises(TargetUnsupportedError, match="lacks valid HTTP"):
             await adapter.fetch_posts_for_target(target)
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("fallback_code", ["MEDIRUS_404", "MEDIRUS_4001", "tool_not_found"])
+    @pytest.mark.parametrize(
+        "fallback_code", ["MEDIRUS_404", "MEDIRUS_4001", "tool_not_found"]
+    )
     async def test_fetch_posts_for_target_fallback_permanent_error_raises_target_unsupported(
         self, fallback_code
     ):
@@ -229,12 +235,19 @@ class TestMedirusSocialAdapterV2:
 
         async def _call_tool(tool_name, arguments):
             if tool_name == "medirus_scrape":
-                raise MedirusMcpError("Tool medirus_scrape not found", code="MEDIRUS_404")
-            raise MedirusMcpError(f"Fallback failed: {fallback_code}", code=fallback_code)
+                raise MedirusMcpError(
+                    "Tool medirus_scrape not found", code="MEDIRUS_404"
+                )
+            raise MedirusMcpError(
+                f"Fallback failed: {fallback_code}", code=fallback_code
+            )
 
         client.call_tool = AsyncMock(side_effect=_call_tool)
 
-        with pytest.raises(TargetUnsupportedError, match=f"failed permanently with code {fallback_code}"):
+        with pytest.raises(
+            TargetUnsupportedError,
+            match=f"failed permanently with code {fallback_code}",
+        ):
             await adapter.fetch_posts_for_target(target)
 
     @pytest.mark.asyncio
@@ -248,8 +261,12 @@ class TestMedirusSocialAdapterV2:
 
         async def _call_tool(tool_name, arguments):
             if tool_name == "medirus_scrape":
-                raise MedirusMcpError("Tool medirus_scrape not found", code="MEDIRUS_404")
-            raise MedirusMcpError("Rate limit exceeded", code="MEDIRUS_4291", retry_after=45)
+                raise MedirusMcpError(
+                    "Tool medirus_scrape not found", code="MEDIRUS_404"
+                )
+            raise MedirusMcpError(
+                "Rate limit exceeded", code="MEDIRUS_4291", retry_after=45
+            )
 
         client.call_tool = AsyncMock(side_effect=_call_tool)
 
@@ -268,7 +285,9 @@ class TestMedirusSocialAdapterV2:
         )
 
         client.call_tool = AsyncMock(
-            side_effect=MedirusMcpError("Rate limit", code="MEDIRUS_4291", retry_after=30)
+            side_effect=MedirusMcpError(
+                "Rate limit", code="MEDIRUS_4291", retry_after=30
+            )
         )
 
         with pytest.raises(MedirusMcpError) as exc_info:
@@ -296,7 +315,9 @@ class TestMedirusSocialAdapterV2:
             external_post_id="fb_1",
             content="hello",
         )
-        result = await adapter.ingest_raw_post_to_stream(post, redis_client=redis_client)
+        result = await adapter.ingest_raw_post_to_stream(
+            post, redis_client=redis_client
+        )
 
         assert result is None
         redis_client.xadd.assert_not_called()
@@ -324,7 +345,9 @@ class TestMedirusSocialAdapterV2:
             external_post_id="fb_1",
             content="hello",
         )
-        result = await adapter.ingest_raw_post_to_stream(post, redis_client=redis_client)
+        result = await adapter.ingest_raw_post_to_stream(
+            post, redis_client=redis_client
+        )
 
         assert result == "123-0"
         redis_client.xadd.assert_called_once()
@@ -368,7 +391,9 @@ class TestMedirusSocialAdapterV2:
             media_urls=["https://example.com/a.jpg", "https://example.com/b.jpg"],
             raw_entities={"emails": ["x@y.z"], "phones": []},
         )
-        result = await adapter.ingest_raw_post_to_stream(post, redis_client=redis_client)
+        result = await adapter.ingest_raw_post_to_stream(
+            post, redis_client=redis_client
+        )
 
         assert result == "456-0"
         redis_client.xadd.assert_called_once()
@@ -442,6 +467,37 @@ class TestMedirusSocialAdapterV2:
             assert arguments["accountId"] == "fb_acct"
             assert arguments["proxyUrl"] == "http://proxy:8080"
             assert arguments["dryRun"] is False
+        finally:
+            CanonicalActionMatrix.reset()
+
+    async def test_fetch_posts_for_target_unpersisted_dto_sets_target_id_none(
+        self, monkeypatch
+    ):
+        """Unpersisted DTO with string slug falls back safely to targetId=None instead of leaking slug."""
+        from app.config import config
+        from app.proprietary.platforms.medirus.action_matrix import (
+            CanonicalActionMatrix,
+        )
+
+        monkeypatch.setattr(config, "MEDIRUS_USE_UNIFIED_DISPATCH", True)
+        monkeypatch.setattr(config, "MEDIRUS_LEGACY_TOOL_DEPRECATION", True)
+        CanonicalActionMatrix.reset()
+        try:
+            client = MedirusMcpClientWithAdmin()
+            adapter = MedirusSocialAdapterV2(client=client)
+            # id is None, target_id is non-integer string slug
+            target = FakeTarget(
+                "facebook_group",
+                "group-slug-xyz",
+                id=None,
+            )
+            target.workspace_id = 42
+
+            await adapter.fetch_posts_for_target(target)
+
+            call_args = client._session.call_tool.call_args
+            arguments = call_args.kwargs["arguments"]
+            assert arguments["context"] == {"targetId": None, "workspaceId": 42}
         finally:
             CanonicalActionMatrix.reset()
 

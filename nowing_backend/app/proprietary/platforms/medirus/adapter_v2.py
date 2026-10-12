@@ -31,6 +31,23 @@ from app.proprietary.platforms.medirus.models import SocialPostData
 logger = logging.getLogger(__name__)
 
 
+def _safe_int_target_id(target: Any) -> int | None:
+    """Return integer database ID for target, or None if unpersisted or non-integer.
+
+    Prevents non-integer string slugs (URLs, platform slugs) from leaking into
+    context.targetId, which would cause social_stream_worker to reject the stream
+    event with DLQ_REASON_MISSING_TARGET_ID.
+    """
+    for attr in ("id", "target_id"):
+        val = getattr(target, attr, None)
+        if val is not None and not isinstance(val, bool):
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                continue
+    return None
+
+
 def _legacy_scrape_args(
     target: Any, platform: str, action: str, action_args: dict[str, Any]
 ) -> dict[str, Any]:
@@ -42,15 +59,12 @@ def _legacy_scrape_args(
     flat alongside ``platform``/``action`` — the server dropped them into a
     missing-``args`` ``MEDIRUS_4002``.
     """
-    target_db_id = getattr(target, "id", None)
     return {
         "platform": platform,
         "action": action,
         "args": action_args,
         "context": {
-            "targetId": target_db_id
-            if target_db_id is not None
-            else getattr(target, "target_id", None),
+            "targetId": _safe_int_target_id(target),
             "workspaceId": getattr(target, "workspace_id", None),
         },
     }
@@ -385,14 +399,10 @@ class UniversalScrapeTargetMapper:
                 platform_kind, target_id_value, descriptor, action
             )
 
-        # Prefer integer ``id`` over string ``target_id`` slug; ``id`` falsy
-        # values (``0``, ``None``) must still fall back via explicit None-check,
-        # not truthiness — ``0`` is a valid DB id in some test fixtures.
-        target_db_id = getattr(target, "id", None)
+        # Prefer integer ``id`` over string ``target_id`` slug; non-integer slugs
+        # fall back to None to prevent false DLQ in social_stream_worker.
         context = {
-            "targetId": target_db_id
-            if target_db_id is not None
-            else getattr(target, "target_id", None),
+            "targetId": _safe_int_target_id(target),
             "workspaceId": getattr(target, "workspace_id", None),
         }
 

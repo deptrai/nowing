@@ -58,7 +58,7 @@
   - **Action:** Resolved — frontend UI, chat mode routing, slash prompt, quick chip, artifact card and panel rendering implemented and verified (tsc + biome green).
   - **Reason / when to revisit:** Implemented 2026-08-26; remaining work is Playwright E2E full-stack run.
 
-## Deferred from: code review of 4-8e-ci-deploy-gate-for-chat-regression (2026-09-02)
+## Deferred from: code review of 4-8e-ci-deploy-gate-for-chat-regression (2026-09-02) — TRIAGED 2026-10-11 (1 open — xem section cuối file)
 
 - **Workflow references non-existent GitHub Action versions [chat-regression-gate.yml:44,47,52] — high**
 - **Missing dataset ingestion step before running benchmark [chat-regression-gate.yml:68-74] — medium**
@@ -214,7 +214,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (best-effort persistence deferred to ingest service hardening.)
   - **Reason / when to revisit:** Pre-existing `NowingIngestService` reliability debt; not introduced by Story 14.2a. Revisit when chainlens ingest durability is hardened or the service persistence contract is centralized.
 
-## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24)
+## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24) — RESOLVED 2026-10-11 (DISMISSED confirmed)
 
 - **Finding:** Pre-reserve atomic rate limiter bucket before LLM call in `extract_budget.py:270`.
   - **Action:** **DISMISSED** — pre-flight credit reservation is handled by capability billing gate; atomic token bucket in extract_budget is rate-limit protection only.
@@ -256,7 +256,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (no `DELETE /users` or `DELETE /workspaces/{id}/members` endpoint exists to remove the invited member user after the test. Cannot resolve without a backend API change.)
   - **Reason / when to revisit:** Pre-existing E2E cleanup pattern; revisit during test-hygiene sprint.
 
-## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
+## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22) — RESOLVED 2026-10-11 (DISMISSED confirmed — owned by Story 26.x)
 
 - **Finding:** Cross-cutting `billing_event_service.py` refund/relock code is pre-existing and not introduced by Story 24.7.
   - **Action:** **DISMISSED** — pre-existing code owned by Story 26.x contact-unlock/refund.
@@ -271,7 +271,7 @@
   - **Action:** Resolved from: 24-6-two-way-ai-outreach-auto-reply-agent.md.
   - **Resolution:** Added `POST /api/v1/gateway/bindings/{binding_id}/send` in `app/routes/gateway_webhook_routes.py`; on success it calls `pause_auto_reply(str(binding.id))` for 24h. Unit test `tests/unit/gateway/test_webhook_routes.py::test_send_message_to_binding_pauses_auto_reply` passes.
 
-## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21) — RESOLVED 2026-10-11 (all findings DISMISSED/allocated/resolved)
 
 - **Finding:** `FakeAsyncSession` seam in `workspace_credit_service.py:141-146,322-328` (`_deduct_credits_fake`, `_record_spend_fake`) lets unit tests exercise fake paths instead of production `UPDATE ... WHERE ... RETURNING` SQL.
   - **Action:** **DISMISSED** — pre-existing test architecture seam; preserved for backwards compatibility.
@@ -326,7 +326,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (functional logging exists; structured logs and metrics are a production-hardening follow-up.)
   - **Reason / when to revisit:** Functional logging exists; structured logs and metrics are a production-hardening follow-up, not a 26.2 launch blocker and not in the ACs.
 
-## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21) — RESOLVED 2026-10-11 (DISMISSED confirmed — belongs to Stories 25.1/24.5/24.2/24.4/25.2)
 
 - **Finding:** `ImpersonationGuardMiddleware` and CORS regex for `chrome-extension://` origins were added in the 24.3 diff but belong to Story 25.1 / 24.5.
   - **Action:** **DISMISSED** — components belong to completed Stories 25.1 and 24.5; verified integrated in main app middleware pipeline.
@@ -381,7 +381,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (CRM UI tabs deferred to frontend story.)
   - **Reason / when to revisit:** Frontend contracts and UI components are scoped to Story 21.6 (Zalo Integration) and Story 21.13 (Multi-Table Tabs).
 
-## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17)
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17) — RESOLVED 2026-10-11 (duplicate of 08-21 block, DISMISSED confirmed)
 
 - **Finding:** Scope creep từ story khác trong diff 24.3: `ImpersonationGuardMiddleware` và chỉnh CORS regex trong `app/app.py` thuộc Story 25.1/24.5.
   - **Action:** **DISMISSED** — components belong to completed Stories 25.1 and 24.5; verified integrated in main app middleware pipeline.
@@ -662,7 +662,7 @@
   - **Action:** Resolved. Updated `_charge_platform_meter` in `app/capabilities/core/billing.py` to detect `output.degraded`, record a 0-cost `TokenUsage` audit row, and skip `service.charge`. This fix is cross-platform and applies to `batdongsan`, `muaban_bds`, and `chotot` platform scrapers.
 - **Verification:** `ruff check app/capabilities/core/billing.py` ✅ / `pytest tests/unit/capabilities/test_billing.py -q` ✅ 63 passed / `pytest tests/unit/capabilities/batdongsan ...` ✅ 44 passed.
 
-## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-05)
+## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-05) — TRIAGED 2026-10-11 (3 open — xem section cuối file)
 
 - Double-submit on `POST /automations/{id}/run` — no idempotency key; two concurrent POSTs create two PENDING runs. Pre-existing pattern (Telegram `/run` has same gap). Needs idempotency key or dedup lock.
 - Double query in `RunService.launch` — `_authorize` loads automation via `session.get`, then `launch_run`→`resolve_active_automation` re-queries via `select`. Minor inefficiency; defensive double-check. Could pass the already-loaded automation into `launch_run`.
@@ -670,13 +670,13 @@
 - No test for provider-down SSE scenario (connection reset mid-stream in `nowing_chat`). Test gap — `stream_sse` raises `ToolError` on `httpx.RequestError` but no test covers mid-stream reset.
 - No test for credit/quota exhaustion during chat (402 mid-stream). Test gap — `_FAILURE_HINTS[402]` exists but no chat test asserts the 402 path.
 
-## Deferred from: code review of 2-6-indeed-jobs-scraper (2026-08-08)
+## Deferred from: code review of 2-6-indeed-jobs-scraper (2026-08-08) — TRIAGED 2026-10-11 (1 open — xem section cuối file)
 
 - No timeout on detail page fetch — `scraper.py:590-622` calls `WebCrawlerConnector.crawl_url()` and `StealthyFetcher.fetch()` without explicit timeout. Would need architectural change to thread timeout through connector. Pre-existing pattern across all scrapers.
 - No test for multi-page pagination — `test_scraper.py` tests `max_items=2` but doesn't test `max_pages > 1`. Test gap, not a code bug.
 - Billing rate 5000 vs spec's recommended 3500 — `INDEED_SCRAPE_MICROS_PER_ITEM` defaults to 5000, spec recommends ~3500. Business decision, not a code bug.
 
-## Deferred from: code review of 2-10-exa-mcp-search-connector (2026-08-08)
+## Deferred from: code review of 2-10-exa-mcp-search-connector (2026-08-08) — RESOLVED 2026-10-11 (pre-existing LangGraph pattern, dismissed)
 
 - Registry shared across concurrent tool calls — pre-existing pattern from capability tools; LangGraph state merge handles reconciliation. Not introduced by this diff.
 
@@ -770,7 +770,7 @@
   - **Action:** Resolved from: code review of 25-2-admin-user-lifecycle-management (2026-09-11). Verified `nowing_web` tsc type checking succeeds with no errors in `admin-users-api.service.ts`.
   - **Reason / when to revisit:** Pre-existing TypeScript error unrelated to the 24.3 diff. Revisit when Story 25.1 (Multi-Tenant User & Workspace Hub) or the admin-users refactor is next reviewed.
 
-## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11)
+## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11) — RESOLVED 2026-10-11 (migrations b8b3fae31175 + e5b50d5e687e landed)
 
 - ~~**Finding:** `MemoryRelation` has no `client_id` and `MemoryRepository.add_relation` does not set tenant GUCs, so a workspace member could create a relation that spans clients.~~
   - **Resolution (2026-08-11):** Added `client_id` to `MemoryRelation`, composite index, RLS policies in migration `b8b3fae31175`, and hardened `MemoryRepository.add_relation` to derive scope from the source memory, set tenant GUCs, and reject cross-workspace/cross-client targets.
@@ -873,7 +873,7 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (DocumentsSidebar.tsx component test requires frontend test infrastructure not yet in place for this component.)
 - **Reason / when to revisit:** Behavior change từ `openEditorPanel` sang `openDocumentTab` nằm ngoài scope rõ ràng của Story 7.4; cần xử lý khi test khung tab/document được triển khai hoặc khi refactor DocumentsSidebar.
 
-## Tech-debt: Epic 13 code deprecation (2026-08-08)
+## Tech-debt: Epic 13 code deprecation (2026-08-08) — RESOLVED 2026-10-11 (cleanup landed commit 542b84d61; td-8 signed off)
 
 - **Source:** SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md` adopted.
 - **Issue:** `canonical_entities` tables, migrations, merge logic, and search surfaces (Stories 13.1–13.3, Epic 13) are now out of scope because `chainlens-research` owns the canonical index. Keeping the code in `develop` risks future features coupling to a deprecated local index.
@@ -975,7 +975,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   resolved: 2026-09-13 — duplicate of earlier topcv-scraper defer item; tracked once.
   evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.
 
-## Deferred from: code review of 18-3-agent-registry deferred resolution (2026-08-10)
+## Deferred from: code review of 18-3-agent-registry deferred resolution (2026-08-10) — TRIAGED 2026-10-11 (5 open — xem section cuối file)
 
 - Tool catalog tools stored in `AgentConfig` may still be ignored by the main-agent runtime because subagent/MCP dispatch is environment-driven.
 - Admin `PATCH` has no optimistic locking (`updated_at` comparison) — acceptable last-write-wins for the current admin surface.
@@ -984,7 +984,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - Max-length boundary tests and tests for enabled/disabled tool overlap are out of scope for this chunk.
 - `enabled_tools` / `disabled_tools` are not validated as disjoint and are not de-duplicated; currently harmless.
 
-## Deferred from: code review of 18-4-agentconfig-prompt-injection (2026-08-10)
+## Deferred from: code review of 18-4-agentconfig-prompt-injection (2026-08-10) — TRIAGED 2026-10-11 (3 open — xem section cuối file)
 
 - OpenTelemetry metrics for agent prompt/tool filter usage are not added; audit logs cover the merge event.
 - `enabled_tools` / `disabled_tools` overlap and duplicate-name validation is not enforced in the schema.
@@ -1727,13 +1727,13 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** Paused target waits `cooldown + scrape_interval` before becoming due again (`social_medirus_ingest.py:370-374`). `_pause_target` pushes `last_scraped_at` into the future by `cooldown`, then the scheduler also subtracts `scrape_interval_minutes` from `now` — so a paused target's effective resume is `cooldown + scrape_interval`, longer than the canonical `cooldown` alone.
   - **Action:** Resolved 2026-09-14 — `_check_and_trigger_social_targets` due-check now branches by status. `paused` targets are due when `last_scraped_at <= now` (cooldown expired); `active` targets keep `last_scraped_at <= now - scrape_interval_minutes`. Tests `test_check_social_targets_paused_due_when_cooldown_expired` and `test_check_social_targets_paused_not_due_during_cooldown` cover both branches.
 
-## Deferred from: code review of story-36.5 (2026-09-14)
+## Deferred from: code review of story-36.5 (2026-09-14) — RESOLVED 2026-10-11 (wontfix-justified: 30s probe trade-off accepted at review)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-5-stream-consumer-schema-contract-dlq.md`
   summary: `_LAG_STATE` module-global throttle ineffective across multi-process Celery workers — each process probes independently
   evidence: Review finding (social_stream_worker.py:64); trade-off accepted — probe cost is low at 30s intervals
 
-## Deferred from: code review of story-36.6b (2026-09-15)
+## Deferred from: code review of story-36.6b (2026-09-15) — TRIAGED 2026-10-11 (1 open — xem section cuối file)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: `_facebook_group_url` / `_facebook_page_url` use case-sensitive `startswith("http")` — `" HTTPS://..."` or `"https..."` with leading whitespace produces malformed URL
@@ -1751,7 +1751,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   summary: `MEDIRUS_USE_UNIFIED_DISPATCH` and `MEDIRUS_LEGACY_TOOL_DEPRECATION` are absent from `nowing_backend/.env.example` — operators have no env-doc reference for the two flags
   evidence: Review finding; `MEDIRUS_STREAM_SINGLE_WRITER_ENABLED` documented at .env.example:788 but the 36.6a/36.6b flags are not
 
-## Deferred from: code review of story-36.6b second-pass (2026-09-15)
+## Deferred from: code review of story-36.6b second-pass (2026-09-15) — RESOLVED 2026-10-11 (all 4 test gaps fixed in commit 318b40113)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: `map_async(target)` with `client=None` not covered when both flags ON — only explicit client arg tested
@@ -1795,7 +1795,7 @@ Verification: pytest tests/unit/platforms/test_medirus_*.py + test_canonical_act
 
 All items previously deferred from these reviews were resolved in a follow-up pass — none remain open.
 
-## Deferred from: code review of spec-38-2-voice-agent-worker-runtime-silero-vad-streaming.md (2026-09-18)
+## Deferred from: code review of spec-38-2-voice-agent-worker-runtime-silero-vad-streaming.md (2026-09-18) — RESOLVED 2026-10-11 (voice dispatcher landed in Story 38.7, commit 4b2776b0f)
 - Implement `"voice"` channel dispatcher in Sequencer [app/services/sequencer/dispatch.py:508] — deferred: out-of-scope for Story 38.2 worker runtime; belongs to Story 38.7 outbound trigger campaign integration.
 
 ## 2026-09-20 — ChainLens contents review deferrals (Story 20.5)
@@ -1965,3 +1965,36 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   production credentials but the contract path is verified end-to-end.
 - ~~Browser verification~~ DONE 2026-09-23 (Chrome MCP, ws 46): tiers,
   slider, modal, countdown tick, fail-closed 503s all verified live.
+
+---
+
+## Triage sweep 2026-10-11 — Open items còn lại (14 findings, 13 unique) — RESOLVED 2026-10-12 via spec-debt-sweep-open-findings.md
+
+Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng RESOLVED marker, 6 block TRIAGED. Danh sách 14 findings dưới đây đã được xử lý hoàn toàn theo `_bmad-output/implementation-artifacts/spec-debt-sweep-open-findings.md`:
+
+### Block: 4-8e-ci-deploy-gate-for-chat-regression — RESOLVED
+- **Integration test thiếu cho gate-failure notification path**: Resolved. Test `test_notify_gate_failure_called_on_gate_violation` trong `nowing_evals/tests/suites/chat/test_regression.py`.
+
+### Block: 7-7-mcp-server-tool-expansion — RESOLVED
+- **Double query trong `RunService.launch`**: Resolved. Documented intentional defensive re-query trong `nowing_backend/app/automations/services/run.py:81-84`.
+- **Test gap — provider-down SSE mid-stream**: Resolved. Test `test_chat_stream_sse_request_error_mid_stream_raises_tool_error` trong `nowing_mcp/tests/test_chat_tool.py`.
+- **Test gap — 402 mid-stream**: Resolved. Test `test_chat_stream_sse_402_mid_stream_raises_tool_error` trong `nowing_mcp/tests/test_chat_tool.py`.
+
+### Block: 2-6-indeed-jobs-scraper — RESOLVED
+- **Test gap — multi-page pagination**: Resolved. Test `test_respects_max_pages_across_multiple_pages` trong `nowing_backend/tests/unit/proprietary/platforms/indeed/test_scraper.py`.
+
+### Block: 18-3-agent-registry — RESOLVED
+- **Tool catalog tools bị main-agent runtime bỏ qua**: Resolved. Documented by-design filter trong `nowing_backend/app/agents/chat/multi_agent_chat/main_agent/runtime/factory.py:213-217`.
+- **FE không pre-validate `client_id`**: Resolved. Trim `client_id`, handle và toast rõ ràng 400 error từ backend API trong `nowing_web/app/admin/agent-registry/page.tsx`.
+- **UI soft-deleted agents + char counter**: Resolved. Added character counter `x/8000` và `is_active` filter (All / Active / Inactive) trong `nowing_web/app/admin/agent-registry/page.tsx`.
+- **Boundary tests thiếu**: Resolved. Tests max-length boundary và overlap trong `nowing_backend/tests/integration/routes/test_admin_agent_registry.py`.
+- **`enabled_tools`/`disabled_tools` overlap không được validate**: Resolved. `_validate_tools_disjoint` model_validator và deduplication trong `nowing_backend/app/schemas/agent_config.py` và unit tests `tests/unit/schemas/test_agent_config.py`.
+
+### Block: 18-4-agentconfig-prompt-injection — RESOLVED
+- **`platform_metadata` concurrent updates không log/serialize**: Resolved. Audit log structured snapshot trong `nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py:233-241`.
+- **Render-time size check thiếu**: Resolved. 4096-byte hard cap với marker truncate trong `nowing_backend/app/tasks/chat/streaming/flows/new_chat/input_state.py:284-301` và unit tests `tests/unit/tasks/chat/test_new_chat_orchestrator.py`.
+- **`enabled_tools`/`disabled_tools` overlap**: Resolved chung tại `schemas/agent_config.py`.
+
+### Block: story-36.6b — RESOLVED
+- **`context.targetId` fallback string slug**: Resolved. `_safe_int_target_id` trong `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` và safe target_id coercion trong `nowing_backend/app/tasks/social_stream_worker.py`. Unit tests trong `test_medirus_adapter_v2.py` và `test_social_stream_worker.py`.
+

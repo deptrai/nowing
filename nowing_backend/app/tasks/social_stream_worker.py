@@ -110,6 +110,18 @@ class SocialPostEvent(BaseModel):
     benchmark_health: str | None = None
     benchmark_alert: bool | str | None = False
 
+    @field_validator("target_id", mode="before")
+    @classmethod
+    def _coerce_target_id(cls, v: Any) -> int | None:
+        """Safely coerce target_id to a positive integer or None."""
+        if v is None or isinstance(v, bool):
+            return None
+        try:
+            val = int(v)
+            return val if val > 0 else None
+        except (ValueError, TypeError):
+            return None
+
     @model_validator(mode="before")
     @classmethod
     def _coalesce_content_alias(cls, data: Any) -> Any:

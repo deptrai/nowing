@@ -108,7 +108,9 @@ async def create_multi_agent_chat_deep_agent(
             workspace_id
         )
 
-    except Exception as e:  # connector discovery failure; exclude connector subagents this turn
+    except (
+        Exception
+    ) as e:  # connector discovery failure; exclude connector subagents this turn
         logging.warning(
             "Connector/doc-type discovery failed; excluding connector subagents this turn: %s",
             e,
@@ -155,7 +157,9 @@ async def create_multi_agent_chat_deep_agent(
     _t0 = time.perf_counter()
     try:
         mcp_tools_by_agent = await load_mcp_tools_by_connector(db_session, workspace_id)
-    except Exception as e:  # MCP tool discovery failure; degrade to builtins-only subagents
+    except (
+        Exception
+    ) as e:  # MCP tool discovery failure; degrade to builtins-only subagents
         # Degrade to builtins-only rather than aborting the turn: a transient
         # DB or MCP-server hiccup should not deny the user a response.
         logging.warning(
@@ -209,6 +213,10 @@ async def create_multi_agent_chat_deep_agent(
 
     modified_disabled_tools = list(disabled_tools) if disabled_tools else []
 
+    # Note: tools outside MAIN_AGENT_NOWING_TOOL_NAMES are filtered out by-design
+    # (decision 2026-10-12 Luisphan). The main agent acts as a supervisor/router
+    # exposing only core Nowing tools; external connectors, MCP tools, and specialist
+    # domain tools are dispatched to subagents rather than mounted on the main agent.
     if enabled_tools is not None:
         main_agent_enabled_tools = [
             n for n in enabled_tools if n in MAIN_AGENT_NOWING_TOOL_NAMES

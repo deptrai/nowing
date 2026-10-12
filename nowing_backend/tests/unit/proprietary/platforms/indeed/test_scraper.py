@@ -139,6 +139,71 @@ class TestScraperOrchestration:
 
         assert len(out["items"]) == 2
 
+    @pytest.mark.asyncio
+    async def test_respects_max_pages_aggregates_multiple_pages(self, monkeypatch):
+        """AC-1/Finding 9: max_pages=2 fetches both pages and aggregates results up to max_items."""
+        monkeypatch.setattr(
+            "app.proprietary.platforms.indeed.scraper.config.INDEED_PAGE_DELAY_S", 0
+        )
+        card_p1 = {
+            "id": "indeed:card_p1",
+            "title": "Engineer 1",
+            "company": "Co 1",
+            "location": "Loc 1",
+            "source": "indeed",
+            "source_url": "https://indeed.com/viewjob?jk=card_p1",
+            "benefits": [],
+        }
+        card_p2 = {
+            "id": "indeed:card_p2",
+            "title": "Engineer 2",
+            "company": "Co 2",
+            "location": "Loc 2",
+            "source": "indeed",
+            "source_url": "https://indeed.com/viewjob?jk=card_p2",
+            "benefits": [],
+        }
+        search_starts: list[int] = []
+
+        async def _fake_search(
+            keyword: str,
+            location: str,
+            radius: int,
+            sort: str,
+            start: int,
+        ) -> str:
+            search_starts.append(start)
+            return f"<html>page {start}</html>"
+
+        def _fake_parse(html: str) -> list[dict[str, Any]]:
+            if "page 0" in html:
+                return [dict(card_p1)]
+            return [dict(card_p2)]
+
+        async def _fake_detail(url: str) -> dict[str, Any]:
+            return {}
+
+        monkeypatch.setattr(
+            "app.proprietary.platforms.indeed.scraper._fetch_search_page", _fake_search
+        )
+        monkeypatch.setattr(
+            "app.proprietary.platforms.indeed.scraper._parse_search_page", _fake_parse
+        )
+        monkeypatch.setattr(
+            "app.proprietary.platforms.indeed.scraper._fetch_detail_page", _fake_detail
+        )
+
+        out = await scrape_indeed(
+            {"keyword": "data engineer", "max_items": 2, "max_pages": 2}
+        )
+
+        assert out["degraded"] is False
+        assert len(out["items"]) == 2
+        assert len(search_starts) == 2
+        assert search_starts[0] == 0
+        assert search_starts[1] == 1
+        assert [it["id"] for it in out["items"]] == ["indeed:card_p1", "indeed:card_p2"]
+
 
 class TestScraperFailureModes:
     """AC-3: handles anti-bot blocks."""

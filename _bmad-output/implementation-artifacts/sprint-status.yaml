@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '10-11-2026 04:04'
+last_updated: '10-12-2026 16:48'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -363,31 +363,31 @@ development_status:
   31-2-strict-cname-dns-ingress-ownership-verification: done
   31-3-ast-static-eval-policy-for-dynamic-jsx-expression-matching-i: done
   31-4-entitlement-driven-presentation-studio-format-selection-from: done
-  epic-31-retrospective: optional
+  epic-31-retrospective: done
 
   epic-32: done
   32-1-humanlivetakeoverpopover-ui-with-countdown-timer-and-abort-s: done
   32-2-chrome-extension-chrome-debugger-ondetach-recovery-reconnect: done
   32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: done
-  epic-32-retrospective: optional
+  epic-32-retrospective: done
 
   epic-33: done
   33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
   33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
   33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
-  epic-33-retrospective: optional
+  epic-33-retrospective: done
 
   epic-34: done
   34-1-bi-directional-deal-stage-activity-synchronization-for-hubsp: done
   34-2-web-admin-management-endpoints-for-telegram-userbots-monitor: done
   34-3-dedicated-crm-deal-pipeline-customer-activity-timeline-ui-ta: done
-  epic-34-retrospective: optional
+  epic-34-retrospective: done
 
   epic-35: done
   35-1-redis-consumer-group-pending-message-auto-claim-xautoclaim-d: done
   35-2-o-n-log-n-spatial-windowed-deduplication-for-mass-entity-dat: done
   35-3-per-platform-scraper-failure-metrics-sse-streaming-idle-hear: done
-  epic-35-retrospective: optional
+  epic-35-retrospective: done
 
   epic-36: done
   36-1-wire-x_crawl_post-fallback-graceful-unsupported-marking-p0-u: done
@@ -914,3 +914,124 @@ action_items:
     owner: "dev"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-31-retro-item-28-bổ-sung-telemetry-giám-sát-mức-tiêu-thụ"
+    epic: 31
+    action: "Bổ sung telemetry giám sát mức tiêu thụ tài nguyên cgroup (OOM/throttling)
+      của container Dokploy"
+    owner: "devops"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-31-retro-2026-10-11.md"
+  - id: "epic-31-retro-item-29-thiết-lập-synthetic-probe-định-kỳ-kiểm-t"
+    epic: 31
+    action: "Thiết lập synthetic probe định kỳ kiểm tra xác thực DNS TXT / CNAME trên
+      staging/production"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-31-retro-2026-10-11.md"
+  - id: "epic-32-retro-item-30-bổ-sung-kiểm-tra-fail-closed-hoặc-cảnh-b"
+    epic: 32
+    action: "Bổ sung kiểm tra fail-closed hoặc cảnh báo khởi động trong production
+      khi CDP_SESSION_SECRET giữ giá trị mặc định trong app/config/dsh.py"
+    owner: "security-engineer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-32-retro-2026-10-11.md"
+  - id: "epic-32-retro-item-31-tái-cấu-trúc-phân-tách-router-dsh_routes"
+    epic: 32
+    action: "Tái cấu trúc phân tách router dsh_routes.py (779 dòng) thành các router
+      chuyên biệt (missions.py, cdp.py, takeover.py)"
+    owner: "backend-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-32-retro-2026-10-11.md"
+  - id: "epic-32-retro-item-32-xây-dựng-playwright-test-fixture-tải-ext"
+    epic: 32
+    action: "Xây dựng Playwright test fixture tải extension MV3 trong CI để kiểm thử
+      luồng chrome.debugger.onDetach và takeover popover thực tế trên Chromium"
+    owner: "qa-lead"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-32-retro-2026-10-11.md"
+  - id: "epic-32-retro-item-33-nghiên-cứu-nâng-cấp-trạng-thái-activedeb"
+    epic: 32
+    action: "Nghiên cứu nâng cấp trạng thái activeDebuggeeTabId trong CdpBridge thành
+      Map<number, SessionContext> nhằm hỗ trợ đa tab đồng thời trong tương lai"
+    owner: "frontend-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-32-retro-2026-10-11.md"
+  - id: "epic-33-retro-item-34-bổ-sung-logic-tìm-kiếm-và-ẩn-xóa-bản-ghi"
+    epic: 33
+    action: "Bổ sung logic tìm kiếm và ẩn/xóa bản ghi SocialPost liên kết với số điện
+      thoại hoặc email bị purge trong CompliancePurgeService"
+    owner: "dev-backend"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-33-retro-2026-10-11.md"
+  - id: "epic-33-retro-item-35-xác-định-chính-sách-hoàn-trả-tín-dụng-cr"
+    epic: 33
+    action: "Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu
+      contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu"
+    owner: "product-owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-33-retro-2026-10-11.md"
+  - id: "epic-33-retro-item-36-viết-tài-liệu-hướng-dẫn-vận-hành-cho-sec"
+    epic: 33
+    action: "Viết tài liệu hướng dẫn vận hành cho SecOps (SOP) về quy trình xoay vòng
+      SECRET_KEY và kiểm tra hoàn thành rotate_encryption trước khi gỡ bỏ OLD_SECRET_KEY"
+    owner: "devops"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-33-retro-2026-10-11.md"
+  - id: "epic-34-retro-item-37-chuyển-cơ-chế-xác-thực-của-endpoint-sale"
+    epic: 34
+    action: "Chuyển cơ chế xác thực của endpoint Salesforce webhook sang fail-closed:
+      từ chối nếu SALESFORCE_WEBHOOK_SECRET rỗng hoặc không khớp"
+    owner: "dev-backend"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-34-retro-2026-10-11.md"
+  - id: "epic-34-retro-item-38-sửa-3-cảnh-báo-linter-biome-trong-worksp"
+    epic: 34
+    action: "Sửa 3 cảnh báo linter Biome trong WorkspaceActivityTimeline.tsx (thay
+      thế any bằng type an toàn và chuẩn hóa hook dependencies với useCallback)"
+    owner: "dev-frontend"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-34-retro-2026-10-11.md"
+  - id: "epic-34-retro-item-39-bổ-sung-integration-test-cho-endpoint-we"
+    epic: 34
+    action: "Bổ sung integration test cho endpoint webhook CRM để kiểm thử trọn vẹn
+      luồng transaction cập nhật Lead và CrmSyncLog trên cơ sở dữ liệu thật"
+    owner: "test-engineer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-34-retro-2026-10-11.md"
+  - id: "epic-35-retro-item-40-bổ-sung-cơ-chế-đếm-số-lần-delivery-attem"
+    epic: 35
+    action: "Bổ sung cơ chế đếm số lần delivery attempts (SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS
+      = 5) cho XAUTOCLAIM trong social_stream_worker.py để đẩy các tin nhắn độc gây
+      sập tiến trình liên tục vào DLQ (stream:social:dead_letter)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-35-retro-2026-10-11.md"
+  - id: "epic-35-retro-item-41-tích-hợp-spatialwindoweddeduplicator-vào"
+    epic: 35
+    action: "Tích hợp SpatialWindowedDeduplicator vào các luồng xử lý thực tế (bds_aggregator
+      hoặc batch ingest), đồng thời bổ sung generator streaming interface để đảm bảo
+      giới hạn bộ nhớ"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-35-retro-2026-10-11.md"
+  - id: "epic-35-retro-item-42-đấu-nối-lệnh-gọi-record_scraper_ingest_f"
+    epic: 35
+    action: "Đấu nối lệnh gọi record_scraper_ingest_failure(platform, reason) vào
+      các điểm bắt lỗi của platform scrapers (batdongsan, muaban_bds, facebook, medirus)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-35-retro-2026-10-11.md"
+  - id: "epic-35-retro-item-43-bổ-sung-integration-test-với-redis-cho-l"
+    epic: 35
+    action: "Bổ sung integration test với Redis cho luồng XAUTOCLAIM và route test
+      cho SSE idle heartbeat (/dsh/cdp/stream)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-35-retro-2026-10-11.md"
+  - id: "epic-35-retro-item-44-chuẩn-hóa-hàm-tách-từ-trong-spatial_wind"
+    epic: 35
+    action: "Chuẩn hóa hàm tách từ trong spatial_windowed_dedup.py bằng cách tích
+      hợp tiện ích remove_diacritics từ location_normalize"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-35-retro-2026-10-11.md"

@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import html
+import json
 from collections.abc import AsyncGenerator
 from types import SimpleNamespace
 from typing import Any
@@ -499,3 +501,60 @@ class TestStreamNewChatAgentAndMetadata:
             "{" not in agent_config.system_instructions
             or "{resolved_today}" in agent_config.system_instructions
         )
+
+    def test_render_platform_metadata_under_cap_not_truncated(self) -> None:
+        """Metadata <= 4KB is rendered verbatim without truncation marker."""
+        from app.tasks.chat.streaming.flows.new_chat.input_state import (
+            _render_platform_metadata,
+        )
+
+        metadata = {"source": "bdsai", "listing_id": 12345}
+        result = _render_platform_metadata("client1", "agent1", metadata)
+        assert result is not None
+        assert "<platform_metadata>" in result
+        assert "[truncated]" not in result
+        assert "listing_id" in result
+
+    def test_render_platform_metadata_exceeding_cap_truncated_with_marker(self) -> None:
+        """Metadata > 4KB is truncated at 4096 bytes and includes [truncated] marker."""
+        from app.tasks.chat.streaming.flows.new_chat.input_state import (
+            _render_platform_metadata,
+        )
+
+        # Build payload > 4KB
+        large_metadata = {
+            "key1": "a" * 3000,
+            "key2": "b" * 3000,
+        }
+        result = _render_platform_metadata("client1", "agent1", large_metadata)
+        assert result is not None
+        assert "[truncated]" in result
+        # Extract json payload inside <platform_metadata> ... </platform_metadata>
+        lines = result.strip().split("\n")
+        # lines: <platform_metadata>, instructions, client_id, agent_id, {payload}, </platform_metadata>
+        payload_line = lines[-2]
+        raw_json_str = html.unescape(payload_line)
+        parsed = json.loads(raw_json_str)
+        # Final JSON-encoded bytes must be <= 4096
+        assert len(json.dumps(parsed, ensure_ascii=False).encode("utf-8")) <= 4096
+        assert "[truncated]" in json.dumps(parsed)
+
+    def test_render_platform_metadata_with_quotes_and_escapes_respects_cap(self) -> None:
+        """Payload with many quotes/newlines (which expand in json.dumps) strictly respects 4096 cap."""
+        from app.tasks.chat.streaming.flows.new_chat.input_state import (
+            _render_platform_metadata,
+        )
+
+        # Quotes expand to \" in JSON
+        heavy_quotes = {
+            "text": '"' * 5000,
+            "nested": "\n\t" * 1000,
+        }
+        result = _render_platform_metadata("client1", "agent1", heavy_quotes)
+        assert result is not None
+        assert "[truncated]" in result
+        lines = result.strip().split("\n")
+        raw_json_str = html.unescape(lines[-2])
+        parsed = json.loads(raw_json_str)
+        assert len(json.dumps(parsed, ensure_ascii=False).encode("utf-8")) <= 4096
+

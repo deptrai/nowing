@@ -279,6 +279,9 @@ def _render_query_with_context(
     return agent_user_query
 
 
+_MAX_PLATFORM_METADATA_BYTES = 4096
+
+
 def _render_platform_metadata(
     client_id: str | None,
     agent_id: str | None,
@@ -287,6 +290,61 @@ def _render_platform_metadata(
     """Render untrusted platform metadata as a labeled, non-secret prompt block."""
     if not platform_metadata:
         return None
+    raw_json = json.dumps(platform_metadata, ensure_ascii=False)
+    raw_bytes = len(raw_json.encode("utf-8"))
+    if raw_bytes > _MAX_PLATFORM_METADATA_BYTES:
+        logger.warning(
+            "platform_metadata exceeds 4KB cap (%d bytes); truncated for prompt",
+            raw_bytes,
+        )
+        capped: dict[str, Any] = {"_truncated": "[truncated]"}
+        for k, v in platform_metadata.items():
+            if k == "_truncated":
+                continue
+            candidate = {**capped, k: v}
+            if (
+                len(json.dumps(candidate, ensure_ascii=False).encode("utf-8"))
+                <= _MAX_PLATFORM_METADATA_BYTES
+            ):
+                capped[k] = v
+            elif isinstance(v, str):
+                marker = "... [truncated]"
+                low, high = 0, len(v)
+                best_str = marker
+                while low <= high:
+                    mid = (low + high) // 2
+                    cand_v = v[:mid] + marker
+                    cand_dict = {**capped, k: cand_v}
+                    if (
+                        len(json.dumps(cand_dict, ensure_ascii=False).encode("utf-8"))
+                        <= _MAX_PLATFORM_METADATA_BYTES
+                    ):
+                        best_str = cand_v
+                        low = mid + 1
+                    else:
+                        high = mid - 1
+                capped[k] = best_str
+                break
+            else:
+                break
+
+        # Final defensive check: loop trim if JSON-serialized bytes still exceed cap
+        while (
+            len(json.dumps(capped, ensure_ascii=False).encode("utf-8"))
+            > _MAX_PLATFORM_METADATA_BYTES
+            and len(capped) > 1
+        ):
+            last_key = list(capped.keys())[-1]
+            if last_key == "_truncated":
+                break
+            val = capped[last_key]
+            if isinstance(val, str) and len(val) > 20:
+                capped[last_key] = val[: len(val) // 2] + "... [truncated]"
+            else:
+                capped.pop(last_key, None)
+
+        platform_metadata = capped
+
     # AC-18.4: escape all HTML/XML special characters in untrusted metadata so
     # a malicious value cannot inject prompt tags or close the context block.
     payload = html.escape(json.dumps(platform_metadata, ensure_ascii=False))

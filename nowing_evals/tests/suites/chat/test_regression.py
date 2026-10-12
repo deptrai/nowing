@@ -1082,3 +1082,108 @@ async def test_run_fail_on_unratified_raises_when_baseline_not_ratified(
             fail_on_unratified=True,
             concurrency=1,
         )
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_notify_gate_failure_called_on_gate_violation(
+    respx_mock, http, monkeypatch, tmp_path: Path
+) -> None:
+    """Finding 13: notify_gate_failure is invoked when gate violations occur on ratified baseline."""
+    bench = ChatRegressionBenchmark()
+    config = Config(
+        nowing_api_base=_BASE,
+        openrouter_api_key=None,
+        openrouter_base_url="https://openrouter.ai/api/v1",
+        nowing_jwt=None,
+        nowing_refresh_token=None,
+        nowing_user_email=None,
+        nowing_user_password=None,
+        data_dir=tmp_path / "data",
+        reports_dir=tmp_path / "reports",
+        slack_webhook_url="https://hooks.slack.com/services/T/B/X",
+    )
+
+    monkeypatch.setattr(
+        "nowing_evals.suites.chat.regression.runner._load_chat_gate",
+        lambda: (
+            {"baseline_ratified": True},
+            {"min_contains_match_rate": 1.0},
+        ),
+    )
+
+    notify_calls: list[tuple[tuple, dict]] = []
+
+    async def fake_notify_gate_failure(*args, **kwargs):
+        notify_calls.append((args, kwargs))
+        return True
+
+    monkeypatch.setattr(
+        "nowing_evals.suites.chat.regression.runner.notify_gate_failure",
+        fake_notify_gate_failure,
+    )
+
+    rows = [
+        {
+            "case_id": "c1",
+            "query": "q1",
+            "tags": ["a"],
+            "tier": "short",
+            "expected_contains": ["mandatory_keyword_never_found"],
+        },
+    ]
+    dataset_path = tmp_path / "cases.jsonl"
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row) + "\n")
+
+    respx_mock.post("/api/v1/threads").mock(return_value=httpx.Response(200, json={"id": 10}))
+    respx_mock.delete(url__regex=r"/api/v1/threads/.*").mock(
+        return_value=httpx.Response(404, json={"detail": "not found"})
+    )
+    body = _sse_body(
+        [
+            {"type": "start", "messageId": "m1"},
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "Different answer entirely"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=http,
+    )
+
+    with pytest.raises(RuntimeError, match="Chat regression gate failed"):
+        await bench.run(
+            ctx,
+            dataset=dataset_path,
+            search_space_id=1,
+            concurrency=1,
+        )
+
+    assert len(notify_calls) == 1
+    args, kwargs = notify_calls[0]
+    assert args[0] == "chat"
+    assert args[1] == "regression"
+    notify_reasons = args[3]
+    assert any("contains match rate" in r for r in notify_reasons)
+    assert kwargs.get("slack_url") == "https://hooks.slack.com/services/T/B/X"
