@@ -210,3 +210,37 @@ async def test_cdp_stream_cleanup_deletes_lock_when_unsubscribe_raises():
         mock_pubsub.unsubscribe.assert_awaited_once_with(channel)
         mock_pubsub.close.assert_awaited_once()
         mock_redis.delete.assert_awaited_once_with(stream_lock_key)
+
+
+@pytest.mark.asyncio
+async def test_cdp_stream_cleanup_deletes_lock_when_unsubscribe_cancelled():
+    """Verify that stream_lock is deleted even if pubsub.unsubscribe raises CancelledError and close fails."""
+    auth = _make_mock_auth()
+
+    mock_request = MagicMock(spec=Request)
+    mock_request.is_disconnected = AsyncMock(return_value=True)
+
+    mock_pubsub = MagicMock()
+    mock_pubsub.subscribe = AsyncMock()
+    mock_pubsub.get_message = AsyncMock(return_value=None)
+    mock_pubsub.unsubscribe = AsyncMock(side_effect=asyncio.CancelledError())
+    mock_pubsub.close = AsyncMock(side_effect=RuntimeError("close failed"))
+
+    mock_redis = MagicMock()
+    mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
+    mock_redis.set = AsyncMock(return_value=True)
+    mock_redis.delete = AsyncMock(return_value=1)
+
+    with patch(
+        "app.routes.dsh_routes.get_redis_client", AsyncMock(return_value=mock_redis)
+    ):
+        response = await cdp_stream(mock_request, auth=auth)
+
+        async for _ in response.body_iterator:
+            pass
+
+        channel = f"cdp_stream:{auth.user.id}"
+        stream_lock_key = f"cdp:stream:lock:{auth.user.id}"
+        mock_pubsub.unsubscribe.assert_awaited_once_with(channel)
+        mock_pubsub.close.assert_awaited_once()
+        mock_redis.delete.assert_awaited_once_with(stream_lock_key)

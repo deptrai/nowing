@@ -64,6 +64,7 @@ SOCIAL_STREAM_LAG_WARN_THRESHOLD = 1000
 LAG_CHECK_INTERVAL_SECONDS = 30.0
 DLQ_MAXLEN = 50000
 _LAG_STATE: dict[str, float] = {"last_check": float("-inf")}
+_AUTOCLAIM_CURSOR: str = "0-0"
 
 DLQ_REASON_UNSUPPORTED_SCHEMA_VERSION = "UNSUPPORTED_SCHEMA_VERSION"
 DLQ_REASON_INVALID_SCHEMA_VERSION = "INVALID_SCHEMA_VERSION"
@@ -1068,9 +1069,10 @@ async def run_social_stream_consumer(
             logger.exception("Failed to create Redis consumer group: %s", exc)
             return 0
 
+        global _AUTOCLAIM_CURSOR
         count = min(batch_size, max_messages_per_batch)
         total_processed = 0
-        autoclaim_cursor = "0-0"
+        autoclaim_cursor = _AUTOCLAIM_CURSOR
 
         for _ in range(max(1, max_loops)):
             entries = None
@@ -1085,21 +1087,24 @@ async def run_social_stream_consumer(
                     count=count,
                 )
                 if claim_res and len(claim_res) >= 2:
-                    next_start = claim_res[0]
-                    reclaimed_entries = claim_res[1]
-                    if not reclaimed_entries or next_start == "0-0":
-                        autoclaim_cursor = "0-0"
-                    else:
-                        autoclaim_cursor = next_start
-                else:
-                    autoclaim_cursor = "0-0"
-
-                if claim_res and len(claim_res) >= 2 and claim_res[1]:
-                    logger.info(
-                        "XAUTOCLAIM reclaimed %d pending messages from dead workers",
-                        len(claim_res[1]),
+                    next_start_raw = claim_res[0]
+                    next_start = (
+                        next_start_raw.decode()
+                        if isinstance(next_start_raw, bytes)
+                        else str(next_start_raw or "0-0")
                     )
                     reclaimed_entries = claim_res[1]
+                    autoclaim_cursor = "0-0" if next_start == "0-0" else next_start
+                else:
+                    reclaimed_entries = []
+                    autoclaim_cursor = "0-0"
+                _AUTOCLAIM_CURSOR = autoclaim_cursor
+
+                if reclaimed_entries:
+                    logger.info(
+                        "XAUTOCLAIM reclaimed %d pending messages from dead workers",
+                        len(reclaimed_entries),
+                    )
                     msg_ids = [mid for mid, _ in reclaimed_entries]
                     delivery_counts = await _get_delivery_counts(redis_client, msg_ids)
 
@@ -1127,6 +1132,7 @@ async def run_social_stream_consumer(
                         entries = [(STREAM_SOCIAL_RAW_POSTS, claimed_messages)]
             except Exception as claim_exc:
                 autoclaim_cursor = "0-0"
+                _AUTOCLAIM_CURSOR = "0-0"
                 logger.debug("XAUTOCLAIM check skipped or failed: %s", claim_exc)
 
             # Fall back to reading new messages if no pending messages were claimed
@@ -1150,8 +1156,10 @@ async def run_social_stream_consumer(
                 await _check_stream_lag(redis_client)
                 _LAG_STATE["last_check"] = now
 
-            if not entries:
+            if not entries and autoclaim_cursor == "0-0":
                 break
+            if not entries:
+                continue
 
             async with async_session_maker() as session:
                 session_broken = False

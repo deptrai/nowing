@@ -296,7 +296,11 @@ async def hubspot_webhook(
     timestamp = (
         x_hubspot_request_timestamp
         if isinstance(x_hubspot_request_timestamp, str)
-        else None
+        else (
+            request.headers.get("x-hubspot-request-timestamp")
+            if hasattr(request, "headers")
+            else None
+        )
     )
 
     if not verify_hubspot_signature(

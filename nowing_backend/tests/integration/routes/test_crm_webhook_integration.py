@@ -15,9 +15,11 @@ Exercises real database transactions for:
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
+import time
 from uuid import uuid4
 
 import pytest
@@ -193,8 +195,13 @@ async def test_hubspot_webhook_full_transaction(
             "propertyValue": "qualifiedtobuy",
         }
     ]
-    body_bytes = json.dumps(hs_payload).encode("utf-8")
-    sig = hmac.new(hs_secret.encode(), body_bytes, hashlib.sha256).hexdigest()
+    body_bytes = json.dumps(hs_payload).encode()
+    timestamp = str(int(time.time() * 1000))
+    request_uri = f"{str(client_as_regular_user.base_url).rstrip('/')}/api/v1/workspaces/webhooks/hubspot"
+    source = f"POST{request_uri}".encode() + body_bytes + timestamp.encode()
+    sig = base64.b64encode(
+        hmac.new(hs_secret.encode(), source, hashlib.sha256).digest()
+    ).decode()
 
     # 5. Invoke HubSpot webhook
     res = await client_as_regular_user.post(
@@ -203,6 +210,7 @@ async def test_hubspot_webhook_full_transaction(
         headers={
             "Content-Type": "application/json",
             "X-Hubspot-Signature-v3": sig,
+            "X-Hubspot-Request-Timestamp": timestamp,
         },
     )
     assert res.status_code == 200, res.text

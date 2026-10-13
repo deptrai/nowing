@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
+import time
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
@@ -60,13 +62,28 @@ class TestSignatureVerification:
         assert verify_hubspot_signature(b"{}", None) is False
 
     def test_verify_hubspot_signature_empty_secret_rejects(self, monkeypatch):
-        """Empty or unset secret must reject (no fail-open)."""
+        """Empty or unset secret must reject (no fail-open), even if global secret is set."""
+        ts = str(int(time.time() * 1000))
+        monkeypatch.setattr(
+            "app.config.config.HUBSPOT_WEBHOOK_SECRET", "configured-global-secret"
+        )
+        assert (
+            verify_hubspot_signature(b"{}", "some-sig", secret="", timestamp=ts)
+            is False
+        )
         monkeypatch.setattr("app.config.config.HUBSPOT_WEBHOOK_SECRET", "")
-        assert verify_hubspot_signature(b"{}", "some-sig", secret="") is False
-        assert verify_hubspot_signature(b"{}", "some-sig", secret=None) is False
+        assert (
+            verify_hubspot_signature(b"{}", "some-sig", secret="", timestamp=ts)
+            is False
+        )
+        assert (
+            verify_hubspot_signature(b"{}", "some-sig", secret=None, timestamp=ts)
+            is False
+        )
 
     def test_verify_hubspot_signature_wrong_signature_rejects(self):
         """Invalid signature must be rejected."""
+        ts = str(int(time.time() * 1000))
         assert (
             verify_hubspot_signature(
                 b'{"test": 123}',
@@ -74,22 +91,18 @@ class TestSignatureVerification:
                 secret="test-secret-key",
                 method="POST",
                 request_uri="http://test/api/v1/workspaces/webhooks/hubspot",
-                timestamp="1700000000000",
+                timestamp=ts,
             )
             is False
         )
 
     def test_verify_hubspot_signature_valid_v3_accepts(self):
-        """Valid v3 signature (base64 HMAC-SHA256) must be accepted."""
-        import base64
-        import hashlib
-        import hmac
-
+        """Valid v3 signature (base64 HMAC-SHA256) with fresh timestamp must be accepted."""
         secret = "test-secret-key"
         body = b'{"test": 123}'
         method = "POST"
         uri = "http://test/api/v1/workspaces/webhooks/hubspot"
-        timestamp = "1700000000000"
+        timestamp = str(int(time.time() * 1000))
 
         source = f"{method}{uri}".encode() + body + timestamp.encode()
         sig = base64.b64encode(
@@ -108,14 +121,45 @@ class TestSignatureVerification:
             is True
         )
 
-    def test_verify_hubspot_signature_valid_legacy(self):
-        import hashlib
-        import hmac
-
+    def test_verify_hubspot_signature_missing_timestamp_rejects(self):
+        """Omitting timestamp must reject (no v1 hex downgrade)."""
         secret = "test-secret-key"
         body = b'{"test": 123}'
         sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        assert verify_hubspot_signature(body, sig, secret=secret) is True
+        assert verify_hubspot_signature(body, sig, secret=secret) is False
+        assert (
+            verify_hubspot_signature(body, sig, secret=secret, timestamp=None) is False
+        )
+        assert verify_hubspot_signature(body, sig, secret=secret, timestamp="") is False
+
+    def test_verify_hubspot_signature_stale_or_invalid_timestamp_rejects(self):
+        """Stale (>300s), future (>300s), or non-numeric timestamps must be rejected."""
+        secret = "test-secret-key"
+        body = b'{"test": 123}'
+        method = "POST"
+        uri = "http://test/api/v1/workspaces/webhooks/hubspot"
+        now_ms = int(time.time() * 1000)
+
+        for bad_ts in [
+            str(now_ms - 301_000),
+            str(now_ms + 301_000),
+            "not-a-timestamp",
+        ]:
+            source = f"{method}{uri}".encode() + body + bad_ts.encode()
+            sig = base64.b64encode(
+                hmac.new(secret.encode(), source, hashlib.sha256).digest()
+            ).decode()
+            assert (
+                verify_hubspot_signature(
+                    body,
+                    sig,
+                    secret=secret,
+                    method=method,
+                    request_uri=uri,
+                    timestamp=bad_ts,
+                )
+                is False
+            )
 
 
 class TestCrmWebhookService:
@@ -173,8 +217,11 @@ def _make_http_request(body: bytes, headers: dict[str, str] | None = None) -> Re
     return Request(
         scope={
             "type": "http",
+            "scheme": "http",
+            "server": ("test", 80),
             "method": "POST",
             "path": "/api/v1/workspaces/webhooks/hubspot",
+            "query_string": b"",
             "headers": raw_headers,
         },
         receive=receive,
@@ -217,6 +264,58 @@ class TestHubspotWebhookAuth:
         with pytest.raises(HTTPException) as exc_info:
             await hubspot_webhook(req, session, x_hubspot_signature_v3="wrong-sig")
         assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_hubspot_webhook_auth_timestamp_validation(self, monkeypatch):
+        from app.config import config
+
+        secret = "test-hubspot-secret"
+        monkeypatch.setattr(config, "HUBSPOT_WEBHOOK_SECRET", secret)
+
+        body = b'[{"objectId": 1, "propertyName": "other"}]'
+        session = _make_mock_session()
+        req = _make_http_request(body)
+        uri = str(req.url)
+
+        fresh_ts = str(int(time.time() * 1000))
+        fresh_source = f"POST{uri}".encode() + body + fresh_ts.encode()
+        fresh_sig = base64.b64encode(
+            hmac.new(secret.encode(), fresh_source, hashlib.sha256).digest()
+        ).decode()
+
+        # Missing timestamp rejected
+        with pytest.raises(HTTPException) as exc_missing_ts:
+            await hubspot_webhook(
+                req,
+                session,
+                x_hubspot_signature_v3=fresh_sig,
+                x_hubspot_request_timestamp=None,
+            )
+        assert exc_missing_ts.value.status_code == 401
+
+        # Stale timestamp rejected
+        stale_ts = str(int(time.time() * 1000) - 301_000)
+        stale_source = f"POST{uri}".encode() + body + stale_ts.encode()
+        stale_sig = base64.b64encode(
+            hmac.new(secret.encode(), stale_source, hashlib.sha256).digest()
+        ).decode()
+        with pytest.raises(HTTPException) as exc_stale_ts:
+            await hubspot_webhook(
+                req,
+                session,
+                x_hubspot_signature_v3=stale_sig,
+                x_hubspot_request_timestamp=stale_ts,
+            )
+        assert exc_stale_ts.value.status_code == 401
+
+        # Valid v3 signature + fresh timestamp accepted
+        resp = await hubspot_webhook(
+            req,
+            session,
+            x_hubspot_signature_v3=fresh_sig,
+            x_hubspot_request_timestamp=fresh_ts,
+        )
+        assert resp["status"] == "ok"
 
 
 class TestSalesforceWebhookAuth:
@@ -322,10 +421,20 @@ class TestCrmWebhookLeadStatusTransaction:
         session.get.return_value = lead
 
         body = b'[{"objectId": 12345, "propertyName": "dealstage", "propertyValue": "closedwon", "subscriptionType": "deal.propertyChange"}]'
-        sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
         req = _make_http_request(body)
+        timestamp = str(int(time.time() * 1000))
+        uri = str(req.url)
+        source = f"POST{uri}".encode() + body + timestamp.encode()
+        sig = base64.b64encode(
+            hmac.new(secret.encode(), source, hashlib.sha256).digest()
+        ).decode()
 
-        resp = await hubspot_webhook(req, session, x_hubspot_signature_v3=sig)
+        resp = await hubspot_webhook(
+            req,
+            session,
+            x_hubspot_signature_v3=sig,
+            x_hubspot_request_timestamp=timestamp,
+        )
         assert resp["status"] == "ok"
         assert lead.status == "converted"
         session.commit.assert_awaited_once()
@@ -336,9 +445,6 @@ class TestCrmWebhookLeadStatusTransaction:
         self, monkeypatch
     ):
         """Failure during webhook processing triggers session rollback and raises 500."""
-        import hashlib
-        import hmac
-
         from app.config import config
 
         secret = "test-hubspot-secret"
@@ -348,11 +454,21 @@ class TestCrmWebhookLeadStatusTransaction:
         session.execute.side_effect = RuntimeError("DB connection dropped")
 
         body = b'[{"objectId": 12345, "propertyName": "dealstage", "propertyValue": "closedwon", "subscriptionType": "deal.propertyChange"}]'
-        sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
         req = _make_http_request(body)
+        timestamp = str(int(time.time() * 1000))
+        uri = str(req.url)
+        source = f"POST{uri}".encode() + body + timestamp.encode()
+        sig = base64.b64encode(
+            hmac.new(secret.encode(), source, hashlib.sha256).digest()
+        ).decode()
 
         with pytest.raises(HTTPException) as exc_info:
-            await hubspot_webhook(req, session, x_hubspot_signature_v3=sig)
+            await hubspot_webhook(
+                req,
+                session,
+                x_hubspot_signature_v3=sig,
+                x_hubspot_request_timestamp=timestamp,
+            )
 
         assert exc_info.value.status_code == 500
         session.rollback.assert_awaited_once()
@@ -394,14 +510,24 @@ class TestCrmWebhookLeadStatusTransaction:
 
         # Test HubSpot webhook re-raises HTTPException
         hs_body = b'[{"objectId": 123}]'
-        hs_sig = hmac.new(hs_secret.encode(), hs_body, hashlib.sha256).hexdigest()
         req_hs = _make_http_request(hs_body)
+        hs_ts = str(int(time.time() * 1000))
+        hs_uri = str(req_hs.url)
+        hs_source = f"POST{hs_uri}".encode() + hs_body + hs_ts.encode()
+        hs_sig = base64.b64encode(
+            hmac.new(hs_secret.encode(), hs_source, hashlib.sha256).digest()
+        ).decode()
         with patch(
             "app.services.crm_webhook_service.CrmWebhookService.handle_hubspot_deal_change",
             side_effect=HTTPException(status_code=400, detail="Custom client error"),
         ):
             with pytest.raises(HTTPException) as exc_hs:
-                await hubspot_webhook(req_hs, session, x_hubspot_signature_v3=hs_sig)
+                await hubspot_webhook(
+                    req_hs,
+                    session,
+                    x_hubspot_signature_v3=hs_sig,
+                    x_hubspot_request_timestamp=hs_ts,
+                )
             assert exc_hs.value.status_code == 400
             assert exc_hs.value.detail == "Custom client error"
 

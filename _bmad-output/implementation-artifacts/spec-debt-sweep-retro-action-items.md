@@ -138,3 +138,15 @@ context: []
 - `cd nowing_backend && uv run pytest tests/unit/tasks/test_social_stream_worker.py tests/unit/tasks/test_social_stream_autoclaim.py tests/unit/observability tests/unit/services/dedup tests/unit/services/test_compliance_purge* tests/unit/platforms -q` — expected: all pass.
 - `cd nowing_backend && uv run pytest tests/integration/routes/test_crm_sync.py tests/integration/routes/<new-crm-webhook-test> tests/integration/platforms/test_social_redis_stream.py -m integration -q` — expected: pass (cần Postgres + Redis local theo AGENTS.md).
 - `cd nowing_web && pnpm exec biome check components/crm/WorkspaceActivityTimeline.tsx && pnpm tsc --noEmit` — expected: clean.
+
+### Review Findings (Deferred-5 Follow-up Commit `8f379bdc5`)
+
+- [x] [Review][Patch] Enforce HubSpot v3 timestamp replay window (300s) and safe timestamp parsing in `verify_hubspot_signature` [`nowing_backend/app/services/crm_webhook_service.py:52-89`]
+- [x] [Review][Patch] Prevent HubSpot v3 signature downgrade when `X-HubSpot-Request-Timestamp` is omitted on `/webhooks/hubspot`, fail closed on explicit `secret=""`, and update route tests to use v3 signatures [`nowing_backend/app/routes/crm_routes.py:272-308`, `nowing_backend/app/services/crm_webhook_service.py:64-87`]
+- [x] [Review][Patch] Advance `xautoclaim` cursor across empty PEL slices and persist cursor across single-loop Celery task runs [`nowing_backend/app/tasks/social_stream_worker.py:1070-1095`]
+- [x] [Review][Patch] Use composite primary key `(lead_id, workspace_id)` in remaining `session.get(Lead, ...)` calls in `sequencer/enrollments.py` [`nowing_backend/app/services/sequencer/enrollments.py:68,334`]
+- [x] [Review][Patch] Catch `BaseException` (`asyncio.CancelledError`) during `cdp_stream` pubsub and lock cleanup so client disconnect cannot leak the 3600s Redis stream lock [`nowing_backend/app/routes/dsh_routes.py:434-505`]
+- [x] [Review][Patch] Guard `affected_workspaces.add` against `None` `workspace_id` and flush session before querying remaining `VerifiedContact` rows in `compliance_purge_service.py` [`nowing_backend/app/services/compliance_purge_service.py:100-115`]
+- [x] [Review][Patch] Manage `AbortController` inside `fetchTimeline` and clear stale state when `workspaceId` is falsy in `WorkspaceActivityTimeline.tsx` [`nowing_web/components/crm/WorkspaceActivityTimeline.tsx:40-75`]
+- [x] [Review][Defer] `hubspot_webhook` `request_uri = str(request.url)` scheme/host fidelity behind reverse proxies [`nowing_backend/app/routes/crm_routes.py:290`] — deferred: unverified medium (`maybe-false`); requires checking production Uvicorn `--proxy-headers` / `--forwarded-allow-ips` deployment flags in Dokploy before trusting `X-Forwarded-Proto`/`X-Forwarded-Host` at the route level.
+

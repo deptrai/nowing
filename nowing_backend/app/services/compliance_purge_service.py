@@ -98,13 +98,16 @@ class CompliancePurgeService:
         lead_keys_to_check: set[tuple[uuid.UUID, int]] = set()
 
         for contact in contacts:
-            affected_workspaces.add(contact.workspace_id)
-            if contact.lead_id is not None and contact.workspace_id is not None:
-                lead_keys_to_check.add((contact.lead_id, contact.workspace_id))
+            if contact.workspace_id is not None:
+                affected_workspaces.add(contact.workspace_id)
+                if contact.lead_id is not None:
+                    lead_keys_to_check.add((contact.lead_id, contact.workspace_id))
             await session.delete(contact)
             purged_contacts += 1
 
         # 2. Check and delete Leads that only have this contact
+        if lead_keys_to_check:
+            await session.flush()
         for lead_id, ws_id in lead_keys_to_check:
             # Check remaining contacts for this lead
             rem_stmt = select(VerifiedContact).where(

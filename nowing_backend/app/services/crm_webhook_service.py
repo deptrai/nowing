@@ -6,6 +6,7 @@ import base64
 import hashlib
 import hmac
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -49,44 +50,61 @@ def map_stage_to_status(external_stage: str) -> str | None:
     return _STAGE_MAPPING.get(normalized)
 
 
+HUBSPOT_TIMESTAMP_MAX_AGE_MS = 300_000
+
+
 def verify_hubspot_signature(
     request_body: bytes | str,
-    signature: str | None,
+    signature_header: str | None = None,
     secret: str | None = None,
     *,
     method: str = "POST",
     request_uri: str = "",
-    timestamp: str | None = None,
+    timestamp: str | bytes | int | float | None = None,
+    signature: str | None = None,
 ) -> bool:
-    """Verify HubSpot webhook signature (v3 HMAC-SHA256 base64, with v1/v2 fallback)."""
-    if not signature or not isinstance(signature, str):
+    """Verify HubSpot webhook v3 signature (HMAC-SHA256 base64 with timestamp replay window)."""
+    sig = signature_header if signature_header is not None else signature
+    key = (
+        secret
+        if secret is not None
+        else getattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
+    )
+    if not key or not sig or not isinstance(sig, str):
+        if not key:
+            logger.warning("HUBSPOT_WEBHOOK_SECRET not configured; rejecting webhook")
         return False
-    key = secret or getattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
-    if not key:
-        logger.warning("HUBSPOT_WEBHOOK_SECRET not configured; rejecting webhook")
+
+    if not timestamp:
+        return False
+
+    ts_str = (
+        timestamp.decode("utf-8", errors="ignore")
+        if isinstance(timestamp, bytes)
+        else str(timestamp).strip()
+    )
+    if not ts_str:
+        return False
+
+    try:
+        ts_int = int(ts_str)
+    except (ValueError, TypeError):
+        return False
+
+    ts_ms = ts_int * 1000 if ts_int < 10_000_000_000 else ts_int
+    now_ms = int(time.time() * 1000)
+    if abs(now_ms - ts_ms) > HUBSPOT_TIMESTAMP_MAX_AGE_MS:
         return False
 
     body_bytes = (
         request_body if isinstance(request_body, bytes) else request_body.encode()
     )
-    if timestamp:
-        ts_bytes = (
-            timestamp.encode() if isinstance(timestamp, str) else bytes(timestamp)
-        )
-        source = f"{method}{request_uri}".encode() + body_bytes + ts_bytes
-        expected_v3 = base64.b64encode(
-            hmac.new(key.encode(), source, hashlib.sha256).digest()
-        ).decode()
-        if hmac.compare_digest(signature, expected_v3):
-            return True
-
-    # Fallback to legacy v1/v2 hex signature when timestamp is not provided
-    if not timestamp:
-        expected_v1 = hmac.new(key.encode(), body_bytes, hashlib.sha256).hexdigest()
-        if hmac.compare_digest(signature, expected_v1):
-            return True
-
-    return False
+    ts_bytes = ts_str.encode()
+    source = f"{method}{request_uri}".encode() + body_bytes + ts_bytes
+    expected_v3 = base64.b64encode(
+        hmac.new(key.encode(), source, hashlib.sha256).digest()
+    ).decode()
+    return hmac.compare_digest(expected_v3, sig)
 
 
 class CrmWebhookService:

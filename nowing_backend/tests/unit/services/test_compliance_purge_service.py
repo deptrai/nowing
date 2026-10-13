@@ -164,3 +164,43 @@ class TestCompliancePurgeService:
         post_stmt = session.execute.call_args_list[1][0][0]
         params = post_stmt.compile().params
         assert any(r"test\_\%user@example.com" in str(val) for val in params.values())
+
+    @pytest.mark.asyncio
+    async def test_purge_contact_with_none_workspace_id_does_not_fail_sorting(self):
+        """Matched VerifiedContact with workspace_id=None should not pollute affected_workspaces."""
+        session = AsyncMock()
+
+        contact_null_ws = MagicMock(spec=VerifiedContact)
+        contact_null_ws.workspace_id = None
+        contact_null_ws.lead_id = None
+
+        contact_valid_ws = MagicMock(spec=VerifiedContact)
+        contact_valid_ws.workspace_id = 7
+        contact_valid_ws.lead_id = None
+
+        scalars_mock = MagicMock()
+        scalars_mock.all.side_effect = [
+            [contact_null_ws, contact_valid_ws],  # VerifiedContact query
+            [],  # SocialPost query
+        ]
+        result_mock = MagicMock()
+        result_mock.scalars.return_value = scalars_mock
+        session.execute.return_value = result_mock
+
+        with patch(
+            "app.services.compliance_purge_service.DncComplianceService"
+        ) as mock_dnc:
+            dnc_instance = MagicMock()
+            dnc_instance.invalidate_workspace_cache = AsyncMock()
+            mock_dnc.return_value = dnc_instance
+
+            res = await CompliancePurgeService.purge_individual(
+                session,
+                record_type="phone",
+                value="0908123456",
+            )
+
+        assert res["status"] == "purged"
+        assert res["purged_counts"]["verified_contacts"] == 2
+        assert res["workspaces_affected"] == [7]
+        dnc_instance.invalidate_workspace_cache.assert_awaited_once_with(7)

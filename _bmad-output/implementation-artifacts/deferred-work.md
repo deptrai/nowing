@@ -2016,3 +2016,9 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
 - ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
   summary: `WorkspaceActivityTimeline` `fetchTimeline` does not guard undefined workspaceId (fetch to `/workspaces/undefined/...`) and has no AbortController on workspace change~~
   RESOLVED: Guard `if (!workspaceId) return;` và thêm `AbortController` cleanup trong `WorkspaceActivityTimeline.tsx`.
+
+## Deferred from: code review of spec-debt-sweep-retro-action-items.md (2026-10-13, round 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `hubspot_webhook` (`nowing_backend/app/routes/crm_routes.py:290`) computes `request_uri = str(request.url)` — unverified `medium` (`maybe-false`); if Uvicorn runs behind a TLS-terminating reverse proxy without `--proxy-headers` / `--forwarded-allow-ips`, `str(request.url)` carries `http://` instead of external `https://` signed by HubSpot. Requires checking production Uvicorn/Dokploy proxy flags before trusting `X-Forwarded-Proto` / `X-Forwarded-Host`.
+

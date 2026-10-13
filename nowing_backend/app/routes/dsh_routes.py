@@ -431,7 +431,6 @@ async def notify_dsh_mission_high_fit_lead(
 async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_context)):
     """SSE stream for the Chrome extension to receive CDP commands."""
     redis = await get_redis_client()
-    pubsub = redis.pubsub()
     channel = f"cdp_stream:{auth.user.id}"
     stream_lock_key = f"cdp:stream:lock:{auth.user.id}"
 
@@ -444,11 +443,22 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
             detail="CDP stream already active",
         )
 
+    pubsub = redis.pubsub()
     try:
         await pubsub.subscribe(channel)
-    except Exception:  # cleanup pubsub and release stream lock on subscription failure
-        await redis.delete(stream_lock_key)
-        await pubsub.close()
+    except BaseException:  # cleanup pubsub and release stream lock on subscription failure
+        try:
+            await redis.delete(stream_lock_key)
+        except (Exception, asyncio.CancelledError) as exc:
+            logger.warning(
+                "Failed to delete CDP stream lock %s: %s", stream_lock_key, exc
+            )
+        try:
+            await pubsub.close()
+        except (Exception, asyncio.CancelledError) as exc:
+            logger.warning(
+                "Failed to close pubsub for CDP channel %s: %s", channel, exc
+            )
         raise
 
     async def event_generator():
@@ -485,19 +495,19 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
         finally:
             try:
                 await pubsub.unsubscribe(channel)
-            except Exception as exc:
+            except (Exception, asyncio.CancelledError) as exc:
                 logger.warning(
                     "Failed to unsubscribe from CDP channel %s: %s", channel, exc
                 )
             try:
                 await pubsub.close()
-            except Exception as exc:
+            except (Exception, asyncio.CancelledError) as exc:
                 logger.warning(
                     "Failed to close pubsub for CDP channel %s: %s", channel, exc
                 )
             try:
                 await redis.delete(stream_lock_key)
-            except Exception as exc:
+            except (Exception, asyncio.CancelledError) as exc:
                 logger.warning(
                     "Failed to delete CDP stream lock %s: %s", stream_lock_key, exc
                 )

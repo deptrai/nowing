@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface ActivityTimelineItem {
 	id: string;
@@ -36,41 +36,46 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [directionFilter, setDirectionFilter] = useState("all");
+	const abortControllerRef = useRef<AbortController | null>(null);
 
-	const fetchTimeline = useCallback(
-		async (signal?: AbortSignal) => {
-			if (!workspaceId) {
-				setLoading(false);
+	const fetchTimeline = useCallback(async () => {
+		abortControllerRef.current?.abort();
+		if (!workspaceId) {
+			setItems([]);
+			setError(null);
+			setLoading(false);
+			return;
+		}
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
+		const { signal } = controller;
+
+		setLoading(true);
+		setError(null);
+		try {
+			const res = await fetch(`/api/v1/workspaces/${workspaceId}/crm/activity-timeline`, {
+				signal,
+			});
+			if (!res.ok) throw new Error(`Failed to load timeline: ${res.statusText}`);
+			const data = await res.json();
+			if (signal.aborted) return;
+			setItems(data.items || []);
+		} catch (err: unknown) {
+			if ((err instanceof Error && err.name === "AbortError") || signal.aborted) {
 				return;
 			}
-			setLoading(true);
-			setError(null);
-			try {
-				const res = await fetch(`/api/v1/workspaces/${workspaceId}/crm/activity-timeline`, {
-					signal,
-				});
-				if (!res.ok) throw new Error(`Failed to load timeline: ${res.statusText}`);
-				const data = await res.json();
-				setItems(data.items || []);
-			} catch (err: unknown) {
-				if (err instanceof Error && err.name === "AbortError") {
-					return;
-				}
-				setError(err instanceof Error ? err.message : "Failed to load activity timeline");
-			} finally {
-				if (!signal?.aborted) {
-					setLoading(false);
-				}
+			setError(err instanceof Error ? err.message : "Failed to load activity timeline");
+		} finally {
+			if (!signal.aborted) {
+				setLoading(false);
 			}
-		},
-		[workspaceId]
-	);
+		}
+	}, [workspaceId]);
 
 	useEffect(() => {
-		const controller = new AbortController();
-		fetchTimeline(controller.signal);
+		fetchTimeline();
 		return () => {
-			controller.abort();
+			abortControllerRef.current?.abort();
 		};
 	}, [fetchTimeline]);
 
