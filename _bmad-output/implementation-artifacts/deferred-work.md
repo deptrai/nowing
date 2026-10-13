@@ -2022,3 +2022,14 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
 - source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
   summary: `hubspot_webhook` (`nowing_backend/app/routes/crm_routes.py:290`) computes `request_uri = str(request.url)` — unverified `medium` (`maybe-false`); if Uvicorn runs behind a TLS-terminating reverse proxy without `--proxy-headers` / `--forwarded-allow-ips`, `str(request.url)` carries `http://` instead of external `https://` signed by HubSpot. Requires checking production Uvicorn/Dokploy proxy flags before trusting `X-Forwarded-Proto` / `X-Forwarded-Host`.
 
+## Deferred from: debt sweep 3 retro action items (2026-10-13)
+
+- **Finding / Item 28:** `epic-31-retro-item-28`: Bổ sung telemetry giám sát mức tiêu thụ tài nguyên cgroup (OOM/throttling) của container Dokploy.
+  - **Status:** BLOCKED-OUTSIDE-REPO
+  - **Reason / when to revisit:** Yêu cầu quyền truy cập hạ tầng host Dokploy/Docker cgroup v2 metrics (`/sys/fs/cgroup/memory.events`, `cpu.stat`), nằm ngoài phạm vi codebase nội bộ. Revisit khi có phiên bảo trì hạ tầng production Dokploy.
+
+- **Finding / Item 35:** `epic-33-retro-item-35`: Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu.
+  - **Status:** BLOCKED-OUTSIDE-REPO
+  - **Reason / when to revisit:** Quyết định chính sách kinh doanh và điều khoản dịch vụ (ToS) thuộc thẩm quyền của Product Owner / Legal, không phải thay đổi kỹ thuật. Revisit trong buổi họp chính sách thương mại và pháp lý tiếp theo.
+
+

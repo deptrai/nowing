@@ -2,7 +2,7 @@
 title: 'Debt-sweep 3: đóng 6 retro action items còn mở Epic 31–35 (router split, streaming dedup, MV3 E2E fixture, SecOps SOP, DNS probe, CdpBridge research)'
 type: 'refactor'
 created: '2026-10-13'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '8bfa607bf'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -52,16 +52,25 @@ context: []
 
 ## Tasks & Acceptance
 
-- [ ] **Item 31** — `app/routes/dsh/` package; `dsh_routes.py` deleted; `factory.py` + 3 test files updated; `ruff check` + `pytest tests/unit/routes/test_dsh_cdp_stream.py tests/unit/tasks/dsh_worker -q` xanh; `uv run python -c "from app.app import app"` OK.
-- [ ] **Item 41** — `deduplicate_stream`/`iter_deduplicate` (generator, bounded memory, contract ghi rõ); 1 production call site; unit test mới (streaming behavior + lazy eval + kết quả giống `deduplicate()`); `ruff` + pytest xanh.
-- [ ] **Item 32** — `nowing_web/tests/extension/` MV3 fixture cho `nowing_browser_extension` + spec kiểm thử luồng onDetach/takeover phần testable; skip khi thiếu build; `biome check` + `tsc` xanh.
-- [ ] **Item 29** — `scripts/dns_synthetic_probe.py` (hoặc tên tương đương) kiểm tra TXT `_nowing-verify` + CNAME; chạy được standalone, exit code phản ánh kết quả; có `--help`.
-- [ ] **Item 36** — `docs/ops/secret-key-rotation-sop.md` (hoặc tên tương đương): quy trình đầy đủ rotate → verify → remove OLD_SECRET_KEY.
-- [ ] **Item 33** — `_bmad-output/implementation-artifacts/epic-32-cdpbridge-multitab-research.md`: phân tích cdp-bridge.ts hiện tại, thiết kế `Map<number, SessionContext>`, blast radius, đề xuất khi nào implement.
-- [ ] **Cập nhật `sprint-status.yaml`**: 6 items → `done` (ref spec file này); items 28 + 35 giữ `open` (ghi reason ở spec này).
-- [ ] **Cập nhật `deferred-work.md`**: thêm entry items 28 + 35 là blocked-outside-repo (infra/product decision).
-- [ ] Jev `code_review_gate.yaml` trước commit → nếu `needs_deep_review`/`needs_tests` thì **dừng, báo user trước, chờ xác nhận** rồi mới commit.
+- [x] **Item 31** — `app/routes/dsh/` package; `dsh_routes.py` deleted; `factory.py` + 3 test files updated; `ruff check` + `pytest tests/unit/routes/test_dsh_cdp_stream.py tests/unit/tasks/dsh_worker -q` xanh; `uv run python -c "from app.app import app"` OK. (commit `75d048c98`)
+- [x] **Item 41** — `deduplicate_stream`/`iter_deduplicate` (generator, bounded memory, contract ghi rõ); 1 production call site; unit test mới (streaming behavior + lazy eval + kết quả giống `deduplicate()`); `ruff` + pytest xanh. (commit `75d048c98`)
+- [x] **Item 32** — `nowing_web/tests/extension/` MV3 fixture cho `nowing_browser_extension` + spec kiểm thử luồng onDetach/takeover phần testable; skip khi thiếu build; `biome check` + `tsc` xanh. (commit `75d048c98`)
+- [x] **Item 29** — `scripts/dns_synthetic_probe.py` (hoặc tên tương đương) kiểm tra TXT `_nowing-verify` + CNAME; chạy được standalone, exit code phản ánh kết quả; có `--help`. (commit `75d048c98`)
+- [x] **Item 36** — `docs/ops/secret-key-rotation-sop.md` (hoặc tên tương đương): quy trình đầy đủ rotate → verify → remove OLD_SECRET_KEY. (commit `75d048c98`)
+- [x] **Item 33** — `_bmad-output/implementation-artifacts/epic-32-cdpbridge-multitab-research.md`: phân tích cdp-bridge.ts hiện tại, thiết kế `Map<number, SessionContext>`, blast radius, đề xuất khi nào implement. (commit `75d048c98`)
+- [x] **Cập nhật `sprint-status.yaml`**: 6 items → `done` (ref spec file này); items 28 + 35 giữ `open` (ghi reason ở spec này).
+- [x] **Cập nhật `deferred-work.md`**: thêm entry items 28 + 35 là blocked-outside-repo (infra/product decision).
+- [x] Jev `code_review_gate.yaml` trước commit → nếu `needs_deep_review`/`needs_tests` thì **dừng, báo user trước, chờ xác nhận** rồi mới commit.
 
 ## Implementation Notes
 
-_(điền khi implement xong)_
+- Đã đóng toàn bộ 6 items nợ kỹ thuật:
+  - Item 31: Tách `dsh_routes.py` (809 dòng) thành module `app/routes/dsh/{__init__,deps,missions,cdp,takeover}.py`, xóa god-file cũ, import sạch trong `factory.py`.
+  - Item 41: Thêm `deduplicate_stream` và `iter_deduplicate` vào `SpatialWindowedDeduplicator` với memory bound theo bucket, đấu nối vào `bds_aggregator/orchestrator.py:168-184`.
+  - Item 32: Thêm Playwright fixture `extension.fixture.ts` tải MV3 persistent context và test spec `lead-clipper.spec.ts`.
+  - Item 29: Thêm `scripts/dns_synthetic_probe.py` (TXT + CNAME verification) kèm 6 unit tests (`tests/unit/test_dns_synthetic_probe.py`).
+  - Item 36: Thêm SOP `docs/ops/secret-key-rotation-sop.md` hướng dẫn chi tiết quy trình 4 pha xoay vòng `SECRET_KEY` và `SECONDARY_SECRET_KEY`.
+  - Item 33: Thêm research artifact `_bmad-output/implementation-artifacts/epic-32-cdpbridge-multitab-research.md` phân tích `Map<number, SessionContext>` và khuyến nghị defer.
+- Item 28 và 35 đã ghi nhận hoãn tại `deferred-work.md` (blocked-outside-repo).
+- Trạng thái sprint-status đã chuyển 6 items sang `done`.
+

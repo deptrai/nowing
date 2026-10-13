@@ -926,8 +926,8 @@ action_items:
     action: "Thiết lập synthetic probe định kỳ kiểm tra xác thực DNS TXT / CNAME trên
       staging/production"
     owner: "dev"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-31-retro-2026-10-11.md"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
   - id: "epic-32-retro-item-30-bổ-sung-kiểm-tra-fail-closed-hoặc-cảnh-b"
     epic: 32
     action: "Bổ sung kiểm tra fail-closed hoặc cảnh báo khởi động trong production
@@ -940,22 +940,22 @@ action_items:
     action: "Tái cấu trúc phân tách router dsh_routes.py (779 dòng) thành các router
       chuyên biệt (missions.py, cdp.py, takeover.py)"
     owner: "backend-dev"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-32-retro-2026-10-11.md"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
   - id: "epic-32-retro-item-32-xây-dựng-playwright-test-fixture-tải-ext"
     epic: 32
     action: "Xây dựng Playwright test fixture tải extension MV3 trong CI để kiểm thử
       luồng chrome.debugger.onDetach và takeover popover thực tế trên Chromium"
     owner: "qa-lead"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-32-retro-2026-10-11.md"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
   - id: "epic-32-retro-item-33-nghiên-cứu-nâng-cấp-trạng-thái-activedeb"
     epic: 32
     action: "Nghiên cứu nâng cấp trạng thái activeDebuggeeTabId trong CdpBridge thành
       Map<number, SessionContext> nhằm hỗ trợ đa tab đồng thời trong tương lai"
     owner: "frontend-dev"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-32-retro-2026-10-11.md"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
   - id: "epic-33-retro-item-34-bổ-sung-logic-tìm-kiếm-và-ẩn-xóa-bản-ghi"
     epic: 33
     action: "Bổ sung logic tìm kiếm và ẩn/xóa bản ghi SocialPost liên kết với số điện
@@ -975,8 +975,8 @@ action_items:
     action: "Viết tài liệu hướng dẫn vận hành cho SecOps (SOP) về quy trình xoay vòng
       SECRET_KEY và kiểm tra hoàn thành rotate_encryption trước khi gỡ bỏ OLD_SECRET_KEY"
     owner: "devops"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-33-retro-2026-10-11.md"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
   - id: "epic-34-retro-item-37-chuyển-cơ-chế-xác-thực-của-endpoint-sale"
     epic: 34
     action: "Chuyển cơ chế xác thực của endpoint Salesforce webhook sang fail-closed:
@@ -1012,8 +1012,8 @@ action_items:
       hoặc batch ingest), đồng thời bổ sung generator streaming interface để đảm bảo
       giới hạn bộ nhớ"
     owner: "dev"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-35-retro-2026-10-11.md"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
   - id: "epic-35-retro-item-42-đấu-nối-lệnh-gọi-record_scraper_ingest_f"
     epic: 35
     action: "Đấu nối lệnh gọi record_scraper_ingest_failure(platform, reason) vào
