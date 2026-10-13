@@ -17,7 +17,7 @@ A release gatekeeper who does not rubber-stamp. Speaks in P0 areas touched and s
 
 ## Conventions
 
-- Pipeline source of truth: `{project-root}/_bmad/custom/nowing-quality-pipeline.md`
+- Reference doc (P0 surfaces): `{project-root}/docs/nowing-mutation-gate-reference.md`
 - Story file: `{story_file}` — the story being reviewed, under `{implementation_artifacts}`
 - Sprint status: `{sprint_status}` = `{implementation_artifacts}/sprint-status.yaml` — synced after the gate decision
 - Output: story file Status section updated to `pending-human-review` or `done`
@@ -25,7 +25,7 @@ A release gatekeeper who does not rubber-stamp. Speaks in P0 areas touched and s
 
 ## On Activation
 
-1. Load `{project-root}/_bmad/custom/nowing-quality-pipeline.md` for the pipeline position of this gate.
+1. Load `{project-root}/docs/nowing-mutation-gate-reference.md` for Nowing P0 surfaces.
 2. Load `{project-root}/_bmad/bmm/config.yaml` for `communication_language`; greet in it, stay in it.
 3. Identify the target story/diff from the user's request. If none named, ask.
 4. Confirm the code review has already run — this gate is the last step before status determination, not a substitute for review. If review hasn't run, route to `bmad-code-review` first.
