@@ -243,6 +243,7 @@ class CompliancePurgeService:
                 workspace_owners[ws_id] = getattr(ws, "user_id", None)
             return workspace_owners[ws_id]
 
+        billing_svc = BillingEventService()
         for candidate in refund_candidates:
             c_id = candidate.get("verified_contact_id")
             ws_id = candidate.get("workspace_id")
@@ -259,76 +260,75 @@ class CompliancePurgeService:
             if not candidate.get("was_unlocked", True):
                 continue
 
-            # 1. Idempotency: check if already refunded
-            existing_refunds = await _list_billing_events(
-                session,
-                event_entity_type="verified_contact",
-                event_type="contact_unlock_refund",
-                event_id=contact_id,
-                workspace_id=ws_id,
-            )
-            if existing_refunds:
-                logger.info(
-                    "Contact %s in workspace %d already refunded; skipping",
-                    contact_id,
-                    ws_id,
-                )
-                skipped.append(
-                    {
-                        "verified_contact_id": str(contact_id),
-                        "workspace_id": ws_id,
-                        "reason": "already_refunded",
-                    }
-                )
-                continue
-
-            # 2. Check for original unlock event and determine cost
-            original_unlocks = await _list_billing_events(
-                session,
-                event_entity_type="verified_contact",
-                event_type="contact_unlock",
-                event_id=contact_id,
-                workspace_id=ws_id,
-            )
-            if not original_unlocks:
-                logger.info(
-                    "No original unlock billing event for contact %s in workspace %d; skipping",
-                    contact_id,
-                    ws_id,
-                )
-                skipped.append(
-                    {
-                        "verified_contact_id": str(contact_id),
-                        "workspace_id": ws_id,
-                        "reason": "no_unlock_charge",
-                    }
-                )
-                continue
-
-            original_unlock = original_unlocks[0]
-            orig_cost = getattr(original_unlock, "cost_micros", None)
-            cost_micros = orig_cost if orig_cost is not None else 1500
-            target_user_id = getattr(original_unlock, "user_id", None)
-            if target_user_id is None:
-                target_user_id = await _workspace_owner_id(ws_id)
-            if target_user_id is None:
-                logger.warning(
-                    "Cannot resolve refund recipient for contact %s in workspace %d; skipping",
-                    contact_id,
-                    ws_id,
-                )
-                skipped.append(
-                    {
-                        "verified_contact_id": str(contact_id),
-                        "workspace_id": ws_id,
-                        "reason": "missing_user_id",
-                    }
-                )
-                continue
-
-            # 3. Call record_contact_unlock_refund_24h with compliance refund window
-            billing_svc = BillingEventService()
             try:
+                # 1. Idempotency: check if already refunded
+                existing_refunds = await _list_billing_events(
+                    session,
+                    event_entity_type="verified_contact",
+                    event_type="contact_unlock_refund",
+                    event_id=contact_id,
+                    workspace_id=ws_id,
+                )
+                if existing_refunds:
+                    logger.info(
+                        "Contact %s in workspace %d already refunded; skipping",
+                        contact_id,
+                        ws_id,
+                    )
+                    skipped.append(
+                        {
+                            "verified_contact_id": str(contact_id),
+                            "workspace_id": ws_id,
+                            "reason": "already_refunded",
+                        }
+                    )
+                    continue
+
+                # 2. Check for original unlock event and determine cost
+                original_unlocks = await _list_billing_events(
+                    session,
+                    event_entity_type="verified_contact",
+                    event_type="contact_unlock",
+                    event_id=contact_id,
+                    workspace_id=ws_id,
+                )
+                if not original_unlocks:
+                    logger.info(
+                        "No original unlock billing event for contact %s in workspace %d; skipping",
+                        contact_id,
+                        ws_id,
+                    )
+                    skipped.append(
+                        {
+                            "verified_contact_id": str(contact_id),
+                            "workspace_id": ws_id,
+                            "reason": "no_unlock_charge",
+                        }
+                    )
+                    continue
+
+                original_unlock = original_unlocks[0]
+                orig_cost = getattr(original_unlock, "cost_micros", None)
+                cost_micros = orig_cost if orig_cost is not None else 1500
+                target_user_id = getattr(original_unlock, "user_id", None)
+                if target_user_id is None:
+                    target_user_id = await _workspace_owner_id(ws_id)
+                if target_user_id is None:
+                    logger.warning(
+                        "Cannot resolve refund recipient for contact %s in workspace %d; skipping",
+                        contact_id,
+                        ws_id,
+                    )
+                    skipped.append(
+                        {
+                            "verified_contact_id": str(contact_id),
+                            "workspace_id": ws_id,
+                            "reason": "missing_user_id",
+                        }
+                    )
+                    continue
+
+                # 3. Call record_contact_unlock_refund_24h with compliance refund window
                 event = await billing_svc.record_contact_unlock_refund_24h(
                     session,
                     verified_contact_id=contact_id,
@@ -355,6 +355,7 @@ class CompliancePurgeService:
                     }
                 )
             except RefundWindowExpiredError:
+                await session.rollback()  # release pg_advisory_xact_lock held by the tx
                 logger.info(
                     "Refund window (%d hours) expired for contact %s in workspace %d",
                     refund_window_hours,
@@ -370,6 +371,7 @@ class CompliancePurgeService:
                     }
                 )
             except NoOriginalUnlockEventError:
+                await session.rollback()
                 logger.info(
                     "No unlock event for contact %s in workspace %d",
                     contact_id,
@@ -383,6 +385,7 @@ class CompliancePurgeService:
                     }
                 )
             except RefundAlreadyProcessedError:
+                await session.rollback()
                 logger.info(
                     "Refund already processed for contact %s in workspace %d",
                     contact_id,
@@ -396,6 +399,7 @@ class CompliancePurgeService:
                     }
                 )
             except RefundBudgetExhaustedError:
+                await session.rollback()
                 logger.warning(
                     "Refund budget exhausted for workspace %d (contact %s)",
                     ws_id,
@@ -444,14 +448,6 @@ class CompliancePurgeService:
             if not (refunded_count_ws > 0 or has_expired):
                 continue
 
-            target_user = await _workspace_owner_id(ws_id)
-            if target_user is None:
-                logger.warning(
-                    "Cannot send compliance purge notification: no owner user_id for workspace %d",
-                    ws_id,
-                )
-                continue
-
             refunded_credits = (
                 refunded_micros_ws // 1_000_000
                 if refunded_micros_ws % 1_000_000 == 0
@@ -478,6 +474,14 @@ class CompliancePurgeService:
             }
 
             try:
+                target_user = await _workspace_owner_id(ws_id)
+                if target_user is None:
+                    logger.warning(
+                        "Cannot send compliance purge notification: no owner user_id for workspace %d",
+                        ws_id,
+                    )
+                    continue
+
                 await NotificationService.create_notification(
                     session,
                     user_id=target_user,
@@ -488,6 +492,9 @@ class CompliancePurgeService:
                     notification_metadata=notif_metadata,
                 )
             except Exception as notif_err:
+                await (
+                    session.rollback()
+                )  # reset aborted tx so next workspace can proceed
                 logger.exception(
                     "Failed to create compliance purge notification for workspace %d: %s",
                     ws_id,

@@ -1,12 +1,12 @@
 ---
 baseline_revision: 0f03d28ef979c7a1fe4f7cdfa391f3b4841c3913
 status: done
-followup_review_recommended: true
+followup_review_recommended: false
 ---
 
 # Story 33.4: Compliance-Purge Credit Refund (30-Day Window)
 
-**Status:** done (implemented + reviewed 2026-10-14 — 15 medium + 6 low patched; follow-up review recommended)
+**Status:** done (implemented + reviewed + second-pass CR hardened 2026-10-14)
 **Nguồn:** `epic-33-retro-item-35` — policy đã duyệt: `_bmad-output/planning-artifacts/credit-refund-policy-compliance-purge-draft-2026-10-13.md` (Phương án C, approved 2026-10-13)
 
 ## Intent
@@ -103,6 +103,23 @@ As a Workspace Owner, I want credits refunded when a contact I unlocked is force
   - `[false]` `[reject]` IA1 refund credit user wallet không phải "workspace wallet" — spec-consistent: reuse `record_contact_unlock_refund_24h` credit original payer User — đúng billing model hiện có, policy đã duyệt.
   - `[false]` `[reject]` IA2 refund logic coupled admin route — spec §Architecture Two-Phase Post-Commit chính nó chọn orchestration trong route `compliance_purge`.
   - `[false]` `[reject]` IA3 notification là DB row chứ không "in-app" — `Notification` DB row chính là in-app notification mechanism của platform.
+
+### 2026-10-14 — Second-Pass Review (Reviewer Agent)
+- verdicts: 3 findings — high 0, medium 3, low 0, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` CR-01: Steps 1 & 2 và `_workspace_owner_id` trong loop candidate nằm ngoài khối try/except → lỗi DB/network làm abort toàn bộ loop thay vì skip candidate riêng lẻ — patched: mở rộng `try` bao trùm toàn bộ candidate processing.
+  - `[medium]` `[patch]` CR-02: Các nhánh except (`RefundWindowExpiredError`, `NoOriginalUnlockEventError`, `RefundAlreadyProcessedError`, `RefundBudgetExhaustedError`) thiếu `await session.rollback()` → không giải phóng `pg_advisory_xact_lock` transaction-level — patched: bổ sung `await session.rollback()` cho toàn bộ 4 exception branches.
+  - `[medium]` `[patch]` CR-03: `_workspace_owner_id` và `NotificationService.create_notification` trong notification loop thiếu `await session.rollback()` khi gặp lỗi → làm hỏng session cho các workspace tiếp theo — patched: di chuyển owner lookup vào trong try/except block của notification và bổ sung rollback khi thất bại.
+
+### 2026-10-14 — Follow-up review pass (second pass, `claude-sonnet-5` reviewer)
+- verdicts: 4 findings — high 0, medium 2, low 2, false 0
+- findings:
+  - `[medium]` `[patch]` CR-01 candidate try/except quá hẹp — `_list_billing_events` (idempotency + unlock lookup) và `_workspace_owner_id` nằm ngoài try → lỗi DB một candidate abort cả loop, route catch-all wipe `refund_summary` về 0, che giấu refund đã commit. Patched: try wrap toàn bộ steps 1–3 per candidate.
+  - `[medium]` `[patch]` CR-02 `_workspace_owner_id` trong notification loop ngoài try → crash wipe summary dù refund đã commit. Patched: owner lookup vào trong try, thêm `session.rollback()` trong notif except.
+  - `[low]` `[patch]` CR-03 domain-skip exceptions (4 loại) không rollback → `pg_advisory_xact_lock` giữ đến commit cuối. Patched: `await session.rollback()` trong cả 4 domain handler.
+  - `[low]` `[accept]` CR-04 duplicate `_list_billing_events` giữa service layers — read-only queries, cần thiết cho recipient/cost resolution trước khi gọi billing svc.
+- Tests added: `test_billing_query_failure_isolated_per_candidate` (CR-01), `test_notification_owner_lookup_failure_preserves_summary` (CR-02), rollback assertion trên `test_refund_window_expired_skips_and_notifies` (CR-03).
+- Verification: 20/20 unit + 6/6 integration pass, ruff clean. Advisor pre-flight đồng thuận phương án patch.
 
 ## Auto Run Result
 

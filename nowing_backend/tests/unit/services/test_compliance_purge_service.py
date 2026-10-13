@@ -343,6 +343,7 @@ class TestProcessPostPurgeRefunds:
             assert summary["skipped"][0]["reason"] == "window_expired"
             assert summary["skipped"][0]["verified_contact_id"] == str(contact_id)
 
+            session.rollback.assert_awaited()  # releases pg_advisory_xact_lock on domain skip
             mock_create_notif.assert_awaited_once()
             notif_kwargs = mock_create_notif.await_args.kwargs
             assert notif_kwargs["notification_metadata"]["has_expired_refunds"] is True
@@ -424,7 +425,7 @@ class TestProcessPostPurgeRefunds:
             assert summary["refunded_micros"] == 0
             assert len(summary["skipped"]) == 1
             assert summary["skipped"][0]["reason"] == "already_refunded"
-            mock_billing_cls.assert_not_called()
+            mock_billing_cls.return_value.record_contact_unlock_refund_24h.assert_not_called()
             mock_create_notif.assert_not_called()
 
     @pytest.mark.asyncio
@@ -730,7 +731,7 @@ class TestProcessPostPurgeRefunds:
             assert summary["refunded_contacts"] == 0
             assert len(summary["skipped"]) == 1
             assert summary["skipped"][0]["reason"] == "missing_user_id"
-            mock_billing_cls.assert_not_called()
+            mock_billing_cls.return_value.record_contact_unlock_refund_24h.assert_not_called()
             mock_create_notif.assert_not_called()
 
     @pytest.mark.asyncio
@@ -764,3 +765,99 @@ class TestProcessPostPurgeRefunds:
             assert summary["details"] == []
             mock_list_events.assert_not_called()
             mock_create_notif.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_billing_query_failure_isolated_per_candidate(self):
+        """DB error on a candidate's billing query skips that candidate only."""
+        session = AsyncMock()
+        c1, c2 = uuid.uuid4(), uuid.uuid4()
+        owner_id = uuid.uuid4()
+
+        u2 = MagicMock(cost_micros=2000, user_id=owner_id)
+        r2 = MagicMock(cost_micros=-2000)
+        session.get.return_value = MagicMock(user_id=owner_id)
+
+        with (
+            patch(
+                "app.services.compliance_purge_service._list_billing_events"
+            ) as mock_list_events,
+            patch(
+                "app.services.compliance_purge_service.BillingEventService"
+            ) as mock_billing_cls,
+            patch(
+                "app.services.compliance_purge_service.NotificationService.create_notification",
+                new_callable=AsyncMock,
+            ) as mock_create_notif,
+        ):
+            mock_list_events.side_effect = [
+                RuntimeError("conn reset"),  # c1 refund-check query fails
+                [],  # c2 refund-check
+                [u2],  # c2 unlock
+            ]
+
+            billing_svc = MagicMock()
+            billing_svc.record_contact_unlock_refund_24h = AsyncMock(return_value=r2)
+            mock_billing_cls.return_value = billing_svc
+
+            summary = await CompliancePurgeService.process_post_purge_refunds(
+                session,
+                refund_candidates=[
+                    {"verified_contact_id": c1, "workspace_id": 1},
+                    {"verified_contact_id": c2, "workspace_id": 1},
+                ],
+            )
+
+            # c1 isolated as internal_error; c2 refunded normally
+            assert summary["refunded_contacts"] == 1
+            assert summary["refunded_micros"] == 2000
+            assert len(summary["skipped"]) == 1
+            assert summary["skipped"][0]["reason"] == "internal_error"
+            assert summary["skipped"][0]["verified_contact_id"] == str(c1)
+            session.rollback.assert_awaited()
+            mock_create_notif.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_notification_owner_lookup_failure_preserves_summary(self):
+        """Owner lookup crash in notification loop must not wipe refund summary."""
+        session = AsyncMock()
+        contact_id = uuid.uuid4()
+        owner_id = uuid.uuid4()
+
+        unlock_event = MagicMock(cost_micros=1500, user_id=owner_id)
+        refund_event = MagicMock(cost_micros=-1500)
+        # session.get(Workspace) crashes during notification owner resolution
+        session.get.side_effect = RuntimeError("db gone")
+
+        with (
+            patch(
+                "app.services.compliance_purge_service._list_billing_events"
+            ) as mock_list_events,
+            patch(
+                "app.services.compliance_purge_service.BillingEventService"
+            ) as mock_billing_cls,
+            patch(
+                "app.services.compliance_purge_service.NotificationService.create_notification",
+                new_callable=AsyncMock,
+            ) as mock_create_notif,
+        ):
+            mock_list_events.side_effect = [[], [unlock_event]]
+
+            billing_svc = MagicMock()
+            billing_svc.record_contact_unlock_refund_24h = AsyncMock(
+                return_value=refund_event
+            )
+            mock_billing_cls.return_value = billing_svc
+
+            summary = await CompliancePurgeService.process_post_purge_refunds(
+                session,
+                refund_candidates=[
+                    {"verified_contact_id": contact_id, "workspace_id": 1}
+                ],
+            )
+
+            # Refund result survives notification failure — no exception escapes
+            assert summary["refunded_contacts"] == 1
+            assert summary["refunded_micros"] == 1500
+            assert summary["skipped"] == []
+            mock_create_notif.assert_not_called()
+            session.rollback.assert_awaited()
