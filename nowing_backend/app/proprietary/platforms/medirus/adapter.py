@@ -27,6 +27,7 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from app.config import config
+from app.observability.metrics.platform import record_scraper_ingest_failure
 from app.proprietary.platforms.medirus.adapter_v2 import (
     MedirusSocialAdapterV2,
 )
@@ -552,22 +553,26 @@ class MedirusSocialAdapter:
                 timeout=timeout,
             )
         except TimeoutError:
+            record_scraper_ingest_failure("medirus", "timeout")
             return {
                 "success": False,
                 "error": f"Medirus MCP tool {tool_name} timed out",
                 "data": [],
             }
         except json.JSONDecodeError as exc:
+            record_scraper_ingest_failure("medirus", "decode_error")
             return {
                 "success": False,
                 "error": f"Invalid JSON from Medirus MCP: {exc}",
                 "data": [],
             }
         except MedirusMcpError as exc:
+            record_scraper_ingest_failure("medirus", "mcp_error")
             return {"success": False, "error": str(exc), "data": []}
         except (
             Exception
         ) as exc:  # unexpected MCP tool execution failure; return error envelope
+            record_scraper_ingest_failure("medirus", "unexpected_error")
             logger.warning(
                 "Medirus MCP tool %s failed: %s",
                 tool_name,

@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 CONSUMER_GROUP_NAME = "social_processors"
 MAX_MESSAGES_PER_BATCH = 100
 AUTOCLAIM_MIN_IDLE_TIME_MS = 60_000  # Reclaim messages stuck in PEL > 60s (Story 35.1)
+SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS = 5
 BATCH_SLEEP_SECONDS = 0.01
 
 SUPPORTED_SCHEMA_VERSION_MAX = 1
@@ -71,6 +72,7 @@ DLQ_REASON_MISSING_TARGET_ID = "MISSING_TARGET_ID"
 DLQ_REASON_MISSING_CONTENT = "MISSING_CONTENT"
 DLQ_REASON_SCHEMA_VALIDATION_ERROR = "SCHEMA_VALIDATION_ERROR"
 DLQ_REASON_RUNTIME_FAILURE = "RUNTIME_FAILURE"
+DLQ_REASON_MAX_DELIVERY_ATTEMPTS = "MAX_DELIVERY_ATTEMPTS"
 
 SOCIAL_LEAD_CAPABILITY_ID = "social.search_leads"
 SOCIAL_LEAD_INTENTS = {"sell", "buy", "hiring", "seeking"}
@@ -947,6 +949,78 @@ def _default_consumer_name() -> str:
     return f"{socket.gethostname()}-{os.getpid()}"
 
 
+async def _get_delivery_counts(redis_client: Any, msg_ids: list[str]) -> dict[str, int]:
+    """Retrieve delivery attempt counts for messages in PEL via a single batched XPENDING range call."""
+    if not msg_ids:
+        return {}
+    # Honor monkeypatched _get_delivery_count in test suites
+    custom_single = globals().get("_get_delivery_count")
+    if custom_single is not None and custom_single is not _default_get_delivery_count:
+        return {mid: await custom_single(redis_client, mid) for mid in msg_ids}
+
+    counts: dict[str, int] = {}
+    try:
+        min_id = msg_ids[0]
+        max_id = msg_ids[-1]
+        batch_count = max(len(msg_ids) * 2, 100) if len(msg_ids) > 1 else 1
+        entries = None
+        if hasattr(redis_client, "xpending_range"):
+            entries = await redis_client.xpending_range(
+                name=STREAM_SOCIAL_RAW_POSTS,
+                groupname=CONSUMER_GROUP_NAME,
+                min=min_id,
+                max=max_id,
+                count=batch_count,
+            )
+        elif hasattr(redis_client, "xpending"):
+            with contextlib.suppress(TypeError):
+                entries = await redis_client.xpending(
+                    name=STREAM_SOCIAL_RAW_POSTS,
+                    groupname=CONSUMER_GROUP_NAME,
+                    min=min_id,
+                    max=max_id,
+                    count=batch_count,
+                )
+
+        if entries and isinstance(entries, list):
+            for entry in entries:
+                mid = None
+                cnt = 1
+                if isinstance(entry, dict):
+                    raw_mid = entry.get("message_id")
+                    mid = (
+                        raw_mid.decode()
+                        if isinstance(raw_mid, bytes)
+                        else str(raw_mid)
+                        if raw_mid is not None
+                        else None
+                    )
+                    cnt = int(
+                        entry.get("times_delivered")
+                        or entry.get("deliveries_count")
+                        or entry.get("delivery_count")
+                        or 1
+                    )
+                elif isinstance(entry, (list, tuple)) and len(entry) >= 4:
+                    raw_id = entry[0]
+                    mid = raw_id.decode() if isinstance(raw_id, bytes) else str(raw_id)
+                    cnt = int(entry[3] or 1)
+                if mid:
+                    counts[mid] = cnt
+    except Exception as exc:
+        logger.warning("Failed checking delivery counts via XPENDING range: %s", exc)
+    return counts
+
+
+async def _default_get_delivery_count(redis_client: Any, msg_id: str) -> int:
+    """Retrieve delivery attempt count for a single message in PEL via XPENDING."""
+    counts = await _get_delivery_counts(redis_client, [msg_id])
+    return counts.get(msg_id, 1)
+
+
+_get_delivery_count = _default_get_delivery_count
+
+
 async def run_social_stream_consumer(
     redis_client: Any | None = None,
     consumer_name: str | None = None,
@@ -1014,7 +1088,32 @@ async def run_social_stream_consumer(
                         "XAUTOCLAIM reclaimed %d pending messages from dead workers",
                         len(claim_res[1]),
                     )
-                    entries = [(STREAM_SOCIAL_RAW_POSTS, claim_res[1])]
+                    reclaimed_entries = claim_res[1]
+                    msg_ids = [mid for mid, _ in reclaimed_entries]
+                    delivery_counts = await _get_delivery_counts(redis_client, msg_ids)
+
+                    claimed_messages = []
+                    for msg_id, payload in reclaimed_entries:
+                        delivery_count = delivery_counts.get(msg_id, 1)
+                        if delivery_count >= SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS:
+                            logger.warning(
+                                "Message %s reached max delivery attempts (%d >= %d); routing to DLQ",
+                                msg_id,
+                                delivery_count,
+                                SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS,
+                            )
+                            await _route_to_dlq(
+                                redis_client=redis_client,
+                                msg_id=msg_id,
+                                payload=payload,
+                                dlq_reason=DLQ_REASON_MAX_DELIVERY_ATTEMPTS,
+                                error=f"Max delivery attempts exceeded: {delivery_count} >= {SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS}",
+                            )
+                        else:
+                            claimed_messages.append((msg_id, payload))
+
+                    if claimed_messages:
+                        entries = [(STREAM_SOCIAL_RAW_POSTS, claimed_messages)]
             except Exception as claim_exc:
                 logger.debug("XAUTOCLAIM check skipped or failed: %s", claim_exc)
 

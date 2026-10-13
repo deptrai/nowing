@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Text, cast, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.lead_intelligence.dnc.normalizer import (
 from app.lead_intelligence.dnc.service import DncComplianceService
 from app.models.leads.enrichment import VerifiedContact
 from app.models.leads.main import Lead
+from app.models.leads.social import SocialPost
 from app.models.workspaces import GlobalDncRecord
 
 logger = logging.getLogger(__name__)
@@ -114,7 +115,30 @@ class CompliancePurgeService:
                     await session.delete(lead)
                     purged_leads += 1
 
-        # 3. Permanently append to GlobalDncRecord
+        # 3. Find and delete matching SocialPost records containing this PII
+        post_filters = []
+        candidate_values = {
+            v for v in [norm_val, value.strip(), value.strip().lstrip("+")] if v
+        }
+        for v in candidate_values:
+            v_esc = v.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            post_filters.append(
+                cast(SocialPost.raw_entities, Text).like(f'%"{v_esc}"%')
+            )
+            post_filters.append(SocialPost.content.like(f"%{v_esc}%"))
+            post_filters.append(SocialPost.author_id == v)
+            post_filters.append(SocialPost.author_name == v)
+
+        if post_filters:
+            post_stmt = select(SocialPost).where(or_(*post_filters))
+            posts = list((await session.execute(post_stmt)).scalars().all())
+            for post in posts:
+                if post.workspace_id:
+                    affected_workspaces.add(post.workspace_id)
+                await session.delete(post)
+                purged_posts += 1
+
+        # 4. Permanently append to GlobalDncRecord
         dnc_stmt = (
             pg_insert(GlobalDncRecord)
             .values(
@@ -128,17 +152,18 @@ class CompliancePurgeService:
         )
         await session.execute(dnc_stmt)
 
-        # 4. Invalidate DNC cache for all affected workspaces
+        # 5. Invalidate DNC cache for all affected workspaces
         dnc_svc = DncComplianceService()
         for ws_id in affected_workspaces:
             await dnc_svc.invalidate_workspace_cache(ws_id)
 
         logger.info(
-            "Compliance purge executed: type=%s hmac=%s contacts=%d leads=%d workspaces=%d",
+            "Compliance purge executed: type=%s hmac=%s contacts=%d leads=%d posts=%d workspaces=%d",
             record_type,
             val_hmac[:12],
             purged_contacts,
             purged_leads,
+            purged_posts,
             len(affected_workspaces),
         )
 

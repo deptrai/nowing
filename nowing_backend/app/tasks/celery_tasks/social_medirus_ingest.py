@@ -27,6 +27,7 @@ from sqlalchemy import or_, select
 from app.celery_app import CONNECTORS_QUEUE, celery_app
 from app.config import config
 from app.db import MedirusProxyBinding, SocialMonitoredTarget
+from app.observability.metrics.platform import record_scraper_ingest_failure
 from app.proprietary.platforms.medirus.adapter_v2 import (
     MedirusSocialAdapterV2,
     TargetUnsupportedError,
@@ -84,7 +85,9 @@ async def _acquire_target_lock(
     ttl: int,
 ) -> bool:
     """Try to acquire a Redis lock for the given target."""
-    return bool(await redis_client.set(_target_lock_key(target_id), "1", nx=True, ex=ttl))
+    return bool(
+        await redis_client.set(_target_lock_key(target_id), "1", nx=True, ex=ttl)
+    )
 
 
 async def _release_target_lock(
@@ -240,11 +243,13 @@ async def _ingest_social_target(task, target_id: int) -> int:
             # explicit account_id/proxy_url.
             if not target.account_id or not target.proxy_url:
                 binding = await session.execute(
-                    select(MedirusProxyBinding).where(
+                    select(MedirusProxyBinding)
+                    .where(
                         MedirusProxyBinding.workspace_id == target.workspace_id,
                         MedirusProxyBinding.platform == target.platform,
                         MedirusProxyBinding.is_active.is_(True),
-                    ).limit(1)
+                    )
+                    .limit(1)
                 )
                 row = binding.scalars().first()
                 if row:
@@ -265,6 +270,7 @@ async def _ingest_social_target(task, target_id: int) -> int:
                     try:
                         posts = await adapter.fetch_posts_for_target(target)
                     except TargetUnsupportedError as exc:
+                        record_scraper_ingest_failure("medirus", "target_unsupported")
                         await _mark_target_unsupported(session, target, str(exc))
                         return 0
                     except MedirusMcpError as exc:
@@ -276,10 +282,7 @@ async def _ingest_social_target(task, target_id: int) -> int:
                                 and retries >= decision.max_retries
                             )
                             if retries_exhausted:
-                                if (
-                                    decision.exhausted_behavior
-                                    is TaskBehavior.HALT
-                                ):
+                                if decision.exhausted_behavior is TaskBehavior.HALT:
                                     if decision.write_dlq:
                                         await _write_dlq(
                                             redis_client,
@@ -288,14 +291,9 @@ async def _ingest_social_target(task, target_id: int) -> int:
                                             decision,
                                             retries,
                                         )
-                                    await _halt_target(
-                                        session, target, decision.reason
-                                    )
+                                    await _halt_target(session, target, decision.reason)
                                     return 0
-                                if (
-                                    decision.exhausted_behavior
-                                    is TaskBehavior.PAUSE
-                                ):
+                                if decision.exhausted_behavior is TaskBehavior.PAUSE:
                                     await _pause_target(
                                         session,
                                         target,
@@ -303,10 +301,7 @@ async def _ingest_social_target(task, target_id: int) -> int:
                                         retry_after_seconds=decision.cooldown_seconds,
                                     )
                                     return 0
-                                if (
-                                    decision.exhausted_behavior
-                                    is TaskBehavior.RAISE
-                                ):
+                                if decision.exhausted_behavior is TaskBehavior.RAISE:
                                     raise exc
                                 # No exhausted_behavior -> surface the original
                                 # error rather than triggering MaxRetriesExceededError.
@@ -375,7 +370,9 @@ async def _ingest_social_target(task, target_id: int) -> int:
                     )
                     return ingested
 
-            except Exception:  # ingest failure → rollback and re-raise
+            except Exception as exc:  # ingest failure → rollback and re-raise
+                if not isinstance(exc, MedirusMcpError):
+                    record_scraper_ingest_failure("medirus", "ingest_failure")
                 await session.rollback()
                 raise
             finally:
@@ -435,9 +432,7 @@ async def _check_and_trigger_social_targets() -> int:
                 logger.debug("No social targets due for scraping")
                 return 0
 
-            logger.info(
-                "Found %d social target(s) due for scraping", len(due_targets)
-            )
+            logger.info("Found %d social target(s) due for scraping", len(due_targets))
 
             triggered = 0
             for target in due_targets:
@@ -451,9 +446,7 @@ async def _check_and_trigger_social_targets() -> int:
                         continue
 
                     if await redis_client.exists(_target_lock_key(target.id)):
-                        logger.debug(
-                            "Social target %s is locked, skipping", target.id
-                        )
+                        logger.debug("Social target %s is locked, skipping", target.id)
                         continue
 
                     logger.info(
@@ -463,7 +456,9 @@ async def _check_and_trigger_social_targets() -> int:
                     )
                     ingest_social_target_task.delay(target.id)
                     triggered += 1
-                except Exception:  # per-target schedule failure; continue scheduling remaining targets
+                except (
+                    Exception
+                ):  # per-target schedule failure; continue scheduling remaining targets
                     logger.exception(
                         "Failed to schedule social ingest for target %s",
                         target.id,

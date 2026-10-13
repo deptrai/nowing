@@ -6,8 +6,11 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import HTTPException
+from starlette.requests import Request
 
 from app.models.leads.main import Lead
+from app.routes.crm_routes import hubspot_webhook, salesforce_webhook
 from app.services.crm_webhook_service import (
     CrmWebhookService,
     map_stage_to_status,
@@ -15,6 +18,7 @@ from app.services.crm_webhook_service import (
 )
 
 pytestmark = [pytest.mark.unit]
+
 
 def _make_mock_session() -> MagicMock:
     """Mock AsyncSession where add() is sync, execute/flush/commit are async."""
@@ -26,7 +30,6 @@ def _make_mock_session() -> MagicMock:
     session.execute = AsyncMock()
     session.get = AsyncMock()
     return session
-
 
 
 class TestStageMapping:
@@ -105,3 +108,202 @@ class TestCrmWebhookService:
         assert results[0]["new_lead_status"] == "converted"
         assert lead.status == "converted"
         session.add.assert_called_once()
+
+
+def _make_http_request(body: bytes, headers: dict[str, str] | None = None) -> Request:
+    raw_headers = [
+        (k.lower().encode("latin1"), v.encode("latin1"))
+        for k, v in (headers or {}).items()
+    ]
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    return Request(scope={"type": "http", "headers": raw_headers}, receive=receive)
+
+
+class TestSalesforceWebhookAuth:
+    """Test fail-closed authentication for Salesforce webhook endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_salesforce_webhook_auth_missing_secret(self, monkeypatch):
+        from app.config import config
+
+        monkeypatch.setattr(config, "SALESFORCE_WEBHOOK_SECRET", "")
+
+        session = _make_mock_session()
+        req = _make_http_request(b'{"test": 1}')
+
+        with pytest.raises(HTTPException) as exc_info:
+            await salesforce_webhook(
+                req, session, x_salesforce_webhook_secret="some-sig"
+            )
+        assert exc_info.value.status_code == 401
+        assert "Invalid Salesforce webhook secret" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_salesforce_webhook_auth_missing_or_invalid_signature(
+        self, monkeypatch
+    ):
+        from app.config import config
+
+        monkeypatch.setattr(
+            config, "SALESFORCE_WEBHOOK_SECRET", "super-secret-salesforce"
+        )
+
+        session = _make_mock_session()
+        req = _make_http_request(b'{"test": 1}')
+
+        # Missing signature (None)
+        with pytest.raises(HTTPException) as exc_info:
+            await salesforce_webhook(req, session, x_salesforce_webhook_secret=None)
+        assert exc_info.value.status_code == 401
+        assert "Invalid Salesforce webhook secret" in exc_info.value.detail
+
+        # Empty header signature
+        with pytest.raises(HTTPException) as exc_info_empty:
+            await salesforce_webhook(req, session, x_salesforce_webhook_secret="")
+        assert exc_info_empty.value.status_code == 401
+        assert "Invalid Salesforce webhook secret" in exc_info_empty.value.detail
+
+        # Invalid signature
+        with pytest.raises(HTTPException) as exc_info2:
+            await salesforce_webhook(
+                req, session, x_salesforce_webhook_secret="wrong-signature"
+            )
+        assert exc_info2.value.status_code == 401
+        assert "Invalid Salesforce webhook secret" in exc_info2.value.detail
+
+    @pytest.mark.asyncio
+    async def test_salesforce_webhook_auth_valid_signature_processes(self, monkeypatch):
+        from app.config import config
+
+        secret = "super-secret-salesforce"
+        monkeypatch.setattr(config, "SALESFORCE_WEBHOOK_SECRET", secret)
+
+        body = b'{"StageName": "unknown"}'
+
+        session = _make_mock_session()
+        req = _make_http_request(body)
+
+        result = await salesforce_webhook(
+            req, session, x_salesforce_webhook_secret=secret
+        )
+        assert result["status"] == "ok"
+        session.commit.assert_awaited_once()
+
+
+class TestCrmWebhookLeadStatusTransaction:
+    """Test transactional commit and rollback for CRM webhooks."""
+
+    @pytest.mark.asyncio
+    async def test_crm_webhook_lead_status_transaction_commit(self, monkeypatch):
+        """Valid deal change updates Lead.status and CrmSyncLog in a single transaction."""
+        from app.config import config
+
+        monkeypatch.setattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
+
+        session = _make_mock_session()
+        lead = MagicMock(spec=Lead)
+        lead.id = uuid.uuid4()
+        lead.workspace_id = 1
+        lead.status = "new"
+
+        contact = MagicMock()
+        contact.lead_id = lead.id
+        contact.workspace_id = 1
+
+        scalars_mock = MagicMock()
+        scalars_mock.first.return_value = contact
+        result_mock = MagicMock()
+        result_mock.scalars.return_value = scalars_mock
+        session.execute.return_value = result_mock
+        session.get.return_value = lead
+
+        body = b'[{"objectId": 12345, "propertyName": "dealstage", "propertyValue": "closedwon", "subscriptionType": "deal.propertyChange"}]'
+        req = _make_http_request(body)
+
+        resp = await hubspot_webhook(req, session, x_hubspot_signature_v3="dev-sig")
+        assert resp["status"] == "ok"
+        assert lead.status == "converted"
+        session.commit.assert_awaited_once()
+        session.rollback.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_crm_webhook_lead_status_transaction_rollback_on_error(
+        self, monkeypatch
+    ):
+        """Failure during webhook processing triggers session rollback and raises 500."""
+        from app.config import config
+
+        monkeypatch.setattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
+
+        session = _make_mock_session()
+        session.execute.side_effect = RuntimeError("DB connection dropped")
+
+        body = b'[{"objectId": 12345, "propertyName": "dealstage", "propertyValue": "closedwon", "subscriptionType": "deal.propertyChange"}]'
+        req = _make_http_request(body)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await hubspot_webhook(req, session, x_hubspot_signature_v3="dev-sig")
+
+        assert exc_info.value.status_code == 500
+        session.rollback.assert_awaited_once()
+        session.commit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_salesforce_webhook_rollback_on_error(self, monkeypatch):
+        """Failure during Salesforce webhook processing triggers session rollback and raises 500."""
+        from app.config import config
+
+        secret = "super-secret-salesforce"
+        monkeypatch.setattr(config, "SALESFORCE_WEBHOOK_SECRET", secret)
+
+        session = _make_mock_session()
+        session.execute.side_effect = RuntimeError("DB connection dropped")
+
+        body = b'{"Id": "006xx000001", "StageName": "closed won"}'
+        req = _make_http_request(body)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await salesforce_webhook(req, session, x_salesforce_webhook_secret=secret)
+
+        assert exc_info.value.status_code == 500
+        session.rollback.assert_awaited_once()
+        session.commit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_crm_webhooks_do_not_coerce_http_exception(self, monkeypatch):
+        """HTTPException raised inside webhook processing should be re-raised, not coerced to 500."""
+        from unittest.mock import patch
+
+        from app.config import config
+
+        monkeypatch.setattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
+        monkeypatch.setattr(config, "SALESFORCE_WEBHOOK_SECRET", "sf-secret")
+
+        session = _make_mock_session()
+
+        # Test HubSpot webhook re-raises HTTPException
+        req_hs = _make_http_request(b'[{"objectId": 123}]')
+        with patch(
+            "app.services.crm_webhook_service.CrmWebhookService.handle_hubspot_deal_change",
+            side_effect=HTTPException(status_code=400, detail="Custom client error"),
+        ):
+            with pytest.raises(HTTPException) as exc_hs:
+                await hubspot_webhook(req_hs, session, x_hubspot_signature_v3="dev-sig")
+            assert exc_hs.value.status_code == 400
+            assert exc_hs.value.detail == "Custom client error"
+
+        # Test Salesforce webhook re-raises HTTPException
+        req_sf = _make_http_request(b'{"StageName": "Prospecting"}')
+        with patch(
+            "app.services.crm_webhook_service.CrmWebhookService.handle_salesforce_deal_change",
+            side_effect=HTTPException(status_code=422, detail="Validation error"),
+        ):
+            with pytest.raises(HTTPException) as exc_sf:
+                await salesforce_webhook(
+                    req_sf, session, x_salesforce_webhook_secret="sf-secret"
+                )
+            assert exc_sf.value.status_code == 422
+            assert exc_sf.value.detail == "Validation error"

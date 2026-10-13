@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import os
 import time
 import uuid
 from typing import Any
@@ -18,11 +19,32 @@ from app.services.pii.redact import redact_pii
 logger = logging.getLogger(__name__)
 
 _CDP_SESSION_TTL_SECONDS = 300  # 5 minutes
+_CDP_DEV_DEFAULT = "dev-cdp-secret-change-in-production"
 
 
 def _get_session_secret() -> str:
-    """Return the CDP session secret from config or env."""
-    return getattr(config, "CDP_SESSION_SECRET", "dev-cdp-secret-change-in-production")
+    """Return the CDP session secret from config or env.
+
+    Fails closed in production if empty or set to insecure default.
+    """
+    secret = getattr(config, "CDP_SESSION_SECRET", None)
+    if secret is None:
+        secret = os.getenv("CDP_SESSION_SECRET", _CDP_DEV_DEFAULT)
+
+    env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+    is_prod = env in ("production", "prod")
+
+    if not secret or secret == _CDP_DEV_DEFAULT:
+        if is_prod:
+            raise ValueError(
+                "CDP_SESSION_SECRET cannot be empty or default in production environment"
+            )
+        logger.warning(
+            "CDP_SESSION_SECRET is empty or using insecure default in non-production environment"
+        )
+        return secret or _CDP_DEV_DEFAULT
+
+    return secret
 
 
 def generate_session_token(mission_id: str, user_id: str) -> str:

@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.config import config
+from app.observability.metrics.platform import record_scraper_ingest_failure
 from app.proprietary.platforms.medirus.action_matrix import (
     CanonicalActionMatrix,
     derive_platform_action,
@@ -548,6 +549,7 @@ class MedirusSocialAdapterV2:
         try:
             result = await client.call_tool(tool_name, arguments)
         except MedirusMcpError as exc:
+            record_scraper_ingest_failure("medirus", "mcp_error")
             logger.warning(
                 "Medirus tool %s failed: %s (code=%s, retry_after=%s)",
                 tool_name,
@@ -577,6 +579,7 @@ class MedirusSocialAdapterV2:
                 try:
                     result = await client.call_tool(fallback_tool, fallback_args)
                 except MedirusMcpError as fallback_exc:
+                    record_scraper_ingest_failure("medirus", "fallback_mcp_error")
                     logger.warning(
                         "Medirus fallback tool %s failed for target %s (platform=%s): %s (code=%s, retry_after=%s)",
                         fallback_tool,

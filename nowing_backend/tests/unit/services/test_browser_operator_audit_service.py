@@ -11,12 +11,12 @@ import pytest
 from app.models.browser_operator_audit import BrowserOperatorAuditEvent
 from app.services.browser_operator_audit_service import (
     BrowserOperatorAuditService,
+    _get_session_secret,
     generate_session_token,
     validate_session_token,
 )
 
 pytestmark = [pytest.mark.unit]
-
 
 
 def _make_mock_session() -> MagicMock:
@@ -26,6 +26,7 @@ def _make_mock_session() -> MagicMock:
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
     return session
+
 
 class TestSessionToken:
     """Test CDP session token generation and validation."""
@@ -128,7 +129,9 @@ class TestAuditService:
     async def test_log_event_redacts_pii_in_url(self):
         """target_url should be PII-redacted before storage."""
         session = _make_mock_session()
-        url_with_pii = "https://example.com/profile?email=user@example.com&phone=0908123456"
+        url_with_pii = (
+            "https://example.com/profile?email=user@example.com&phone=0908123456"
+        )
 
         event = await BrowserOperatorAuditService.log_event(
             session,
@@ -166,3 +169,49 @@ class TestAuditService:
         assert event.requires_human is True
         assert event.challenge == "recaptcha"
         assert event.metadata_["event_type"] == "command_result"
+
+
+class TestCdpSessionSecret:
+    """Test fail-closed behavior of CDP_SESSION_SECRET in production vs dev/test."""
+
+    def test_production_with_default_secret_raises_value_error(self, monkeypatch):
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        from app.config import config
+
+        monkeypatch.setattr(
+            config, "CDP_SESSION_SECRET", "dev-cdp-secret-change-in-production"
+        )
+        with pytest.raises(
+            ValueError, match="CDP_SESSION_SECRET cannot be empty or default"
+        ):
+            _get_session_secret()
+
+    def test_production_with_empty_secret_raises_value_error(self, monkeypatch):
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        from app.config import config
+
+        monkeypatch.setattr(config, "CDP_SESSION_SECRET", "")
+        with pytest.raises(
+            ValueError, match="CDP_SESSION_SECRET cannot be empty or default"
+        ):
+            _get_session_secret()
+
+    def test_production_with_secure_secret_succeeds(self, monkeypatch):
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        from app.config import config
+
+        monkeypatch.setattr(
+            config, "CDP_SESSION_SECRET", "super-secure-production-cdp-key-12345"
+        )
+        secret = _get_session_secret()
+        assert secret == "super-secure-production-cdp-key-12345"
+
+    def test_dev_environment_with_default_secret_warns_and_succeeds(self, monkeypatch):
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        from app.config import config
+
+        monkeypatch.setattr(
+            config, "CDP_SESSION_SECRET", "dev-cdp-secret-change-in-production"
+        )
+        secret = _get_session_secret()
+        assert secret == "dev-cdp-secret-change-in-production"

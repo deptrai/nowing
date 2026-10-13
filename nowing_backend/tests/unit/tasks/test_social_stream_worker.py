@@ -23,12 +23,14 @@ from app.tasks.social_stream_worker import (
     _LAG_STATE,
     CONSUMER_GROUP_NAME,
     DLQ_REASON_INVALID_SCHEMA_VERSION,
+    DLQ_REASON_MAX_DELIVERY_ATTEMPTS,
     DLQ_REASON_MISSING_CONTENT,
     DLQ_REASON_MISSING_TARGET_ID,
     DLQ_REASON_MISSING_WORKSPACE_ID,
     DLQ_REASON_RUNTIME_FAILURE,
     DLQ_REASON_SCHEMA_VALIDATION_ERROR,
     DLQ_REASON_UNSUPPORTED_SCHEMA_VERSION,
+    SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS,
     SUPPORTED_SCHEMA_VERSION_MAX,
     SocialPostEvent,
     ValidationResult,
@@ -1839,3 +1841,151 @@ def test_social_post_event_target_id_safe_coercion():
         target_id=None,
     )
     assert ev_none.target_id is None
+
+
+@pytest.mark.asyncio
+async def test_consumer_autoclaim_max_delivery_attempts_routes_to_dlq_and_xacks():
+    """AC-4: Messages reclaimed via XAUTOCLAIM that have reached or exceeded
+    SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS (>= 5) are routed to DLQ with
+    DLQ_REASON_MAX_DELIVERY_ATTEMPTS, ACKed, and not reprocessed.
+    """
+    mock_redis = mock.AsyncMock()
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
+    mock_redis.xpending.return_value = {"pending": 0}
+
+    poison_payload = {
+        "platform": "facebook",
+        "external_post_id": "p_poison_01",
+        "content_snippet": "Crash on process",
+        "workspace_id": 1,
+        "target_id": 1,
+    }
+    # xautoclaim returns [start_id, [(msg_id, payload)]]
+    mock_redis.xautoclaim.return_value = [
+        "0-0",
+        [("poison-msg-55", poison_payload)],
+    ]
+    # xpending_range returns delivery count >= SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS
+    mock_redis.xpending_range.return_value = [
+        {
+            "message_id": "poison-msg-55",
+            "times_delivered": SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS,
+        }
+    ]
+    # xreadgroup returns empty
+    mock_redis.xreadgroup.return_value = []
+
+    with (
+        mock.patch("app.tasks.social_stream_worker.async_session_maker") as mock_maker,
+        mock.patch(
+            "app.tasks.social_stream_worker.process_social_post_event",
+        ) as mock_process,
+    ):
+        mock_ctx = mock.AsyncMock()
+        mock_ctx.__aenter__.return_value = _FakeSession()
+        mock_ctx.__aexit__.return_value = None
+        mock_maker.return_value = mock_ctx
+
+        processed = await run_social_stream_consumer(
+            redis_client=mock_redis,
+            max_loops=1,
+        )
+
+    # Reclaimed poison message is NOT processed
+    assert processed == 0
+    assert mock_process.await_count == 0
+
+    # Routed to DLQ with DLQ_REASON_MAX_DELIVERY_ATTEMPTS
+    assert mock_redis.xadd.await_count == 1
+    call_args = mock_redis.xadd.await_args
+    stream_name = call_args.kwargs.get(
+        "name", call_args.args[0] if call_args.args else None
+    )
+    fields = call_args.kwargs.get(
+        "fields", call_args.args[1] if len(call_args.args) > 1 else {}
+    )
+    assert stream_name == STREAM_SOCIAL_DEAD_LETTER
+    assert fields["original_id"] == "poison-msg-55"
+    assert fields["dlq_reason"] == DLQ_REASON_MAX_DELIVERY_ATTEMPTS
+    assert "Max delivery attempts exceeded: 5 >= 5" in fields["error"]
+
+    # Message is ACKed
+    assert mock_redis.xack.await_count == 1
+    assert mock_redis.xack.await_args.args == (
+        STREAM_SOCIAL_RAW_POSTS,
+        CONSUMER_GROUP_NAME,
+        "poison-msg-55",
+    )
+
+
+@pytest.mark.asyncio
+async def test_consumer_autoclaim_batches_xpending_range_for_multiple_reclaimed_messages():
+    """Verify that delivery counts for all reclaimed messages are fetched in ONE batched XPENDING range call."""
+    mock_redis = mock.AsyncMock()
+    mock_redis.xinfo_groups.return_value = [
+        {"name": CONSUMER_GROUP_NAME, "lag": 0, "consumers": 1}
+    ]
+    mock_redis.xpending.return_value = {"pending": 0}
+
+    p1 = {
+        "platform": "facebook",
+        "external_post_id": "p1",
+        "content_snippet": "c1",
+        "workspace_id": 1,
+        "target_id": 1,
+    }
+    p2 = {
+        "platform": "facebook",
+        "external_post_id": "p2",
+        "content_snippet": "c2",
+        "workspace_id": 1,
+        "target_id": 1,
+    }
+
+    mock_redis.xautoclaim.return_value = [
+        "0-0",
+        [("100-0", p1), ("105-0", p2)],
+    ]
+    # Return batch entries from single xpending_range call
+    mock_redis.xpending_range.return_value = [
+        {"message_id": "100-0", "times_delivered": 1},
+        {"message_id": "105-0", "times_delivered": 6},  # exceeds limit 5
+    ]
+    mock_redis.xreadgroup.return_value = []
+
+    with (
+        mock.patch("app.tasks.social_stream_worker.async_session_maker") as mock_maker,
+        mock.patch(
+            "app.tasks.social_stream_worker.process_social_post_event"
+        ) as mock_process,
+    ):
+        mock_ctx = mock.AsyncMock()
+        mock_ctx.__aenter__.return_value = _FakeSession()
+        mock_ctx.__aexit__.return_value = None
+        mock_maker.return_value = mock_ctx
+
+        mock_process.return_value = mock.MagicMock(post_id=1, is_duplicate=False)
+
+        await run_social_stream_consumer(redis_client=mock_redis, max_loops=1)
+
+    # Exactly ONE xpending_range call was made for the batch
+    assert mock_redis.xpending_range.await_count == 1
+    xp_call = mock_redis.xpending_range.await_args
+    assert xp_call.kwargs.get("min") == "100-0"
+    assert xp_call.kwargs.get("max") == "105-0"
+
+    # Only 105-0 was routed to DLQ; 100-0 was processed
+    assert mock_redis.xadd.await_count == 1
+    dlq_args = mock_redis.xadd.await_args
+    stream_name = dlq_args.kwargs.get(
+        "name", dlq_args.args[0] if dlq_args.args else None
+    )
+    fields = dlq_args.kwargs.get(
+        "fields", dlq_args.args[1] if len(dlq_args.args) > 1 else {}
+    )
+    assert stream_name == STREAM_SOCIAL_DEAD_LETTER
+    assert fields["original_id"] == "105-0"
+    assert fields["dlq_reason"] == DLQ_REASON_MAX_DELIVERY_ATTEMPTS
+    assert mock_process.await_count == 1

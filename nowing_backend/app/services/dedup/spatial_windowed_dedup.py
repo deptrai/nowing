@@ -8,12 +8,28 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from app.services.location_normalize import remove_diacritics
+
+_ABBREV_PATTERN = re.compile(r"\b(q|quan|p|phuong)[.\s]*(\d+)\b", re.IGNORECASE)
+
+
+def _normalize_text(text: str | None) -> str:
+    """Normalize text by removing diacritics, lowercasing, and normalizing location abbreviations."""
+    if not text:
+        return ""
+    cleaned = remove_diacritics(text).lower()
+    return _ABBREV_PATTERN.sub(
+        lambda m: f"{'q' if m.group(1).lower().startswith('q') else 'p'}{m.group(2)}",
+        cleaned,
+    )
+
 
 def _tokenize(text: str | None) -> set[str]:
-    """Tokenize text into lowercase alphanumeric word tokens."""
+    """Tokenize text into lowercase alphanumeric word tokens without Vietnamese diacritics."""
     if not text:
         return set()
-    return set(re.findall(r"\w+", text.lower()))
+    cleaned = _normalize_text(text)
+    return set(re.findall(r"\w+", cleaned))
 
 
 def jaccard_similarity(set_a: set[str], set_b: set[str]) -> float:
@@ -52,17 +68,17 @@ class SpatialWindowedDeduplicator:
     @staticmethod
     def _default_bucket_fn(item: dict[str, Any]) -> str:
         """Coarse spatial/domain bucket: city or location or domain."""
-        return str(
-            item.get("location")
-            or item.get("city")
-            or item.get("domain")
-            or "global"
-        ).strip().lower()
+        raw = str(
+            item.get("location") or item.get("city") or item.get("domain") or "global"
+        ).strip()
+        cleaned = _normalize_text(raw).strip()
+        return cleaned or "global"
 
     @staticmethod
     def _default_sort_key_fn(item: dict[str, Any]) -> tuple[str, str]:
         """Sort key: (normalized_title, posted_date)."""
-        title = str(item.get("title") or item.get("company_name") or "").strip().lower()
+        raw_title = str(item.get("title") or item.get("company_name") or "")
+        title = _normalize_text(raw_title).strip()
         date = str(item.get("posted_at") or item.get("created_at") or "")
         return (title, date)
 

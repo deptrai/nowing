@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hmac
 import json
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -25,6 +27,7 @@ from app.lead_intelligence.crm.service import CrmConnectionService, CrmSyncServi
 from app.users import require_session_context
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _to_read(connection: Any) -> dict[str, Any]:
@@ -294,10 +297,20 @@ async def hubspot_webhook(
             detail=f"Malformed JSON payload: {exc}",
         ) from exc
 
-    service = CrmWebhookService(session)
-    results = await service.handle_hubspot_deal_change(events)
-    await session.commit()
-    return {"status": "ok", "processed": len(results), "results": results}
+    try:
+        service = CrmWebhookService(session)
+        results = await service.handle_hubspot_deal_change(events)
+        await session.commit()
+        return {"status": "ok", "processed": len(results), "results": results}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await session.rollback()
+        logger.error("Failed to process HubSpot webhook: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process webhook events",
+        ) from exc
 
 
 @router.post("/webhooks/salesforce", tags=["crm"])
@@ -312,7 +325,9 @@ async def salesforce_webhook(
     configured in Salesforce outbound message settings.
     """
     expected_secret = getattr(config, "SALESFORCE_WEBHOOK_SECRET", "")
-    if expected_secret and x_salesforce_webhook_secret != expected_secret:
+    if not expected_secret or not hmac.compare_digest(
+        x_salesforce_webhook_secret or "", expected_secret
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Salesforce webhook secret",
@@ -327,10 +342,20 @@ async def salesforce_webhook(
 
     from app.services.crm_webhook_service import CrmWebhookService
 
-    service = CrmWebhookService(session)
-    result = await service.handle_salesforce_deal_change(payload)
-    await session.commit()
-    return {"status": "ok", "result": result}
+    try:
+        service = CrmWebhookService(session)
+        result = await service.handle_salesforce_deal_change(payload)
+        await session.commit()
+        return {"status": "ok", "result": result}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await session.rollback()
+        logger.error("Failed to process Salesforce webhook: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process webhook event",
+        ) from exc
 
 
 @router.get("/{workspace_id}/crm/activity-timeline", tags=["crm"])

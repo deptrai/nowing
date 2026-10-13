@@ -11,6 +11,7 @@ from typing import Any
 
 from app.config import config
 from app.db import async_session_maker
+from app.observability.metrics.platform import record_scraper_ingest_failure
 from app.services.scraper_platform_account_service import (
     RateLimit,
     ScraperPlatformAccountRotator,
@@ -140,13 +141,19 @@ async def scrape_batdongsan(
             degradation_reason = "decode_error"
             page_failed = True
             await record_failure("batdongsan")
+            record_scraper_ingest_failure("batdongsan", "decode_error")
         except BatdongsanRateLimitedError:
             rate_limited_seen = True
             page_failed = True
             await record_failure("batdongsan")
-        except (BatdongsanAccessBlockedError, Exception):  # blocked or unexpected error; record failure and mark page failed
+            record_scraper_ingest_failure("batdongsan", "rate_limited")
+        except (
+            BatdongsanAccessBlockedError,
+            Exception,
+        ):  # blocked or unexpected error; record failure and mark page failed
             page_failed = True
             await record_failure("batdongsan")
+            record_scraper_ingest_failure("batdongsan", "api_error")
 
         # Web fallback: only on page 1 when mobile gave nothing, the
         # query is city-level, and a web fetcher is wired.
@@ -173,8 +180,14 @@ async def scrape_batdongsan(
                     )
             except BatdongsanRateLimitedError:
                 rate_limited_seen = True
-            except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception) as exc:  # web fallback failure; suppress and proceed with primary data
+                record_scraper_ingest_failure("batdongsan", "rate_limited")
+            except (
+                BatdongsanAccessBlockedError,
+                BatdongsanDecodeError,
+                Exception,
+            ) as exc:  # web fallback failure; suppress and proceed with primary data
                 logger.debug("Suppressed %r", exc)
+                record_scraper_ingest_failure("batdongsan", "web_fallback_failed")
 
         if page_failed:
             if degradation_reason is None:
@@ -326,7 +339,9 @@ async def scrape_batdongsan(
                                             success=False,
                                             error_type="rate_limited",
                                         )
-                                    except Exception:  # per-item phone resolve failure; continue batch
+                                    except (
+                                        Exception
+                                    ):  # per-item phone resolve failure; continue batch
                                         logger.exception(
                                             "Batdongsan phone resolve failed for %s",
                                             item.detail_url,

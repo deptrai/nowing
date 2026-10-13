@@ -26,13 +26,26 @@ DSH_STREAM_DLQ = os.getenv("DSH_STREAM_DLQ", "nowing:dsh:dlq")
 DSH_CONSUMER_GROUP = os.getenv("DSH_CONSUMER_GROUP", "dsh_workers")
 DSH_REDIS_BLOCK_MS = int(os.getenv("DSH_REDIS_BLOCK_MS", str(5000)))
 DSH_SYNC_TIMEOUT_SECONDS = int(os.getenv("DSH_SYNC_TIMEOUT_SECONDS", str(60)))
-DSH_MAX_PAYLOAD_BYTES = int(
-    os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))
-)
+DSH_MAX_PAYLOAD_BYTES = int(os.getenv("DSH_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024)))
 DSH_EXECUTOR_ENGINE = os.getenv("DSH_EXECUTOR_ENGINE", "legacy")
 
 # CDP Session Secret for cryptographic command authentication (Story 32.3)
-CDP_SESSION_SECRET = os.getenv("CDP_SESSION_SECRET", "dev-cdp-secret-change-in-production")
+CDP_SESSION_DEV_DEFAULT = "dev-cdp-secret-change-in-production"
+CDP_SESSION_SECRET = os.getenv("CDP_SESSION_SECRET", CDP_SESSION_DEV_DEFAULT)
+_env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+_is_prod = _env in ("production", "prod")
+if not CDP_SESSION_SECRET or CDP_SESSION_SECRET == CDP_SESSION_DEV_DEFAULT:
+    if _is_prod:
+        raise ValueError(
+            "CDP_SESSION_SECRET cannot be empty or default in production environment"
+        )
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "[startup] CDP_SESSION_SECRET is empty or using insecure default '%s'. "
+        "Set a secure secret in production.",
+        CDP_SESSION_DEV_DEFAULT,
+    )
 
 # DSH Telegram Interactive Checkpoint & Auto-Refund (Story 26.6)
 DSH_TELEGRAM_FIT_SCORE_THRESHOLD = max(
@@ -60,28 +73,27 @@ SCHEDULED_DSH_MISSION_TICK_SECONDS = int(
 )
 
 
-
 __all__ = [
-    'CDP_SESSION_SECRET',
-    'DSH_CONSUMER_GROUP',
-    'DSH_EXECUTOR_ENGINE',
-    'DSH_HEARTBEAT_INTERVAL_SECONDS',
-    'DSH_INTERNAL_BASE_URL',
-    'DSH_LOCK_TTL_SECONDS',
-    'DSH_MAX_PAYLOAD_BYTES',
-    'DSH_MAX_RETRIES',
-    'DSH_REDIS_BLOCK_MS',
-    'DSH_STREAM_DLQ',
-    'DSH_STREAM_TASKS',
-    'DSH_SYNC_TIMEOUT_SECONDS',
-    'DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE',
-    'DSH_TELEGRAM_FIT_SCORE_THRESHOLD',
-    'DSH_TELEGRAM_MAX_LEADS_PER_MISSION',
-    'DSH_TELEGRAM_REFUND_CAP_PCT',
-    'DSH_TELEGRAM_REFUND_WINDOW_HOURS',
-    'DSH_WORKER_PAT',
-    'DSH_WORKER_SECRET',
-    'DSH_XAUTOCLAIM_MIN_IDLE_MS',
-    'SCHEDULED_DSH_MISSION_TICK_SECONDS',
-    '_raw_refund_cap_pct',
+    "CDP_SESSION_SECRET",
+    "DSH_CONSUMER_GROUP",
+    "DSH_EXECUTOR_ENGINE",
+    "DSH_HEARTBEAT_INTERVAL_SECONDS",
+    "DSH_INTERNAL_BASE_URL",
+    "DSH_LOCK_TTL_SECONDS",
+    "DSH_MAX_PAYLOAD_BYTES",
+    "DSH_MAX_RETRIES",
+    "DSH_REDIS_BLOCK_MS",
+    "DSH_STREAM_DLQ",
+    "DSH_STREAM_TASKS",
+    "DSH_SYNC_TIMEOUT_SECONDS",
+    "DSH_TELEGRAM_CALLBACK_RATE_LIMIT_PER_MINUTE",
+    "DSH_TELEGRAM_FIT_SCORE_THRESHOLD",
+    "DSH_TELEGRAM_MAX_LEADS_PER_MISSION",
+    "DSH_TELEGRAM_REFUND_CAP_PCT",
+    "DSH_TELEGRAM_REFUND_WINDOW_HOURS",
+    "DSH_WORKER_PAT",
+    "DSH_WORKER_SECRET",
+    "DSH_XAUTOCLAIM_MIN_IDLE_MS",
+    "SCHEDULED_DSH_MISSION_TICK_SECONDS",
+    "_raw_refund_cap_pct",
 ]

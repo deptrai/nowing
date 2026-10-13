@@ -26,6 +26,7 @@ from app.lead_intelligence.services.lead_stream_service import (
     ingest_stream_leads_to_db,
 )
 from app.lead_intelligence.services.rate_limiter import PlatformRateLimiter
+from app.observability.metrics.platform import record_scraper_ingest_failure
 from app.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -125,6 +126,7 @@ async def _execute_scraper_job(
         }
 
     except Exception as exc:  # scraper task failure; log error, record circuit breaker failure, and return error dict
+        record_scraper_ingest_failure(platform, "scraper_task_failure")
         logger.error("Scraper failed on %s: %s", platform, exc)
         status_code = getattr(exc, "status_code", 500)
         # Record failure for circuit breaker only on external/network/anti-bot errors
@@ -187,7 +189,9 @@ async def reclaim_pending_stream_messages(
             max="+",
             count=100,
         )
-    except Exception as exc:  # redis xpending_range query failure; log debug and return 0 reclaimed
+    except (
+        Exception
+    ) as exc:  # redis xpending_range query failure; log debug and return 0 reclaimed
         logger.debug("No pending messages or group not found: %s", exc)
         return 0
 

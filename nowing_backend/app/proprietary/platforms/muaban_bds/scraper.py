@@ -9,6 +9,7 @@ import unicodedata
 from typing import Any
 
 from app.config import config
+from app.observability.metrics.platform import record_scraper_ingest_failure
 from app.services.scraper_platform_account_service import (
     cookie_string_to_playwright,
     get_default_credentials,
@@ -85,6 +86,7 @@ def _resolve_city_slug(name: str) -> str | None:
         return _CITY_ALIASES[norm]
     try:
         from app.services.location_normalize import _CITY_SLUGS, resolve_city_code
+
         code = resolve_city_code(name)
         if code and code in _CITY_SLUGS:
             return _CITY_SLUGS[code]
@@ -271,6 +273,7 @@ async def scrape_muaban_bds(
             try:
                 page_data = await fetch_page(url, session=session)
             except MuabanBdsRateLimitedError:
+                record_scraper_ingest_failure("muaban_bds", "rate_limited")
                 return MuabanBdsScrapeOutput(
                     items=listings,
                     total_items=len(listings),
@@ -278,6 +281,7 @@ async def scrape_muaban_bds(
                     degradation_reason="rate_limited",
                 )
             except (MuabanBdsAccessBlockedError, MuabanBdsDecodeError) as exc:
+                record_scraper_ingest_failure("muaban_bds", "api_error")
                 logger.exception("muaban_bds page fetch failed: %s", exc)
                 return MuabanBdsScrapeOutput(
                     items=listings,
@@ -309,7 +313,9 @@ async def scrape_muaban_bds(
                 seen_ids.add(listing_id)
                 try:
                     listing = parse_listing(raw)
-                except Exception:  # per-item parse failure; skip listing and continue batch
+                except (
+                    Exception
+                ):  # per-item parse failure; skip listing and continue batch
                     logger.exception("failed to parse Muaban item id=%s", listing_id)
                     continue
                 if not _item_passes_filters(listing, input_model):
@@ -359,6 +365,7 @@ async def scrape_muaban_bds(
             degraded=False,
         )
     except Exception as exc:  # top-level scrape failure; return degraded scraper_error
+        record_scraper_ingest_failure("muaban_bds", "scraper_error")
         logger.exception("muaban_bds scraper failed: %s", exc)
         return MuabanBdsScrapeOutput(
             degraded=True,
@@ -368,5 +375,7 @@ async def scrape_muaban_bds(
         if session is not None and hasattr(session, "close"):
             try:
                 await session.close()
-            except Exception as close_exc:  # best-effort browser session close; suppress error
+            except (
+                Exception
+            ) as close_exc:  # best-effort browser session close; suppress error
                 logger.warning("Muaban session close failed: %s", close_exc)

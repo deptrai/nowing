@@ -1998,3 +1998,21 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
 ### Block: story-36.6b — RESOLVED
 - **`context.targetId` fallback string slug**: Resolved. `_safe_int_target_id` trong `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` và safe target_id coercion trong `nowing_backend/app/tasks/social_stream_worker.py`. Unit tests trong `test_medirus_adapter_v2.py` và `test_social_stream_worker.py`.
 
+
+## Deferred from: code review of spec-debt-sweep-retro-action-items.md (2026-10-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `session.get(Lead, lead_id)` scalar lookup vs composite PK (id, workspace_id) in compliance_purge_service lead-purge path — likely InvalidRequestError; lead_ids_to_check drops workspace_id
+  evidence: Review finding (compliance_purge_service.py:111 area); pre-existing code outside the diff, masked by mocked session in tests
+- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `hubspot_webhook` fail-opens when `HUBSPOT_WEBHOOK_SECRET` is empty (`verify_hubspot_signature` returns True); also signature algorithm may not match HubSpot v3 spec (method+uri+body+timestamp, base64 HMAC)
+  evidence: Review findings (crm_routes.py / crm_webhook_service.py); pre-existing auth code, not part of this change
+- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `xautoclaim` called with hardcoded `start_id="0-0"` every consumer loop — rescans PEL from start instead of advancing cursor
+  evidence: Review finding (social_stream_worker.py xautoclaim call); pre-existing reclaim logic outside the diff
+- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `cdp_stream` finally-block cleanup is sequential without per-step guards — a throwing `pubsub.unsubscribe()` skips `redis.delete(stream_lock_key)`, leaving lock until 3600s TTL → 409 on reconnect
+  evidence: Review finding (dsh_routes.py cdp_stream); pre-existing route code — this diff only added tests
+- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `WorkspaceActivityTimeline` `fetchTimeline` does not guard undefined workspaceId (fetch to `/workspaces/undefined/...`) and has no AbortController on workspace change
+  evidence: Review finding (WorkspaceActivityTimeline.tsx); pre-existing component behavior outside this diff's lint-warning scope

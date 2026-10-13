@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export interface ActivityTimelineItem {
 	id: string;
@@ -37,7 +37,7 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 	const [error, setError] = useState<string | null>(null);
 	const [directionFilter, setDirectionFilter] = useState("all");
 
-	const fetchTimeline = async () => {
+	const fetchTimeline = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -45,16 +45,16 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 			if (!res.ok) throw new Error(`Failed to load timeline: ${res.statusText}`);
 			const data = await res.json();
 			setItems(data.items || []);
-		} catch (err: any) {
-			setError(err.message || "Failed to load activity timeline");
+		} catch (err: unknown) {
+			setError(err instanceof Error ? err.message : "Failed to load activity timeline");
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [workspaceId]);
 
 	useEffect(() => {
 		fetchTimeline();
-	}, [workspaceId]);
+	}, [fetchTimeline]);
 
 	const filteredItems = items.filter((item) => {
 		if (directionFilter === "all") return true;
