@@ -10,6 +10,7 @@ from app.services.dedup.spatial_windowed_dedup import (
     SpatialWindowedDeduplicator,
     _tokenize,
     deduplicate_postings,
+    deduplicate_postings_stream,
     jaccard_similarity,
 )
 
@@ -154,3 +155,106 @@ class TestSpatialWindowedDeduplicator:
         ]
         unique = deduplicate_postings(items, similarity_threshold=0.8)
         assert len(unique) == 1
+
+    def test_deduplicate_stream_matches_deduplicate(self):
+        """Streaming deduplication produces identical groups to batch deduplicate."""
+        items = [
+            {
+                "id": 1,
+                "title": "Bán nhà mặt tiền Quận 1 giá tốt",
+                "location": "HCM",
+                "price": 10_000_000_000,
+            },
+            {
+                "id": 2,
+                "title": "Bán nhà mặt tiền Quận 1 giá cực tốt",
+                "location": "HCM",
+                "price": 10_000_000_000,
+            },
+            {
+                "id": 3,
+                "title": "Tuyển dụng lập trình viên Python Hà Nội",
+                "location": "HN",
+            },
+            {
+                "id": 4,
+                "title": "Tuyển dụng kỹ sư Python Hà Nội kinh nghiệm",
+                "location": "HN",
+            },
+        ]
+        deduplicator = SpatialWindowedDeduplicator(similarity_threshold=0.75)
+
+        batch_groups = deduplicator.deduplicate(items)
+        stream_groups = list(
+            deduplicator.deduplicate_stream(items, pre_sorted_by_bucket=False)
+        )
+
+        assert len(batch_groups) == len(stream_groups)
+        for bg, sg in zip(batch_groups, stream_groups, strict=True):
+            assert bg.canonical["id"] == sg.canonical["id"]
+            assert [d["id"] for d in bg.duplicates] == [d["id"] for d in sg.duplicates]
+
+    def test_deduplicate_stream_lazy_evaluation(self):
+        """deduplicate_stream evaluates input lazily rather than loading all up-front."""
+        consumed_count = 0
+
+        def item_generator():
+            nonlocal consumed_count
+            for i in range(20):
+                consumed_count += 1
+                # Buckets: 0..9 in 'HCM', 10..19 in 'HN'
+                loc = "HCM" if i < 10 else "HN"
+                yield {
+                    "id": i,
+                    "title": f"Tin đăng bất động sản {i}",
+                    "location": loc,
+                }
+
+        deduplicator = SpatialWindowedDeduplicator()
+        stream = deduplicator.deduplicate_stream(
+            item_generator(), pre_sorted_by_bucket=True
+        )
+
+        # Before pulling from stream, generator must not be consumed
+        assert consumed_count == 0
+
+        # Pull first group (from 'HCM' bucket)
+        first_group = next(stream)
+        assert first_group is not None
+        # Generator was evaluated only up to the first item of next bucket ('HN'),
+        # which triggered the bucket transition (10 items of HCM + 1 item of HN = 11)
+        assert consumed_count == 11
+
+    def test_deduplicate_stream_bounded_memory_contract(self):
+        """Stream with pre_sorted_by_bucket=True correctly processes partitioned streams."""
+        buckets_order = ["Ba Đình", "Hoàn Kiếm", "Cầu Giấy"]
+        items = []
+        for b in buckets_order:
+            for j in range(5):
+                items.append(
+                    {
+                        "id": f"{b}_{j}",
+                        "title": f"Bán chung cư {b} căn số {j}",
+                        "location": b,
+                    }
+                )
+
+        deduplicator = SpatialWindowedDeduplicator()
+        groups = list(
+            deduplicator.deduplicate_stream(iter(items), pre_sorted_by_bucket=True)
+        )
+        assert len(groups) == 15
+
+    def test_deduplicate_postings_stream_convenience(self):
+        """deduplicate_postings_stream yields canonical postings matching deduplicate_postings."""
+        items = [
+            {"id": 1, "title": "Bán nhà Ba Đình", "location": "HN"},
+            {"id": 2, "title": "Bán nhà Ba Đình giá tốt", "location": "HN"},
+        ]
+        unique_batch = deduplicate_postings(items, similarity_threshold=0.7)
+        unique_stream = list(
+            deduplicate_postings_stream(
+                items, similarity_threshold=0.7, pre_sorted_by_bucket=False
+            )
+        )
+        assert [u["id"] for u in unique_batch] == [u["id"] for u in unique_stream]

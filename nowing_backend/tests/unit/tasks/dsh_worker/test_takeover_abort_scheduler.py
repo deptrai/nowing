@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.db import DshMission, DshMissionStatus
-from app.routes.dsh_routes import abort_mission, resume_mission, sweep_takeovers
+from app.routes.dsh.takeover import abort_mission, resume_mission, sweep_takeovers
 from app.services.dsh_mission_service import (
     DshMissionServiceError,
     abort_takeover_mission,
@@ -105,7 +105,9 @@ async def test_sweep_expired_takeovers_times_out_and_cancels():
     session.add(mission)
 
     redis_mock = AsyncMock()
-    with patch("app.services.dsh_mission_service.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.services.dsh_mission_service.get_redis_client", return_value=redis_mock
+    ):
         swept = await sweep_expired_takeovers(session)
 
     assert len(swept) == 1
@@ -137,7 +139,9 @@ async def test_sweep_leaves_active_missions_untouched():
     session.add(mission)
 
     redis_mock = AsyncMock()
-    with patch("app.services.dsh_mission_service.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.services.dsh_mission_service.get_redis_client", return_value=redis_mock
+    ):
         swept = await sweep_expired_takeovers(session)
 
     assert len(swept) == 0
@@ -158,7 +162,9 @@ async def test_sweep_fallback_to_updated_at():
     session.add(mission)
 
     redis_mock = AsyncMock()
-    with patch("app.services.dsh_mission_service.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.services.dsh_mission_service.get_redis_client", return_value=redis_mock
+    ):
         swept = await sweep_expired_takeovers(session)
 
     assert len(swept) == 1
@@ -181,7 +187,9 @@ async def test_abort_takeover_mission_success():
     session.add(mission)
 
     redis_mock = AsyncMock()
-    with patch("app.services.dsh_mission_service.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.services.dsh_mission_service.get_redis_client", return_value=redis_mock
+    ):
         res = await abort_takeover_mission(session, mission.id)
 
     assert res.status == DshMissionStatus.CANCELLED.value
@@ -255,7 +263,9 @@ async def test_abort_mission_route():
     auth_mock.method = "session"
 
     redis_mock = AsyncMock()
-    with patch("app.services.dsh_mission_service.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.services.dsh_mission_service.get_redis_client", return_value=redis_mock
+    ):
         response = await abort_mission(mission.id, auth_mock, session)
 
     assert response["mission_id"] == str(mission.id)
@@ -280,7 +290,9 @@ async def test_sweep_takeovers_route():
     auth_mock = MagicMock()
     membership_mock = MagicMock()
     redis_mock = AsyncMock()
-    with patch("app.services.dsh_mission_service.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.services.dsh_mission_service.get_redis_client", return_value=redis_mock
+    ):
         response = await sweep_takeovers(42, session, auth_mock, membership_mock)
 
     assert response["swept_count"] == 1
@@ -297,7 +309,9 @@ async def test_abort_takeover_mission_rejects_wrong_phase():
     )
     session.add(mission)
 
-    with pytest.raises(DshMissionServiceError, match="only waiting_for_human missions can be aborted"):
+    with pytest.raises(
+        DshMissionServiceError, match="only waiting_for_human missions can be aborted"
+    ):
         await abort_takeover_mission(session, mission.id)
 
 
@@ -311,7 +325,9 @@ async def test_abort_takeover_mission_rejects_completed():
     )
     session.add(mission)
 
-    with pytest.raises(DshMissionServiceError, match="only waiting_for_human missions can be aborted"):
+    with pytest.raises(
+        DshMissionServiceError, match="only waiting_for_human missions can be aborted"
+    ):
         await abort_takeover_mission(session, mission.id)
 
 

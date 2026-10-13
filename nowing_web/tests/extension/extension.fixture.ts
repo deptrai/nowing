@@ -1,5 +1,5 @@
 import path from "node:path";
-import { type BrowserContext, chromium, test as base } from "@playwright/test";
+import { type BrowserContext, test as base, chromium } from "@playwright/test";
 
 export type ExtensionFixtures = {
 	context: BrowserContext;
@@ -9,7 +9,8 @@ export type ExtensionFixtures = {
 const pathToExtension = path.resolve(__dirname, "../../../apps/chrome-extension/dist");
 
 export const test = base.extend<ExtensionFixtures>({
-	context: async (_fixtures, provide) => {
+	// biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require object destructuring
+	context: async ({}, provide) => {
 		const context = await chromium.launchPersistentContext("", {
 			headless: true,
 			channel: "chrome",

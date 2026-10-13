@@ -11,7 +11,7 @@ from starlette.requests import Request
 
 from app.auth.context import AuthContext
 from app.db import User
-from app.routes.dsh_routes import cdp_stream
+from app.routes.dsh.cdp import cdp_stream
 
 pytestmark = [pytest.mark.unit]
 
@@ -70,9 +70,9 @@ async def test_cdp_stream_heartbeat_idle_30s():
 
     with (
         patch(
-            "app.routes.dsh_routes.get_redis_client", AsyncMock(return_value=mock_redis)
+            "app.routes.dsh.cdp.get_redis_client", AsyncMock(return_value=mock_redis)
         ),
-        patch("app.routes.dsh_routes.time.monotonic", side_effect=mock_time),
+        patch("app.routes.dsh.cdp.time.monotonic", side_effect=mock_time),
     ):
         response = await cdp_stream(mock_request, auth=auth)
 
@@ -124,7 +124,7 @@ async def test_cdp_stream_disconnect_cleans_up_pubsub_and_lock():
     mock_redis.delete = AsyncMock(return_value=1)
 
     with patch(
-        "app.routes.dsh_routes.get_redis_client", AsyncMock(return_value=mock_redis)
+        "app.routes.dsh.cdp.get_redis_client", AsyncMock(return_value=mock_redis)
     ):
         response = await cdp_stream(mock_request, auth=auth)
 
@@ -161,7 +161,7 @@ async def test_cdp_stream_cancellation_cleans_up():
     mock_redis.delete = AsyncMock(return_value=1)
 
     with patch(
-        "app.routes.dsh_routes.get_redis_client", AsyncMock(return_value=mock_redis)
+        "app.routes.dsh.cdp.get_redis_client", AsyncMock(return_value=mock_redis)
     ):
         response = await cdp_stream(mock_request, auth=auth)
 
@@ -198,7 +198,7 @@ async def test_cdp_stream_cleanup_deletes_lock_when_unsubscribe_raises():
     mock_redis.delete = AsyncMock(return_value=1)
 
     with patch(
-        "app.routes.dsh_routes.get_redis_client", AsyncMock(return_value=mock_redis)
+        "app.routes.dsh.cdp.get_redis_client", AsyncMock(return_value=mock_redis)
     ):
         response = await cdp_stream(mock_request, auth=auth)
 
@@ -232,7 +232,7 @@ async def test_cdp_stream_cleanup_deletes_lock_when_unsubscribe_cancelled():
     mock_redis.delete = AsyncMock(return_value=1)
 
     with patch(
-        "app.routes.dsh_routes.get_redis_client", AsyncMock(return_value=mock_redis)
+        "app.routes.dsh.cdp.get_redis_client", AsyncMock(return_value=mock_redis)
     ):
         response = await cdp_stream(mock_request, auth=auth)
 

@@ -11,6 +11,7 @@ pytestmark = [pytest.mark.unit]
 def _fixed_uuid():
     class _MockUUID:
         hex = "abc123"
+
     return _MockUUID()
 
 
@@ -27,8 +28,14 @@ async def test_cdp_subgraph_push_event():
     )
 
     with (
-        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
-        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.get_redis_client",
+            return_value=redis_mock,
+        ),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.uuid.uuid4",
+            return_value=_fixed_uuid(),
+        ),
     ):
         subgraph = BrowserOperatorCdpSubgraph(None)
         state = {
@@ -40,7 +47,10 @@ async def test_cdp_subgraph_push_event():
         new_state = await subgraph._cdp_crawl_node(state, {})
 
         assert redis_mock.publish.called
-        assert new_state["checkpoint"]["cdp_last_result"]["navigatedUrl"] == "https://test.com"
+        assert (
+            new_state["checkpoint"]["cdp_last_result"]["navigatedUrl"]
+            == "https://test.com"
+        )
         assert len(new_state["sources"]) == 1
         assert new_state["sources"][0]["url"] == "https://test.com"
 
@@ -57,7 +67,10 @@ async def test_cdp_timeout():
     redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 1)]
     redis_mock.blpop.return_value = None  # Timeout
 
-    with patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.tasks.dsh_worker_browser_operator.get_redis_client",
+        return_value=redis_mock,
+    ):
         subgraph = BrowserOperatorCdpSubgraph(None)
         state = {
             "mission_id": "test-mission",
@@ -80,7 +93,10 @@ async def test_cdp_missing_extension():
     redis_mock = AsyncMock()
     redis_mock.pubsub_numsub.return_value = [(b"cdp_stream:user-1", 0)]
 
-    with patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock):
+    with patch(
+        "app.tasks.dsh_worker_browser_operator.get_redis_client",
+        return_value=redis_mock,
+    ):
         subgraph = BrowserOperatorCdpSubgraph(None)
         state = {
             "mission_id": "test-mission",
@@ -108,8 +124,14 @@ async def test_cdp_result_requires_human():
     )
 
     with (
-        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
-        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.get_redis_client",
+            return_value=redis_mock,
+        ),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.uuid.uuid4",
+            return_value=_fixed_uuid(),
+        ),
     ):
         subgraph = BrowserOperatorCdpSubgraph(None)
         state = {
@@ -139,8 +161,14 @@ async def test_cdp_debugger_detached_raises_specific_error():
     )
 
     with (
-        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
-        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.get_redis_client",
+            return_value=redis_mock,
+        ),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.uuid.uuid4",
+            return_value=_fixed_uuid(),
+        ),
     ):
         subgraph = BrowserOperatorCdpSubgraph(None)
         state = {
@@ -173,8 +201,14 @@ async def test_cdp_debugger_detached_unblocks_without_timeout():
     )
 
     with (
-        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
-        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.get_redis_client",
+            return_value=redis_mock,
+        ),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.uuid.uuid4",
+            return_value=_fixed_uuid(),
+        ),
     ):
         subgraph = BrowserOperatorCdpSubgraph(None)
         state = {
@@ -223,8 +257,9 @@ async def test_cdp_stream_disconnect():
     request_mock = AsyncMock()
     request_mock.is_disconnected.return_value = True
 
-    with patch("app.routes.dsh_routes.get_redis_client", return_value=redis_mock):
-        from app.routes.dsh_routes import cdp_stream
+    with patch("app.routes.dsh.cdp.get_redis_client", return_value=redis_mock):
+        from app.routes.dsh.cdp import cdp_stream
+
         auth_mock = MagicMock()
         auth_mock.user.id = "user-1"
 
@@ -241,6 +276,7 @@ def test_resume_invalid_payload():
     """should handle None or empty payload to /resume gracefully (422 Unprocessable Entity)."""
     with pytest.raises(ValidationError):
         ResumeMissionPayload()
+
 
 @pytest.mark.asyncio
 async def test_cdp_stale_error_command_id_mismatch_rejected():
@@ -259,8 +295,14 @@ async def test_cdp_stale_error_command_id_mismatch_rejected():
     )
 
     with (
-        patch("app.tasks.dsh_worker_browser_operator.get_redis_client", return_value=redis_mock),
-        patch("app.tasks.dsh_worker_browser_operator.uuid.uuid4", return_value=_fixed_uuid()),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.get_redis_client",
+            return_value=redis_mock,
+        ),
+        patch(
+            "app.tasks.dsh_worker_browser_operator.uuid.uuid4",
+            return_value=_fixed_uuid(),
+        ),
     ):
         subgraph = BrowserOperatorCdpSubgraph(None)
         state = {

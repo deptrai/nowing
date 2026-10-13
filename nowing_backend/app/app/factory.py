@@ -1,4 +1,5 @@
 """App factory helpers."""
+
 import contextlib
 import logging
 import time
@@ -55,7 +56,7 @@ from app.routes.auth_routes import (
     session_router,
 )
 from app.routes.chainlens_internal import router as chainlens_internal_router
-from app.routes.dsh_routes import dsh_internal_router, dsh_public_router
+from app.routes.dsh import dsh_internal_router, dsh_public_router
 from app.routes.hybrid_llm_routes import (
     hybrid_internal_router,
     hybrid_public_router,
@@ -439,7 +440,9 @@ if config.AUTH_TYPE == "GOOGLE":
                 google_requests.Request(),
                 config.GOOGLE_OAUTH_CLIENT_ID,
             )
-        except Exception as exc:  # Google id_token verification failure; raise 401 unauthorized
+        except (
+            Exception
+        ) as exc:  # Google id_token verification failure; raise 401 unauthorized
             _error_logger.warning("Web Google id_token verification failed: %s", exc)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -521,7 +524,9 @@ app.include_router(chainlens_internal_router, prefix="/v1")
 app.include_router(self_host_research_router, prefix="/v1")
 
 app.include_router(lead_batch_router, prefix="/api/v1", tags=["lead-batch"])
-app.include_router(telegram_channel_router, prefix="/api/v1", tags=["telegram-channels"])
+app.include_router(
+    telegram_channel_router, prefix="/api/v1", tags=["telegram-channels"]
+)
 app.include_router(dsh_public_router, prefix="/api/v1", tags=["dsh"])
 
 # Internal DSH worker checkpoint callback is mounted at /v1.
