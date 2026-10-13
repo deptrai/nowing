@@ -375,7 +375,7 @@ development_status:
   33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
   33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
   33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
-  33-4-compliance-purge-credit-refund-30-day-window: ready-for-dev
+  33-4-compliance-purge-credit-refund-30-day-window: done
   epic-33-retrospective: done
 
   epic-34: done

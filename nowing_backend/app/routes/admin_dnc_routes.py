@@ -219,7 +219,8 @@ async def compliance_purge(
     from app.services.compliance_purge_service import CompliancePurgeService
 
     try:
-        result = await CompliancePurgeService.purge_individual(
+        # 1. Run purge in transaction
+        purge_result = await CompliancePurgeService.purge_individual(
             session,
             record_type=body.record_type,
             value=body.value,
@@ -227,7 +228,32 @@ async def compliance_purge(
             ticket_ref=body.ticket_ref,
         )
         await session.commit()
-        return result
+
+        # 2. Post-commit: Process refunds (each refund commits its own transaction)
+        refund_candidates = purge_result.pop("refund_candidates", [])
+        try:
+            refund_summary = await CompliancePurgeService.process_post_purge_refunds(
+                session,
+                refund_candidates=refund_candidates,
+                actor_user_id=auth.user_id,
+            )
+        except Exception:
+            # Purge already committed — a refund failure must not 500 the response
+            logger.exception(
+                "Post-purge refund processing failed after purge committed"
+            )
+            refund_summary = {
+                "refunded_contacts": 0,
+                "refunded_micros": 0,
+                "skipped": [],
+                "details": [],
+                "error": "refund_processing_failed",
+            }
+        purge_result["refund_summary"] = refund_summary
+        purge_result["credits_refunded"] = refund_summary["refunded_micros"]
+        purge_result["refunds_skipped"] = len(refund_summary["skipped"])
+        purge_result["refund_details"] = refund_summary["details"]
+        return purge_result
     except ValueError as exc:
         await session.rollback()
         raise HTTPException(

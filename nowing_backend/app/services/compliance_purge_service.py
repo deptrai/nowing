@@ -20,6 +20,15 @@ from app.models.leads.enrichment import VerifiedContact
 from app.models.leads.main import Lead
 from app.models.leads.social import SocialPost
 from app.models.workspaces import GlobalDncRecord
+from app.notifications import NotificationService
+from app.services.billing_event_service import (
+    BillingEventService,
+    NoOriginalUnlockEventError,
+    RefundAlreadyProcessedError,
+    RefundBudgetExhaustedError,
+    RefundWindowExpiredError,
+    _list_billing_events,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,12 +105,20 @@ class CompliancePurgeService:
 
         contacts = list((await session.execute(contact_stmt)).scalars().all())
         lead_keys_to_check: set[tuple[uuid.UUID, int]] = set()
+        refund_candidates: list[dict[str, Any]] = []
 
         for contact in contacts:
             if contact.workspace_id is not None:
                 affected_workspaces.add(contact.workspace_id)
                 if contact.lead_id is not None:
                     lead_keys_to_check.add((contact.lead_id, contact.workspace_id))
+                refund_candidates.append(
+                    {
+                        "verified_contact_id": contact.id,
+                        "workspace_id": contact.workspace_id,
+                        "was_unlocked": bool(contact.is_unlocked),
+                    }
+                )
             await session.delete(contact)
             purged_contacts += 1
 
@@ -185,6 +202,301 @@ class CompliancePurgeService:
                 "social_posts": purged_posts,
             },
             "workspaces_affected": sorted(affected_workspaces),
+            "refund_candidates": refund_candidates,
             "reason": reason,
             "ticket_ref": ticket_ref,
+        }
+
+    @classmethod
+    async def process_post_purge_refunds(
+        cls,
+        session: AsyncSession,
+        *,
+        refund_candidates: list[dict[str, Any]],
+        actor_user_id: uuid.UUID | None = None,
+    ) -> dict[str, Any]:
+        """Phase 2: Post-commit credit refund loop and notifications (Story 33.4).
+
+        Iterates over deleted contact candidates, refunds credits for contacts
+        unlocked within the 30-day (720h) window, records skips, and sends
+        in-app notifications to workspace owners without PII.
+        """
+        from app.config.dsh import COMPLIANCE_PURGE_REFUND_WINDOW_HOURS
+        from app.models.workspaces import Workspace
+
+        refund_window_hours = COMPLIANCE_PURGE_REFUND_WINDOW_HOURS
+
+        refunded_contacts = 0
+        refunded_micros = 0
+        skipped: list[dict[str, Any]] = []
+        details: list[dict[str, Any]] = []
+
+        workspace_purged_count: dict[int, int] = {}
+        workspace_refunds: dict[int, int] = {}
+        workspace_refunded_count: dict[int, int] = {}
+        workspace_expired: dict[int, int] = {}
+        workspace_owners: dict[int, uuid.UUID | None] = {}
+
+        async def _workspace_owner_id(ws_id: int) -> uuid.UUID | None:
+            if ws_id not in workspace_owners:
+                ws = await session.get(Workspace, ws_id)
+                workspace_owners[ws_id] = getattr(ws, "user_id", None)
+            return workspace_owners[ws_id]
+
+        for candidate in refund_candidates:
+            c_id = candidate.get("verified_contact_id")
+            ws_id = candidate.get("workspace_id")
+            if not c_id or ws_id is None:
+                continue
+
+            contact_id = (
+                uuid.UUID(str(c_id)) if not isinstance(c_id, uuid.UUID) else c_id
+            )
+            ws_id = int(ws_id)
+            workspace_purged_count[ws_id] = workspace_purged_count.get(ws_id, 0) + 1
+
+            # Contacts that were never unlocked cannot have billing events
+            if not candidate.get("was_unlocked", True):
+                continue
+
+            # 1. Idempotency: check if already refunded
+            existing_refunds = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock_refund",
+                event_id=contact_id,
+                workspace_id=ws_id,
+            )
+            if existing_refunds:
+                logger.info(
+                    "Contact %s in workspace %d already refunded; skipping",
+                    contact_id,
+                    ws_id,
+                )
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "already_refunded",
+                    }
+                )
+                continue
+
+            # 2. Check for original unlock event and determine cost
+            original_unlocks = await _list_billing_events(
+                session,
+                event_entity_type="verified_contact",
+                event_type="contact_unlock",
+                event_id=contact_id,
+                workspace_id=ws_id,
+            )
+            if not original_unlocks:
+                logger.info(
+                    "No original unlock billing event for contact %s in workspace %d; skipping",
+                    contact_id,
+                    ws_id,
+                )
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "no_unlock_charge",
+                    }
+                )
+                continue
+
+            original_unlock = original_unlocks[0]
+            orig_cost = getattr(original_unlock, "cost_micros", None)
+            cost_micros = orig_cost if orig_cost is not None else 1500
+            target_user_id = getattr(original_unlock, "user_id", None)
+            if target_user_id is None:
+                target_user_id = await _workspace_owner_id(ws_id)
+            if target_user_id is None:
+                logger.warning(
+                    "Cannot resolve refund recipient for contact %s in workspace %d; skipping",
+                    contact_id,
+                    ws_id,
+                )
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "missing_user_id",
+                    }
+                )
+                continue
+
+            # 3. Call record_contact_unlock_refund_24h with compliance refund window
+            billing_svc = BillingEventService()
+            try:
+                event = await billing_svc.record_contact_unlock_refund_24h(
+                    session,
+                    verified_contact_id=contact_id,
+                    workspace_id=ws_id,
+                    user_id=target_user_id,
+                    cost_micros=cost_micros,
+                    refund_window_hours=refund_window_hours,
+                )
+                refund_amount = abs(getattr(event, "cost_micros", cost_micros))
+                refunded_contacts += 1
+                refunded_micros += refund_amount
+                workspace_refunds[ws_id] = (
+                    workspace_refunds.get(ws_id, 0) + refund_amount
+                )
+                workspace_refunded_count[ws_id] = (
+                    workspace_refunded_count.get(ws_id, 0) + 1
+                )
+                details.append(
+                    {
+                        "contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "status": "refunded",
+                        "refunded_micros": refund_amount,
+                    }
+                )
+            except RefundWindowExpiredError:
+                logger.info(
+                    "Refund window (%d hours) expired for contact %s in workspace %d",
+                    refund_window_hours,
+                    contact_id,
+                    ws_id,
+                )
+                workspace_expired[ws_id] = workspace_expired.get(ws_id, 0) + 1
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "window_expired",
+                    }
+                )
+            except NoOriginalUnlockEventError:
+                logger.info(
+                    "No unlock event for contact %s in workspace %d",
+                    contact_id,
+                    ws_id,
+                )
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "no_unlock_charge",
+                    }
+                )
+            except RefundAlreadyProcessedError:
+                logger.info(
+                    "Refund already processed for contact %s in workspace %d",
+                    contact_id,
+                    ws_id,
+                )
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "already_refunded",
+                    }
+                )
+            except RefundBudgetExhaustedError:
+                logger.warning(
+                    "Refund budget exhausted for workspace %d (contact %s)",
+                    ws_id,
+                    contact_id,
+                )
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "budget_exhausted",
+                    }
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Unexpected error refunding contact %s for workspace %d: %s",
+                    contact_id,
+                    ws_id,
+                    exc,
+                )
+                await session.rollback()
+                skipped.append(
+                    {
+                        "verified_contact_id": str(contact_id),
+                        "workspace_id": ws_id,
+                        "reason": "internal_error",
+                    }
+                )
+
+        for skip_entry in skipped:
+            details.append(
+                {
+                    "contact_id": skip_entry["verified_contact_id"],
+                    "workspace_id": skip_entry["workspace_id"],
+                    "status": "skipped",
+                    "skip_reason": skip_entry["reason"],
+                }
+            )
+
+        # 4. Workspace Notifications (without PII)
+        for ws_id, purged_count in workspace_purged_count.items():
+            refunded_micros_ws = workspace_refunds.get(ws_id, 0)
+            refunded_count_ws = workspace_refunded_count.get(ws_id, 0)
+            has_expired = workspace_expired.get(ws_id, 0) > 0
+
+            # Send notification only if >= 1 refund OR >= 1 expired refund
+            if not (refunded_count_ws > 0 or has_expired):
+                continue
+
+            target_user = await _workspace_owner_id(ws_id)
+            if target_user is None:
+                logger.warning(
+                    "Cannot send compliance purge notification: no owner user_id for workspace %d",
+                    ws_id,
+                )
+                continue
+
+            refunded_credits = (
+                refunded_micros_ws // 1_000_000
+                if refunded_micros_ws % 1_000_000 == 0
+                else round(refunded_micros_ws / 1_000_000, 4)
+            )
+
+            msg = (
+                f"Hệ thống đã gỡ bỏ {purged_count} liên hệ do yêu cầu tuân thủ. "
+                + (
+                    f"Đã hoàn trả {refunded_credits} credits cho {refunded_count_ws} liên hệ đã mở khóa. "
+                    if refunded_count_ws > 0
+                    else ""
+                )
+                + "Lý do: gỡ bỏ theo yêu cầu bảo vệ dữ liệu cá nhân."
+            )
+
+            notif_metadata = {
+                "purged_contacts": purged_count,
+                "refunded_contacts": refunded_count_ws,
+                "refunded_credits": refunded_credits,
+                "refunded_micros": refunded_micros_ws,
+                "reason": "compliance_purge_data_protection",
+                "has_expired_refunds": has_expired,
+            }
+
+            try:
+                await NotificationService.create_notification(
+                    session,
+                    user_id=target_user,
+                    workspace_id=ws_id,
+                    notification_type="compliance_purge_refund",
+                    title="Thông báo gỡ bỏ liên hệ theo quy định tuân thủ",
+                    message=msg,
+                    notification_metadata=notif_metadata,
+                )
+            except Exception as notif_err:
+                logger.exception(
+                    "Failed to create compliance purge notification for workspace %d: %s",
+                    ws_id,
+                    notif_err,
+                )
+
+        return {
+            "refunded_contacts": refunded_contacts,
+            "refunded_micros": refunded_micros,
+            "skipped": skipped,
+            "details": details,
         }
