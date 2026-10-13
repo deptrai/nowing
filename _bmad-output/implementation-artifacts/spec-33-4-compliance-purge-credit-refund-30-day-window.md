@@ -120,6 +120,8 @@ As a Workspace Owner, I want credits refunded when a contact I unlocked is force
   - `[low]` `[accept]` CR-04 duplicate `_list_billing_events` giữa service layers — read-only queries, cần thiết cho recipient/cost resolution trước khi gọi billing svc.
 - Tests added: `test_billing_query_failure_isolated_per_candidate` (CR-01), `test_notification_owner_lookup_failure_preserves_summary` (CR-02), rollback assertion trên `test_refund_window_expired_skips_and_notifies` (CR-03).
 - Verification: 20/20 unit + 6/6 integration pass, ruff clean. Advisor pre-flight đồng thuận phương án patch.
+- **Third-pass verify (`3887701e3`, reviewer):** **PASS / APPROVE** — 9/9 checks sạch (catch ordering, early-continue trước advisory lock, bookkeeping in-memory, commit invariant, notif isolation, cache non-poisoning, test assertion invariant, route contract 200, rollback post-domain-exception). No critical issues, no suggestions. `followup_review_recommended` resolved.
+- Extra nit folded in: `billing_svc` hoisted ra khỏi candidate loop; 2 test assertion sửa sang `record_contact_unlock_refund_24h.assert_not_called()` (MagicMock không có `assert_not_awaited`).
 
 ## Auto Run Result
 
