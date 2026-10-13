@@ -108,13 +108,20 @@ async def test_probe_service_healthy_flow():
 
     healthy_report = DomainProbeReport(
         domain="store.customer.com",
-        txt_result=ProbeResult("TXT", "_nowing-verify.store.customer.com", "tok", ["tok"], True, "ok"),
-        cname_result=ProbeResult("CNAME", "store.customer.com", "target", ["target"], True, "ok"),
+        txt_result=ProbeResult(
+            "TXT", "_nowing-verify.store.customer.com", "tok", ["tok"], True, "ok"
+        ),
+        cname_result=ProbeResult(
+            "CNAME", "store.customer.com", "target", ["target"], True, "ok"
+        ),
         is_healthy=True,
         checked_at="2026-10-13T12:00:00Z",
     )
 
-    with patch("app.services.dns.synthetic_probe_service.probe_domain", return_value=healthy_report):
+    with patch(
+        "app.services.dns.synthetic_probe_service.probe_domain",
+        return_value=healthy_report,
+    ):
         summary = await service.probe_all_active_custom_domains()
 
     assert summary["scanned"] == 1
@@ -153,16 +160,34 @@ async def test_probe_service_unhealthy_flow_dispatches_alerts():
 
     unhealthy_report = DomainProbeReport(
         domain="landing.example.com",
-        txt_result=ProbeResult("TXT", "_nowing-verify.landing.example.com", "tok", [], False, "missing", "Record missing"),
-        cname_result=ProbeResult("CNAME", "landing.example.com", "target", ["target"], True, "ok"),
+        txt_result=ProbeResult(
+            "TXT",
+            "_nowing-verify.landing.example.com",
+            "tok",
+            [],
+            False,
+            "missing",
+            "Record missing",
+        ),
+        cname_result=ProbeResult(
+            "CNAME", "landing.example.com", "target", ["target"], True, "ok"
+        ),
         is_healthy=False,
         checked_at="2026-10-13T12:00:00Z",
     )
 
     with (
-        patch("app.services.dns.synthetic_probe_service.probe_domain", return_value=unhealthy_report),
-        patch("app.notifications.service.facade.NotificationService.create_notification", new_callable=AsyncMock) as mock_notify,
-        patch.object(service, "_dispatch_telegram_alert", new_callable=AsyncMock) as mock_tg,
+        patch(
+            "app.services.dns.synthetic_probe_service.probe_domain",
+            return_value=unhealthy_report,
+        ),
+        patch(
+            "app.notifications.service.facade.NotificationService.create_notification",
+            new_callable=AsyncMock,
+        ) as mock_notify,
+        patch.object(
+            service, "_dispatch_telegram_alert", new_callable=AsyncMock
+        ) as mock_tg,
     ):
         summary = await service.probe_all_active_custom_domains()
 
@@ -177,7 +202,9 @@ async def test_probe_service_unhealthy_flow_dispatches_alerts():
     # Verify AdminHealthAlert was added to session
     mock_session.add.assert_called_once()
     # Verify cooldown was written to Redis
-    mock_redis.set.assert_any_call("dns_probe:alert_cooldown:app-456", "1", ex=service.cooldown_seconds)
+    mock_redis.set.assert_any_call(
+        "dns_probe:alert_cooldown:app-456", "1", ex=service.cooldown_seconds
+    )
 
 
 @pytest.mark.unit
@@ -204,15 +231,25 @@ async def test_probe_service_unhealthy_cooldown_dedup():
 
     unhealthy_report = DomainProbeReport(
         domain="shop.brand.com",
-        txt_result=ProbeResult("TXT", "_nowing-verify.shop.brand.com", "tok", [], False, "missing", "Error"),
-        cname_result=ProbeResult("CNAME", "shop.brand.com", "target", [], False, "missing", "Error"),
+        txt_result=ProbeResult(
+            "TXT", "_nowing-verify.shop.brand.com", "tok", [], False, "missing", "Error"
+        ),
+        cname_result=ProbeResult(
+            "CNAME", "shop.brand.com", "target", [], False, "missing", "Error"
+        ),
         is_healthy=False,
         checked_at="2026-10-13T12:00:00Z",
     )
 
     with (
-        patch("app.services.dns.synthetic_probe_service.probe_domain", return_value=unhealthy_report),
-        patch("app.notifications.service.facade.NotificationService.create_notification", new_callable=AsyncMock) as mock_notify,
+        patch(
+            "app.services.dns.synthetic_probe_service.probe_domain",
+            return_value=unhealthy_report,
+        ),
+        patch(
+            "app.notifications.service.facade.NotificationService.create_notification",
+            new_callable=AsyncMock,
+        ) as mock_notify,
     ):
         summary = await service.probe_all_active_custom_domains()
 
@@ -252,15 +289,25 @@ async def test_probe_service_recovery_flow():
 
     healthy_report = DomainProbeReport(
         domain="recovered.com",
-        txt_result=ProbeResult("TXT", "_nowing-verify.recovered.com", "tok", ["tok"], True, "ok"),
-        cname_result=ProbeResult("CNAME", "recovered.com", "target", ["target"], True, "ok"),
+        txt_result=ProbeResult(
+            "TXT", "_nowing-verify.recovered.com", "tok", ["tok"], True, "ok"
+        ),
+        cname_result=ProbeResult(
+            "CNAME", "recovered.com", "target", ["target"], True, "ok"
+        ),
         is_healthy=True,
         checked_at="2026-10-13T12:00:00Z",
     )
 
     with (
-        patch("app.services.dns.synthetic_probe_service.probe_domain", return_value=healthy_report),
-        patch("app.notifications.service.facade.NotificationService.create_notification", new_callable=AsyncMock) as mock_notify,
+        patch(
+            "app.services.dns.synthetic_probe_service.probe_domain",
+            return_value=healthy_report,
+        ),
+        patch(
+            "app.notifications.service.facade.NotificationService.create_notification",
+            new_callable=AsyncMock,
+        ) as mock_notify,
     ):
         summary = await service.probe_all_active_custom_domains()
 
@@ -278,7 +325,10 @@ def test_celery_task_execution():
 
     mock_summary = {"scanned": 5, "healthy": 5, "unhealthy": 0, "alerts_dispatched": 0}
 
-    with patch("app.tasks.celery_tasks.dns_probe_task.run_async_celery_task", return_value=mock_summary) as mock_run:
+    with patch(
+        "app.tasks.celery_tasks.dns_probe_task.run_async_celery_task",
+        return_value=mock_summary,
+    ) as mock_run:
         result = dns_synthetic_probe_periodic_task()
         assert result == mock_summary
         mock_run.assert_called_once()

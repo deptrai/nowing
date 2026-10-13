@@ -66,7 +66,9 @@ class DomainProbeReport:
         return asdict(self)
 
 
-def _get_resolver(nameserver: str | None = None, timeout: float = 5.0) -> dns.resolver.Resolver:
+def _get_resolver(
+    nameserver: str | None = None, timeout: float = 5.0
+) -> dns.resolver.Resolver:
     """Create a configured dns.resolver.Resolver instance."""
     resolver = dns.resolver.Resolver()
     resolver.lifetime = timeout
@@ -90,7 +92,9 @@ def verify_txt_record(
         return ProbeResult(
             record_type="TXT",
             target_host=txt_host,
-            expected=f"{DEFAULT_TXT_PREFIX}{expected_token}" if expected_token else f"{DEFAULT_TXT_PREFIX}*",
+            expected=f"{DEFAULT_TXT_PREFIX}{expected_token}"
+            if expected_token
+            else f"{DEFAULT_TXT_PREFIX}*",
             actual=[],
             success=False,
             status="invalid",
@@ -144,7 +148,9 @@ def verify_txt_record(
                 error_message=f"Found TXT values do not match expected '{expected_val}'.",
             )
         else:
-            nowing_records = [v for v in actual_values if v.startswith(DEFAULT_TXT_PREFIX)]
+            nowing_records = [
+                v for v in actual_values if v.startswith(DEFAULT_TXT_PREFIX)
+            ]
             if nowing_records:
                 return ProbeResult(
                     record_type="TXT",
@@ -252,12 +258,16 @@ def verify_cname_record(
                 for rdata in resolver.resolve(clean_domain, qtype):
                     domain_ips.add(str(rdata))
             except Exception as exc:
-                logger.debug("Apex resolution failed for %s (%s): %s", clean_domain, qtype, exc)
+                logger.debug(
+                    "Apex resolution failed for %s (%s): %s", clean_domain, qtype, exc
+                )
             try:
                 for rdata in resolver.resolve(target_clean, qtype):
                     target_ips.add(str(rdata))
             except Exception as exc:
-                logger.debug("Apex resolution failed for %s (%s): %s", target_clean, qtype, exc)
+                logger.debug(
+                    "Apex resolution failed for %s (%s): %s", target_clean, qtype, exc
+                )
 
         if domain_ips and target_ips and domain_ips.intersection(target_ips):
             return ProbeResult(
@@ -378,7 +388,11 @@ class SyntheticDnsProbeService:
 
         for app in apps:
             domain = str(app.custom_domain)
-            token = str(app.custom_domain_verify_token) if app.custom_domain_verify_token else None
+            token = (
+                str(app.custom_domain_verify_token)
+                if app.custom_domain_verify_token
+                else None
+            )
 
             # Run blocking DNS probes in thread pool to avoid blocking the event loop
             report = await asyncio.to_thread(
@@ -422,19 +436,29 @@ class SyntheticDnsProbeService:
             try:
                 is_in_cooldown = await redis.get(cooldown_key)
                 if is_in_cooldown:
-                    logger.info("DNS probe alert for app %s (%s) is in cooldown; skipping alert dispatch", app.id, app.custom_domain)
+                    logger.info(
+                        "DNS probe alert for app %s (%s) is in cooldown; skipping alert dispatch",
+                        app.id,
+                        app.custom_domain,
+                    )
                     return False
             except Exception as exc:
                 logger.debug("Redis cooldown check failed: %s", exc)
 
         failures = []
         if not report.txt_result.success:
-            failures.append(f"TXT record ({report.txt_result.status}): {report.txt_result.error_message}")
+            failures.append(
+                f"TXT record ({report.txt_result.status}): {report.txt_result.error_message}"
+            )
         if not report.cname_result.success:
-            failures.append(f"CNAME record ({report.cname_result.status}): {report.cname_result.error_message}")
+            failures.append(
+                f"CNAME record ({report.cname_result.status}): {report.cname_result.error_message}"
+            )
         failure_summary = "; ".join(failures)
 
-        title = f"Custom Domain Alert: '{app.custom_domain}' verification failed"[:TITLE_MAX_LENGTH]
+        title = f"Custom Domain Alert: '{app.custom_domain}' verification failed"[
+            :TITLE_MAX_LENGTH
+        ]
         message = (
             f"DNS synthetic probe detected an issue with domain '{app.custom_domain}' "
             f"for workspace app '{app.name}': {failure_summary}."
@@ -458,7 +482,11 @@ class SyntheticDnsProbeService:
                     },
                 )
             except Exception as err:
-                logger.warning("Failed to create in-app notification for user %s: %s", app.user_id, err)
+                logger.warning(
+                    "Failed to create in-app notification for user %s: %s",
+                    app.user_id,
+                    err,
+                )
 
         # 2. Telegram Notification if owner has bound Telegram account
         if app.user_id:
@@ -536,7 +564,11 @@ class SyntheticDnsProbeService:
                 alert.updated_at = now
 
             if app.user_id and was_failing:
-                recovery_title = f"Custom Domain Recovered: '{app.custom_domain}' is healthy"[:TITLE_MAX_LENGTH]
+                recovery_title = (
+                    f"Custom Domain Recovered: '{app.custom_domain}' is healthy"[
+                        :TITLE_MAX_LENGTH
+                    ]
+                )
                 recovery_msg = f"DNS synthetic probe confirmed that domain '{app.custom_domain}' is now properly verified."
                 try:
                     await NotificationService.create_notification(
@@ -553,7 +585,9 @@ class SyntheticDnsProbeService:
                         },
                     )
                 except Exception as err:
-                    logger.warning("Failed to dispatch recovery in-app notification: %s", err)
+                    logger.warning(
+                        "Failed to dispatch recovery in-app notification: %s", err
+                    )
 
             await self.session.commit()
 
@@ -594,4 +628,8 @@ class SyntheticDnsProbeService:
                 parse_mode="MarkdownV2",
             )
         except Exception as err:
-            logger.warning("Failed to dispatch Telegram alert for domain %s: %s", app.custom_domain, err)
+            logger.warning(
+                "Failed to dispatch Telegram alert for domain %s: %s",
+                app.custom_domain,
+                err,
+            )
