@@ -1,7 +1,7 @@
 # Credit Refund Policy — Compliance Purge (DRAFT v0.1)
 
 **Ngày:** 2026-10-13 · **Tác giả:** John (PM) · **Trạng thái:** ✅ APPROVED — Phương án C (30-day window), duyệt 2026-10-13
-**Story:** `_bmad-output/implementation-artifacts/33-4-compliance-purge-credit-refund-30-day-window.md` (ready-for-dev)
+**Story:** `_bmad-output/implementation-artifacts/spec-33-4-compliance-purge-credit-refund-30-day-window.md` (ready-for-dev)
 **Nguồn:** `epic-33-retro-item-35` (deferred) — `_bmad-output/implementation-artifacts/epic-33-retro-2026-10-11.md`
 
 ---
