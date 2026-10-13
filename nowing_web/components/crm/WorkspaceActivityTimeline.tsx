@@ -37,23 +37,41 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 	const [error, setError] = useState<string | null>(null);
 	const [directionFilter, setDirectionFilter] = useState("all");
 
-	const fetchTimeline = useCallback(async () => {
-		setLoading(true);
-		setError(null);
-		try {
-			const res = await fetch(`/api/v1/workspaces/${workspaceId}/crm/activity-timeline`);
-			if (!res.ok) throw new Error(`Failed to load timeline: ${res.statusText}`);
-			const data = await res.json();
-			setItems(data.items || []);
-		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : "Failed to load activity timeline");
-		} finally {
-			setLoading(false);
-		}
-	}, [workspaceId]);
+	const fetchTimeline = useCallback(
+		async (signal?: AbortSignal) => {
+			if (!workspaceId) {
+				setLoading(false);
+				return;
+			}
+			setLoading(true);
+			setError(null);
+			try {
+				const res = await fetch(`/api/v1/workspaces/${workspaceId}/crm/activity-timeline`, {
+					signal,
+				});
+				if (!res.ok) throw new Error(`Failed to load timeline: ${res.statusText}`);
+				const data = await res.json();
+				setItems(data.items || []);
+			} catch (err: unknown) {
+				if (err instanceof Error && err.name === "AbortError") {
+					return;
+				}
+				setError(err instanceof Error ? err.message : "Failed to load activity timeline");
+			} finally {
+				if (!signal?.aborted) {
+					setLoading(false);
+				}
+			}
+		},
+		[workspaceId]
+	);
 
 	useEffect(() => {
-		fetchTimeline();
+		const controller = new AbortController();
+		fetchTimeline(controller.signal);
+		return () => {
+			controller.abort();
+		};
 	}, [fetchTimeline]);
 
 	const filteredItems = items.filter((item) => {
@@ -80,7 +98,7 @@ export const WorkspaceActivityTimeline: React.FC<WorkspaceActivityTimelineProps>
 					</select>
 					<button
 						type="button"
-						onClick={fetchTimeline}
+						onClick={() => fetchTimeline()}
 						disabled={loading}
 						className="inline-flex items-center gap-1 text-xs rounded-md border px-2.5 py-1.5 hover:bg-muted"
 					>

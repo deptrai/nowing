@@ -273,6 +273,7 @@ async def hubspot_webhook(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
     x_hubspot_signature_v3: str | None = Header(None),
+    x_hubspot_request_timestamp: str | None = Header(None),
 ):
     """Ingest HubSpot webhook events (e.g. deal stage changes) (Story 34.1)."""
     body = await request.body()
@@ -281,7 +282,30 @@ async def hubspot_webhook(
         verify_hubspot_signature,
     )
 
-    if not verify_hubspot_signature(body, x_hubspot_signature_v3):
+    method = (
+        request.scope.get("method", "POST")
+        if isinstance(getattr(request, "scope", None), dict)
+        else "POST"
+    )
+    request_uri = (
+        str(request.url)
+        if isinstance(getattr(request, "scope", None), dict) and "path" in request.scope
+        else ""
+    )
+    sig = x_hubspot_signature_v3 if isinstance(x_hubspot_signature_v3, str) else None
+    timestamp = (
+        x_hubspot_request_timestamp
+        if isinstance(x_hubspot_request_timestamp, str)
+        else None
+    )
+
+    if not verify_hubspot_signature(
+        body,
+        sig,
+        method=method,
+        request_uri=request_uri,
+        timestamp=timestamp,
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid HubSpot signature",

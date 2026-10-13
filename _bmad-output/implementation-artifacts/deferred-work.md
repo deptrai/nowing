@@ -1999,20 +1999,20 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
 - **`context.targetId` fallback string slug**: Resolved. `_safe_int_target_id` trong `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` và safe target_id coercion trong `nowing_backend/app/tasks/social_stream_worker.py`. Unit tests trong `test_medirus_adapter_v2.py` và `test_social_stream_worker.py`.
 
 
-## Deferred from: code review of spec-debt-sweep-retro-action-items.md (2026-10-13)
+## Deferred from: code review of spec-debt-sweep-retro-action-items.md (2026-10-13) — RESOLVED 2026-10-13
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
-  summary: `session.get(Lead, lead_id)` scalar lookup vs composite PK (id, workspace_id) in compliance_purge_service lead-purge path — likely InvalidRequestError; lead_ids_to_check drops workspace_id
-  evidence: Review finding (compliance_purge_service.py:111 area); pre-existing code outside the diff, masked by mocked session in tests
-- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
-  summary: `hubspot_webhook` fail-opens when `HUBSPOT_WEBHOOK_SECRET` is empty (`verify_hubspot_signature` returns True); also signature algorithm may not match HubSpot v3 spec (method+uri+body+timestamp, base64 HMAC)
-  evidence: Review findings (crm_routes.py / crm_webhook_service.py); pre-existing auth code, not part of this change
-- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
-  summary: `xautoclaim` called with hardcoded `start_id="0-0"` every consumer loop — rescans PEL from start instead of advancing cursor
-  evidence: Review finding (social_stream_worker.py xautoclaim call); pre-existing reclaim logic outside the diff
-- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
-  summary: `cdp_stream` finally-block cleanup is sequential without per-step guards — a throwing `pubsub.unsubscribe()` skips `redis.delete(stream_lock_key)`, leaving lock until 3600s TTL → 409 on reconnect
-  evidence: Review finding (dsh_routes.py cdp_stream); pre-existing route code — this diff only added tests
-- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
-  summary: `WorkspaceActivityTimeline` `fetchTimeline` does not guard undefined workspaceId (fetch to `/workspaces/undefined/...`) and has no AbortController on workspace change
-  evidence: Review finding (WorkspaceActivityTimeline.tsx); pre-existing component behavior outside this diff's lint-warning scope
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `session.get(Lead, lead_id)` scalar lookup vs composite PK (id, workspace_id) in compliance_purge_service lead-purge path — likely InvalidRequestError; lead_ids_to_check drops workspace_id~~
+  RESOLVED: `lead_keys_to_check` tuple `(lead_id, ws_id)` và lookup `await session.get(Lead, (lead_id, ws_id))` trong `compliance_purge_service.py:98-118`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `hubspot_webhook` fail-opens when `HUBSPOT_WEBHOOK_SECRET` is empty (`verify_hubspot_signature` returns True); also signature algorithm may not match HubSpot v3 spec (method+uri+body+timestamp, base64 HMAC)~~
+  RESOLVED: Fail-closed khi secret rỗng/None, triển khai chuẩn HubSpot v3 signature (method + request_uri + body + timestamp, HMAC-SHA256 base64) và timestamp replay validation (300s window) trong `crm_webhook_service.py` & `crm_routes.py`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `xautoclaim` called with hardcoded `start_id="0-0"` every consumer loop — rescans PEL from start instead of advancing cursor~~
+  RESOLVED: Cursor advance `autoclaim_cursor = claim_res[0]` (hoặc fallback `0-0` nếu rỗng/0-0) trong `social_stream_worker.py:1080-1110`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `cdp_stream` finally-block cleanup is sequential without per-step guards — a throwing `pubsub.unsubscribe()` skips `redis.delete(stream_lock_key)`, leaving lock until 3600s TTL → 409 on reconnect~~
+  RESOLVED: Tách từng bước cleanup (`unsubscribe`, `close`, `redis.delete`) vào các khối `try...except` độc lập trong `dsh_routes.py:480-492`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `WorkspaceActivityTimeline` `fetchTimeline` does not guard undefined workspaceId (fetch to `/workspaces/undefined/...`) and has no AbortController on workspace change~~
+  RESOLVED: Guard `if (!workspaceId) return;` và thêm `AbortController` cleanup trong `WorkspaceActivityTimeline.tsx`.

@@ -85,6 +85,7 @@ class TestCompliancePurgeService:
         assert res["purged_counts"]["leads"] == 1
         assert res["purged_counts"]["social_posts"] == 0
         assert 1 in res["workspaces_affected"]
+        session.get.assert_called_once_with(Lead, (lead_id, 1))
         session.delete.assert_any_call(contact)
         session.delete.assert_any_call(lead)
 

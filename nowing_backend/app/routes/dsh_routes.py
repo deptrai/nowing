@@ -458,11 +458,17 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
                 if await request.is_disconnected():
                     break
 
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1.0
+                )
                 now = time.monotonic()
                 if message and message["type"] == "message":
                     raw_data = message["data"]
-                    data = raw_data.decode("utf-8") if isinstance(raw_data, bytes) else str(raw_data)
+                    data = (
+                        raw_data.decode("utf-8")
+                        if isinstance(raw_data, bytes)
+                        else str(raw_data)
+                    )
                     yield {
                         "event": "cdp_command",
                         "data": data,
@@ -477,9 +483,24 @@ async def cdp_stream(request: Request, auth: AuthContext = Depends(get_auth_cont
         except asyncio.CancelledError:
             raise
         finally:
-            await pubsub.unsubscribe(channel)
-            await pubsub.close()
-            await redis.delete(stream_lock_key)
+            try:
+                await pubsub.unsubscribe(channel)
+            except Exception as exc:
+                logger.warning(
+                    "Failed to unsubscribe from CDP channel %s: %s", channel, exc
+                )
+            try:
+                await pubsub.close()
+            except Exception as exc:
+                logger.warning(
+                    "Failed to close pubsub for CDP channel %s: %s", channel, exc
+                )
+            try:
+                await redis.delete(stream_lock_key)
+            except Exception as exc:
+                logger.warning(
+                    "Failed to delete CDP stream lock %s: %s", stream_lock_key, exc
+                )
 
     return EventSourceResponse(event_generator())
 
@@ -553,7 +574,9 @@ async def cdp_result(
 
     key = f"cdp_result:{auth.user.id}:{payload.mission_id}"
 
-    redacted_result = _redact_cdp_result_value(payload.result) if payload.result is not None else None
+    redacted_result = (
+        _redact_cdp_result_value(payload.result) if payload.result is not None else None
+    )
     command_id = payload.command_id or (
         payload.result.get("command_id")
         if isinstance(payload.result, dict)
@@ -771,9 +794,6 @@ async def sweep_takeovers(
     """Trigger a workspace-scoped maintenance sweep for expired takeovers."""
     # Scope the sweep to the caller's workspace to avoid cross-tenant leakage.
     service = DshMissionService()
-    swept = await service.sweep_expired_takeovers(
-        session, workspace_id=workspace_id
-    )
+    swept = await service.sweep_expired_takeovers(session, workspace_id=workspace_id)
     await session.commit()
     return {"swept_count": len(swept)}
-

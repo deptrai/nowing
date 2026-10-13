@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import logging
@@ -49,19 +50,43 @@ def map_stage_to_status(external_stage: str) -> str | None:
 
 
 def verify_hubspot_signature(
-    request_body: bytes,
+    request_body: bytes | str,
     signature: str | None,
     secret: str | None = None,
+    *,
+    method: str = "POST",
+    request_uri: str = "",
+    timestamp: str | None = None,
 ) -> bool:
-    """Verify HubSpot webhook signature (v1 / v2 HMAC-SHA256)."""
-    if not signature:
+    """Verify HubSpot webhook signature (v3 HMAC-SHA256 base64, with v1/v2 fallback)."""
+    if not signature or not isinstance(signature, str):
         return False
     key = secret or getattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
     if not key:
-        logger.warning("HUBSPOT_WEBHOOK_SECRET not configured; skipping check in dev")
-        return True
-    expected = hmac.new(key.encode(), request_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(signature, expected)
+        logger.warning("HUBSPOT_WEBHOOK_SECRET not configured; rejecting webhook")
+        return False
+
+    body_bytes = (
+        request_body if isinstance(request_body, bytes) else request_body.encode()
+    )
+    if timestamp:
+        ts_bytes = (
+            timestamp.encode() if isinstance(timestamp, str) else bytes(timestamp)
+        )
+        source = f"{method}{request_uri}".encode() + body_bytes + ts_bytes
+        expected_v3 = base64.b64encode(
+            hmac.new(key.encode(), source, hashlib.sha256).digest()
+        ).decode()
+        if hmac.compare_digest(signature, expected_v3):
+            return True
+
+    # Fallback to legacy v1/v2 hex signature when timestamp is not provided
+    if not timestamp:
+        expected_v1 = hmac.new(key.encode(), body_bytes, hashlib.sha256).hexdigest()
+        if hmac.compare_digest(signature, expected_v1):
+            return True
+
+    return False
 
 
 class CrmWebhookService:

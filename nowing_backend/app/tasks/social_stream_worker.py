@@ -1070,6 +1070,7 @@ async def run_social_stream_consumer(
 
         count = min(batch_size, max_messages_per_batch)
         total_processed = 0
+        autoclaim_cursor = "0-0"
 
         for _ in range(max(1, max_loops)):
             entries = None
@@ -1080,9 +1081,19 @@ async def run_social_stream_consumer(
                     groupname=CONSUMER_GROUP_NAME,
                     consumername=consumer_name,
                     min_idle_time=AUTOCLAIM_MIN_IDLE_TIME_MS,
-                    start_id="0-0",
+                    start_id=autoclaim_cursor,
                     count=count,
                 )
+                if claim_res and len(claim_res) >= 2:
+                    next_start = claim_res[0]
+                    reclaimed_entries = claim_res[1]
+                    if not reclaimed_entries or next_start == "0-0":
+                        autoclaim_cursor = "0-0"
+                    else:
+                        autoclaim_cursor = next_start
+                else:
+                    autoclaim_cursor = "0-0"
+
                 if claim_res and len(claim_res) >= 2 and claim_res[1]:
                     logger.info(
                         "XAUTOCLAIM reclaimed %d pending messages from dead workers",
@@ -1115,6 +1126,7 @@ async def run_social_stream_consumer(
                     if claimed_messages:
                         entries = [(STREAM_SOCIAL_RAW_POSTS, claimed_messages)]
             except Exception as claim_exc:
+                autoclaim_cursor = "0-0"
                 logger.debug("XAUTOCLAIM check skipped or failed: %s", claim_exc)
 
             # Fall back to reading new messages if no pending messages were claimed
