@@ -252,6 +252,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.workspace_health_tasks",
         "app.tasks.celery_tasks.bulk_op_tasks",
         "app.tasks.celery_tasks.voice_tasks",
+        "app.tasks.celery_tasks.dns_probe_task",
         "app.tasks.webset_import",
     ],
 )
@@ -325,6 +326,7 @@ celery_app.conf.update(
         "health_probe_payment": {"queue": HEALTH_QUEUE},
         "health_probe_storage": {"queue": HEALTH_QUEUE},
         "health_probe_medirus": {"queue": HEALTH_QUEUE},
+        "dns_synthetic_probe_periodic": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
@@ -392,6 +394,13 @@ celery_app.conf.beat_schedule = {
         "task": "consume_prospect_engagement_stream",
         "schedule": crontab(minute="*"),
         "options": {"expires": 50},
+    },
+    # Synthetic DNS probe for active custom domains (Story 31 / Retro Item 29).
+    # Runs every 2 hours to detect missing TXT/CNAME records and alert.
+    "dns-synthetic-probe-periodic": {
+        "task": "dns_synthetic_probe_periodic",
+        "schedule": crontab(minute="15", hour="*/2"),
+        "options": {"expires": 1800},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup
