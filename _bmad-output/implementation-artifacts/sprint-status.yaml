@@ -375,6 +375,7 @@ development_status:
   33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
   33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
   33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
+  33-4-compliance-purge-credit-refund-30-day-window: ready-for-dev
   epic-33-retrospective: done
 
   epic-34: done
@@ -968,8 +969,8 @@ action_items:
     action: "Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu
       contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu"
     owner: "product-owner"
-    status: deferred
-    ref: "_bmad-output/implementation-artifacts/deferred-work.md"
+    status: done
+    ref: "_bmad-output/planning-artifacts/credit-refund-policy-compliance-purge-draft-2026-10-13.md"
   - id: "epic-33-retro-item-36-viết-tài-liệu-hướng-dẫn-vận-hành-cho-sec"
     epic: 33
     action: "Viết tài liệu hướng dẫn vận hành cho SecOps (SOP) về quy trình xoay vòng
