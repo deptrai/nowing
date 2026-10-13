@@ -919,8 +919,8 @@ action_items:
     action: "Bổ sung telemetry giám sát mức tiêu thụ tài nguyên cgroup (OOM/throttling)
       của container Dokploy"
     owner: "devops"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-31-retro-2026-10-11.md"
+    status: deferred
+    ref: "_bmad-output/implementation-artifacts/deferred-work.md"
   - id: "epic-31-retro-item-29-thiết-lập-synthetic-probe-định-kỳ-kiểm-t"
     epic: 31
     action: "Thiết lập synthetic probe định kỳ kiểm tra xác thực DNS TXT / CNAME trên
@@ -968,8 +968,8 @@ action_items:
     action: "Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu
       contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu"
     owner: "product-owner"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-33-retro-2026-10-11.md"
+    status: deferred
+    ref: "_bmad-output/implementation-artifacts/deferred-work.md"
   - id: "epic-33-retro-item-36-viết-tài-liệu-hướng-dẫn-vận-hành-cho-sec"
     epic: 33
     action: "Viết tài liệu hướng dẫn vận hành cho SecOps (SOP) về quy trình xoay vòng
