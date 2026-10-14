@@ -2019,8 +2019,9 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
 
 ## Deferred from: code review of spec-debt-sweep-retro-action-items.md (2026-10-13, round 2)
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
-  summary: `hubspot_webhook` (`nowing_backend/app/routes/crm_routes.py:290`) computes `request_uri = str(request.url)` — unverified `medium` (`maybe-false`); if Uvicorn runs behind a TLS-terminating reverse proxy without `--proxy-headers` / `--forwarded-allow-ips`, `str(request.url)` carries `http://` instead of external `https://` signed by HubSpot. Requires checking production Uvicorn/Dokploy proxy flags before trusting `X-Forwarded-Proto` / `X-Forwarded-Host`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`~~
+  ~~summary: `hubspot_webhook` (`nowing_backend/app/routes/crm_routes.py:290`) computes `request_uri = str(request.url)` — unverified `medium` (`maybe-false`); if Uvicorn runs behind a TLS-terminating reverse proxy without `--proxy-headers` / `--forwarded-allow-ips`, `str(request.url)` carries `http://` instead of external `https://` signed by HubSpot. Requires checking production Uvicorn/Dokploy proxy flags before trusting `X-Forwarded-Proto` / `X-Forwarded-Host`.~~
+  **RESOLVED (verified 2026-10-14, code-level):** `ProxyHeadersMiddleware` đã được đăng ký trong `nowing_backend/app/app/factory.py:176` (`app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")`). Middleware này đọc `X-Forwarded-Proto`/`X-Forwarded-Host` từ Cloudflare/Dokploy Traefik (mặc định Traefik gửi `X-Forwarded-Proto`), nên `str(request.url)` trong `hubspot_webhook` sẽ mang scheme `https://` khớp với URL HubSpot đã ký. Không cần flag `--proxy-headers` của Uvicorn CLI vì ASGI middleware đã cover. Chữ ký vẫn fail-closed: `trusted_hosts="*"` rộng nhưng không tạo lỗ hổng — attacker spoof `X-Forwarded-Proto` chỉ đổi được `request_uri` trong phép tính HMAC, vẫn cần secret để ký hợp lệ. Đóng finding này; nếu production webhook từng trả 401 do scheme mismatch thì mới cần mở lại và check Traefik config.
 
 ## Deferred from: debt sweep 3 retro action items (2026-10-13)
 
@@ -2028,8 +2029,8 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
   - **Status:** BLOCKED-OUTSIDE-REPO
   - **Reason / when to revisit:** Yêu cầu quyền truy cập hạ tầng host Dokploy/Docker cgroup v2 metrics (`/sys/fs/cgroup/memory.events`, `cpu.stat`), nằm ngoài phạm vi codebase nội bộ. Revisit khi có phiên bảo trì hạ tầng production Dokploy.
 
-- **Finding / Item 35:** `epic-33-retro-item-35`: Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu.
-  - **Status:** BLOCKED-OUTSIDE-REPO
-  - **Reason / when to revisit:** Quyết định chính sách kinh doanh và điều khoản dịch vụ (ToS) thuộc thẩm quyền của Product Owner / Legal, không phải thay đổi kỹ thuật. Revisit trong buổi họp chính sách thương mại và pháp lý tiếp theo.
+- ~~**Finding / Item 35:** `epic-33-retro-item-35`: Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu.~~
+  - ~~**Status:** BLOCKED-OUTSIDE-REPO~~
+  - **RESOLVED 2026-10-14:** Chính sách đã được Product Owner xác định và ghi thành văn bản tại `_bmad-output/planning-artifacts/credit-refund-policy-compliance-purge-draft-2026-10-13.md`; `sprint-status.yaml` đánh dấu `epic-33-retro-item-35` = `done` (ref policy doc). Bản ghi BLOCKED-OUTSIDE-REPO trước đó là stale.
 
 
