@@ -55,3 +55,29 @@ exercise **real auth path** (`Bearer nw_pat_…` → `resolve_pat` → `AuthCont
 
 - `preview` chỉ reachable qua daemon echo (`preview: true` flag / `preview` list) — agent args không expose `dryRun`; hành vi đúng contract "dryRun stub không giống success".
 - `_fail()` early-validation cố tình `recovery_hint=None` — deterministic failure không nên gợi ý retry.
+
+---
+
+# Test Summary — Story 42.7 (Leads route + auto-table + empty state)
+
+Ngày: 2026-11-17 · Spec: `spec-42-7-leads-route-auto-table.md` · Commit: `f66b3b5b0`
+
+## Tests mới / sửa
+
+| Suite | Coverage | Kết quả |
+|---|---|---|
+| `TestAutoTableResolution` (`test_lead_batch_service.py`, 8 tests) | T2 — get-or-create default/keyed table, reuse key, race-thua re-SELECT, valid UUID + **str** table_id giữ nguyên, invalid str + stale→default, 2 client_id→2 key 1 INSERT | PASS |
+| `tests/integration/db/test_migration_250_roundtrip.py` | A5 — seed orphan lead → upgrade → default table tạo + lead trỏ đúng; downgrade gỡ constraint+column | PASS |
+| `tests/integration/lead_batch/` (23 incl. PAT e2e 42.1) | Regression toàn funnel ingest sau khi thêm resolver + stream-path adoption | PASS |
+| `nowing_web/tests/leads/split-canvas.spec.ts` (rewrite) | `/leads` giờ mount canvas (không redirect) — testid `nowing-leads-canvas-standalone`, row click mở flyout | source-only (chưa chạy — cần dev server + browser) |
+
+## Regression
+
+- `.venv/bin/python -m pytest tests/unit/services/test_lead_batch_service.py tests/unit/routes/test_lead_batch_ingest.py tests/integration/lead_batch/ tests/integration/db/test_migration_250_roundtrip.py -q` → **60 passed**
+- `pnpm tsc --noEmit` (nowing_web) → clean; `alembic heads` → single head `250`
+
+## Lưu ý
+
+- `ingest_stream_leads_to_db` (scraper path) giờ cũng resolve default table — orphan `table_id IS NULL` không còn sinh mới (kể cả cửa sổ deploy sau backfill).
+- str `table_id` từ `save_leads` được coerce `UUID(str)` — caller override giờ thật sự giữ (trước patch bị nuốt sang default).
+- Deploy: `alembic upgrade head` chạy backfill one-shot trước khi code mới nhận traffic.
