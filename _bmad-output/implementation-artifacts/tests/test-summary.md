@@ -106,3 +106,24 @@ Ngày: 2026-11-17 · Spec: `spec-42-4-nowing-mcp-lead-tools.md` · Commit: `570a
 - 422 reject-all không đọc được body phía MCP — `NowingClient` raise `ToolError` trước; contract `{status:'failed', rejected_indexes}` chỉ lộ diện nếu client đổi behavior (ghi chú cho followup).
 - `no_wallet` chỉ reachable khi workspace row absent (404); `credit_micros_balance` NOT NULL default 0 — không có wallet object riêng.
 - Deferred: `GET /credits/balance` (và các read endpoint khác) chưa có `RequirePatScope` — PAT bound ws-khác nhưng là member vẫn đọc được; contract lỗi MCP chưa thống nhất (403 → ToolError text, không phải JSON).
+
+# Story 42.3 — `GET /workspaces/{id}/scrapers/health`
+
+Ngày: 2026-11-17 · Spec: `spec-42-3-scrapers-health.md` · Commit: `89aaed195`
+
+## Tests mới / sửa
+
+| Suite | Coverage | Kết quả |
+|---|---|---|
+| `nowing_backend/tests/unit/routes/test_scraper_health.py` (13) | OK/DEGRADED/DOWN/IDLE/NEVER_RAN(×2)/CROSS_WS(+RLS GUC assert `app.workspace_id`)/UNAUTH 403+401/LEGACY_CAP/truncate-200/down-beats-degraded/last_error-survives-success | PASS |
+
+## Regression
+
+- `pytest tests/unit/routes -x -q` → **339 passed** (13 mới trong tổng số)
+
+## Lưu ý
+
+- `last_error` = run **fail** mới nhất all-time (query riêng `status='error'`), không bị success mới hơn phủ — theo spec Design Note.
+- Window query loại `status='cancelled'` khỏi attempts (user chủ động hủy ≠ failure); `running` vẫn tính.
+- Chưa verify trên DB thật: SQL 3 query chỉ chạy qua fake session; AC6 EXPLAIN <200ms cần check khi deploy (query all-time sort theo capability — không full index-only).
+- RLS: `runs` có FORCE RLS — endpoint set `app.workspace_id` GUC trước select; test bắt được nếu ai xóa dòng `set_request_tenant_context`.
