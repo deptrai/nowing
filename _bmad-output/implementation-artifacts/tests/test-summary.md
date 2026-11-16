@@ -1,39 +1,31 @@
-# Test Automation Summary
+# Test Summary — Story 42.1 (PAT-scoped REST batch ingest)
 
-## Generated Tests
+Ngày: 2026-11-17 · Spec: `spec-42-1-pat-scoped-batch-ingest-verify-harden.md`
 
-### API Tests
-- [x] `nowing_backend/tests/unit/routes/test_chainlens_websets_api_flow.py` - Websets Webhook API Flow & Status Code Validation (9 tests)
-  - `test_200_valid_webhook_accepted_and_dispatched`: Valid secret token and payload accepted, last_delivery_id recorded, cost converted to micros, and Celery task dispatched.
-  - `test_200_duplicate_delivery_id_idempotent_no_enqueue`: Idempotent deduplication skips task re-enqueue on repeated delivery.
-  - `test_200_unknown_webset_returns_ignored`: Unknown webset in DB returns 200 with `status="ignored"` to stop upstream retries.
-  - `test_401_missing_secret_token_unauthorized`: Missing `?t=` parameter rejected with 401 Unauthorized.
-  - `test_401_invalid_secret_token_unauthorized`: Invalid secret token rejected with 401 Unauthorized using constant-time comparison.
-  - `test_400_invalid_event_type`: Event types other than `webset.idle` return 400 Bad Request.
-  - `test_400_missing_webset_id_in_payload`: Payload missing `websetId` returns 400 Bad Request.
-  - `test_400_non_dict_json_payload`: Non-dict JSON root returns 400 Bad Request without crashing.
-  - `test_500_broker_failure_prevents_delivery_id_commit`: Celery dispatch failure rolls back transaction so retries succeed.
+## E2E / API tests mới
 
-### E2E Tests
-- [x] `nowing_web/tests/leads/websets-lead-source-badge.spec.ts` - Websets Lead Source Badge & Matrix Filter User Workflow (4 tests)
-  - `should filter matrix rows when selecting ChainLens Websets source filter`: User selects Websets filter, matrix filters down to websets rows.
-  - `should render unified LeadSourceBadge with emerald style for websets in detail drawer`: Clicks row, drawer mounts with emerald `<LeadSourceBadge>` (`bg-emerald-50`, `text-emerald-700`, `data-source-key="websets"`), and unmapped enrichment section.
-  - `should render correct badge style for other sources (batdongsan) and update dynamically`: Switching between leads updates the badge theme dynamically (rose style for batdongsan).
-  - `should close flyout drawer cleanly when close button is clicked`: Clicking X button cleanly unmounts the detail drawer.
-- [x] `nowing_web/components/leads/__tests__/LeadSourceBadge.test.ts` - Component Level Badge Mapping Test (3 tests)
-- [x] `nowing_web/components/leads/__tests__/LeadCard.test.ts` - Component Level Card Integration Test (3 tests)
+File: `nowing_backend/tests/integration/lead_batch/test_pat_batch_ingest_e2e.py` — 6 tests,
+exercise **real auth path** (`Bearer nw_pat_…` → `resolve_pat` → `AuthContext.pat_auth`
+→ `RequirePermission` → `RequirePatScope` → service → ledger), không mock auth.
 
-## Coverage
-- **API Endpoints**: 100% of Websets idle webhook statuses covered (200 OK, 400 Bad Request, 401 Unauthorized, 500 Error, idempotent deduplication, dollar-to-micros cost conversion).
-- **UI Features**: 100% of LeadSourceBadge and Matrix filter features covered (source filter dropdown, emerald theme for Websets, rose theme for Batdongsan, drawer mount/unmount).
+| Test | Matrix row | Kết quả |
+|---|---|---|
+| `test_pat_ingest_persists_lead_and_writes_ledger` | PAT_OK | PASS — lead + `LeadActivityLog` (`actor_pat_token_id`, `idempotency_key`) |
+| `test_pat_without_leads_write_scope_gets_403` | PAT_NO_SCOPE | PASS — 403 `permission missing: leads:write`, 0 lead |
+| `test_pat_bound_to_other_workspace_gets_403` | PAT_WRONG_WS | PASS — 403 `workspace_id outside pat scope` |
+| `test_pat_on_api_access_disabled_workspace_gets_403` | api_access gate | PASS — 403 trước scope check (gate ordering) |
+| `test_degenerate_batch_returns_structured_422_and_rolls_back` | DEGENERATE_BATCH | PASS — 422 `{status:'failed', rejected_indexes:[1,2], reason_map}`, rollback |
+| `test_pat_repush_idempotent_dedup_and_ledger_per_call` | REPUSH_IDEMPOTENT | PASS — 1 lead sau 2 call, 2 ledger rows (attribution per call, by design) |
 
-## Verification Results
-- Backend Pytest: 9/9 passed (`tests/unit/routes/test_chainlens_websets_api_flow.py`) in 9.28s.
-- Frontend TypeScript: `pnpm tsc --noEmit` passed with 0 errors.
-- Frontend Biome Linter: 0 errors/warnings on all generated test files.
-- Component Unit Tests: 6/6 passed (`LeadSourceBadge.test.ts` & `LeadCard.test.ts`).
-- Playwright Test Discovery: All 4 E2E test cases registered and verified in Playwright runner.
+## Regression suites
 
-## Next Steps
-- Include `test_chainlens_websets_api_flow.py` in the standard backend CI pipeline.
-- Include `websets-lead-source-badge.spec.ts` in the daily Playwright E2E regression run.
+- `tests/integration/lead_batch/` → **23 passed** (17 hiện hữu + 6 mới)
+- `tests/unit/routes/test_lead_batch_ingest.py` + `test_lead_batch_service.py`
+  + `test_kb_persistence_embed_fail.py` → **35 passed**
+
+## Lưu ý
+
+- E2E dùng `token_kind="legacy"` PAT (không chịu `chk_pat_agent_chat_requires_scope`
+  constraint) — đúng contract story: legacy PAT scopes=[] fail-closed, scoped PAT hoạt động.
+- `api_access_enabled=False` chặn PAT ở permission gate **trước** scope seam — hành vi
+  có chủ đích, được test độc lập.
