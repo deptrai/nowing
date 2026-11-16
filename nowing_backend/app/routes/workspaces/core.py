@@ -19,6 +19,7 @@ from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
 from app.routes.model_connections_routes import compute_llm_setup_status
 from app.schemas import (
     WorkspaceApiAccessUpdate,
+    WorkspaceBalanceRead,
     WorkspaceCreate,
     WorkspaceRead,
     WorkspaceUpdate,
@@ -254,6 +255,23 @@ async def read_workspace(
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspace: {e!s}"
         ) from e
+
+
+@router.get("/workspaces/{workspace_id}/credits/balance", response_model=WorkspaceBalanceRead)
+async def get_credits_balance(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+):
+    """Return the workspace's current credit balance in micros."""
+    workspace = await session.get(Workspace, workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    return WorkspaceBalanceRead(
+        workspace_id=workspace_id,
+        credit_micros_balance=workspace.credit_micros_balance,
+    )
 
 
 @router.put("/workspaces/{workspace_id}", response_model=WorkspaceRead)

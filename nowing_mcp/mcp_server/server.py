@@ -25,6 +25,7 @@ from .features import (
     knowledge_base,
     lead_intelligence,
     lead_scoring,
+    leads,
     memory,
     reports,
     scrapers,
@@ -155,6 +156,7 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
     lead_scoring.register(mcp, client, context)
     crm.register(mcp, client, context)
     lead_intelligence.register(mcp, client, context)
+    leads.register(mcp, client, context)
     knowledge_base.register(mcp, client, context)
     memory.register(mcp, client, context)
     team_memory.register(mcp, client, context)

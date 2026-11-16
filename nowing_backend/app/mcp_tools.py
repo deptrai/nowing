@@ -25,6 +25,7 @@ class McpToolGroup(StrEnum):
     REPORT = "report"
     CHAT = "chat"
     LEAD_INTELLIGENCE = "lead_intelligence"
+    LEADS = "leads"
 
 
 MCP_TOOL_CATALOG: list[dict[str, str]] = [
@@ -99,6 +100,10 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_list_crm_sync_logs", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_realestate_check_zoning", "group": McpToolGroup.LEAD_INTELLIGENCE},
     {"name": "nowing_recruitment_search_linkedin_jobs", "group": McpToolGroup.LEAD_INTELLIGENCE},
+    {"name": "nowing_ingest_leads", "group": McpToolGroup.LEADS},
+    {"name": "nowing_create_leads_table", "group": McpToolGroup.LEADS},
+    {"name": "nowing_list_leads", "group": McpToolGroup.LEADS},
+    {"name": "nowing_get_credits_balance", "group": McpToolGroup.LEADS},
 ]
 
 MCP_TOOL_SYSTEM_TOOLS = {"nowing_list_workspaces", "nowing_select_workspace"}
