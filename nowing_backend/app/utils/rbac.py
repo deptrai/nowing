@@ -175,6 +175,40 @@ async def check_permission(
     return membership
 
 
+async def enforce_pat_scope(
+    auth: AuthContext,
+    workspace_id: int,
+    required_scope: str,
+) -> None:
+    """Enforce PAT scope + workspace binding for a workspace-scoped write.
+
+    Session/system principals are unaffected (their authorization comes from
+    ``check_permission``). A PAT must (a) be bound to the same workspace or be
+    unbound/legacy, and (b) carry the required scope. Fail-closed: legacy
+    tokens with ``scopes=[]`` never pass.
+
+    This is the single named seam for REST PAT scope enforcement (AD-2);
+    message text follows the ``app/auth/agent_chat.py`` convention.
+    """
+    if not auth.is_gated:
+        return
+    pat = auth.pat
+    if pat is None:
+        raise HTTPException(status_code=403, detail="permission missing")
+
+    if pat.workspace_id is not None and pat.workspace_id != workspace_id:
+        raise HTTPException(
+            status_code=403,
+            detail="workspace_id outside pat scope",
+        )
+
+    if required_scope not in (pat.scopes or []):
+        raise HTTPException(
+            status_code=403,
+            detail=f"permission missing: {required_scope}",
+        )
+
+
 async def check_workspace_access(
     session: AsyncSession,
     auth: AuthContext,

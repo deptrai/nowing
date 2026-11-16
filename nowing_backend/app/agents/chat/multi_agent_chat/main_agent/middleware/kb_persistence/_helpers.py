@@ -155,6 +155,30 @@ def _split_folder_path(folder_path: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def _mark_embed_failed(
+    doc: Document, exc: BaseException, *, clear_embedding: bool = True
+) -> None:
+    """Flag the document for background reindex after a failed embed.
+
+    The row still commits (content is durable), but it is left without an
+    embedding and marked ``content_needs_reindexing`` so
+    ``reindex_document_task`` can rebuild it. Reuses the existing flag from
+    migration 43 rather than introducing a new column.
+    """
+    logger.warning(
+        "kb_persistence: embed failed for document %s (%s); "
+        "committing row and scheduling reindex",
+        getattr(doc, "id", None),
+        exc,
+    )
+    if clear_embedding:
+        doc.embedding = None  # pyright: ignore[reportAttributeAccessIssue]
+    doc.content_needs_reindexing = True  # pyright: ignore[reportAttributeAccessIssue]
+    metadata = dict(doc.document_metadata or {})  # pyright: ignore[reportCallIssue, reportArgumentType]
+    metadata["index_status"] = "embed_failed"  # pyright: ignore[reportArgumentType]
+    doc.document_metadata = metadata  # pyright: ignore[reportAttributeAccessIssue]
+
+
 async def _create_document(
     session: AsyncSession,
     *,
@@ -209,24 +233,32 @@ async def _create_document(
     session.add(doc)
     await session.flush()
 
-    summary_embedding = (await asyncio.to_thread(embed_texts, [content]))[0]
-    doc.embedding = summary_embedding  # pyright: ignore[reportAttributeAccessIssue]
-    chunks = chunk_text(content)
-    if chunks:
-        chunk_embeddings = await asyncio.to_thread(embed_texts, chunks)
-        session.add_all(
-            [
-                Chunk(
-                    document_id=doc.id,
-                    content=text,
-                    embedding=embedding,
-                    position=i,
-                )
-                for i, (text, embedding) in enumerate(
-                    zip(chunks, chunk_embeddings, strict=True)
-                )
-            ]
-        )
+    try:
+        summary_embedding = (await asyncio.to_thread(embed_texts, [content]))[0]
+        doc.embedding = summary_embedding  # pyright: ignore[reportAttributeAccessIssue]
+    except Exception as exc:  # embedding provider failure must not lose the doc
+        _mark_embed_failed(doc, exc)
+        return doc
+
+    try:
+        chunks = chunk_text(content)
+        if chunks:
+            chunk_embeddings = await asyncio.to_thread(embed_texts, chunks)
+            session.add_all(
+                [
+                    Chunk(
+                        document_id=doc.id,
+                        content=text,
+                        embedding=embedding,
+                        position=i,
+                    )
+                    for i, (text, embedding) in enumerate(
+                        zip(chunks, chunk_embeddings, strict=True)
+                    )
+                ]
+            )
+    except Exception as exc:  # chunk stage failed: keep the summary embedding
+        _mark_embed_failed(doc, exc, clear_embedding=False)
     return doc
 
 
@@ -262,26 +294,44 @@ async def _update_document(
         workspace_id,
     )
 
-    summary_embedding = (await asyncio.to_thread(embed_texts, [content]))[0]
-    document.embedding = summary_embedding  # pyright: ignore[reportAttributeAccessIssue]
-
+    # Stale chunks must go before any embed attempt: a chunk-stage failure
+    # leaves the doc flagged for reindex instead of keeping old chunks
+    # searchable against the new content.
     await session.execute(delete(Chunk).where(Chunk.document_id == document.id))
-    chunks = chunk_text(content)
-    if chunks:
-        chunk_embeddings = await asyncio.to_thread(embed_texts, chunks)
-        session.add_all(
-            [
-                Chunk(
-                    document_id=document.id,
-                    content=text,
-                    embedding=embedding,
-                    position=i,
-                )
-                for i, (text, embedding) in enumerate(
-                    zip(chunks, chunk_embeddings, strict=True)
-                )
-            ]
-        )
+
+    try:
+        summary_embedding = (await asyncio.to_thread(embed_texts, [content]))[0]
+        document.embedding = summary_embedding  # pyright: ignore[reportAttributeAccessIssue]
+    except Exception as exc:  # embedding provider failure must not lose the edit
+        _mark_embed_failed(document, exc)
+        return document
+
+    try:
+        chunks = chunk_text(content)
+        if chunks:
+            chunk_embeddings = await asyncio.to_thread(embed_texts, chunks)
+            session.add_all(
+                [
+                    Chunk(
+                        document_id=document.id,
+                        content=text,
+                        embedding=embedding,
+                        position=i,
+                    )
+                    for i, (text, embedding) in enumerate(
+                        zip(chunks, chunk_embeddings, strict=True)
+                    )
+                ]
+            )
+    except Exception as exc:  # chunk stage failed: keep the summary embedding
+        _mark_embed_failed(document, exc, clear_embedding=False)
+        return document
+
+    # Successful edit heals a previously flagged document.
+    document.content_needs_reindexing = False  # pyright: ignore[reportAttributeAccessIssue]
+    metadata = dict(document.document_metadata or {})  # pyright: ignore[reportCallIssue, reportArgumentType]
+    metadata.pop("index_status", None)  # pyright: ignore[reportArgumentType]
+    document.document_metadata = metadata  # pyright: ignore[reportAttributeAccessIssue]
     return document
 
 

@@ -452,3 +452,23 @@ class TestExtraMetadataForwarding:
         assert "coalesce(leads.metadata" in sql
         assert "coalesce(excluded.metadata" in sql
         assert "||" in sql
+
+    @pytest.mark.asyncio
+    async def test_batch_ingest_degenerate_collects_all_indexes(self) -> None:
+        """422 payload lists every degenerate index, not just the first."""
+        service = lead_batch_service.LeadBatchService()
+
+        with pytest.raises(lead_batch_service.LeadItemValidationError) as exc_info:
+            await service.ingest_batch(
+                _FakeSession(),
+                workspace_id=1,
+                leads=[{"domain": "ok.com"}, {}, {"domain": "ok2.com"}, {}],
+            )
+
+        err = exc_info.value
+        assert err.rejected_indexes == [1, 3]
+        assert set(err.reason_map) == {1, 3}
+        payload = err.as_payload()
+        assert payload["status"] == "failed"
+        assert payload["rejected_indexes"] == [1, 3]
+        assert set(payload["reason_map"]) == {"1", "3"}

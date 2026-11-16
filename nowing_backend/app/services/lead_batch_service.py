@@ -37,17 +37,57 @@ logger = logging.getLogger(__name__)
 
 
 class LeadItemValidationError(ValueError):
-    """Raised when a batch item is degenerate or malformed."""
+    """Raised when a batch item is degenerate or malformed.
+
+    Carries the structured reject-all payload so callers can return
+    ``{status:'failed', rejected_indexes:[...], reason_map:{idx: reason}}``
+    without re-deriving which rows failed.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        rejected_indexes: list[int] | None = None,
+        reason_map: dict[int, str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.rejected_indexes = rejected_indexes or []
+        self.reason_map = reason_map or {}
+
+    def as_payload(self) -> dict[str, Any]:
+        return {
+            "status": "failed",
+            "rejected_indexes": list(self.rejected_indexes),
+            "reason_map": {
+                str(idx): reason for idx, reason in self.reason_map.items()
+            },
+        }
 
 
 def _reject_degenerate_leads(leads: list[dict[str, Any]]) -> None:
+    """Reject the whole batch when any lead is degenerate (collect-all).
+
+    A lead with no phone, email, domain and company_name carries no
+    dedupe key, so letting the rest of the batch through would silently drop
+    rows. Collect every failing index and reject-all (AD-4).
+    """
+    reason_map: dict[int, str] = {}
     for idx, lead in enumerate(leads):
         if not any(
             lead.get(field) for field in ("phone", "email", "domain", "company_name")
         ):
-            raise LeadItemValidationError(
-                f"Lead at index {idx} is degenerate: phone, email, domain and company_name are all empty"
+            reason_map[idx] = (
+                "degenerate lead: phone, email, domain and company_name are all empty"
             )
+    if reason_map:
+        raise LeadItemValidationError(
+            "Batch rejected: "
+            f"{len(reason_map)} degenerate lead(s) at indexes "
+            f"{sorted(reason_map)}",
+            rejected_indexes=sorted(reason_map),
+            reason_map=reason_map,
+        )
 
 
 def _prepare_lead_record(
