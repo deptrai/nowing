@@ -81,3 +81,28 @@ Ngày: 2026-11-17 · Spec: `spec-42-7-leads-route-auto-table.md` · Commit: `f66
 - `ingest_stream_leads_to_db` (scraper path) giờ cũng resolve default table — orphan `table_id IS NULL` không còn sinh mới (kể cả cửa sổ deploy sau backfill).
 - str `table_id` từ `save_leads` được coerce `UUID(str)` — caller override giờ thật sự giữ (trước patch bị nuốt sang default).
 - Deploy: `alembic upgrade head` chạy backfill one-shot trước khi code mới nhận traffic.
+
+---
+
+# Test Summary — Story 42.4 (nowing_mcp lead tools)
+
+Ngày: 2026-11-17 · Spec: `spec-42-4-nowing-mcp-lead-tools.md` · Commit: `570a6bbd7`
+
+## Tests mới / sửa
+
+| Suite | Coverage | Kết quả |
+|---|---|---|
+| `nowing_mcp/tests/test_leads_tools.py` (16) | 4 tools qua `build_server` + `call_tool` thật (NowingClient fake theo shape backend thật): ingest JSON passthrough + `Idempotency-Key` header + 422→ToolError + skipped/failed counts; tables.create default icon + custom icon; list clamp limit[1..200]/offset≥0 + forward `client_id`/`source` + markdown render + empty; balance OK + 404→`{status:'failed',reason:'no_wallet'}` + NO_KEY | PASS |
+| `nowing_backend/tests/unit/routes/test_workspace_credits.py` (3) | `GET /workspaces/{id}/credits/balance` — balance value, zero balance 200, unknown ws 404 | PASS |
+
+## Regression
+
+- `nowing_mcp`: `pytest tests/test_leads_tools.py -x -q` → **16 passed**
+- `nowing_backend`: `pytest tests/unit/routes/test_workspace_credits.py tests/unit/routes/test_lead_batch_ingest.py -x -q` → **13 passed**
+
+## Lưu ý
+
+- Success output của ingest/tables/balance là `json.dumps(result)` — caller đọc được `lead_ids`, `skipped_blacklisted_count` (spec D6); `leads.list` giữ markdown table.
+- 422 reject-all không đọc được body phía MCP — `NowingClient` raise `ToolError` trước; contract `{status:'failed', rejected_indexes}` chỉ lộ diện nếu client đổi behavior (ghi chú cho followup).
+- `no_wallet` chỉ reachable khi workspace row absent (404); `credit_micros_balance` NOT NULL default 0 — không có wallet object riêng.
+- Deferred: `GET /credits/balance` (và các read endpoint khác) chưa có `RequirePatScope` — PAT bound ws-khác nhưng là member vẫn đọc được; contract lỗi MCP chưa thống nhất (403 → ToolError text, không phải JSON).
