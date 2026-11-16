@@ -192,3 +192,24 @@ Ngày: 2026-11-17 · Spec: `spec-42-8-medirus-workspaceid-forwarding.md` · Comm
 - Review patch: `discover_single_mcp_connector` dùng `connector.workspace_id` (bug NameError — unit tests không cover discovery path).
 - Runtime verify với Medirus daemon thật deferred — check `medirus-mcp.log` hết MissingWorkspaceId sau deploy.
 - AC3 deviation: 5 files sửa (spec ước ≤3) — forwarding bắt buộc chạm gateway/http/loader.
+
+## Epic 42 — E2E coverage bổ sung (2026-11-17)
+
+Per-story e2e theo handoff (`bmad-qa-generate-e2e-tests`): real app + real Postgres + real PAT.
+
+| Story | File | Coverage | Kết quả |
+|---|---|---|---|
+| 42.3 | `tests/integration/scrapers/test_scraper_health_e2e.py` (4) | aggregate 24h real DB, envelope down, cross-workspace RLS không leak, non-member 403 | PASS |
+| 42.4 | `nowing_mcp/tests/test_leads_e2e.py` (4) | wire-level `mcp.call_tool` → real `NowingClient` → `httpx.MockTransport`: ingest path+idempotency header, clamp limit/offset, 404→`no_wallet`, no-key → ToolError | PASS |
+| 42.7 | `tests/integration/lead_batch/test_auto_table_e2e.py` (4) | auto-create table `key=client_id`+link lead, reuse 1 table, deleted→recreate id mới+relink, explicit `table_id` giữ nguyên (service-level — REST schema không expose) | PASS |
+| 42.5/42.6/42.8 | đã có | fixture repro + stream-level e2e + factory threading test (trong unit suites của từng story) | PASS |
+
+### Regression
+
+- `pytest tests/integration/lead_batch/ tests/integration/scrapers/` → **31 passed**.
+- `pytest nowing_mcp tests/` (full) → **128+4 passed**.
+
+### Lưu ý
+
+- `LeadItem` REST schema không expose `table_id` — explicit table_id chỉ qua funnel `save_leads`; test explicit-id chạy service-level.
+- MCP e2e chỉ được wire-level (`httpx.MockTransport`) vì 2 venv không share deps — backend path đã có integration tests riêng.
