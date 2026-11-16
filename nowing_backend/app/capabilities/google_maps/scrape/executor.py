@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
@@ -36,12 +37,33 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         emit_progress(
             "starting", "Searching Google Maps", total=payload.max_places, unit="place"
         )
-        try:
+
+        async def _local() -> dict[str, Any]:
             items = await scrape_fn(actor_input)
+            return {"items": items}
+
+        from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
+
+        args = {
+            "searchStringsArray": actor_input.searchStringsArray,
+            "locationQuery": actor_input.locationQuery,
+            "limit": actor_input.maxCrawledPlacesPerSearch,
+            "scrapePlaceDetailPage": actor_input.scrapePlaceDetailPage,
+            "language": actor_input.language,
+            "maxReviews": actor_input.maxReviews,
+        }
+        try:
+            raw = await medirus_scrape_or_local(
+                platform="google-maps",
+                action="search_places",
+                args={k: v for k, v in args.items() if v is not None},
+                local_fn=_local,
+            )
         except SignInRequiredError as exc:
             raise ForbiddenError(
                 f"Google sign in required: {exc}", code="GOOGLE_SIGNIN_REQUIRED"
             ) from exc
+        items = raw.get("items") or []
         emit_progress(
             "done", f"Scraped {len(items)} place(s)", current=len(items), unit="place"
         )

@@ -12,12 +12,19 @@ preventing 'the connection is closed' errors in long-running deployments.
 import logging
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
 from app.config import config
 
 logger = logging.getLogger(__name__)
+
+
+async def _ping_connection(conn: AsyncConnection) -> None:
+    """Pool checkout check: fail fast on half-open sockets so the pool replaces them."""
+    await conn.execute("SELECT 1")
+
 
 # Global checkpointer instance (initialized lazily)
 _checkpointer: AsyncPostgresSaver | None = None
@@ -70,6 +77,10 @@ async def _create_checkpointer() -> AsyncPostgresSaver:
         # Idle connections are closed after 5 minutes
         max_idle=300,
         open=False,
+        # Ping before checkout: a half-open socket (host sleep, network blip,
+        # server restart) passes the default conn.closed check and then fails
+        # mid-query with 'server closed the connection unexpectedly'.
+        check=_ping_connection,
         # Connection kwargs required by AsyncPostgresSaver:
         # - autocommit: required for .setup() to commit checkpoint tables
         # - prepare_threshold: disable prepared statements for compatibility

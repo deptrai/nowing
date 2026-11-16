@@ -30,6 +30,7 @@ inputDocuments:
   - "_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md (Epic 36 ADs)"
   - "_bmad-output/planning-artifacts/ux-spec-epic37-revenue-engine-mobile-responsive-2026-09-17.md (Epic 37 UX spec)"
   - "_bmad-output/planning-artifacts/MASTER-INTEGRATION-PLAN-TRINITY-2026-09-24.md (Epic 40 Trinity Master Integration)"
+  - "_bmad-output/planning-artifacts/ux-plan-agent-experience-improvements-2026-11-16.md (Epic 42 source — agent experience + lead pipeline hardening, v4 incl. §11 Invariants)"
 ---
 
 # Nowing - Epic Breakdown
@@ -5572,3 +5573,131 @@ So that dataset results flow into the same campaign/lead pipeline as every other
 - **No local discovery/enrichment** — SearchProviderChain, Medirus bounded channel, criteria verification, and enrichment all execute inside ChainLens; Nowing never re-scrapes webset entities.
 - **No Medirus bypass changes** — `MedirusMcpClient`/`adapter_v2.py` remain for non-websets scraping (Scraper Playground, outbound prospecting).
 - **No new billing model** — existing wallet soft-lock/debit and 1.5 credits/lead pricing apply; ChainLens-side `costDollars` is recorded as telemetry only, not billed twice.
+
+---
+
+## Epic 42: Agent Experience & Lead Pipeline Hardening `[new]`
+
+**Source:** `ux-plan-agent-experience-improvements-2026-11-16.md` v4 (§1–8 lanes + §11 Invariants). Nguồn gốc: 2 case study thực chiến — campaign trầm hương qua Pi session (14 bugs found/fixed) và Hermes daingan-ops (sys.path.insert bypass + 46 browser calls tìm leads page).
+
+**Lane key:** A = tool-result contract, B = external surface (REST/MCP/PAT), C = chat-turn resilience, D = IA/leads surface, E = gateway/ops internals.
+
+**Vấn đề:** Nowing hiển thị với agent external/internal và human operator như hệ thống "lỗi vô hình" — dryRun stub trông giống success, `data:[]` nhầm lẫn "không có lead" với "kênh chết", agent scrape xong không có đường persist, PAT/session auth không có seam cho external agent, turn dài 21 phút chết không partial output.
+
+**Mục tiêu:** mọi failure phải phân biệt `empty_result | failed | degraded` kèm lý do + recovery path; external agent có "cửa sau" đúng chuẩn (PAT + ingest REST/MCP); ingest funnel tập trung tại `LeadBatchService.ingest_batch` (AD-1); HITL/step-cap không giết turn.
+
+**Invariants áp dụng (§11):** AD-1 lead-write funnel (với AD-1b exception được chỉ định: auto-table get-or-create nằm TRONG `ingest_batch` — table-creation không phải lead-write), AD-2 PAT authz contract (scope + workspace match + attribution), AD-3 một ToolResultEnvelope xuyên boundary, AD-4 ingest contract (idempotency/validation/client_id/HMAC conflict), AD-6 repro-before-fix — áp dụng cho MỌI correctness bug được đặt tên trong epic (42.5, E1, E2), không chỉ 42.5.
+
+### Story 42.1: PAT-scoped REST batch ingest — verify & harden contract + document persistence guard
+
+**As an** external agent integrator (Hermes/dainganxanh-type),
+**I want** to push leads via `POST /api/v1/workspaces/{id}/leads/batch-ingest` authenticated by PAT scope `leads:write`, không cần session cookie,
+**So that** lead ingestion hoạt động cho non-browser consumers mà vẫn audit được attribution theo token (PDPD).
+
+**Acceptance Criteria:**
+- **Given** route + auth infra đã tồn tại (`app/routes/lead_batch_routes.py:118` với `RequirePermission(LEADS_WRITE)`; `get_auth_context` `app/users.py:336` đã resolve PAT qua `AuthContext.pat_auth`), **When** caller gửi PAT hợp lệ scope `leads:write` + header `Idempotency-Key` tới endpoint, **Then** request đi qua `LeadBatchService.ingest_batch` — verify end-to-end bằng test, KHÔNG build lại route (AD-2).
+- **And** PAT thiếu scope `leads:write` → 403 rõ ràng; PAT scoped workspace A nhưng path `workspace_id=B` → 403 (cross-workspace injection guard); behavior khi PAT principal không phải workspace member được nêu rõ trong contract.
+- **And** batch trộn degenerate + valid leads → **reject-all** `422 {status:'failed', rejected_indexes:[...], reason_map:{idx:reason}}` — policy explicit, không partial-drop lặng lẽ (AD-4).
+- **And** idempotency: `UNIQUE(client_id, value_hmac)` + `ON CONFLICT DO NOTHING` — verify constraint tồn tại, nếu chưa thì migration; re-push cùng batch không duplicate lead, không double-debit.
+- **And** mọi ingest qua PAT log `actor_pat_token_id` vào ledger để attribution.
+- **And** khi embed fails trong `commit_staged_filesystem_state` (doc-persist path), document row vẫn commit với `unindexed: true` flag + có reindex retry (`schedule_reindex` hoặc backfill job + counter) — không nằm unindexed mãi (A3).
+
+**Implementation notes:** Route + PAT resolution đã có sẵn trong code — công việc = verify allowlist/scope path, thêm workspace-match guard, formalize 422 batch-reject shape, verify UNIQUE constraint. Ước: **vừa**.
+
+### Story 42.2: ToolResultEnvelope — một result contract xuyên mọi boundary
+
+**As a** chat agent hoặc external agent consumer,
+**I want** mọi tool call trả `{status, reason, recovery_hint, items}` theo một schema duy nhất,
+**So that** không còn nhầm `data:[]` là "không có lead" với "kênh chết", và recovery hint trả credential/file/retest-command cụ thể (A1+A2).
+
+**Contract (normative):** `ToolResultEnvelope = {status: 'success'|'empty_result'|'failed'|'degraded'|'preview', reason: str|null, recovery_hint: str|null, items: list}` — `status` và `items` bắt buộc; `recovery_hint` sanitize + length-cap ≤500 chars (nội dung untrusted từ Medirus `suggestedAction`, forward verbatim nhưng đánh dấu untrusted).
+
+**Acceptance Criteria:**
+- **Given** new module `app/capabilities/core/tool_result.py` với `ToolResultEnvelope` + `from_medirus(result)` + `from_exception(exc)` + hint map (seed: MEDIRUS_4001, 4010, 4030, 5000) **kèm default branch** cho code ngoài seed (`hint_map.get(code, {status:'failed', recovery_hint:'generic: check logs, retry'})`), **When** `medirus_gateway._format_result`, `medirus_gateway.execute`, và executor returns chạy, **Then** tất cả đều emit envelope đúng contract trên.
+- **And** hint map map mỗi code → `{credential_needed, config_file, retest_command}` theo bảng A2 trong plan.
+- **And** `dryRun` stub KHÔNG BAO GIỜ trông giống success — envelope phân biệt `preview` vs `executed`.
+- **And** unit tests cover 4 seed codes + default branch + generic exception path.
+
+### Story 42.3: `GET /api/v1/scrapers/health` — aggregated channel status
+
+**As an** agent planning a scrape,
+**I want** một endpoint trả per-channel last-run status từ `runs` table aggregate,
+**So that** không phải probe từng kênh để biết cái nào chết — và endpoint KHÔNG live-probe lên kênh chết (cached aggregation only — binding, không deferred).
+
+**Acceptance Criteria:**
+- **Given** `runs` table (`app/models/scraper.py:104`) có `capability`, `status`, `error`, `duration_ms`, `created_at`, **When** `GET /api/v1/scrapers/health` được gọi, **Then** query `WHERE created_at >= now() - interval '24 hours'` + `GROUP BY capability` trả `{channel, last_status, last_error_code, last_seen_at, success_rate_24h}`.
+- **And** `success_rate_24h = attempts ? hits/attempts : null` — channel idle >24h không trả 0% giả; `last_seen_at` lấy run mới nhất all-time.
+- **And** endpoint chỉ đọc DB — không scrape, không ping channel.
+- **And** channel chưa từng chạy → `last_status: 'unknown'`, không error.
+- **And** authz: require workspace-scoped session hoặc PAT — filter `runs` theo `workspace_id` của caller, không leak cross-workspace.
+- **And** response < 200ms trên 10k runs (index `ix_runs_workspace_created` sẵn — verify query plan).
+
+### Story 42.4: `nowing_mcp` lead tools — `leads.ingest`, `tables.create`, `leads.list`, `credits.balance`
+
+**As an** external agent đi qua MCP,
+**I want** 4 tools mới trong `nowing_mcp/mcp_server/features/` expose lead operations hiện có,
+**So that** không phải `sys.path.insert` vào nowing_backend hay POST REST trực tiếp.
+
+**Acceptance Criteria:**
+- **Given** `leads.ingest` wraps `LeadBatchService.ingest_batch` (same AD-1 funnel, same validation), **When** agent call với leads payload, **Then** kết quả giống hệt REST ingest — kể cả dedupe, error shape, và actor attribution theo AD-4 (MCP auth principal map được về user/workspace và ghi vào ledger).
+- **And** `tables.create` → `WorkspaceTable` service; `leads.list` → query workspace leads với `limit = max(1, min(limit or 50, 200))` và `offset >= 0` (clamp chống unbounded query); `credits.balance` → chỉ trả balance của workspace caller được scope, workspace không wallet → `{status:'failed', reason:'no_wallet'}`.
+- **And** mỗi tool ≤ 40 dòng wrapper + registration trong MCP server tool list.
+- **And** auth: reuse MCP server's existing auth mechanism (không re-invent).
+
+### Story 42.5: HITL approve/reject → Gemini functionResponse mismatch fix
+
+**As a** user approve HOẶC reject một HITL tool call,
+**I want** turn tiếp tục bình thường sau quyết định,
+**So that** không còn `invalid Gemini function call history: functionResponse count N does not match pending functionCall count M` (C1).
+
+**Acceptance Criteria:**
+- **Given** checkpoint-state fixture (~52 messages, bắt được từ thread 2 production repro), **When** fixture replay qua HITL approve path, **Then** test log chứng minh root cause TRƯỚC khi fix (AD-6 — repro trước, fix sau).
+- **And** sau approve: checkpoint history không chứa duplicate `functionResponse` cho cùng pending `functionCall`; sau reject: pending call bị drop + emit `cancelled` `functionResponse` — cả hai path đều match count.
+- **And** regression test: approve → turn complete; reject → turn complete; không `chat_stream_error` trong log.
+
+### Story 42.6: Step-cap graceful degradation — partial synthesis thay vì `text=0`
+
+**As a** user gửi request dài,
+**I want** khi agent chạm step cap (run limit 80), turn vẫn kết thúc với partial answer + explicit notice,
+**So that** không mất toàn bộ tool-call results khi turn bị cắt (C3+C4).
+
+**Acceptance Criteria:**
+- **Given** agent đạt run limit (`ModelCallLimitMiddleware run_limit=80`, `app/agents/chat/multi_agent_chat/shared/middleware/resilience/model_call_limit.py:19`), **When** finalize chạy, **Then** force-synthesize: summarize tool results đã có, emit `partial: true` trong `status_marker` của finalize payload, text nêu rõ "đã xử lý N tool calls, chưa hoàn tất".
+- **And** force-synthesize lỗi/timeout → fallback notice-only partial (danh sách tool calls đã chạy) — không crash, user vẫn thấy output.
+- **And** cap hit với 0 tool result → text "no tool calls completed" + `partial: true` — không summarize empty set.
+- **And** `status_marker` được enumerate (allowed values + `partial` flag documented); consumer cũ phải ignore-unknown — verify FE/parser không vỡ.
+- **And** e2e: một turn cố ý vượt cap → UI hiển thị partial answer, không blank.
+
+### Story 42.7: IA fix — real `/dashboard/{id}/leads` route + service-level auto-table + empty state
+
+**As a** user (và agent navigate Nowing),
+**I want** `/dashboard/{id}/leads` là real route, leads từ mọi ingest path tự động có table, và empty state hướng dẫn,
+**So that** không còn 46 browser calls tìm leads page, không còn `table_id=NULL` orphan leads (D1+D2+D3).
+
+**Acceptance Criteria:**
+- **Given** `LeadBatchService.ingest_batch` (owner được chỉ định — AD-1b exception) khi `table_id` absent, **When** ingest chạy, **Then** get-or-create default `WorkspaceTable` keyed `client_id` với `UNIQUE(workspace_id, key)` + `ON CONFLICT DO NOTHING` rồi re-select — race-safe, 2 ingest đồng thời không tạo 2 tables.
+- **And** `table_id` có nhưng table đã bị xóa → recreate default + relink lead — orphan dangling cũng được cứu.
+- **And** FE route `/dashboard/{id}/leads` mount leads canvas (hiện chỉ có `new-chat?mode=leads`) + nav link.
+- **And** empty state hiển thị CTA "Chưa có lead — săn qua chat" với link.
+- **And** 109-lead orphan scenario không tái phát: lead từ REST/MCP/chat-tool đều có table; existing orphans được backfill một lần.
+
+### Story 42.8: Forward `context.workspaceId` qua medirus_gateway + dev quota flag
+
+**As a** Medirus stream consumer,
+**I want** `context.workspaceId` forward đúng từ gateway call,
+**So that** stream events không bị drop do `[StreamPublisher:MissingWorkspaceId]` (E2), và dev có `NOWING_DEV_BYPASS_QUOTA` flag cho local testing (E3).
+
+**Acceptance Criteria:**
+- **Given** `workspace_id` đi vào `create_medirus_meta_tools(deps)` qua tool-wiring layer, **When** trace xuống `_execute_medirus_tool`, **Then** mọi MCP call gửi `{context: {workspaceId: <id>}}` — nếu deps thiếu, fix ở tool-wiring (registry) chứ không patch trong call.
+- **And** `NOWING_DEV_BYPASS_QUOTA=1` chỉ honor khi `settings.is_self_hosted == true` **VÀ** không phải production profile — prod self-hosted vẫn bị chặn (`TokenQuotaService.credit_get_usage`); `DEBUG=true` KHÔNG tự động bypass.
+- **And** dev flag log warning khi active.
+- **And** `medirus-mcp.log` không còn `MissingWorkspaceId` warnings sau fix.
+
+### Epic 42 Non-Goals
+
+- No `CampaignSpec` supply-side implementation (epic 43 — §10 plan file chỉ là design đã sign-off).
+- No credential provisioning (FB cookie, YOUTUBE_API_KEY, Zalo/IG account, Shopee proxy, Telegram relay) — chỉ surface dạng actionable hints.
+- No Medirus daemon refactor (`mcp.sh` → `mcp_client.py` là job của repo dainganxanh).
+- No `_prepare_lead_record` contact_name drop ngoài phạm vi auto-table (đã note riêng).
+- No E1 memory-spike fix trong epic này — E1 là investigation lane chạy nền song song; fix chỉ commit sau khi py-spy/tracemalloc có data (vẫn tuân AD-6 repro-before-fix).
+- Deferred scope (không ràng buộc epic này): single lock rule, single credit authority (user vs workspace balance), config contract ports/env.

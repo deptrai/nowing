@@ -183,10 +183,14 @@ async def _execute_medirus_tool(
     arguments: dict[str, Any],
 ) -> dict[str, Any]:
     """Execute a low-level Medirus MCP tool via MedirusMcpClient with auth & dryRun defaults."""
-    url = server_config.get("url") or getattr(config, "MEDIRUS_MCP_URL", "http://localhost:3333/mcp")
+    url = server_config.get("url") or getattr(
+        config, "MEDIRUS_MCP_URL", "http://localhost:3333/mcp"
+    )
     headers = server_config.get("headers") or {}
     api_key = server_config.get("api_key") or getattr(config, "MEDIRUS_MCP_API_KEY", "")
-    consumer_id = headers.get("X-Consumer-Id") or getattr(config, "MEDIRUS_CONSUMER_ID", "nowing")
+    consumer_id = headers.get("X-Consumer-Id") or getattr(
+        config, "MEDIRUS_CONSUMER_ID", "nowing"
+    )
 
     # Inject default account id for Facebook tools requiring authentication
     default_account_id = getattr(config, "MEDIRUS_FACEBOOK_ACCOUNT_ID", None)
@@ -199,19 +203,31 @@ async def _execute_medirus_tool(
     # Enforce real scraping data (dryRun: false) unless explicitly requested
     if "dryRun" not in arguments:
         arguments["dryRun"] = False
+    # Medirus stream mode truncates envelope.data to a 10-item preview;
+    # fullData keeps the complete result in-band for the agent.
+    arguments.setdefault("fullData", True)
 
-    async with MedirusMcpClient(url=url, api_key=api_key, consumer_id=consumer_id) as client:
+    async with MedirusMcpClient(
+        url=url, api_key=api_key, consumer_id=consumer_id
+    ) as client:
         try:
             return await client.call_tool(tool_name, arguments)
         except MedirusMcpError as exc:
-            logger.warning("Medirus tool '%s' error: %s (code=%s)", tool_name, exc.message, exc.code)
+            logger.warning(
+                "Medirus tool '%s' error: %s (code=%s)",
+                tool_name,
+                exc.message,
+                exc.code,
+            )
             return {
                 "success": False,
                 "error": exc.message,
                 "code": exc.code,
                 "suggested_action": exc.suggested_action,
             }
-        except Exception as exc:  # unexpected Medirus execution failure; return error payload
+        except (
+            Exception
+        ) as exc:  # unexpected Medirus execution failure; return error payload
             logger.exception("Medirus execution error on '%s': %s", tool_name, exc)
             return {
                 "success": False,
@@ -345,28 +361,37 @@ async def _handle_medirus_scrape(
             "limit": limit,
         }
 
-    elif normalized_platform in ("tiktok", "chotot", "shopee", "topcv", "batdongsan", "masothue", "b2b_registry", "linkedin_company"):
-        tool_name = "medirus_scrape"
-        arguments = {
-            "platform": normalized_platform,
-            "action": act,
-            "query": query,
-            "target": target,
-            "limit": limit,
-        }
-
     else:
-        # Fallback to medirus_crawl_post or medirus_search_tweets
-        if target and target.startswith("http"):
-            tool_name = "medirus_crawl_post"
-            arguments = {"platform": normalized_platform, "url": target, "limit": limit}
-        else:
-            tool_name = "medirus_search_tweets"
-            arguments = {
-                "query": query or target or "",
-                "platform": normalized_platform,
-                "limit": limit,
-            }
+        # Generic path: every other Medirus platform (google-maps, youtube,
+        # telegram, zalo, tiktok-shop, masothue, ...) goes through
+        # medirus_scrape with the {platform, action, args: {...}} contract.
+        # Medirus replies with a clear "not supported" error for unknown
+        # platforms, which beats silently routing to the wrong tool.
+        tool_name = "medirus_scrape"
+        mcp_platform = {
+            "b2b_registry": "b2b_registry_extended",
+            "linkedin_company": "linkedin",
+            "google_maps": "google-maps",
+            "tiktok_shop": "tiktok-shop",
+            "muaban_bds": "muaban-bds",
+        }.get(normalized_platform, normalized_platform)
+        arguments = {
+            "platform": mcp_platform,
+            "action": act,
+            "args": {
+                k: v
+                for k, v in {
+                    "query": query,
+                    "target": target,
+                    "limit": limit,
+                    "min_price": min_price,
+                    "max_price": max_price,
+                    "location": location,
+                    **extra,
+                }.items()
+                if v is not None
+            },
+        }
 
     arguments.update(extra)
     result = await _execute_medirus_tool(server_config, tool_name, arguments)
@@ -416,7 +441,9 @@ def create_medirus_meta_tools(
 
     All 3 meta-tools are read-only and bypass Human-In-The-Loop approval.
     """
-    url = server_config.get("url") or getattr(config, "MEDIRUS_MCP_URL", "http://localhost:3333/mcp")
+    url = server_config.get("url") or getattr(
+        config, "MEDIRUS_MCP_URL", "http://localhost:3333/mcp"
+    )
 
     async def search_wrapper(**kwargs: Any) -> str:
         return await _handle_medirus_search(server_config, **kwargs)

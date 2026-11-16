@@ -63,9 +63,11 @@ def make_medirus_executor(
 
         # Medirus truncates envelope.data to a 10-item `preview` when its
         # daemon runs with REDIS_STREAM_ENABLED=true (stream pipeline mode).
-        # Capability executors need items synchronously in-band, so request
-        # dryRun — real scrape, full data, no stream emission.
-        payload["dryRun"] = True
+        # dryRun:true in Medirus returns an echo stub WITHOUT scraping — never
+        # send it. `fullData` asks Medirus to keep the complete item list
+        # in-band instead (stream events still publish normally server-side).
+        payload["dryRun"] = False
+        payload["fullData"] = True
 
         client = await get_shared_client()
 

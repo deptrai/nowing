@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '10-12-2026 16:48'
+last_updated: '11-16-2026 22:22'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -375,7 +375,6 @@ development_status:
   33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
   33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
   33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
-  33-4-compliance-purge-credit-refund-30-day-window: done
   epic-33-retrospective: done
 
   epic-34: done
@@ -439,16 +438,21 @@ development_status:
   40-5-chainlens-s2s-circuit-breaker-timeout-hardening: done
   epic-40-retrospective: done
 
-  # ChainLens Websets Integration (NEW 2026-10-10)
-  # Epic 57 introduces `websets` — standalone dataset builder with `Medirus` as bounded discovery channel
-  # (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam)
-  # `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API
-  # `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting)
-  # Port note: `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10)
   epic-41: done
   41-1-websets-api-client-idle-webhook-handler: done
   41-2-websets-lead-mapper-billing-gate-source-badge: done
   epic-41-retrospective: done
+
+  epic-42: backlog
+  42-1-pat-scoped-rest-batch-ingest-verify-harden-contract-document: backlog
+  42-2-toolresultenvelope-một-result-contract-xuyên-mọi-boundary: backlog
+  42-3-get-api-v1-scrapers-health-aggregated-channel-status: backlog
+  42-4-nowing_mcp-lead-tools-leads-ingest-tables-create-leads-list: backlog
+  42-5-hitl-approve-reject-gemini-functionresponse-mismatch-fix: backlog
+  42-6-step-cap-graceful-degradation-partial-synthesis-thay-vì-text: backlog
+  42-7-ia-fix-real-dashboard-id-leads-route-service-level-auto-tabl: backlog
+  42-8-forward-context-workspaceid-qua-medirus_gateway-dev-quota-fl: backlog
+  epic-42-retrospective: optional
 validation_reports:
   - story: "3.18"
     type: "code-review"

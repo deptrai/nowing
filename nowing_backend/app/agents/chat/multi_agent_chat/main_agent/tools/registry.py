@@ -44,6 +44,12 @@ def _build_multi_source_lead_gen_tool(deps: dict[str, Any]) -> BaseTool:
     )
 
 
+def _build_save_leads_tool(deps: dict[str, Any]) -> BaseTool:
+    from .lead_generation import create_save_leads_tool
+
+    return create_save_leads_tool(workspace_id=deps["workspace_id"])
+
+
 def _build_create_automation_tool(deps: dict[str, Any]) -> BaseTool:
     # Deferred import: the automation package is a sibling under ``main_agent``
     # and is only needed at build time, mirroring the shared registry's
@@ -88,6 +94,10 @@ _MAIN_AGENT_TOOL_FACTORIES: dict[
     ),
     "multi_source_lead_gen": (
         _build_multi_source_lead_gen_tool,
+        ("workspace_id",),
+    ),
+    "save_leads": (
+        _build_save_leads_tool,
         ("workspace_id",),
     ),
     "build_web_app": (

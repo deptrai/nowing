@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import ssl
 import time
 from datetime import UTC, datetime
 from typing import Any
@@ -102,6 +103,11 @@ class MuasamcongScraper:
         self.base_url = base_url
         self.proxy_url = proxy_url
         self.timeout_seconds = min(float(timeout_seconds), 60.0)
+        # muasamcong.mpi.gov.vn TLS offers a small DH key that OpenSSL 3.x
+        # rejects at SECLEVEL=2 (DH_KEY_TOO_SMALL). SECLEVEL=1 still verifies
+        # the certificate chain; it only relaxes ephemeral-key size.
+        self._ssl_context = ssl.create_default_context()
+        self._ssl_context.set_ciphers("DEFAULT:@SECLEVEL=1")
         self.rate_limiter = MuasamcongTokenBucket(
             rate=DEFAULT_REFILL_RATE,
             capacity=DEFAULT_CAPACITY,
@@ -222,6 +228,7 @@ class MuasamcongScraper:
                 proxy=self.proxy_url,
                 headers=self._get_headers(),
                 follow_redirects=True,
+                verify=self._ssl_context,
             ) as client:
                 response = await asyncio.wait_for(
                     client.post(url, json=payload), timeout=self.timeout_seconds
@@ -275,7 +282,9 @@ class MuasamcongScraper:
                 degraded=True,
                 degradation_reason="Request timed out",
             )
-        except Exception as exc:  # search request or decode failure; enter degraded mode
+        except (
+            Exception
+        ) as exc:  # search request or decode failure; enter degraded mode
             logger.warning(
                 "Muasamcong scraper search failed or timed out: %s. Entering degraded mode.",
                 str(exc),
@@ -307,6 +316,7 @@ class MuasamcongScraper:
                 proxy=self.proxy_url,
                 headers=self._get_headers(),
                 follow_redirects=True,
+                verify=self._ssl_context,
             ) as client:
                 response = await asyncio.wait_for(
                     client.get(url, params={"turnNo": bid_turn_no}),

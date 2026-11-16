@@ -164,5 +164,22 @@ Các UX contract sau bổ sung cho các requirement chưa có đủ UX chi tiế
 
 - `ux-contract-first-run-onboarding.md` — first-run memory seeding (FR-40, E3.13)
 - `ux-contract-readiness-gaps.md` — Agent Registry, vertical client tenancy, chat benchmark, outcome-based pricing, CRM sync, bounded memory injection
+- `ux-contract-epic-42-agent-experience.md` — Epic 42: real `/dashboard/{id}/leads` route, status visibility (empty_result/degraded/failed + recovery hint), step-cap partial synthesis, HITL recovery, leads empty state, external-agent surface
 
 Chúng được đưa vào canonical UX 2026-08-15 sau Implementation Readiness Assessment 2026-08-20.
+
+---
+
+## 11. Epic 42 Update — Agent Experience (2026-11-16)
+
+Bổ sung sau case study lead-gen trầm hương + Hermes daingan-ops (chi tiết: `ux-contract-epic-42-agent-experience.md`, plan: `ux-plan-agent-experience-improvements-2026-11-16.md`).
+
+Cập nhật mental model cho §1–8:
+
+1. **Leads là một NƠI, không phải một mode chat** — `/dashboard/{id}/leads` trở thành route thật; `new-chat?mode=leads` redirect sang. (Sửa nav/mode-switcher assumption ở §1 Shell: mode Leads trỏ route mới, không phải query-param mode.)
+2. **Mọi kết quả agent hiển thị status rõ**: `empty_result` / `degraded` / `failed` + recovery hint — thay vì một list trống. Áp cho chat turn output, leads table banner, scraper hub cards.
+3. **Turn dài không bao giờ im lặng**: khi chạm step-cap phải có partial synthesis + banner `partial: true`.
+4. **Dead end luôn có đường thoát**: regenerate trên thread crash → offer "gửi như tin nhắn mới" thay vì lỗi 400.
+5. **Leads empty state dạy cách săn** + leads từ mọi nguồn tự gắn table (không có lead vô chủ `table_id=NULL`).
+
+Persona bổ sung ngoài Chị Linh/Anh Tùng: **P1 external agent** (API consumer — UX = contract + error hint, không phải UI), **P3 operator** (theo dõi channel health qua `/scrapers/health` surface).

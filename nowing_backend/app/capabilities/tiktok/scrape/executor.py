@@ -44,18 +44,37 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                     code="TIKTOK_ACCESS_BLOCKED",
                 ) from exc
 
-        raw = await medirus_scrape_or_local(
-            platform="tiktok",
-            action="search",
-            args={
-                "urls": [str(u) for u in payload.urls],
-                "profiles": payload.profiles,
-                "hashtags": payload.hashtags,
-                "resultsPerPage": payload.results_per_page,
-                "limit": payload.max_items,
-            },
-            local_fn=_local,
-        )
+        # Medirus tiktok actions: search(query), hashtag_feed(tag),
+        # post_detail/get_post_comments(videoId|url). Route only what it can
+        # serve — profiles or multi-target mixes go straight to local.
+        medirus_call: tuple[str, dict] | None = None
+        if (
+            payload.hashtags
+            and len(payload.hashtags) == 1
+            and not (payload.urls or payload.profiles)
+        ):
+            medirus_call = (
+                "hashtag_feed",
+                {"tag": payload.hashtags[0], "limit": payload.max_items},
+            )
+        elif (
+            payload.urls
+            and len(payload.urls) == 1
+            and not (payload.profiles or payload.hashtags)
+        ):
+            medirus_call = (
+                "post_detail",
+                {"url": str(payload.urls[0]), "limit": payload.max_items},
+            )
+        if medirus_call is None:
+            raw = {"items": await _local()}
+        else:
+            raw = await medirus_scrape_or_local(
+                platform="tiktok",
+                action=medirus_call[0],
+                args=medirus_call[1],
+                local_fn=_local,
+            )
         items = raw.get("items", []) if isinstance(raw, dict) else raw
         emit_progress(
             "done", f"Scraped {len(items)} item(s)", current=len(items), unit="item"
