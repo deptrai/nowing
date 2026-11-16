@@ -2,7 +2,38 @@
 
 from __future__ import annotations
 
+import logging
 import os
+
+# Dev quota bypass (spec 42.8): chỉ self-hosted + non-prod mới được honor
+# NOWING_DEV_BYPASS_QUOTA=1. Cloud deployment không bao giờ bypass.
+_DEV_QUOTA_BYPASS_WARNED = False
+
+
+def dev_quota_bypass_active() -> bool:
+    """Trả True khi dev quota bypass đang active.
+
+    Điều kiện đồng thời: env flag == "1" AND config.is_self_hosted() AND
+    ENVIRONMENT|APP_ENV không thuộc {production, prod} (missing → development).
+    Warn-log latch 1 lần để không spam mỗi call.
+    """
+    global _DEV_QUOTA_BYPASS_WARNED
+    if os.getenv("NOWING_DEV_BYPASS_QUOTA") != "1":
+        return False
+    from app.config import config
+
+    if not config.is_self_hosted():
+        return False
+    env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+    if env in ("production", "prod"):
+        return False
+    if not _DEV_QUOTA_BYPASS_WARNED:
+        logging.getLogger(__name__).warning(
+            "dev quota bypass active — NOWING_DEV_BYPASS_QUOTA=1 on self-hosted "
+            "non-prod environment; quota checks are skipped"
+        )
+        _DEV_QUOTA_BYPASS_WARNED = True
+    return True
 
 # Anonymous / no-login mode settings
 NOLOGIN_MODE_ENABLED = os.getenv("NOLOGIN_MODE_ENABLED", "FALSE").upper() == "TRUE"
@@ -53,4 +84,4 @@ ANON_CAPTCHA_REQUEST_THRESHOLD = int(
 
 
 
-__all__ = ['ANON_CAPTCHA_REQUEST_THRESHOLD', 'ANON_MAX_CONCURRENT_STREAMS', 'ANON_MAX_UPLOAD_SIZE_MB', 'ANON_TOKEN_LIMIT', 'ANON_TOKEN_QUOTA_TTL_DAYS', 'ANON_TOKEN_WARNING_THRESHOLD', 'NOLOGIN_MODE_ENABLED', 'QUOTA_DEFAULT_IMAGE_RESERVE_MICROS', 'QUOTA_DEFAULT_PODCAST_RESERVE_MICROS', 'QUOTA_DEFAULT_VIDEO_PRESENTATION_RESERVE_MICROS', 'QUOTA_MAX_RESERVE_PER_CALL']
+__all__ = ['ANON_CAPTCHA_REQUEST_THRESHOLD', 'ANON_MAX_CONCURRENT_STREAMS', 'ANON_MAX_UPLOAD_SIZE_MB', 'ANON_TOKEN_LIMIT', 'ANON_TOKEN_QUOTA_TTL_DAYS', 'ANON_TOKEN_WARNING_THRESHOLD', 'NOLOGIN_MODE_ENABLED', 'QUOTA_DEFAULT_IMAGE_RESERVE_MICROS', 'QUOTA_DEFAULT_PODCAST_RESERVE_MICROS', 'QUOTA_DEFAULT_VIDEO_PRESENTATION_RESERVE_MICROS', 'QUOTA_MAX_RESERVE_PER_CALL', 'dev_quota_bypass_active']

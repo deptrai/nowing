@@ -56,6 +56,7 @@ async def test_search_tweets_dispatch():
             {"url": "http://test:3001/mcp"},
             "medirus_search_tweets",
             {"query": "ai agent", "platform": "twitter", "limit": 10},
+            workspace_id=None,
         )
         parsed = json.loads(res_str)
         assert parsed["status"] == "success"
@@ -95,6 +96,7 @@ async def test_scrape_marketplace_dispatch():
                 "location": "Ho Chi Minh",
                 "minPrice": 10000000,
             },
+            workspace_id=None,
         )
         parsed = json.loads(res_str)
         assert parsed["items"][0]["title"] == "Honda SH"
@@ -126,6 +128,7 @@ async def test_crawl_post_dispatch():
                 "limit": 20,
                 "url": "https://facebook.com/post/123",
             },
+            workspace_id=None,
         )
         parsed = json.loads(res_str)
         assert parsed["items"][0]["content"] == "detailed post content"
@@ -406,3 +409,114 @@ async def test_facebook_page_requires_target():
     parsed = json.loads(res)
     assert parsed["status"] == "failed"
     assert "page" in parsed["reason"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Spec 42.8: workspaceId forwarding
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_execute_medirus_tool_injects_workspace_id():
+    """workspace_id được inject vào arguments.context.workspaceId (str)."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _execute_medirus_tool,
+    )
+
+    with patch(
+        "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway.MedirusMcpClient",
+        autospec=True,
+    ) as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.call_tool = AsyncMock(return_value={"success": True, "data": []})
+
+        await _execute_medirus_tool(
+            server_config={"url": "http://test:3001/mcp"},
+            tool_name="medirus_search_tweets",
+            arguments={"query": "ai"},
+            workspace_id=7,
+        )
+
+        call_args = mock_client.call_tool.call_args[0][1]
+        assert call_args["context"] == {"workspaceId": "7"}
+
+
+@pytest.mark.asyncio
+async def test_execute_medirus_tool_merges_existing_context():
+    """Context keys đã có được giữ nguyên, workspaceId được merge vào."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _execute_medirus_tool,
+    )
+
+    with patch(
+        "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway.MedirusMcpClient",
+        autospec=True,
+    ) as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.call_tool = AsyncMock(return_value={"success": True, "data": []})
+
+        await _execute_medirus_tool(
+            server_config={"url": "http://test:3001/mcp"},
+            tool_name="medirus_search_tweets",
+            arguments={"query": "ai", "context": {"locale": "vi"}},
+            workspace_id=42,
+        )
+
+        call_args = mock_client.call_tool.call_args[0][1]
+        assert call_args["context"] == {"locale": "vi", "workspaceId": "42"}
+
+
+@pytest.mark.asyncio
+async def test_execute_medirus_tool_no_workspace_id_no_inject():
+    """workspace_id=None → không inject context (payload sạch)."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _execute_medirus_tool,
+    )
+
+    with patch(
+        "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway.MedirusMcpClient",
+        autospec=True,
+    ) as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.call_tool = AsyncMock(return_value={"success": True, "data": []})
+
+        await _execute_medirus_tool(
+            server_config={"url": "http://test:3001/mcp"},
+            tool_name="medirus_search_tweets",
+            arguments={"query": "ai"},
+        )
+
+        call_args = mock_client.call_tool.call_args[0][1]
+        assert "context" not in call_args
+
+
+@pytest.mark.asyncio
+async def test_factory_threads_workspace_id_to_handlers():
+    """create_medirus_meta_tools forward workspace_id xuống handler → client args."""
+    tools = create_medirus_meta_tools(
+        connector_id=10,
+        connector_name="Medirus",
+        server_config={"url": "http://test:3001/mcp"},
+        workspace_id=99,
+    )
+    search_tool = next(t for t in tools if t.name == "medirus_search")
+
+    with patch(
+        "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway.MedirusMcpClient",
+        autospec=True,
+    ) as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.call_tool = AsyncMock(return_value={"success": True, "data": []})
+
+        await search_tool.coroutine(query="ai", platform="twitter", limit=5)
+
+        call_args = mock_client.call_tool.call_args[0][1]
+        assert call_args["context"] == {"workspaceId": "99"}

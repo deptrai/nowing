@@ -186,6 +186,7 @@ async def _execute_medirus_tool(
     server_config: dict[str, Any],
     tool_name: str,
     arguments: dict[str, Any],
+    workspace_id: int | None = None,
 ) -> dict[str, Any]:
     """Execute a low-level Medirus MCP tool via MedirusMcpClient with auth & dryRun defaults."""
     url = server_config.get("url") or getattr(
@@ -211,6 +212,16 @@ async def _execute_medirus_tool(
     # Medirus stream mode truncates envelope.data to a 10-item preview;
     # fullData keeps the complete result in-band for the agent.
     arguments.setdefault("fullData", True)
+
+    # Forward workspace context to the Medirus daemon (spec 42.8): inject ở
+    # wiring layer, merge với context keys đã có. Chỉ inject khi truthy để
+    # giữ payload sạch khi không biết workspace.
+    if workspace_id:
+        ctx = arguments.get("context")
+        if isinstance(ctx, dict):
+            arguments["context"] = {**ctx, "workspaceId": str(workspace_id)}
+        else:
+            arguments["context"] = {"workspaceId": str(workspace_id)}
 
     async with MedirusMcpClient(
         url=url, api_key=api_key, consumer_id=consumer_id
@@ -268,6 +279,7 @@ async def _handle_medirus_search(
     platform: str = "twitter",
     limit: int = 20,
     search_type: str | None = None,
+    workspace_id: int | None = None,
     **extra: Any,
 ) -> str:
     normalized = _normalize_platform(platform)
@@ -291,7 +303,9 @@ async def _handle_medirus_search(
         }
 
     arguments.update(extra)
-    result = await _execute_medirus_tool(server_config, tool_name, arguments)
+    result = await _execute_medirus_tool(
+        server_config, tool_name, arguments, workspace_id=workspace_id
+    )
     return _format_result(tool_name, result)
 
 
@@ -305,6 +319,7 @@ async def _handle_medirus_scrape(
     min_price: float | None = None,
     max_price: float | None = None,
     limit: int = 20,
+    workspace_id: int | None = None,
     **extra: Any,
 ) -> str:
     normalized_platform = _normalize_platform(platform)
@@ -399,7 +414,9 @@ async def _handle_medirus_scrape(
         }
 
     arguments.update(extra)
-    result = await _execute_medirus_tool(server_config, tool_name, arguments)
+    result = await _execute_medirus_tool(
+        server_config, tool_name, arguments, workspace_id=workspace_id
+    )
     return _format_result(tool_name, result)
 
 
@@ -409,6 +426,7 @@ async def _handle_medirus_crawl_post(
     platform: str | None = None,
     post_id: str | None = None,
     limit: int = 50,
+    workspace_id: int | None = None,
     **extra: Any,
 ) -> str:
     if not url and not post_id:
@@ -425,7 +443,9 @@ async def _handle_medirus_crawl_post(
         arguments["postId"] = post_id
 
     arguments.update(extra)
-    result = await _execute_medirus_tool(server_config, tool_name, arguments)
+    result = await _execute_medirus_tool(
+        server_config, tool_name, arguments, workspace_id=workspace_id
+    )
     return _format_result(tool_name, result)
 
 
@@ -441,6 +461,7 @@ def create_medirus_meta_tools(
     *,
     trusted_tools: list[str] | None = None,
     bypass_internal_hitl: bool = True,
+    workspace_id: int | None = None,
 ) -> list[StructuredTool]:
     """Create the 3 consolidated Medirus meta-tools for a workspace connector.
 
@@ -451,13 +472,13 @@ def create_medirus_meta_tools(
     )
 
     async def search_wrapper(**kwargs: Any) -> str:
-        return await _handle_medirus_search(server_config, **kwargs)
+        return await _handle_medirus_search(server_config, workspace_id=workspace_id, **kwargs)
 
     async def scrape_wrapper(**kwargs: Any) -> str:
-        return await _handle_medirus_scrape(server_config, **kwargs)
+        return await _handle_medirus_scrape(server_config, workspace_id=workspace_id, **kwargs)
 
     async def crawl_post_wrapper(**kwargs: Any) -> str:
-        return await _handle_medirus_crawl_post(server_config, **kwargs)
+        return await _handle_medirus_crawl_post(server_config, workspace_id=workspace_id, **kwargs)
 
     search_tool = StructuredTool(
         name="medirus_search",

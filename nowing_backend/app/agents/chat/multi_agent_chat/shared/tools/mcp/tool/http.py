@@ -284,6 +284,7 @@ async def _load_http_mcp_tools(
     bypass_internal_hitl: bool = False,
     cached_tools: CachedMCPTools | None = None,
     connector_type: str | None = None,
+    workspace_id: int | None = None,
 ) -> list[StructuredTool]:
     """Load tools from an HTTP-based MCP server.
 
@@ -314,6 +315,7 @@ async def _load_http_mcp_tools(
             server_config,
             trusted_tools=trusted_tools,
             bypass_internal_hitl=bypass_internal_hitl,
+            workspace_id=workspace_id,
         )
         if tool_name_prefix:
             for tool in meta_tools:
