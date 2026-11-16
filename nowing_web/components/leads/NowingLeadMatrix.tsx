@@ -21,6 +21,7 @@ import {
 	Sparkles,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import NextLink from "next/link";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -516,6 +517,30 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 			{/* Main High-Density Fluid Data Matrix Grid */}
 			<div className="flex-1 overflow-auto bg-background/50 relative scrollbar-thin">
 				{filteredLeads.length === 0 && shimmerCount === 0 ? (
+				leads.length === 0 && !isLoading && !searchQuery && sourceFilter === "all" && statusFilter === "all" ? (
+					/* Story 42.7: workspace truly has no leads → CTA to hunt via chat */
+					<div className="flex flex-col items-center justify-center h-full p-8 text-center select-none">
+						<div className="size-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
+							<Sparkles
+								className="size-5 text-emerald-600 dark:text-emerald-400"
+								aria-hidden="true"
+							/>
+						</div>
+						<h3 className="text-sm font-bold text-foreground">
+							{t("empty_no_leads_title")}
+						</h3>
+						<p className="text-xs text-muted-foreground mt-1 max-w-sm mb-4">
+							{t("empty_no_leads_hint")}
+						</p>
+						<NextLink
+							href={`/dashboard/${workspaceId}/new-chat`}
+							className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition-colors cursor-pointer"
+						>
+							<Sparkles className="size-3.5" aria-hidden="true" />
+							{t("empty_no_leads_cta")}
+						</NextLink>
+					</div>
+				) : (
 					<div className="flex flex-col items-center justify-center h-full p-8 text-center select-none">
 						<div className="size-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
 							<Sparkles
@@ -533,7 +558,8 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							Hãy nhập yêu cầu trong khung Chat hoặc thay đổi bộ lọc nguồn dữ liệu bên trên.
 						</p>
 					</div>
-				) : (
+				)
+			) : (
 					<table className="w-full text-left border-collapse text-xs sm:text-[13px] table-auto">
 						{/* Table Header Row */}
 						<thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md border-b border-border/80 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/90 select-none">

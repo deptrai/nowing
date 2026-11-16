@@ -238,7 +238,8 @@
 		"logs": "日志",
 		"all_workspaces": "所有搜索空间",
 		"team": "团队",
-		"health_analytics": "健康与分析"
+		"health_analytics": "健康与分析",
+		"leads": "潜在客户"
 	},
 	"pricing": {
 		"title": "Nowing 定价",
@@ -1130,7 +1131,10 @@
 		"enter_target_url": "Enter target company URL (e.g. https://example.com)",
 		"btn_start_reverse_icp": "Start Reverse-ICP Discovery",
 		"dnc_modal_title": "Do-Not-Call (DNC) & Blacklist Management",
-		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs."
+		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs.",
+		"empty_no_leads_title": "暂无线索",
+		"empty_no_leads_hint": "通过与助手对话来挖掘线索。",
+		"empty_no_leads_cta": "通过对话挖掘线索"
 	},
 	"usage": {
 		"auto_extract_budget_title": "Auto-Extract Budget",

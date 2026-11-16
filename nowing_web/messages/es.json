@@ -238,7 +238,8 @@
 		"logs": "Registros",
 		"all_workspaces": "Todos los espacios de búsqueda",
 		"team": "Equipo",
-		"health_analytics": "Salud y Analíticas"
+		"health_analytics": "Salud y Analíticas",
+		"leads": "Leads"
 	},
 	"pricing": {
 		"title": "Precios de Nowing",
@@ -1130,7 +1131,10 @@
 		"enter_target_url": "Enter target company URL (e.g. https://example.com)",
 		"btn_start_reverse_icp": "Start Reverse-ICP Discovery",
 		"dnc_modal_title": "Do-Not-Call (DNC) & Blacklist Management",
-		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs."
+		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs.",
+		"empty_no_leads_title": "Aún no hay leads",
+		"empty_no_leads_hint": "Busca leads a través de una conversación con el asistente.",
+		"empty_no_leads_cta": "Buscar leads vía chat"
 	},
 	"usage": {
 		"auto_extract_budget_title": "Auto-Extract Budget",

@@ -47,7 +47,13 @@ class _FakeResult:
 class _FakeSession:
     """AsyncSession stand-in that records staged rows and transaction state."""
 
-    def __init__(self, *, scalar: Any = None, rows: list[Any] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        scalar: Any = None,
+        rows: list[Any] | None = None,
+        table_rows: list[Any] | None = None,
+    ) -> None:
         self.added: list[Any] = []
         self.committed = False
         self.rolled_back = False
@@ -55,6 +61,7 @@ class _FakeSession:
         self.executed: list[Any] = []
         self._scalar = scalar
         self._rows = rows or []
+        self._table_rows = table_rows or []
 
     def add(self, obj: Any) -> None:
         self.added.append(obj)
@@ -65,8 +72,11 @@ class _FakeSession:
         # no rows; the leads upsert RETURNING keeps the fixture rows.
         if isinstance(stmt, Select):
             return _FakeResult(self._scalar, [])
+        if getattr(getattr(stmt, "table", None), "name", None) == "workspace_tables":
+            # Story 42.7 get-or-create INSERT: default = no row created (race
+            # simulation); tests override via ``table_rows`` when needed.
+            return _FakeResult(None, self._table_rows)
         return _FakeResult(self._scalar, self._rows)
-
     async def get(self, model: type, ident: Any) -> Any | None:
         return None
 
@@ -221,8 +231,11 @@ class TestBatchLeadIngestion:
 
         assert result["ingested_count"] == 1
         assert result["lead_ids"] == [lead_id]
-        assert len(session.executed) == 1
-        assert "verified_contacts" not in str(session.executed[0]).lower()
+        # Story 42.7: ingest now also issues workspace_tables statements before
+        # the leads upsert — assert by intent, not by statement count.
+        executed_sql = [str(stmt).lower() for stmt in session.executed]
+        assert not any("verified_contacts" in s for s in executed_sql)
+        assert any("workspace_tables" in s for s in executed_sql)
 
     @pytest.mark.asyncio
     async def test_batch_ingest_uses_dnc_service_fail_closed(
@@ -472,3 +485,299 @@ class TestExtraMetadataForwarding:
         assert payload["status"] == "failed"
         assert payload["rejected_indexes"] == [1, 3]
         assert set(payload["reason_map"]) == {"1", "3"}
+
+
+# ============================================================================
+# Story 42.7: auto-table resolution in ingest_batch
+# ============================================================================
+
+
+def _stub_dnc(monkeypatch: pytest.MonkeyPatch, count: int = 1) -> None:
+    from app.config import config
+
+    monkeypatch.setattr(config, "SECRET_KEY", "test-secret-key")
+    dnc_mock = AsyncMock(return_value=[{"blocked_by_dnc": False}] * count)
+    monkeypatch.setattr(
+        lead_batch_service.DncComplianceService, "batch_filter_leads", dnc_mock
+    )
+
+
+class _AutoTableFakeSession(_FakeSession):
+    """Fake session aware of the three workspace_tables SELECTs (42.7).
+
+    Distinguishes statements by their compiled SQL:
+    - existence check:   SELECT workspace_tables.id ... id IN (...)
+    - keys check:        SELECT workspace_tables.key ... key IN (...)  (scalars)
+    - race re-SELECT:    SELECT workspace_tables.key, workspace_tables.id (rows)
+    Non-Select workspace_tables statements are the ON CONFLICT INSERT →
+    returns ``insert_returning`` rows; the leads upsert gets ``lead_rows``.
+    """
+
+    def __init__(
+        self,
+        *,
+        existing_ids: list[UUID] | None = None,
+        existing_keys: list[str] | None = None,
+        reselect_rows: list[SimpleNamespace] | None = None,
+        insert_returning: list[SimpleNamespace] | None = None,
+        lead_rows: list[SimpleNamespace] | None = None,
+    ) -> None:
+        super().__init__(rows=lead_rows or [])
+        self._existing_ids = existing_ids or []
+        self._existing_keys = existing_keys or []
+        self._reselect_rows = reselect_rows or []
+        self._insert_returning = insert_returning or []
+        self._lead_rows = lead_rows or []
+
+    async def execute(self, stmt: Any, _params: Any | None = None) -> _FakeResult:
+        self.executed.append(stmt)
+        if isinstance(stmt, Select):
+            sql = str(stmt)
+            if "workspace_tables" not in sql:
+                return _FakeResult(None, [])
+            if "workspace_tables.key, workspace_tables.id" in sql:
+                return _FakeResult(None, self._reselect_rows)
+            if "workspace_tables.key" in sql:
+                return _FakeResult(None, self._existing_keys)  # scalars().all()
+            return _FakeResult(None, self._existing_ids)  # scalars().all()
+        if getattr(getattr(stmt, "table", None), "name", None) == "workspace_tables":
+            return _FakeResult(None, self._insert_returning)
+        return _FakeResult(None, self._lead_rows)
+
+
+class TestAutoTableResolution:
+    """Story 42.7: absent/stale table_id → default WorkspaceTable per client_id."""
+
+    @pytest.mark.asyncio
+    async def test_absent_table_id_creates_default_table(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """ingest with no table_id issues an ON CONFLICT DO NOTHING insert."""
+        _stub_dnc(monkeypatch)
+        new_table_id = uuid4()
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            insert_returning=[SimpleNamespace(id=new_table_id, key="default")],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(session, workspace_id=1, leads=[_make_lead()])
+
+        table_inserts = [
+            s
+            for s in session.executed
+            if not isinstance(s, Select)
+            and getattr(getattr(s, "table", None), "name", None) == "workspace_tables"
+        ]
+        assert len(table_inserts) == 1
+        sql = str(table_inserts[0]).upper()
+        assert "ON CONFLICT" in sql and "DO NOTHING" in sql
+        # The leads upsert carries the freshly created table id.
+        upsert = [
+            s for s in session.executed
+            if not isinstance(s, Select) and getattr(s, "table", None) is not None and s.table.name == "leads"
+        ]
+        assert upsert, "leads upsert must run"
+        lead_rows = upsert[0]._multi_values[0]
+        assert lead_rows[0][upsert[0].table.c.table_id] == new_table_id
+
+    @pytest.mark.asyncio
+    async def test_existing_key_reuses_table_without_insert(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """key already present in the keys SELECT → no workspace_tables INSERT."""
+        _stub_dnc(monkeypatch)
+        default_table_id = uuid4()
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            existing_keys=["default"],
+            # Race re-SELECT seeds the key → id mapping used for assignment.
+            reselect_rows=[SimpleNamespace(key="default", id=default_table_id)],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(session, workspace_id=1, leads=[_make_lead()])
+
+        assert not any(
+            not isinstance(s, Select)
+            and getattr(getattr(s, "table", None), "name", None) == "workspace_tables"
+            for s in session.executed
+        ), "no workspace_tables INSERT when the key already exists"
+
+        upsert = [
+            s for s in session.executed
+            if not isinstance(s, Select) and getattr(s, "table", None) is not None and s.table.name == "leads"
+        ]
+        assert upsert, "leads upsert must run"
+        lead_rows = upsert[0]._multi_values[0]
+        assert lead_rows[0][upsert[0].table.c.table_id] == default_table_id
+
+    @pytest.mark.asyncio
+    async def test_race_lost_insert_reselects(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """INSERT returning no rows (concurrent winner) → re-SELECT resolves."""
+        _stub_dnc(monkeypatch)
+        winner_table_id = uuid4()
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            reselect_rows=[
+                SimpleNamespace(key="default", id=winner_table_id)
+            ],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(session, workspace_id=1, leads=[_make_lead()])
+
+        upsert = [
+            s for s in session.executed
+            if not isinstance(s, Select) and getattr(s, "table", None) is not None and s.table.name == "leads"
+        ]
+        assert upsert, "leads upsert must still run"
+        lead_rows = upsert[0]._multi_values[0]
+        assert lead_rows[0][upsert[0].table.c.table_id] == winner_table_id
+
+    @pytest.mark.asyncio
+    async def test_valid_caller_table_id_preserved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A caller-passed table_id that exists is never overwritten."""
+        _stub_dnc(monkeypatch)
+        caller_table_id = uuid4()
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            existing_ids=[caller_table_id],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(
+            session, workspace_id=1, leads=[_make_lead(table_id=caller_table_id)]
+        )
+
+        assert not any(
+            not isinstance(s, Select)
+            and getattr(getattr(s, "table", None), "name", None) == "workspace_tables"
+            for s in session.executed
+        ), "no workspace_tables INSERT when all table_ids are valid"
+
+    @pytest.mark.asyncio
+    async def test_str_table_id_from_save_leads_preserved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """save_leads passes table_id as a str UUID — valid str is coerced and kept."""
+        _stub_dnc(monkeypatch)
+        caller_table_id = uuid4()
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            existing_ids=[caller_table_id],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(
+            session,
+            workspace_id=1,
+            leads=[_make_lead(table_id=str(caller_table_id))],
+        )
+
+        assert not any(
+            not isinstance(s, Select)
+            and getattr(getattr(s, "table", None), "name", None) == "workspace_tables"
+            for s in session.executed
+        ), "valid str table_id must be coerced and preserved"
+
+    @pytest.mark.asyncio
+    async def test_invalid_str_table_id_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A non-UUID str table_id is treated as absent → default table."""
+        _stub_dnc(monkeypatch)
+        default_table_id = uuid4()
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            existing_keys=["default"],
+            reselect_rows=[SimpleNamespace(key="default", id=default_table_id)],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(
+            session, workspace_id=1, leads=[_make_lead(table_id="not-a-uuid")]
+        )
+
+        upsert = [
+            s for s in session.executed
+            if not isinstance(s, Select) and getattr(s, "table", None) is not None and s.table.name == "leads"
+        ]
+        assert upsert, "leads upsert must still run"
+        lead_rows = upsert[0]._multi_values[0]
+        assert lead_rows[0][upsert[0].table.c.table_id] == default_table_id
+
+    @pytest.mark.asyncio
+    async def test_stale_table_id_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """table_id pointing at a deleted row → default table, no FK crash."""
+        _stub_dnc(monkeypatch)
+        default_table_id = uuid4()
+        stale_id = uuid4()
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            existing_keys=["default"],
+            reselect_rows=[
+                SimpleNamespace(key="default", id=default_table_id)
+            ],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(
+            session, workspace_id=1, leads=[_make_lead(table_id=stale_id)]
+        )
+
+        upsert = [
+            s for s in session.executed
+            if not isinstance(s, Select) and getattr(s, "table", None) is not None and s.table.name == "leads"
+        ]
+        assert upsert, "leads upsert must still run"
+        lead_rows = upsert[0]._multi_values[0]
+        assert lead_rows[0][upsert[0].table.c.table_id] == default_table_id
+
+    @pytest.mark.asyncio
+    async def test_client_id_groups_get_distinct_keys(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Two client_ids → two keys in one ON CONFLICT INSERT."""
+        _stub_dnc(monkeypatch, count=2)
+        lead_id = uuid4()
+        session = _AutoTableFakeSession(
+            insert_returning=[
+                SimpleNamespace(id=uuid4(), key="campaign-a"),
+                SimpleNamespace(id=uuid4(), key="campaign-b"),
+            ],
+            lead_rows=[SimpleNamespace(id=lead_id, value_hmac="hmac1")],
+        )
+        service = lead_batch_service.LeadBatchService()
+
+        await service.ingest_batch(
+            session,
+            workspace_id=1,
+            leads=[
+                _make_lead(value_hmac="hmac1", client_id="campaign-a"),
+                _make_lead(value_hmac="hmac2", client_id="campaign-b"),
+            ],
+        )
+
+        inserts = [
+            s
+            for s in session.executed
+            if not isinstance(s, Select)
+            and getattr(getattr(s, "table", None), "name", None) == "workspace_tables"
+        ]
+        assert len(inserts) == 1
+        keys = {row[inserts[0].table.c.key] for row in inserts[0]._multi_values[0]}
+        assert keys == {"campaign-a", "campaign-b"}

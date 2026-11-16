@@ -238,7 +238,8 @@
 		"logs": "로그",
 		"all_workspaces": "모든 워크스페이스",
 		"team": "팀",
-		"health_analytics": "헬스 및 분석"
+		"health_analytics": "헬스 및 분석",
+		"leads": "리드"
 	},
 	"pricing": {
 		"title": "Nowing 가격",
@@ -1130,7 +1131,10 @@
 		"enter_target_url": "Enter target company URL (e.g. https://example.com)",
 		"btn_start_reverse_icp": "Start Reverse-ICP Discovery",
 		"dnc_modal_title": "Do-Not-Call (DNC) & Blacklist Management",
-		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs."
+		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs.",
+		"empty_no_leads_title": "아직 리드가 없습니다",
+		"empty_no_leads_hint": "어시스턴트와의 대화를 통해 리드를 찾아보세요.",
+		"empty_no_leads_cta": "채팅으로 리드 찾기"
 	},
 	"usage": {
 		"auto_extract_budget_title": "Auto-Extract Budget",

@@ -536,7 +536,8 @@
 		"team": "Team",
 		"usage": "Usage",
 		"health_analytics": "Health & Analytics",
-		"memory_browser": "Memory Browser"
+		"memory_browser": "Memory Browser",
+		"leads": "Leads"
 	},
 	"usage": {
 		"title": "Usage & Credits",
@@ -3092,7 +3093,10 @@
 		"fit_score_col": "FIT SCORE",
 		"columns_count": "{count} cols",
 		"app_token_label": "App Token (Bitable Base Token)",
-		"spreadsheet_id_label": "Spreadsheet ID"
+		"spreadsheet_id_label": "Spreadsheet ID",
+		"empty_no_leads_title": "No leads yet",
+		"empty_no_leads_hint": "Hunt for leads through a conversation with the assistant.",
+		"empty_no_leads_cta": "Hunt leads via chat"
 	},
 	"bulkOps": {
 		"title": "Admin Bulk Operations",

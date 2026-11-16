@@ -8,6 +8,7 @@ All heavy lifting (HMAC, DNC, pg_insert ON CONFLICT) is delegated to
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from typing import Any
@@ -30,7 +31,7 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.lead_intelligence.dnc.service import DncComplianceService
 from app.lead_intelligence.services.lead_stream_service import generate_lead_hmac
-from app.models.workspaces import VerticalClient
+from app.models.workspaces import VerticalClient, WorkspaceTable
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
 logger = logging.getLogger(__name__)
@@ -106,11 +107,23 @@ def _prepare_lead_record(
     if extra_metadata is None:
         extra_metadata = item.get("metadata") or {}
 
+    # Story 42.7: ``save_leads`` passes ``table_id`` as a str UUID — coerce
+    # valid str UUIDs so the Never rule (valid caller table preserved) covers
+    # that path; invalid values are treated as absent → default table.
+    raw_table_id = item.get("table_id")
+    table_id: UUID | str | None = raw_table_id
+    if isinstance(raw_table_id, str) and raw_table_id:
+        try:
+            table_id = UUID(raw_table_id)
+        except ValueError:
+            table_id = None
+
     return {
         "id": uuid4(),
         "workspace_id": workspace_id,
-        "client_id": item.get("client_id", "default"),
-        "table_id": item.get("table_id"),
+        # Normalize: non-str / empty client_id would break grouping + key DDL.
+        "client_id": str(item.get("client_id") or "default"),
+        "table_id": table_id,
         "source": item.get("source", "batch_ingest"),
         "source_url": item.get("source_url"),
         "company_name": company,
@@ -288,6 +301,122 @@ class LeadBatchService:
             if c["client_id"] not in valid_client_ids:
                 c["client_id"] = None
 
+    async def _resolve_lead_table_ids(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        leads: list[dict[str, Any]],
+    ) -> None:
+        """Assign a ``table_id`` to every lead row missing a valid one (Story 42.7).
+
+        Leads are grouped by ``client_id``; each group resolves to a default
+        ``WorkspaceTable`` keyed ``key = client_id`` (fallback ``"default"``),
+        get-or-created race-safe via ``INSERT ... ON CONFLICT (workspace_id,
+        key) DO NOTHING`` + re-SELECT. Caller-provided ``table_id`` values are
+        preserved when they point at an existing row; stale (deleted) ids fall
+        back to the default table instead of crashing the FK.
+        """
+        if not leads:
+            return
+
+        # 1. Which candidate table_ids actually exist? (stale detection)
+        candidate_ids = {
+            lead["table_id"] for lead in leads if isinstance(lead.get("table_id"), UUID)
+        }
+        existing_ids: set[UUID] = set()
+        if candidate_ids:
+            existing_ids = set(
+                (
+                    await session.execute(
+                        select(WorkspaceTable.id).where(
+                            WorkspaceTable.id.in_(candidate_ids),
+                            WorkspaceTable.workspace_id == workspace_id,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+        # 2. Group rows needing the default table by client_id. Keys are
+        # casefolded so "Acme" and "acme" share one table, and bounded so an
+        # arbitrarily long client_id cannot blow past the Text/varchar DDL.
+        needs_key: dict[str, list[dict[str, Any]]] = {}
+        for lead in leads:
+            table_id = lead.get("table_id")
+            if isinstance(table_id, UUID) and table_id in existing_ids:
+                continue  # valid caller-provided table: keep it (Never rule)
+            raw_key = str(lead.get("client_id") or "default").casefold()
+            key = (
+                raw_key
+                if len(raw_key) <= 128
+                else hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+            )
+            needs_key.setdefault(key, []).append(lead)
+
+        if not needs_key:
+            return
+
+        # 3. Which keys already have a default table?
+        existing_keys = set(
+            (
+                await session.execute(
+                    select(WorkspaceTable.key).where(
+                        WorkspaceTable.workspace_id == workspace_id,
+                        WorkspaceTable.key.in_(list(needs_key)),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        # 4. Get-or-create per missing key (race-safe).
+        key_to_id: dict[str, UUID] = {}
+        missing_keys = [k for k in needs_key if k not in existing_keys]
+        if missing_keys:
+            insert_stmt = (
+                pg_insert(WorkspaceTable)
+                .values(
+                    [
+                        {
+                            "id": uuid4(),
+                            "workspace_id": workspace_id,
+                            "name": ("Leads" if k == "default" else k)[:200],
+                            "key": k,
+                        }
+                        for k in sorted(missing_keys)
+                    ]
+                )
+                .on_conflict_do_nothing(index_elements=["workspace_id", "key"])
+                .returning(WorkspaceTable.id, WorkspaceTable.key)
+            )
+            result = await session.execute(insert_stmt)
+            for row in result.all():
+                key_to_id[row.key] = row.id
+
+        # 5. Re-SELECT for rows lost to a concurrent insert (race window).
+        unresolved_keys = [k for k in needs_key if k not in key_to_id]
+        if unresolved_keys:
+            resolved = (
+                await session.execute(
+                    select(WorkspaceTable.key, WorkspaceTable.id).where(
+                        WorkspaceTable.workspace_id == workspace_id,
+                        WorkspaceTable.key.in_(unresolved_keys),
+                    )
+                )
+            ).all()
+            for row in resolved:
+                key_to_id[row.key] = row.id
+
+        default_id = key_to_id.get("default")
+        for key, rows in needs_key.items():
+            # Unconditional: an unresolved key must never leave a stale (FK
+            # dangling) table_id on the row — default (or None) is safer.
+            table_id = key_to_id.get(key, default_id)
+            for lead in rows:
+                lead["table_id"] = table_id
+
     async def ingest_batch(
         self,
         session: AsyncSession,
@@ -308,7 +437,7 @@ class LeadBatchService:
             for item in leads
         ]
 
-        # 2. DNC batch check (fail-closed)
+        # 1b. DNC batch check (fail-closed)
         dnc_leads = await self._dnc.batch_filter_leads(
             workspace_id,
             [
@@ -329,6 +458,11 @@ class LeadBatchService:
                 lead["status"] = "blacklisted"
                 blocked_hmacs.add(lead["value_hmac"])
             non_blocked.append(lead)
+
+        # 1c. Resolve default tables per client_id AFTER the DNC filter so a
+        # fully-blacklisted batch never creates empty WorkspaceTables
+        # (absent/stale table_id → get-or-create keyed table, Story 42.7).
+        await self._resolve_lead_table_ids(session, workspace_id, non_blocked)
 
         # 3. Bulk upsert leads (all, including blacklisted)
         upsert_stmt = _build_batch_upsert_stmt(non_blocked)

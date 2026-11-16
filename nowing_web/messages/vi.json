@@ -536,7 +536,8 @@
 		"team": "Đội ngũ",
 		"usage": "Mức sử dụng & Credits",
 		"health_analytics": "Sức khỏe & Phân tích",
-		"memory_browser": "Trình duyệt Memory"
+		"memory_browser": "Trình duyệt Memory",
+		"leads": "Leads"
 	},
 	"usage": {
 		"title": "Mức sử dụng & Credits",
@@ -3092,7 +3093,10 @@
 		"fit_score_col": "ĐIỂM FIT",
 		"columns_count": "{count} cột",
 		"app_token_label": "App Token (Bitable Base Token)",
-		"spreadsheet_id_label": "ID Bảng tính"
+		"spreadsheet_id_label": "ID Bảng tính",
+		"empty_no_leads_title": "Chưa có lead",
+		"empty_no_leads_hint": "Săn lead qua một cuộc trò chuyện với trợ lý AI.",
+		"empty_no_leads_cta": "Chưa có lead — săn qua chat"
 	},
 	"bulkOps": {
 		"title": "Thao tác Hàng loạt Quản trị",

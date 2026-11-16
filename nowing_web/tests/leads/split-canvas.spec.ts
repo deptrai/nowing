@@ -72,9 +72,19 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		if (visible) await pill.click();
 	}
 
-	test("should redirect /leads to /new-chat?mode=leads", async ({ page, workspace }) => {
+	test("Story 42.7: /leads mounts standalone leads canvas without redirect", async ({
+		page,
+		workspace,
+	}) => {
 		await page.goto(`/dashboard/${workspace.id}/leads`);
-		await expect(page).toHaveURL(new RegExp(`/dashboard/${workspace.id}/new-chat\\?mode=leads`));
+		await expect(page).toHaveURL(new RegExp(`/dashboard/${workspace.id}/leads$`));
+		await expect(page.locator("[data-testid='nowing-leads-canvas-standalone']")).toBeVisible();
+		await expect(page.locator("[data-testid='nowing-lead-matrix']")).toBeVisible();
+		await expect(page.locator("[data-testid^='lead-row-']").first()).toBeVisible();
+
+		// Interaction: row click opens the flyout drawer (overlays stay mounted).
+		await page.locator("[data-testid^='lead-row-']").first().click();
+		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toBeVisible();
 	});
 
 	test("should render 2-panel split canvas with resizer and data matrix on new-chat", async ({
