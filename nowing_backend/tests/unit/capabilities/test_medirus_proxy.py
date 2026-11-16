@@ -66,12 +66,15 @@ class TestMedirusProxyExecutor:
                     # dryRun keeps full data in-band when the Medirus daemon
                     # runs with REDIS_STREAM_ENABLED (stream truncates data
                     # to a 10-item preview otherwise).
-                    "dryRun": True,
+                    "dryRun": False,
+                    "fullData": True,
                 },
             )
 
+            assert result["status"] == "success"
             assert result["items"] == [{"id": "job1", "title": "Developer"}]
             assert result["cost_micros"] == 5500
+            assert result["total_items"] == 1
 
     @pytest.mark.asyncio
     async def test_executor_maps_xact_4001_to_503(self, mock_client):
@@ -123,6 +126,7 @@ class TestMedirusProxyExecutor:
 
             result = await executor(mock_input, None)
 
+            assert result["status"] == "degraded"
             assert result["degraded"] is True
             assert result["degradation_reason"] == "bot_detected"
             assert result["cost_micros"] == 2750
@@ -196,3 +200,86 @@ class TestMedirusErrorMapping:
         result = _map_medirus_error(exc)
         assert isinstance(result, ExternalServiceError)
         assert result.code == "MEDIRUS_4002"
+
+
+class TestMedirusProxyEnvelopeContract:
+    """Story 42.2: executor return dicts carry ToolResultEnvelope keys."""
+
+    def _client(self):
+        return AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_executor_success_emits_envelope_keys(self):
+        """Success return carries {status, reason, recovery_hint, items} + extras."""
+        mock_client = self._client()
+        mock_client.call_tool = AsyncMock(
+            return_value={
+                "success": True,
+                "data": [{"id": "1"}, {"id": "2"}],
+                "meta": {"cost_micros": 100, "degraded": False},
+            }
+        )
+
+        with patch(
+            "app.capabilities.core.medirus_proxy.get_shared_client",
+            return_value=mock_client,
+        ):
+            executor = make_medirus_executor(platform="topcv")
+            mock_input = MagicMock()
+            mock_input.model_dump.return_value = {}
+
+            result = await executor(mock_input, None)
+
+            assert set(result) >= {
+                "status",
+                "reason",
+                "recovery_hint",
+                "items",
+                "cost_micros",
+                "total_items",
+            }
+            assert result["status"] == "success"
+            assert result["reason"] is None
+            assert result["recovery_hint"] is None
+            assert result["items"] == [{"id": "1"}, {"id": "2"}]
+            assert result["total_items"] == 2
+            assert result["cost_micros"] == 100
+
+    @pytest.mark.asyncio
+    async def test_executor_empty_result_status(self):
+        mock_client = self._client()
+        mock_client.call_tool = AsyncMock(
+            return_value={"success": True, "data": [], "meta": {}}
+        )
+
+        with patch(
+            "app.capabilities.core.medirus_proxy.get_shared_client",
+            return_value=mock_client,
+        ):
+            executor = make_medirus_executor(platform="topcv")
+            result = await executor(MagicMock(model_dump=lambda: {}), None)
+
+            assert result["status"] == "empty_result"
+            assert result["items"] == []
+            assert result["total_items"] == 0
+
+    @pytest.mark.asyncio
+    async def test_executor_degraded_status(self):
+        mock_client = self._client()
+        mock_client.call_tool = AsyncMock(
+            return_value={
+                "success": True,
+                "data": [{"id": "p"}],
+                "meta": {"degraded": True, "degradation_reason": "bot_detected"},
+            }
+        )
+
+        with patch(
+            "app.capabilities.core.medirus_proxy.get_shared_client",
+            return_value=mock_client,
+        ):
+            executor = make_medirus_executor(platform="topcv")
+            result = await executor(MagicMock(model_dump=lambda: {}), None)
+
+            assert result["status"] == "degraded"
+            assert result["degradation_reason"] == "bot_detected"

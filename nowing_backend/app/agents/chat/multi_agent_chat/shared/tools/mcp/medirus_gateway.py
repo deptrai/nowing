@@ -21,6 +21,11 @@ from urllib.parse import urlparse
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.capabilities.core.tool_result import (
+    ToolResultEnvelope,
+    from_exception,
+    from_medirus,
+)
 from app.config import config
 from app.proprietary.platforms.medirus.mcp_client import (
     MedirusMcpClient,
@@ -211,7 +216,7 @@ async def _execute_medirus_tool(
         url=url, api_key=api_key, consumer_id=consumer_id
     ) as client:
         try:
-            return await client.call_tool(tool_name, arguments)
+            result = await client.call_tool(tool_name, arguments)
         except MedirusMcpError as exc:
             logger.warning(
                 "Medirus tool '%s' error: %s (code=%s)",
@@ -219,41 +224,37 @@ async def _execute_medirus_tool(
                 exc.message,
                 exc.code,
             )
-            return {
-                "success": False,
-                "error": exc.message,
-                "code": exc.code,
-                "suggested_action": exc.suggested_action,
-            }
+            return from_exception(exc).model_dump()
         except (
             Exception
         ) as exc:  # unexpected Medirus execution failure; return error payload
             logger.exception("Medirus execution error on '%s': %s", tool_name, exc)
-            return {
-                "success": False,
-                "error": str(exc),
-            }
+            return from_exception(exc).model_dump()
+        if arguments.get("dryRun"):
+            result["dry_run"] = True
+        return result
 
 
 def _format_result(tool_name: str, result: dict[str, Any]) -> str:
-    """Format the Medirus tool output into a clean string for the agent."""
-    if not result.get("success", True):
-        error = result.get("error") or result.get("message") or "Execution failed"
-        return f"Error executing {tool_name}: {error}"
+    """Format the Medirus tool output as a ToolResultEnvelope JSON string."""
+    return json.dumps(
+        from_medirus(result, tool_name=tool_name).model_dump(),
+        ensure_ascii=False,
+        default=str,
+    )
 
-    data = result.get("data")
-    summary = result.get("summary")
-    meta = result.get("meta")
 
-    response_payload: dict[str, Any] = {}
-    if data is not None:
-        response_payload["data"] = data
-    if summary:
-        response_payload["summary"] = summary
-    if meta:
-        response_payload["meta"] = meta
+def _fail(reason: str) -> str:
+    """Early handler validation failure as a failed ToolResultEnvelope JSON.
 
-    return json.dumps(response_payload, ensure_ascii=False, indent=2, default=str)
+    Deterministic arg-validation misses carry no recovery hint — the caller
+    simply needs to supply the missing argument.
+    """
+    return json.dumps(
+        ToolResultEnvelope(status="failed", reason=reason).model_dump(),
+        ensure_ascii=False,
+        default=str,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +328,9 @@ async def _handle_medirus_scrape(
         tool_name = "medirus_facebook_group_posts"
         url = target or query
         if not url:
-            return "Error: Facebook group scrape requires a target or query (group id or URL)."
+            return _fail(
+                "Facebook group scrape requires a target or query (group id or URL)."
+            )
         if not url.startswith("http"):
             url = f"https://www.facebook.com/groups/{url}"
         arguments = {"url": url, "limit": limit, "dryRun": False}
@@ -336,7 +339,9 @@ async def _handle_medirus_scrape(
         tool_name = "medirus_facebook_posts"
         url = target or query
         if not url:
-            return "Error: Facebook page scrape requires a target or query (page id or URL)."
+            return _fail(
+                "Facebook page scrape requires a target or query (page id or URL)."
+            )
         if not url.startswith("http"):
             url = f"https://www.facebook.com/{url}"
         arguments = {"url": url, "limit": limit, "dryRun": False}
@@ -407,7 +412,7 @@ async def _handle_medirus_crawl_post(
     **extra: Any,
 ) -> str:
     if not url and not post_id:
-        return "Error: medirus_crawl_post requires a url or post_id."
+        return _fail("medirus_crawl_post requires a url or post_id.")
     target_platform = _normalize_platform(platform or _detect_platform_from_url(url))
     tool_name = "medirus_crawl_post"
     arguments: dict[str, Any] = {

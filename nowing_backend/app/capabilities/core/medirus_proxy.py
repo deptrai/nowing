@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.capabilities.core.tool_result import from_medirus
 from app.capabilities.core.types import CapabilityContext
 from app.config import config
 from app.exceptions import ExternalServiceError
@@ -99,13 +100,16 @@ def make_medirus_executor(
         # `preview` fallback keeps working if a Medirus build ignores dryRun
         # and still truncates data to the preview slice.
         data = result.get("data") or result.get("preview") or []
+        items = data if isinstance(data, list) else [data]
+        meta = result.get("meta") or {}
+        envelope = from_medirus({"success": True, "data": items, "meta": meta})
         return {
-            "items": data if isinstance(data, list) else [data],
-            "cost_micros": (result.get("meta") or {}).get("cost_micros"),
-            "degraded": (result.get("meta") or {}).get("degraded", False),
-            "degradation_reason": (result.get("meta") or {}).get("degradation_reason"),
-            "total_items": len(data) if isinstance(data, list) else 1,
-            "stream": (result.get("meta") or {}).get("stream", False),
+            **envelope.model_dump(),
+            "cost_micros": meta.get("cost_micros"),
+            "degraded": meta.get("degraded", False),
+            "degradation_reason": meta.get("degradation_reason"),
+            "total_items": len(items),
+            "stream": meta.get("stream", False),
         }
 
     return execute

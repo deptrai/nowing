@@ -58,8 +58,9 @@ async def test_search_tweets_dispatch():
             {"query": "ai agent", "platform": "twitter", "limit": 10},
         )
         parsed = json.loads(res_str)
-        assert len(parsed["data"]) == 1
-        assert parsed["data"][0]["text"] == "hello twitter"
+        assert parsed["status"] == "success"
+        assert len(parsed["items"]) == 1
+        assert parsed["items"][0]["text"] == "hello twitter"
 
 
 @pytest.mark.asyncio
@@ -96,7 +97,7 @@ async def test_scrape_marketplace_dispatch():
             },
         )
         parsed = json.loads(res_str)
-        assert parsed["data"][0]["title"] == "Honda SH"
+        assert parsed["items"][0]["title"] == "Honda SH"
 
 
 @pytest.mark.asyncio
@@ -127,7 +128,7 @@ async def test_crawl_post_dispatch():
             },
         )
         parsed = json.loads(res_str)
-        assert parsed["data"][0]["content"] == "detailed post content"
+        assert parsed["items"][0]["content"] == "detailed post content"
 
 
 @pytest.mark.asyncio
@@ -172,23 +173,75 @@ async def test_scrape_non_twitter_posts_uses_x_scrape():
 
 @pytest.mark.asyncio
 async def test_format_result_error_without_error_key():
-    """A failed result with only 'message' still surfaces the failure."""
+    """A failed result with only 'message' surfaces as a failed envelope."""
     from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
         _format_result,
     )
     result = {"success": False, "message": "something went wrong"}
-    formatted = _format_result("medirus_test", result)
-    assert formatted.startswith("Error")
-    assert "something went wrong" in formatted
+    parsed = json.loads(_format_result("medirus_test", result))
+    assert parsed["status"] == "failed"
+    assert parsed["reason"] == "something went wrong"
+    assert "generic: check logs, retry" in parsed["recovery_hint"]
+    assert parsed["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_format_result_emits_envelope_json():
+    """_format_result returns the ToolResultEnvelope contract keys."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _format_result,
+    )
+    parsed = json.loads(
+        _format_result(
+            "medirus_test",
+            {"success": True, "data": [{"id": "1"}], "meta": {"cost_micros": 5}},
+        )
+    )
+    assert set(parsed) == {"status", "reason", "recovery_hint", "items"}
+    assert parsed["status"] == "success"
+    assert parsed["items"] == [{"id": "1"}]
+
+
+@pytest.mark.asyncio
+async def test_format_result_empty_result_status():
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _format_result,
+    )
+    parsed = json.loads(
+        _format_result("medirus_test", {"success": True, "data": []})
+    )
+    assert parsed["status"] == "empty_result"
+    assert parsed["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_format_result_degraded_status():
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _format_result,
+    )
+    parsed = json.loads(
+        _format_result(
+            "medirus_test",
+            {
+                "success": True,
+                "data": [{"id": "1"}],
+                "meta": {"degraded": True, "degradation_reason": "rate-limited"},
+            },
+        )
+    )
+    assert parsed["status"] == "degraded"
+    assert parsed["reason"] == "rate-limited"
 
 
 @pytest.mark.asyncio
 async def test_crawl_post_requires_url_or_post_id():
-    """medirus_crawl_post returns an error if both url and post_id are missing."""
+    """medirus_crawl_post returns a failed envelope if url and post_id are missing."""
     res = await _handle_medirus_crawl_post(
         server_config={"url": "http://test:3001/mcp"},
     )
-    assert res.startswith("Error")
+    parsed = json.loads(res)
+    assert parsed["status"] == "failed"
+    assert "requires a url or post_id" in parsed["reason"]
 
 
 @pytest.mark.asyncio
@@ -223,8 +276,76 @@ async def test_execute_medirus_tool_calls_client():
         assert result["success"] is True
         mock_client.call_tool.assert_awaited_once_with(
             "medirus_search_tweets",
-            {"query": "ai", "platform": "twitter", "dryRun": False},
+            {
+                "query": "ai",
+                "platform": "twitter",
+                "dryRun": False,
+                "fullData": True,
+            },
         )
+
+
+@pytest.mark.asyncio
+async def test_execute_medirus_tool_dry_run_sets_preview_flag():
+    """_execute_medirus_tool marks results dry_run when caller passes dryRun=true."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _execute_medirus_tool,
+    )
+
+    with patch(
+        "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway.MedirusMcpClient",
+        autospec=True,
+    ) as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.call_tool = AsyncMock(
+            return_value={"success": True, "data": [], "preview": []}
+        )
+
+        result = await _execute_medirus_tool(
+            server_config={"url": "http://test:3001/mcp"},
+            tool_name="medirus_search_tweets",
+            arguments={"query": "ai", "dryRun": True},
+        )
+
+        assert result["dry_run"] is True
+
+
+@pytest.mark.asyncio
+async def test_execute_medirus_tool_error_returns_failed_envelope():
+    """MedirusMcpError surfaces as a failed ToolResultEnvelope dict."""
+    from app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway import (
+        _execute_medirus_tool,
+    )
+    from app.proprietary.platforms.medirus.mcp_client import MedirusMcpError
+
+    with patch(
+        "app.agents.chat.multi_agent_chat.shared.tools.mcp.medirus_gateway.MedirusMcpClient",
+        autospec=True,
+    ) as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.call_tool = AsyncMock(
+            side_effect=MedirusMcpError(
+                "auth expired",
+                code="MEDIRUS_4010",
+                suggested_action="set c_user/xs",
+            )
+        )
+
+        result = await _execute_medirus_tool(
+            server_config={"url": "http://test:3001/mcp"},
+            tool_name="medirus_search_tweets",
+            arguments={"query": "ai"},
+        )
+
+        assert result["status"] == "failed"
+        assert result["reason"] == "auth expired"
+        assert "c_user" in result["recovery_hint"]
+        assert "untrusted suggestedAction" in result["recovery_hint"]
+        assert result["items"] == []
 
 
 @pytest.mark.asyncio
@@ -264,14 +385,15 @@ async def test_execute_medirus_tool_injects_facebook_auth():
 
 @pytest.mark.asyncio
 async def test_facebook_group_requires_target():
-    """Facebook group/page scrape returns an error when target/query is missing."""
+    """Facebook group/page scrape returns a failed envelope when target/query is missing."""
     res = await _handle_medirus_scrape(
         server_config={"url": "http://test:3001/mcp"},
         platform="facebook",
         action="group_posts",
     )
-    assert res.startswith("Error")
-    assert "group" in res.lower()
+    parsed = json.loads(res)
+    assert parsed["status"] == "failed"
+    assert "group" in parsed["reason"].lower()
 
 
 @pytest.mark.asyncio
@@ -281,5 +403,6 @@ async def test_facebook_page_requires_target():
         platform="facebook",
         action="page_posts",
     )
-    assert res.startswith("Error")
-    assert "page" in res.lower()
+    parsed = json.loads(res)
+    assert parsed["status"] == "failed"
+    assert "page" in parsed["reason"].lower()
