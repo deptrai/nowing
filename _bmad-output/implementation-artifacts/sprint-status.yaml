@@ -451,7 +451,7 @@ development_status:
   42-5-hitl-approve-reject-gemini-functionresponse-mismatch-fix: done
   42-6-step-cap-graceful-degradation-partial-synthesis-thay-vì-text: done
   42-7-ia-fix-real-dashboard-id-leads-route-service-level-auto-tabl: done
-  42-8-forward-context-workspaceid-qua-medirus_gateway-dev-quota-fl: backlog
+  42-8-forward-context-workspaceid-qua-medirus_gateway-dev-quota-fl: done
   epic-42-retrospective: optional
 validation_reports:
   - story: "3.18"

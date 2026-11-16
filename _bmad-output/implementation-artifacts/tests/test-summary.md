@@ -170,3 +170,25 @@ Ngày: 2026-11-17 · Spec: `spec-42-6-step-cap-partial-synthesis.md` · Commit: 
 - Prompt synthesis cap 20 tool parts (review patch — cap-hit run có tới ~80 parts).
 - `PARTIAL_STATUS_PART` là status part mới; FE loader đã drop unknown status parts (T6 verify-only, không sửa FE).
 - Test timeout chiếm ~15s trong suite (đúng `SYNTHESIS_TIMEOUT_S`).
+
+# Story 42.8 — Medirus workspaceId forwarding + NOWING_DEV_BYPASS_QUOTA
+
+Ngày: 2026-11-17 · Spec: `spec-42-8-medirus-workspaceid-forwarding.md` · Commit: `05b78a8a6`
+
+## Tests mới / extend
+
+| Suite | Coverage | Kết quả |
+|---|---|---|
+| `test_medirus_gateway.py` (+4) | inject workspaceId, merge context giữ key cũ, workspace_id=None không inject, factory→handler threading | PASS |
+| `tests/unit/services/test_dev_quota_bypass.py` (9) | bypass matrix (self-host+dev on; cloud off; self-host+prod off; DEBUG-only off), warn latch 1 lần, credit_reserve/credit_get_usage early-return | PASS |
+
+## Regression
+
+- `pytest tests/unit/capabilities/test_medirus_proxy.py -x -q` → **11 passed**.
+- `pytest test_medirus_gateway.py test_dev_quota_bypass.py` → **31 passed** (sau patch `_loader.py`).
+
+## Lưu ý
+
+- Review patch: `discover_single_mcp_connector` dùng `connector.workspace_id` (bug NameError — unit tests không cover discovery path).
+- Runtime verify với Medirus daemon thật deferred — check `medirus-mcp.log` hết MissingWorkspaceId sau deploy.
+- AC3 deviation: 5 files sửa (spec ước ≤3) — forwarding bắt buộc chạm gateway/http/loader.
