@@ -127,3 +127,25 @@ Ngày: 2026-11-17 · Spec: `spec-42-3-scrapers-health.md` · Commit: `89aaed195`
 - Window query loại `status='cancelled'` khỏi attempts (user chủ động hủy ≠ failure); `running` vẫn tính.
 - Chưa verify trên DB thật: SQL 3 query chỉ chạy qua fake session; AC6 EXPLAIN <200ms cần check khi deploy (query all-time sort theo capability — không full index-only).
 - RLS: `runs` có FORCE RLS — endpoint set `app.workspace_id` GUC trước select; test bắt được nếu ai xóa dòng `set_request_tenant_context`.
+
+# Story 42.5 — HITL reject: Gemini functionResponse mismatch fix
+
+Ngày: 2026-11-17 · Spec: `spec-42-5-hitl-gemini-function-response.md` · Commit: `59f79e435`
+
+## Tests mới / sửa
+
+| Suite | Coverage | Kết quả |
+|---|---|---|
+| `tests/unit/agents/multi_agent_chat/hitl_gemini/test_fixture_repro.py` (3) | T1 AD-6: replay checkpoint có dangling `call_prod_5` → chứng minh `CorrectedError` uncaught (5 functionCall vs 4 functionResponse); approve path vẫn khớp; invariant check | PASS |
+| `test_hitl_pairing_regression.py` (3) | T3: approve_single / mixed approve+reject (resume 2 lần — interrupt per-call) / all_reject → mọi functionCall đúng 1 functionResponse | PASS |
+
+## Regression
+
+- `pytest tests/unit/agents/multi_agent_chat/hitl_gemini` → **6 passed**
+- HITL regression (checkpointed_subagent + subagents/hitl + permissions + new_chat hitl/permissions + dedup) → **133 passed**, 1 deselect: `test_one_atask_failure_does_not_corrupt_sibling_atask` — pre-existing, confirm fail trên baseline `git stash`.
+
+## Lưu ý
+
+- Reject path không còn raise `RejectedError`/`CorrectedError` — fix LOẠI BỎ nguồn `chat_stream_error` trước đây (không thêm error path mới, T5).
+- Unknown permission decision → fail-closed cùng shape reject.
+- Fixture là fallback snapshot-shaped (14 msgs) với `_provenance` — không phải raw prod thread 52 msgs.
