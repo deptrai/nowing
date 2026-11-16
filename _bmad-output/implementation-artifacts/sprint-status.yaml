@@ -449,7 +449,7 @@ development_status:
   42-3-get-api-v1-scrapers-health-aggregated-channel-status: done
   42-4-nowing_mcp-lead-tools-leads-ingest-tables-create-leads-list: done
   42-5-hitl-approve-reject-gemini-functionresponse-mismatch-fix: done
-  42-6-step-cap-graceful-degradation-partial-synthesis-thay-vì-text: backlog
+  42-6-step-cap-graceful-degradation-partial-synthesis-thay-vì-text: done
   42-7-ia-fix-real-dashboard-id-leads-route-service-level-auto-tabl: done
   42-8-forward-context-workspaceid-qua-medirus_gateway-dev-quota-fl: backlog
   epic-42-retrospective: optional

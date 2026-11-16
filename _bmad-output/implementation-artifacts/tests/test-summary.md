@@ -149,3 +149,24 @@ Ngày: 2026-11-17 · Spec: `spec-42-5-hitl-gemini-function-response.md` · Commi
 - Reject path không còn raise `RejectedError`/`CorrectedError` — fix LOẠI BỎ nguồn `chat_stream_error` trước đây (không thêm error path mới, T5).
 - Unknown permission decision → fail-closed cùng shape reject.
 - Fixture là fallback snapshot-shaped (14 msgs) với `_provenance` — không phải raw prod thread 52 msgs.
+
+# Story 42.6 — Step-cap graceful degradation: partial synthesis
+
+Ngày: 2026-11-17 · Spec: `spec-42-6-step-cap-partial-synthesis.md` · Commit: `01d5fc09b`
+
+## Tests mới
+
+| Suite | Coverage | Kết quả |
+|---|---|---|
+| `tests/unit/tasks/chat/streaming/test_partial_synthesis.py` (12) | cap_hit prefix/fallback/none, tool-part helpers, notices, synthesize success/fail/timeout/empty, e2e `stream_agent_events` cap-hit emit text frames, status part contract | PASS |
+
+## Regression
+
+- `pytest tests/unit/tasks/chat/streaming -x -q` → **59 passed** (gồm 12 test mới).
+
+## Lưu ý
+
+- Synthesis LLM = workspace AGENT model, inject qua ContextVar (không đổi signature `run_stream_loop`); orchestrator khác không set → notice-only graceful.
+- Prompt synthesis cap 20 tool parts (review patch — cap-hit run có tới ~80 parts).
+- `PARTIAL_STATUS_PART` là status part mới; FE loader đã drop unknown status parts (T6 verify-only, không sửa FE).
+- Test timeout chiếm ~15s trong suite (đúng `SYNTHESIS_TIMEOUT_S`).
