@@ -120,6 +120,14 @@ async def finalize_assistant_message(
         content_payload,
         stream_result.final_message_parts,
     )
+    # Story 42.6: cap hit → append status part ``partial:true`` (best-effort,
+    # consumer cũ ignore-unknown nên part này chỉ là marker).
+    if stream_result.partial_cap_hit:
+        from app.tasks.chat.streaming.agent.partial_synthesis import (
+            PARTIAL_STATUS_PART,
+        )
+
+        content_payload = [*content_payload, dict(PARTIAL_STATUS_PART)]
     content_payload = _resolve_citations(
         content_payload, stream_result.citation_registry
     )

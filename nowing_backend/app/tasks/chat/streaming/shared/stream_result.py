@@ -43,3 +43,7 @@ class StreamResult:
     # (a ``CitationRegistry`` or its serialized dict). Read at finalize to rewrite
     # the model's ``[n]`` ordinals into ``[citation:<payload>]`` markers.
     citation_registry: Any | None = field(default=None, repr=False)
+    # Story 42.6: True khi run/thread model-call cap chặn turn và partial
+    # synthesis đã emit. Finalize dùng flag này để append status part
+    # ``partial:true`` vào persisted payload.
+    partial_cap_hit: bool = False
