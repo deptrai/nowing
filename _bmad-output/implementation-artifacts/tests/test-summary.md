@@ -29,3 +29,29 @@ exercise **real auth path** (`Bearer nw_pat_…` → `resolve_pat` → `AuthCont
   constraint) — đúng contract story: legacy PAT scopes=[] fail-closed, scoped PAT hoạt động.
 - `api_access_enabled=False` chặn PAT ở permission gate **trước** scope seam — hành vi
   có chủ đích, được test độc lập.
+
+---
+
+# Story 42.2 — ToolResultEnvelope e2e
+
+**File:** `nowing_backend/tests/unit/agents/multi_agent_chat/shared/tools/mcp/test_medirus_envelope_e2e.py` — 8 tests, real `StructuredTool.ainvoke` chain (handler → `_execute_medirus_tool` → `_format_result` → JSON), chỉ mock `MedirusMcpClient`.
+
+| Test | Matrix row | Result |
+|---|---|---|
+| `test_e2e_success_envelope_contract` | MEDIRUS_OK | PASS — đúng 4 keys `{status, reason, recovery_hint, items}` |
+| `test_e2e_exception_maps_to_failed_with_hint` | FAIL_4010 | PASS — hint seeded + `(untrusted suggestedAction: …)` |
+| `test_e2e_in_band_failure_maps_to_failed` | FAIL_4030 | PASS — in-band `{success:false}` → failed + PROXY hint |
+| `test_e2e_empty_result_status` | EMPTY_DATA | PASS — `empty_result`, items `[]` |
+| `test_e2e_degraded_status_passthrough` | DEGRADED_META | PASS — `degraded` + reason |
+| `test_e2e_dry_run_stub_is_preview_not_success` | DRYRUN_PREVIEW | PASS — `preview`, không giống success |
+| `test_e2e_early_validation_failed_envelope_no_hint` | EARLY_VALIDATION | PASS — failed, `recovery_hint=None`, `call_tool` không được gọi |
+| `test_e2e_generic_exception_generic_hint` | GENERIC_EXC | PASS — `generic: check logs, retry` |
+
+## Regression
+
+- Spec verification (3 files) → **57 passed**; wide sweep `tests/unit/capabilities` + `tests/unit/agents/multi_agent_chat` → **1316 passed**, 1 fail `test_parallel_tasks` pre-existing.
+
+## Lưu ý
+
+- `preview` chỉ reachable qua daemon echo (`preview: true` flag / `preview` list) — agent args không expose `dryRun`; hành vi đúng contract "dryRun stub không giống success".
+- `_fail()` early-validation cố tình `recovery_hint=None` — deterministic failure không nên gợi ý retry.
