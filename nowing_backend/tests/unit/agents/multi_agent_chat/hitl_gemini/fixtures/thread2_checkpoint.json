@@ -1,0 +1,66 @@
+{
+  "_provenance": [
+    "FIXTURE FALLBACK, KHÔNG PHẢI DATA PROD THẬT.",
+    "Nguồn: spec 42.5 (AD-6 fallback) — thread prod ~52 messages (thread 2) KHÔNG",
+    "trích được raw checkpoint, nên fixture này dựng snapshot-shaped checkpoint theo",
+    "cấu trúc quan sát được trong prod logs (chat_stream_error stack + struct log):",
+    "một luồng multi-turn bình thường kết thúc bằng AIMessage N tool_calls đang chờ",
+    "HITL (interrupt) — khi resume reject, exception thoát ra và checkpoint giữ",
+    "tool_call lơ lửng không ToolMessage.",
+    "Invariant cần kiểm chứng: MỌI functionCall trong history phải có ĐÚNG 1",
+    "functionResponse (ToolMessage cùng tool_call_id) trước model call kế tiếp."
+  ],
+  "thread_id": "thread2-fallback-snapshot",
+  "message_count_estimate_prod": 52,
+  "messages": [
+    {"type": "human", "content": "Kiểm tra hộp thư và nhắc tôi họp 15h"},
+    {
+      "type": "ai",
+      "content": "",
+      "tool_calls": [
+        {"name": "gmail_list_messages", "args": {"query": "is:unread"}, "id": "call_prod_1", "type": "tool_call"}
+      ]
+    },
+    {"type": "tool", "tool_call_id": "call_prod_1", "name": "gmail_list_messages", "content": "[{\"id\": \"m1\", \"subject\": \"Hoá đơn tháng 11\"}]"},
+    {"type": "ai", "content": "Có 1 thư chưa đọc: Hoá đơn tháng 11."},
+    {"type": "human", "content": "Gửi xác nhận nhận hoá đơn cho kế toán"},
+    {
+      "type": "ai",
+      "content": "",
+      "tool_calls": [
+        {"name": "gmail_send_email", "args": {"to": "ketoan@example.com", "subject": "Re: Hoá đơn tháng 11"}, "id": "call_prod_2", "type": "tool_call"}
+      ]
+    },
+    {"type": "tool", "tool_call_id": "call_prod_2", "name": "gmail_send_email", "content": "{\"sent\": true, \"message_id\": \"s1\"}"},
+    {"type": "ai", "content": "Đã gửi thư xác nhận."},
+    {"type": "human", "content": "Lên lịch nhắc họp 15h và tạo nháp biên bản"},
+    {
+      "type": "ai",
+      "content": "",
+      "tool_calls": [
+        {"name": "calendar_create_event", "args": {"title": "Họp sprint", "time": "15:00"}, "id": "call_prod_3", "type": "tool_call"},
+        {"name": "gmail_create_draft", "args": {"to": "team@example.com", "subject": "Biên bản họp"}, "id": "call_prod_4", "type": "tool_call"}
+      ]
+    },
+    {"type": "tool", "tool_call_id": "call_prod_3", "name": "calendar_create_event", "content": "{\"event_id\": \"e1\"}"},
+    {"type": "tool", "tool_call_id": "call_prod_4", "name": "gmail_create_draft", "content": "{\"draft_id\": \"d1\"}"},
+    {"type": "ai", "content": "Đã lên lịch họp và tạo nháp biên bản."},
+    {"type": "human", "content": "Xoá nháp đó và gửi lại bản mới cho sếp"},
+    {
+      "type": "ai",
+      "content": "",
+      "tool_calls": [
+        {"name": "gmail_delete_draft", "args": {"draft_id": "d1"}, "id": "call_prod_5", "type": "tool_call"}
+      ]
+    }
+  ],
+  "pending_interrupt": {
+    "interrupt_type": "permission_ask",
+    "action_requests": [
+      {"name": "gmail_delete_draft", "args": {"draft_id": "d1"}}
+    ],
+    "review_configs": [
+      {"action_name": "gmail_delete_draft", "allowed_decisions": ["approve", "reject", "edit", "approve_always"]}
+    ]
+  }
+}
