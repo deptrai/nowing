@@ -88,6 +88,83 @@ class LeadGenOrchestratorResult(BaseModel):
     source_latency_ms: dict[str, float] = Field(default_factory=dict)
     deduplication_rate: float = 0.0
     location_match_metadata: LocationMatchMetadata | None = None
+    # Epic 43.3: counters của supply post-filter tại persist seam (demand để rỗng)
+    supply_filter_counters: dict[str, int] = Field(default_factory=dict)
+
+
+def _apply_supply_post_filter(
+    leads: list[NormalizedLead],
+    supply_criteria: Any,
+) -> tuple[list[NormalizedLead], dict[str, int]]:
+    """Epic 43.3: post-filter lead supply ngay trước ``ingest_batch``.
+
+    Chỉ gọi khi ``direction == "supply"``. Trả về ``(kept_leads, counters)``
+    với counters: ``filtered_no_tax_id``, ``filtered_min_rating``,
+    ``filtered_unverified``, ``filtered_sparse_identity``,
+    ``filtered_outside_locations`` và ``unrated_kept`` (rating None được giữ).
+    """
+    counters: dict[str, int] = {
+        "filtered_no_tax_id": 0,
+        "filtered_min_rating": 0,
+        "filtered_unverified": 0,
+        "filtered_sparse_identity": 0,
+        "filtered_outside_locations": 0,
+        "unrated_kept": 0,
+    }
+
+    # Location profiles build một lần; "toàn quốc"/"*" => bỏ guard location.
+    loc_profiles: list[dict[str, Any]] | None = []
+    for loc in getattr(supply_criteria, "locations", None) or []:
+        target = str(loc or "").strip()
+        if not target:
+            continue
+        if target.lower() in ("toàn quốc", "*"):
+            loc_profiles = None
+            break
+        p_code = resolve_city_code(target) or target
+        loc_profiles.append({"province_code": p_code, "province_name": target})
+    if loc_profiles is not None and not loc_profiles:
+        loc_profiles = None
+
+    def _loc_allowed(lead: NormalizedLead) -> bool:
+        if loc_profiles is None:
+            return True
+        # Thiếu cả city lẫn address -> text rỗng -> không match -> drop.
+        text = " ".join(
+            part for part in (lead.city, lead.address) if part and part.strip()
+        )
+        return any(
+            LeadGenOrchestrator.evaluate_hierarchical_location_match(text, profile)[0]
+            for profile in loc_profiles
+        )
+
+    min_rating = float(getattr(supply_criteria, "min_rating", 0.0) or 0.0)
+    kept: list[NormalizedLead] = []
+    for lead in leads:
+        # Thứ tự guard cố định: drop đầu tiên gặp mới được tính counter.
+        if getattr(supply_criteria, "require_tax_id", False) and not lead.tax_id:
+            counters["filtered_no_tax_id"] += 1
+            continue
+        if min_rating > 0.0:
+            if lead.rating is None:
+                # D3: fail-open cho unrated — phần lớn adapter chưa emit rating.
+                counters["unrated_kept"] += 1
+            elif lead.rating < min_rating:
+                counters["filtered_min_rating"] += 1
+                continue
+        if getattr(supply_criteria, "require_verified", False) and lead.verified is not True:
+            # D2: strict — None cũng drop.
+            counters["filtered_unverified"] += 1
+            continue
+        if not (lead.company_name and lead.company_name.strip()) and not lead.tax_id:
+            # Sparse identity: tránh "Doanh nghiệp" HMAC-merge rác.
+            counters["filtered_sparse_identity"] += 1
+            continue
+        if not _loc_allowed(lead):
+            counters["filtered_outside_locations"] += 1
+            continue
+        kept.append(lead)
+    return kept, counters
 
 
 class LeadGenOrchestrator:
@@ -864,6 +941,23 @@ class LeadGenOrchestrator:
         )
         if not search_result.leads:
             return search_result
+
+        # Epic 43.3: supply post-filter tại persist seam — duy nhất một chỗ,
+        # sau khi leads đã chuẩn hoá, trước ingest_batch. Demand bit-for-bit.
+        supply_filter_counters: dict[str, int] | None = None
+        if (
+            campaign_spec is not None
+            and campaign_spec.direction == "supply"
+            and campaign_spec.supply_criteria is not None
+        ):
+            kept_leads, supply_filter_counters = _apply_supply_post_filter(
+                search_result.leads, campaign_spec.supply_criteria
+            )
+            search_result.leads = kept_leads
+            search_result.total_deduplicated = len(kept_leads)
+            search_result.supply_filter_counters = supply_filter_counters
+            if not kept_leads:
+                return search_result
 
         lead_dicts: list[dict[str, Any]] = []
         for lead in search_result.leads:

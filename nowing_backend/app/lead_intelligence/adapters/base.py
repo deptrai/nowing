@@ -72,6 +72,9 @@ class NormalizedLead(BaseModel):
     legal_rep: str | None = None
     address: str | None = None
     city: str | None = None
+    # Epic 43.3: tín hiệu chất lượng supplier cho supply post-filter
+    rating: float | None = None
+    verified: bool | None = None
     price: float | None = None
     area: float | None = None
     source_url: str | None = None

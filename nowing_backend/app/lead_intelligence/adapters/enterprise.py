@@ -139,6 +139,10 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
             (c.value for c in candidates if c.channel == "email"), None
         )
 
+        # Epic 43.3: bản ghi masothue (danh bạ doanh nghiệp, có tax_code) là verified;
+        # hồ sơ đấu thầu mua sắm công không phải legal entity verified.
+        verified = bool(data.get("tax_code") or data.get("tax_id"))
+
         return NormalizedLead(
             source_name=self.source_name,
             source_id=raw_record.source_id,
@@ -147,6 +151,7 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
             or "Doanh nghiệp",
             company_name=data.get("company_name") or "Doanh nghiệp đăng ký",
             tax_id=data.get("tax_id"),
+            verified=verified,
             legal_rep=data.get("legal_representative") or data.get("representative"),
             contact_name=data.get("legal_representative") or data.get("contact_name"),
             primary_phone=primary_phone or data.get("phone"),

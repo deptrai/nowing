@@ -2,8 +2,8 @@
 title: 'Story 43.3 — Supply post-filter tại persist seam + NormalizedLead rating/verified'
 type: 'feature'
 created: '2026-11-17'
-status: 'draft'
-baseline_revision: ''
+status: 'in-progress'
+baseline_revision: 'ba4f3de45'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
