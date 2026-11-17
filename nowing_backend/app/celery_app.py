@@ -235,6 +235,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.schedule_mission_tick",
         "app.tasks.celery_tasks.takeover_sweep_task",
         "app.tasks.phone_waterfall_worker",
+        "app.tasks.campaign_tasks",
         "app.etl_pipeline.cache.eviction.task",
         "app.indexing_pipeline.cache.eviction.task",
         "app.automations.tasks.execute_run",
@@ -262,6 +263,9 @@ celery_app = Celery(
 # Connectors queue: slow, long-running indexing tasks (Notion, Gmail, web crawl, …)
 CONNECTORS_QUEUE = f"{CELERY_TASK_DEFAULT_QUEUE}.connectors"
 LEAD_SCRAPERS_QUEUE = "nowing.lead_scrapers"
+# Epic 44.2: campaign run tasks → queue riêng, không chen vào lead_scrapers
+# và không dính time_limit=120 của scrape.
+CAMPAIGN_QUEUE = f"{CELERY_TASK_DEFAULT_QUEUE}.campaigns"
 HEALTH_QUEUE = "nowing.health"
 
 # Celery configuration
@@ -314,6 +318,8 @@ celery_app.conf.update(
             "queue": LEAD_SCRAPERS_QUEUE
         },
         "run_platform_scrape_task": {"queue": LEAD_SCRAPERS_QUEUE},
+        # Campaign runs (Epic 44.2) → dedicated campaigns queue.
+        "launch_campaign_run": {"queue": CAMPAIGN_QUEUE},
         # Health probes → dedicated queue so frequent 30s probes do not starve
         # user-facing tasks (Story 25.7).
         "health_probe_infra": {"queue": HEALTH_QUEUE},
