@@ -10,7 +10,7 @@ và :func:`finalize_campaign_run`, luôn fail-open đối với junction.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -24,6 +24,15 @@ from app.models.campaigns import CampaignLead, CampaignRun, LeadCampaign
 
 logger = logging.getLogger(__name__)
 
+# Epic 44.3 — quota guard constants (conservative, 1 chỗ chỉnh; tune sau qua
+# config nếu cần). Đếm trong ``open_campaign_run`` nên mọi đường tạo run
+# (route /execute, /launch, scheduler tick) đều qua cùng seam.
+CAMPAIGN_MAX_RUNS_PER_DAY = 10
+WORKSPACE_MAX_CAMPAIGN_LEADS_PER_DAY = 500
+# Run kẹt 'running' lâu hơn ngưỡng này bị scheduler reap → 'failed'
+# ('stale_run_timeout').
+CAMPAIGN_RUN_STALE_SECONDS = 2 * 60 * 60
+
 
 class ConcurrentCampaignRunError(Exception):
     """Đã có một run ``'running'`` cho cùng campaign (HTTP 409 / skip scheduled)."""
@@ -34,6 +43,24 @@ class ConcurrentCampaignRunError(Exception):
         super().__init__(
             f"campaign {campaign_id} already has a running run ({run_id})"
         )
+
+
+class CampaignQuotaExceededError(Exception):
+    """Quota ngày vượt ngưỡng (HTTP 429 / scheduled skip + ``skipped_by_quota``).
+
+    ``reason`` = ``'runs_per_day'`` | ``'workspace_leads_per_day'``.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        campaign_id: UUID | None = None,
+        reason: str = "quota",
+    ) -> None:
+        self.campaign_id = campaign_id
+        self.reason = reason
+        super().__init__(message)
 
 
 async def get_or_create_campaign(
@@ -97,7 +124,8 @@ async def open_campaign_run(
 
     Lock ``pg_advisory_xact_lock(hashtext('campaign_run'), hashtext(cid))``
     trước, rồi reject nếu còn run ``'running'`` (caller quyết định 409 hoặc
-    skip). Đánh dấu campaign ``'running'`` trong lúc chạy.
+    skip), tiếp đến quota check (44.3 — route 429 / scheduled skip), rồi
+    mới đánh dấu campaign ``'running'`` + insert run.
     """
     # Two-arg advisory lock (precedent workspace_limits/service.py:112).
     await session.execute(
@@ -121,6 +149,46 @@ async def open_campaign_run(
     campaign = await session.get(LeadCampaign, campaign_id)
     if campaign is None:
         raise LookupError(f"campaign {campaign_id} not found")
+
+    # Quota (44.3): sau lock + concurrent-check, TRƯỚC insert run.
+    # (a) runs/ngày của campaign.
+    runs_today = (
+        await session.execute(
+            select(func.count())
+            .select_from(CampaignRun)
+            .where(
+                CampaignRun.campaign_id == campaign_id,
+                CampaignRun.created_at >= func.date_trunc("day", func.now()),
+            )
+        )
+    ).scalar_one()
+    if runs_today >= CAMPAIGN_MAX_RUNS_PER_DAY:
+        raise CampaignQuotaExceededError(
+            f"campaign {campaign_id} hit "
+            f"{CAMPAIGN_MAX_RUNS_PER_DAY} runs/day quota",
+            campaign_id=campaign_id,
+            reason="runs_per_day",
+        )
+    # (b) leads/ngày workspace-wide — đếm trực tiếp trên junction (đã có
+    # workspace_id + created_at; RLS phạm vi tenant sẵn).
+    leads_today = (
+        await session.execute(
+            select(func.count())
+            .select_from(CampaignLead)
+            .where(
+                CampaignLead.workspace_id == campaign.workspace_id,
+                CampaignLead.created_at >= func.date_trunc("day", func.now()),
+            )
+        )
+    ).scalar_one()
+    if leads_today >= WORKSPACE_MAX_CAMPAIGN_LEADS_PER_DAY:
+        raise CampaignQuotaExceededError(
+            f"workspace {campaign.workspace_id} hit "
+            f"{WORKSPACE_MAX_CAMPAIGN_LEADS_PER_DAY} campaign leads/day quota",
+            campaign_id=campaign_id,
+            reason="workspace_leads_per_day",
+        )
+
     campaign.status = CampaignStatus.RUNNING.value
 
     run = CampaignRun(
@@ -135,6 +203,57 @@ async def open_campaign_run(
     session.add(run)
     await session.flush()
     return run
+
+
+def compute_next_run_at(
+    campaign: LeadCampaign,
+    *,
+    runs_count: int | None = None,
+    now: datetime | None = None,
+) -> datetime | None:
+    """Tính ``next_run_at`` từ ``schedule_cron``/``schedule_frequency`` (44.3).
+
+    - ``schedule_cron`` (nếu có) → ``croniter`` next fire; expression lỗi
+      → log warn + ``None``.
+    - ``schedule_frequency`` ``hourly``/``daily``/``weekly``/``monthly``
+      → ``now() + interval``.
+    - ``None`` khi ``max_runs`` đạt (cần ``runs_count``) hoặc campaign
+      không có schedule.
+    """
+    if (
+        campaign.max_runs is not None
+        and runs_count is not None
+        and runs_count >= campaign.max_runs
+    ):
+        return None
+    now = now or datetime.now(UTC)
+
+    if campaign.schedule_cron:
+        try:
+            from croniter import croniter
+
+            return croniter(campaign.schedule_cron, now).get_next(datetime)
+        except Exception:  # cron invalid → coi như không có schedule
+            logger.warning(
+                "compute_next_run_at: schedule_cron %r của campaign %s invalid",
+                campaign.schedule_cron,
+                campaign.id,
+            )
+            return None
+
+    frequency = (campaign.schedule_frequency or "").lower()
+    if frequency == "monthly":
+        from dateutil.relativedelta import relativedelta
+
+        return now + relativedelta(months=1)
+    delta = {
+        "hourly": timedelta(hours=1),
+        "daily": timedelta(days=1),
+        "weekly": timedelta(weeks=1),
+    }.get(frequency)
+    if delta is None:
+        return None
+    return now + delta
 
 
 async def persist_campaign_leads(

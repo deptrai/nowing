@@ -116,8 +116,13 @@ class TestOpenCampaignRun:
     async def test_acquires_advisory_lock_before_check(self) -> None:
         """Lock phải được execute TRƯỚC khi select running run."""
         session = AsyncMock()
+        # 44.3: execute được gọi thêm 2 lần cho quota counts — cùng mock
+        # trả first()=None (không run 'running') + scalar_one()=0 (dưới quota).
         session.execute = AsyncMock(
-            return_value=MagicMock(first=MagicMock(return_value=None))
+            return_value=MagicMock(
+                first=MagicMock(return_value=None),
+                scalar_one=MagicMock(return_value=0),
+            )
         )
         campaign = _campaign()
         session.get = AsyncMock(return_value=campaign)
@@ -136,7 +141,10 @@ class TestOpenCampaignRun:
     async def test_run_created_running_with_snapshot(self) -> None:
         session = AsyncMock()
         session.execute = AsyncMock(
-            return_value=MagicMock(first=MagicMock(return_value=None))
+            return_value=MagicMock(
+                first=MagicMock(return_value=None),
+                scalar_one=MagicMock(return_value=0),
+            )
         )
         campaign = _campaign()
         session.get = AsyncMock(return_value=campaign)

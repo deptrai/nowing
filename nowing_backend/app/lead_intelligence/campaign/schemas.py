@@ -24,7 +24,13 @@ class ScheduleFrequency(StrEnum):
 
 
 class ScheduleConfig(BaseModel):
-    """Schedule and automation parameters for a recurring campaign."""
+    """Schedule and automation parameters for a recurring campaign.
+
+    Epic 44.3: class vẫn parse được (inert metadata — spec giữ), nhưng
+    source of truth cho scheduler là các scalar ``schedule_frequency`` /
+    ``schedule_cron`` / ``max_runs`` / ``next_run_at`` trên bảng
+    ``lead_campaigns``. ``launch_config`` đã DROP — không wire.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 

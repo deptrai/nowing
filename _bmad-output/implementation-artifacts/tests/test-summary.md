@@ -425,3 +425,31 @@ merge `call_details['campaign_run_id']` bằng `setdefault` (signature nguyên, 
 — đặt cost sum đúng seam finalize thật. Review pass: 19 findings → 6 patch `low` applied,
 13 reject/false (triage log trong spec). Residual: `cost_micros`≈0 trên free-tier path
 (`_record_free_usage` hardcode 0); seq-scan `token_usage` mỗi finalize chấp nhận được.
+
+## Spec 44.3 — Campaign meta-scheduler + rate-limit guard (2026-11-18)
+
+Commit pending (sau test-summary update). Quota constants `CAMPAIGN_MAX_RUNS_PER_DAY=10` /
+`WORKSPACE_MAX_CAMPAIGN_LEADS_PER_DAY=500` / `CAMPAIGN_RUN_STALE_SECONDS=7200` module-level trong
+`campaign_service`. Quota check TRONG `open_campaign_run` (lock → concurrent → quota → insert)
+nên /execute + /launch + scheduler tick qua cùng seam; route map `CampaignQuotaExceededError` → 429.
+Meta-scheduler `check-campaign-schedules` (beat mỗi phút, CAMPAIGN_QUEUE) loop từng workspace →
+set tenant GUC → reap stale 'running' (>2h → failed/'stale_run_timeout') → tick due
+`status='scheduled' AND next_run_at <= now()` → open run 'scheduled' → **commit rồi mới
+apply_async** (task session riêng không thấy row chưa commit). Skip quota/concurrent →
+`skipped_by_quota += 1`, không run row hư; `next_run_at` recompute sau mỗi skip/launch;
+max_runs đạt → `next_run_at=None` + status 'completed'. `launch_config` DROP (docstring
+ScheduleConfig ghi rõ — `schedule_*` scalars là source of truth).
+
+| Test file | Cover | Kết quả |
+|---|---|---|
+| tests/unit/services/test_campaign_quota.py (16) | runs/day at+over limit raise (no insert, status không mutate); leads/day at limit; runs quota check trước leads; concurrent trước quota; under-quota insert 'running'; compute_next_run_at hourly/daily/weekly/monthly/cron/cron-invalid/once/no-schedule/max_runs | 16 passed |
+| tests/unit/tasks/test_campaign_scheduler.py (7) | due → launch 'scheduled' + apply_async sau commit + next_run_at tương lai + tenant ctx; not-due no-op; quota skip + counter + recompute; concurrent skip + counter; max_runs → 'completed' + None; stale >2h → finalize failed 'stale_run_timeout'; tenant GUC per-workspace [10,20] | 7 passed |
+| tests/unit/services/test_campaign_service.py update | TestOpenCampaignRun mocks thêm `scalar_one()=0` cho 2 quota count queries | pass |
+| Beat wiring | `assert 'check-campaign-schedules' in celery_app.conf.beat_schedule` (crontab *, expires 50) | ok |
+| Regression | tests/unit/lead_intelligence/ + tests/unit/services/ | 2875 passed |
+
+**Deviation ghi chú:** leads/day đếm trực tiếp trên `campaign_leads` (workspace_id + created_at
+sẵn, RLS scope tenant) thay vì join `campaign_runs` — tương đương spec intent, ít query hơn.
+Scheduler scan workspaces root (không RLS) rồi set tenant GUC từng workspace — cách duy nhất
+thấy rows qua FORCE RLS. `compute_next_run_at` nhận `runs_count` optional (spec signature chỉ
+`campaign` — cần count để enforce max_runs → caller truyền; không truyền = không check).

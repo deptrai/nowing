@@ -37,6 +37,7 @@ from app.lead_intelligence.campaign.schemas import (
 )
 from app.lead_intelligence.services import campaign_service
 from app.lead_intelligence.services.campaign_service import (
+    CampaignQuotaExceededError,
     ConcurrentCampaignRunError,
 )
 from app.lead_intelligence.services.lead_gen_orchestrator import (
@@ -234,6 +235,12 @@ async def execute_campaign(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=str(exc),
+            ) from exc
+        except CampaignQuotaExceededError as exc:
+            # 44.3: quota guard — 429, KHÔNG tạo run row.
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Chiến dịch đã đạt giới hạn ({exc}).",
             ) from exc
         if run_async:
             # Epic 44.2: commit bookkeeping (run 'running') rồi queue celery
@@ -489,6 +496,19 @@ async def update_campaign_route(
                 ),
             )
         campaign.status = payload.status
+        # 44.3: chuyển sang 'scheduled' → recompute next_run_at từ
+        # schedule_* scalars (scheduler tick dựa vào cột này).
+        if payload.status == CampaignStatus.SCHEDULED.value:
+            runs_count = (
+                await session.execute(
+                    select(func.count())
+                    .select_from(CampaignRun)
+                    .where(CampaignRun.campaign_id == campaign.id)
+                )
+            ).scalar_one() or 0
+            campaign.next_run_at = campaign_service.compute_next_run_at(
+                campaign, runs_count=runs_count
+            )
 
     if payload.name is not None and payload.name != campaign.name:
         clash = (
@@ -566,6 +586,12 @@ async def launch_campaign_route(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
+        ) from exc
+    except CampaignQuotaExceededError as exc:
+        # 44.3: quota guard — 429, KHÔNG tạo run row.
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Chiến dịch đã đạt giới hạn ({exc}).",
         ) from exc
 
     await session.commit()

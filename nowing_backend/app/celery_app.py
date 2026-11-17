@@ -320,6 +320,8 @@ celery_app.conf.update(
         "run_platform_scrape_task": {"queue": LEAD_SCRAPERS_QUEUE},
         # Campaign runs (Epic 44.2) → dedicated campaigns queue.
         "launch_campaign_run": {"queue": CAMPAIGN_QUEUE},
+        # Epic 44.3 meta-scheduler — cùng queue campaigns.
+        "check_campaign_schedules": {"queue": CAMPAIGN_QUEUE},
         # Health probes → dedicated queue so frequent 30s probes do not starve
         # user-facing tasks (Story 25.7).
         "health_probe_infra": {"queue": HEALTH_QUEUE},
@@ -363,6 +365,13 @@ celery_app.conf.beat_schedule = {
     # Medirus ingest tasks for any that are due.
     "check-social-monitored-targets": {
         "task": "check_social_monitored_targets",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
+    },
+    # Epic 44.3: meta-scheduler — tick lead_campaigns đến hạn (trigger
+    # 'scheduled' → launch_campaign_run) + reap run 'running' quá 2h.
+    "check-campaign-schedules": {
+        "task": "check_campaign_schedules",
         "schedule": crontab(minute="*"),
         "options": {"expires": 50},
     },
