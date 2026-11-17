@@ -5701,3 +5701,127 @@ So that dataset results flow into the same campaign/lead pipeline as every other
 - No `_prepare_lead_record` contact_name drop ngoài phạm vi auto-table (đã note riêng).
 - No E1 memory-spike fix trong epic này — E1 là investigation lane chạy nền song song; fix chỉ commit sau khi py-spy/tracemalloc có data (vẫn tuân AD-6 repro-before-fix).
 - Deferred scope (không ràng buộc epic này): single lock rule, single credit authority (user vs workspace balance), config contract ports/env.
+
+## Epic 43: Two-Sided CampaignSpec — Supply Direction (stage Productized) `[new]`
+
+**Goal:** `CampaignSpec` chạy được hai chiều — `direction="supply"` (tôi cần tìm nhà cung cấp) cùng một engine/spec như `direction="demand"` hiện tại, đúng thiết kế §10 ux-plan. Phase này chỉ gồm spec + validation + routing + supply criteria + intake tối thiểu; pool matching + shared corpus là phase riêng (chặng 3 Platform).
+
+**Nguồn:** `ux-plan-agent-experience-improvements-2026-11-16.md` §10 (party-room v3, sign-off) + §11 invariants. Invariants áp dụng: **AD-1** (mọi lead write qua `ingest_batch`), **AD-4** (dedupe `(workspace_id, value_hmac)` giữ nguyên), **AD-5** (joint validation — binding trực tiếp 43.1), **AD-3** (envelope contract — chỉ tool boundary, không áp vào HTTP route).
+
+**Vertical evidence (user-confirmed 2026-11-17):** trầm hương không còn n=1 — vertical supply-map nhiều: BĐS (môi giới tìm chủ nhà), TMĐT (tìm nguồn hàng/nhà phân phối), rao vặt (mua tìm bán), tuyển dụng (employer tìm ứng viên — lưu ý B2C PDPD), mua sắm công (buyer tìm contractor). Gate §9 gỡ khỏi epic này. **Lưu ý phạm vi:** phase này supply routing chỉ phủ legal-entity path (masothue/registry/procurement) — vertical cá nhân (BĐS owner, rao vặt B2C) nằm sau, xem Non-Goals.
+
+**Code anchors đã verify (bmad-review 2026-11-17):** registry `_register_defaults` (`adapters/registry.py:74-108`) chỉ có: batdongsan, chotot, muaban_bds, job_market, vn_jobs, vietnamworks, **enterprise** (masothue bên trong, platform="masothue"), **muasamcong**, social, telegram, shopee, tiktok_shop, news, websets — **KHÔNG có adapter tên `masothue` hay `google-maps`/`Maps`** ("Maps" trong §10 là aspirational, chưa có code). `NormalizedLead` (`adapters/base.py:58-86`) KHÔNG có `rating`/`verified` — phase này thêm làm deliverable. `resolve_adapters_for_campaign` (`registry.py:680`) là wrapper riêng có fallback chain khác `_for_spec` — supply guard phải cover cả hai. `CampaignSpec` KHÔNG có `id` — campaign identity = `spec.name` (không unique, documented). Không có `campaigns`/`campaign_runs` table — mọi "persist" chỉ qua `extra_metadata` trên lead.
+
+### Story 43.1: CampaignSpec direction fields + AD-5 joint validation matrix
+
+**As a** developer,
+**I want** `CampaignSpec` có `direction`/`match_mode`/`supply_criteria`/`corpus_scope`/`visibility` với joint validation tại schema layer,
+**So that** tổ hợp vô nghĩa về semantics bị reject ngay ở `model_validate`, không trôi xuống runtime (AD-5).
+
+**Acceptance Criteria:**
+- **Given** `nowing_backend/app/lead_intelligence/campaign/schemas.py` `CampaignSpec`, **When** thêm 5 field `direction: Literal["demand","supply"]="demand"`, `match_mode: Literal["mine","pool","hybrid"]="mine"`, `supply_criteria: SupplyCriteria|None`, `corpus_scope: Literal["workspace","platform_b2b"]="workspace"`, `visibility: Literal["private","poolable"]="private"`, **Then** mọi spec demand-shaped hiện tại (payload thiếu field mới) vẫn parse qua `from_payload`/`model_validate` không lỗi (CampaignSpec không persisted — "backward" nghĩa là demand path không đổi hành vi).
+- **And** `SupplyCriteria{categories: list[str] (min_length=1), locations: list[str] (min_length=1), require_tax_id: bool=True, min_rating: float=0.0 (ge=0.0,le=5.0), require_verified: bool=False}` là nested model riêng.
+- **And** `model_validator(mode="after")` reject đầy đủ các ô (pin bằng bảng truth-table, mỗi ô = case parametrize riêng):
+  - `direction="supply"` + `supply_criteria=None` → 422.
+  - `direction="demand"` + `supply_criteria` set → 422 (vô nghĩa).
+  - `match_mode` `pool|hybrid` (mọi direction) → 422 trỏ platform phase.
+  - `corpus_scope="platform_b2b"` → 422 gated.
+  - `direction="supply"` + `categories` hoặc `locations` rỗng → 422.
+  - `direction="supply"` + `icp_criteria` non-default → 422 (demand-shaped field không trộn).
+  - `direction="supply"` + `signal_triggers`/`intent_tags` non-empty → 422 (demand-shaped).
+  - `direction="supply"` + `target_sources` explicit → **cho phép** (user override routing; post-filter vẫn áp) — documented, có test.
+  - `direction="demand"` + supply fields khác (`visibility` khác "private" cũng hợp lệ — visibility là nhãn inert).
+- **And** `from_campaign_create_input`/`from_payload` không bị phá — FE payload cũ không gửi field mới vẫn pass.
+- **And** unit test matrix: mọi ô trong bảng + bounds `SupplyCriteria` (min_rating <0 / >5, categories=[], locations=[]) pin bằng `pytest.mark.parametrize` — không ô nào silently pass.
+- **Implementation notes:** validation tập trung `model_validator(mode="after")` trên `CampaignSpec`, không rải check ở routes/orchestrator. Ước: nhỏ.
+
+### Story 43.2: Direction-aware adapter resolution (`_for_spec` + `_for_campaign` + query builder)
+
+**As a** campaign engine,
+**I want** cả hai đường resolve adapters hiểu `spec.direction`,
+**So that** supply campaign route tới registry/procurement adapters thay vì comment-mining/demand channels — và không leak qua fallback chain nào.
+
+**Acceptance Criteria:**
+- **Given** `adapters/registry.py` `resolve_adapters_for_spec` (:139) và wrapper `resolve_adapters_for_campaign` (:680), **When** `spec.direction == "supply"`, **Then**:
+  - Adapter base thêm capability `supply_eligible: bool = False`; chỉ `enterprise` (masothue) + `muasamcong` set `True` trong phase này (decision: giữ muasamcong — tender notices bị `require_tax_id` default lọc ra khỏi corpus, documented trade-off).
+  - Nhánh supply trong `resolve_adapters_for_spec` **luôn trả kết quả** (không bao giờ fall-through sang demand heuristics/list-all): match `supply_eligible` adapters theo keyword `supply_criteria.categories`; không match → trả **toàn bộ supply_eligible** (enterprise + muasamcong).
+  - `resolve_adapters_for_campaign` propagate direction → nhánh supply skip ranking công thức icp (vert/location score demand-shaped); supply ordering = registry priority mặc định — và KHÔNG mutate `priority`/`lead_quota` trên shared adapter instances trong nhánh supply.
+  - `_build_query_for_adapter`/query synthesis: `direction="supply"` build từ `spec.query` hoặc `supply_criteria.categories + locations`; không đọc `icp_criteria` (đã reject ở 43.1).
+  - Các icp pre-filter nào chạy trên đường orchestrator phải no-op khi supply (post-filter supply xử lý riêng — story 43.3).
+- **And** `direction="demand"` → resolution y hệt hiện tại (bit-for-bit — regression test pin expected adapter set cho các ICP fixture cũ, cả wrapper).
+- **And** explicit `target_sources` vẫn thắng mọi auto-resolution ở cả hai direction (documented escape hatch).
+- **And** supply resolution không bao giờ trả demand adapters (batdongsan/chotot/shopee/social/telegram/news/websets/job_market/vn_jobs/vietnamworks/muaban_bds) — fail-closed, có test pin "query vô nghĩa vẫn chỉ trả supply_eligible".
+- **Implementation notes:** thêm nhánh direction ở đầu `_for_spec` + propagate qua `_for_campaign`; KHÔNG refactor hàm. Ước: vừa.
+
+### Story 43.3: Post-filter supply tại persist seam + NormalizedLead `rating`/`verified`
+
+**As a** campaign engine,
+**I want** supply criteria filter chạy trên leads ngay trước `ingest_batch` (đường execute thật, không phải preview planner),
+**So that** `require_tax_id`/`min_rating`/`require_verified` lọc được kết quả thật và counter filter observable được.
+
+**Acceptance Criteria:**
+- **Given** execution path `execute_and_persist`/`execute_multi_source_lead_gen` trong `lead_gen_orchestrator.py` (nơi build `lead_dicts` trước `ingest_batch` — KHÔNG phải `LeadGenPlanner`/preflight preview), **When** `direction="supply"`, **Then** post-filter chạy tại seam đó:
+  - `require_tax_id=True` → drop lead thiếu `tax_id` (counter `filtered_no_tax_id`).
+  - `min_rating>0` → drop khi `lead.rating` có giá trị và < min; `rating is None` → giữ lại + counter `unrated_kept` (field mới — mặc định adapters không trả).
+  - `require_verified=True` → chỉ giữ `verified is True` (None → drop, strict).
+  - Sparse-identity guard: supply lead phải có `company_name` hoặc `tax_id`, thiếu cả hai → drop (`filtered_sparse_identity` — ngăn merge rác vào HMAC fallback "Doanh nghiệp").
+- **And** `NormalizedLead` (`adapters/base.py`) được mở rộng `rating: float|None = None` + `verified: bool|None = None` (deliverable của story này — không phải aspirational); `enterprise` adapter set `verified=True` khi record từ registry masothue; adapter khác có thể để None.
+- **And** counters filter đậu trong `LeadGenOrchestratorResult`/result meta (implementer pin field chính xác — observability, không nuốt leads âm thầm).
+- **And** demand path không chạy post-filter này (guard `direction=="supply"`).
+- **Implementation notes:** một chỗ filter duy nhất tại persist seam; không rải vào adapters. Ước: vừa.
+
+### Story 43.4: Lead role + visibility tagging cho supply campaign
+
+**As a** downstream consumer (CRM/automations/outbound),
+**I want** leads sinh từ supply campaign mang role `supplier` + visibility label có thể trace về campaign,
+**So that** không nhầm supplier với buyer khi chạy outbound/dedup sau này.
+
+**Acceptance Criteria:**
+- **Given** supply campaign ingest qua `LeadBatchService.ingest_batch` (AD-1 funnel), **When** leads persist, **Then** `extra_metadata` mang `{"campaign_direction":"supply","lead_role":"supplier","campaign_key":<spec.name>,"visibility":<spec.visibility>}` — `campaign_key` pin = `spec.name` (không unique — documented; 2 campaign trùng tên share lineage, accepted).
+- **And** `client_id` semantics không đổi (AD-4) — role không encode vào client_id.
+- **And** demand campaign không ghi `lead_role` (diff tối thiểu).
+- **And** `visibility="poolable"` được ghi làm declaration label trên `extra_metadata` — KHÔNG gây side-effect (test pin: poolable ≠ private ở storage, nhưng không corpus nào nhận).
+- **And** accepted limitations ghi vào spec/docstring: (a) role tag là single-key last-write-wins — cùng entity qua campaign supply lẫn demand → role của lần ingest sau thắng (junction `campaign_leads(role)` deferred); (b) dedupe key `(workspace_id, value_hmac)` không chứa `tax_id` — hai pháp nhân trùng tên khác MST vẫn merge một row (mitigated: `require_tax_id` giữ tax_id của entity merge, accepted).
+- **Implementation notes:** tag tại điểm orchestrator gọi ingest — không sửa `ingest_batch`. Junction table `campaign_leads(role)` ghi deferred-work. Ước: nhỏ.
+
+### Story 43.5: FE intake "Tìm nhà cung cấp" + wire contract direction
+
+**As a** buyer-side user,
+**I want** form intake tối thiểu (cần gì / ở đâu / yêu cầu chất lượng),
+**So that** tôi submit supply campaign mà không cần hiểu toàn bộ spec (§10: UI chỉ map subset).
+
+**Acceptance Criteria:**
+- **Given** campaign create flow hiện có (`from_campaign_create_input` seam), **When** thêm lựa chọn "Tìm nhà cung cấp" (supply), **Then**:
+  - **Wire contract (pin):** payload chứa `direction: "supply"` + `supply_criteria: {categories, locations, min_rating, require_tax_id, require_verified}` ở **top-level** của campaign create input; `from_campaign_create_input`/`from_payload` được mở rộng đọc đúng key (dispatch: có `direction`/`supply_criteria` → nhánh supply; thiếu → demand như cũ).
+  - Form hỏi: `categories` (multi-select/text), `locations`, free-text `query` (optional — feed `spec.query`), `min_rating`, `require_tax_id` (default on + ghi chú "áp dụng khi tìm pháp nhân có MST"), `require_verified`.
+  - Validation client-side khớp server (categories/locations không rỗng khi supply → hiển thị lỗi thay vì 422 thô).
+- **And** demand flow hiện tại không đổi UI/UX.
+- **And** sau submit: user thấy pre-flight `CampaignPlanResponse` (sources route supply-side) trước khi launch — cùng flow demand.
+- **And** i18n vi/en đầy đủ.
+- **Implementation notes:** reuse campaign create screens hiện có — thêm mode selector + subset fields, không build trang riêng. Ước: vừa.
+
+### Story 43.6: E2E supply campaign — enterprise/masothue path thật
+
+**As a** QA,
+**I want** chạy supply campaign thật end-to-end trên dev,
+**So that** chứng minh spec→routing→filters→persist→role-tag xuyên suốt (không chỉ unit).
+
+**Acceptance Criteria:**
+- **Given** dev stack + PAT/session auth, **When** submit `CampaignSpec{direction:"supply", supply_criteria:{categories:["nhà phân phối"], locations:["Khánh Hòa"], require_tax_id:true}}` (vertical legal-entity — KHÔNG dùng BĐS vì cá nhân không có MST), **Then** supply adapters resolve = `supply_eligible` set (enterprise + muasamcong — KHÔNG batdongsan/chotot/Maps), leads persist qua `ingest_batch` với auto-table + `extra_metadata.lead_role="supplier"` + `campaign_key`.
+- **And** `require_tax_id` filter chứng minh: leads thiếu MST bị drop (counter `filtered_no_tax_id` trong result).
+- **And** demand campaign regression: chạy lại campaign demand cũ → adapter set + outcome không đổi (không silent break).
+- **And** joint-validation e2e: POST spec `match_mode="pool"` → 422; `direction="supply"` thiếu `supply_criteria` → 422 — không chạm orchestrator.
+- **And** PAT path verify (`leads:write` scope — AI-42.4 unified seam).
+- **Implementation notes:** Ước: vừa. (Runtime smoke trên dev trước khi close story, như e2e epic 42.)
+
+### Epic 43 Non-Goals
+
+- No `match_mode="pool"`/`hybrid` matching engine + no `corpus_scope="platform_b2b"` thực thi — gated platform phase (schema reject ở 43.1).
+- No `campaign_leads` junction table, no `campaign_runs`/`campaigns` table — role/visibility sống trong `extra_metadata` (documented deviation).
+- **No rate-limit/abuse guard supply** — bị cắt khỏi epic (user decision 2026-11-17): không có durable counter store nào tồn tại, fake counter tệ hơn không có. Defer đến khi có `campaign_runs` store (story riêng, platform phase).
+- No buyer-intake đầy đủ (match queue, SLA auto-refund flow) — chỉ intake form tối thiểu.
+- No Maps/Google-Maps adapter — adapter này chưa tồn tại trong code; "Maps" trong §10 là aspirational. Supply MVP = `enterprise` (masothue) + `muasamcong` (user decision: giữ cả hai, tender-noise được `require_tax_id` lọc).
+- No BĐS/rao-vặt/B2C supply routing — vertical cá nhân không có MST, cần design riêng (shared-adapter map) — phase sau.
+- No credential provisioning mới cho supply sources (dùng creds hiện có).
+- No demand-side behavior change — demand path phải bit-for-bit regression-safe.
+- Deferred (không ràng buộc epic này): PDPD consent pipeline cho comment-mining cá nhân, dedupe key chứa `tax_id` (blast radius AD-4 — accepted limitation 43.4), role-array cho entity dual-role.
