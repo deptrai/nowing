@@ -264,22 +264,26 @@ class TestOldPayloadRegression:
         assert spec.name == "FE Campaign"
         assert spec.workspace_id == 7
 
-    def test_from_campaign_create_input_still_rejects_supply_direction_keys(self) -> None:
-        """FE payload mang direction='supply' + supply_criteria → 422 (guard tạm 43.5).
+    def test_from_campaign_create_input_accepts_supply_direction_keys(self) -> None:
+        """FE payload mang direction='supply' + supply_criteria → parse đúng spec (43.5).
 
-        Trước đây converter âm thầm bỏ các key này → supply thành demand. Giờ
-        converter raise cho tới khi 43.5 wire direction qua FE contract.
+        Story 43.5 gỡ guard tạm: converter giờ wire direction qua FE contract
+        thay vì raise. icp_config phải vắng mặt (supply cấm ICP demand).
         """
         payload = {
             "name": "FE Campaign",
             "workspace_id": 7,
             "direction": "supply",
             "supply_criteria": _supply_criteria(),
-            "icp_config": {"locations": ["Hà Nội"]},
             "source_budget_config": {"sources": ["google_maps"]},
         }
-        with pytest.raises(ValueError, match="not supported via CampaignCreateInput"):
-            CampaignSpec.from_campaign_create_input(payload)
+        spec = CampaignSpec.from_campaign_create_input(payload)
+        assert spec.direction == "supply"
+        assert spec.supply_criteria is not None
+        assert spec.supply_criteria.categories == ["trầm hương"]
+        assert spec.supply_criteria.locations == ["Khánh Hòa"]
+        assert spec.supply_criteria.require_tax_id is True
+        assert spec.icp_criteria == ICPCriteria()
 
     @pytest.mark.parametrize(
         "key,val",

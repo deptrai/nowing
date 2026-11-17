@@ -50,6 +50,17 @@ export interface CampaignBuilderState {
 	isPlanning: boolean;
 	workspaceId: string | number;
 
+	// Supply mode (Epic 43.5): "Tìm nhà cung cấp"
+	campaignMode: "demand" | "supply";
+	supplyCategories: string[];
+	supplyCategoryInput: string;
+	supplyLocations: string[];
+	supplyLocationInput: string;
+	supplyQuery: string;
+	supplyMinRating: number;
+	supplyRequireTaxId: boolean;
+	supplyRequireVerified: boolean;
+
 	smokeTestResult: import("@/contracts/types/campaign.types").LeadGenOrchestratorResult | null;
 	smokeTestHistory: import("@/atoms/leads/leads-canvas.atoms").SmokeTestRun[];
 	activeSmokeTestResult: import("@/atoms/leads/leads-canvas.atoms").SmokeTestRun | null;
@@ -108,6 +119,18 @@ export interface UseCampaignBuilderReturn extends CampaignBuilderState {
 	setScheduleType: (value: LaunchConfig["schedule_type"]) => void;
 	setCronExp: (value: string) => void;
 	setExportDestination: (value: CampaignBuilderState["exportDestination"]) => void;
+
+	setCampaignMode: (value: "demand" | "supply") => void;
+	addSupplyCategory: () => void;
+	removeSupplyCategory: (index: number) => void;
+	setSupplyCategoryInput: (value: string) => void;
+	addSupplyLocation: () => void;
+	removeSupplyLocation: (index: number) => void;
+	setSupplyLocationInput: (value: string) => void;
+	setSupplyQuery: (value: string) => void;
+	setSupplyMinRating: (value: number) => void;
+	setSupplyRequireTaxId: (value: boolean) => void;
+	setSupplyRequireVerified: (value: boolean) => void;
 
 	estimatedCost: number;
 

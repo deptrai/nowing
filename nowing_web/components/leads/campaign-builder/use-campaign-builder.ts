@@ -73,6 +73,17 @@ export function useCampaignBuilder({
 	const [maxDailySpend] = useState<number>(500_000);
 
 	const [locationProfile, setLocationProfile] = useState<LocationProfile | null>(null);
+
+	// Supply mode (Epic 43.5): "Tìm nhà cung cấp" — wire top-level direction + supply_criteria
+	const [campaignMode, setCampaignMode] = useState<"demand" | "supply">("demand");
+	const [supplyCategories, setSupplyCategories] = useState<string[]>([]);
+	const [supplyCategoryInput, setSupplyCategoryInput] = useState("");
+	const [supplyLocations, setSupplyLocations] = useState<string[]>([]);
+	const [supplyLocationInput, setSupplyLocationInput] = useState("");
+	const [supplyQuery, setSupplyQuery] = useState("");
+	const [supplyMinRating, setSupplyMinRating] = useState<number>(0);
+	const [supplyRequireTaxId, setSupplyRequireTaxId] = useState<boolean>(true);
+	const [supplyRequireVerified, setSupplyRequireVerified] = useState<boolean>(false);
 	const [activePlan, setActivePlan] = useState<CampaignPlanResponse | null>(null);
 	const [isPlanning, setIsPlanning] = useState(false);
 
@@ -144,6 +155,16 @@ export function useCampaignBuilder({
 	const removeNegativeKeyword = (index: number) =>
 		removeItem(index, negativeKeywords, setNegativeKeywords);
 
+	const addSupplyCategory = () =>
+		addItem(supplyCategoryInput, supplyCategories, setSupplyCategories, setSupplyCategoryInput);
+	const removeSupplyCategory = (index: number) =>
+		removeItem(index, supplyCategories, setSupplyCategories);
+
+	const addSupplyLocation = () =>
+		addItem(supplyLocationInput, supplyLocations, setSupplyLocations, setSupplyLocationInput);
+	const removeSupplyLocation = (index: number) =>
+		removeItem(index, supplyLocations, setSupplyLocations);
+
 	const toggleIntent = (intent: CampaignIntent) => {
 		if (selectedIntents.includes(intent)) {
 			if (selectedIntents.length > 1) {
@@ -169,6 +190,52 @@ export function useCampaignBuilder({
 	};
 
 	const buildPlanSpec = (): CampaignCreateInput => {
+		if (campaignMode === "supply") {
+			const launchConfig: LaunchConfig = {
+				schedule_type: scheduleType,
+				cron_expression: scheduleType === "recurring" ? cronExp : null,
+				auto_start: autoStart,
+				export_destination: exportDestination,
+				notification_webhook: null,
+			};
+			return {
+				name: campaignName,
+				description: campaignDesc || null,
+				workspace_id: Number(workspaceId),
+				direction: "supply",
+				supply_criteria: {
+					categories: supplyCategories,
+					locations: supplyLocations,
+					require_tax_id: supplyRequireTaxId,
+					min_rating: supplyMinRating,
+					require_verified: supplyRequireVerified,
+				},
+				query: supplyQuery || null,
+				icp_config: {
+					template: selectedTemplate,
+					target_industries: [],
+					locations: [],
+					company_size_range: "",
+					tech_stack: [],
+					intents: [],
+					negative_keywords: [],
+					reverse_icp_url: null,
+					custom_instructions: null,
+					location_profile: null,
+				},
+				source_budget_config: {
+					sources: selectedSources,
+					expected_leads_target: expectedLeadsTarget,
+					max_daily_spend_vnd: maxDailySpend,
+					min_fit_score: 0,
+					min_intent_score: 0,
+					max_contacts_per_lead: maxContactsPerLead,
+					exclude_dnc: excludeDnc,
+					auto_unlock_verified_phones: autoUnlockPhones,
+				},
+				launch_config: launchConfig,
+			};
+		}
 		const icpConfig: IcpConfig = {
 			template: selectedTemplate,
 			target_industries: targetIndustries,
@@ -218,6 +285,9 @@ export function useCampaignBuilder({
 			toast.error("Phải chọn ít nhất 1 nguồn dữ liệu");
 			return;
 		}
+		if (campaignMode === "supply" && !validateSupplyForm()) {
+			return;
+		}
 		try {
 			setIsPlanning(true);
 			const spec = buildPlanSpec();
@@ -236,6 +306,9 @@ export function useCampaignBuilder({
 	const handleSmokeTest = async () => {
 		if (selectedSources.length === 0) {
 			toast.error("Phải chọn ít nhất 1 nguồn dữ liệu");
+			return;
+		}
+		if (campaignMode === "supply" && !validateSupplyForm()) {
 			return;
 		}
 		try {
@@ -304,6 +377,9 @@ export function useCampaignBuilder({
 			toast.error("Phải chọn ít nhất 1 nguồn dữ liệu");
 			return;
 		}
+		if (campaignMode === "supply" && !validateSupplyForm()) {
+			return;
+		}
 		try {
 			setIsSubmitting(true);
 			const spec = buildPlanSpec();
@@ -368,6 +444,23 @@ export function useCampaignBuilder({
 		} finally {
 			setIsAnalyzingIcp(false);
 		}
+	};
+
+	// Client validation mirror server (43.5): non-empty sau trim, min_rating ∈ [0,5]
+	const validateSupplyForm = (): boolean => {
+		if (supplyCategories.filter((c) => c.trim()).length === 0) {
+			toast.error("Phải chọn ít nhất 1 ngành hàng nhà cung cấp");
+			return false;
+		}
+		if (supplyLocations.filter((l) => l.trim()).length === 0) {
+			toast.error("Phải chọn ít nhất 1 địa điểm");
+			return false;
+		}
+		if (supplyMinRating < 0 || supplyMinRating > 5) {
+			toast.error("Đánh giá tối thiểu phải trong khoảng 0 đến 5");
+			return false;
+		}
+		return true;
 	};
 
 	// pi-lens-ignore: ast-grep:no-flag-argument -- andLaunch is a meaningful boolean flag used at 2 call sites
@@ -435,6 +528,16 @@ export function useCampaignBuilder({
 		isPlanning,
 		workspaceId,
 
+		campaignMode,
+		supplyCategories,
+		supplyCategoryInput,
+		supplyLocations,
+		supplyLocationInput,
+		supplyQuery,
+		supplyMinRating,
+		supplyRequireTaxId,
+		supplyRequireVerified,
+
 		smokeTestResult: activeSmokeTestResult?.result ?? null,
 		smokeTestHistory,
 		activeSmokeTestResult,
@@ -492,6 +595,18 @@ export function useCampaignBuilder({
 		setScheduleType,
 		setCronExp,
 		setExportDestination,
+
+		setCampaignMode,
+		addSupplyCategory,
+		removeSupplyCategory,
+		setSupplyCategoryInput,
+		addSupplyLocation,
+		removeSupplyLocation,
+		setSupplyLocationInput,
+		setSupplyQuery,
+		setSupplyMinRating,
+		setSupplyRequireTaxId,
+		setSupplyRequireVerified,
 
 		buildPlanSpec,
 		handleAnalyzeReverseIcp,

@@ -9,6 +9,7 @@ import {
 	Layers,
 	Loader2,
 	MapPin,
+	PackageSearch,
 	Plus,
 	Sparkles,
 	Target,
@@ -40,6 +41,193 @@ export function IcpBuilderStep({
 	const t = useTranslations("leads");
 	return (
 		<div className="space-y-6">
+			{/* Mode selector (Epic 43.5): demand vs supply */}
+			<Card className="bg-zinc-900/60 border-zinc-800/80">
+				<CardContent className="pt-5">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<button
+							type="button"
+							onClick={() => builder.setCampaignMode("demand")}
+							className={`text-left p-4 rounded-xl border cursor-pointer transition-all ${
+								builder.campaignMode === "demand"
+									? "bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500"
+									: "bg-zinc-950/40 border-zinc-800/80 hover:border-zinc-700 text-zinc-300"
+							}`}
+						>
+							<h4
+								className={`text-xs font-bold ${builder.campaignMode === "demand" ? "text-emerald-400" : "text-zinc-200"}`}
+							>
+								{t("mode_demand_title")}
+							</h4>
+							<p className="text-[11px] text-zinc-400 mt-1">{t("mode_demand_desc")}</p>
+						</button>
+						<button
+							type="button"
+							onClick={() => builder.setCampaignMode("supply")}
+							className={`text-left p-4 rounded-xl border cursor-pointer transition-all ${
+								builder.campaignMode === "supply"
+									? "bg-blue-500/10 border-blue-500/50 ring-1 ring-blue-500"
+									: "bg-zinc-950/40 border-zinc-800/80 hover:border-zinc-700 text-zinc-300"
+							}`}
+						>
+							<h4
+								className={`text-xs font-bold ${builder.campaignMode === "supply" ? "text-blue-400" : "text-zinc-200"}`}
+							>
+								{t("mode_supply_title")}
+							</h4>
+							<p className="text-[11px] text-zinc-400 mt-1">{t("mode_supply_desc")}</p>
+						</button>
+					</div>
+				</CardContent>
+			</Card>
+
+			{builder.campaignMode === "supply" && (
+				<Card className="bg-zinc-900/60 border-blue-900/40">
+					<CardHeader>
+						<CardTitle className="text-sm flex items-center gap-2 text-zinc-100">
+							<PackageSearch className="w-4 h-4 text-blue-400" />
+							<span>{t("supply_criteria_title")}</span>
+						</CardTitle>
+						<CardDescription className="text-xs text-zinc-400">
+							{t("supply_criteria_desc")}
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div>
+							<Label className="text-xs text-zinc-300">{t("supply_categories")}</Label>
+							<div className="flex gap-2 mt-1.5">
+								<Input
+									value={builder.supplyCategoryInput}
+									onChange={(e) => builder.setSupplyCategoryInput(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.preventDefault();
+											builder.addSupplyCategory();
+										}
+									}}
+									placeholder={t("supply_categories_placeholder")}
+									className="text-xs bg-zinc-950/70 border-zinc-800"
+								/>
+								<Button
+									type="button"
+									size="sm"
+									variant="secondary"
+									onClick={builder.addSupplyCategory}
+								>
+									<Plus className="w-3.5 h-3.5" />
+								</Button>
+							</div>
+							<div className="flex flex-wrap gap-1.5 mt-2">
+								{builder.supplyCategories.map((cat, idx) => (
+									<span
+										key={cat}
+										className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] bg-blue-500/10 text-blue-300 border border-blue-500/20"
+									>
+										{cat}
+										<X
+											className="w-3 h-3 cursor-pointer hover:text-white"
+											onClick={() => builder.removeSupplyCategory(idx)}
+										/>
+									</span>
+								))}
+							</div>
+						</div>
+
+						<div>
+							<Label className="text-xs text-zinc-300">{t("supply_locations")}</Label>
+							<div className="flex gap-2 mt-1.5">
+								<Input
+									value={builder.supplyLocationInput}
+									onChange={(e) => builder.setSupplyLocationInput(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.preventDefault();
+											builder.addSupplyLocation();
+										}
+									}}
+									placeholder={t("supply_locations_placeholder")}
+									className="text-xs bg-zinc-950/70 border-zinc-800"
+								/>
+								<Button
+									type="button"
+									size="sm"
+									variant="secondary"
+									onClick={builder.addSupplyLocation}
+								>
+									<Plus className="w-3.5 h-3.5" />
+								</Button>
+							</div>
+							<div className="flex flex-wrap gap-1.5 mt-2">
+								{builder.supplyLocations.map((loc, idx) => (
+									<span
+										key={loc}
+										className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] bg-zinc-800 text-zinc-200 border border-zinc-700"
+									>
+										<MapPin className="w-3 h-3 text-blue-400" />
+										{loc}
+										<X
+											className="w-3 h-3 cursor-pointer hover:text-white"
+											onClick={() => builder.removeSupplyLocation(idx)}
+										/>
+									</span>
+								))}
+							</div>
+						</div>
+
+						<div>
+							<Label className="text-xs text-zinc-300">{t("supply_query")}</Label>
+							<Input
+								value={builder.supplyQuery}
+								onChange={(e) => builder.setSupplyQuery(e.target.value)}
+								placeholder={t("supply_query_placeholder")}
+								className="bg-zinc-950/70 border-zinc-800 text-xs mt-1.5"
+							/>
+						</div>
+
+						<div>
+							<Label className="text-xs text-zinc-300">{t("supply_min_rating")}</Label>
+							<div className="flex items-center gap-3 mt-1.5">
+								<input
+									type="range"
+									min={0}
+									max={5}
+									step={0.5}
+									value={builder.supplyMinRating}
+									onChange={(e) => builder.setSupplyMinRating(Number(e.target.value))}
+									className="flex-1 accent-blue-500"
+								/>
+								<span className="text-xs text-zinc-200 w-10 text-right">
+									{builder.supplyMinRating}
+								</span>
+							</div>
+						</div>
+
+						<div className="flex flex-col gap-2 pt-1">
+							<label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+								<input
+									type="checkbox"
+									checked={builder.supplyRequireTaxId}
+									onChange={(e) => builder.setSupplyRequireTaxId(e.target.checked)}
+									className="accent-blue-500"
+								/>
+								{t("supply_require_tax_id")}
+							</label>
+							<label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+								<input
+									type="checkbox"
+									checked={builder.supplyRequireVerified}
+									onChange={(e) => builder.setSupplyRequireVerified(e.target.checked)}
+									className="accent-blue-500"
+								/>
+								{t("supply_require_verified")}
+							</label>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
+			{builder.campaignMode === "demand" && (
+				<>
 			<Card className="bg-zinc-900/60 border-zinc-800/80">
 				<CardHeader>
 					<CardTitle className="text-base flex items-center gap-2 text-zinc-100">
@@ -358,6 +546,8 @@ export function IcpBuilderStep({
 					</CardContent>
 				</Card>
 			</div>
+				</>
+			)}
 
 			<div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
 				{onCancel && (

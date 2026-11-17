@@ -2,8 +2,8 @@
 title: 'Story 43.5 — FE intake "Tìm nhà cung cấp" + wire contract'
 type: 'feature'
 created: '2026-11-17'
-status: 'draft'
-baseline_revision: ''
+status: 'in-progress'
+baseline_revision: '96fca6bc0b2ef7165f096629eca1c32464e29a64'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:

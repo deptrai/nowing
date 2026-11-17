@@ -88,10 +88,28 @@ export const campaignSchema = z.object({
 
 export type Campaign = z.infer<typeof campaignSchema>;
 
+// Supply criteria (Epic 43.5) — wire top-level cùng direction trong create payload
+export const supplyCriteriaSchema = z.object({
+	categories: z
+		.array(z.string().trim().min(1))
+		.min(1, "Phải chọn ít nhất 1 ngành hàng"),
+	locations: z
+		.array(z.string().trim().min(1))
+		.min(1, "Phải chọn ít nhất 1 địa điểm"),
+	require_tax_id: z.boolean().default(true),
+	min_rating: z.number().min(0).max(5).default(0),
+	require_verified: z.boolean().default(false),
+});
+
+export type SupplyCriteria = z.infer<typeof supplyCriteriaSchema>;
+
 export const campaignCreateInputSchema = z.object({
 	name: z.string().min(1, "Tên chiến dịch không được để trống"),
 	description: z.string().nullable().optional(),
 	workspace_id: z.number().optional(),
+	direction: z.enum(["demand", "supply"]).optional(),
+	supply_criteria: supplyCriteriaSchema.optional(),
+	query: z.string().nullable().optional(),
 	icp_config: icpConfigSchema,
 	source_budget_config: sourceBudgetConfigSchema,
 	launch_config: launchConfigSchema,

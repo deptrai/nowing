@@ -3096,7 +3096,22 @@
 		"spreadsheet_id_label": "ID Bảng tính",
 		"empty_no_leads_title": "Chưa có lead",
 		"empty_no_leads_hint": "Săn lead qua một cuộc trò chuyện với trợ lý AI.",
-		"empty_no_leads_cta": "Chưa có lead — săn qua chat"
+		"empty_no_leads_cta": "Chưa có lead — săn qua chat",
+		"mode_demand_title": "Tìm khách hàng (Demand)",
+		"mode_demand_desc": "Săn lead buyer: khách hàng có nhu cầu mua sản phẩm/dịch vụ của bạn",
+		"mode_supply_title": "Tìm nhà cung cấp (Supply)",
+		"mode_supply_desc": "Săn lead supplier: nhà cung cấp phù hợp với nhu cầu mua hàng của bạn",
+		"supply_criteria_title": "Tiêu chí tìm nhà cung cấp",
+		"supply_criteria_desc": "Định nghĩa ngành hàng, địa bàn và bộ lọc chất lượng cho nhà cung cấp mục tiêu",
+		"supply_categories": "Ngành hàng nhà cung cấp",
+		"supply_categories_placeholder": "Nhập ngành hàng & nhấn Enter (vd: vải, dệt may...)",
+		"supply_locations": "Địa bàn tìm kiếm",
+		"supply_locations_placeholder": "Nhập tỉnh/thành & nhấn Enter (vd: Khánh Hòa...)",
+		"supply_query": "Từ khóa tìm kiếm tự do (tùy chọn)",
+		"supply_query_placeholder": "Vd: vải nhuộm tự nhiên xuất khẩu...",
+		"supply_min_rating": "Đánh giá tối thiểu (0 = không lọc)",
+		"supply_require_tax_id": "Chỉ nhận nhà cung cấp có MST (Mã số thuế)",
+		"supply_require_verified": "Chỉ nhận nhà cung cấp đã xác thực"
 	},
 	"bulkOps": {
 		"title": "Thao tác Hàng loạt Quản trị",

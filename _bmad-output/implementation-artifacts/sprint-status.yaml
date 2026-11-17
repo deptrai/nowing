@@ -459,7 +459,7 @@ development_status:
   43-2-direction-aware-adapter-resolution-registry: done
   43-3-supply-post-filter-persist-seam-normalizedlead: done
   43-4-lead-role-visibility-tagging-supply: done
-  43-5-fe-intake-tìm-nhà-cung-cấp-wire-contract: backlog
+  43-5-fe-intake-tìm-nhà-cung-cấp-wire-contract: done
   43-6-e2e-supply-campaign-enterprise-masothue: backlog
   epic-43-retrospective: backlog
 validation_reports:

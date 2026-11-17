@@ -241,7 +241,12 @@ class CampaignSpec(BaseModel):
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Accept either a declarative CampaignSpec dict or a frontend CampaignCreateInput dict."""
-        if "icp_config" in payload or "source_budget_config" in payload:
+        if (
+            "icp_config" in payload
+            or "source_budget_config" in payload
+            or "direction" in payload
+            or "supply_criteria" in payload
+        ):
             return cls.from_campaign_create_input(payload)
         return cls.model_validate(payload)
 
@@ -249,14 +254,17 @@ class CampaignSpec(BaseModel):
     def from_campaign_create_input(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Convert frontend CampaignCreateInput shape into internal CampaignSpec.
 
-        Epic 43: direction-scoped keys non-default phải 422, không được lọt qua
-        converter này — nếu không supply payload sẽ silently trở thành demand
-        campaign. Guard này gỡ khi Story 43.5 wire direction qua FE contract.
+        Epic 43.5: wire ``direction="supply"`` + ``supply_criteria`` top-level
+        qua FE contract. Direction literal khác vẫn 422; match_mode/corpus_scope/
+        visibility non-default vẫn reject (platform phase chưa mở).
         """
+        direction = payload.get("direction", "demand")
+        if direction not in ("demand", "supply"):
+            raise ValueError(
+                f"direction must be 'demand' or 'supply', got {direction!r}"
+            )
         if (
-            payload.get("direction", "demand") != "demand"
-            or payload.get("supply_criteria") is not None
-            or payload.get("match_mode", "mine") != "mine"
+            payload.get("match_mode", "mine") != "mine"
             or payload.get("corpus_scope", "workspace") != "workspace"
             or payload.get("visibility", "private") != "private"
         ):
@@ -266,6 +274,52 @@ class CampaignSpec(BaseModel):
         icp_config = payload.get("icp_config") or {}
         source_budget_config = payload.get("source_budget_config") or {}
         launch_config = payload.get("launch_config") or {}
+
+        # Supply branch: đọc supply_criteria top-level, bỏ qua ICP demand mapping
+        if direction == "supply":
+            if payload.get("icp_config"):
+                raise ValueError(
+                    "direction='supply' must not set non-default icp_criteria"
+                )
+            supply_criteria = SupplyCriteria(**(payload.get("supply_criteria") or {}))
+            location_profile = CampaignSpec._derive_supply_location_profile(
+                supply_criteria.locations
+            )
+            sources_list = [
+                s for s in source_budget_config.get("sources", []) if s
+            ]
+            total_target = int(
+                source_budget_config.get("expected_leads_target", 50) or 50
+            )
+            num_sources = max(1, len(sources_list))
+            per_source_target = min(1000, max(10, total_target // num_sources))
+            budgets: list[SourceBudget] = [
+                SourceBudget(
+                    source_name=src,
+                    max_leads=per_source_target,
+                    priority=1,
+                    auto_unlock=source_budget_config.get(
+                        "auto_unlock_verified_phones", False
+                    ),
+                )
+                for src in sources_list
+            ]
+            return cls(
+                name=payload.get("name", "Campaign"),
+                workspace_id=payload.get("workspace_id", 1),
+                query=payload.get("query") or "",
+                direction="supply",
+                supply_criteria=supply_criteria,
+                source_budgets=budgets,
+                target_sources=list(source_budget_config.get("sources", [])),
+                excluded_sources=[],
+                excluded_identities=payload.get("excluded_identities") or [],
+                max_total_leads=source_budget_config.get(
+                    "expected_leads_target", 50
+                ),
+                location_profile=location_profile,
+                metadata={"launch_config": launch_config},
+            )
 
         # Map ICP fields
         location_profile_raw = icp_config.get("location_profile")
@@ -293,6 +347,13 @@ class CampaignSpec(BaseModel):
         keywords = icp_config.get("keywords") or icp_config.get("target_keywords") or []
         if isinstance(keywords, str):
             keywords = [k.strip() for k in keywords.split(",") if k.strip()]
+
+        # Demand + supply_criteria → conflict (AD-5): branch demand không map
+        # supply_criteria nên phải raise tường minh tại đây
+        if payload.get("supply_criteria") is not None:
+            raise ValueError(
+                "supply_criteria is only allowed when direction='supply'"
+            )
 
         icp_criteria = ICPCriteria(
             target_industries=icp_config.get("target_industries", []),
@@ -339,10 +400,12 @@ class CampaignSpec(BaseModel):
             query_parts.extend(icp_config["locations"][:2])
         base_query = " ".join(query_parts) if query_parts else "Leads Campaign"
 
+        # Demand branch giữ nguyên contract cũ + gắn direction literal
         return cls(
             name=payload.get("name", "Campaign"),
             workspace_id=payload.get("workspace_id", 1),
             query=base_query,
+            direction="demand",
             icp_criteria=icp_criteria,
             intent_tags=icp_config.get("intents", []),
             source_budgets=budgets,
@@ -353,3 +416,20 @@ class CampaignSpec(BaseModel):
             location_profile=location_profile,
             metadata={"launch_config": launch_config},
         )
+
+    @staticmethod
+    def _derive_supply_location_profile(
+        locations: list[str],
+    ) -> LocationProfilePayload | None:
+        """D3: derive location_profile từ supply_criteria.locations[0].
+
+        Chỉ dùng cho preflight coverage/telemetry — resolve free-text VN
+        province về code chuẩn khi match, fallback giữ nguyên text.
+        """
+        if not locations:
+            return None
+        raw = locations[0]
+        from app.services.location_normalize import resolve_city_code
+
+        code = resolve_city_code(raw) or raw
+        return LocationProfilePayload(province_code=code, province_name=raw)

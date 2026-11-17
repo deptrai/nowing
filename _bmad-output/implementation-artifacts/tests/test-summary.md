@@ -312,3 +312,43 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remainin
 registration order (không đọc priority bị demand mutate). Dict-spec direction qua
 `_spec_direction` helper; categories non-list guard. `target_sources` explicit
 thắng direction cả 2 phía (AC1 đã chốt ngoại lệ).
+
+## Spec 43.3 — Supply post-filter tại persist seam (2026-11-17)
+
+| Test | File | Kết quả |
+|---|---|---|
+| Post-filter matrix (24 test) | tests/unit/lead_intelligence/test_supply_post_filter.py | 24 passed |
+| — tax_id drop/keep, min_rating D3 fail-open (unrated_kept), verified D2 strict | cùng file | pinned |
+| — sparse_identity guard, outside_locations (toàn quốc/* tắt guard) | cùng file | pinned |
+| — DEMAND_UNTOUCHED + seam integration (filter trước ingest, all-dropped skip) | cùng file | pinned |
+| Regression | tests/unit/lead_intelligence/ | 382 passed |
+
+**Ghi chú:** commit `0d0e39f6e`. Counters vào `LeadGenOrchestratorResult.supply_filter_counters`
+(`filtered_no_tax_id`, `filtered_min_rating`, `filtered_unverified`, `filtered_sparse_identity`,
+`filtered_outside_locations`, `unrated_kept`). Enterprise `verified` = có tax_code (masothue True,
+đấu thầu False). Lần 1 implementer fabricate report — retry với proof `git status` bắt buộc.
+
+## Spec 43.4 — Lead role/visibility tagging (2026-11-17)
+
+| Test | File | Kết quả |
+|---|---|---|
+| Tagging matrix (7 test) | tests/unit/lead_intelligence/test_supply_role_tagging.py | 7 passed |
+| — SUPPLY_TAGGED (4 keys), DEMAND_UNTAGGED, EXTRA_METADATA_MERGE, POOLABLE_LABEL, ROLE_LWW | cùng file | pinned |
+| Regression | tests/unit/lead_intelligence/ | 389 passed |
+
+**Ghi chú:** commit `96fca6bc0`. 4 keys `lead_role/campaign_direction/campaign_key/visibility`
+inject tại build site trước `ingest_batch`; merge giữ keys có sẵn; role LWW qua upsert
+JSONB excluded-wins (đúng D2/D3 spec).
+
+## Spec 43.5 — FE intake "Tìm nhà cung cấp" + wire contract (2026-11-18)
+
+| Test | File | Kết quả |
+|---|---|---|
+| Wire contract matrix (15 test) | tests/unit/lead_intelligence/test_supply_wire_contract.py | 15 passed |
+| — SUPPLY_WIRE_OK, derived location_profile, require_tax default, invalid literal, guard remains | cùng file | pinned |
+| Updated guard test | tests/unit/lead_intelligence/test_campaign_spec_direction.py | pass |
+| Regression | tests/unit/lead_intelligence/ | 405 passed |
+
+**Ghi chú:** chưa commit. FE campaign-builder thêm mode selector demand/supply, wire
+top-level `direction` + `supply_criteria` (D1); `location_profile` derive từ
+locations[0] qua `resolve_city_code` (D3); route guard 422 vẫn giữ (43.6 mới gỡ).

@@ -1134,7 +1134,22 @@
 		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs.",
 		"empty_no_leads_title": "아직 리드가 없습니다",
 		"empty_no_leads_hint": "어시스턴트와의 대화를 통해 리드를 찾아보세요.",
-		"empty_no_leads_cta": "채팅으로 리드 찾기"
+		"empty_no_leads_cta": "채팅으로 리드 찾기",
+		"mode_demand_title": "Find customers (Demand)",
+		"mode_demand_desc": "Hunt buyer leads: customers looking to buy your products/services",
+		"mode_supply_title": "Find suppliers (Supply)",
+		"mode_supply_desc": "Hunt supplier leads: suppliers matching your sourcing needs",
+		"supply_criteria_title": "Supplier search criteria",
+		"supply_criteria_desc": "Define categories, locations and quality filters for target suppliers",
+		"supply_categories": "Supplier categories",
+		"supply_categories_placeholder": "Enter a category & press Enter (e.g. fabric, textiles...)",
+		"supply_locations": "Search locations",
+		"supply_locations_placeholder": "Enter a province & press Enter (e.g. Khanh Hoa...)",
+		"supply_query": "Free-text search query (optional)",
+		"supply_query_placeholder": "E.g. natural dyed export fabric...",
+		"supply_min_rating": "Minimum rating (0 = no filter)",
+		"supply_require_tax_id": "Only suppliers with a tax ID",
+		"supply_require_verified": "Only verified suppliers"
 	},
 	"usage": {
 		"auto_extract_budget_title": "Auto-Extract Budget",
