@@ -254,3 +254,12 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remainin
 - `pytest tests/unit/routes -x -q` → **384 passed** — không test cũ gãy.
 - `dnc_routes`: 4 seam (list→`leads:read`, create/delete/import→`leads:write`); `lead_pipeline_routes`: 12 seam (4 read→`leads:read`, 8 mutation→`leads:write`; spend-cap/lead-capacity→`leads:write` theo D1).
 - Domain `leads:*` đóng hoàn toàn sau spec này; correction: pipeline không bypass api-access gate (`RequireWorkspaceAccess` đã chạy gate) — gap duy nhất là PAT scope.
+
+## Epic 42 retro — boundary fixes (2026-11-17)
+
+- Boundary review (25 file giao nhau, diff 2,872 dòng) phát hiện 2 high — đã fix cùng commit `a8e4cb8c2`:
+  1. `ingest_stream_leads_to_db`: stmt build trước `_resolve_lead_table_ids` + `rec` thiếu `table_id` → stream-path auto-table là dead code (lead NULL + table rác). Fix: reorder + `rec["table_id"]` + `on_conflict` coalesce.
+  2. `generate_lead_hmac` không normalize domain → stream/radar path raw domain sinh hmac khác batch path → duplicate lead cùng entity. Fix: `normalize_domain` bên trong hmac (idempotent batch path).
+- `pytest tests/unit/lead_intelligence/test_lead_stream_buffer.py` → **8 passed** (3 regression mới: hmac normalize, stmt chứa table_id, ordering resolver→stmt qua fake session).
+- `pytest tests/unit/lead_intelligence tests/unit/services/test_lead_batch_service.py tests/integration/lead_batch/` → **355 passed** — không hồi quy.
+- Medium findings → action items AI-42.7 (PAT mint validate scopes mọi token_kind) + AI-42.8 (reset `_synthesis_workspace_id` ContextVar).

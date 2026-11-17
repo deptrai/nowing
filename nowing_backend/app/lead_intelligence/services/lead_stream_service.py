@@ -48,7 +48,12 @@ def generate_lead_hmac(
     workspace_id: int, company_name: str, domain: str | None = None
 ) -> str:
     """Generate SHA-256 HMAC for lead deduplication."""
-    key = f"{workspace_id}:{domain or ''}:{company_name.strip().lower()}"
+    # Normalize domain inside hmac — batch path đã normalize trước (idempotent),
+    # stream/radar path truyền raw ("https://Acme.com/x" vs "acme.com" trước đây
+    # sinh 2 hmac → duplicate row cho cùng lead). Fix boundary review 42-retro.
+    from app.lead_intelligence.dnc.normalizer import normalize_domain
+
+    key = f"{workspace_id}:{normalize_domain(domain) or ''}:{company_name.strip().lower()}"
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
@@ -76,6 +81,9 @@ def build_lead_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
             "fit_score": lead.get("fit_score", 0.0),
             "intent_score": lead.get("intent_score", 0.0),
             "status": lead.get("status", "new"),
+            # 42.7 fix: rec phải mang table_id do _resolve_lead_table_ids gán —
+            # trước đây rec thiếu key này nên resolve chạy nhưng không ghi được.
+            "table_id": lead.get("table_id"),
         }
         unique_records[(ws_id, hmac)] = rec
 
@@ -87,6 +95,7 @@ def build_lead_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
             "intent_score": stmt.excluded.intent_score,
             "status": stmt.excluded.status,
             "company_name": stmt.excluded.company_name,
+            "table_id": stmt.excluded.table_id,
         },
     )
     return upsert_stmt
@@ -200,10 +209,6 @@ async def ingest_stream_leads_to_db(
     if not leads:
         return 0
 
-    stmt = build_lead_upsert_stmt(leads)
-    if stmt is None:
-        return 0
-
     async with async_session_maker() as session, session.begin():
         # Story 42.7: scraper-path leads arrive without table_id — resolve
         # keyed default tables before the upsert so they never stay NULL.
@@ -211,6 +216,11 @@ async def ingest_stream_leads_to_db(
         from app.services.lead_batch_service import LeadBatchService
 
         await LeadBatchService()._resolve_lead_table_ids(session, workspace_id, leads)
+        # Build stmt SAU resolve — trước đây build trước + rec thiếu table_id
+        # nên resolve chỉ tạo table rác mà lead vẫn NULL (boundary review 42-retro).
+        stmt = build_lead_upsert_stmt(leads)
+        if stmt is None:
+            return 0
         await session.execute(stmt)
 
     return len(leads)

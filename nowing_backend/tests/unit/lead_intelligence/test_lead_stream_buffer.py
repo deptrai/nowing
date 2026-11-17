@@ -205,3 +205,98 @@ class TestLeadStreamIdempotentUpsert:
         assert "workspace_id" in compiled_sql
         assert "value_hmac" in compiled_sql
         assert "do update" in compiled_sql
+
+
+# ---------------------------------------------------------------------------
+class TestStreamIngestBoundaryFixes:
+    """Regression tests cho 2 boundary findings của retro Epic 42.
+
+    - HMAC divergence: domain phải normalize bên trong generate_lead_hmac để
+      batch/stream/radar path sinh cùng key cho cùng lead.
+    - Stream-path auto-table: _resolve_lead_table_ids phải chạy TRƯỚC khi
+      build upsert stmt, và rec phải mang table_id — trước đây stmt build
+      trước + rec thiếu key nên table_id không bao giờ được ghi.
+    """
+
+    def test_generate_lead_hmac_normalizes_domain(self) -> None:
+        """Domain raw (protocol/case/path) và domain chuẩn phải ra cùng hmac."""
+        from app.lead_intelligence.services.lead_stream_service import (
+            generate_lead_hmac,
+        )
+
+        assert generate_lead_hmac(1, "Acme", "https://ACME.com/x?y=1") == generate_lead_hmac(
+            1, "Acme", "acme.com"
+        )
+
+    def test_build_stmt_includes_table_id(self) -> None:
+        """Upsert stmt phải ghi table_id (insert values + ON CONFLICT coalesce)."""
+        from sqlalchemy.dialects import postgresql
+
+        from app.lead_intelligence.services.lead_stream_service import (
+            build_lead_upsert_stmt,
+        )
+
+        sql = str(
+            build_lead_upsert_stmt(
+                [{"workspace_id": 1, "company_name": "X", "table_id": "11111111-1111-1111-1111-111111111111"}]
+            ).compile(dialect=postgresql.dialect())
+        ).lower()
+
+        assert "table_id" in sql
+        assert "excluded.table_id" in sql
+
+    @pytest.mark.asyncio
+    async def test_ingest_resolves_table_id_before_stmt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Resolver gán table_id phải lọt vào upsert stmt (ordering regression)."""
+        from uuid import uuid4
+
+        from app.lead_intelligence.services import lead_stream_service as svc
+        from app.services.lead_batch_service import LeadBatchService
+
+        table_uuid = uuid4()
+        leads = [{"workspace_id": 1, "client_id": "c", "company_name": "X", "domain": "x.vn"}]
+
+        class _Begin:
+            async def __aenter__(self) -> None:
+                return None
+
+            async def __aexit__(self, *a: object) -> None:
+                return None
+
+        class _Session:
+            def __init__(self) -> None:
+                self.stmt = None
+
+            def begin(self) -> _Begin:
+                return _Begin()
+
+            async def execute(self, stmt: object) -> None:
+                self.stmt = stmt
+
+        class _Maker:
+            def __init__(self, sess: _Session) -> None:
+                self._sess = sess
+
+            async def __aenter__(self) -> _Session:
+                return self._sess
+
+            async def __aexit__(self, *a: object) -> None:
+                return None
+
+        sess = _Session()
+        monkeypatch.setattr(svc, "async_session_maker", lambda: _Maker(sess))
+
+        async def _fake_resolve(self: object, session: object, workspace_id: int, rows: list) -> None:
+            for row in rows:
+                row["table_id"] = table_uuid
+
+        monkeypatch.setattr(LeadBatchService, "_resolve_lead_table_ids", _fake_resolve)
+
+        await svc.ingest_stream_leads_to_db(1, leads)
+
+        assert sess.stmt is not None, "upsert stmt không được execute"
+        assert table_uuid in sess.stmt.compile().params.values(), (
+            "table_id do resolver gán phải nằm trong upsert values"
+        )
