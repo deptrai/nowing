@@ -454,13 +454,13 @@ development_status:
   42-8-forward-context-workspaceid-qua-medirus_gateway-dev-quota-fl: done
   epic-42-retrospective: done
 
-  epic-43: backlog
+  epic-43: done
   43-1-campaignspec-direction-fields-ad5-joint-validation: done
   43-2-direction-aware-adapter-resolution-registry: done
   43-3-supply-post-filter-persist-seam-normalizedlead: done
   43-4-lead-role-visibility-tagging-supply: done
   43-5-fe-intake-tìm-nhà-cung-cấp-wire-contract: done
-  43-6-e2e-supply-campaign-enterprise-masothue: backlog
+  43-6-e2e-supply-campaign-enterprise-masothue: done
   epic-43-retrospective: backlog
 validation_reports:
   - story: "3.18"

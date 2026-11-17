@@ -352,3 +352,20 @@ JSONB excluded-wins (đúng D2/D3 spec).
 **Ghi chú:** chưa commit. FE campaign-builder thêm mode selector demand/supply, wire
 top-level `direction` + `supply_criteria` (D1); `location_profile` derive từ
 locations[0] qua `resolve_city_code` (D3); route guard 422 vẫn giữ (43.6 mới gỡ).
+
+## Spec 43.6 — E2E supply campaign + gỡ route guard (2026-11-18)
+
+Commit `60e95ddaf`. File `tests/integration/campaigns/test_supply_campaign_e2e.py` (5 tests, ~415 dòng):
+
+| Test | Cover |
+|---|---|
+| `test_supply_campaign_execute_e2e` | POST execute qua PAT thật → adapters chỉ supply_eligible (enterprise/muasamcong), `filtered_no_tax_id=3`, persist lead `extra_metadata.lead_role=supplier` + `campaign_key` + `visibility` |
+| `test_supply_match_mode_pool_rejected_422` | AD-5 joint validation |
+| `test_supply_missing_supply_criteria_rejected_422` | AD-5 |
+| `test_demand_plan_regression` | demand plan trả expected_sources demand (batdongsan/chotot) |
+| `test_demand_execute_regression` | demand execute persist=false → 200 |
+
+T4: gỡ route guard tạm `direction != "demand"` (campaign_routes.py) + `TestSupplyExecutionGuard` + `TestRouteGuardRemains` — supply đã wire đầy đủ end-to-end.
+Mock: `search_leads` adapter instances + `MicroExtractionWorker` (không call mạng/LLM thật).
+Regression: integration campaigns 5 + unit lead_intelligence 402 + routes 387 — toàn bộ xanh.
+Note: lead "sparse-identity" case phủ bởi `filtered_no_tax_id` guard đầu (require_tax_id=true) — sparse chỉ reachable khi require_tax_id=false (unit 43.3 cover).

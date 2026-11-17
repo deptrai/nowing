@@ -7,7 +7,6 @@ Governed by spec: spec-43-1-campaignspec-direction-fields-ad5-validation.md
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -305,58 +304,3 @@ class TestOldPayloadRegression:
         }
         with pytest.raises(ValueError, match="not supported via CampaignCreateInput"):
             CampaignSpec.from_campaign_create_input(payload)
-
-
-# ---------------------------------------------------------------------------
-# 4. Route guard tạm: direction='supply' → 422 cho tới khi 43.6 wire xong
-# ---------------------------------------------------------------------------
-class TestSupplyExecutionGuard:
-    """Silent demand-execution của supply intent = tốn credits quét rác → guard 422."""
-
-    def _supply_payload(self) -> dict[str, Any]:
-        return _base_payload(
-            direction="supply",
-            supply_criteria=_supply_criteria(),
-        )
-
-    def test_execute_campaign_rejects_supply(self) -> None:
-        """POST /campaigns/execute với direction='supply' → 422 trước khi vào engine."""
-        import asyncio
-        from unittest.mock import AsyncMock, patch
-
-        from fastapi import HTTPException
-
-        from app.auth.context import AuthContext
-        from app.routes.campaign_routes import execute_campaign
-
-        auth = AuthContext.session(SimpleNamespace(id="u1"))
-        with patch(
-            "app.routes.campaign_routes.check_permission", new=AsyncMock()
-        ), pytest.raises(HTTPException) as exc_info:
-            asyncio.run(
-                execute_campaign(
-                    1, self._supply_payload(), True, AsyncMock(), auth
-                )
-            )
-        assert exc_info.value.status_code == 422
-        assert "supply" in exc_info.value.detail
-
-    def test_plan_campaign_rejects_supply(self) -> None:
-        """POST /campaigns/plan với direction='supply' → 422 (plan cũng không đúng)."""
-        import asyncio
-        from unittest.mock import AsyncMock
-
-        from fastapi import HTTPException
-
-        from app.auth.context import AuthContext
-        from app.routes.campaign_routes import plan_campaign
-
-        auth = AuthContext.session(SimpleNamespace(id="u1"))
-        with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(
-                plan_campaign(
-                    1, self._supply_payload(), AsyncMock(), auth, SimpleNamespace()
-                )
-            )
-        assert exc_info.value.status_code == 422
-        assert "supply" in exc_info.value.detail

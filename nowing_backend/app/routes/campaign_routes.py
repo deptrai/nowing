@@ -110,13 +110,6 @@ async def plan_campaign(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
         ) from exc
-    # Temporary guard (Epic 43.1): supply direction chưa được wire vào engine —
-    # chạy demand pipeline trên supply intent sẽ sinh plan rác. Gỡ khi 43.6 xong.
-    if spec.direction != "demand":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"direction='{spec.direction}' chưa được hỗ trợ thực thi (Epic 43 in progress)",
-        )
     planner = LeadGenPlanner()
     return await planner.create_preflight_plan(spec)
 
@@ -148,14 +141,6 @@ async def execute_campaign(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
         ) from exc
-    # Temporary guard (Epic 43.1): supply direction chưa được wire vào engine —
-    # silently chạy demand pipeline trên supply intent = tốn credits quét rác.
-    # Gỡ khi supply path end-to-end xong (Story 43.6).
-    if spec.direction != "demand":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"direction='{spec.direction}' chưa được hỗ trợ thực thi (Epic 43 in progress)",
-        )
     orchestrator = LeadGenOrchestrator()
 
     if persist:

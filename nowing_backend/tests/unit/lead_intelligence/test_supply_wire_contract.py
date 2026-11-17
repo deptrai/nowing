@@ -8,7 +8,6 @@ Governed by spec: spec-43-5-fe-intake-tim-nha-cung-cap.md
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -201,34 +200,3 @@ class TestInvalidDirection:
         payload = _supply_payload(**{key: val})
         with pytest.raises(ValueError, match="not supported via CampaignCreateInput"):
             CampaignSpec.from_campaign_create_input(payload)
-
-
-class TestRouteGuardRemains:
-    """GUARD_REMAINS: route guard 422 direction='supply' còn tồn tại (43.6 mới gỡ)."""
-
-    def test_plan_campaign_rejects_supply(self) -> None:
-        """POST /campaigns/plan với direction='supply' → 422 (guard code chạy thật)."""
-        import asyncio
-        from unittest.mock import AsyncMock
-
-        from fastapi import HTTPException
-
-        from app.auth.context import AuthContext
-        from app.routes.campaign_routes import plan_campaign
-
-        auth = AuthContext.session(SimpleNamespace(id="u1"))
-        payload = {
-            "name": "Tìm NCC",
-            "workspace_id": 1,
-            "direction": "supply",
-            "supply_criteria": {
-                "categories": ["vải"],
-                "locations": ["Khánh Hòa"],
-            },
-        }
-        with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(
-                plan_campaign(1, payload, AsyncMock(), auth, SimpleNamespace())
-            )
-        assert exc_info.value.status_code == 422
-        assert "supply" in exc_info.value.detail
