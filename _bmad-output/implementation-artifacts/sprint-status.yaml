@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '11-17-2026 17:01'
+last_updated: '11-18-2026 08:44'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -461,7 +461,7 @@ development_status:
   43-4-lead-role-visibility-tagging-supply: done
   43-5-fe-intake-tìm-nhà-cung-cấp-wire-contract: done
   43-6-e2e-supply-campaign-enterprise-masothue: done
-  epic-43-retrospective: backlog
+  epic-43-retrospective: done
 validation_reports:
   - story: "3.18"
     type: "code-review"
@@ -1099,3 +1099,24 @@ action_items:
     owner: "dev"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-42-retro-2026-11-17.md"
+  - id: "epic-43-retro-item-52-supply-post-filter-trên-preview-path-per"
+    epic: 43
+    action: "Supply post-filter trên preview path (persist=false) hoặc document behavior
+      — preview hiện trả leads unfiltered, không counters"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-43-retro-2026-11-18.md"
+  - id: "epic-43-retro-item-53-consolidate-direction-read-helpers-regis"
+    epic: 43
+    action: "Consolidate direction-read helpers: registry _spec_direction vs orchestrator
+      inline duck-typing (orchestrator.py:967-971)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-43-retro-2026-11-18.md"
+  - id: "epic-43-retro-item-54-rate-limit-abuse-guard-cho-campaign-endp"
+    epic: 43
+    action: "Rate-limit/abuse guard cho campaign endpoints (carry-over deferred, cần
+      campaign_runs store)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-43-retro-2026-11-18.md"
