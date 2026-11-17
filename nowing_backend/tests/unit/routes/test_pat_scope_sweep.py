@@ -480,3 +480,245 @@ def test_resolve_phone_pat_respects_api_access_gate(
     )
     assert response.status_code == 403
     assert "api-access" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Spec 42-10 — PAT scope sweep trên enrichment / scoring / outbound routes
+# ---------------------------------------------------------------------------
+
+
+def _build_router_client(
+    monkeypatch: pytest.MonkeyPatch,
+    router: Any,
+    auth: AuthContext,
+    workspace: Any = None,
+) -> TestClient:
+    """Client cho router bất kỳ: mock check_permission + session giả + auth."""
+    import app.dependencies.auth as auth_deps
+
+    workspace = workspace or SimpleNamespace(
+        id=1, api_access_enabled=True, credit_micros_balance=0
+    )
+    membership = SimpleNamespace(is_owner=True, role=None, user_id=uuid4())
+
+    async def _mock_perm(*args: Any, **kwargs: Any) -> SimpleNamespace:
+        return membership
+
+    monkeypatch.setattr(auth_deps, "check_permission", _mock_perm)
+
+    fake_session = _FakeSession(workspace=workspace)
+
+    async def _fake_session():
+        yield fake_session
+
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+    app.dependency_overrides[get_async_session] = _fake_session
+    app.dependency_overrides[get_auth_context] = lambda: auth
+    try:
+        from app.redis_client import get_redis_client
+
+        app.dependency_overrides[get_redis_client] = lambda: None
+    except Exception:
+        pass
+    client = TestClient(app)
+    client.fake_session = fake_session  # type: ignore[attr-defined]
+    return client
+
+
+@pytest.mark.parametrize(
+    "router_name,method,path,json_body,required_scope",
+    [
+        # enrichment_routes — leads:enrich ×3, leads:read ×2
+        (
+            "enrichment_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/enrich",
+            {"lead_ids": [str(uuid4())]},
+            "leads:enrich",
+        ),
+        (
+            "enrichment_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/enrich/cost",
+            None,
+            "leads:enrich",
+        ),
+        (
+            "enrichment_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/{lead_id}/enrich",
+            {},
+            "leads:enrich",
+        ),
+        (
+            "enrichment_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/{lead_id}/contacts",
+            None,
+            "leads:read",
+        ),
+        (
+            "enrichment_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/{lead_id}/enrichments",
+            None,
+            "leads:read",
+        ),
+        # lead_scoring_routes — leads:score, leads:read ×3, leads:write (D1)
+        (
+            "lead_scoring_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/score",
+            {},
+            "leads:score",
+        ),
+        (
+            "lead_scoring_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/scores",
+            None,
+            "leads:read",
+        ),
+        (
+            "lead_scoring_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/{lead_id}/score",
+            None,
+            "leads:read",
+        ),
+        (
+            "lead_scoring_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/{lead_id}/score/history",
+            None,
+            "leads:read",
+        ),
+        (
+            "lead_scoring_routes",
+            "put",
+            "/api/v1/workspaces/1/icp",
+            {},
+            "leads:write",
+        ),
+        # outbound_routes — leads:read ×2, leads:write ×1
+        (
+            "outbound_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/{lead_id}/zalo-draft",
+            None,
+            "leads:read",
+        ),
+        (
+            "outbound_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/{lead_id}/zns-send",
+            {"template_id": "t1", "template_data": {}},
+            "leads:write",
+        ),
+        (
+            "outbound_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/{lead_id}/telegram-alert",
+            None,
+            "leads:read",
+        ),
+    ],
+    ids=[
+        "enrich_bulk",
+        "enrich_cost",
+        "enrich_single",
+        "list_verified_contacts",
+        "list_enrichment_requests",
+        "score_leads",
+        "list_lead_scores",
+        "get_latest_lead_score",
+        "get_lead_score_history",
+        "update_icp_criteria",
+        "generate_zalo_draft",
+        "send_zns_message",
+        "dispatch_telegram_alert",
+    ],
+)
+def test_sweep_42_10_wrong_scope_403(
+    monkeypatch: pytest.MonkeyPatch,
+    router_name: str,
+    method: str,
+    path: str,
+    json_body: dict | None,
+    required_scope: str,
+) -> None:
+    """PAT sai scope → 403 'permission missing: <scope>' đúng từng endpoint 42-10."""
+    import importlib
+
+    router = importlib.import_module(f"app.routes.{router_name}").router
+    wrong_scopes = (
+        ["leads:read"] if required_scope == "leads:write" else ["leads:write"]
+    )
+    client = _build_router_client(
+        monkeypatch, router, _pat_auth(scopes=wrong_scopes, workspace_id=1)
+    )
+
+    url = path.replace("{lead_id}", str(uuid4()))
+    kwargs: dict[str, Any] = {}
+    if json_body is not None:
+        kwargs["json"] = json_body
+    response = client.request(method, url, **kwargs)
+
+    assert response.status_code == 403
+    assert f"permission missing: {required_scope}" in response.json()["detail"]
+
+
+def test_clipper_pat_respects_api_access_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PAT leads:clipper:write trên ws api_access_enabled=False → 403 api-access."""
+    import app.routes.lead_clipper_routes as clipper_routes
+
+    workspace = SimpleNamespace(id=1, api_access_enabled=False)
+    client = _build_router_client(
+        monkeypatch,
+        clipper_routes.router,
+        _pat_auth(scopes=["leads:clipper:write"], workspace_id=1),
+        workspace=workspace,
+    )
+    response = client.post(
+        "/api/v1/workspaces/1/leads/clip",
+        json={
+            "source_canonical_url": "https://example.com/post/1",
+            "source_platform": "facebook",
+        },
+    )
+    assert response.status_code == 403
+    assert "api-access" in response.json()["detail"]
+
+
+def test_clipper_session_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Session auth clip_lead: qua check_permission như cũ, không bị PAT gate."""
+    import app.routes.lead_clipper_routes as clipper_routes
+
+    async def _mock_perm(*args: Any, **kwargs: Any) -> SimpleNamespace:
+        return SimpleNamespace(is_owner=True, role=None, user_id=uuid4())
+
+    # clipper import check_permission trực tiếp vào module namespace
+    monkeypatch.setattr(clipper_routes, "check_permission", _mock_perm)
+
+    existing_lead = SimpleNamespace(id=uuid4(), workspace_id=1)
+    client = _build_router_client(
+        monkeypatch,
+        clipper_routes.router,
+        AuthContext.session(SimpleNamespace(id=uuid4(), is_active=True)),
+        workspace=existing_lead,
+    )
+    # _find_duplicate_lead trả existing lead → early return 200 is_duplicate
+    response = client.post(
+        "/api/v1/workspaces/1/leads/clip",
+        json={
+            "source_canonical_url": "https://example.com/post/1",
+            "source_platform": "facebook",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["is_duplicate"] is True

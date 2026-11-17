@@ -228,3 +228,21 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-9-lead-pat-scope-hardening.
 - `resolve_lead_phone` gắn `leads:enrich` (tightening cố ý): PAT chỉ có `leads:write` giờ 403 — đúng scope cho billing-waterfall endpoint; session user không đổi.
 - `phone_verification_result` không gắn seam — `require_superuser` đã chặn PAT (dead code nếu gắn).
 - 403 api-access giờ nêu route bật `PUT /workspaces/{id}/api-access` — discoverability fix, endpoint vốn đã tồn tại.
+
+## Spec 42.10 — PAT scope sweep phần còn lại (2026-11-17)
+
+Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remaining-routes.md` — sweep nốt 4 file routes từ deferred-work sau review 42.9.
+
+| Suite | Kết quả |
+|---|---|
+| `tests/unit/routes/test_pat_scope_sweep.py` | **32 passed** — +13 case parametrize wrong-scope 403 (`permission missing: {scope}` đúng từng endpoint), +`test_clipper_pat_respects_api_access_gate` (PAT `leads:clipper:write` + ws `api_access_enabled=False` → 403), +`test_clipper_session_unchanged` |
+| `tests/unit/routes` regression | **371 passed** |
+| `tests/integration/test_pat_fail_closed_authz.py` | **7 passed** |
+
+### Lưu ý
+
+- `enrichment_routes`: `list_verified_contacts`/`list_enrichment_requests` permission check chạy inline trong body (`_require_lead_read`) — seam đặt sau `get_auth_context`, không phải sau `RequirePermission`.
+- `lead_clipper_routes`: seam `leads:clipper:write` vốn đã có — chỉ vá nhánh PAT thiếu `_enforce_api_access_gate` (trước: PAT bypass gate, session thì không).
+- `update_icp_criteria` (perm `SETTINGS_UPDATE`) → `leads:write` (D1); zalo-connection + webhook skip (D4).
+- Side-effect cần thiết: `test_zalo_copilot_context.py` cập nhật `_FakeSession` — nhánh PAT giờ cần session cho gate.
+- Census 42-10 phát hiện còn `dnc_routes.py` + `lead_pipeline_routes.py` chưa seam → đã ghi deferred-work (spec 42-11 candidate), ngoài scope spec này.

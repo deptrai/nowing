@@ -18,7 +18,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePatScope, RequirePermission
 from app.lead_intelligence.scoring.schemas import (
     IcpCriteria,
     LeadScoreInput,
@@ -47,6 +47,8 @@ async def score_leads(
             "You don't have permission to score leads in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-10)
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_SCORE.value)),
 ) -> LeadScoreOutput:
     """Trigger lead scoring for a list of leads or all leads in the workspace."""
 
@@ -92,6 +94,8 @@ async def list_lead_scores(
             "You don't have permission to view lead scores in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-10)
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> list[LeadScoreRead]:
     """List lead scores with optional filters and pagination."""
 
@@ -139,6 +143,8 @@ async def get_latest_lead_score(
             "You don't have permission to view lead scores in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-10)
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> LeadScoreRead:
     """Return the most recent score for a single lead."""
 
@@ -177,6 +183,8 @@ async def get_lead_score_history(
             "You don't have permission to view lead scores in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-10)
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> list[LeadScoreRead]:
     """Return historical scores for a single lead."""
 
@@ -211,6 +219,8 @@ async def update_icp_criteria(
             "You don't have permission to update workspace settings",
         )
     ),
+    # PAT scope seam (spec 42-10, D1): ICP criteria thuộc lead pipeline → leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> IcpCriteria:
     """Update the Ideal Customer Profile criteria for a workspace."""
 

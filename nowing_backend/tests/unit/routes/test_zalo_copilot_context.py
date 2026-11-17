@@ -129,22 +129,40 @@ class TestCopilotAuth:
         )
         return AuthContext.pat_auth(SimpleNamespace(id=uuid4()), pat)
 
+    @staticmethod
+    def _fake_session():
+        """Session giả: PAT nhánh giờ chạy api-access gate → cần Workspace."""
+
+        class _Res:
+            def scalars(self):
+                return self
+
+            def first(self):
+                # ws api_access_enabled=True để PAT pass qua gate (spec 42-10)
+                return SimpleNamespace(id=1, api_access_enabled=True)
+
+        class _Session:
+            async def execute(self, _stmt):
+                return _Res()
+
+        return _Session()
+
     async def test_pat_with_clipper_scope_passes(self):
-        await _verify_clipper_auth(self._pat_auth(), 1, session=None)
+        await _verify_clipper_auth(self._pat_auth(), 1, session=self._fake_session())
 
     async def test_pat_missing_scope_raises_403(self):
         with pytest.raises(HTTPException) as exc:
             await _verify_clipper_auth(
                 self._pat_auth(scopes=["agent_chat:thread:create"]),
                 1,
-                session=None,
+                session=self._fake_session(),
             )
         assert exc.value.status_code == 403
 
     async def test_pat_wrong_workspace_raises_403(self):
         with pytest.raises(HTTPException) as exc:
             await _verify_clipper_auth(
-                self._pat_auth(workspace_id=10), 20, session=None
+                self._pat_auth(workspace_id=10), 20, session=self._fake_session()
             )
         assert exc.value.status_code == 403
 
@@ -195,9 +213,21 @@ class _FakeResult:
 
 
 class _FakeSession:
-    """Minimal AsyncSession stand-in: every query returns empty results."""
+    """Minimal AsyncSession stand-in.
+
+    Execute đầu tiên (api-access gate — spec 42-10) trả Workspace
+    `api_access_enabled=True`; các query sau trả empty results.
+    """
+
+    def __init__(self) -> None:
+        self._gate_done = False
 
     async def execute(self, _stmt):
+        if not self._gate_done:
+            self._gate_done = True
+            return _FakeResult(
+                rows=[SimpleNamespace(id=1, api_access_enabled=True)]
+            )
         return _FakeResult()
 
     async def get(self, _model, _pk):
