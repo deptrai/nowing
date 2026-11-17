@@ -53,7 +53,8 @@ async def test_pat_is_rejected_for_api_disabled_space(
         await check_workspace_access(db_session, auth, db_workspace.id)
 
     assert exc_info.value.status_code == 403
-    assert exc_info.value.detail == "API access is not enabled for this workspace."
+    # Detail giờ kèm hint enable (spec 42.9 T3) — assert prefix ổn định.
+    assert exc_info.value.detail.startswith("API access is not enabled for this workspace.")
 
 
 async def test_pat_is_allowed_for_api_enabled_space(

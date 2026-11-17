@@ -352,3 +352,131 @@ def test_gate_message_403_contains_api_access_hint(
     detail = response.json()["detail"]
     assert "api-access" in detail
     assert "API_ACCESS_MANAGE" in detail
+
+
+# ---------------------------------------------------------------------------
+# Scope pinning — review 42.9: trước chỉ 3/11 site được pin test, sai-wiring
+# sẽ ship green. Ma trận dưới pin đúng scope khai báo của từng endpoint.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "method,path,json_body,required_scope",
+    [
+        ("get", "/api/v1/workspaces/1/leads/lead-uuid", None, "leads:read"),
+        (
+            "patch",
+            "/api/v1/workspaces/1/leads/lead-uuid/status",
+            {"status": "open"},
+            "leads:write",
+        ),
+        ("get", "/api/v1/workspaces/1/companies/acme/graph", None, "leads:read"),
+        (
+            "post",
+            "/api/v1/workspaces/1/leads/reverse-icp",
+            {"url": "https://example.com"},
+            "leads:read",
+        ),
+        (
+            "post",
+            "/api/v1/workspaces/1/leads/lead-uuid/resolve-phone",
+            {},
+            "leads:enrich",
+        ),
+        (
+            "post",
+            "/api/v1/workspaces/1/leads/lead-uuid/report-invalid-phone",
+            {},
+            "leads:write",
+        ),
+    ],
+    ids=[
+        "get_lead",
+        "update_lead_status",
+        "get_company_graph",
+        "reverse_icp",
+        "resolve_phone_needs_enrich",
+        "report_invalid_phone",
+    ],
+)
+def test_leads_routes_wrong_scope_403(
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+    json_body: dict | None,
+    required_scope: str,
+) -> None:
+    """PAT sai scope → 403 'permission missing: <scope>' đúng từng endpoint."""
+    wrong_scopes = (
+        ["leads:read"] if required_scope == "leads:write" else ["leads:write"]
+    )
+    client = _build_leads_client(
+        monkeypatch, _pat_auth(scopes=wrong_scopes, workspace_id=1)
+    )
+
+    url = path.replace("lead-uuid", str(uuid4()))
+    response = client.request(
+        method, url, json=json_body if json_body is not None else None
+    )
+
+    assert response.status_code == 403
+    assert f"permission missing: {required_scope}" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "path,json_body",
+    [
+        ("/api/v1/workspaces/1/leads/lead-uuid/contacts/contact-uuid/relock", None),
+        (
+            "/api/v1/workspaces/1/pii-opt-out",
+            {"record_type": "phone", "value": "0901"},
+        ),
+    ],
+    ids=["relock_contact", "pii_opt_out"],
+)
+def test_batch_write_wrong_scope_403(
+    monkeypatch: pytest.MonkeyPatch, path: str, json_body: dict | None
+) -> None:
+    """PAT chỉ có leads:read → 403 trên relock + pii_opt_out."""
+    client = _build_client(
+        monkeypatch, _pat_auth(scopes=["leads:read"], workspace_id=1)
+    )
+    url = path.replace("lead-uuid", str(uuid4())).replace(
+        "contact-uuid", str(uuid4())
+    )
+    response = client.post(
+        url, json=json_body if json_body is not None else None
+    )
+    assert response.status_code == 403
+    assert "permission missing: leads:write" in response.json()["detail"]
+
+
+def test_resolve_phone_pat_respects_api_access_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PAT leads:enrich trên ws api_access_enabled=False → 403 api-access.
+
+    Review 42.9: resolve-phone vốn bypass gate (chỉ check perms inline qua
+    get_user_permissions, không qua check_permission). Patch thêm
+    `_enforce_api_access_gate` sau perms — test này pin hành vi mới.
+    """
+    import app.routes.leads_routes as leads_routes
+
+    workspace = SimpleNamespace(id=1, api_access_enabled=False)
+    client = _build_leads_client(
+        monkeypatch,
+        _pat_auth(scopes=["leads:enrich"], workspace_id=1),
+        workspace=workspace,
+    )
+    # PAT user đã có perm enrich → qua inline check, đến gate mới thì 403.
+    monkeypatch.setattr(
+        leads_routes,
+        "get_user_permissions",
+        AsyncMock(return_value={"leads:enrich"}),
+    )
+
+    response = client.post(
+        f"/api/v1/workspaces/1/leads/{uuid4()}/resolve-phone", json={}
+    )
+    assert response.status_code == 403
+    assert "api-access" in response.json()["detail"]

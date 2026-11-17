@@ -2051,4 +2051,14 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
   - **Action:** Runtime verify sau deploy — grep `medirus-mcp.log` để xác nhận 42.8 triệt tiêu warning.
   - **Reason / when to revisit:** Code-level đã test (injection tại wiring layer). Revisit trong PR merge note / deploy checklist.
 
+## Deferred from: code review spec-42-9 (2026-11-17)
+
+- **Finding:** PAT-scope sweep còn thiếu 4 file routes (spec 42-10 dự kiến): `enrichment_routes.py` (enrich_leads_bulk :80, enrich_cost :121, enrich_lead :149, list_verified_contacts :197, list_enrichment_requests :227), `lead_scoring_routes.py` (score_leads perm `LEADS_SCORE` + 4 endpoint), `lead_clipper_routes.py` (clip_lead :341, get_zalo_copilot_context :486), `outbound_routes.py` (zalo-draft :173, zns-send :251, telegram-alert :556). Tất cả `get_auth_context` + perm nhưng thiếu seam `RequirePatScope` → PAT scopes bất kỳ (kể cả `[]` + `api_access_enabled`) vẫn gọi được endpoint tốn credit — cùng class lỗ hổng 42.9 vá.
+  - **Action:** Viết spec 42-10 mở rộng sweep — thêm `_pat_scope` + test pinning từng endpoint, cùng shape spec 42-9.
+  - **Reason / when to revisit:** Decision sau 4-layer review 42.9 — user chọn narrow Goal thay vì kéo dài spec. Revisit ngay khi bắt đầu hardening pass tiếp theo.
+
+- **Finding:** `reverse_icp` gắn `leads:read` nhưng thực chất chạy LLM (asymmetry scope-vs-cost so với `resolve_phone → leads:enrich`).
+  - **Action:** Chuẩn hoá convention scope-theo-cost (endpoint tốn credit/LLM nên đòi `enrich`/`write` chứ không `read`) trong spec sweep tiếp theo.
+  - **Reason / when to revisit:** Cần decision về convention — không đổi ngầm trong bundle 42.9.
+
 

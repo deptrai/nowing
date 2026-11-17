@@ -123,7 +123,7 @@ async def _enforce_api_access_gate(
             status_code=403,
             detail=(
                 "API access is not enabled for this workspace. Enable via "
-                "PUT /api/v1/workspaces/{workspace_id}/api-access "
+                f"PUT /api/v1/workspaces/{workspace_id}/api-access "
                 "(requires API_ACCESS_MANAGE, session auth)."
             ),
         )

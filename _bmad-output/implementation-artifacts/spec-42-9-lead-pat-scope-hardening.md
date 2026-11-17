@@ -16,7 +16,7 @@ deferred: []
 
 ## Goal
 
-Đóng các lỗ hổng PAT-scope mà Epic 42 (story 42.1 + 42.4) phát hiện nhưng chưa vá: mọi endpoint lead/credits nhận `get_auth_context` + `RequirePermission`/`RequireWorkspaceAccess` phải đi qua seam `RequirePatScope` giống batch-ingest — PAT bound workspace khác hoặc thiếu scope → 403. Kèm: 403 `api_access_enabled` phải nói rõ cách bật; tài liệu hóa MCP error convention; dev-setup note cho `patchright install`.
+Đóng các lỗ hổng PAT-scope mà Epic 42 (story 42.1 + 42.4) phát hiện nhưng chưa vá, trên nhóm endpoint được liệt kê tại Always/Code Map (`lead_batch_routes.py`, `leads_routes.py`, `workspaces/core.py`): mỗi endpoint nhận `get_auth_context` + `RequirePermission`/`RequireWorkspaceAccess` phải đi qua seam `RequirePatScope` giống batch-ingest — PAT bound workspace khác hoặc thiếu scope → 403. Kèm: 403 `api_access_enabled` phải nói rõ cách bật; tài liệu hóa MCP error convention; dev-setup note cho `patchright install`. (Goal thu hẹp theo enumeration sau review 2026-11-17 — sweep nốt `enrichment_routes`/`lead_scoring_routes`/`lead_clipper_routes`/`outbound_routes` chuyển spec 42-10, xem deferred-work.)
 
 ## Always
 
@@ -111,7 +111,30 @@ _(chưa có)_
 - [reject] Chỉ `list_workspace_leads` có test row trong sweep — các endpoint khác dùng cùng seam pattern, coverage đủ cho mechanical change.
 - Verdict: 0 high / 0 medium / 0 action pending. `followup_review_recommended: false`.
 
+## 2026-11-17 — bmad-code-review (4 layers: blind + edge-case + verification-gap + acceptance)
+
+Sau dedup ~20 findings → 1 decision-needed / 5 patch / 0 defer / 4 reject-false. Regression ngoài diff phát hiện thêm 1 test hỏng — đã vá ngay (`test_pat_fail_closed_authz.py` exact-match detail → `startswith`, 7/7 xanh lại).
+
+- [decision_needed] **Sweep còn thiếu 3 file routes**: `enrichment_routes.py` (enrich_leads_bulk :80, enrich_cost :121, enrich_lead :149, list_verified_contacts :197, list_enrichment_requests :227), `lead_scoring_routes.py` (5 endpoints gồm `score_leads` perm `LEADS_SCORE`), `lead_clipper_routes.py` (`clip_lead` :341, `get_zalo_copilot_context` :486) — thêm `outbound_routes.py` (`zalo-draft` :173, `zns-send` :251, `telegram-alert` :556). Tất cả `get_auth_context` + perm nhưng không `_pat_scope` → PAT scopes bất kỳ (kể cả `[]` + `api_access_enabled=True`) gọi được endpoint **tốn credit** — đúng class lỗ hổng spec vá. Goal "mọi endpoint lead/credits" overbroad so với Always enumeration. → Cần user chọn: sweep nốt (spec mới/extend) hay narrow Goal + defer.
+- [patch] **`resolve_lead_phone` bypass api-access gate**: `leads_routes.py:715` chỉ `get_auth_context` + `_pat_scope` + inline `get_user_permissions` (không qua `check_permission` → `_enforce_api_access_gate` không chạy) → PAT trên workspace `api_access_enabled=False` vẫn gọi được billing waterfall 1.5 credits. Pre-existing nhưng diff đụng đúng dòng auth của nó. Fix: `await _enforce_api_access_gate(session, auth, workspace_id)` sau block perms (session unaffected — gate chỉ fire khi `is_gated`). Kèm fix ordering finding (PAT scope chạy trước membership — endpoint không có membership dep; gate call đặt sau perms check giữ đúng thứ tự verdict).
+- [patch] **Pin scope cho 8 site chưa test**: `relock_contact`, `pii_opt_out`, `reverse_icp`, `get_lead`, `update_lead_status`, `get_company_graph`, `resolve_phone` (assert PAT `leads:write` → 403 `permission missing: leads:enrich`), `report_invalid_phone` — parametrize no-scope rows (~8 dòng), hiện sai-wiring sẽ ship green.
+- [patch] **f-string `{workspace_id}` trong gate message**: `rbac.py:124` là plain string → in ra nguyên placeholder. Đổi thành f-string với `workspace.id` (vẫn giữ substring `api-access` theo AC).
+- [patch] **README MCP ví dụ sai**: `nowing_mcp/README.md:130` liệt kê "insufficient credits" là domain-level failed-JSON — thực tế 402 nằm trong `_FAILURE_HINTS` → raise `ToolError` (client.py:167-172). Chỉ `no_wallet` là domain-JSON. Sửa ví dụ.
+- [patch] **README patchright fragile**: `patchright` chỉ là transitive dep (`scrapling[fetchers]`) — đổi lệnh thành `uv run --with patchright patchright install chromium` cho robust.
+- [reject] PAT-vs-session asymmetry `resolve_phone` (session: enrich OR write; PAT: enrich-only) — cố ý, đã ghi decision; [reject] test cruft (limiter/dead param/helper dup) — cosmetic, tests xanh; [false] "422 payload mất rejected_indexes" — ToolError message embed đủ JSON text (`Nowing returned 422: {...}`); [reject] `BALANCE_PAT` mock bypass gate — cố ý isolate scope logic, gate đã được cover bởi `GATE_MESSAGE` + integration test.
+- [defer ghi vào deferred-work.md]: `reverse_icp` dùng `leads:read` cho endpoint chạy LLM (asymmetry với enrich/write — semantics cần chuẩn hoá scope-to-cost ở spec sau).
+
 # Design Notes
+
+### Review Findings
+
+- [x] [Review][Decision] **Sweep nốt 3 file routes hay narrow Goal?** — `enrichment_routes.py` / `lead_scoring_routes.py` / `lead_clipper_routes.py` (+ `outbound_routes.py`) cùng class lỗ hổng PAT chưa gắn seam; Goal spec overbroad so với Always list. Chọn: (1) sweep nốt vào bundle này — +~15 endpoint + tests, hoặc (2) narrow Goal về đúng enumeration, viết spec tiếp theo (42.10) cho phần còn lại. → **RESOLVED 2026-11-17: user chọn (2) narrow Goal + defer 42-10** (goal đã sửa, deferred-work.md đã ghi).
+- [x] [Review][Patch] `resolve_lead_phone` bypass api-access gate [nowing_backend/app/routes/leads_routes.py:715] — áp: `_enforce_api_access_gate` sau inline perms check + import; test `test_resolve_phone_pat_respects_api_access_gate`.
+- [x] [Review][Patch] Pin no-scope tests cho 8 endpoint còn lại [nowing_backend/tests/unit/routes/test_pat_scope_sweep.py] — áp: 2 parametrize (6 leads routes + relock/pii) + gate test = +9 test.
+- [x] [Review][Patch] f-string `{workspace_id}` trong gate message [nowing_backend/app/utils/rbac.py:124] — áp.
+- [x] [Review][Patch] README MCP: ví dụ "insufficient credits" sai (402 → ToolError) [nowing_mcp/README.md:130] — áp.
+- [x] [Review][Patch] README patchright: dùng `uv run --with patchright` [nowing_backend/README.md] — áp.
+- [x] [Review][Defer] `reverse_icp` gắn `leads:read` nhưng chạy LLM (asymmetry scope-vs-cost) — deferred: cần convention scope-to-cost riêng, không đổi trong bundle này [nowing_backend/app/routes/leads_routes.py:385]
 
 - `GET /workspaces` PAT filter `api_access_enabled` (core.py:146) + `PUT /workspaces/{id}/api-access` (core.py:430, `API_ACCESS_MANAGE`, session-only) **đã tồn tại** — bundle này KHÔNG thêm endpoint, chỉ sửa message.
 - `RequirePatScope` fail-closed với `scopes=[]` → legacy PAT đọc leads cũng cần khai báo `leads:read` khi tạo (docs cho Hermes guide đã nêu).

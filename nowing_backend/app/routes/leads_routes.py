@@ -52,7 +52,11 @@ from app.services.phone_waterfall_service import PhoneWaterfallService
 from app.tasks.phone_waterfall_worker import resolve_phone_waterfall_task
 from app.tenant_context import set_request_tenant_context
 from app.users import get_auth_context, require_superuser
-from app.utils.rbac import get_user_permissions, has_permission
+from app.utils.rbac import (
+    _enforce_api_access_gate,
+    get_user_permissions,
+    has_permission,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -730,6 +734,9 @@ async def resolve_lead_phone_endpoint(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to resolve lead contacts in this workspace (requires LEADS_ENRICH or LEADS_WRITE)",
         )
+
+    # PAT phải qua api-access gate như mọi endpoint swept khác (get_user_permissions không chạy gate).
+    await _enforce_api_access_gate(session, auth, workspace_id)
 
     client_id = getattr(auth, "current_client_id", None) or session.info.get(
         "current_client_id"

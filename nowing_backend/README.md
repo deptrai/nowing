@@ -15,7 +15,7 @@ Scraper flows that drive a real browser (e.g. patchright-based flows) also need
 the Chromium binary installed once per machine:
 
 ```bash
-uv run patchright install chromium
+uv run --with patchright patchright install chromium
 ```
 
 ## Tests

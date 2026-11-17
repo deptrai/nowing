@@ -127,9 +127,11 @@ When a tool fails, it reports the failure in one of two ways — never by raisin
 an exception the client sees as a crash:
 
 - **Domain-level failure** (the backend responded, but the operation itself
-  cannot proceed — e.g. wallet not found, insufficient credits): the tool
+  cannot proceed — e.g. wallet not found / `no_wallet`): the tool
   returns `{"status": "failed", "reason": "..."}` as normal JSON output. The
-  model can read it and decide what to do next.
+  model can read it and decide what to do next. Note: an out-of-credits
+  response (HTTP 402) is **not** domain-level — the client raises a
+  `ToolError` for it, like other HTTP failures.
 - **Transport/API failure** (auth error, HTTP 4xx/5xx, network problem): the
   tool raises a `ToolError` whose message passes through the backend's
   structured error payload (e.g. the 422 body from a failed batch ingest)
