@@ -285,3 +285,13 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remainin
 
 - Convention: PAT scopes giờ = set các permission agent cần (vd enrich-capable PAT → `["leads:read","leads:enrich"]`). `reverse_icp` dual: perm `leads:read` + seam `leads:enrich` → PAT cần cả hai.
 - Endpoint không qua `check_permission`/`RequirePermission`/`RequireWorkspaceAccess` (inline `has_permission`) vẫn bypass seam — residual đã ghi deferred-work.
+
+## Spec 43.1 — CampaignSpec direction + AD-5 validation (2026-11-17)
+
+| Test | File | Kết quả |
+|---|---|---|
+| Truth-table AD-5 (parametrize) | tests/unit/lead_intelligence/test_campaign_spec_direction.py | 29 passed |
+| Route guard supply→422 (execute+plan) | cùng file, class TestSupplyExecutionGuard | 2 passed |
+| Regression | tests/unit/lead_intelligence/ + route sweeps | 383 passed |
+
+**Ghi chú:** guard `spec.direction != "demand"` tại `campaign_routes.py` là tạm — gỡ khi 43.6 wire supply end-to-end. `from_campaign_create_input` reject direction-scoped keys non-default cho tới 43.5. `validate_assignment`/`model_copy` bypass validator → deferred (không consumer mutate).

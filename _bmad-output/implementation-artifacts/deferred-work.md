@@ -2064,3 +2064,9 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
 - ~~**Finding:** PAT-scope sweep vẫn còn sót ít nhất 2 file lead-domain (`dnc_routes.py`, `lead_pipeline_routes.py`) + ~80 file `get_auth_context` chưa có seam.~~ **RESOLVED 2026-11-17** — spec 42-11 đã seam `dnc_routes.py` + `lead_pipeline_routes.py` (commit `22d7cbde4`). ~80 file non-leads: **AI-42.4** — `check_permission` giờ tự enforce `enforce_pat_scope(required_permission)` cho mọi `RequirePermission` caller (unified seam, scope ≡ perm), `check_workspace_access` enforce binding; `self_host` exempt. Residual: endpoint nào không đi qua `check_permission`/`RequirePermission`/`RequireWorkspaceAccess` (inline `has_permission`/`get_user_permissions` tự check) vẫn bypass api-access gate + scope — nếu phát hiện thêm thì vá theo kiểu `resolve_phone` (gọi `_enforce_api_access_gate` sau perm check).
 
 
+
+## Deferred from: code review spec-43-1 (2026-11-17)
+
+- **Finding:** `CampaignSpec` không bật `validate_assignment` và `model_copy(update=...)` bypass `model_validator` — mutation post-construction tạo spec vi phạm AD-5 (vd `spec.direction = "supply"` khi không có `supply_criteria`).
+  - **Action:** Nếu caller nào cần đổi direction post-construction → `spec.model_validate({**spec.model_dump(), "direction": "supply"})` thay vì assign trực tiếp; hoặc bật `validate_assignment=True` khi có caller thật.
+  - **Reason / when to revisit:** Latent — không consumer nào mutate spec hiện nay (verification-gap verify). Revisit nếu xuất hiện caller mutate direction/fields.

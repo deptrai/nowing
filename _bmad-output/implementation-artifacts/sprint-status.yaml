@@ -455,7 +455,7 @@ development_status:
   epic-42-retrospective: done
 
   epic-43: backlog
-  43-1-campaignspec-direction-fields-ad5-joint-validation: backlog
+  43-1-campaignspec-direction-fields-ad5-joint-validation: done
   43-2-direction-aware-adapter-resolution-registry: backlog
   43-3-supply-post-filter-persist-seam-normalizedlead: backlog
   43-4-lead-role-visibility-tagging-supply: backlog

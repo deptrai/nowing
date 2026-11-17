@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.lead_intelligence.adapters.base import LeadSourceCategory
 from app.lead_intelligence.schemas import LocationProfilePayload
@@ -110,6 +110,26 @@ class ICPCriteria(BaseModel):
     location_profile: LocationProfilePayload | None = None
 
 
+class SupplyCriteria(BaseModel):
+    """Tiêu chí tìm nhà cung cấp cho campaign chiều supply (Epic 43)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    categories: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]] = (
+        Field(min_length=1, description="Supplier categories/industries to hunt")
+    )
+    locations: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]] = (
+        Field(min_length=1, description="Target locations for supplier search")
+    )
+    require_tax_id: bool = Field(default=True, description="Drop leads without tax ID (MST)")
+    min_rating: float = Field(
+        default=0.0, ge=0.0, le=5.0, description="Minimum supplier rating (0 = no filter)"
+    )
+    require_verified: bool = Field(
+        default=False, description="Drop leads without a verified flag from the adapter"
+    )
+
+
 class CampaignSpec(BaseModel):
     """Complete specification of a signal-first lead generation campaign."""
 
@@ -158,6 +178,66 @@ class CampaignSpec(BaseModel):
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    # Campaign direction (Epic 43) — default-safe: demand-shaped spec cũ parse không đổi
+    direction: Literal["demand", "supply"] = Field(
+        default="demand", description="Campaign direction: demand hunts buyers, supply hunts suppliers"
+    )
+    match_mode: Literal["mine", "pool", "hybrid"] = Field(
+        default="mine", description="Matching surface (pool/hybrid gated to platform phase)"
+    )
+    supply_criteria: SupplyCriteria | None = Field(
+        default=None, description="Required when direction='supply'; forbidden otherwise"
+    )
+    corpus_scope: Literal["workspace", "platform_b2b"] = Field(
+        default="workspace", description="Corpus the campaign can draw from (platform_b2b gated)"
+    )
+    visibility: Literal["private", "poolable"] = Field(
+        default="private", description="Lead visibility label; 'poolable' is inert until platform phase"
+    )
+
+    @model_validator(mode="after")
+    def _validate_direction_consistency(self) -> CampaignSpec:
+        """AD-5: reject mọi tổ hợp vô nghĩa giữa direction và các field direction-scoped.
+
+        Supply cấm: non-default ``icp_criteria``, ``signal_triggers``, ``intent_tags``
+        (demand-side targeting; post-filter là Story 43.3).
+        Supply ĐƯỢC phép (không guard): ``query`` (free-text feed cho query synthesis,
+        FE form 43.5 dùng), ``location_profile`` (derive từ supply_criteria.locations[0]
+        cho coverage/telemetry, 43.5), ``target_sources`` (escape hatch đã chốt),
+        ``source_budgets`` / ``excluded_sources`` (budget theo adapter).
+        """
+        # Supply cần supply_criteria; demand không được mang nó
+        if self.direction == "supply":
+            if self.supply_criteria is None:
+                raise ValueError("direction='supply' requires supply_criteria")
+            # Supply không dùng ICP demand — trừ khi ICP là default-equivalent (executor cũ build rỗng)
+            if self.icp_criteria != ICPCriteria():
+                raise ValueError(
+                    "direction='supply' must not set non-default icp_criteria"
+                )
+            # Supply không dùng signal/intent demand-side
+            if self.signal_triggers or self.intent_tags:
+                raise ValueError(
+                    "direction='supply' must not set signal_triggers or intent_tags"
+                )
+        else:
+            if self.supply_criteria is not None:
+                raise ValueError(
+                    "supply_criteria is only allowed when direction='supply'"
+                )
+
+        # Pool matching thuộc phase Platform — chưa mở
+        if self.match_mode != "mine":
+            raise ValueError(
+                f"match_mode='{self.match_mode}' is not enabled yet (platform phase)"
+            )
+        # Corpus platform_b2b thuộc phase Platform — chưa mở
+        if self.corpus_scope != "workspace":
+            raise ValueError(
+                f"corpus_scope='{self.corpus_scope}' is not enabled yet (platform phase)"
+            )
+        return self
+
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Accept either a declarative CampaignSpec dict or a frontend CampaignCreateInput dict."""
@@ -167,7 +247,22 @@ class CampaignSpec(BaseModel):
 
     @classmethod
     def from_campaign_create_input(cls, payload: dict[str, Any]) -> CampaignSpec:
-        """Convert frontend CampaignCreateInput shape into internal CampaignSpec."""
+        """Convert frontend CampaignCreateInput shape into internal CampaignSpec.
+
+        Epic 43: direction-scoped keys non-default phải 422, không được lọt qua
+        converter này — nếu không supply payload sẽ silently trở thành demand
+        campaign. Guard này gỡ khi Story 43.5 wire direction qua FE contract.
+        """
+        if (
+            payload.get("direction", "demand") != "demand"
+            or payload.get("supply_criteria") is not None
+            or payload.get("match_mode", "mine") != "mine"
+            or payload.get("corpus_scope", "workspace") != "workspace"
+            or payload.get("visibility", "private") != "private"
+        ):
+            raise ValueError(
+                "direction-scoped fields are not supported via CampaignCreateInput until Epic 43.5"
+            )
         icp_config = payload.get("icp_config") or {}
         source_budget_config = payload.get("source_budget_config") or {}
         launch_config = payload.get("launch_config") or {}
