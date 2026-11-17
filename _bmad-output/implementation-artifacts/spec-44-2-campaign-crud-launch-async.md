@@ -2,7 +2,8 @@
 title: 'Epic 44.2 — Campaign CRUD + launch + async run task'
 type: 'feature'
 created: '2026-11-18'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 81607ed32c089932ad180761467853a4089e1235
 review_loop_iteration: 0
 followup_review_recommended: false
 context:

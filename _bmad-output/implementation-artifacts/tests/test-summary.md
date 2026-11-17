@@ -384,3 +384,22 @@ Commit pending (sau test-summary update). Bảng mới `lead_campaigns`/`campaig
 | Alembic live (nowing_test @5432) | `upgrade 250→251` → `downgrade -1` → `upgrade head` sạch; 6 RLS policy + FORCE đúng; single head `251` | verified |
 
 **T0 resolved:** `/campaigns/execute?persist=true` trước đây KHÔNG commit (bug tiềm ẩn — leads rollback prod, test suite che bằng savepoint conftest). Fix = `session.commit()` cuối `execute_and_persist`, mọi exit path finalize run. Deviation chấp nhận: models ở `app/models/campaigns.py` (spec ghi `models/leads/campaign.py` — top-level khớp precedent `webset_campaign.py`); `open_campaign_run` set run `'running'` ngay (44.2 map `'queued'` cho response); implicit campaign `source='execute'` cho mọi `/execute` caller (phân biệt 'api' cần auth-kind detect — ghi vào triage).
+
+## Spec 44.2 — Campaign CRUD + launch + async run task (2026-11-18)
+
+| Test file | Cover | Kết quả |
+|---|---|---|
+| tests/unit/routes/test_campaign_crud_routes.py (22) | wire-contract mapper khớp `campaignSchema` (created + implicit fallback), list shape + `?include_implicit` (assert SQL filter `source='created'`), page_size cap 100, detail 404/wrong-ws, runs newest-first, presets precedence, create 201/409-dup/422-invalid, PATCH name+status + machine-status 422 + clash 409, launch paused/archived 409 + concurrent-run 409 + happy path queue, pause running→paused/draft 422, execute async 422-without-persist + queued | 22 passed |
+| tests/unit/tasks/test_campaign_launch_task.py (3) | TASK_PATH (execute_and_persist binding đúng campaign+run_id), TENANT_RLS (set_request_tenant_context workspace trên session riêng), failure → rollback + finalize 'failed' + commit + propagate, missing campaign/run → finalize + propagate | 3 passed |
+| Integration | tests/integration/campaigns/ (7, gồm persist-commit + supply e2e 44.1) | 7 passed |
+| Regression | tests/unit/routes/ + lead_intelligence/ + services/campaign + tasks/ | 1245 passed, 1 skipped (Windows-specific, pre-existing) |
+| Import | `import app.tasks.campaign_tasks` → `launch_campaign_run` registered | ok |
+
+**Fix trong verify round (reviewer tự bắt):**
+- `_launch_campaign_run` từ plain function → lazy proxy class có `.apply_async` (runtime AttributeError nếu không mock).
+- `campaign_tasks` except block thiếu `session.rollback()` → PendingRollbackError risk; đồng thời đưa `session.get` lookup + spec parse vào trong try để MỌI failure (kể cả LookupError) đều finalize 'failed' — run không kẹt 'running'.
+- `/execute` có `response_model=LeadGenOrchestratorResult` filter nuốt response async `{campaign_id, run_id, status:'queued'}` → bỏ response_model.
+- POST create trả 200 → 201 đúng spec CREATE_OK.
+- `_FakeSession.execute`: skip `set_config` (7 GUC calls từ `set_request_tenant_context` — lệch queue kết quả); `_campaign(payload=None)` sentinel fix (trước không thể tạo implicit campaign → wire-fallback test "pass nhầm").
+
+**Risk ghi chú:** FE `launchCampaign` (`leads-api.service.ts:232`) parse response bằng `campaignSchema` nhưng spec pin launch trả run-shape `{id, campaign_id, status:'queued', trigger}` — nếu FE strict-parse sẽ lệch; cần reconcile phía FE (ngoài scope spec).
