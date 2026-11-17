@@ -465,7 +465,7 @@ development_status:
 
   epic-44: in-progress
   44-1-lead-campaigns-campaign-runs-campaign-leads-schema-opt-in-binding: done
-  44-2-campaign-crud-launch-async-run-task: backlog
+  44-2-campaign-crud-launch-async-run-task: done
   44-3-campaign-scheduler-rate-limit-guard: backlog
   44-4-per-run-usage-accounting-vertical-2-e2e: done
   epic-44-retrospective: backlog
