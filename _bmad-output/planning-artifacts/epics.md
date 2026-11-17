@@ -5727,7 +5727,7 @@ So that dataset results flow into the same campaign/lead pipeline as every other
   - `match_mode` `pool|hybrid` (mọi direction) → 422 trỏ platform phase.
   - `corpus_scope="platform_b2b"` → 422 gated.
   - `direction="supply"` + `categories` hoặc `locations` rỗng → 422.
-  - `direction="supply"` + `icp_criteria` non-default → 422 (demand-shaped field không trộn).
+  - `direction="supply"` + `icp_criteria` non-default → 422 (demand-shaped field không trộn) — pin phép so sánh: `spec.icp_criteria != ICPCriteria()` (instance tương đương default, vd `ICPCriteria(target_categories=[], min_fit_score=0.0)` từ executor cũ, PHẢI pass).
   - `direction="supply"` + `signal_triggers`/`intent_tags` non-empty → 422 (demand-shaped).
   - `direction="supply"` + `target_sources` explicit → **cho phép** (user override routing; post-filter vẫn áp) — documented, có test.
   - `direction="demand"` + supply fields khác (`visibility` khác "private" cũng hợp lệ — visibility là nhãn inert).
@@ -5745,8 +5745,11 @@ So that dataset results flow into the same campaign/lead pipeline as every other
 - **Given** `adapters/registry.py` `resolve_adapters_for_spec` (:139) và wrapper `resolve_adapters_for_campaign` (:680), **When** `spec.direction == "supply"`, **Then**:
   - Adapter base thêm capability `supply_eligible: bool = False`; chỉ `enterprise` (masothue) + `muasamcong` set `True` trong phase này (decision: giữ muasamcong — tender notices bị `require_tax_id` default lọc ra khỏi corpus, documented trade-off).
   - Nhánh supply trong `resolve_adapters_for_spec` **luôn trả kết quả** (không bao giờ fall-through sang demand heuristics/list-all): match `supply_eligible` adapters theo keyword `supply_criteria.categories`; không match → trả **toàn bộ supply_eligible** (enterprise + muasamcong).
-  - `resolve_adapters_for_campaign` propagate direction → nhánh supply skip ranking công thức icp (vert/location score demand-shaped); supply ordering = registry priority mặc định — và KHÔNG mutate `priority`/`lead_quota` trên shared adapter instances trong nhánh supply.
-  - `_build_query_for_adapter`/query synthesis: `direction="supply"` build từ `spec.query` hoặc `supply_criteria.categories + locations`; không đọc `icp_criteria` (đã reject ở 43.1).
+  - `resolve_adapters_for_campaign` propagate direction → nhánh supply skip ranking công thức icp (vert/location score demand-shaped); supply ordering = **thứ tự registration cố định** (`list(self._adapters)` filtered `supply_eligible` — KHÔNG đọc `priority` đã bị demand run mutate, ordering deterministic giữa các run) — và KHÔNG mutate `priority`/`lead_quota` trên shared adapter instances trong nhánh supply.
+  - Query synthesis cho supply phải vá **cả hai** seam (pin):
+    1. `_build_query_for_adapter` (planner — chỉ dùng cho preflight `/campaigns/plan`): `direction="supply"` build từ `spec.query` hoặc `supply_criteria.categories + locations`; không đọc `icp_criteria` (đã reject ở 43.1).
+    2. `effective_query` trong `execute_multi_source_lead_gen` (`lead_gen_orchestrator.py:546` — đường execute thật, route `/run` truyền `query=""`): khi `direction="supply"` và `spec.query` rỗng → synthesize `categories + locations` ngay tại orchestrator (không nên masothue/muasamcong chạy query rỗng → 0 leads).
+  - Đọc `direction` phải handle cả dict spec (duck-typing wrapper nhận `dict`): `spec.get("direction") if isinstance(spec, dict) else getattr(spec, "direction", "demand")` — pin test chỉ truyền object hoặc cả hai.
   - Các icp pre-filter nào chạy trên đường orchestrator phải no-op khi supply (post-filter supply xử lý riêng — story 43.3).
 - **And** `direction="demand"` → resolution y hệt hiện tại (bit-for-bit — regression test pin expected adapter set cho các ICP fixture cũ, cả wrapper).
 - **And** explicit `target_sources` vẫn thắng mọi auto-resolution ở cả hai direction (documented escape hatch).
@@ -5765,6 +5768,7 @@ So that dataset results flow into the same campaign/lead pipeline as every other
   - `min_rating>0` → drop khi `lead.rating` có giá trị và < min; `rating is None` → giữ lại + counter `unrated_kept` (field mới — mặc định adapters không trả).
   - `require_verified=True` → chỉ giữ `verified is True` (None → drop, strict).
   - Sparse-identity guard: supply lead phải có `company_name` hoặc `tax_id`, thiếu cả hai → drop (`filtered_sparse_identity` — ngăn merge rác vào HMAC fallback "Doanh nghiệp").
+  - `outside_locations` guard: lead không match `supply_criteria.locations` → drop (`filtered_outside_locations`) — tái dùng `evaluate_hierarchical_location_match` trên `lead.city`/`address` (nhất quán với form 43.5 bắt buộc locations; masothue/muasamcong không tự lọc).
 - **And** `NormalizedLead` (`adapters/base.py`) được mở rộng `rating: float|None = None` + `verified: bool|None = None` (deliverable của story này — không phải aspirational); `enterprise` adapter set `verified=True` khi record từ registry masothue; adapter khác có thể để None.
 - **And** counters filter đậu trong `LeadGenOrchestratorResult`/result meta (implementer pin field chính xác — observability, không nuốt leads âm thầm).
 - **And** demand path không chạy post-filter này (guard `direction=="supply"`).
@@ -5794,6 +5798,7 @@ So that dataset results flow into the same campaign/lead pipeline as every other
 - **Given** campaign create flow hiện có (`from_campaign_create_input` seam), **When** thêm lựa chọn "Tìm nhà cung cấp" (supply), **Then**:
   - **Wire contract (pin):** payload chứa `direction: "supply"` + `supply_criteria: {categories, locations, min_rating, require_tax_id, require_verified}` ở **top-level** của campaign create input; `from_campaign_create_input`/`from_payload` được mở rộng đọc đúng key (dispatch: có `direction`/`supply_criteria` → nhánh supply; thiếu → demand như cũ).
   - Form hỏi: `categories` (multi-select/text), `locations`, free-text `query` (optional — feed `spec.query`), `min_rating`, `require_tax_id` (default on + ghi chú "áp dụng khi tìm pháp nhân có MST"), `require_verified`.
+  - `from_campaign_create_input` nhánh supply derive `location_profile` từ `supply_criteria.locations[0]` (province đầu tiên) — giữ preflight coverage + location telemetry có nghĩa (không để `None` → mọi adapter hiện 0.6 nationwide).
   - Validation client-side khớp server (categories/locations không rỗng khi supply → hiển thị lỗi thay vì 422 thô).
 - **And** demand flow hiện tại không đổi UI/UX.
 - **And** sau submit: user thấy pre-flight `CampaignPlanResponse` (sources route supply-side) trước khi launch — cùng flow demand.
