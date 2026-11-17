@@ -443,7 +443,7 @@ development_status:
   41-2-websets-lead-mapper-billing-gate-source-badge: done
   epic-41-retrospective: done
 
-  epic-42: in-progress
+  epic-42: done
   42-1-pat-scoped-rest-batch-ingest-verify-harden-contract-document: done
   42-2-toolresultenvelope-một-result-contract-xuyên-mọi-boundary: done
   42-3-get-api-v1-scrapers-health-aggregated-channel-status: done
