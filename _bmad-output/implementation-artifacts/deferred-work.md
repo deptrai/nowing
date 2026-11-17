@@ -2033,4 +2033,22 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
   - ~~**Status:** BLOCKED-OUTSIDE-REPO~~
   - **RESOLVED 2026-10-14:** Chính sách đã được Product Owner xác định và ghi thành văn bản tại `_bmad-output/planning-artifacts/credit-refund-policy-compliance-purge-draft-2026-10-13.md`; `sprint-status.yaml` đánh dấu `epic-33-retro-item-35` = `done` (ref policy doc). Bản ghi BLOCKED-OUTSIDE-REPO trước đó là stale.
 
+## Deferred from: Epic 42 Hermes-replay e2e (2026-11-17, live verification)
+
+- **Finding:** `api_access_enabled` gate — PAT chỉ thấy/call được workspace có `api_access_enabled=true` (`GET /workspaces` trả `[]` silently cho PAT, `RequirePermission` 403 ở write endpoints). Flag KHÔNG có trong `WorkspaceUpdate` schema và không có UI toggle rõ ràng → agent ngoài (kiểu Hermes) sẽ vấp bước này mà không biết tại sao.
+  - **Action:** Cần 1 trong: (a) UI toggle rõ trong workspace settings; (b) lỗi có hướng dẫn (403 body nêu "enable api_access_enabled"); (c) docs cho external-agent onboarding trong `nowing_mcp` README.
+  - **Reason / when to revisit:** Gate cố ý (fail-closed đúng thiết kế bảo mật), nhưng discoverability kém — phát hiện khi replay journey Hermes qua `nowing_mcp` trên dev (workspace phải sửa DB thủ công). Revisit trong story onboarding external agent hoặc khi user feedback.
+
+- **Finding:** `google_search` scraper fail khi thiếu Playwright/Patchright browser binaries ("Executable doesn't exist ... ms-playwright/chromium-1228") — dev env dependency, không phải bug code.
+  - **Action:** Thêm `patchright install` (hoặc playwright install) vào dev setup docs / setup script. Agent đã failover graceful sang Google Maps — đúng thiết kế degraded.
+  - **Reason / when to revisit:** Revisit khi làm dev-onboarding pass hoặc CI image chuẩn cho scrapers.
+
+- **Finding:** Medirus MCP session "session is closed or tainted" 1 lần trong live run (sau đó retry + `medirus_scrape_or_local` fallback thành công). Root cause session lifecycle chưa rõ (stale session cache sau khi daemon restart?).
+  - **Action:** Quan sát thêm; nếu tái diễn → audit `MedirusMcpClient` session reuse/refresh trên daemon restart.
+  - **Reason / when to revisit:** Transient, đã có fallback đúng spec. Revisit khi có báo cáo lặp hoặc production log đầy đủ.
+
+- **Finding:** `MissingWorkspaceId` trong `medirus-mcp.log` chưa verify được trực tiếp (daemon log không đọc được từ backend side; daemon sống, calls đã fire).
+  - **Action:** Runtime verify sau deploy — grep `medirus-mcp.log` để xác nhận 42.8 triệt tiêu warning.
+  - **Reason / when to revisit:** Code-level đã test (injection tại wiring layer). Revisit trong PR merge note / deploy checklist.
+
 
