@@ -2,9 +2,9 @@
 title: 'Story 43.3 — Supply post-filter tại persist seam + NormalizedLead rating/verified'
 type: 'feature'
 created: '2026-11-17'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'ba4f3de45'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context:
   - _bmad-output/implementation-artifacts/epic-43-context.md

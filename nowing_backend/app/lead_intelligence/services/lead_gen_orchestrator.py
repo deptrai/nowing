@@ -959,8 +959,39 @@ class LeadGenOrchestrator:
             if not kept_leads:
                 return search_result
 
+        # Epic 43.4: supply leads được tag role/visibility qua extra_metadata
+        # ngay tại build site — demand path không thêm key nào. Tag nằm trong
+        # lead_dict, ingest_batch passthrough + upsert JSONB merge giữ key cũ.
+        supply_tags: dict[str, Any] | None = None
+        if campaign_spec is not None:
+            spec_direction = (
+                str(getattr(campaign_spec, "direction", "demand") or "demand")
+                if not isinstance(campaign_spec, dict)
+                else str(campaign_spec.get("direction") or "demand")
+            )
+            if spec_direction == "supply":
+                spec_name = (
+                    campaign_spec.get("name", "")
+                    if isinstance(campaign_spec, dict)
+                    else getattr(campaign_spec, "name", "")
+                )
+                spec_visibility = (
+                    campaign_spec.get("visibility", "private")
+                    if isinstance(campaign_spec, dict)
+                    else getattr(campaign_spec, "visibility", "private")
+                )
+                supply_tags = {
+                    "lead_role": "supplier",
+                    "campaign_direction": "supply",
+                    "campaign_key": spec_name,
+                    "visibility": spec_visibility,
+                }
+
         lead_dicts: list[dict[str, Any]] = []
         for lead in search_result.leads:
+            extra_metadata: dict[str, Any] = dict(lead.raw_data.get("extra_metadata") or {})
+            if supply_tags is not None:
+                extra_metadata.update(supply_tags)
             lead_dicts.append(
                 {
                     "client_id": effective_client_id,
@@ -988,6 +1019,7 @@ class LeadGenOrchestrator:
                     "tax_id": lead.tax_id,
                     "contact_name": lead.contact_name or lead.legal_rep,
                     "title": lead.title,
+                    "extra_metadata": extra_metadata,
                 }
             )
 

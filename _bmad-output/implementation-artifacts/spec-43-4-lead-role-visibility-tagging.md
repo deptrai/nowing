@@ -2,8 +2,8 @@
 title: 'Story 43.4 — Lead role + visibility tagging qua extra_metadata'
 type: 'feature'
 created: '2026-11-17'
-status: 'draft'
-baseline_revision: ''
+status: 'in-progress'
+baseline_revision: '0d0e39f6e88c4c579f125e7b6d164a729f8b0fe1'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
