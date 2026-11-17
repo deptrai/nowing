@@ -222,7 +222,22 @@ async def test_pat_on_api_access_disabled_workspace_gets_403(
     await create_default_roles_and_membership(db_session, disabled_ws.id, db_user.id)
     await db_session.flush()
 
-    _, token = db_pat
+    # PAT bound TỚI disabled_ws — binding-first (AI-42.4) check pass rồi mới
+    # tới api-access gate (dùng db_pat bound pat_workspace sẽ 403 binding).
+    token = generate_pat()
+    db_session.add(
+        PersonalAccessToken(
+            user_id=db_user.id,
+            token_hash=hash_pat(token),
+            token_prefix=token[:12],
+            label="e2e-disabled-ws-pat",
+            workspace_id=disabled_ws.id,
+            scopes=["leads:write"],
+            token_kind="legacy",
+        )
+    )
+    await db_session.flush()
+
     resp = await client_real_auth.post(
         f"/api/v1/workspaces/{disabled_ws.id}/leads/batch-ingest",
         headers=_headers(token),

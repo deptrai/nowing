@@ -2057,14 +2057,10 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
   - **Action:** Viết spec 42-10 mở rộng sweep — thêm `_pat_scope` + test pinning từng endpoint, cùng shape spec 42-9.
   - **Reason / when to revisit:** Decision sau 4-layer review 42.9 — user chọn narrow Goal thay vì kéo dài spec. Revisit ngay khi bắt đầu hardening pass tiếp theo.
 
-- **Finding:** `reverse_icp` gắn `leads:read` nhưng thực chất chạy LLM (asymmetry scope-vs-cost so với `resolve_phone → leads:enrich`).
-  - **Action:** Chuẩn hoá convention scope-theo-cost (endpoint tốn credit/LLM nên đòi `enrich`/`write` chứ không `read`) trong spec sweep tiếp theo.
-  - **Reason / when to revisit:** Cần decision về convention — không đổi ngầm trong bundle 42.9.
+- ~~**Finding:** `reverse_icp` gắn `leads:read` nhưng thực chất chạy LLM~~ **RESOLVED 2026-11-17** — AI-42.5: seam đổi `leads:read`→`leads:enrich` tại `leads_routes.py:389`.
 
 ## Deferred from: spec-42-10 census (2026-11-17)
 
-- **Finding:** PAT-scope sweep vẫn còn sót ít nhất 2 file lead-domain: `dnc_routes.py` (endpoints dùng `Permission.LEADS_READ`/`LEADS_WRITE` tại :210, :266, :296 — DNC = do-not-contact, lead-ops domain) và `lead_pipeline_routes.py` (:73 inline check `has_permission(LEADS_WRITE or CRM_WRITE)` — không qua `check_permission` nên PAT bypass cả scope lẫn api-access gate, giống `resolve_phone` trước 42.9). Census toàn `app/routes/`: ~80 file dùng `get_auth_context` chưa có seam, nhưng phần lớn ngoài domain leads:* (PAT convention hiện chỉ cover leads domain).
-  - **Action:** Spec 42-11 (hoặc gộp vào hardening bundle tiếp): seam `dnc_routes` theo perm khai báo (read/write), `lead_pipeline_routes` vừa seam vừa gate. Đồng thời census lại file nào còn inline `has_permission`/`get_user_permissions` không qua `check_permission` (bypass api-access gate cho PAT).
-  - **Reason / when to revisit:** Phát hiện trong lúc verify 42-10 — ngoài enumeration spec 42-10 (đã narrow theo decision user ở 42.9). Revisit cùng lúc 42-10 merge hoặc hardening pass sau.
+- ~~**Finding:** PAT-scope sweep vẫn còn sót ít nhất 2 file lead-domain (`dnc_routes.py`, `lead_pipeline_routes.py`) + ~80 file `get_auth_context` chưa có seam.~~ **RESOLVED 2026-11-17** — spec 42-11 đã seam `dnc_routes.py` + `lead_pipeline_routes.py` (commit `22d7cbde4`). ~80 file non-leads: **AI-42.4** — `check_permission` giờ tự enforce `enforce_pat_scope(required_permission)` cho mọi `RequirePermission` caller (unified seam, scope ≡ perm), `check_workspace_access` enforce binding; `self_host` exempt. Residual: endpoint nào không đi qua `check_permission`/`RequirePermission`/`RequireWorkspaceAccess` (inline `has_permission`/`get_user_permissions` tự check) vẫn bypass api-access gate + scope — nếu phát hiện thêm thì vá theo kiểu `resolve_phone` (gọi `_enforce_api_access_gate` sau perm check).
 
 

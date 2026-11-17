@@ -137,6 +137,11 @@ an exception the client sees as a crash:
   structured error payload (e.g. the 422 body from a failed batch ingest)
   so the client sees the full detail.
 
+Convention status (AI-42.3 audit, 2026-11-17): all 13 feature modules
+(`features/*`) conform — transport/API errors propagate as `ToolError`;
+`leads` is currently the only module with a domain-level JSON return
+(`no_wallet`). New modules follow the same two rules above.
+
 ## Backend dependency
 
 `nowing_search_knowledge_base` calls `POST /api/v1/documents/search-semantic`,

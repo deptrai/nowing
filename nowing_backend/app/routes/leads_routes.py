@@ -386,7 +386,9 @@ async def reverse_icp_endpoint(
             "You don't have permission to access lead intelligence in this workspace",
         )
     ),
-    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
+    # AI-42.5 (scope-theo-cost): endpoint này chạy LLM — gác bằng
+    # leads:enrich (cost-bearing) thay leads:read.
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_ENRICH.value)),
 ) -> ReverseIcpResponse:
     """Analyze a website or landing page URL to generate ICP, buyer personas, and filter presets (Story 21.10)."""
 

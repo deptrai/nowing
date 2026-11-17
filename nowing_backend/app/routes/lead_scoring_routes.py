@@ -219,8 +219,10 @@ async def update_icp_criteria(
             "You don't have permission to update workspace settings",
         )
     ),
-    # PAT scope seam (spec 42-10, D1): ICP criteria thuộc lead pipeline → leads:write
-    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
+    # PAT scope seam: AI-42.4 — scope = perm (identity); trước là leads:write
+    # (42-10 D1) nhưng giờ unified check enforce `settings:update` — giữ seam
+    # ở giá trị identity để testable + defense-in-depth, không dual-scope.
+    _pat_scope: None = Depends(RequirePatScope(Permission.SETTINGS_UPDATE.value)),
 ) -> IcpCriteria:
     """Update the Ideal Customer Profile criteria for a workspace."""
 

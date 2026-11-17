@@ -42,7 +42,11 @@ from app.services.lead_assignment_service import LeadAssignmentService
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 from app.services.pitch_portal import ensure_pitch_portal, sanitize_text
 from app.users import get_auth_context
-from app.utils.rbac import _enforce_api_access_gate, check_permission
+from app.utils.rbac import (
+    _enforce_api_access_gate,
+    check_permission,
+    enforce_pat_scope,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -163,26 +167,11 @@ async def _verify_clipper_auth(
 ) -> None:
     """Verify PAT scope or session membership permissions for clipper endpoints."""
     if auth.method == "pat":
-        if auth.pat is None or not getattr(auth.pat, "is_valid", True):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Personal Access Token is expired or revoked",
-            )
-        pat_workspace_id = getattr(auth.pat, "workspace_id", None)
-        if pat_workspace_id is not None and pat_workspace_id != workspace_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="PAT not authorized for target workspace",
-            )
-        # PAT bypass check_permission → phải tự chạy api-access gate (spec 42-10);
-        # đặt sau binding check để giữ convention binding-first (enforce_pat_scope).
+        # AI-42.2: canonical seam — binding + scope check trong enforce_pat_scope
+        # (resolve_pat đã lọc expired nên không cần is_valid lặp lại);
+        # PAT bypass check_permission → tự chạy api-access gate (spec 42-10).
+        await enforce_pat_scope(auth, workspace_id, CLIPPER_REQUIRED_SCOPE)
         await _enforce_api_access_gate(session, auth, workspace_id)
-        scopes = getattr(auth.pat, "scopes", []) or []
-        if CLIPPER_REQUIRED_SCOPE not in scopes:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"PAT missing required scope: {CLIPPER_REQUIRED_SCOPE}",
-            )
     elif auth.method == "session":
         await check_permission(
             session,

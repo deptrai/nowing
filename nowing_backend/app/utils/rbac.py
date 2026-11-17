@@ -174,6 +174,15 @@ async def check_permission(
     if not has_permission(permissions, required_permission):
         raise HTTPException(status_code=403, detail=error_message)
 
+    # AI-42.4: unified PAT seam — scope = permission string (identity map).
+    # PAT effective power = min(membership perms, pat.scopes): membership +
+    # perm check chạy trước nên PAT chỉ thu hẹp, không bao giờ mở rộng.
+    # self_host keys là owner-minted full-access → exempt theo thiết kế.
+    # Chạy TRƯỚC api-access gate (binding-first convention — PAT bound ws-B
+    # gọi ws-A phải 403 "outside pat scope", không lộ api-access state).
+    if auth.is_gated and getattr(auth.pat, "token_kind", None) != "self_host":
+        await enforce_pat_scope(auth, workspace_id, required_permission)
+
     await _enforce_api_access_gate(session, auth, workspace_id)
 
     return membership
@@ -239,6 +248,23 @@ async def check_workspace_access(
         raise HTTPException(
             status_code=403,
             detail="You don't have access to this workspace",
+        )
+
+    # AI-42.4: PAT workspace binding — PAT bound ws-A không được đọc ws-B
+    # (membership-level check không có scope map → chỉ binding).
+    # self_host keys exempt (owner-minted full-access).
+    # Binding-first: chạy TRƯỚC api-access gate để không lộ gate state.
+    pat = getattr(auth, "pat", None)
+    if (
+        auth.is_gated
+        and pat is not None
+        and getattr(pat, "token_kind", None) != "self_host"
+        and pat.workspace_id is not None
+        and pat.workspace_id != workspace_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="workspace_id outside pat scope",
         )
 
     await _enforce_api_access_gate(session, auth, workspace_id)

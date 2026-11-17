@@ -263,3 +263,25 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remainin
 - `pytest tests/unit/lead_intelligence/test_lead_stream_buffer.py` → **8 passed** (3 regression mới: hmac normalize, stmt chứa table_id, ordering resolver→stmt qua fake session).
 - `pytest tests/unit/lead_intelligence tests/unit/services/test_lead_batch_service.py tests/integration/lead_batch/` → **355 passed** — không hồi quy.
 - Medium findings → action items AI-42.7 (PAT mint validate scopes mọi token_kind) + AI-42.8 (reset `_synthesis_workspace_id` ContextVar).
+
+## Epic 42 retro — AI-42.5 + AI-42.2 + AI-42.4 (unified PAT seam) — 2026-11-17
+
+Đóng 4 action items retro còn lại: AI-42.5 (`reverse_icp` seam → `leads:enrich`, endpoint LLM cost-bearing), AI-42.2 (`_verify_clipper_auth` PAT branch → canonical `enforce_pat_scope`), AI-42.3 (audit MCP error convention 13 features — conform, note vào `nowing_mcp/README.md`), **AI-42.4** unified PAT seam:
+
+- `check_permission` giờ tự `enforce_pat_scope(required_permission)` cho MỌI `RequirePermission` caller — scope ≡ perm identity, ~80 route files non-leads cover ngay; `self_host` token exempt (owner-minted full-access); binding-first trước api-access gate.
+- `check_workspace_access` enforce PAT workspace binding.
+- `KNOWN_PAT_SCOPES` = dynamic catalog (`Permission` enum ∪ `agent_chat:*` ∪ `leads:clipper:write`) — mint legacy 400 trên scope lạ.
+
+### Tests
+
+| Suite | Kết quả |
+|---|---|
+| `tests/unit/utils/test_pat_unified_scope.py` (mới, 9 tests) | 9 passed — scope pass/missing, binding-first, self_host exempt, session unchanged, `scopes=[]` fail-closed, workspace_access binding |
+| `tests/unit/routes/test_pat_scope_sweep.py` | 48 passed — `update_icp_criteria` pin đổi `leads:write`→`settings:update` (scope=perm) |
+| `tests/integration/lead_batch/` + fail-closed + clipper ingest | 37 passed — e2e api-access-disabled đổi PAT bound tới disabled_ws (binding-first order) |
+| `tests/unit/routes tests/unit/utils` full regression | **715 passed** |
+
+### Lưu ý
+
+- Convention: PAT scopes giờ = set các permission agent cần (vd enrich-capable PAT → `["leads:read","leads:enrich"]`). `reverse_icp` dual: perm `leads:read` + seam `leads:enrich` → PAT cần cả hai.
+- Endpoint không qua `check_permission`/`RequirePermission`/`RequireWorkspaceAccess` (inline `has_permission`) vẫn bypass seam — residual đã ghi deferred-work.

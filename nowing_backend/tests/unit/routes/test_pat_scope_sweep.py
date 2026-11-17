@@ -380,7 +380,7 @@ def test_gate_message_403_contains_api_access_hint(
             "post",
             "/api/v1/workspaces/1/leads/reverse-icp",
             {"url": "https://example.com"},
-            "leads:read",
+            "leads:enrich",  # AI-42.5: LLM-cost endpoint → enrich scope
         ),
         (
             "post",
@@ -604,7 +604,7 @@ def _build_router_client(
             "put",
             "/api/v1/workspaces/1/icp",
             {},
-            "leads:write",
+            "settings:update",  # AI-42.4: scope = perm (unified seam)
         ),
         # outbound_routes — leads:read ×2, leads:write ×1
         (

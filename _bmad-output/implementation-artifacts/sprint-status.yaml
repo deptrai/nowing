@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '11-17-2026 15:57'
+last_updated: '11-17-2026 17:01'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -1053,28 +1053,28 @@ action_items:
     action: "Unify PAT-check seams: _verify_clipper_auth → canonical RequirePatScope
       khi refactor lần tới (giữ scope leads:clipper:write)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-42-retro-2026-11-17.md"
   - id: "epic-42-retro-item-47-mcp-error-convention-rollout-sang-featur"
     epic: 42
     action: "MCP error convention rollout sang feature modules khác ngoài leads (domain→JSON
       failed / transport→ToolError)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-42-retro-2026-11-17.md"
   - id: "epic-42-retro-item-48-pat-seam-cho-non-leads-domains-khi-có-sc"
     epic: 42
     action: "PAT seam cho non-leads domains khi có scope namespace convention rộng
       hơn leads:* (census ~80 files trong deferred-work)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-42-retro-2026-11-17.md"
   - id: "epic-42-retro-item-49-reverse_icp-scope-vs-cost-convention-lea"
     epic: 42
     action: "reverse_icp scope-vs-cost convention: leads:read đang gác endpoint chạy
       LLM — cần chuẩn scope-theo-cost"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-42-retro-2026-11-17.md"
   - id: "epic-42-retro-item-50-pat-mint-validate-scopes-cho-moi-token_k"
     epic: 42
