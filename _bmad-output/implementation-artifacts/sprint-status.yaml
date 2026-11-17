@@ -463,7 +463,7 @@ development_status:
   43-6-e2e-supply-campaign-enterprise-masothue: done
   epic-43-retrospective: done
 
-  epic-44: in-progress
+  epic-44: done
   44-1-lead-campaigns-campaign-runs-campaign-leads-schema-opt-in-binding: done
   44-2-campaign-crud-launch-async-run-task: done
   44-3-campaign-scheduler-rate-limit-guard: done
