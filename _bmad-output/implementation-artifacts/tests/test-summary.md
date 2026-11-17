@@ -213,3 +213,18 @@ Per-story e2e theo handoff (`bmad-qa-generate-e2e-tests`): real app + real Postg
 
 - `LeadItem` REST schema không expose `table_id` — explicit table_id chỉ qua funnel `save_leads`; test explicit-id chạy service-level.
 - MCP e2e chỉ được wire-level (`httpx.MockTransport`) vì 2 venv không share deps — backend path đã có integration tests riêng.
+
+## Spec 42.9 — PAT scope sweep (2026-11-17)
+
+Spec: `_bmad-output/implementation-artifacts/spec-42-9-lead-pat-scope-hardening.md` — follow-up bundle sau epic 42. Commit `9225b9648`.
+
+| Suite | Kết quả |
+|---|---|
+| `tests/unit/routes/test_pat_scope_sweep.py` | **8 passed** — READ_OK / READ_NO_SCOPE / WRITE_OK / WRITE_NO_SCOPE / PAT_WRONG_WS / BALANCE_PAT / GATE_MESSAGE (403 chứa `api-access` + `API_ACCESS_MANAGE`) / SESSION_UNCHANGED |
+| `tests/unit/routes` regression | **347 passed** |
+
+### Lưu ý
+
+- `resolve_lead_phone` gắn `leads:enrich` (tightening cố ý): PAT chỉ có `leads:write` giờ 403 — đúng scope cho billing-waterfall endpoint; session user không đổi.
+- `phone_verification_result` không gắn seam — `require_superuser` đã chặn PAT (dead code nếu gắn).
+- 403 api-access giờ nêu route bật `PUT /workspaces/{id}/api-access` — discoverability fix, endpoint vốn đã tồn tại.
