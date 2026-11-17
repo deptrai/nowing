@@ -669,6 +669,162 @@ def test_sweep_42_10_wrong_scope_403(
     assert f"permission missing: {required_scope}" in response.json()["detail"]
 
 
+# ---------------------------------------------------------------------------
+# Spec 42-11 — PAT scope sweep trên dnc_routes + lead_pipeline_routes
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "router_name,method,path,json_body,required_scope",
+    [
+        # dnc_routes — leads:read ×1, leads:write ×3
+        (
+            "dnc_routes",
+            "get",
+            "/api/v1/workspaces/1/dnc",
+            None,
+            "leads:read",
+        ),
+        (
+            "dnc_routes",
+            "post",
+            "/api/v1/workspaces/1/dnc",
+            {"record_type": "phone", "value": "0901234567"},
+            "leads:write",
+        ),
+        (
+            "dnc_routes",
+            "delete",
+            "/api/v1/workspaces/1/dnc/{record_id}",
+            None,
+            "leads:write",
+        ),
+        # lead_pipeline_routes — leads:read ×3, leads:write ×4
+        (
+            "lead_pipeline_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/pipeline/stages",
+            None,
+            "leads:read",
+        ),
+        (
+            "lead_pipeline_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/{lead_id}/timeline",
+            None,
+            "leads:read",
+        ),
+        (
+            "lead_pipeline_routes",
+            "get",
+            "/api/v1/workspaces/1/leads/{lead_id}/meeting/slots",
+            None,
+            "leads:read",
+        ),
+        (
+            "lead_pipeline_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/pipeline/stages",
+            {"name": "Mới", "slug": "new-stage", "position": 9},
+            "leads:write",
+        ),
+        (
+            "lead_pipeline_routes",
+            "patch",
+            "/api/v1/workspaces/1/leads/{lead_id}/stage",
+            {"stage_id": str(uuid4()), "expected_version": 1},
+            "leads:write",
+        ),
+        (
+            "lead_pipeline_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/assign-batch",
+            {"lead_ids": [str(uuid4())]},
+            "leads:write",
+        ),
+        (
+            "lead_pipeline_routes",
+            "post",
+            "/api/v1/workspaces/1/leads/{lead_id}/meeting/book",
+            {"start": "2026-12-01T09:00:00+07:00", "duration_minutes": 30},
+            "leads:write",
+        ),
+        (
+            "dnc_routes",
+            "post",
+            "/api/v1/workspaces/1/dnc/import-csv",
+            None,
+            "leads:write",
+        ),
+    ],
+    ids=[
+        "list_dnc_records",
+        "create_dnc_record",
+        "delete_dnc_record",
+        "list_pipeline_stages",
+        "list_lead_timeline",
+        "list_meeting_slots",
+        "create_pipeline_stage",
+        "transition_lead_stage",
+        "assign_leads_batch",
+        "book_meeting_for_lead",
+        "import_dnc_csv",
+    ],
+)
+def test_sweep_42_11_wrong_scope_403(
+    monkeypatch: pytest.MonkeyPatch,
+    router_name: str,
+    method: str,
+    path: str,
+    json_body: dict | None,
+    required_scope: str,
+) -> None:
+    """PAT sai scope → 403 'permission missing: <scope>' đúng từng endpoint 42-11."""
+    import importlib
+
+    router = importlib.import_module(f"app.routes.{router_name}").router
+    wrong_scopes = (
+        ["leads:read"] if required_scope == "leads:write" else ["leads:write"]
+    )
+    client = _build_router_client(
+        monkeypatch, router, _pat_auth(scopes=wrong_scopes, workspace_id=1)
+    )
+
+    url = path.replace("{lead_id}", str(uuid4())).replace(
+        "{record_id}", str(uuid4())
+    )
+    kwargs: dict[str, Any] = {}
+    if json_body is not None:
+        kwargs["json"] = json_body
+    response = client.request(method, url, **kwargs)
+
+    assert response.status_code == 403
+    assert f"permission missing: {required_scope}" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "router_name,path",
+    [
+        ("dnc_routes", "/api/v1/workspaces/1/dnc"),
+        ("lead_pipeline_routes", "/api/v1/workspaces/1/leads/pipeline/stages"),
+    ],
+    ids=["dnc_wrong_workspace", "pipeline_wrong_workspace"],
+)
+def test_sweep_42_11_wrong_workspace_403(
+    monkeypatch: pytest.MonkeyPatch, router_name: str, path: str
+) -> None:
+    """PAT bound ws 999 gọi endpoint 42-11 trên ws 1 → 403 'workspace_id outside pat scope'."""
+    import importlib
+
+    router = importlib.import_module(f"app.routes.{router_name}").router
+    client = _build_router_client(
+        monkeypatch, router, _pat_auth(scopes=["leads:read"], workspace_id=999)
+    )
+    response = client.get(path)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "workspace_id outside pat scope"
+
+
 def test_clipper_pat_respects_api_access_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

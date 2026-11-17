@@ -246,3 +246,11 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remainin
 - `update_icp_criteria` (perm `SETTINGS_UPDATE`) → `leads:write` (D1); zalo-connection + webhook skip (D4).
 - Side-effect cần thiết: `test_zalo_copilot_context.py` cập nhật `_FakeSession` — nhánh PAT giờ cần session cho gate.
 - Census 42-10 phát hiện còn `dnc_routes.py` + `lead_pipeline_routes.py` chưa seam → đã ghi deferred-work (spec 42-11 candidate), ngoài scope spec này.
+
+## Spec 42.11 — PAT scope sweep dnc + pipeline (2026-11-17)
+
+- Spec: `_bmad-output/implementation-artifacts/spec-42-11-pat-scope-dnc-pipeline.md`
+- `pytest tests/unit/routes/test_pat_scope_sweep.py` → **45 passed** (`test_sweep_42_11_wrong_scope_403` 11 case + `wrong_workspace` 2 case mới).
+- `pytest tests/unit/routes -x -q` → **384 passed** — không test cũ gãy.
+- `dnc_routes`: 4 seam (list→`leads:read`, create/delete/import→`leads:write`); `lead_pipeline_routes`: 12 seam (4 read→`leads:read`, 8 mutation→`leads:write`; spend-cap/lead-capacity→`leads:write` theo D1).
+- Domain `leads:*` đóng hoàn toàn sau spec này; correction: pipeline không bypass api-access gate (`RequireWorkspaceAccess` đã chạy gate) — gap duy nhất là PAT scope.
