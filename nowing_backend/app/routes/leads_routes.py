@@ -23,7 +23,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePatScope, RequirePermission
 from app.lead_intelligence.reverse_icp import ReverseIcpService
 from app.lead_intelligence.schemas import (
     CompanyGraphRead,
@@ -276,6 +276,7 @@ async def list_workspace_leads(
             "You don't have permission to view leads in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> LeadListResponse:
     """List multi-domain leads with filtering and pagination (Widget U3 / AC-5)."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -381,6 +382,7 @@ async def reverse_icp_endpoint(
             "You don't have permission to access lead intelligence in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> ReverseIcpResponse:
     """Analyze a website or landing page URL to generate ICP, buyer personas, and filter presets (Story 21.10)."""
 
@@ -455,6 +457,7 @@ async def get_lead(
             "You don't have permission to view leads in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> LeadRead:
     """Get single lead details with verified contacts."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -480,6 +483,7 @@ async def update_lead_status(
             "You don't have permission to update leads in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> LeadRead:
     """Update CRM pipeline status for a lead (AC-4)."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -509,6 +513,7 @@ async def get_company_graph(
             "You don't have permission to view company graph in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> CompanyGraphRead:
     """Get aggregated relationship graph for enterprise/company (AC-3 / Widget U4 / Story 21.9)."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -707,6 +712,7 @@ async def resolve_lead_phone_endpoint(
     body: PhoneResolutionRequest = PhoneResolutionRequest(),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_ENRICH.value)),
 ) -> PhoneResolutionResponse:
     """Resolve and verify Vietnam mobile phone for a lead via 3-Tier Waterfall (Story 21.3 / AD-36).
 
@@ -808,6 +814,7 @@ async def report_invalid_phone_endpoint(
             "You don't have permission to report invalid leads in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> PhoneRefundResponse:
     """Report an unreachable/invalid phone number within 24h SLA for 100% credit auto-refund (Story 21.3)."""
 

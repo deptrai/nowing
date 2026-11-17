@@ -240,6 +240,7 @@ async def unlock_contact(
             "You don't have permission to unlock contacts in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> ContactUnlockResponse:
     """Unlock a verified contact, bill 1500 micros, and record an audit log."""
 
@@ -309,6 +310,7 @@ async def relock_contact(
             "You don't have permission to relock contacts in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> ContactUnlockResponse:
     """Accidentally re-lock a contact and refund the 1.5 credit unlock (Story 26.5)."""
 
@@ -423,6 +425,7 @@ async def pii_opt_out(
             "You don't have permission to opt-out PII in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> PIIOptOutResponse:
     """Process a PDPD Decree 13 opt-out request (Right to be Forgotten)."""
 

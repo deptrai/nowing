@@ -15,7 +15,11 @@ from app.db import (
     get_async_session,
     get_default_roles_config,
 )
-from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
+from app.dependencies.auth import (
+    RequirePatScope,
+    RequirePermission,
+    RequireWorkspaceAccess,
+)
 from app.routes.model_connections_routes import compute_llm_setup_status
 from app.schemas import (
     WorkspaceApiAccessUpdate,
@@ -263,6 +267,9 @@ async def get_credits_balance(
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
     _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # D1 (spec 42.9): balance là lead-ops read — PAT scope dùng leads:read,
+    # không mở namespace `credits:read` mới.
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ):
     """Return the workspace's current credit balance in micros."""
     workspace = await session.get(Workspace, workspace_id)

@@ -2,7 +2,7 @@
 title: 'Epic 42 follow-up — PAT scope cho read/write endpoints còn lại + api-access discoverability + MCP error convention'
 type: 'story'
 created: '2026-11-17'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 warnings:
@@ -103,7 +103,13 @@ _(chưa có)_
 
 # Review Triage Log
 
-_(chưa có)_
+## 2026-11-17 — Coordinator self-review (small mechanical bundle)
+
+- Quét toàn diff 7 file + test file mới; routes regression 347/347 xanh; sweep tests 8/8.
+- [low → accepted decision] `resolve_lead_phone_endpoint` gắn `LEADS_ENRICH` (implementer chọn). Old inline perm check là `has_enrich or has_write` → PAT có duy nhất `leads:write` trước đây qua được, giờ 403. Tightening CỐ Ý: phone resolution là billing waterfall, đúng scope là enrich; session user không đổi; legacy PAT `scopes=[]` vốn fail-closed. Ghi nhận để biết khi có complaint.
+- [reject] `phone_verification_result_endpoint` không gắn seam — đã bị `require_superuser` chặn PAT trước đó, seam là dead code. Đúng.
+- [reject] Chỉ `list_workspace_leads` có test row trong sweep — các endpoint khác dùng cùng seam pattern, coverage đủ cho mechanical change.
+- Verdict: 0 high / 0 medium / 0 action pending. `followup_review_recommended: false`.
 
 # Design Notes
 

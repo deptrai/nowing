@@ -11,6 +11,13 @@ ENVIRONMENT=development uv run alembic upgrade head
 ENVIRONMENT=development uv run python -m app
 ```
 
+Scraper flows that drive a real browser (e.g. patchright-based flows) also need
+the Chromium binary installed once per machine:
+
+```bash
+uv run patchright install chromium
+```
+
 ## Tests
 
 ```bash

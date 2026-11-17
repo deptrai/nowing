@@ -121,7 +121,11 @@ async def _enforce_api_access_gate(
     if auth.is_gated and not workspace.api_access_enabled:
         raise HTTPException(
             status_code=403,
-            detail="API access is not enabled for this workspace.",
+            detail=(
+                "API access is not enabled for this workspace. Enable via "
+                "PUT /api/v1/workspaces/{workspace_id}/api-access "
+                "(requires API_ACCESS_MANAGE, session auth)."
+            ),
         )
 
     return workspace
