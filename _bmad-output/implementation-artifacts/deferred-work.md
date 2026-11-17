@@ -2035,9 +2035,9 @@ Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng R
 
 ## Deferred from: Epic 42 Hermes-replay e2e (2026-11-17, live verification)
 
-- **Finding:** `api_access_enabled` gate — PAT chỉ thấy/call được workspace có `api_access_enabled=true` (`GET /workspaces` trả `[]` silently cho PAT, `RequirePermission` 403 ở write endpoints). Flag KHÔNG có trong `WorkspaceUpdate` schema và không có UI toggle rõ ràng → agent ngoài (kiểu Hermes) sẽ vấp bước này mà không biết tại sao.
-  - **Action:** Cần 1 trong: (a) UI toggle rõ trong workspace settings; (b) lỗi có hướng dẫn (403 body nêu "enable api_access_enabled"); (c) docs cho external-agent onboarding trong `nowing_mcp` README.
-  - **Reason / when to revisit:** Gate cố ý (fail-closed đúng thiết kế bảo mật), nhưng discoverability kém — phát hiện khi replay journey Hermes qua `nowing_mcp` trên dev (workspace phải sửa DB thủ công). Revisit trong story onboarding external agent hoặc khi user feedback.
+- **Finding:** `api_access_enabled` gate — PAT chỉ thấy/call được workspace có `api_access_enabled=true` (`GET /workspaces` trả `[]` silently cho PAT, `RequirePermission` 403 ở write endpoints). **Update 2026-11-17:** `PUT /workspaces/{id}/api-access` ĐÃ tồn tại (`core.py:430`, perm `API_ACCESS_MANAGE`, session-only) — gap thực sự chỉ là **discoverability**: 403 body không nói flag nào/cách bật, agent ngoài vấp mà không biết tại sao.
+  - **Action:** (a) 403 detail nêu rõ flag + route bật; (b) docs external-agent onboarding trong `nowing_mcp` README.
+  - **Reason / when to revisit:** Gate cố ý (fail-closed đúng thiết kế bảo mật). Đã spec trong `spec-42-9-lead-pat-scope-hardening.md` (T3).
 
 - **Finding:** `google_search` scraper fail khi thiếu Playwright/Patchright browser binaries ("Executable doesn't exist ... ms-playwright/chromium-1228") — dev env dependency, không phải bug code.
   - **Action:** Thêm `patchright install` (hoặc playwright install) vào dev setup docs / setup script. Agent đã failover graceful sang Google Maps — đúng thiết kế degraded.
