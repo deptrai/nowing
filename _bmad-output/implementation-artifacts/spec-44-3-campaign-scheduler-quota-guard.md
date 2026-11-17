@@ -2,7 +2,8 @@
 title: 'Epic 44.3 — Campaign meta-scheduler + rate-limit guard'
 type: 'feature'
 created: '2026-11-18'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ee6ac8467842bceb4635f24b1e31043b3b9f0ead'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
