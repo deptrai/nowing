@@ -14,11 +14,12 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.enums import CampaignRunStatus, CampaignStatus
+from app.models.billing import TokenUsage
 from app.models.campaigns import CampaignLead, CampaignRun, LeadCampaign
 
 logger = logging.getLogger(__name__)
@@ -183,6 +184,23 @@ async def persist_campaign_leads(
         )
 
 
+async def _sum_run_cost_micros(session: AsyncSession, run_id: UUID) -> int:
+    """Sum ``token_usage.cost_micros`` của run (Epic 44.4 usage accounting).
+
+    Match theo JSONB path ``call_details->>'campaign_run_id'`` — tag được
+    ghi bởi ``record_token_usage`` qua contextvar
+    ``current_campaign_run_id``. Scrape-only run (0 LLM usage) → 0 (không
+    NULL): usage ≠ charge — charge door là Platform non-goal. Failed run
+    vẫn sum usage đã phát sinh (finalize-failed cũng gọi).
+    """
+    result = await session.execute(
+        select(func.coalesce(func.sum(TokenUsage.cost_micros), 0)).where(
+            TokenUsage.call_details.op("->>")("campaign_run_id") == str(run_id)
+        )
+    )
+    return int(result.scalar_one())
+
+
 async def finalize_campaign_run(
     session: AsyncSession,
     *,
@@ -196,8 +214,13 @@ async def finalize_campaign_run(
     Mọi return path của ``execute_and_persist`` phải gọi hàm này khi
     ``campaign_run_id`` có mặt — không bao giờ bỏ run ở trạng thái
     ``'running'``.
+
+    Epic 44.4: sum ``token_usage`` rows tagged ``campaign_run_id`` thành
+    ``campaign_runs.cost_micros`` — cả success lẫn failed (usage đã phát
+    sinh không mất).
     """
     finished_at = datetime.now(UTC)
+    cost_micros = await _sum_run_cost_micros(session, run_id)
     await session.execute(
         update(CampaignRun)
         .where(CampaignRun.id == run_id)
@@ -205,6 +228,7 @@ async def finalize_campaign_run(
             status=status,
             finished_at=finished_at,
             stats=stats or {},
+            cost_micros=cost_micros,
             error=(error[:2000] if error else None),
         )
     )
