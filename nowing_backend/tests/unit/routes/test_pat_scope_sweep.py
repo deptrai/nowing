@@ -93,6 +93,11 @@ class _FakeSession:
     async def flush(self) -> None:
         pass
 
+    async def refresh(self, _obj: Any) -> None:
+        # Mô phỏng DB gán PK sau commit (route đọc lại id để build response).
+        if getattr(_obj, "id", None) is None:
+            _obj.id = 1
+
 
 def _build_client(
     monkeypatch: pytest.MonkeyPatch,
@@ -878,3 +883,69 @@ def test_clipper_session_unchanged(
     )
     assert response.status_code == 200
     assert response.json()["is_duplicate"] is True
+
+
+def test_mint_legacy_unknown_scope_400(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AI-42.7: legacy PAT với scope không thuộc catalog → 400 unknown scopes."""
+    import app.routes.personal_access_tokens_routes as pat_routes
+
+    client = _build_router_client(
+        monkeypatch,
+        pat_routes.router,
+        AuthContext.session(SimpleNamespace(id=uuid4(), is_active=True)),
+    )
+    response = client.post(
+        "/api/v1/pats",
+        json={"label": "bad-scope", "token_kind": "legacy", "scopes": ["bogus:scope"]},
+    )
+    assert response.status_code == 400
+    assert "unknown scopes" in response.json()["detail"]
+
+
+def test_mint_legacy_known_scope_200(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AI-42.7: legacy PAT với leads:* scope hợp lệ → mint 200, scopes lưu đúng."""
+    import app.routes.personal_access_tokens_routes as pat_routes
+
+    client = _build_router_client(
+        monkeypatch,
+        pat_routes.router,
+        AuthContext.session(SimpleNamespace(id=uuid4(), is_active=True)),
+    )
+    response = client.post(
+        "/api/v1/pats",
+        json={
+            "label": "lead-bot",
+            "token_kind": "legacy",
+            "scopes": ["leads:read", "leads:write"],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["scopes"] == ["leads:read", "leads:write"]
+
+
+def test_mint_self_host_wipes_scopes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """self_host PAT: scopes truyền vào bị wipe về [] — không cần validate."""
+    import app.routes.personal_access_tokens_routes as pat_routes
+
+    client = _build_router_client(
+        monkeypatch,
+        pat_routes.router,
+        AuthContext.session(SimpleNamespace(id=uuid4(), is_active=True)),
+    )
+    response = client.post(
+        "/api/v1/pats",
+        json={
+            "label": "self-host",
+            "token_kind": "self_host",
+            "scopes": ["bogus:whatever"],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["scopes"] == []

@@ -17,7 +17,10 @@ from typing import Any
 
 from app.agents.chat.multi_agent_chat.shared.filesystem_selection import FilesystemMode
 from app.services.new_streaming_service import VercelStreamingService
-from app.tasks.chat.streaming.agent.event_loop import stream_agent_events
+from app.tasks.chat.streaming.agent.event_loop import (
+    clear_synthesis_workspace_id,
+    stream_agent_events,
+)
 from app.tasks.chat.streaming.shared.stream_result import StreamResult
 
 # Returns the rebuilt agent on a successful recovery, or ``None`` to re-raise
@@ -83,3 +86,7 @@ async def run_stream_loop(
                 raise
             agent = new_agent
             continue
+        finally:
+            # AI-42.8: clear ContextVar sau mỗi stream (kể cả lỗi/retry) —
+            # orchestrator set lại đầu turn kế, tránh leak workspace.
+            clear_synthesis_workspace_id()

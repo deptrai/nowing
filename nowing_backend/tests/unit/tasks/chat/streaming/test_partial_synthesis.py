@@ -249,3 +249,28 @@ async def test_finalize_appends_partial_status_part() -> None:
     assert out[-1]["type"] == "status"
     # Không mutate payload gốc
     assert len(payload) == 1
+
+
+def test_clear_synthesis_workspace_id_resets_contextvar() -> None:
+    """AI-42.8: clear helper reset ContextVar về None sau stream."""
+    from app.tasks.chat.streaming.agent.event_loop import (
+        _synthesis_workspace_id,
+        clear_synthesis_workspace_id,
+        set_synthesis_workspace_id,
+    )
+
+    set_synthesis_workspace_id(7)
+    assert _synthesis_workspace_id.get() == 7
+    clear_synthesis_workspace_id()
+    assert _synthesis_workspace_id.get() is None
+
+
+def test_run_stream_loop_clears_contextvar_on_exit() -> None:
+    """AI-42.8: run_stream_loop finally clear — không leak workspace sang turn sau."""
+    import inspect
+
+    from app.tasks.chat.streaming.flows.shared import stream_loop
+
+    src = inspect.getsource(stream_loop.run_stream_loop)
+    assert "clear_synthesis_workspace_id()" in src
+    assert "finally:" in src

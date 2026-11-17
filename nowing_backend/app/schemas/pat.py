@@ -4,11 +4,17 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # PAT Scopes
 LEADS_CLIPPER_WRITE_SCOPE: str = "leads:clipper:write"
+# Catalog chung cho mọi token_kind (AI-42.7): agent_chat:* + leads:*.
+# Legacy PAT trước đây không validate — scope gõ sai lưu lặng vào DB.
 KNOWN_PAT_SCOPES: list[str] = [
     LEADS_CLIPPER_WRITE_SCOPE,
     "agent_chat:thread:create",
     "agent_chat:message:create",
     "agent_chat:thread:read",
+    "leads:read",
+    "leads:write",
+    "leads:score",
+    "leads:enrich",
 ]
 
 

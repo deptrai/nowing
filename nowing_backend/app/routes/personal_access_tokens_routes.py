@@ -14,7 +14,7 @@ from app.db import (
     VerticalClient,
     get_async_session,
 )
-from app.schemas.pat import PATCreate, PATCreated, PATRead
+from app.schemas.pat import KNOWN_PAT_SCOPES, PATCreate, PATCreated, PATRead
 from app.tenant_context import set_request_tenant_context
 from app.users import require_non_impersonated_session, require_session_context
 from app.utils.pat import generate_pat, hash_pat, token_prefix
@@ -123,6 +123,16 @@ async def create_personal_access_token(
         client_id = None
         agent_id = None
         scopes = []
+
+    if token_kind not in {"agent_chat", "self_host"} and scopes:
+        # AI-42.7: legacy (và kind khác) — trước chỉ agent_chat validate scopes,
+        # nên scope gõ sai lưu lặng vào DB; kiểm tra theo catalog chung.
+        unknown = [s for s in scopes if s not in KNOWN_PAT_SCOPES]
+        if unknown:
+            raise HTTPException(
+                status_code=400,
+                detail=f"unknown scopes: {', '.join(unknown)}",
+            )
 
     token = generate_pat()
     pat = PersonalAccessToken(

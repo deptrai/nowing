@@ -82,6 +82,15 @@ def set_synthesis_workspace_id(workspace_id: int | None) -> None:
     _synthesis_workspace_id.set(workspace_id)
 
 
+def clear_synthesis_workspace_id() -> None:
+    """Reset ContextVar sau khi stream kết thúc (AI-42.8).
+
+    Orchestrator set lại đầu mỗi turn; không reset → task context reuse
+    có thể lấy workspace cũ cho synthesis call.
+    """
+    _synthesis_workspace_id.set(None)
+
+
 async def stream_agent_events(
     agent: Any,
     config: dict[str, Any],
