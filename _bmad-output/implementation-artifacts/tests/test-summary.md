@@ -295,3 +295,20 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remainin
 | Regression | tests/unit/lead_intelligence/ + route sweeps | 383 passed |
 
 **Ghi chú:** guard `spec.direction != "demand"` tại `campaign_routes.py` là tạm — gỡ khi 43.6 wire supply end-to-end. `from_campaign_create_input` reject direction-scoped keys non-default cho tới 43.5. `validate_assignment`/`model_copy` bypass validator → deferred (không consumer mutate).
+
+## Spec 43.2 — Direction-aware adapter resolution (2026-11-17)
+
+| Test | File | Kết quả |
+|---|---|---|
+| Direction resolution (26 test) | tests/unit/lead_intelligence/test_adapter_resolution_direction.py | 26 passed |
+| — supply match thật (muasamcong exact / enterprise both / case+diacritics) | cùng file | 3 tests |
+| — supply no-match fail-closed all supply_eligible; never demand adapter | cùng file | pinned |
+| — wrapper supply ordering = registration order, no priority mutation | cùng file | pinned |
+| — query synthesis cả 2 seam (planner + orchestrator effective_query) | cùng file | pinned |
+| Demand regression snapshot | DEMAND_RE_* + list_all fallback | pinned bit-for-bit |
+| Regression | tests/unit/lead_intelligence/ | 358 passed |
+
+**Ghi chú:** `supply_eligible` chỉ enterprise + muasamcong; supply ordering cố định
+registration order (không đọc priority bị demand mutate). Dict-spec direction qua
+`_spec_direction` helper; categories non-list guard. `target_sources` explicit
+thắng direction cả 2 phía (AC1 đã chốt ngoại lệ).

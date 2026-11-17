@@ -217,6 +217,8 @@ class LeadSourceAdapter(ABC):
     )
     priority: int = 1
     lead_quota: int = 50
+    # Epic 43.2: adapter tham gia chiều supply (thầu / mua sắm công)
+    supply_eligible: bool = False
 
     @abstractmethod
     async def search_leads(

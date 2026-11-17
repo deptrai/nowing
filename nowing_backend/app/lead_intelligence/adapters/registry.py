@@ -38,6 +38,13 @@ _SOURCE_KEYWORDS: dict[str, list[str]] = {
 _JOB_MARKET_PRIORITY = ["vn_jobs", "job_market", "vietnamworks"]
 
 
+def _spec_direction(spec: Any) -> str:
+    """Đọc direction của spec an toàn cho cả CampaignSpec object và dict (D3, Epic 43.2)."""
+    if isinstance(spec, dict):
+        return str(spec.get("direction") or "demand")
+    return str(getattr(spec, "direction", "demand") or "demand")
+
+
 def _source_keyword_present(source_name: str, prompt: str) -> bool:
     """Check whether ``prompt`` explicitly names a source adapter."""
     raw_lower = (prompt or "").lower()
@@ -162,6 +169,44 @@ class LeadSourceAdapterRegistry:
         for b in budget_sources:
             if getattr(b, "max_leads", 1) <= 0:
                 excluded_sources.add(getattr(b, "source_name", "").lower().strip())
+
+        # Epic 43.2: nhánh supply — chỉ adapter supply_eligible, luôn return,
+        # tuyệt đối không rơi xuống demand heuristics (ICP / signals / intent / all).
+        # Ordering = thứ tự đăng ký cố định, không đọc priority đã mutate.
+        if _spec_direction(campaign_spec) == "supply":
+            supply_pool = [
+                a
+                for a in self._adapters.values()
+                if getattr(a, "supply_eligible", False)
+                and a.source_name.lower() not in excluded_sources
+            ]
+            supply_criteria = (
+                campaign_spec.get("supply_criteria")
+                if isinstance(campaign_spec, dict)
+                else getattr(campaign_spec, "supply_criteria", None)
+            )
+            if isinstance(supply_criteria, dict):
+                raw_categories = supply_criteria.get("categories")
+            else:
+                raw_categories = getattr(supply_criteria, "categories", None)
+            # Dict-spec có thể truyền categories méo (non-list) — guard để
+            # tránh TypeError / lặp từng ký tự của string.
+            categories = raw_categories if isinstance(raw_categories, list) else []
+            # Bỏ dấu tiếng Việt nhất quán demand path (:226).
+            keywords = [
+                _strip_vietnamese_diacritics(str(c).lower().strip())
+                for c in categories
+                if str(c).strip()
+            ]
+            matched_supply: list[LeadSourceAdapter] = []
+            for a in supply_pool:
+                haystack = _strip_vietnamese_diacritics(
+                    f"{a.source_name} {a.category.value}".lower()
+                )
+                if any(kw in haystack for kw in keywords):
+                    matched_supply.append(a)
+            # Không match keyword nào -> trả TẤT CẢ supply_eligible (fail-closed).
+            return matched_supply if matched_supply else supply_pool
 
         matched_adapters: list[LeadSourceAdapter] = []
 
@@ -712,6 +757,17 @@ class LeadSourceAdapterRegistry:
             if campaign_spec is not None
             else []
         )
+        # Epic 43.2: nhánh supply — giữ thứ tự đăng ký cố định, không rank composite,
+        # không mutate priority/lead_quota trên shared instances, không demand fallback.
+        if campaign_spec is not None and _spec_direction(campaign_spec) == "supply":
+            location_fallback = bool(
+                location_profile
+                and not any(
+                    self.calculate_location_coverage_score(a, location_profile) > 0.0
+                    for a in candidates
+                )
+            )
+            return candidates, location_fallback
         if not candidates:
             if category:
                 candidates = self.find_by_category(category)

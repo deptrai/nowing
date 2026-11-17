@@ -34,6 +34,8 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
             "DN": "low",
         }
     )
+    # Epic 43.2: nguồn supply (danh bạ doanh nghiệp / đấu thầu)
+    supply_eligible = True
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"

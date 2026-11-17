@@ -245,6 +245,15 @@ class LeadGenPlanner:
         if base_query:
             return base_query
 
+        # Epic 43.2: supply + query rỗng -> tổng hợp từ supply_criteria,
+        # không đọc icp_criteria (supply bị cấm ICP non-default ở 43.1)
+        if spec.direction == "supply" and spec.supply_criteria is not None:
+            supply_parts = list(spec.supply_criteria.categories) + list(
+                spec.supply_criteria.locations
+            )
+            if supply_parts:
+                return " ".join(supply_parts)
+
         # Fallback to synthesizing query from keywords and ICP
         query_parts: list[str] = []
         if spec.icp_criteria.target_keywords:

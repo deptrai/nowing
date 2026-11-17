@@ -544,6 +544,17 @@ class LeadGenOrchestrator:
 
         if campaign_spec is not None:
             effective_query = campaign_spec.query or query
+            # Epic 43.2: supply + query rỗng -> tổng hợp từ supply_criteria
+            # (route /run truyền query=""), không đọc icp_criteria.
+            if (
+                not effective_query
+                and campaign_spec.direction == "supply"
+                and campaign_spec.supply_criteria is not None
+            ):
+                supply_parts = list(campaign_spec.supply_criteria.categories) + list(
+                    campaign_spec.supply_criteria.locations
+                )
+                effective_query = " ".join(supply_parts)
             effective_table_id = campaign_spec.table_id or table_id
             effective_concurrency = campaign_spec.concurrency_limit or concurrency_limit
             effective_timeout = (
@@ -604,10 +615,19 @@ class LeadGenOrchestrator:
                     )
                     for record in raw_records:
                         try:
-                            # Pre-filter by ICP criteria before full normalization
-                            passes, loc_score = self.pre_filter_by_icp(
-                                record, icp_criteria, location_profile=loc_profile
-                            )
+                            # Epic 43.2: supply -> bỏ ICP pre-filter (no-op),
+                            # record supply không theo ICP demand.
+                            if campaign_spec is not None and (
+                                campaign_spec.direction == "supply"
+                            ):
+                                passes, loc_score = True, 100.0
+                            else:
+                                # Pre-filter by ICP criteria before full normalization
+                                passes, loc_score = self.pre_filter_by_icp(
+                                    record,
+                                    icp_criteria,
+                                    location_profile=loc_profile,
+                                )
                             if not passes:
                                 continue
                             norm = adapter.normalize_lead(record)

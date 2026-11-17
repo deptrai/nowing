@@ -28,6 +28,8 @@ class MuaSamCongLeadAdapter(LeadSourceAdapter):
 
     source_name = "muasamcong"
     category = LeadSourceCategory.ENTERPRISE
+    # Epic 43.2: nguồn supply (gói thầu công)
+    supply_eligible = True
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"
