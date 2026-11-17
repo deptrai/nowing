@@ -5830,3 +5830,114 @@ So that dataset results flow into the same campaign/lead pipeline as every other
 - No credential provisioning mới cho supply sources (dùng creds hiện có).
 - No demand-side behavior change — demand path phải bit-for-bit regression-safe.
 - Deferred (không ràng buộc epic này): PDPD consent pipeline cho comment-mining cá nhân, dedupe key chứa `tax_id` (blast radius AD-4 — accepted limitation 43.4), role-array cho entity dual-role.
+
+## Epic 44: Lead Campaign Persistence — `lead_campaigns`/`campaign_runs`/`campaign_leads` (stage Productized → cầu nối Platform) `[skeleton — tech review + analyst pass 2026-11-18]`
+
+**Goal:** Campaign trở thành durable first-class entity thay vì free-text `spec.name` — mọi launch/persist run được record vào `campaign_runs`, mọi lead attach campaign qua junction `campaign_leads(role)`, identity sống sót qua rename. Đây là unblock cho rate-limit/abuse guard (đã cắt khỏi Epic 43 vì thiếu durable counter store), recurring schedule (ScheduleConfig đang inert), per-run usage accounting, và match queue ở Platform phase.
+
+**Nguồn:** `ux-plan-agent-experience-improvements-2026-11-16.md` §10-11 (Productized → Platform); Epic 43 non-goals hứa "junction `campaign_leads(role)` deferred" + "rate-limit guard defer đến khi có `campaign_runs` store"; retro-43 action items AI-43.3/AI-43.5. Invariants: **AD-1** (mọi lead write qua `ingest_batch` — junction insert xảy ra SAU ingest, không bypass), **AD-4** (dedupe key giữ nguyên).
+
+**Decision đã pin (skeleton, sau review):**
+- **Tên table** = `lead_campaigns` (KHÔNG `campaigns`) vì `webset_campaigns` đã chiếm namespace (`app/models/webset_campaign.py:15` — ChainLens, unrelated).
+- **RLS (corrected — review F0):** `leads` ĐÃ có `ENABLE + FORCE ROW LEVEL SECURITY` từ migration 221 (tenant policy + lead-visibility policy cho multi-seat, `_create_lead_rls` :349-372) — KHÔNG phải "app-level only". → 3 tables mới BẬT tenant RLS (workspace policy, cùng pattern `_create_lead_rls`); `campaign_leads` KHÔNG replicate lead-visibility policy (membership là workspace-level metadata — documented deviation, review trong 44.1).
+- **PAT:** reuse `leads:read`/`leads:write` — không thêm `campaign:*` scope (Permission enum `app/db/enums.py:393-398` giữ nguyên).
+- **Opt-in bookkeeping (review F4/F10):** `execute_and_persist` có 3 callers ngoài campaign route (`orchestrator_tool.py:191`, `executor.py:86` — agent paths tự build `CampaignSpec('sales-copilot-{ws}')` với intent default BUY → spec luôn non-None). Bookkeeping CHỈ chạy khi caller truyền `campaign_run_id`/`campaign_ref` explicit — agent/ad-hoc paths không truyền → không tạo row, không ăn quota. KHÔNG suy ra từ spec.name.
+- **Single run-creation seam (review F8):** một hàm `open_campaign_run(campaign_id, trigger)` duy nhất INSERT `campaign_runs` — route `/execute`, `/launch`, async task, scheduler đều đi qua nó; `execute_and_persist` NHẬN `campaign_run_id` (không tự insert khi đã có) → không double-run.
+- **Serialization (review F1):** `spec_snapshot` = `spec.model_dump(mode="json")` — CampaignSpec chứa `user_id: UUID` (:164), `ScheduleConfig.start_at/end_at: datetime` (:33-35), `metadata: dict[str,Any]` (:203) → python-mode dump crash JSONB.
+- **Identity uniqueness (review F2):** `lead_campaigns` `UniqueConstraint(workspace_id, name, direction)` + get-or-create = `INSERT ON CONFLICT DO NOTHING` + re-SELECT (convention `uq_leads_workspace_value_hmac` leads/main.py:46-50) — race 2 request không duplicate.
+- **Lock scheme:** `hashtext` theo workspace_limits pattern (`workspace_limits/service.py:112`) — scheme mới documented, KHÔNG reuse 4+ key-space billing đang共存.
+- **Implicit campaign lifecycle (analyst G1):** campaign tạo ngầm qua `/execute` (không qua `POST /campaigns`) lifecycle giống explicit — `'running'` khi run active → `'completed'` khi run xong; KHÔNG thêm giá trị enum mới (khớp FE `campaignStatusSchema` 1:1).
+- **Implicit campaigns = tồn tại nhưng ẩn (party, user-approved):** `lead_campaigns.source` enum `('created'|'execute'|'api')` — `'created'` = `POST /campaigns`, `'execute'` = get-or-create ngầm qua `/execute` (UI), `'api'` = ngầm qua PAT/machine caller. List endpoint mặc định `WHERE source != 'execute'`... chính xác: default chỉ `'created'`; `?include_implicit=true` expose `'execute'`/`'api'` — FE toggle "xem auto-runs". Bookkeeping vẫn tồn tại cho dedupe/quota/reporting — chỉ hiển thị ẩn.
+- **Quota-skip không im lặng (party Murat↔Mary):** scheduled skip vì quota KHÔNG tạo run row hư — `lead_campaigns.skipped_by_quota int default 0` counter++ mỗi lần skip (observable, không phình `campaign_runs`).
+- **Concurrent-run guard (architect A3):** advisory lock trong `open_campaign_run` cover luôn chống 2 run `running` đồng thời cho 1 campaign — đã có run `running` → 409 (route) / skip + counter (scheduled); v1 REJECT, không queue.
+- **Service placement (architect):** `app/lead_intelligence/services/campaign_service.py` — co-locate với `lead_gen_orchestrator.py`, domain campaign gom một module; orchestrator (1159 dòng, god-class watch retro-43) chỉ nhận thin hooks, bookkeeping logic sống ở service.
+- **`next_run_at` materialized (architect A2):** `lead_campaigns` có cột `next_run_at timestamptz nullable` — computed khi set schedule + sau mỗi run → scheduler tick chỉ `WHERE next_run_at <= now()` (indexable, KHÔNG parse `ScheduleConfig.frequency/cron_expression` trong scan).
+- **Async-celery + RLS trap (architect A4):** `launch_campaign_run` task BẮT BUỘC pattern `auto_refund_lead_task` (`phone_waterfall_worker.py:84-115`): `run_async_celery_task` + `async_session_maker` riêng + `set_request_tenant_context(workspace_id=...)` — thiếu context thì tenant RLS mới (3 bảng) chặn insert. Task KHÔNG chung `LEAD_SCRAPERS_QUEUE` và KHÔNG `time_limit=120` (dev D6 — full campaign execute vượt xa); queue + limit pin trong spec-44-2.
+- **Model/enum placement (dev D1/D2):** models tại `app/models/leads/campaign.py` (composite FK→`leads` cùng package); enums `CampaignStatus`/`CampaignRunStatus`/`CampaignTrigger` trong `app/db/enums.py` (convention `Permission` :393); `campaign_leads.role` = `'buyer'`/`'supplier'` khớp y giá trị `lead_role` tag 43.4 ghi ở `lead_gen_orchestrator.py:962-994`.
+- **Snapshot per-run (dev D4):** `spec_snapshot` sống trên `campaign_runs` (immutable per-run record) — KHÔNG trên `lead_campaigns`; campaign chỉ giữ `input_payload` + schedule denormalized. Kill staleness question.
+- **Schedule denormalized (dev D8):** `lead_campaigns` += `schedule_frequency`/`schedule_cron`/`max_runs` scalar columns — `next_run_at` compute từ scalar, không đào JSONB.
+- **async+persist combo (dev D7):** `?async=true` implies `persist=true`; `async=true&persist=false` → 422 explicit.
+
+**DoD epic-level (analyst G3):** (a) 6 FE dead calls → 0 lỗi 404; (b) mọi persist path campaign-managed có `campaign_runs` row đúng status/stats; (c) `campaign_leads.role` là reader đầu tiên đọc được role từ junction thay vì đào `extra_metadata` JSONB — tag 43.4 từ write-only thành dữ liệu queryable.
+
+**Code anchors đã verify (anchor-verify + review 2026-11-18):** `ingest_batch` KHÔNG nhận campaign_id; trả `accepted_lead_ids` + `lead_id_mapping` (`lead_batch_service.py:~533-544`) — junction dùng `accepted_lead_ids` làm nguồn id DUY NHẤT (lead_ids chứa cả rejected/degenerate hmac). Lead PK composite `(id, workspace_id)` → composite FK (precedent `leads/signals.py:67`). Alembic NHIỀU HEADS (mainline '250' + nhánh cũ 39/51/69/71/89/18/07582243b847) — BẮT BUỘC `alembic heads` trước migration. Supply tags 1 write site `lead_gen_orchestrator.py:962-994`; `lead_role='supplier'` zero readers. `LeadGenOrchestratorResult` (orchestrator.py:74-92) không có campaign identity field. FE `leads-api.service.ts:151-235` + `use-campaign-builder.ts:484-490` gọi 6 endpoints đang 404/dead. FE `campaignStatusSchema` = `draft|scheduled|running|paused|completed|failed` (`campaign.types.ts:4-11`) + `campaignSchema` đòi `icp_config`/`source_budget_config`/`launch_config` (shape CampaignCreateInput, `sources` min 1) — KHÁC CampaignSpec shape → cần `input_payload` + response mapper. `ScheduleConfig` (schemas.py:24-36) + `spec.metadata['launch_config']` zero consumers. Campaign path HOÀN TOÀN unbilled (review F9): `LEADS_MULTI_SOURCE_GEN` `billing_unit=None` (definition.py:20), `charge_capability` return 0, 0 callers trong lead_intelligence → `cost_micros` chỉ đếm được từ TokenUsage tagged run_id, không có charge door (chi tiết 44.4). Celery sẵn (`run_platform_scrape_task.apply_async` orchestrator.py:212; meta-scheduler `check_periodic_schedules` celery_app.py:348-356). `auto_refund_lead_task` dead task (phone_waterfall_worker.py:84). Transaction boundary (review F3): `ingest_batch`/`execute_and_persist`/`campaign_routes` đều KHÔNG commit — junction fail-open phải dùng `session.begin_nested()` SAVEPOINT, không swallow raw exception (aborted tx poison mọi query sau).
+
+### Story 44.1: Schema + opt-in campaign identity binding — tables, run seam, junction end-to-end
+
+**As a** platform engineer,
+**I want** 3 tables campaign + một run-creation seam duy nhất + orchestrator attach khi được gọi đúng cờ,
+**So that** campaign identity sống trong table durable — và agent/ad-hoc paths không bị pollute.
+
+**Acceptance Criteria:**
+- **Given** chưa có table nào, **When** tạo, **Then**:
+  - `lead_campaigns` {id UUID PK, workspace_id FK→workspaces.id CASCADE, name, direction, status str default `'draft'` — **enum khớp FE `campaignStatusSchema` 1:1** {draft, scheduled, running, paused, completed, failed, archived} (review F6 — không mapping), `input_payload` JSONB nullable (raw FE payload khi create qua FE — response mapper dùng, review F7), `schedule_frequency`/`schedule_cron`/`max_runs` scalar nullable (dev D8 — denormalized, `next_run_at` compute từ đây), `next_run_at timestamptz nullable` (architect A2 — materialized schedule, scheduler đọc thẳng), `source` enum `('created'|'execute'|'api')` default `'created'` (party — implicit marker, list ẩn mặc định), `skipped_by_quota` int default 0 (party — quota-skip observable), created_by, TimestampMixin} + **`UniqueConstraint(workspace_id, name, direction)`**.
+  - `campaign_runs` {id UUID PK, campaign_id FK CASCADE, workspace_id FK, status('queued'|'running'|'succeeded'|'failed'), trigger('manual'|'scheduled'|'api'), `spec_snapshot` JSONB = `model_dump(mode="json")` (dev D4 — per-run immutable record, campaign không giữ snapshot), started_at/finished_at, stats JSONB, cost_micros bigint nullable, error nullable}.
+  - `campaign_leads` {campaign_id FK, run_id FK, lead_id, workspace_id, role, created_at} — composite FK `(lead_id, workspace_id)`→`leads(id, workspace_id)` + `UniqueConstraint(campaign_id, lead_id)` (run_id ghi run đầu tiên attach — pin trong migration comment).
+  - Tenant RLS BẬT trên cả 3 (workspace policy, predicate copy từ migration 221 `_create_lead_rls` :349-372 — helper sống TRONG migration file đó, viết inline `CREATE POLICY ... USING (workspace_id = current_setting('app.workspace_id')::int)`; dev check setting name thật trong 221 — dev D5); `campaign_leads` không lead-visibility policy (deviation documented).
+  - Index: `campaign_runs(workspace_id,campaign_id,created_at)`, `campaign_leads(campaign_id)`, `campaign_leads(lead_id,workspace_id)`, `lead_campaigns(workspace_id,status)`, `lead_campaigns(workspace_id,source)`. `alembic heads` trước, chain off mainline head; upgrade+downgrade sạch.
+- **And** `open_campaign_run(campaign_id, trigger, session)` là SEAM DUY NHẤT insert `campaign_runs` — sống trong `app/lead_intelligence/services/campaign_service.py` (architect placement); mọi path khác gọi nó.
+- **And** `execute_and_persist` += optional params `campaign: LeadCampaign|None` + `campaign_run_id` (opt-in — review F4/F10): chỉ khi `campaign` truyền vào mới get-or-create (ON CONFLICT DO NOTHING + re-SELECT), mở run qua `open_campaign_run` nếu `campaign_run_id` chưa có, và post-ingest insert `campaign_leads` từ **`accepted_lead_ids`** (nguồn id duy nhất — review F5) với role theo direction. **Contained** (architect A1): orchestrator chỉ gọi 1 hook `campaign_service.persist_campaign_bookkeeping(...)` — không inline logic, god-class không phình thêm. Agent callers (orchestrator_tool/executor) không truyền → behavior y hệt hôm nay, spec=None không crash.
+- **And** transaction boundary pin (review F3 + architect A5): junction insert bọc `session.begin_nested()` (SAVEPOINT) — fail-open thật: junction raise → nhả SAVEPOINT, log, ingest vẫn commit được; bookkeeping KHÔNG chia abort-state với ingest. **T0 blocker cho spec-44-1** (party Murat — nếu không ai commit thật thì đây là latent prod bug, không chỉ spec question): convention repo = explicit commit ở caller (batch-ingest route có `_commit_or_recover_duplicate`-style commit, `lead_clipper_routes.py:368`; `radar.py:567`) nhưng `/campaigns/execute` grep `commit` = 0 → **task T0 của spec-44-1 = trace commit point thật qua toàn bộ call chain (kể cả inner helpers của `ingest_batch` — grep 3-file trước đây có thể miss delegate) và pin trong story spec trước khi code; nếu phát hiện leads không commit → fix kèm trong 44.1.**
+- **And** dual-write extra_metadata tags (43.4) + `campaign_id` giữ nguyên; `LeadGenOrchestratorResult` += `campaign_id`/`campaign_run_id`; `persist=false` preview không tạo row nào.
+- **Implementation notes:** Ước: lớn — schema + seam + opt-in binding một story vì tách ra schema không có writer.
+
+### Story 44.2: Campaign CRUD + launch flow + async run task
+
+**As a** FE user,
+**I want** backend trả lời đúng các endpoint FE đang gọi và launch chạy async,
+**So that** list/detail/pause/launch hoạt động thay vì 404, launch không block request chờ scrape.
+
+**Acceptance Criteria:**
+- **Given** FE dead calls `leads-api.service.ts:151-235` + `use-campaign-builder.ts:484-490`, **When** implement, **Then**:
+  - `GET /{workspace_id}/campaigns` list (paged, filter status theo **FE enum**; **default chỉ `source='created'`** — `?include_implicit=true` expose `'execute'`/`'api'` cho FE toggle "xem auto-runs", party pin) + `GET .../{campaign_id}` detail + `GET .../{campaign_id}/runs` — `LEADS_READ`. Route ordering pin: `/presets` register TRƯỚC `/{campaign_id}` (FastAPI path precedence — review F6 liên quan).
+  - `POST /{workspace_id}/campaigns` create (reuse `CampaignSpec.from_payload`; lưu `input_payload` raw + `spec_snapshot`) trả **full Campaign theo `campaignSchema`** (review F7 — mapper: ưu tiên `input_payload`, fallback reconstruct từ spec_snapshot; FE dùng `created.id`/`created.name` ngay — pin wire test conformance với `campaign.types.ts:45-56`, `sources` min 1). Trùng `(workspace_id, name, direction)` → **409 + message thân thiện** (analyst G2 — không để 500).
+  - `PATCH .../{campaign_id}` name/status — `LEADS_WRITE`.
+  - `POST .../{campaign_id}/launch` → `open_campaign_run(campaign_id,'api')` → `launch_campaign_run.apply_async(run_id)` → response khớp FE `launchCampaign` expectation (verify contract trong story spec — finding về 202 bị REJECTED nên FE chấp nhận run-shape, pin chính xác shape); paused → 409.
+  - `launch_campaign_run` celery task — **pinned pattern** `auto_refund_lead_task` (`phone_waterfall_worker.py:84-115`, architect A4): `run_async_celery_task` wrap async body + `async_session_maker` riêng + `set_request_tenant_context(workspace_id)` (BẮT BUỘC — tenant RLS mới) → gọi `execute_and_persist(..., campaign=campaign, campaign_run_id=run_id)` — KHÔNG tự insert run thứ hai (review F8); update status/stats/finished_at + `next_run_at` recompute (nếu scheduled).
+  - `/campaigns/execute` sync giữ nguyên + `?async=true` → cùng task path (open_campaign_run → apply_async → run_id); **`async=true&persist=false` → 422** (dev D7 — async implies persist); `handleSaveCampaign→createCampaign+launchCampaign` = launch flow chính thức.
+- **And** PAT `leads:read`/`leads:write`; `check_workspace_access` unified seam; response = backend source-of-truth, FE sửa theo nếu lệch.
+- **Implementation notes:** Ước: lớn. Không build trang list UI mới.
+
+### Story 44.3: Recurring scheduler + rate-limit/abuse guard trên `open_campaign_run`
+
+**As a** platform owner,
+**I want** `schedule` chạy định kỳ thật + quota chặn scrape bạo lực tại một door duy nhất,
+**So that** ScheduleConfig có consumer đầu tiên và guard Epic-43-đã-cắt enforce trên mọi launch path miễn phí.
+
+**Acceptance Criteria:**
+- **Given** `ScheduleConfig` (schemas.py:24-36) + celery beat sẵn, **When** implement, **Then**:
+  - MỘT meta-scheduler beat entry (pattern `check_periodic_schedules`, celery_app.py:348-356) quét `lead_campaigns WHERE next_run_at <= now()` (architect A2 — không parse schedule mỗi tick) → `open_campaign_run(trigger='scheduled')` → `launch_campaign_run.apply_async` — KHÔNG beat per-campaign; campaign.status 'scheduled'↔'running'/'completed' cập nhật theo lifecycle (khớp FE enum).
+  - `max_runs` enforce bằng count `campaign_runs`; stale-run reaper cùng tick: `running` quá threshold → `failed`.
+  - `spec.metadata['launch_config']` decision pin trong spec story: wire `auto_start` hoặc drop khỏi contract.
+- **And** quota check nằm TRONG `open_campaign_run` (single door — review F8/F10: cover manual + scheduled + async + agent-managed nếu sau này opt-in): rule pin trong spec (đề xuất analyst: **N=10 runs/campaign/day + M=500 leads/workspace/day** — conservative, tune sau; đếm qua `campaign_leads` join theo window — pin nguồn đếm); check + insert trong MỘT transaction + advisory lock `hashtext('campaign_run', campaign_id)` (campaign đã tồn tại → key ổn định); vượt → 429 + detail (route) / skip + **`skipped_by_quota` counter++ trên campaign** (party — observable, không run row hư); không charge, không run row.
+- **And** opt-in bookkeeping nghĩa agent paths KHÔNG ăn quota (không qua `open_campaign_run`) — pin regression test "agent call không tạo run, không bị throttle".
+- **Implementation notes:** Ước: lớn.
+
+### Story 44.4: Per-run usage accounting (`cost_micros` từ TokenUsage) + vertical #2 proof e2e
+
+**As a** PM/QA/finance,
+**I want** mỗi run ghi usage thật + vertical thứ hai chạy xuyên pipeline persisted,
+**So that** accounting có per-run granularity (dù chưa bill) và model chứng minh generalize.
+
+**Acceptance Criteria:**
+- **Given** campaign path unbilled (review F9 — `billing_unit=None`, không charge door), **When** run chạy, **Then** `campaign_runs.cost_micros` = tổng TokenUsage rows ghi trong run (attach `campaign_run_id` qua `call_details` JSON tại `record_token_usage`, token_tracking_service.py:581 — pin chính xác propagation: run-scoped context hoặc caller truyền); scrape-only run → `cost_micros=0` là giá trị ĐÚNG (documented — usage, không phải charge).
+- **And** payer semantics `_resolve_workspace_owner`; failed run ghi usage đã phát sinh trước khi fail.
+- **And** e2e vertical #2 (đề xuất TMĐT supply — legal-entity MST path qua supply_eligible enterprise+muasamcong): `POST /campaigns` → launch → run record → `campaign_leads` role đúng → list/detail history; rename → campaign_id không đổi; re-launch → run mới, không duplicate membership; demand regression cũng có run + junction.
+- **And** evidence → test-summary + retro input.
+- **Implementation notes:** Ước: vừa. `auto_refund_lead_task` vẫn dead-producer (deferred); charge_capability door cho campaign path = Platform design, không phải epic này.
+
+**Test targets (dev pin):** `tests/unit/services/test_campaign_service.py` (44.1 — `open_campaign_run`, quota hook, get-or-create race) + `tests/unit/lead_intelligence/test_campaign_binding.py` (44.1 — opt-in, agent-path pollution regression, junction `accepted_lead_ids`) + `tests/unit/routes/test_campaign_crud_routes.py` + wire-contract test vs `campaign.types.ts` (44.2 — response shape `campaignSchema`, status enum, 409/422) + `tests/unit/tasks/test_campaign_scheduler.py` (44.3 — `next_run_at` tick, concurrent-run guard, quota 429/skip) + `tests/integration/campaigns/test_campaign_e2e.py` (44.4 — vertical #2, PAT thật, run + junction + rename/relaunch).
+
+### Epic 44 Non-Goals
+
+- No `match_mode="pool"` matching / `corpus_scope="platform_b2b"` — vẫn gated Platform.
+- No `campaign:*` PAT scope — reuse `leads:read`/`leads:write`.
+- No lead-visibility RLS replication trên `campaign_leads` — tenant RLS only (documented deviation).
+- No merge alembic heads cũ — chỉ chain off mainline head.
+- No charge_capability door / billing design cho campaign path — `cost_micros` là usage accounting từ TokenUsage; charge per run/lead là pricing decision Platform (review F9).
+- No SLA auto-refund async — `auto_refund_lead_task` vẫn dead-producer.
+- No campaign list/history UI page mới — endpoints sống + FE dead path wire.
+- No dedupe-key chứa tax_id, no role-array dual-role (deferred Epic 43).
+- No backfill `campaign_leads` cho leads cũ — forward-only.
+- No PDPD consent pipeline, no B2C supply routing, no Maps adapter.
+- `launch_config` wire-or-drop = decision trong 44.3.
