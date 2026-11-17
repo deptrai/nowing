@@ -74,6 +74,7 @@ class LocalFolderBackend:
     def _write_text_atomic(self, path: Path, content: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         temp_path = path.with_suffix(f"{path.suffix}.tmp")
+        # pi-lens-ignore: python-path-traversal — path comes from _resolve_virtual (root-constrained)
         temp_path.write_text(content, encoding="utf-8")
         os.replace(temp_path, path)
 
@@ -386,6 +387,7 @@ class LocalFolderBackend:
                     )
                 )
             try:
+                # pi-lens-ignore: python-path-traversal — path comes from _resolve_virtual (root-constrained)
                 os.unlink(path)
             except OSError as exc:
                 return WriteResult(
@@ -424,6 +426,7 @@ class LocalFolderBackend:
                     )
                 )
             try:
+                # pi-lens-ignore: python-path-traversal — path comes from _resolve_virtual (root-constrained)
                 os.rmdir(path)
             except OSError as exc:
                 return WriteResult(error=f"Error: failed to rmdir '{dir_path}': {exc}")
@@ -489,7 +492,9 @@ class LocalFolderBackend:
                 resolved = hit.resolve()
                 if not resolved.is_relative_to(self._root):
                     continue
-            except Exception as exc:  # path resolution or symlink cycle failure; skip candidate
+            except (
+                Exception
+            ) as exc:  # path resolution or symlink cycle failure; skip candidate
                 logger.debug("Suppressed %r", exc)
                 continue
             matches.append(
@@ -561,6 +566,7 @@ class LocalFolderBackend:
                 target = self._resolve_virtual(virtual_path)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 temp_path = target.with_suffix(f"{target.suffix}.tmp")
+                # pi-lens-ignore: python-path-traversal — path comes from _resolve_virtual (root-constrained)
                 temp_path.write_bytes(content)
                 os.replace(temp_path, target)
                 responses.append(FileUploadResponse(path=virtual_path, error=None))

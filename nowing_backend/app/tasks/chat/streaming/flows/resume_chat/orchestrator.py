@@ -91,6 +91,7 @@ from app.tasks.chat.streaming.flows.shared.span import (
     open_chat_request_span,
     set_agent_mode,
 )
+from app.tasks.chat.streaming.agent.event_loop import set_synthesis_workspace_id
 from app.tasks.chat.streaming.flows.shared.stream_loop import run_stream_loop
 from app.tasks.chat.streaming.flows.shared.terminal_error import (
     handle_terminal_exception,
@@ -184,6 +185,15 @@ async def stream_resume_chat(
         chat_thread = await session.get(NewChatThread, chat_id)
         if chat_thread is not None:
             chat_thread.platform_metadata = platform_metadata
+            logger.info(
+                "audit: updated platform_metadata for thread_id=%s workspace_id=%s actor_id=%s keys=%s",
+                chat_id,
+                workspace_id,
+                user_id,
+                sorted(platform_metadata.keys())
+                if isinstance(platform_metadata, dict)
+                else [],
+            )
         research_thread_id = (
             chat_thread.research_thread_id if chat_thread is not None else None
         )
@@ -608,6 +618,9 @@ async def stream_resume_chat(
                 new_config_id=llm_config_id,
             )
             return new_agent
+
+        # Story 42.6: workspace_id cho partial-synthesis LLM call khi cap hit.
+        set_synthesis_workspace_id(workspace_id)
 
         async for sse in run_stream_loop(
             agent=agent,

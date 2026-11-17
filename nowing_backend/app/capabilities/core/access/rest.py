@@ -19,12 +19,13 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,6 +128,25 @@ class RunDetail(RunSummary):
     progress: list[dict] | None
 
 
+class ChannelHealth(BaseModel):
+    """Trạng thái aggregate 24h + latest all-time của một channel (capability)."""
+
+    channel: str
+    last_status: str
+    last_error: str | None
+    last_seen_at: datetime | None
+    success_rate_24h: float | None
+    attempts_24h: int
+
+
+class ScraperHealthResponse(BaseModel):
+    """Envelope health tổng hợp: ok nếu mọi channel observed sống, down/degraded nếu có channel chết/yếu."""
+
+    status: str
+    channels: list[ChannelHealth]
+    checked_at: datetime
+
+
 def _origin_for(auth: AuthContext) -> str:
     """Session callers are the in-app UI; PAT/system callers are the public API."""
     return "ui" if getattr(auth, "method", None) == "session" else "api"
@@ -150,6 +170,7 @@ def build_capabilities_router(
         _register_verb(router, capability)
     _register_capabilities_list(router, caps)
     _register_run_history(router)
+    _register_health(router)
     return router
 
 
@@ -210,7 +231,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
 
     async def endpoint(
         workspace_id: int,
-        payload: input_model,
+        # Dynamic per-capability model captured eagerly at def time; FastAPI
+        # needs the real class object as the annotation (pyright can't see it).
+        payload: input_model,  # pyright: ignore[reportInvalidTypeForm]
         response: Response,
         session: AsyncSession = Depends(get_async_session),
         auth: AuthContext = Depends(get_auth_context),
@@ -297,7 +320,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 if run_id is not None:
                     response.headers["X-Run-Id"] = f"run_{run_id}"
                 raise
-            except Exception as exc:  # capability executor error → record sync error and raise
+            except (
+                Exception
+            ) as exc:  # capability executor error → record sync error and raise
                 run_id = await record_and_publish_sync_run_error(
                     session=session,
                     workspace_id=workspace_id,
@@ -367,6 +392,147 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
         response_model=output_model,
         name=f"scraper:{name}",
         dependencies=[Depends(enforce_capability_rate_limit)],
+    )
+
+
+def _register_health(router: APIRouter) -> None:
+    """Register ``GET /workspaces/{id}/scrapers/health`` (story 42.3).
+
+    Chỉ đọc DB — aggregate bảng ``runs`` (không live-probe, B3): 2 câu query
+    đều filter ``workspace_id`` (``ix_runs_workspace_created`` assist WHERE;
+    query all-time vẫn sort theo capability — không full index-only).
+    """
+
+    async def scraper_health(
+        workspace_id: int,
+        session: AsyncSession = Depends(get_async_session),
+        auth: AuthContext = Depends(get_auth_context),
+    ) -> ScraperHealthResponse:
+        await check_workspace_access(session, auth, workspace_id)
+        # RLS: set tenant GUC trước khi đọc runs (precedent rest.py list_runs).
+        await set_request_tenant_context(session, workspace_id=workspace_id)
+
+        # Query 1 — cửa sổ 24h: attempts/hits per capability (index-covered).
+        window_stmt = (
+            select(
+                Run.capability,
+                func.count().label("attempts"),
+                func.count()
+                .filter(Run.status == "success")
+                .label("hits"),
+                func.max(Run.created_at).label("last_24h"),
+            )
+            .where(
+                Run.workspace_id == workspace_id,
+                Run.created_at >= func.now() - timedelta(hours=24),
+                # Cancelled = user chủ động hủy, không phải failure của scraper.
+                Run.status != "cancelled",
+            )
+            .group_by(Run.capability)
+        )
+        window_rows = (await session.execute(window_stmt)).all()
+
+        # Query 2 — latest all-time per capability (DISTINCT ON).
+        latest_stmt = (
+            select(
+                Run.capability,
+                Run.status,
+                Run.error,
+                Run.created_at,
+            )
+            .where(Run.workspace_id == workspace_id)
+            .distinct(Run.capability)
+            # id tiebreak: cùng created_at (1 transaction) vẫn deterministic.
+            .order_by(Run.capability, Run.created_at.desc(), Run.id.desc())
+        )
+        latest_rows = (await session.execute(latest_stmt)).all()
+
+        # Query 3 — last_error từ run FAIL mới nhất all-time (spec deviation:
+        # latest run success phủ error cũ vẫn giữ lại error cho agent recovery).
+        error_stmt = (
+            select(Run.capability, Run.error)
+            .where(Run.workspace_id == workspace_id, Run.status == "error")
+            .distinct(Run.capability)
+            .order_by(Run.capability, Run.created_at.desc(), Run.id.desc())
+        )
+        error_rows = (await session.execute(error_stmt)).all()
+
+        latest_by_cap = {row.capability: row for row in latest_rows}
+        error_by_cap = {row.capability: row for row in error_rows}
+        channels: list[ChannelHealth] = []
+        # Registry trước (never-ran → unknown), observed append sau (legacy cap vẫn trả).
+        for cap in all_capabilities():
+            latest = latest_by_cap.pop(cap.name, None)
+            channels.append(
+                _health_row(cap.name, latest, window_rows, error_by_cap.get(cap.name))
+            )
+        for cap_name in latest_by_cap:
+            channels.append(
+                _health_row(
+                    cap_name,
+                    latest_by_cap[cap_name],
+                    window_rows,
+                    error_by_cap.get(cap_name),
+                )
+            )
+
+        # Envelope: chỉ channel observed (rate != null) quyết định ok/degraded/down.
+        observed_rates = [c.success_rate_24h for c in channels if c.success_rate_24h is not None]
+        if any(rate == 0.0 for rate in observed_rates):
+            envelope_status = "down"
+        elif any(0.0 < rate < 1.0 for rate in observed_rates):
+            envelope_status = "degraded"
+        else:
+            envelope_status = "ok"
+        return ScraperHealthResponse(
+            status=envelope_status,
+            channels=channels,
+            checked_at=datetime.now(UTC),
+        )
+
+    router.add_api_route(
+        "/workspaces/{workspace_id}/scrapers/health",
+        scraper_health,
+        methods=["GET"],
+        response_model=ScraperHealthResponse,
+        name="scraper:health",
+    )
+
+
+def _health_row(
+    cap_name: str,
+    latest: Any | None,
+    window_rows: list[Any],
+    error_latest: Any | None,
+) -> ChannelHealth:
+    """Merge latest all-time + window 24h + latest-error thành một row ChannelHealth."""
+    window = next((w for w in window_rows if w.capability == cap_name), None)
+    attempts = int(window.attempts) if window is not None else 0
+    hits = int(window.hits) if window is not None else 0
+    rate = (hits / attempts) if attempts else None
+    if latest is not None:
+        return ChannelHealth(
+            channel=cap_name,
+            last_status=latest.status,
+            # last_error = run FAIL mới nhất all-time (spec deviation), không
+            # bị run success mới hơn phủ; runs.error Text free-form → truncate 200.
+            last_error=(
+                ((error_latest.error or "")[:200] or None)
+                if error_latest is not None
+                else None
+            ),
+            last_seen_at=latest.created_at,
+            success_rate_24h=rate,
+            attempts_24h=attempts,
+        )
+    # Channel trong registry chưa từng chạy.
+    return ChannelHealth(
+        channel=cap_name,
+        last_status="unknown",
+        last_error=None,
+        last_seen_at=None,
+        success_rate_24h=rate,
+        attempts_24h=attempts,
     )
 
 
@@ -614,8 +780,7 @@ def _register_run_history(router: APIRouter) -> None:
         content = f"{output.answer}\n\n{sources_md}"
         existing = (
             await session.execute(
-                select(Report)
-                .where(
+                select(Report).where(
                     Report.report_metadata["run_id"].as_string() == f"run_{row.id}",
                     Report.workspace_id == workspace_id,
                 )

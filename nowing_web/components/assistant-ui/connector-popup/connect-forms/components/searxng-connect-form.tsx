@@ -31,9 +31,8 @@ const createSearxngFormSchema = (
 			message: t("connector_name_min"),
 		}),
 		host: z
-			.string()
-			.min(1, { message: t("searxng_host_required") })
-			.url({ message: t("searxng_host_invalid") }),
+			.url({ message: t("searxng_host_invalid") })
+			.min(1, { message: t("searxng_host_required") }),
 		api_key: z.string().optional(),
 		engines: z.string().optional(),
 		categories: z.string().optional(),

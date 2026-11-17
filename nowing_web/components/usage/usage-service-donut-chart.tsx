@@ -77,7 +77,7 @@ export function UsageServiceDonutChart({ items = [] }: { items?: ServiceBreakdow
 						item.percentage > 0 ? (
 							<div
 								key={item.category}
-								style={{ width: `${item.percentage}%` }}
+								style={{ width: `${item.percentage}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 								className={`${item.color} transition-all duration-300`}
 								title={`${item.category}: ${item.percentage}%`}
 							/>

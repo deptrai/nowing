@@ -227,7 +227,7 @@ export const PhoneUnlockPill: React.FC<PhoneUnlockPillProps> = ({
 					: { rotateX: 0, scale: 1 }
 			}
 			transition={{ duration: FLIP_DURATION_MS / 1000 }}
-			style={{ transformOrigin: "center center" }}
+			style={{ transformOrigin: "center center" }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic pill position
 			className={cn(
 				"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-mono font-medium cursor-pointer select-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50",
 				copied

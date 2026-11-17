@@ -304,7 +304,9 @@ async def stream_podcast(
         path = podcast.file_location
 
         def iterfile():
+            # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- open failure propagates to caller
             with open(path, mode="rb") as handle:
+                # pi-lens-ignore: ast-grep:no-yield-from-non-iterable -- file handle is iterable
                 yield from handle
 
         return StreamingResponse(

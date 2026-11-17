@@ -141,6 +141,52 @@ async def score_entity_pair(
     return EntityMatchResult(verdict=verdict, answer=answer)
 
 
+# shortcut: truncates string fields to 200 chars to avoid ballooning LLM/Jev context window, upgrade if fuzzy matching needs full descriptions.
+_MAX_FIELD_STR_LEN = 200
+_ESSENTIAL_ENTITY_FIELDS = frozenset(
+    {
+        "id",
+        "name",
+        "title",
+        "address",
+        "ward",
+        "district",
+        "city",
+        "location",
+        "phone",
+        "tel",
+        "hotline",
+        "tax",
+        "tax_id",
+        "tax_code",
+        "company",
+        "company_name",
+        "brand",
+        "brand_name",
+        "org",
+        "organization",
+        "price",
+        "project",
+        "area",
+        "type",
+        "category",
+        "email",
+        "website",
+    }
+)
+
+
+def _trim_entity_dict(d: dict[str, Any]) -> dict[str, Any]:
+    trimmed: dict[str, Any] = {}
+    for k, v in d.items():
+        if k in _ESSENTIAL_ENTITY_FIELDS:
+            trimmed[k] = v[:_MAX_FIELD_STR_LEN] if isinstance(v, str) else v
+    if not trimmed and d:
+        for k, v in d.items():
+            trimmed[k] = v[:_MAX_FIELD_STR_LEN] if isinstance(v, str) else v
+    return trimmed
+
+
 async def confirm_entity_match(
     anchor: dict[str, Any],
     candidates: Mapping[str, dict[str, Any]],
@@ -170,14 +216,14 @@ async def confirm_entity_match(
         return None
     if NO_MATCH_ID in candidates:
         raise DecisionError(
-            f"candidate id {NO_MATCH_ID!r} collides with the no-match "
-            "sentinel",
+            f"candidate id {NO_MATCH_ID!r} collides with the no-match sentinel",
             code="invalid_request",
         )
     if len(candidates) > MAX_CANDIDATES_PER_ANCHOR:
-        candidates = dict(
-            list(candidates.items())[:MAX_CANDIDATES_PER_ANCHOR]
-        )
+        candidates = dict(list(candidates.items())[:MAX_CANDIDATES_PER_ANCHOR])
+    trimmed_candidates = {
+        cid: _trim_entity_dict(cdict) for cid, cdict in candidates.items()
+    }
     qs = get_question_registry().get_set("entity_match_fanout")
     template = qs.questions["match_decision"]
     descriptions = descriptions or {}
@@ -185,7 +231,7 @@ async def confirm_entity_match(
     criteria[NO_MATCH_ID] = NO_MATCH_DESCRIPTION
     question = dataclasses.replace(template, criteria=criteria)
     result = await get_decision_service().decide(
-        {"anchor": anchor, "candidates": dict(candidates)},
+        {"anchor": _trim_entity_dict(anchor), "candidates": trimmed_candidates},
         {"match_decision": question},
         task="entity",
         question_set=f"{qs.name}@{qs.version}",
@@ -201,8 +247,7 @@ async def confirm_entity_match(
     passes = gate.passes(answer)
     confirmed = passes and chosen in candidates
     logger.info(
-        "[entity_match] fanout anchor=%s chosen=%s confidence=%s "
-        "passes=%s action=%s",
+        "[entity_match] fanout anchor=%s chosen=%s confidence=%s passes=%s action=%s",
         anchor_id,
         chosen,
         getattr(answer, "confidence", None),
@@ -283,9 +328,7 @@ async def refine_entity_groups[T](
                 len(anchors) - pos,
             )
             break
-        cand_indices = list(candidate_pairs[anchor_idx])[
-            :MAX_CANDIDATES_PER_ANCHOR
-        ]
+        cand_indices = list(candidate_pairs[anchor_idx])[:MAX_CANDIDATES_PER_ANCHOR]
         cand_entities = {id_of(entities[j]): entities[j] for j in cand_indices}
         descriptions = {cid: describe(item) for cid, item in cand_entities.items()}
         try:

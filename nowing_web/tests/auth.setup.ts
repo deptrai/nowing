@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect, test as setup } from "@playwright/test";
 import { announcements } from "../lib/announcements/announcements-data";
-import { acquireTestToken } from "./helpers/api/auth";
+import { acquireTestSession } from "./helpers/api/auth";
 
 /**
  * One-time authentication setup. Acquires an access token for the seeded
@@ -57,7 +57,10 @@ setup("authenticate", async ({ page, request }) => {
 
 		// Seed announcement and tour suppressors in localStorage
 		await page.evaluate(() => {
-			localStorage.setItem("nowing_announcements_state", JSON.stringify({ readIds: [], toastedIds: [] }));
+			localStorage.setItem(
+				"nowing_announcements_state",
+				JSON.stringify({ readIds: [], toastedIds: [] })
+			);
 			localStorage.setItem("nowing-locale", "en");
 		});
 
@@ -66,8 +69,11 @@ setup("authenticate", async ({ page, request }) => {
 	}
 
 	let access_token: string | null = null;
+	let refresh_token: string | null = null;
 	try {
-		access_token = await acquireTestToken(request);
+		const session = await acquireTestSession(request);
+		access_token = session.access_token;
+		refresh_token = session.refresh_token;
 	} catch {
 		access_token =
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbi10ZXN0LXVzZXItMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZXhwIjoxOTk5OTk5OTk5fQ.signature";
@@ -81,7 +87,13 @@ setup("authenticate", async ({ page, request }) => {
 	const announcementIds = announcements.map((a) => a.id);
 	const announcementState = { readIds: announcementIds, toastedIds: announcementIds };
 
-	await page.context().addCookies([
+	const sessionCookies: Array<{
+		name: string;
+		value: string;
+		url: string;
+		httpOnly: boolean;
+		sameSite: "Lax";
+	}> = [
 		{
 			name: SESSION_COOKIE_NAME,
 			value: access_token,
@@ -89,6 +101,22 @@ setup("authenticate", async ({ page, request }) => {
 			httpOnly: true,
 			sameSite: "Lax",
 		},
+	];
+	// The client calls /auth/jwt/refresh on any 401; without a refresh cookie
+	// that call 401s too and the app logs out mid-suite (redirect loop to
+	// /login). Set it alongside the session cookie when the backend issued one.
+	if (refresh_token) {
+		sessionCookies.push({
+			name: process.env.REFRESH_COOKIE_NAME || "nowing_refresh",
+			value: refresh_token,
+			url: BASE_URL,
+			httpOnly: true,
+			sameSite: "Lax",
+		});
+	}
+
+	await page.context().addCookies([
+		...sessionCookies,
 		// Pin English for SSR: i18n/request.ts reads the NEXT_LOCALE cookie
 		// before falling back to timezone detection (Vietnam hosts → "vi"),
 		// which would otherwise render the whole suite in Vietnamese and break

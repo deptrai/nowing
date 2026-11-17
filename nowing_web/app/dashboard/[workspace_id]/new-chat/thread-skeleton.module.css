@@ -1,0 +1,11 @@
+.threadRoot {
+	--thread-max-width: 42rem;
+}
+
+.viewport {
+	scrollbar-gutter: stable;
+}
+
+.composerFooter {
+	padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}

@@ -63,5 +63,5 @@ def downgrade() -> None:
     )
 
     # 4. Drop the current enum type and rename the old one
-    op.execute(f"DROP TYPE {ENUM_NAME}")
-    op.execute(f"ALTER TYPE {old_enum_name} RENAME TO {ENUM_NAME}")
+    op.execute(f"DROP TYPE {ENUM_NAME}")  # nosemgrep
+    op.execute(f"ALTER TYPE {old_enum_name} RENAME TO {ENUM_NAME}")  # nosemgrep

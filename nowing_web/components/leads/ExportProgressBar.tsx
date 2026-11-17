@@ -59,7 +59,7 @@ export const ExportProgressBar: React.FC<ExportProgressBarProps> = ({ job, onDis
 				<div className="mt-3 w-full bg-zinc-950 rounded-full h-1.5 overflow-hidden border border-zinc-800">
 					<div
 						className="bg-emerald-500 h-full transition-all duration-300 rounded-full"
-						style={{ width: `${percent}%` }}
+						style={{ width: `${percent}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic progress bar width percentage
 					/>
 				</div>
 			)}

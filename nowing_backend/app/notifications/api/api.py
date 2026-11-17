@@ -45,6 +45,7 @@ async def get_unread_counts_batch(
 
     base_filter = [
         Notification.user_id == user.id,
+        # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
         Notification.read == False,  # noqa: E712
     ]
 
@@ -176,6 +177,7 @@ async def get_unread_count(
 
     base_filter = [
         Notification.user_id == user.id,
+        # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
         Notification.read == False,  # noqa: E712
     ]
 
@@ -276,6 +278,7 @@ async def list_notifications(
             count_query = count_query.where(source_filter)
 
     if filter == "unread":
+        # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
         unread_filter = Notification.read == False  # noqa: E712
         query = query.where(unread_filter)
         count_query = count_query.where(unread_filter)
@@ -379,6 +382,7 @@ async def mark_all_notifications_as_read(
         update(Notification)
         .where(
             Notification.user_id == user.id,
+            # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
             Notification.read == False,  # noqa: E712
         )
         .values(read=True)

@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Callable
-from typing import Annotated, Any
+from collections.abc import Awaitable, Callable
+from typing import Annotated, Any, cast
 
 from deepagents.middleware.subagents import TASK_TOOL_DESCRIPTION
 from langchain.tools import BaseTool, ToolRuntime
@@ -58,6 +58,7 @@ from ._helpers import (
     SubagentInvokeTimeoutError,
     _ainvoke_with_timeout,
     _reraise_stamped_subagent_interrupt,
+    _synthesize_error_command,
     _synthesize_timeout_command,
 )
 
@@ -90,8 +91,10 @@ def build_task_tool_with_parent_config(
             spec["name"]: spec["runnable"] for spec in subagents if "runnable" in spec
         }
 
-        def resolve_subagent(name: str) -> Runnable:
+        def _eager_resolve(name: str) -> Runnable:
             return _eager_graphs[name]
+
+        resolve_subagent = _eager_resolve
 
     # Sparse map of opt-in context-hint providers; each runs once per task()
     # call to prepend a string to the subagent's first HumanMessage. Failures
@@ -210,7 +213,7 @@ def build_task_tool_with_parent_config(
                 try:
                     result = subagent.invoke(
                         build_resume_command(resume_value, pending_id),
-                        config=sub_config,
+                        config=sub_config,  # pyright: ignore[reportArgumentType]
                     )
                     sp.set_attribute("subagent.outcome", invoke_outcome)
                 except GraphInterrupt as gi:
@@ -248,7 +251,7 @@ def build_task_tool_with_parent_config(
                 subagent_type=subagent_type, path=invoke_path
             ) as sp:
                 try:
-                    result = subagent.invoke(subagent_state, config=sub_config)
+                    result = subagent.invoke(subagent_state, config=sub_config)  # pyright: ignore[reportArgumentType]
                     sp.set_attribute("subagent.outcome", invoke_outcome)
                 except GraphInterrupt as gi:
                     invoke_outcome = "interrupted"
@@ -386,7 +389,10 @@ def build_task_tool_with_parent_config(
         pending_id: str | None = None
         pending_value: Any = None
         aget_state_elapsed = 0.0
-        aget_state = getattr(subagent, "aget_state", None)
+        aget_state = cast(
+            Callable[[Any], Awaitable[Any]],
+            getattr(subagent, "aget_state", None),
+        )
         if callable(aget_state):
             aget_state_start = time.perf_counter()
             try:
@@ -431,7 +437,7 @@ def build_task_tool_with_parent_config(
                         result = await _ainvoke_with_timeout(
                             subagent.ainvoke(
                                 build_resume_command(resume_value, pending_id),
-                                config=sub_config,
+                                config=sub_config,  # pyright: ignore[reportArgumentType]
                             ),
                             subagent_type=subagent_type,
                             started_at=ainvoke_start,
@@ -484,7 +490,10 @@ def build_task_tool_with_parent_config(
                             time.perf_counter() - atask_start,
                         )
                         _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                    except Exception:  # subagent async invoke failure; record metric and re-raise interrupt or bubble
+                    except (
+                        Exception,
+                        BaseExceptionGroup,
+                    ) as exc:  # subagent invoke failure → return error ToolMessage so the parent agent continues
                         ainvoke_outcome = "error"
                         sp.set_attribute("subagent.outcome", ainvoke_outcome)
                         ot_metrics.record_subagent_invoke_duration(
@@ -498,14 +507,21 @@ def build_task_tool_with_parent_config(
                             path=invoke_path,
                             outcome=ainvoke_outcome,
                         )
-                        raise
+                        logger.warning(
+                            "Subagent %r ainvoke (resume) failed",
+                            subagent_type,
+                            exc_info=True,
+                        )
+                        return _synthesize_error_command(
+                            exc, tool_call_id=runtime.tool_call_id
+                        )
             else:
                 with ot.subagent_invoke_span(
                     subagent_type=subagent_type, path=invoke_path
                 ) as sp:
                     try:
                         result = await _ainvoke_with_timeout(
-                            subagent.ainvoke(subagent_state, config=sub_config),
+                            subagent.ainvoke(subagent_state, config=sub_config),  # pyright: ignore[reportArgumentType]
                             subagent_type=subagent_type,
                             started_at=ainvoke_start,
                         )
@@ -557,7 +573,10 @@ def build_task_tool_with_parent_config(
                             time.perf_counter() - atask_start,
                         )
                         _reraise_stamped_subagent_interrupt(gi, runtime.tool_call_id)
-                    except Exception:  # subagent async retry invoke failure; record metric and re-raise interrupt or bubble
+                    except (
+                        Exception,
+                        BaseExceptionGroup,
+                    ) as exc:  # subagent retry invoke failure → return error ToolMessage so the parent agent continues
                         ainvoke_outcome = "error"
                         sp.set_attribute("subagent.outcome", ainvoke_outcome)
                         ot_metrics.record_subagent_invoke_duration(
@@ -571,13 +590,29 @@ def build_task_tool_with_parent_config(
                             path=invoke_path,
                             outcome=ainvoke_outcome,
                         )
-                        raise
+                        logger.warning(
+                            "Subagent %r ainvoke (fresh) failed",
+                            subagent_type,
+                            exc_info=True,
+                        )
+                        return _synthesize_error_command(
+                            exc, tool_call_id=runtime.tool_call_id
+                        )
             ainvoke_elapsed = time.perf_counter() - ainvoke_start
         except GraphInterrupt:
             raise
 
         merge_start = time.perf_counter()
-        cmd = _return_command_with_state_update(result, runtime.tool_call_id)
+        try:
+            cmd = _return_command_with_state_update(result, runtime.tool_call_id)
+        except Exception as exc:
+            logger.warning(
+                "Subagent %r state update failed: %s",
+                subagent_type,
+                exc,
+                exc_info=True,
+            )
+            return _synthesize_error_command(exc, tool_call_id=runtime.tool_call_id)
         merge_elapsed = time.perf_counter() - merge_start
         _perf_log.info(
             "[hitl_route] atask EXIT subagent_type=%r path=%s outcome=%s "

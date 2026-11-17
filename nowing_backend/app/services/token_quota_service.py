@@ -547,7 +547,19 @@ class TokenQuotaService:
         convert to dollars by dividing by 1_000_000. ``remaining`` is the
         spendable amount (``balance - reserved``).
         """
+        from app.config import dev_quota_bypass_active
         from app.db import User
+
+        if dev_quota_bypass_active():
+            # Dev bypass: allow mà không ghi reservation (không tạo ledger row rác).
+            return QuotaResult(
+                allowed=True,
+                status=QuotaStatus.OK,
+                used=0,
+                limit=0,
+                remaining=0,
+                balance=0,
+            )
 
         user = (
             (
@@ -691,7 +703,17 @@ class TokenQuotaService:
         db_session: AsyncSession,
         user_id: Any,
     ) -> QuotaResult:
+        from app.config import dev_quota_bypass_active
         from app.db import User
+
+        if dev_quota_bypass_active():
+            # Dev bypass: trả zero-usage → premium_quota treat-unlimited.
+            return QuotaResult(
+                allowed=True,
+                status=QuotaStatus.OK,
+                used=0,
+                limit=0,
+            )
 
         user = (
             (await db_session.execute(select(User).where(User.id == user_id)))

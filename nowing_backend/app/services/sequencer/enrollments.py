@@ -65,7 +65,7 @@ class SequencerEnrollmentMixin:
 
         enrollments: list[SequenceEnrollment] = []
         for lead_id in lead_ids:
-            lead = await session.get(Lead, lead_id)
+            lead = await session.get(Lead, (lead_id, workspace_id))
             if not lead:
                 continue
             enr = await self.enroll_lead(
@@ -331,7 +331,7 @@ class SequencerEnrollmentMixin:
                 await session.commit()
                 return None
 
-            lead = await session.get(Lead, enrollment.lead_id)
+            lead = await session.get(Lead, (enrollment.lead_id, workspace_id))
             if not lead:
                 enrollment.status = "failed"
                 await session.commit()

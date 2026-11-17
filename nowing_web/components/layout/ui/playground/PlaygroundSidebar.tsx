@@ -173,7 +173,7 @@ function PlaygroundNavGroup({
 	);
 }
 
-function usePlaygroundBase(workspaceId: string, pathname: string | null) {
+function getPlaygroundBase(workspaceId: string, pathname: string | null) {
 	const userSettingsBase = `/dashboard/${workspaceId}/user-settings/playground`;
 	if (pathname?.startsWith(userSettingsBase)) return userSettingsBase;
 	return `/dashboard/${workspaceId}/playground`;
@@ -182,7 +182,7 @@ function usePlaygroundBase(workspaceId: string, pathname: string | null) {
 export function PlaygroundSidebar({ workspaceId, className }: PlaygroundSidebarProps) {
 	const t = useTranslations("layout");
 	const pathname = usePathname();
-	const base = usePlaygroundBase(workspaceId, pathname);
+	const base = getPlaygroundBase(workspaceId, pathname);
 	const items = useMemo(() => getPlaygroundNavItems(base, t), [base, t]);
 	const groups = useMemo(() => getPlaygroundNavGroups(base), [base]);
 	const activeValue = getPlaygroundActiveValue(pathname, base, items);

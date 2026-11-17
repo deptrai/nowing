@@ -6,8 +6,15 @@ const SEMVER_RE = /^\d+\.\d+\.\d+/;
 
 type AutoUpdater = {
   autoDownload: boolean;
+  // Mirrors electron-updater event API; listeners are typed at call sites.
+  // biome-ignore lint/suspicious/noExplicitAny: mirrors electron-updater event API
+  // pi-lens-ignore: ast-grep:no-any-type, lint/suspicious/noExplicitAny
   on(event: string, listener: (...args: any[]) => void): void;
+  // biome-ignore lint/suspicious/noExplicitAny: mirrors electron-updater event API
+  // pi-lens-ignore: ast-grep:no-any-type, lint/suspicious/noExplicitAny
   once(event: string, listener: (...args: any[]) => void): void;
+  // biome-ignore lint/suspicious/noExplicitAny: mirrors electron-updater event API
+  // pi-lens-ignore: ast-grep:no-any-type, lint/suspicious/noExplicitAny
   removeListener(event: string, listener: (...args: any[]) => void): void;
   checkForUpdates(): Promise<unknown>;
   quitAndInstall(): void;

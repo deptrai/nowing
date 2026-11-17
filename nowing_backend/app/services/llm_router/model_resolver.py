@@ -67,7 +67,7 @@ def get_cached_context_profile(router: Any) -> dict | None:
                 token_count_models.append(smallest_model)
             if largest_model not in token_count_models:
                 token_count_models.append(largest_model)
-        logger.info(
+        logger.info(  # nosemgrep
             "ChatLiteLLMRouter profile: max_input_tokens=%d, upper=%s, "
             "token_models=%s",
             min_ctx,

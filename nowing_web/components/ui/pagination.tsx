@@ -3,9 +3,8 @@ import { useTranslations } from "next-intl";
 import type * as React from "react";
 import { type Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
-	const t = useTranslations("ui");
+	
 	return (
 		<nav
 			aria-label="pagination"
@@ -15,7 +14,6 @@ function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
 		/>
 	);
 }
-
 function PaginationContent({ className, ...props }: React.ComponentProps<"ul">) {
 	return (
 		<ul
@@ -25,16 +23,13 @@ function PaginationContent({ className, ...props }: React.ComponentProps<"ul">) 
 		/>
 	);
 }
-
 function PaginationItem({ ...props }: React.ComponentProps<"li">) {
 	return <li data-slot="pagination-item" {...props} />;
 }
-
 type PaginationLinkProps = {
 	isActive?: boolean;
 } & Pick<React.ComponentProps<typeof Button>, "size"> &
 	React.ComponentProps<"a">;
-
 function PaginationLink({ className, isActive, size = "icon", ...props }: PaginationLinkProps) {
 	return (
 		<a
@@ -52,7 +47,6 @@ function PaginationLink({ className, isActive, size = "icon", ...props }: Pagina
 		/>
 	);
 }
-
 function PaginationPrevious({ className, ...props }: React.ComponentProps<typeof PaginationLink>) {
 	const t = useTranslations("ui");
 	return (
@@ -67,7 +61,6 @@ function PaginationPrevious({ className, ...props }: React.ComponentProps<typeof
 		</PaginationLink>
 	);
 }
-
 function PaginationNext({ className, ...props }: React.ComponentProps<typeof PaginationLink>) {
 	const t = useTranslations("ui");
 	return (
@@ -82,7 +75,6 @@ function PaginationNext({ className, ...props }: React.ComponentProps<typeof Pag
 		</PaginationLink>
 	);
 }
-
 function PaginationEllipsis({ className, ...props }: React.ComponentProps<"span">) {
 	const t = useTranslations("ui");
 	return (
@@ -97,7 +89,6 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<"span"
 		</span>
 	);
 }
-
 export {
 	Pagination,
 	PaginationContent,

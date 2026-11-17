@@ -3,14 +3,15 @@
  * Extracts candidate profile or employer job posting.
  */
 
-import { LeadClipPayload } from '../../types';
+import { LeadClipPayload } from '../../types/index.js';
 import {
   canonicalizeUrl,
   extractEmails,
   extractPrice,
   extractVietnamesePhones,
-} from '../../utils/normalizer';
+} from '../../utils/normalizer.js';
 
+// pi-lens-ignore: high-complexity — one extractor per site, branching mirrors page variants
 export function extractTopcvLead(): LeadClipPayload | null {
   const url = window.location.href;
   if (!url.includes('topcv.vn')) return null;
@@ -48,7 +49,7 @@ export function extractTopcvLead(): LeadClipPayload | null {
   );
   const content = contentEl?.textContent?.trim() || '';
 
-  const fullText = document.body.innerText || '';
+  const fullText = document.body.textContent || '';
   const phones = extractVietnamesePhones(content || fullText);
   const emails = extractEmails(content || fullText);
 

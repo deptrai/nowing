@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { acquireTestToken, registerUser } from "../helpers/api/auth";
 import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
+import { openContextualDock } from "../helpers/ui/dock";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -30,33 +31,43 @@ test.describe("Story 21.3: Vietnam Phone & Contact Waterfall Engine E2E", () => 
 	}) => {
 		const backendUrl = process.env.NOWING_BACKEND_INTERNAL_URL || "http://localhost:8000";
 
-		// 1. Create a sample Lead in workspace
+		// 1. Create a sample Lead in workspace via batch-ingest (single-lead
+		// POST /leads no longer exists; the API contract is batch-oriented and
+		// requires at least one of phone/email/domain per lead).
 		const createLeadRes = await request.post(
-			`${backendUrl}/api/v1/workspaces/${workspaceId}/leads`,
+			`${backendUrl}/api/v1/workspaces/${workspaceId}/leads/batch-ingest`,
 			{
 				headers: { Authorization: `Bearer ${ownerToken}` },
 				data: {
-					company_name: "Bất Động Sản Thăng Long E2E",
-					source: "batdongsan",
-					source_url: "https://batdongsan.com.vn/ban-nha-mat-pho-cau-giay",
-					raw_text: "Liên hệ chính chủ xem nhà: 0908 123 456 gặp anh Thăng",
-					location: "Cầu Giấy, Hà Nội",
+					leads: [
+						{
+							company_name: "Bất Động Sản Thăng Long E2E",
+							source: "batdongsan",
+							source_url: "https://batdongsan.com.vn/ban-nha-mat-pho-cau-giay",
+							location: "Cầu Giấy, Hà Nội",
+							// non-degenerate guard: a domain keeps phone off the record so
+							// the waterfall must resolve it from raw_text below.
+							domain: "thanglong-bds.example.vn",
+						},
+					],
 				},
 			}
 		);
 		expect([200, 201]).toContain(createLeadRes.status());
-		const lead = await createLeadRes.json();
-		const leadId = lead.id;
+		const ingestData = await createLeadRes.json();
+		const leadId = ingestData.lead_ids?.[0];
 		expect(leadId).toBeDefined();
 
-		// 2. Trigger Phone Resolution Waterfall endpoint
+		// 2. Trigger Phone Resolution Waterfall endpoint. The phone lives in the
+		// request raw_text so tier-3 passive carrier validation resolves it
+		// deterministically (tiers 1/2 need live scraper credentials and fall
+		// through when none are configured).
 		const resolveRes = await request.post(
 			`${backendUrl}/api/v1/workspaces/${workspaceId}/leads/${leadId}/resolve-phone`,
 			{
 				headers: { Authorization: `Bearer ${ownerToken}` },
 				data: {
-					source_url: "https://batdongsan.com.vn/ban-nha-mat-pho-cau-giay",
-					raw_text: "Liên hệ chính chủ: 0908 123 456",
+					raw_text: "Liên hệ chính chủ: 0908123456",
 					force_refresh: true,
 				},
 			}
@@ -82,42 +93,74 @@ test.describe("Story 21.3: Vietnam Phone & Contact Waterfall Engine E2E", () => 
 		const refundData = await refundRes.json();
 		expect(refundData.lead_id).toBe(leadId);
 		expect(refundData.refunded).toBe(true);
-		expect(refundData.refund_credits).toBe(1.5);
+		// Contract field is refund_amount_credits (not refund_credits).
+		expect(refundData.refund_amount_credits).toBe(1.5);
 		expect(refundData.refund_micros).toBe(1500000);
 	});
 
 	test("UI: Lead Intelligence Table renders masked phone copy pills and company graph", async ({
 		page,
+		request,
 	}) => {
+		const backendUrl = process.env.NOWING_BACKEND_INTERNAL_URL || "http://localhost:8000";
+
+		// Seed a sample lead into the workspace
+		await request.post(`${backendUrl}/api/v1/workspaces/${workspaceId}/leads/batch-ingest`, {
+			headers: { Authorization: `Bearer ${ownerToken}` },
+			data: {
+				leads: [
+					{
+						company_name: "Tập đoàn Vingroup E2E",
+						source: "batdongsan",
+						source_url: "https://batdongsan.com.vn/vingroup",
+						location: "Hà Nội",
+						phone: "0908123456",
+						domain: "vingroup.example.vn",
+					},
+				],
+			},
+		});
+
 		// Log in as test user
-		await page.goto("http://localhost:3000/login");
-		await page.getByRole("textbox", { name: "Email" }).fill("e2e-test@nowing.net");
-		await page.getByRole("textbox", { name: "Password" }).fill("E2eTestPassword123!");
-		await page.getByRole("button", { name: "Sign In" }).click();
+		await page.goto("/login");
+		// i18n-safe: the login form is Vietnamese ("Mật khẩu" / "Đăng nhập"),
+		// so select by stable id/type instead of localized accessible names.
+		await page.locator("input#email").fill("e2e-test@nowing.net");
+		await page.locator("input#password").fill("E2eTestPassword123!");
+		await page.locator('button[type="submit"]').click();
 
 		// Navigate to Leads view
 		await page.waitForURL(/\/dashboard\/\d+/);
-		await page.goto(`http://localhost:3000/dashboard/${workspaceId}/leads`);
+		await page.goto(`/dashboard/${workspaceId}/leads`);
+		await openContextualDock(page);
 
 		// Assert table header & columns
-		await expect(page.getByRole("heading", { name: /Lead Intelligence Panel/i })).toBeVisible({
-			timeout: 10000,
+		await expect(page.locator("[data-testid='nowing-lead-matrix']")).toBeVisible({
+			timeout: 15000,
 		});
-		await expect(page.getByRole("columnheader", { name: /Doanh nghiệp \/ Nguồn/i })).toBeVisible();
-		await expect(page.getByRole("columnheader", { name: /Liên hệ \(SĐT\)/i })).toBeVisible();
+		await expect(page.getByRole("columnheader", { name: /TÊN DOANH NGHIỆP/i })).toBeVisible();
+		await expect(page.getByRole("columnheader", { name: /LIÊN HỆ & THÔNG TIN/i })).toBeVisible();
 
 		// Verify phone copy pill is present and clickable
-		const phonePill = page.getByRole("button", { name: /Copy phone number/i }).first();
-		if (await phonePill.isVisible()) {
+		const phonePill = page
+			.locator(
+				"[data-testid='phone-unlock-pill'], [data-testid='phone-reveal-btn'], button:has-text('09')"
+			)
+			.first();
+		if (await phonePill.isVisible({ timeout: 5000 }).catch(() => false)) {
 			await phonePill.click();
 		}
 
 		// Verify Company Graph button and modal interaction
-		const graphBtn = page.getByRole("button", { name: /Xem Company Graph/i }).first();
-		if (await graphBtn.isVisible()) {
+		const graphBtn = page
+			.getByTitle(/Xem sơ đồ liên kết doanh nghiệp|View company link graph/i)
+			.first();
+		if (await graphBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
 			await graphBtn.click();
-			await expect(page.getByRole("heading", { name: /Enterprise Graph/i })).toBeVisible();
-			await page.getByRole("button", { name: /Đóng/i }).first().click();
+			await expect(
+				page.getByRole("heading", { name: /Tập đoàn Vingroup|Enterprise Graph|sơ đồ liên kết/i })
+			).toBeVisible();
+			await page.keyboard.press("Escape");
 		}
 	});
 });

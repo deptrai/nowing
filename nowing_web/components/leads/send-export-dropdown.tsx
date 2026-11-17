@@ -20,9 +20,9 @@ export const SendExportDropdown: React.FC<SendExportDropdownProps> = ({
 	onOpenGoogleSheetsSync,
 	onShareLink,
 }) => {
-	const [isOpen, setIsOpen] = useState<boolean>(false);
+	const [isOpen, setIsOpen] = useState(false);
 	const t = useTranslations("leads");
-	const [copied, setCopied] = useState<boolean>(false);
+	const [copied, setCopied] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
 	// Close on outside click

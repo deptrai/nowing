@@ -7,7 +7,7 @@
  * password or OS keychain instead of reverting to local.
  */
 
-import { ExtensionConfig } from '../types';
+import { ExtensionConfig } from '../types/index.js';
 
 const STORAGE_KEY = 'nowing_clipper_config';
 

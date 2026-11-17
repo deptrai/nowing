@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import json
 import logging
 import os
 import sys
@@ -24,7 +21,6 @@ from app.db import (
     DocumentType,
     InboundEmailEvent,
     InboundEmailEventStatus,
-    Permission,
     User,
     Workspace,
     get_async_session,
@@ -37,20 +33,17 @@ from app.gateway.email.auth import (
     verify_sendgrid_signature,
 )
 from app.gateway.email.models import InboundEmail
-from app.gateway.email.sender import send_email_reply
+from app.gateway.email.sender import build_reply_body, send_email_reply
 from app.observability.metrics import (
     record_gateway_inbox_write,
     record_gateway_webhook_parse_error,
 )
 from app.services.dsh_mission_service import DshMissionService
-from app.services.workspace_limits import workspace_limit_service
 from app.tenant_context import set_request_tenant_context
-from app.users import get_auth_context
 from app.utils.document_converters import (
     generate_content_hash,
     generate_unique_identifier_hash,
 )
-from app.utils.rbac import check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +90,7 @@ async def _resolve_user_by_email(
     if "+" in local:
         local = local.split("+", 1)[0]
     norm = f"{local}@{domain}"
-    result = await session.execute(
-        select(User).where(User.email == norm)
-    )
+    result = await session.execute(select(User).where(User.email == norm))
     return result.scalars().first()
 
 
@@ -151,7 +142,7 @@ def _verify_provider_signature(
         timestamp = request.headers.get("X-Mailgun-Timestamp", "")
         token = request.headers.get("X-Mailgun-Token", "")
         if not signing_key:
-            return True if is_test_env else False
+            return bool(is_test_env)
         return verify_mailgun_signature(
             signing_key=signing_key,
             signature=signature,
@@ -197,7 +188,9 @@ async def _persist_attachments_as_documents(
 
     for att in attachments:
         if not _attachment_fits(att):
-            filename_str = getattr(att, "filename", None) or (att.get("filename") if isinstance(att, dict) else "unknown")
+            filename_str = getattr(att, "filename", None) or (
+                att.get("filename") if isinstance(att, dict) else "unknown"
+            )
             logger.warning(
                 "Attachment %s exceeds size limit; skipping",
                 filename_str,
@@ -213,7 +206,11 @@ async def _persist_attachments_as_documents(
             filename = att.get("filename") or "unnamed"
             content = att.get("content") or b""
             mime_type = att.get("mime_type") or "application/octet-stream"
-            size = len(content) if isinstance(content, bytes) else int(att.get("size") or 0)
+            size = (
+                len(content)
+                if isinstance(content, bytes)
+                else int(att.get("size") or 0)
+            )
         else:
             continue
 
@@ -221,7 +218,9 @@ async def _persist_attachments_as_documents(
             DocumentType.FILE, f"{filename}:{size}", workspace.id
         )
         content_hash = generate_content_hash(
-            content.decode("utf-8", errors="replace") if isinstance(content, bytes) else str(content),
+            content.decode("utf-8", errors="replace")
+            if isinstance(content, bytes)
+            else str(content),
             workspace.id,
         )
 
@@ -236,7 +235,9 @@ async def _persist_attachments_as_documents(
                 "file_size": size,
                 "upload_time": datetime.now(UTC).isoformat(),
             },
-            content=content.decode("utf-8", errors="replace") if isinstance(content, bytes) else str(content),
+            content=content.decode("utf-8", errors="replace")
+            if isinstance(content, bytes)
+            else str(content),
             content_hash=content_hash,
             unique_identifier_hash=unique_identifier_hash,
             embedding=None,
@@ -314,22 +315,30 @@ async def _persist_inbound_email_event(
     if not inserted:
         # Load the existing row for the duplicate path.
         existing = (
+            (
+                await session.execute(
+                    select(InboundEmailEvent).where(
+                        InboundEmailEvent.dedupe_key == dedupe_key
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+        return existing, False
+
+    # The insert did not return because of RETURNING on conflict path; re-fetch.
+    existing = (
+        (
             await session.execute(
                 select(InboundEmailEvent).where(
                     InboundEmailEvent.dedupe_key == dedupe_key
                 )
             )
-        ).scalars().first()
-        return existing, False
-
-    # The insert did not return because of RETURNING on conflict path; re-fetch.
-    existing = (
-        await session.execute(
-            select(InboundEmailEvent).where(
-                InboundEmailEvent.dedupe_key == dedupe_key
-            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     return existing, inserted
 
 
@@ -341,9 +350,10 @@ async def _create_scheduled_mission_from_email(
     attachment_document_ids: list[int],
 ) -> None:
     """Create a recurring_report DSH mission from the inbound email text."""
-    request_text = _truncate_text(
-        inbound.body_text, config.GATEWAY_EMAIL_MAX_REQUEST_TEXT_LENGTH
-    ) or inbound.subject
+    request_text = (
+        _truncate_text(inbound.body_text, config.GATEWAY_EMAIL_MAX_REQUEST_TEXT_LENGTH)
+        or inbound.subject
+    )
 
     payload = {
         "query": request_text,
@@ -380,7 +390,6 @@ async def receive_inbound_email(
     """Receive an inbound email from SendGrid or Mailgun, parse, dedupe, persist."""
     await _require_email_enabled()
 
-    request_id = f"gateway_email_{datetime.now(UTC).timestamp()}"
     raw_body = await request.body()
 
     # Form/webhook payloads are URL-encoded; decode to a flat dict.
@@ -406,7 +415,9 @@ async def receive_inbound_email(
     try:
         adapter = EmailAdapter()
         inbound = adapter.parse_inbound_email(raw_payload)
-    except Exception as exc:  # payload parsing failure → record metric and return 200 ack
+    except (
+        Exception
+    ) as exc:  # payload parsing failure → record metric and return 200 ack
         record_gateway_webhook_parse_error()
         logger.warning("Failed to parse inbound email: %s", exc)
         # Return 204 so providers do not retry malformed payloads.
@@ -451,7 +462,9 @@ async def receive_inbound_email(
             user,
             inbound.attachments,
         )
-    except Exception:  # best-effort attachment persistence; failure doesn't fail email delivery
+    except (
+        Exception
+    ):  # best-effort attachment persistence; failure doesn't fail email delivery
         logger.exception("Failed to persist attachments for email %s", dedupe_key)
 
     # Create the recurring report mission.
@@ -505,7 +518,7 @@ async def _send_email_reply_for_mission(
     if result.get("status") == "replied":
         event.status = InboundEmailEventStatus.REPLIED
         event.processed_at = datetime.now(UTC)
-    elif result.get("attempted") is False:
+    elif not result.get("attempted", True):
         # Invalid From; leave as-is.
         pass
     else:
@@ -518,6 +531,4 @@ def _is_valid_email(address: str) -> bool:
     """Loose email validation."""
     import re
 
-    return bool(
-        re.match(r"^[\w.+-]+@[\w.-]+\.[\w]{2,}$", address, flags=re.IGNORECASE)
-    )
+    return bool(re.match(r"^[\w.+-]+@[\w.-]+\.[\w]{2,}$", address, flags=re.IGNORECASE))

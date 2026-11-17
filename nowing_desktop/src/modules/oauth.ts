@@ -70,14 +70,14 @@ export async function startGoogleOAuth(backendUrl: string): Promise<DesktopAuthT
       try {
         const url = new URL(req.url || '/', 'http://127.0.0.1');
         if (url.pathname !== OAUTH_CALLBACK_PATH) {
-          writeOAuthPage(res, 404, 'Not found', 'This OAuth callback endpoint is only used by Nowing.');
+          writeOAuthPage(res, { statusCode: 404, title: 'Not found', message: 'This OAuth callback endpoint is only used by Nowing.' });
           return;
         }
 
         const oauthError = url.searchParams.get('error');
         if (oauthError) {
           const description = url.searchParams.get('error_description');
-          writeOAuthPage(res, 400, 'Authentication failed', 'You can close this window and return to Nowing.', 'error');
+          writeOAuthPage(res, { statusCode: 400, title: 'Authentication failed', message: 'You can close this window and return to Nowing.', tone: 'error' });
           fail(new Error(description || `Google OAuth failed: ${oauthError}`));
           return;
         }
@@ -85,13 +85,13 @@ export async function startGoogleOAuth(backendUrl: string): Promise<DesktopAuthT
         const code = url.searchParams.get('code');
         const returnedState = url.searchParams.get('state');
         if (!code || returnedState !== state) {
-          writeOAuthPage(res, 400, 'Authentication failed', 'You can close this window and return to Nowing.', 'error');
+          writeOAuthPage(res, { statusCode: 400, title: 'Authentication failed', message: 'You can close this window and return to Nowing.', tone: 'error' });
           fail(new Error('Invalid OAuth callback'));
           return;
         }
 
         if (!port) {
-          writeOAuthPage(res, 500, 'Authentication failed', 'You can close this window and return to Nowing.', 'error');
+          writeOAuthPage(res, { statusCode: 500, title: 'Authentication failed', message: 'You can close this window and return to Nowing.', tone: 'error' });
           fail(new Error('OAuth loopback server was not ready'));
           return;
         }
@@ -110,12 +110,12 @@ export async function startGoogleOAuth(backendUrl: string): Promise<DesktopAuthT
           } catch {
             // Keep the generic exchange error if the backend did not return JSON.
           }
-          writeOAuthPage(res, 401, 'Authentication failed', 'You can close this window and return to Nowing.', 'error');
+          writeOAuthPage(res, { statusCode: 401, title: 'Authentication failed', message: 'You can close this window and return to Nowing.', tone: 'error' });
           fail(new Error(detail));
           return;
         }
         const tokens = (await response.json()) as DesktopAuthTokens;
-        writeOAuthPage(res, 200, 'Authentication complete', 'You can close this window and return to Nowing.', 'success');
+        writeOAuthPage(res, { statusCode: 200, title: 'Authentication complete', message: 'You can close this window and return to Nowing.', tone: 'success' });
         succeed(tokens);
       } catch (error) {
         fail(error instanceof Error ? error : new Error('Google OAuth failed'));
@@ -134,6 +134,8 @@ export async function startGoogleOAuth(backendUrl: string): Promise<DesktopAuthT
       }, OAUTH_TIMEOUT_MS);
 
       const redirectUri = `http://127.0.0.1:${port}${OAUTH_CALLBACK_PATH}`;
+      // Constant URL literal cannot throw.
+      // pi-lens-ignore: ast-grep:unchecked-throwing-call
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       authUrl.searchParams.set('client_id', clientId);
       authUrl.searchParams.set('redirect_uri', redirectUri);

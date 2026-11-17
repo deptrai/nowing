@@ -94,7 +94,7 @@ export const updateAutomationMutationAtom = atomWithMutation(() => ({
 			trackAutomationUpdated({
 				automation_id: vars.automationId,
 				workspace_id: automation.workspace_id,
-				has_definition_change: !!vars.patch.definition,
+				has_definition_change: Boolean(vars.patch.definition),
 				has_name_change: vars.patch.name != null,
 				has_description_change: vars.patch.description !== undefined,
 				task_count: vars.patch.definition?.plan?.length,
@@ -149,7 +149,7 @@ export const addTriggerMutationAtom = atomWithMutation(() => ({
 			trigger_id: trigger.id,
 			trigger_type: trigger.type,
 			enabled: trigger.enabled,
-			has_cron: !!trigger.params?.cron,
+			has_cron: Boolean(trigger.params?.cron),
 		});
 	},
 	onError: (error: Error, vars) => {
@@ -174,11 +174,14 @@ export const updateTriggerMutationAtom = atomWithMutation(() => ({
 	onSuccess: (_, vars) => {
 		invalidateDetail(vars.automationId);
 		toast.success("Trigger updated");
-		const change: "enabled" | "params" | "other" = vars.patch.params
-			? "params"
-			: vars.patch.enabled !== undefined && vars.patch.enabled !== null
-				? "enabled"
-				: "other";
+		let change: "enabled" | "params" | "other";
+		if (vars.patch.params) {
+			change = "params";
+		} else if (vars.patch.enabled !== undefined && vars.patch.enabled !== null) {
+			change = "enabled";
+		} else {
+			change = "other";
+		}
 		trackAutomationTriggerUpdated({
 			automation_id: vars.automationId,
 			trigger_id: vars.triggerId,

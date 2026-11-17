@@ -54,7 +54,7 @@ export function PromoCodeClaimCard() {
 		},
 	});
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = (e: React.SubmitEvent) => {
 		e.preventDefault();
 		const cleaned = cleanPromoCode(code);
 		if (!validatePromoCodeFormat(cleaned)) {

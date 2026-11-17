@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.lead_intelligence.adapters._query_parser import (
     extract_listing_type_chotot,
     extract_price_range,
@@ -30,15 +32,17 @@ class ChototLeadAdapter(LeadSourceAdapter):
 
     source_name = "chotot"
     category = LeadSourceCategory.REAL_ESTATE
-    supported_provinces = ["SG", "HN", "BD", "CT", "DN", "DNA", "*"]
-    coverage_quality_by_location = {
-        "SG": "high",
-        "HN": "medium",
-        "BD": "high",
-        "CT": "high",
-        "DN": "medium",
-        "DNA": "medium",
-    }
+    supported_provinces = ("SG", "HN", "BD", "CT", "DN", "DNA", "*")
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "SG": "high",
+            "HN": "medium",
+            "BD": "high",
+            "CT": "high",
+            "DN": "medium",
+            "DNA": "medium",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"
@@ -63,21 +67,42 @@ class ChototLeadAdapter(LeadSourceAdapter):
             category="bds",
             listing_type=listing_type,
             property_type=property_type or "all",
-            city=city,
+            city=city or "Hà Nội",
             min_price=min_price,
             max_price=max_price,
             max_items=min(limit, 20),
             max_pages=5,
         )
-        output = await scrape_chotot(input_model, limit=min(limit, 20))
 
-        if output.degraded:
-            logger.warning(
-                "Chotot scraper degraded: %s", output.degradation_reason
-            )
+        async def _local() -> dict[str, Any]:
+            output = await scrape_chotot(input_model, limit=min(limit, 20))
+            return {
+                "items": [item.to_output() for item in output.items],
+                "degraded": output.degraded,
+                "degradation_reason": output.degradation_reason,
+            }
+
+        raw = await medirus_scrape_or_local(
+            platform="chotot",
+            action="search_listings",
+            args={
+                "category": "bds",
+                "listing_type": listing_type,
+                "property_type": property_type or "all",
+                "city": city,
+                "min_price": min_price,
+                "max_price": max_price,
+                "max_items": min(limit, 20),
+                "max_pages": 5,
+            },
+            local_fn=_local,
+        )
+
+        if raw.get("degraded"):
+            logger.warning("Chotot scraper degraded: %s", raw.get("degradation_reason"))
             self.last_execution_status = "degraded"
 
-        return [item.to_output() for item in output.items]
+        return raw.get("items", []) or []
 
     async def search_leads(
         self,

@@ -1,6 +1,6 @@
 # Nowing Ecosystem System Architecture — September 2026
 
-**Updated:** 2026-09-21 | **Verified against:** `nowing/nowing_backend/app/`, `chainlens-research/apps/`, `XActions/src/`
+**Updated:** 2026-09-21 | **Verified against:** `nowing/nowing_backend/app/`, `chainlens-research/apps/`, `Medirus/src/`
 
 > Tất cả diagram dùng hướng trái-phải (LR) để đọc ngang, không bị nén dọc như dạng TB.
 
@@ -51,7 +51,7 @@ flowchart LR
         CLNow["nowing/<br/>auth + private-data"]
     end
 
-    subgraph XA["XActions/"]
+    subgraph XA["Medirus/"]
         XMCP["MCP :3001<br/>x_scrape"]
         XCore["core/<br/>base-crawler<br/>dispatcher"]
         XScrapers["scrapers/<br/>10 categories"]
@@ -157,7 +157,7 @@ flowchart LR
     Jobs --> DB2
 ```
 
-## 4. XActions Internal Architecture
+## 4. Medirus Internal Architecture
 
 ```mermaid
 flowchart LR
@@ -242,7 +242,7 @@ sequenceDiagram
     participant DS as DecisionService
     participant JEV as Jev API
     participant CL as ChainLens API
-    participant XA as XActions MCP
+    participant XA as Medirus MCP
     participant DB as PostgreSQL
 
     U->>NA: "Nghiên cứu thị trường BĐS Q7"
@@ -263,12 +263,12 @@ sequenceDiagram
     XA->>DB: via Redis Stream → nowing consumer
 ```
 
-## 6. Nowing ↔ XActions Contract (target state)
+## 6. Nowing ↔ Medirus Contract (target state)
 
 ```mermaid
 sequenceDiagram
     participant NW as Nowing
-    participant XA as XActions MCP :3001
+    participant XA as Medirus MCP :3001
     participant CR as BaseCrawler
     participant RS as Redis Stream
     participant CONS as social_stream_worker
@@ -366,7 +366,7 @@ flowchart LR
         TC2["topcv"]
         VW3["vietnamworks"]
         ITV2["itviec"]
-        XA2["XActions<br/>11 social platforms"]
+        XA2["Medirus<br/>11 social platforms"]
     end
 
     subgraph Pipe["Ingestion Pipeline"]
@@ -405,10 +405,10 @@ flowchart LR
 | chainlens | `apps/api/src/` | 40+ NestJS modules |
 | chainlens | `apps/mcp/src/tools/` | 7+ MCP tools |
 | chainlens | `apps/worker/src/` | Async job worker |
-| XActions | `src/mcp/server.js` | MCP server :3001 |
-| XActions | `src/scrapers/` | 10 categories |
-| XActions | `src/core/` | base-crawler, dispatcher, governor |
-| XActions | `src/streaming/` | Redis Stream output |
+| Medirus | `src/mcp/server.js` | MCP server :3001 |
+| Medirus | `src/scrapers/` | 10 categories |
+| Medirus | `src/core/` | base-crawler, dispatcher, governor |
+| Medirus | `src/streaming/` | Redis Stream output |
 
 ---
 

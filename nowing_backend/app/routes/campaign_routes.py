@@ -111,7 +111,7 @@ async def plan_campaign(
             detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
         ) from exc
     planner = LeadGenPlanner()
-    return planner.create_preflight_plan(spec)
+    return await planner.create_preflight_plan(spec)
 
 
 @router.post("/{workspace_id}/campaigns/execute", response_model=LeadGenOrchestratorResult)
@@ -183,4 +183,6 @@ async def get_campaign_sources_status(
 
     from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
     registry = LeadSourceAdapterRegistry.get_default()
-    return registry.get_all_source_statuses(location_profile=location_profile)
+    return await registry.get_all_source_statuses(
+        location_profile=location_profile, workspace_id=workspace_id
+    )

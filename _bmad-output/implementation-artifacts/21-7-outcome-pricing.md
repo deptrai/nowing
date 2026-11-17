@@ -99,7 +99,7 @@ So that software costs directly reflect business value generated and team usage 
 **Then** the query combines both `TokenUsage` (LLM turns) and `BillingEvent` (business events) into 5 standardized service buckets:
 1. `AI Generation` (LLM tokens, synthesis, prompt transforms — $0 on standard, metered if custom plan)
 2. `Web Search` (SERP queries, crawl gap-fills, Exa/Chainlens search)
-3. `Social Media` (XActions Facebook/Twitter ingestion & post extractions)
+3. `Social Media` (Medirus Facebook/Twitter ingestion & post extractions)
 4. `Phone Waterfall` (Batdongsan/Chotot/BetterContact phone number decodes)
 5. `Outcome Meetings` (Qualified booked meetings & outcome bonuses)
 

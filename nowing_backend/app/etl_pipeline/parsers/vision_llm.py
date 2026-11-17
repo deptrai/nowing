@@ -64,6 +64,7 @@ def _image_to_data_url(file_path: str) -> str:
     mime_type = _EXT_TO_MIME.get(ext)
     if not mime_type:
         raise ValueError(f"Unsupported image extension {ext!r}: {file_path}")
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- open failure propagates to caller
     with open(file_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode("ascii")
     return f"data:{mime_type};base64,{encoded}"

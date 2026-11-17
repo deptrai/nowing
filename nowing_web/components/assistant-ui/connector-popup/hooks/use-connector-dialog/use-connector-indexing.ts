@@ -17,7 +17,7 @@ import {
 } from "@/lib/posthog/events";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { queryClient } from "@/lib/query-client/client";
-import { AUTO_INDEX_DEFAULTS } from "../../constants/connector-constants";
+import { AUTO_INDEX_DEFAULTS, type AutoIndexConfig } from "../../constants/connector-constants";
 import { dateRangeSchema, frequencyMinutesSchema } from "../../constants/connector-popup.schemas";
 import type { IndexingConfigState, UseConnectorDialogIndexing } from "./types";
 import type { ConnectorBase } from "./use-connector-base";
@@ -32,13 +32,13 @@ export function useConnectorIndexing({
 	handleAutoIndex: (connector: SearchSourceConnector, title: string, type: string) => Promise<void>;
 	handleStartIndexing: (refreshConnectors: () => void) => Promise<void>;
 	handleSkipIndexing: () => void;
-	handleQuickIndexConnector: (
-		connectorId: number,
-		connectorType?: string,
-		stopIndexing?: (id: number) => void,
-		startDate?: Date,
-		endDate?: Date
-	) => Promise<void>;
+	handleQuickIndexConnector: (args: {
+		connectorId: number;
+		connectorType?: string;
+		stopIndexing?: (id: number) => void;
+		startDate?: Date;
+		endDate?: Date;
+	}) => Promise<void>;
 } {
 	const t = useTranslations();
 	const { workspaceId, refetchAllConnectors, setIsOpen } = base;
@@ -65,7 +65,7 @@ export function useConnectorIndexing({
 			if (!workspaceId || isAutoIndexingRef.current) return;
 			isAutoIndexingRef.current = true;
 
-			const defaults = AUTO_INDEX_DEFAULTS[connectorType];
+			const defaults = (AUTO_INDEX_DEFAULTS as Record<string, AutoIndexConfig>)[connectorType];
 			const now = new Date();
 			const startDate = new Date(now);
 			startDate.setDate(startDate.getDate() - (defaults?.daysBack ?? 365));
@@ -118,7 +118,7 @@ export function useConnectorIndexing({
 				isAutoIndexingRef.current = false;
 			}
 		},
-		[workspaceId, indexConnector, updateConnector, refetchAllConnectors]
+		[workspaceId, indexConnector, updateConnector, refetchAllConnectors, t]
 	);
 
 	const handleStartIndexing = useCallback(
@@ -232,7 +232,7 @@ export function useConnectorIndexing({
 					Number(workspaceId),
 					indexingConfig.connectorType,
 					indexingConfig.connectorId,
-					{ hasStartDate: !!startDate, hasEndDate: !!endDate }
+					{ hasStartDate: Boolean(startDate), hasEndDate: Boolean(endDate) }
 				);
 
 				if (periodicEnabled) {
@@ -280,6 +280,7 @@ export function useConnectorIndexing({
 			enableVisionLlm,
 			indexingConnectorConfig,
 			setIsOpen,
+			t,
 		]
 	);
 
@@ -297,13 +298,14 @@ export function useConnectorIndexing({
 	}, [setIsOpen]);
 
 	const handleQuickIndexConnector = useCallback(
-		async (
-			connectorId: number,
-			connectorType?: string,
-			stopIndexing?: (id: number) => void,
-			startDate?: Date,
-			endDate?: Date
-		) => {
+		async (args: {
+			connectorId: number;
+			connectorType?: string;
+			stopIndexing?: (id: number) => void;
+			startDate?: Date;
+			endDate?: Date;
+		}) => {
+			const { connectorId, connectorType, stopIndexing, startDate, endDate } = args;
 			if (!workspaceId) {
 				if (stopIndexing) stopIndexing(connectorId);
 				return;

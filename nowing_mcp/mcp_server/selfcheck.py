@@ -89,6 +89,11 @@ EXPECTED_TOOLS = {
     "nowing_list_crm_connections",
     "nowing_sync_crm",
     "nowing_list_crm_sync_logs",
+    # lead workspace tools (Story 42.4)
+    "nowing_ingest_leads",
+    "nowing_create_leads_table",
+    "nowing_list_leads",
+    "nowing_get_credits_balance",
 }
 
 _MIN_DESCRIPTION_CHARS = 40

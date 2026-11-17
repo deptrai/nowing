@@ -9,6 +9,7 @@ intent classification, and interrupt detection.
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from contextvars import ContextVar
 from typing import Any
 
 from app.agents.chat.multi_agent_chat.main_agent.middleware.kb_persistence import (
@@ -18,6 +19,14 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import Filesys
 from app.services.new_streaming_service import VercelStreamingService
 from app.tasks.chat.message_parts_normalizer import (
     final_assistant_parts_from_messages,
+)
+from app.tasks.chat.streaming.agent.partial_synthesis import (
+    LlmCaller,
+    cap_hit,
+    completed_tool_parts,
+    no_tools_partial,
+    notice_only_partial,
+    synthesize_partial,
 )
 from app.tasks.chat.streaming.contract.file_contract import (
     contract_enforcement_active,
@@ -33,6 +42,44 @@ from app.tasks.chat.streaming.shared.utils import safe_float
 from app.utils.perf import get_perf_logger
 
 _perf_log = get_perf_logger()
+
+
+async def _default_llm_caller(prompt: str) -> str | None:
+    """LLM caller mặc định cho partial synthesis: workspace AGENT model.
+
+    Dùng ``get_agent_llm`` với workspace_id từ ContextVar; None khi
+    không resolve được model (caller sẽ fallback notice-only).
+    """
+    from app.services.llm_service import get_agent_llm
+    from app.utils.db import get_session
+
+    workspace_id = _synthesis_workspace_id.get()
+    if workspace_id is None:
+        return None
+    try:
+        async for session in get_session():
+            llm = await get_agent_llm(session, workspace_id)
+            break
+    except Exception:
+        return None
+    if llm is None:
+        return None
+    response = await llm.ainvoke(prompt)
+    content = getattr(response, "content", None)
+    if isinstance(content, str):
+        return content
+    return None
+
+
+# ContextVar để flow orchestrator inject workspace_id cho synthesis call.
+_synthesis_workspace_id: ContextVar[int | None] = ContextVar(
+    "synthesis_workspace_id", default=None
+)
+
+
+def set_synthesis_workspace_id(workspace_id: int | None) -> None:
+    """Đặt workspace_id cho synthesis LLM call của turn hiện tại."""
+    _synthesis_workspace_id.set(workspace_id)
 
 
 async def stream_agent_events(
@@ -141,6 +188,43 @@ async def stream_agent_events(
         if contract_turn_id == current_turn_id
         else 0.0
     )
+
+    # Story 42.6: model-call cap hit → partial synthesis (best-effort).
+    # Chỉ chạy khi chưa có text nào (nếu text đã stream thì turn không trống).
+    _cap_kind = cap_hit(state_values)
+    if _cap_kind is not None and not accumulated_text.strip():
+        try:
+            tool_parts = completed_tool_parts(content_builder)
+            if tool_parts:
+                notice = await synthesize_partial(
+                    tool_parts, _default_llm_caller
+                )
+                if notice is None:
+                    notice = notice_only_partial(tool_parts)
+            else:
+                notice = no_tools_partial()
+            result.partial_cap_hit = True
+            text_id = streaming_service.generate_text_id()
+            yield streaming_service.format_text_start(text_id)
+            if content_builder is not None:
+                content_builder.on_text_start(text_id)
+            yield streaming_service.format_text_delta(text_id, notice)
+            if content_builder is not None:
+                content_builder.on_text_delta(text_id, notice)
+            yield streaming_service.format_text_end(text_id)
+            if content_builder is not None:
+                content_builder.on_text_end(text_id)
+            accumulated_text = notice
+            _perf_log.info(
+                "[stream_agent_events] partial synthesis emitted "
+                "(cap=%s, tools=%d)",
+                _cap_kind,
+                len(tool_parts),
+            )
+        except Exception as exc:  # best-effort: không phá turn khi synthesis lỗi
+            _perf_log.warning(
+                "[stream_agent_events] partial synthesis failed: %s", exc
+            )
 
     if result.intent_detected == "file_write":
         result.commit_gate_passed, result.commit_gate_reason = (

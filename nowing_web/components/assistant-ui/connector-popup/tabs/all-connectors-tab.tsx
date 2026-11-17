@@ -37,7 +37,6 @@ type DeploymentFilterableConnector = {
  * Returns just the identifier (e.g : john@example.com).
  */
 export function getConnectorDisplayName(fullName: string): string {
-	const t = useTranslations("assistant");
 	const separatorIndex = fullName.indexOf(" - ");
 	if (separatorIndex !== -1) {
 		return fullName.substring(separatorIndex + 3);

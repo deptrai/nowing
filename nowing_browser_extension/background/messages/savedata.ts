@@ -1,15 +1,22 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging";
 import { Storage } from "@plasmohq/storage";
 import { buildBackendUrl } from "~utils/backend-url";
+import type { WebHistory } from "~utils/interfaces";
 import { emptyArr, webhistoryToLangChainDocument } from "~utils/commons";
 
 const clearMemory = async () => {
 	try {
 		const storage = new Storage({ area: "local" });
 
-		const webHistory: any = await storage.get("webhistory");
-		const urlQueue: any = await storage.get("urlQueueList");
-		const timeQueue: any = await storage.get("timeQueueList");
+		const webHistory = (await storage.get("webhistory")) as {
+			webhistory?: WebHistory[];
+		};
+		const urlQueue = (await storage.get("urlQueueList")) as {
+			urlQueueList?: WebHistory[];
+		};
+		const timeQueue = (await storage.get("timeQueueList")) as {
+			timeQueueList?: WebHistory[];
+		};
 
 		if (!webHistory.webhistory) {
 			return;
@@ -18,45 +25,35 @@ const clearMemory = async () => {
 		//Main Cleanup COde
 		chrome.tabs.query({}, async (tabs) => {
 			//Get Active Tabs Ids
-			// console.log("Event Tabs",tabs)
-			let actives = tabs.map((tab) => {
-				if (tab.id) {
-					return tab.id;
-				}
-			});
-
-			actives = actives.filter((item: any) => item);
+			const actives = tabs.map((tab) => tab.id).filter((id): id is number => id != null);
 
 			//Only retain which is still active
-			const newHistory = webHistory.webhistory.map((element: any) => {
-				//@ts-ignore
+			const newHistory = webHistory.webhistory?.map((element) => {
 				if (actives.includes(element.tabsessionId)) {
 					return element;
 				}
 			});
 
-			const newUrlQueue = urlQueue.urlQueueList.map((element: any) => {
-				//@ts-ignore
+			const newUrlQueue = urlQueue.urlQueueList?.map((element) => {
 				if (actives.includes(element.tabsessionId)) {
 					return element;
 				}
 			});
 
-			const newTimeQueue = timeQueue.timeQueueList.map((element: any) => {
-				//@ts-ignore
+			const newTimeQueue = timeQueue.timeQueueList?.map((element) => {
 				if (actives.includes(element.tabsessionId)) {
 					return element;
 				}
 			});
 
 			await storage.set("webhistory", {
-				webhistory: newHistory.filter((item: any) => item),
+				webhistory: newHistory?.filter(Boolean) ?? [],
 			});
 			await storage.set("urlQueueList", {
-				urlQueueList: newUrlQueue.filter((item: any) => item),
+				urlQueueList: newUrlQueue?.filter(Boolean) ?? [],
 			});
 			await storage.set("timeQueueList", {
-				timeQueueList: newTimeQueue.filter((item: any) => item),
+				timeQueueList: newTimeQueue?.filter(Boolean) ?? [],
 			});
 		});
 	} catch (error) {
@@ -64,15 +61,17 @@ const clearMemory = async () => {
 	}
 };
 
-const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
+const handler: PlasmoMessaging.MessageHandler = async (_req, res) => {
 	try {
 		const storage = new Storage({ area: "local" });
 
-		const webhistoryObj: any = await storage.get("webhistory");
+		const webhistoryObj = (await storage.get("webhistory")) as {
+			webhistory?: WebHistory[];
+		};
 		const webhistory = webhistoryObj.webhistory;
 		if (webhistory) {
-			const toSaveFinally: any[] = [];
-			const newHistoryAfterCleanup: any[] = [];
+			const toSaveFinally: { metadata: Record<string, unknown>; pageContent: unknown }[] = [];
+			const newHistoryAfterCleanup: WebHistory[] = [];
 
 			for (let i = 0; i < webhistory.length; i++) {
 				const markdownFormat = webhistoryToLangChainDocument(

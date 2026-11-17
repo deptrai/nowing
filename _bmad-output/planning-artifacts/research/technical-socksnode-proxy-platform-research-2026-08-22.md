@@ -5,14 +5,14 @@ workflowType: 'research'
 lastStep: 6
 research_type: 'technical'
 research_topic: 'SocksNode Proxy Platform Documentation & Architecture Integration (https://socksnode.com/en/docs)'
-research_goals: 'Nghiên cứu kỹ thuật toàn diện tài liệu SocksNode (kiến trúc gateway, endpoint, cơ chế xác thực username/password, tham số geo/country targeting, session duration/sticky rotation, API quản lý, và integration patterns cho XActions/Nowing crawlers)'
+research_goals: 'Nghiên cứu kỹ thuật toàn diện tài liệu SocksNode (kiến trúc gateway, endpoint, cơ chế xác thực username/password, tham số geo/country targeting, session duration/sticky rotation, API quản lý, và integration patterns cho Medirus/Nowing crawlers)'
 user_name: 'Luisphan'
 date: '2026-08-22'
 web_research_enabled: true
 source_verification: true
 ---
 
-# Technical Research Report: SocksNode Proxy Platform Architecture & Integration for XActions / Nowing
+# Technical Research Report: SocksNode Proxy Platform Architecture & Integration for Medirus / Nowing
 
 **Date:** 2026-08-22  
 **Author:** Luisphan (Winston — System Architect)  
@@ -22,14 +22,14 @@ source_verification: true
 
 ## Executive Summary
 
-Báo cáo nghiên cứu kỹ thuật này cung cấp phân tích toàn diện và sâu sắc về nền tảng dịch vụ Proxy **SocksNode** (`https://socksnode.com/en/docs`), làm rõ kiến trúc phân phối mạng IP, cơ chế đóng gói tham số định tuyến động qua Username (Dynamic Username Parameterization), khả năng hỗ trợ đa giao thức (HTTP/HTTPS/SOCKS5 trên cùng cổng 9000), và các mẫu tích hợp (Integration Patterns) tối ưu cho hệ thống tự động hóa mạng xã hội **XActions** và bộ công cụ web crawler chuyên sâu **Nowing**.
+Báo cáo nghiên cứu kỹ thuật này cung cấp phân tích toàn diện và sâu sắc về nền tảng dịch vụ Proxy **SocksNode** (`https://socksnode.com/en/docs`), làm rõ kiến trúc phân phối mạng IP, cơ chế đóng gói tham số định tuyến động qua Username (Dynamic Username Parameterization), khả năng hỗ trợ đa giao thức (HTTP/HTTPS/SOCKS5 trên cùng cổng 9000), và các mẫu tích hợp (Integration Patterns) tối ưu cho hệ thống tự động hóa mạng xã hội **Medirus** và bộ công cụ web crawler chuyên sâu **Nowing**.
 
 Kiểm chứng thực nghiệm thực tế cho thấy SocksNode cung cấp mạng lưới IP dân cư thực (Residential ASN từ VNPT, Viettel) với độ trễ thấp (< 1.200 ms cho HTTP request và ~3.100 ms cho full Chromium render khi kết nối qua cụm Gateway Singapore `sg.premium.socksnode.com:9000`). Mô hình cước phí trả trước không thời hạn (Prepaid Non-Expiring GB từ \$0.34/GB) cùng khả năng ghim session linh hoạt (Sticky Session từ 1 phút đến 24 giờ) giúp SocksNode trở thành giải pháp lý tưởng thay thế hoặc bổ trợ cho các nhà cung cấp đắt đỏ khác trong hệ thống.
 
 **Các phát hiện kỹ thuật cốt lõi:**
 1. **Kiến trúc Gateway Đa Giao Thức (Multi-Protocol Unified Gateway)**: Cổng `9000` hỗ trợ đồng thời HTTP, HTTPS CONNECT Tunneling và SOCKS5 (`socks5h://` hỗ trợ remote DNS resolution).
 2. **Cơ chế Định tuyến Tham số Headerless (Username RFC Injection)**: Cho phép mã hóa toàn bộ thông số định tuyến (`-country-`, `-city-`, `-session-`, `-lifetime-`) trực tiếp trong username mà không đòi hỏi HTTP headers tùy biến.
-3. **Mẫu Kiến trúc AD-SOC-3 cho Multi-Account**: Ánh xạ 1-1 cố định giữa Account ID (Facebook/Twitter) và SocksNode Sticky Session ID thông qua Redis hash `xactions:proxy_bindings`, loại bỏ 100% rủi ro checkpoint do nhảy IP bất thường.
+3. **Mẫu Kiến trúc AD-SOC-3 cho Multi-Account**: Ánh xạ 1-1 cố định giữa Account ID (Facebook/Twitter) và SocksNode Sticky Session ID thông qua Redis hash `medirus:proxy_bindings`, loại bỏ 100% rủi ro checkpoint do nhảy IP bất thường.
 4. **Hiệu quả Chi phí & Tiết kiệm Băng thông**: Áp dụng Request Routing Interception trong Playwright/Puppeteer chặn hình ảnh, font chữ và media giúp giảm 70–85% lưu lượng tiêu thụ.
 
 **Khuyến nghị kỹ thuật then chốt:**
@@ -64,7 +64,7 @@ Trong hệ sinh thái thu thập dữ liệu hiện đại và tự động hóa
 SocksNode cung cấp giải pháp mạng lưới IP dân cư thực (Residential) và 4G/5G Mobile phân tán tại 195+ quốc gia, cho phép phân giải định danh tự nhiên, vượt qua các lớp kiểm duyệt và rào cản địa lý mà không làm gián đoạn luồng nghiệp vụ.
 
 ### Technical Research Methodology
-- **Phạm vi kỹ thuật (Technical Scope)**: Phân tích kiến trúc mạng gateway, cấu trúc giao thức, cơ chế xác thực, khả năng mở rộng, và tích hợp mã nguồn trong XActions / Nowing.
+- **Phạm vi kỹ thuật (Technical Scope)**: Phân tích kiến trúc mạng gateway, cấu trúc giao thức, cơ chế xác thực, khả năng mở rộng, và tích hợp mã nguồn trong Medirus / Nowing.
 - **Nguồn dữ liệu (Data Sources)**: Tài liệu chính thức `https://socksnode.com/en/docs`, kiểm chứng benchmark trực tiếp trên môi trường production, và phân tích đối chiếu với các nhà cung cấp proxy hàng đầu.
 - **Tiêu chuẩn kiểm thử**: Đo đạc độ trễ kết nối TCP/TLS, phân giải ASN/ISP, kiểm tra rò rỉ WebRTC và xác thực qua các headless browsers (Puppeteer Stealth, Playwright, Scrapling).
 
@@ -218,10 +218,10 @@ export async function launchSocksNodeBrowser(proxyUrl: string): Promise<Browser>
 | `-session-<id>` | Định danh phiên Sticky | `-session-bot_user_102` | Giữ nguyên 1 IP exit |
 | `-lifetime-<sec>` | Thời gian sống của IP | `-lifetime-3600` (1 giờ) | Giới hạn: 60s – 86400s |
 
-### Mẫu Kiến trúc AD-SOC-3 (Sticky Mapping trong XActions)
+### Mẫu Kiến trúc AD-SOC-3 (Sticky Mapping trong Medirus)
 - Khi thực thi tác vụ Facebook / Twitter Automation, worker đọc `account_id` và sinh proxy URL tương ứng:
   `http://snkidcjf24qjp5-country-vn-session-fb_<account_id>-lifetime-86400:pass@sg.premium.socksnode.com:9000`
-- Lưu vào Redis Hash `xactions:proxy_bindings`. Bất kỳ tiến trình nào chạy tác vụ cho tài khoản này đều xuất phát từ cùng một địa chỉ IP trong suốt 24 giờ.
+- Lưu vào Redis Hash `medirus:proxy_bindings`. Bất kỳ tiến trình nào chạy tác vụ cho tài khoản này đều xuất phát từ cùng một địa chỉ IP trong suốt 24 giờ.
 
 ---
 
@@ -271,7 +271,7 @@ Test Phase                      Latency (ms)    Exit IP             ISP / ASN
 
 ## 8. Strategic Technical Recommendations
 
-1. **Chuẩn hóa Provider**: Đưa `SocksNodeProvider` vào danh mục các Provider chính thức trong kiến trúc lõi của Nowing / XActions bên cạnh `DataImpulseProvider` và `CustomProxyProvider`.
+1. **Chuẩn hóa Provider**: Đưa `SocksNodeProvider` vào danh mục các Provider chính thức trong kiến trúc lõi của Nowing / Medirus bên cạnh `DataImpulseProvider` và `CustomProxyProvider`.
 2. **Ưu tiên Gateway Khu vực**: Đảm bảo toàn bộ request liên quan đến Việt Nam và Đông Nam Á đều hướng tới `sg.premium.socksnode.com:9000` để đạt độ trễ thấp nhất.
 3. **Phân loại Luồng Dữ liệu**:
    - *Stateless Crawling*: Dùng SocksNode không truyền `-session-` để tự động đổi IP sau mỗi request.
@@ -325,13 +325,13 @@ gantt
 - **IETF RFC 1928 (SOCKS Protocol Version 5)**: [https://www.ietf.org/rfc/rfc1928.txt](https://www.ietf.org/rfc/rfc1928.txt)
 - **Playwright Network & Proxy Docs**: [https://playwright.dev/docs/network](https://playwright.dev/docs/network)
 - **Puppeteer Stealth Plugin Documentation**: [https://github.com/berstend/puppeteer-extra](https://github.com/berstend/puppeteer-extra)
-- **XActions Architecture & ADR-SOC-3**: [XActions Project Repository](file:///Users/luisphan/Documents/GitHub/XActions/)
+- **Medirus Architecture & ADR-SOC-3**: [Medirus Project Repository](file:///Users/luisphan/Documents/GitHub/Medirus/)
 
 ---
 
 ## Technical Research Conclusion
 
-Nền tảng **SocksNode** cung cấp giải pháp proxy dân cư hiện đại, hiệu quả và có độ tương thích kỹ thuật rất cao với kiến trúc của XActions và Nowing. Cơ chế định tuyến tham số linh hoạt qua Username giúp loại bỏ sự phức tạp trong việc quản lý port tĩnh, trong khi chất lượng IP dân cư từ các nhà mạng lớn tại Việt Nam (VNPT, Viettel) đảm bảo tỷ lệ thành công tối đa cho các luồng automation và crawl dữ liệu quan trọng.
+Nền tảng **SocksNode** cung cấp giải pháp proxy dân cư hiện đại, hiệu quả và có độ tương thích kỹ thuật rất cao với kiến trúc của Medirus và Nowing. Cơ chế định tuyến tham số linh hoạt qua Username giúp loại bỏ sự phức tạp trong việc quản lý port tĩnh, trong khi chất lượng IP dân cư từ các nhà mạng lớn tại Việt Nam (VNPT, Viettel) đảm bảo tỷ lệ thành công tối đa cho các luồng automation và crawl dữ liệu quan trọng.
 
 ---
 

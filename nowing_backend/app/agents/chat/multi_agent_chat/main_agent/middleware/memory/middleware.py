@@ -359,6 +359,6 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         from app.db import User
 
         result = await session.execute(
-            select(User.display_name).where(User.id == self.user_id)
+            select(User.display_name).where(User.id == self.user_id)  # pyright: ignore[reportArgumentType]
         )
         return result.scalar_one_or_none()

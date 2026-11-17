@@ -8,7 +8,7 @@ export const invitesAtom = atomWithQuery((get) => {
 
 	return {
 		queryKey: cacheKeys.invites.all(workspaceId?.toString() ?? ""),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		staleTime: 5 * 60 * 1000, // 5 minutes
 		queryFn: async () => {
 			if (!workspaceId) {

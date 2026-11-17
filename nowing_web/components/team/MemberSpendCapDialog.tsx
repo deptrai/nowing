@@ -33,8 +33,8 @@ export function MemberSpendCapDialog({
 	onOpenChange,
 }: MemberSpendCapDialogProps) {
 	const t = useTranslations("team");
-	const [monthlySpendCap, setMonthlySpendCap] = useState<string>("");
-	const [leadCapacity, setLeadCapacity] = useState<string>("50");
+	const [monthlySpendCap, setMonthlySpendCap] = useState("");
+	const [leadCapacity, setLeadCapacity] = useState("50");
 	const [isAcceptingLeads, setIsAcceptingLeads] = useState(true);
 	const [saving, setSaving] = useState(false);
 

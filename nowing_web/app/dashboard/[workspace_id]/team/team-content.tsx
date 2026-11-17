@@ -670,9 +670,9 @@ function CreateInviteDialog({
 	const [open, setOpen] = useState(false);
 	const [creating, setCreating] = useState(false);
 	const [name, setName] = useState("");
-	const [roleId, setRoleId] = useState<string>("");
-	const [maxUses, setMaxUses] = useState<string>("");
-	const [expiresAt, setExpiresAt] = useState<Date | undefined>(undefined);
+	const [roleId, setRoleId] = useState("");
+	const [maxUses, setMaxUses] = useState("");
+	const [expiresAt, setExpiresAt] = useState<Date | undefined>();
 	const [createdInvite, setCreatedInvite] = useState<Invite | null>(null);
 	const [copiedLink, setCopiedLink] = useState(false);
 
@@ -862,7 +862,6 @@ function CreateInviteDialog({
 												selected={expiresAt}
 												onSelect={setExpiresAt}
 												disabled={(date) => date < new Date()}
-												initialFocus
 											/>
 										</PopoverContent>
 									</Popover>

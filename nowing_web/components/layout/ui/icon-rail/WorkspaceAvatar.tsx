@@ -179,7 +179,7 @@ export function WorkspaceAvatar({
 					onTouchEnd={withMenuHandlers ? handleTouchEnd : undefined}
 					onTouchCancel={withMenuHandlers ? handleTouchEnd : undefined}
 					className={avatarClasses}
-					style={{ backgroundColor: bgColor }}
+					style={{ backgroundColor: bgColor }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic avatar color from workspace data
 				>
 					{avatarChildren}
 				</Link>
@@ -207,7 +207,7 @@ export function WorkspaceAvatar({
 				onTouchEnd={withMenuHandlers ? handleTouchEnd : undefined}
 				onTouchCancel={withMenuHandlers ? handleTouchEnd : undefined}
 				className={avatarClasses}
-				style={{ backgroundColor: bgColor }}
+				style={{ backgroundColor: bgColor }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic avatar color from workspace data
 			>
 				{avatarChildren}
 			</Button>

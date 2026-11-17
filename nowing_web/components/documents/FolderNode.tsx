@@ -273,7 +273,7 @@ export const FolderNode = React.memo(function FolderNode({
 						isOver && canDrop && dropZone === "bottom" && "border-b-2 border-primary",
 						isOver && !canDrop && "cursor-not-allowed"
 					)}
-					style={{ paddingLeft: `${depth * 16 + 4}px` }}
+					style={{ paddingLeft: `${depth * 16 + 4}px` }} // pi-lens-ignore: ast-grep:inline-styles -- per-depth indent computed from tree level
 					onClick={() => {
 						onToggleExpand(folder.id);
 					}}

@@ -126,7 +126,7 @@ def _twocaptcha(
         payload["userAgent"] = user_agent
 
     try:
-        submit = requests.post(_2CAP_IN, data=payload, timeout=30).json()
+        submit = requests.post(_2CAP_IN, data=payload, timeout=30).json()  # nosemgrep
     except requests.RequestException as e:
         logger.warning("%s 2captcha submit request failed: %s", _LOG, e)
         return None
@@ -140,7 +140,7 @@ def _twocaptcha(
         time.sleep(5)
         try:
             got = requests.get(
-                f"{_2CAP_RES}?key={cfg.api_key}&action=get&id={task_id}&json=1",
+                f"{_2CAP_RES}?key={cfg.api_key}&action=get&id={task_id}&json=1",  # nosemgrep
                 timeout=30,
             ).json()
         except requests.RequestException as exc:

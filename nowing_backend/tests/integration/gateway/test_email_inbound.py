@@ -28,6 +28,7 @@ async def test_sendgrid_webhook_persists_inbound_email_event(client, db_session,
     import hashlib
     import hmac
     import json
+
     from app.config import config
     from app.gateway.email.auth import compute_dedupe_key
 
@@ -63,6 +64,7 @@ async def test_sendgrid_webhook_persists_inbound_email_event(client, db_session,
 
     # Pattern 6: verify row persisted with FK/RLS.
     from sqlalchemy import select
+
     from app.db import InboundEmailEvent
     from app.tenant_context import set_request_tenant_context
 

@@ -53,7 +53,6 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 	initialPrompt,
 	hasActiveThread,
 }) => {
-	const t = useTranslations("assistant");
 	const [mentionedDocuments, setMentionedDocuments] = useAtom(mentionedDocumentsAtom);
 	const setSubmittedMentions = useSetAtom(submittedMentionsAtom);
 	const [showDocumentPopover, setShowDocumentPopover] = useState(false);
@@ -334,15 +333,6 @@ export const Composer: FC<{ initialPrompt?: string; hasActiveThread?: boolean }>
 		[actionQuery, aui, router, workspaceId]
 	);
 
-	const _handleExampleSelect = useCallback(
-		(prompt: string) => {
-			editorRef.current?.setText(prompt);
-			aui.composer().setText(prompt);
-			setIsComposerInputEmpty(false);
-			editorRef.current?.focus();
-		},
-		[aui]
-	);
 
 	const handleQuickAskSelect = useCallback(
 		(action: { name: string; prompt: string; mode: "transform" | "explore" }) => {

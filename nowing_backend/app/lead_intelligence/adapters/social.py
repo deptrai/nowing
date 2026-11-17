@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from types import MappingProxyType
 from typing import Any
 
 from app.lead_intelligence.adapters.base import (
@@ -21,18 +22,20 @@ _EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\
 
 
 class SocialLeadAdapter(LeadSourceAdapter):
-    """Adapter bridging Facebook Groups and Twitter feed via XActions."""
+    """Adapter bridging Facebook Groups and Twitter feed via Medirus."""
 
     source_name = "social"
     category = LeadSourceCategory.SOCIAL
-    supported_provinces = ["*"]
-    coverage_quality_by_location = {
-        "HN": "high",
-        "SG": "high",
-        "DN": "high",
-        "CT": "medium",
-        "HP": "medium",
-    }
+    supported_provinces = ("*",)
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "high",
+            "SG": "high",
+            "DN": "high",
+            "CT": "medium",
+            "HP": "medium",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"
@@ -44,7 +47,7 @@ class SocialLeadAdapter(LeadSourceAdapter):
         filters: dict[str, Any] | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Call underlying XActions / Facebook / Twitter routines."""
+        """Call underlying Medirus / Facebook / Twitter routines."""
         return []
 
     async def search_leads(

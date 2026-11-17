@@ -166,6 +166,7 @@ function toast({ ...props }: Toast) {
 	};
 }
 
+// pi-lens-ignore: ast-grep:unnecessary-react-hook -- uses React.useState/useEffect via namespace calls
 function useToast() {
 	const [state, setState] = React.useState<State>(memoryState);
 

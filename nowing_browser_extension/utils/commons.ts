@@ -1,13 +1,17 @@
 import { Storage } from "@plasmohq/storage";
-import type { WebHistory } from "./interfaces";
+import type { TabHistoryEntry, TimeQueueEntry, UrlQueueEntry, WebHistory } from "./interfaces";
 
-export const emptyArr: any[] = [];
+export const emptyArr: TabHistoryEntry[] = [];
 
 export const initQueues = async (tabId: number) => {
 	const storage = new Storage({ area: "local" });
 
-	const urlQueueListObj: any = await storage.get("urlQueueList");
-	const timeQueueListObj: any = await storage.get("timeQueueList");
+	const urlQueueListObj = (await storage.get("urlQueueList")) as {
+		urlQueueList?: UrlQueueEntry[];
+	};
+	const timeQueueListObj = (await storage.get("timeQueueList")) as {
+		timeQueueList?: TimeQueueEntry[];
+	};
 
 	if (!urlQueueListObj && !timeQueueListObj) {
 		await storage.set("urlQueueList", {
@@ -22,10 +26,10 @@ export const initQueues = async (tabId: number) => {
 
 	if (urlQueueListObj.urlQueueList && timeQueueListObj.timeQueueList) {
 		const isUrlQueueThere = urlQueueListObj.urlQueueList.find(
-			(data: WebHistory) => data.tabsessionId === tabId
+			(data: UrlQueueEntry) => data.tabsessionId === tabId
 		);
 		const isTimeQueueThere = timeQueueListObj.timeQueueList.find(
-			(data: WebHistory) => data.tabsessionId === tabId
+			(data: TimeQueueEntry) => data.tabsessionId === tabId
 		);
 
 		if (!isUrlQueueThere) {
@@ -62,18 +66,18 @@ export function getRenderedHtml() {
 
 export const initWebHistory = async (tabId: number) => {
 	const storage = new Storage({ area: "local" });
-	const result: any = await storage.get("webhistory");
+	const result = (await storage.get("webhistory")) as { webhistory?: WebHistory[] } | undefined;
 
 	if (result === undefined) {
 		await storage.set("webhistory", { webhistory: emptyArr });
 		return;
 	}
 
-	const ifIdExists = result.webhistory.find((data: WebHistory) => data.tabsessionId === tabId);
+	const webHistory = result.webhistory ?? [];
+	const ifIdExists = webHistory.find((data: WebHistory) => data.tabsessionId === tabId);
 
 	if (ifIdExists === undefined) {
-		const webHistory = result.webhistory;
-		const initData = {
+		const initData: WebHistory = {
 			tabsessionId: tabId,
 			tabHistory: emptyArr,
 		};
@@ -115,7 +119,7 @@ export function toIsoString(date: Date) {
 	);
 }
 
-export const webhistoryToLangChainDocument = (tabId: number, tabHistory: any[]) => {
+export const webhistoryToLangChainDocument = (tabId: number, tabHistory: TabHistoryEntry[]) => {
 	const toSaveFinally = [];
 	for (let j = 0; j < tabHistory.length; j++) {
 		const mtadata = {

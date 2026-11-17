@@ -61,14 +61,18 @@ class BillingUnit(StrEnum):
 class BillableInput(Protocol):
     """A billed verb's input that reports its worst-case unit count for pre-flight."""
 
+    # pi-lens-ignore: ast-grep:no-ellipsis-body -- Protocol stub is idiomatic
     @property
+    # pi-lens-ignore: ast-grep:no-ellipsis-body -- Protocol stub is idiomatic
     def estimated_units(self) -> int: ...
 
 
 class BillableOutput(Protocol):
     """A capability output that reports its own billable count."""
 
+    # pi-lens-ignore: ast-grep:no-ellipsis-body -- Protocol stub is idiomatic
     @property
+    # pi-lens-ignore: ast-grep:no-ellipsis-body -- Protocol stub is idiomatic
     def billable_units(self) -> int: ...
 
 

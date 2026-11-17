@@ -227,6 +227,7 @@ def classify_stream_exception(
 ]:
     """Return kind, code, severity, expected flag, message, and optional extra dict."""
     raw = str(exc)
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- FP: 'is' inside the string literal
     if isinstance(exc, BusyError) or "Thread is busy with another request" in raw:
         busy_thread_id = str(exc.request_id) if isinstance(exc, BusyError) else None
         if busy_thread_id and is_cancel_requested(busy_thread_id):

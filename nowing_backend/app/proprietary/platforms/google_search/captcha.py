@@ -153,7 +153,7 @@ async def solve_sorry(page: Any, proxy_url: str | None, cfg: CaptchaConfig) -> b
     try:
         await page.evaluate(_INJECT_JS, token)
     except Exception as e:  # token injection script evaluation failure; cannot submit
-        logger.warning("%s token injection failed: %s", _LOG, e)
+        logger.warning("%s token injection failed: %s", _LOG, e)  # nosemgrep
         return False
     with contextlib.suppress(Exception):
         await page.wait_for_selector(_RESULTS_SEL, timeout=_POST_SOLVE_WAIT_MS)

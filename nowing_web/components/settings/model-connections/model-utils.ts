@@ -24,7 +24,7 @@ export function capability(model: SelectableModel, key: ModelCapabilityFilter) {
 }
 
 export function capabilityLabels(model: SelectableModel) {
-	return MODEL_CAPABILITY_FILTERS.filter((filter) => capability(model, filter.key))
-		.map((filter) => filter.label.toLowerCase())
-		.join(", ");
+	return MODEL_CAPABILITY_FILTERS.flatMap((filter) =>
+		capability(model, filter.key) ? [filter.label.toLowerCase()] : [],
+	).join(", ");
 }

@@ -254,7 +254,7 @@ export function Audio({ id, src, title, durationMs, className }: AudioProps) {
 							<div className="relative h-1 w-full rounded-full bg-muted-foreground/20">
 								<div
 									className="absolute left-0 top-0 h-full rounded-full bg-muted-foreground/60 transition-[width]"
-									style={{ width: `${(isMuted ? 0 : volume) * 100}%` }}
+									style={{ width: `${(isMuted ? 0 : volume) * 100}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 								/>
 							</div>
 							<input

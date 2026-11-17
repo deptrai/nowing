@@ -390,7 +390,7 @@ async def _ainvoke_one_batch_child(
         started_at = time.perf_counter()
         try:
             result = await _ainvoke_with_timeout(
-                subagent.ainvoke(subagent_state, config=sub_config),
+                subagent.ainvoke(subagent_state, config=sub_config),  # pyright: ignore[reportArgumentType]
                 subagent_type=subagent_type,
                 started_at=started_at,
             )

@@ -53,7 +53,7 @@ context:
 - `app/exceptions.py` — NowingError hierarchy.
 - `app/services/health/` (38 sites across 12 files):
   - `alert_engine.py` (7), `scheduler.py` (4), `registry.py` (1), `result_store.py` (1)
-  - Probes: `xactions_probe.py` (5), `messaging_probe.py` (4), `infrastructure_probe.py` (3), `chainlens_probe.py` (3), `scraper_probe.py` (2), `storage_probe.py` (2), `payment_probe.py` (2), `connector_probe.py` (2), `proxy_probe.py` (1), `model_probe.py` (1)
+  - Probes: `medirus_probe.py` (5), `messaging_probe.py` (4), `infrastructure_probe.py` (3), `chainlens_probe.py` (3), `scraper_probe.py` (2), `storage_probe.py` (2), `payment_probe.py` (2), `connector_probe.py` (2), `proxy_probe.py` (1), `model_probe.py` (1)
 - `app/services/web_builder/` (31 sites across 6 files):
   - `generator.py` (6), `deploy/deploy_app.py` (6), `validator.py` (5), `deploy/service.py` (5), `builder.py` (4), `mark_tool.py` (3), `deploy/custom_domain.py` (2)
 - `app/services/memory/` (20 sites across 8 files):

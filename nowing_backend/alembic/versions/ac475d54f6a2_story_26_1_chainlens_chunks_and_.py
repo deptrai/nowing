@@ -10,6 +10,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -81,7 +82,7 @@ def upgrade() -> None:
         "verified_contacts",
         sa.Column(
             "pii_access_audit_logs",
-            sa.dialects.postgresql.JSONB,
+            postgresql.JSONB,
             nullable=False,
             server_default=sa.text("'[]'::jsonb"),
         ),

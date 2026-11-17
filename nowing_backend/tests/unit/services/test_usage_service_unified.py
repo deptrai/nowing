@@ -55,7 +55,7 @@ def test_map_event_to_service_category() -> None:
         == ServiceCategory.SOCIAL_MEDIA
     )
     assert (
-        map_event_to_service_category("xactions_ingest", None)
+        map_event_to_service_category("medirus_ingest", None)
         == ServiceCategory.SOCIAL_MEDIA
     )
     assert (

@@ -36,7 +36,7 @@ def normalize_phone_e164(phone: str | None) -> str | None:
 
     # Convert legacy 11-digit mobile numbers (2018 telecom reform) before E.164
     if len(digits) == 11 and digits.startswith("0"):
-        from app.proprietary.platforms.xactions.phone_extractor import (
+        from app.proprietary.platforms.medirus.phone_extractor import (
             convert_legacy_11_digit,
         )
 

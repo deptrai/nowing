@@ -21,4 +21,4 @@
 ## Evolution Log
 | Date | What Changed | Why |
 | :--- | :--- | :--- |
-| 2026-08-21 | Born. First Breath. | Initialized as Sentinel for XActions testing and browser automation. |
+| 2026-08-21 | Born. First Breath. | Initialized as Sentinel for Medirus testing and browser automation. |

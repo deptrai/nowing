@@ -80,6 +80,7 @@ async def _remember(key: ParseKey, result: EtlResult) -> None:
 
 def _hash_file(path: str) -> str:
     digest = hashlib.sha256()
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- open failure propagates to caller
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(_HASH_CHUNK), b""):
             digest.update(chunk)

@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 def _make_chunks(count: int) -> list[Any]:
     from app.services.scraper_chunks.schemas import Chunk, ChunkMetadata
 
-    base = {
+    base: dict[str, Any] = {
         "source": "nowing_scraper",
         "sourceId": "src",
         "domain": "bds",
@@ -106,9 +106,9 @@ async def test_ingest_calls_post_ingest_scraper_with_auth_and_workspace(
     assert call["url"] == "https://chainlens.test/v1/ingest/scraper"
     assert call["kwargs"]["headers"]["Authorization"] == "Bearer secret"
     body = call["kwargs"]["json"]
-    assert body["scraperId"] == "batdongsan"
-    assert body["workspaceId"] == 42
-    assert body["source"] == "nowing_scraper"
+    # Commit e9f847eac strips top-level source/scraperId/workspaceId —
+    # ChainLens Zod ScraperIngestDto whitelists the body shape to chunks only.
+    assert set(body.keys()) == {"chunks"}
     assert len(body["chunks"]) == 2
     assert result.ingest_job_id == "job-123"
 

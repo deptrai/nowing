@@ -105,7 +105,7 @@ def upgrade() -> None:
         # 2. Document doesn't already have a connector_id
         # 3. There's exactly one connector of this type in the same search space
         # This safely handles most cases while avoiding ambiguity
-        op.execute(
+        op.execute(  # nosemgrep
             f"""
             UPDATE documents d
             SET connector_id = (

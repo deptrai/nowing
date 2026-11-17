@@ -40,6 +40,11 @@ CORPORATE_CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days (604,800s)
 REDIS_CORP_CACHE_PREFIX = "enrich:corp:"
 AUTO_LINK_CONFIDENCE_THRESHOLD = 0.85
 
+_CHARTER_UNIT_RE = re.compile(
+    r"^([\d\.,\s]+?)\s*(ngàn\s*tỉ|ngàn\s*tỷ|ngan\s*ti|ngan\s*ty|nghìn\s*tỷ|nghin\s*ty|tỉ|ti|tỷ|ty|triệu|trieu|ngàn|ngan|nghìn|nghin|k|m|b)(?:\s*đồng|\s*vnd|\s*vnđ)?$",
+    re.IGNORECASE,
+)
+
 _redis_client: aioredis.Redis | None = None
 
 
@@ -53,7 +58,9 @@ def get_redis() -> aioredis.Redis | None:
             _redis_client = aioredis.from_url(
                 config.REDIS_APP_URL, decode_responses=True
             )
-        except Exception as exc:  # Redis init is best-effort; fallback to in-memory/None
+        except (
+            Exception
+        ) as exc:  # Redis init is best-effort; fallback to in-memory/None
             logger.warning(
                 "[CorporateVerification] Failed to init Redis client: %s", exc
             )
@@ -191,8 +198,7 @@ def parse_charter_capital_vnd(val: Any) -> int | None:
 
     # Match Vietnamese text units (e.g., "13 nghìn tỷ", "20 tỷ", "500 triệu", "1.5 tỷ đồng",
     # "500 ngàn tỷ", "2 tỉ"). Southern "ngàn" and short "tỉ" are also accepted.
-    unit_pattern = r"^([\d\.,\s]+?)\s*(ngàn\s*tỉ|ngàn\s*tỷ|ngan\s*ti|ngan\s*ty|nghìn\s*tỷ|nghin\s*ty|tỉ|ti|tỷ|ty|triệu|trieu|ngàn|ngan|nghìn|nghin|k|m|b)(?:\s*đồng|\s*vnd|\s*vnđ)?$"
-    match = re.search(unit_pattern, s, re.IGNORECASE)
+    match = _CHARTER_UNIT_RE.search(s)
     if match:
         num_part = match.group(1).replace(" ", "")
         if "," in num_part and "." in num_part:
@@ -420,7 +426,7 @@ class CorporateVerificationService:
         ponytail: uses the same Vietnamese province regex as phone_extractor.
         If a recognized province is on one side of the comma, that side is the city.
         """
-        from app.proprietary.platforms.xactions.phone_extractor import (
+        from app.proprietary.platforms.medirus.phone_extractor import (
             _PROVINCES_COMBINED_REGEX,
         )
 
@@ -533,14 +539,18 @@ class CorporateVerificationService:
                     if decrypted is None:
                         decrypted = cached
                     return self._dict_to_profile(json.loads(decrypted))
-            except Exception as exc:  # best-effort cache read; falls through to upstream registry
+            except (
+                Exception
+            ) as exc:  # best-effort cache read; falls through to upstream registry
                 logger.debug("[CorporateVerification] Redis cache read failed: %s", exc)
 
         # 2. Query Upstream Registry with Failure & Circuit Breaker Tracking
         try:
             raw_data = await self.masothue_client.get_company_by_tax_id(clean_tax)
             await self._record_success()
-        except Exception as exc:  # track circuit breaker failure on upstream error, then re-raise
+        except (
+            Exception
+        ) as exc:  # track circuit breaker failure on upstream error, then re-raise
             await self._record_failure_and_trip_if_needed()
             raise exc
 
@@ -557,7 +567,9 @@ class CorporateVerificationService:
                     self.encryption.encrypt(json.dumps(raw_data)),
                     ex=CORPORATE_CACHE_TTL_SECONDS,
                 )
-            except Exception as exc:  # best-effort cache write; profile already resolved
+            except (
+                Exception
+            ) as exc:  # best-effort cache write; profile already resolved
                 logger.debug(
                     "[CorporateVerification] Redis cache write failed: %s", exc
                 )
@@ -803,7 +815,9 @@ class CorporateVerificationService:
                         encrypted_payload,
                         ex=CORPORATE_CACHE_TTL_SECONDS,
                     )
-            except Exception as exc:  # best-effort cache write; profile already resolved
+            except (
+                Exception
+            ) as exc:  # best-effort cache write; profile already resolved
                 logger.debug(
                     "[CorporateVerification] Redis cache write failed: %s", exc
                 )
@@ -854,8 +868,7 @@ class CorporateVerificationService:
                 "tax_id": tax_id,
             }
             candidate_entity = {
-                "company_name": best_cand.get("company_name")
-                or best_cand.get("name"),
+                "company_name": best_cand.get("company_name") or best_cand.get("name"),
                 "international_name": best_cand.get("international_name"),
                 "short_name": best_cand.get("short_name"),
                 "tax_id": best_cand.get("tax_id"),

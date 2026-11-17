@@ -39,7 +39,7 @@ function formatPercent(value: number | null) {
 
 export default function GrossMarginAlert({ tick }: GrossMarginAlertProps) {
 	const t = useTranslations("telemetry");
-	const [windowHours, setWindowHours] = useState<number>(24);
+	const [windowHours, setWindowHours] = useState(24);
 	const [data, setData] = useState<GrossMarginSummary | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);

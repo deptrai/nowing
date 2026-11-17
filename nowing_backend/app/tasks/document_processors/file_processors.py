@@ -143,6 +143,7 @@ async def _process_non_document_upload(ctx: _ProcessingContext) -> Document | No
     )
 
     with contextlib.suppress(Exception):
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- already inside contextlib.suppress
         os.unlink(ctx.file_path)
 
     await _notify(ctx, "chunking")
@@ -250,6 +251,7 @@ async def _process_document_upload(ctx: _ProcessingContext) -> Document | None:
     )
 
     with contextlib.suppress(Exception):
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- already inside contextlib.suppress
         os.unlink(ctx.file_path)
 
     await _notify(ctx, "chunking")
@@ -447,6 +449,7 @@ async def _extract_file_content(
     )
 
     with contextlib.suppress(Exception):
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- already inside contextlib.suppress
         os.unlink(file_path)
 
     if not result.markdown_content or not result.markdown_content.strip():

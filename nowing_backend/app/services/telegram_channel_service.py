@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import logging
-import re
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.leads.social import SocialMonitoredTarget
-from app.services.telegram_session_service import TelegramSessionService
 
 logger = logging.getLogger(__name__)
 

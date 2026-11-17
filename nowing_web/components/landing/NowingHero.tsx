@@ -50,7 +50,7 @@ export const NowingHero: React.FC = () => {
 			{/* Grid Paper Caro & Mint Ambient Background */}
 			<div
 				className="absolute inset-0 -z-10 pointer-events-none opacity-80"
-				style={{
+				style={{ // pi-lens-ignore: ast-grep:inline-styles -- multi-layer radial-gradient backdrop, verbose for Tailwind arbitrary value
 					backgroundImage: `
 						radial-gradient(circle at 50% 15%, rgba(16, 185, 129, 0.12) 0%, transparent 65%),
 						linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),

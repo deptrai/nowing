@@ -41,8 +41,14 @@ const STORE_KEY = 'watchedFolders';
 const OUTBOX_STORE_KEY = 'events';
 const MTIME_TOLERANCE_S = 1.0;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazily imported ESM electron-store
+// pi-lens-ignore: ast-grep:no-any-type -- lazily imported ESM electron-store; typed generically elsewhere
 let store: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazily imported ESM electron-store
+// pi-lens-ignore: ast-grep:no-any-type -- lazily imported ESM electron-store; typed generically elsewhere
 let mtimeStore: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazily imported ESM electron-store
+// pi-lens-ignore: ast-grep:no-any-type -- lazily imported ESM electron-store; typed generically elsewhere
 let outboxStore: any = null;
 let watchers: Map<string, WatcherEntry> = new Map();
 
@@ -168,6 +174,7 @@ function walkFolderMtimes(config: WatchedFolderConfig): MtimeMap {
 
       if (name.startsWith('.') || excludes.has(name)) continue;
 
+      // pi-lens-ignore: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal -- name is an fs.readdirSync entry (no separators/..) and dir is the user-approved watched root
       const full = path.join(dir, name);
 
       if (entry.isDirectory()) {
@@ -208,8 +215,14 @@ export function listFolderFiles(config: WatchedFolderConfig): FolderFileEntry[] 
   const mtimeMap = walkFolderMtimes(config);
   const entries: FolderFileEntry[] = [];
 
+  const resolvedRoot = path.resolve(root);
   for (const [relativePath, mtimeMs] of Object.entries(mtimeMap)) {
-    const fullPath = path.join(root, relativePath);
+    // pi-lens-ignore: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal -- relativePath is internally generated under config.path; explicit prefix guard below
+    const resolved = path.resolve(resolvedRoot, relativePath);
+    if (resolved !== resolvedRoot && !resolved.startsWith(resolvedRoot + path.sep)) {
+      continue;
+    }
+    const fullPath = resolved;
     try {
       const stat = fs.statSync(fullPath);
       entries.push({ relativePath, fullPath, size: stat.size, mtimeMs });
@@ -226,7 +239,7 @@ function getMainWindow(): BrowserWindow | null {
   return windows.length > 0 ? windows[0] : null;
 }
 
-function sendToRenderer(channel: string, data: any) {
+function sendToRenderer(channel: string, data: unknown) {
   const win = getMainWindow();
   if (win && !win.isDestroyed()) {
     win.webContents.send(channel, data);
@@ -278,6 +291,7 @@ async function startWatcher(config: WatchedFolderConfig) {
           folderPath: config.path,
           folderName: config.name,
           relativePath: rel,
+          // pi-lens-ignore: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal -- rel is internally generated under the user-approved config.path
           fullPath: path.join(config.path, rel),
           action: 'add',
           timestamp: now,
@@ -289,6 +303,7 @@ async function startWatcher(config: WatchedFolderConfig) {
           folderPath: config.path,
           folderName: config.name,
           relativePath: rel,
+          // pi-lens-ignore: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal -- rel is internally generated under the user-approved config.path
           fullPath: path.join(config.path, rel),
           action: 'change',
           timestamp: now,
@@ -306,6 +321,7 @@ async function startWatcher(config: WatchedFolderConfig) {
           folderPath: config.path,
           folderName: config.name,
           relativePath: rel,
+          // pi-lens-ignore: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal -- rel is internally generated under the user-approved config.path
           fullPath: path.join(config.path, rel),
           action: 'unlink',
           timestamp: now,
@@ -414,7 +430,7 @@ export async function addWatchedFolder(
     root_folder_id: config.rootFolderId,
     active: config.active,
     has_exclude_patterns: (config.excludePatterns?.length ?? 0) > 0,
-    has_extension_filter: !!config.fileExtensions && config.fileExtensions.length > 0,
+    has_extension_filter: (config.fileExtensions?.length ?? 0) > 0,
     is_update: existing >= 0,
   });
 
@@ -561,7 +577,7 @@ export async function browseFiles(): Promise<string[] | null> {
   return result.filePaths;
 }
 
-const MIME_MAP: Record<string, string> = {
+const MIME_MAP = {
   '.pdf': 'application/pdf',
   '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -588,7 +604,7 @@ const MIME_MAP: Record<string, string> = {
   '.eml': 'message/rfc822',
   '.odt': 'application/vnd.oasis.opendocument.text',
   '.msg': 'application/vnd.ms-outlook',
-};
+} satisfies Record<string, string>;
 
 export interface LocalFileData {
   name: string;
@@ -604,7 +620,7 @@ export function readLocalFiles(filePaths: string[]): LocalFileData[] {
     return {
       name: path.basename(p),
       data: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
-      mimeType: MIME_MAP[ext] || 'application/octet-stream',
+      mimeType: (MIME_MAP as Record<string, string>)[ext] || 'application/octet-stream',
       size: buf.byteLength,
     };
   });

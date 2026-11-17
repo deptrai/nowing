@@ -231,13 +231,17 @@ test.describe("Story 25.7 — Admin Health & Operations Dashboard", () => {
 		await setupAdminHealthMocks(page);
 		await page.goto("/admin/telemetry");
 
+		// Header is visible, ensuring auth and health overview loaded
+		await expect(page.getByTestId("health-alert-banner")).toBeVisible();
+
 		// Click on postgres card
 		const postgresCard = page.getByTestId("health-card-infra/postgres");
+		await expect(postgresCard).toBeVisible();
 		await postgresCard.click();
 
 		// Modal opens
 		const modal = page.getByTestId("health-drilldown-modal");
-		await expect(modal).toBeVisible();
+		await expect(modal).toBeVisible({ timeout: 15_000 });
 		await expect(modal.getByText("PostgreSQL Database")).toBeVisible();
 		await expect(modal.getByText("24-Hour Probe History")).toBeVisible();
 

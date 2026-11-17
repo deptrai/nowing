@@ -32,6 +32,7 @@ import app.lead_intelligence.enrichment.capability
 import app.lead_intelligence.scoring.capability  # noqa: F401
 from app.automations.api import router as automations_router
 from app.capabilities.core.access.rest import build_capabilities_router
+from app.config import config as _cfg
 from app.file_storage.api import router as file_storage_router
 from app.gateway import require_gateway_enabled
 from app.notifications.api import router as notifications_router
@@ -73,8 +74,10 @@ from .agent_revert_route import router as agent_revert_router
 from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
+from .async_research_routes import router as async_research_router
 from .broadcasts_routes import router as broadcasts_router
 from .campaign_routes import router as campaign_router
+from .chainlens_webhooks import router as chainlens_webhooks_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
@@ -87,6 +90,10 @@ from .discord_add_connector_route import router as discord_add_connector_router
 from .dnc_routes import router as dnc_router
 from .documents import router as documents_router
 from .dropbox_add_connector_route import router as dropbox_add_connector_router
+from .e2e_provision import (
+    _require_playwright_header,
+    router as e2e_provision_router,
+)
 from .editor_routes import router as editor_router
 from .enrichment_routes import router as enrichment_router
 from .export_routes import router as export_router
@@ -142,6 +149,7 @@ from .prompts_routes import router as prompts_router
 from .public_booking_routes import router as public_booking_router
 from .public_chat_routes import router as public_chat_router
 from .public_pitch_routes import router as public_pitch_router
+from .pulse_routes import router as pulse_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
 from .research_threads_routes import router as research_threads_router
@@ -158,6 +166,7 @@ from .teams_add_connector_route import router as teams_add_connector_router
 from .usage_routes import router as usage_router, workspace_usage_router
 from .video_presentations_routes import router as video_presentations_router
 from .vietqr_routes import router as vietqr_router
+from .voice_agent import router as voice_agent_router
 from .web_builder_routes import router as web_builder_router
 from .workspace_health_routes import router as workspace_health_router
 from .workspace_tables_routes import router as workspace_tables_router
@@ -186,8 +195,11 @@ router.include_router(leads_router)
 router.include_router(lead_pipeline_router)
 router.include_router(public_booking_router)  # Prospect-facing /book/{ws}/{lead} (Story 37.3)
 router.include_router(public_pitch_router)  # pitch.nowing.ai beacon + meta (Story 37.6)
+router.include_router(chainlens_webhooks_router)  # ChainLens search monitors webhook (Story 20.8)
 router.include_router(dnc_router)
 router.include_router(outbound_router)
+router.include_router(pulse_router)  # ChainLens Pulse feed & angles (Story 20.10)
+router.include_router(voice_agent_router)  # BYO-SIP trunk management (Story 38.6)
 router.include_router(zns_router)
 router.include_router(enrichment_router)
 router.include_router(campaign_router)
@@ -219,6 +231,7 @@ router.include_router(
 )  # CRUD for /workspaces/{id}/agent/permissions/rules
 router.include_router(agent_flags_router)  # GET /agent/flags
 router.include_router(agent_chat_router)  # Public agent-chat endpoints
+router.include_router(async_research_router)  # ChainLens async research jobs (Story 20.9)
 router.include_router(sandbox_router)  # Sandbox file downloads (Daytona)
 router.include_router(chat_comments_router)
 router.include_router(podcasts_router)  # Podcast task status and audio
@@ -326,5 +339,16 @@ router.include_router(
 )  # Full-stack Web App Builder (Story 27.1 / AD-113)
 router.include_router(presentation_router)  # Presentation Studio (Story 27.2a)
 router.include_router(meeting_minutes_router)  # Meeting Minutes (Story 27.2b)
+
+# E2E connector provision — gated by E2E_PROVISION_ENABLED env. Default off
+# so production returns 404. See app/routes/e2e_provision.py.
+if _cfg.E2E_PROVISION_ENABLED:
+    # Attach the playwright header gate at the ROUTER level so it runs before
+    # any auth dependency in the route — unauthenticated callers without the
+    # header get a 404 (gate invisible) instead of a 401 from auth.
+    router.include_router(
+        e2e_provision_router,
+        dependencies=[Depends(_require_playwright_header)],
+    )
 
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

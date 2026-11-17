@@ -17,8 +17,8 @@ const USD_TO_VND_RATE = 25400;
 
 export function PartnerEarningsCalculator() {
 	const t = useTranslations("partners_dashboard");
-	const [referredUsers, setReferredUsers] = useState<number>(25);
-	const [avgSpendUsd, setAvgSpendUsd] = useState<number>(100);
+	const [referredUsers, setReferredUsers] = useState(25);
+	const [avgSpendUsd, setAvgSpendUsd] = useState(100);
 
 	const totalClientSpend = referredUsers * avgSpendUsd;
 	const monthlyCommissionUsd = totalClientSpend * 0.15; // 15% lifetime recurring
@@ -33,7 +33,7 @@ export function PartnerEarningsCalculator() {
 			<div className="relative rounded-3xl border border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-b from-emerald-50/50 via-white to-white dark:from-emerald-950/20 dark:via-neutral-900 dark:to-neutral-900 p-8 md:p-12 shadow-2xl shadow-emerald-500/5 overflow-hidden">
 				<div
 					className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
-					style={{
+					style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 						backgroundImage: "radial-gradient(#10b981 1px, transparent 1px)",
 						backgroundSize: "24px 24px",
 					}}

@@ -21,11 +21,7 @@ DownloadAndIndexFn = Callable[..., Awaitable[tuple[int, int]]]
 
 def _authenticate_error_message(error: str) -> bool:
     err_lower = error.lower()
-    return (
-        "401" in error
-        or "invalid credentials" in err_lower
-        or "authError" in error
-    )
+    return "401" in error or "invalid credentials" in err_lower or "authError" in error
 
 
 async def _index_full_scan_core(
@@ -41,10 +37,10 @@ async def _index_full_scan_core(
     log_entry: object,
     max_files: int,
     *,
-    skip_fn: SkipFn,
-    get_files_fn: GetFilesFn,
-    create_placeholders_fn: CreatePlaceholdersFn,
-    download_and_index_fn: DownloadAndIndexFn,
+    skip_fn: SkipFn | None = None,
+    get_files_fn: GetFilesFn | None = None,
+    create_placeholders_fn: CreatePlaceholdersFn | None = None,
+    download_and_index_fn: DownloadAndIndexFn | None = None,
     include_subfolders: bool = False,
     on_heartbeat_callback: Any | None = None,
     vision_llm: Any | None = None,
@@ -53,6 +49,28 @@ async def _index_full_scan_core(
 
     Returns (indexed, skipped, unsupported_count).
     """
+    if skip_fn is None:
+        from app.tasks.connector_indexers.google_drive.file_filter import (
+            _should_skip_file,
+        )
+
+        skip_fn = _should_skip_file
+    if get_files_fn is None:
+        from app.connectors.google_drive import get_files_in_folder
+
+        get_files_fn = get_files_in_folder
+    if create_placeholders_fn is None:
+        from app.tasks.connector_indexers.google_drive.document import (
+            _create_drive_placeholders,
+        )
+
+        create_placeholders_fn = _create_drive_placeholders
+    if download_and_index_fn is None:
+        from app.tasks.connector_indexers.google_drive.download import (
+            download_and_index,
+        )
+
+        download_and_index_fn = download_and_index
     await task_logger.log_task_progress(
         log_entry,
         f"Starting full scan of folder: {folder_name} (include_subfolders={include_subfolders})",
@@ -207,12 +225,12 @@ async def _index_with_delta_sync_core(
     log_entry: object,
     max_files: int,
     *,
-    skip_fn: SkipFn,
-    fetch_changes_fn: FetchChangesFn,
-    categorize_fn: CategorizeFn,
-    remove_document_fn: RemoveDocumentFn,
-    create_placeholders_fn: CreatePlaceholdersFn,
-    download_and_index_fn: DownloadAndIndexFn,
+    skip_fn: SkipFn | None = None,
+    fetch_changes_fn: FetchChangesFn | None = None,
+    categorize_fn: CategorizeFn | None = None,
+    remove_document_fn: RemoveDocumentFn | None = None,
+    create_placeholders_fn: CreatePlaceholdersFn | None = None,
+    download_and_index_fn: DownloadAndIndexFn | None = None,
     include_subfolders: bool = False,
     on_heartbeat_callback: Any | None = None,
     vision_llm: Any | None = None,
@@ -221,6 +239,38 @@ async def _index_with_delta_sync_core(
 
     Returns (indexed, skipped, unsupported_count).
     """
+    if skip_fn is None:
+        from app.tasks.connector_indexers.google_drive.file_filter import (
+            _should_skip_file,
+        )
+
+        skip_fn = _should_skip_file
+    if fetch_changes_fn is None:
+        from app.connectors.google_drive import fetch_all_changes
+
+        fetch_changes_fn = fetch_all_changes
+    if categorize_fn is None:
+        from app.connectors.google_drive import categorize_change
+
+        categorize_fn = categorize_change
+    if remove_document_fn is None:
+        from app.tasks.connector_indexers.google_drive.file_filter import (
+            _remove_document,
+        )
+
+        remove_document_fn = _remove_document
+    if create_placeholders_fn is None:
+        from app.tasks.connector_indexers.google_drive.document import (
+            _create_drive_placeholders,
+        )
+
+        create_placeholders_fn = _create_drive_placeholders
+    if download_and_index_fn is None:
+        from app.tasks.connector_indexers.google_drive.download import (
+            download_and_index,
+        )
+
+        download_and_index_fn = download_and_index
     await task_logger.log_task_progress(
         log_entry,
         f"Starting delta sync from token: {start_page_token[:20]}...",

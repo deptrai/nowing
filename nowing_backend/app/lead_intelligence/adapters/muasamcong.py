@@ -42,25 +42,85 @@ class MuaSamCongLeadAdapter(LeadSourceAdapter):
         filters: dict[str, Any] | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Call the Muasamcong e-GP v2.0 REST scraper."""
+        """Call the Muasamcong e-GP v2.0 REST scraper via Medirus or local."""
+        from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
+
         min_price, max_price = extract_price_range(query)
         location = resolve_chotot_city(query, filters, default=None)
 
-        result = await self._scraper.search_tenders(
-            keyword=query,
-            min_price=float(min_price) if min_price is not None else None,
-            max_price=float(max_price) if max_price is not None else None,
-            location=location,
-            size=min(limit, 20),
+        async def _local() -> dict[str, Any]:
+            result = await self._scraper.search_tenders(
+                keyword=query,
+                min_price=float(min_price) if min_price is not None else None,
+                max_price=float(max_price) if max_price is not None else None,
+                location=location,
+                size=min(limit, 20),
+            )
+            return {
+                "items": [item.model_dump() for item in result.items],
+                "degraded": result.degraded,
+                "degradation_reason": result.degradation_reason,
+            }
+
+        raw = await medirus_scrape_or_local(
+            platform="muasamcong",
+            action="search_tenders",
+            args={"q": query, "limit": min(limit, 20)},
+            local_fn=_local,
         )
 
-        if result.degraded:
+        if raw.get("degraded"):
             logger.warning(
-                "Muasamcong scraper degraded: %s", result.degradation_reason
+                "Muasamcong scraper degraded: %s", raw.get("degradation_reason")
             )
             self.last_execution_status = "degraded"
 
-        return [item.model_dump() for item in result.items]
+        items = [self._post_to_tender(item) for item in raw.get("items") or []]
+        # Medirus search_tenders has no server-side price/location filters —
+        # post-filter to keep parity with the local path.
+        return [
+            item
+            for item in items
+            if self._matches_filters(item, min_price, max_price, location)
+        ]
+
+    @staticmethod
+    def _post_to_tender(item: dict[str, Any]) -> dict[str, Any]:
+        """Map a Medirus ``posts[]`` item to the flat tender dict shape.
+
+        Local-path items already have the flat keys and pass through unchanged.
+        """
+        meta = item.get("metadata")
+        if not isinstance(meta, dict):
+            return item
+        return {
+            "bid_no": meta.get("tenderNo"),
+            "project_name": meta.get("tenderName"),
+            "procuring_entity": meta.get("procuringEntityName"),
+            "bid_price": meta.get("bidPrice"),
+            "location": meta.get("bidLocation"),
+            "dossier_url": item.get("postUrl"),
+            "raw_specs": meta,
+        }
+
+    @staticmethod
+    def _matches_filters(
+        item: dict[str, Any],
+        min_price: Any,
+        max_price: Any,
+        location: str | None,
+    ) -> bool:
+        price = _to_float(item.get("bid_price"))
+        if price is not None:
+            if min_price is not None and price < float(min_price):
+                return False
+            if max_price is not None and price > float(max_price):
+                return False
+        if location:
+            item_location = str(item.get("location") or "")
+            if location.lower() not in item_location.lower():
+                return False
+        return True
 
     async def search_leads(
         self,
@@ -81,7 +141,9 @@ class MuaSamCongLeadAdapter(LeadSourceAdapter):
                 RawLeadRecord(
                     source_name=self.source_name,
                     source_id=str(
-                        item.get("bid_no") or item.get("project_name") or f"muasamcong_{idx}"
+                        item.get("bid_no")
+                        or item.get("project_name")
+                        or f"muasamcong_{idx}"
                     ),
                     data=item,
                     category=self.category,

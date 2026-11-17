@@ -34,6 +34,7 @@ export function IcpBuilderStep({
 	onCancel,
 }: {
 	builder: UseCampaignBuilderReturn;
+	// pi-lens-ignore: typescript:71007 -- client component function prop
 	onCancel?: () => void;
 }) {
 	const t = useTranslations("leads");
@@ -336,6 +337,23 @@ export function IcpBuilderStep({
 									</span>
 								))}
 							</div>
+						</div>
+
+						{/* Custom Instructions / Websets Criteria Prompt */}
+						<div className="space-y-1.5 pt-2 border-t border-zinc-800/60">
+							<Label className="text-xs text-zinc-300">
+								Chỉ dẫn bổ sung / Prompt tìm kiếm tự do (Custom Instructions)
+							</Label>
+							<Input
+								value={builder.customInstructions}
+								onChange={(e) => builder.setCustomInstructions(e.target.value)}
+								placeholder="Vd: Tìm các quán cafe có không gian làm việc rộng rãi tại Quận 10..."
+								className="bg-zinc-950 border-zinc-800 text-xs"
+							/>
+							<p className="text-[11px] text-zinc-500">
+								Chỉ dẫn này sẽ được gửi trực tiếp làm criteria prompt cho nguồn ChainLens Websets
+								hoặc định hình câu lệnh tìm kiếm chuyên sâu.
+							</p>
 						</div>
 					</CardContent>
 				</Card>

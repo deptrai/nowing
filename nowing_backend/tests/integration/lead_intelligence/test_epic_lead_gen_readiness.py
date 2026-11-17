@@ -9,37 +9,25 @@ Stories covered:
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.app import app
 from app.auth.context import AuthContext
 from app.db import (
-    CrmConnection,
     Lead,
     Memory,
-    OutcomeEvent,
     User,
     Workspace,
+    get_async_session,
 )
 from app.lead_intelligence.adapters.base import (
     LeadSourceCategory,
     NormalizedLead,
     RawLeadRecord,
-)
-from app.lead_intelligence.campaign.presets import (
-    VerticalPresetId,
-    generate_reverse_icp,
-    get_vertical_preset,
-    list_vertical_presets,
-)
-from app.lead_intelligence.campaign.schemas import (
-    CampaignSpec,
-    ICPCriteria,
-    SourceBudget,
 )
 from app.lead_intelligence.crm.schemas import CrmConversionLogInput
 from app.lead_intelligence.crm.service import CrmSyncService
@@ -47,9 +35,7 @@ from app.lead_intelligence.services.lead_gen_orchestrator import (
     LeadGenOrchestrator,
     LeadGenOrchestratorResult,
 )
-from app.app import app
-from app.db import get_async_session
-from app.users import require_session_context
+from app.users import get_auth_context, require_session_context
 
 pytestmark = [pytest.mark.integration]
 
@@ -68,9 +54,13 @@ def override_auth_owner(
         yield db_session
 
     app.dependency_overrides[require_session_context] = _mock_auth
+    # RequirePermission(Permission.LEADS_READ) depends on get_auth_context —
+    # without this override the real cookie auth runs and returns 401.
+    app.dependency_overrides[get_auth_context] = _mock_auth
     app.dependency_overrides[get_async_session] = _mock_session
     yield auth
     app.dependency_overrides.pop(require_session_context, None)
+    app.dependency_overrides.pop(get_auth_context, None)
     app.dependency_overrides.pop(get_async_session, None)
 
 
@@ -244,14 +234,22 @@ class TestOrchestratorPerformanceAndTelemetry:
             RawLeadRecord(
                 source_name="src_fast",
                 source_id="f2",
-                data={"title": "Backend Dev", "phone": "0901112234", "location": "Hanoi"},
+                data={
+                    "title": "Backend Dev",
+                    "phone": "0901112234",
+                    "location": "Hanoi",
+                },
             ),
         ]
         raw_records_2 = [
             RawLeadRecord(
                 source_name="src_slow",
                 source_id="s1",
-                data={"title": "Tech Lead duplicate", "phone": "0901112233", "location": "Hanoi"},
+                data={
+                    "title": "Tech Lead duplicate",
+                    "phone": "0901112233",
+                    "location": "Hanoi",
+                },
             ),
         ]
 
@@ -348,7 +346,10 @@ class TestCrmAndConversionTracking:
     ) -> None:
         """CrmSyncService.log_conversion should persist OutcomeEvent and create context Memory."""
         from app.config import config
-        monkeypatch.setattr(config, "SECRET_KEY", "test-secret-key-crm-conversion-secure-32chars")
+
+        monkeypatch.setattr(
+            config, "SECRET_KEY", "test-secret-key-crm-conversion-secure-32chars"
+        )
 
         lead = Lead(
             workspace_id=db_workspace.id,
@@ -413,7 +414,10 @@ class TestCrmAndConversionTracking:
     ) -> None:
         """Test POST and GET /workspaces/{id}/crm/conversions REST endpoints."""
         from app.config import config
-        monkeypatch.setattr(config, "SECRET_KEY", "test-secret-key-crm-routes-secure-32chars")
+
+        monkeypatch.setattr(
+            config, "SECRET_KEY", "test-secret-key-crm-routes-secure-32chars"
+        )
 
         lead = Lead(
             workspace_id=db_workspace.id,

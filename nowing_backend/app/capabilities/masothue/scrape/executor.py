@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.capabilities.core import Executor
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
 from app.config import config
@@ -69,8 +70,17 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             unit="company",
         )
 
+        async def _local() -> MasothueScrapeOutput | dict[str, Any]:
+            return await scrape(actor_input)
+
         try:
-            raw = await scrape(actor_input)
+            raw = await medirus_scrape_or_local(
+                platform="masothue",
+                action="search",
+                args=payload.model_dump(exclude_unset=True),
+                local_fn=_local,
+                ctx=ctx,
+            )
         except MasothueRateLimitedError:
             logger.exception("masothue.scrape rate limited")
             return ScrapeOutput(
@@ -139,7 +149,9 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                             category="company",
                         )
                     )
-                except Exception:  # per-item serialization error; skip item and continue batch
+                except (
+                    Exception
+                ):  # per-item serialization error; skip item and continue batch
                     logger.exception("masothue chunk serialization failed")
             if chunks:
                 try:
@@ -152,13 +164,17 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                         run_id=ctx.run_id,
                     )
                     if ingest_res:
-                        ingest_job_id = ingest_res.ingest_job_id or ingest_res.parent_ingest_job_id
+                        ingest_job_id = (
+                            ingest_res.ingest_job_id or ingest_res.parent_ingest_job_id
+                        )
                         ingest_status = ingest_res.status
-                except Exception as exc:  # chainlens ingest failure; record failed status and continue
+                except (
+                    Exception
+                ) as exc:  # chainlens ingest failure; record failed status and continue
                     logger.exception("masothue chainlens ingest failed: %s", exc)
                     ingest_status = "failed"
             else:
-                ingest_status = "no_chunks" 
+                ingest_status = "no_chunks"
 
         emit_progress(
             "done",

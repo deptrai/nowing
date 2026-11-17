@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.capabilities.core.billing import _platform_rate, _UNIT_NOUNS
+from app.capabilities.core.billing import _UNIT_NOUNS, _platform_rate
 from app.capabilities.core.types import BillingUnit
 from app.config import config
 

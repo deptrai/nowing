@@ -13,6 +13,15 @@ _Curated long-term knowledge for Nowing E2E Browser Testing._
 - **Alembic two heads:** As of 2026-08-17, revisions `223_add_audit_events_table.py` and `07582243b847_merge_e2e_heads_for_testing.py` are both heads. A temporary merge revision is needed to run `alembic upgrade head` on a fresh database.
 - **E2E superuser requirement:** `/admin/scraper-accounts` and `/admin/telemetry` (Story 25.4) require `User.is_superuser=True`. The default `e2e-test@nowing.net` created by the Playwright auth setup is not a superuser, so admin E2E tests fail with 403/unexpected DOM. For a local smoke test, seed a superadmin directly (`admin@nowing.net` / `AdminPass123!`) and login via `/login`.
 - **Story 25.4 (Admin Telemetry) live check:** `/admin/telemetry` renders Gross Margin, LLM Cost, Proxy Health, and Celery Queue panels. Console must stay at 0 errors after the page settles. Initial load can show transient `net::ERR_CONNECTION_REFUSED` or CORS errors if the backend was restarting; reload once the backend is ready.
+- **Story 41.2 Live Browser Verification — Websets Integration & Unified LeadSourceBadge (2026-10-12):**
+  - **Surfaces Verified:**
+    1. `/dashboard/1/new-chat?mode=leads`: Canvas split-view table renders leads with source `websets` alongside standard sources (`batdongsan`, `muaban_bds`, etc.).
+    2. Clicking lead rows mounts `aside[data-testid='lead-detail-flyout-drawer']` displaying the unified `<LeadSourceBadge>` with exact data attributes (`data-testid="lead-source-badge"`, `data-source-key="websets"`), icon, emerald badge classes (`bg-emerald-50 text-emerald-700 border-emerald-200 ...`), and label `Websets`.
+    3. Other sources (e.g. `muaban_bds`) resolve to `Batdongsan` with rose badge classes (`bg-rose-50 text-rose-700 border-rose-200 ...`).
+  - **Test Suite:**
+    - Backend: 62/62 tests passing in `tests/unit/services/test_websets_import.py`, `tests/integration/routes/test_chainlens_websets_webhook.py`, `test_websets.py`, `test_planner_websets.py`.
+    - Frontend: `pnpm tsc --noEmit` 0 errors, Biome clean, 6/6 unit tests passing for `LeadSourceBadge.test.ts` and `LeadCard.test.ts`.
+
 - **Story 25.4 E2E spec:** `nowing_web/tests/admin/telemetry.spec.ts` mocks `/auth/session`, `/users/me`, and the four telemetry endpoints to verify the dashboard panels and auto-refresh without a pre-seeded superuser. Run with `pnpm test:e2e tests/admin/telemetry.spec.ts`.
 - **Story 25.5 (Dynamic Scraper Rules & ReDoS Sandbox) E2E:**
   - Page: `/admin/scrapers/rules`

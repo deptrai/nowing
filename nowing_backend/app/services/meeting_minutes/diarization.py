@@ -26,7 +26,7 @@ class DiarizationService:
             raise ImportError("diarization disabled by config")
 
         try:
-            from pyannote.audio import Pipeline
+            from pyannote.audio import Pipeline  # pyright: ignore[reportMissingImports]
         except ImportError as exc:
             logger.warning("pyannote.audio not installed; diarization unavailable")
             raise ImportError("pyannote.audio not installed") from exc
@@ -58,7 +58,9 @@ class DiarizationService:
 
         try:
             diarization = pipeline(str(audio_path))
-        except Exception as exc:  # inference failure → empty turns; caller degrades to transcript-only
+        except (
+            Exception
+        ) as exc:  # inference failure → empty turns; caller degrades to transcript-only
             logger.warning("Diarization failed: %s", exc)
             return []
 

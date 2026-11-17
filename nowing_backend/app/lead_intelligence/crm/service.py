@@ -294,6 +294,7 @@ class CrmSyncService:
         if isinstance(sync_config, dict):
             return sync_config
         if isinstance(sync_config, str):
+            # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- malformed JSON propagates to caller
             return json.loads(sync_config)
         return {}
 

@@ -47,8 +47,8 @@ export default function WebBuilderPage() {
 		"text" | "className" | "style" | "attribute" | "replace"
 	>("text");
 	const [attributeName, setAttributeName] = useState("");
-	const [selectedRect, setSelectedRect] = useState<MarkToolRect | undefined>(undefined);
-	const [componentHint, setComponentHint] = useState<string | undefined>(undefined);
+	const [selectedRect, setSelectedRect] = useState<MarkToolRect>();
+	const [componentHint, setComponentHint] = useState<string>();
 	const [customDomainInput, setCustomDomainInput] = useState("");
 	const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
 	const [isLogsOpen, setIsLogsOpen] = useState(false);
@@ -57,13 +57,13 @@ export default function WebBuilderPage() {
 	const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
 	const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
 	const [isStreaming, setIsStreaming] = useState(false);
-	const [streamPhase, setStreamPhase] = useState<string>("");
-	const [streamMessage, setStreamMessage] = useState<string>("");
-	const [streamTokens, setStreamTokens] = useState<string>("");
+	const [streamPhase, setStreamPhase] = useState("");
+	const [streamMessage, setStreamMessage] = useState("");
+	const [streamTokens, setStreamTokens] = useState("");
 	const [streamFiles, setStreamFiles] = useState<string[]>([]);
 	const [iframeKey, setIframeKey] = useState(0);
 	const [appFiles, setAppFiles] = useState<Record<string, string>>({});
-	const [selectedFile, setSelectedFile] = useState<string>("app/page.tsx");
+	const [selectedFile, setSelectedFile] = useState("app/page.tsx");
 	const abortControllerRef = useRef<AbortController | null>(null);
 
 	const backendBaseUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
@@ -453,6 +453,7 @@ export default function WebBuilderPage() {
 
 						<button
 							type="button"
+							data-testid="custom-domain-btn"
 							onClick={() => setIsDomainModalOpen(true)}
 							className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors"
 						>
@@ -462,6 +463,7 @@ export default function WebBuilderPage() {
 
 						<button
 							type="button"
+							data-testid="publish-btn"
 							onClick={() => publishMutation.mutate(selectedApp.id)}
 							disabled={publishMutation.isPending || selectedApp.status === "published"}
 							className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors disabled:opacity-50"
@@ -544,6 +546,7 @@ export default function WebBuilderPage() {
 								<button
 									type="button"
 									key={app.id}
+									data-testid={`app-card-${app.id}`}
 									onClick={() => {
 										setSelectedApp(app);
 										setIsMarkToolActive(false);

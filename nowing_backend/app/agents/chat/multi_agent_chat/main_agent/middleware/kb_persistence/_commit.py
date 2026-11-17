@@ -177,6 +177,9 @@ async def commit_staged_filesystem_state(
     # succeeds (and abandoned on rollback), so the UI never sees reversible=true
     # for a snapshot that didn't durably land.
     deferred_dispatches: list[int] = []
+    # Documents committed without an embedding (embed provider failure) are
+    # collected here and reindexed after the outer commit succeeds.
+    reindex_doc_ids: list[int] = []
 
     try:
         async with shielded_async_session() as session:
@@ -340,7 +343,7 @@ async def commit_staged_filesystem_state(
                     )
                     if existing is not None:
                         doc_id = existing.id
-                        doc_id_by_path[path] = existing.id
+                        doc_id_by_path[path] = existing.id  # pyright: ignore[reportArgumentType]
                 if doc_id is not None:
                     if snapshot_enabled and action_id is not None:
                         result_doc = await session.execute(
@@ -361,11 +364,15 @@ async def commit_staged_filesystem_state(
                             )
                     updated = await _update_document(
                         session,
-                        doc_id=doc_id,
+                        doc_id=doc_id,  # pyright: ignore[reportArgumentType]
                         content=content,
                         virtual_path=path,
                         workspace_id=workspace_id,
                     )
+                    if updated is not None and getattr(
+                        updated, "content_needs_reindexing", False
+                    ):
+                        reindex_doc_ids.append(int(updated.id))
                     if updated is not None:
                         committed_updates.append(
                             {
@@ -431,7 +438,12 @@ async def commit_staged_filesystem_state(
                                 )
                             )
                         continue
-                    doc_id_by_path[path] = new_doc.id
+                    doc_id_by_path[path] = new_doc.id  # pyright: ignore[reportArgumentType]
+                    # Append only after the savepoint exited cleanly — a doc
+                    # that rolled back with the savepoint must not be
+                    # scheduled for reindex.
+                    if getattr(new_doc, "content_needs_reindexing", False):
+                        reindex_doc_ids.append(int(new_doc.id))
                     if placeholder_revision_id is not None:
                         await session.execute(
                             update(DocumentRevision)
@@ -491,7 +503,7 @@ async def commit_staged_filesystem_state(
                     async with session.begin_nested():
                         if snapshot_enabled and action_id is not None:
                             chunks = await _load_chunks_for_snapshot(
-                                session, doc_id=doc_pk
+                                session, doc_id=doc_pk  # pyright: ignore[reportArgumentType]
                             )
                             payload = _doc_revision_payload(
                                 document_to_delete, chunks_before=chunks
@@ -657,6 +669,31 @@ async def commit_staged_filesystem_state(
                     action_id,
                     exc_info=True,
                 )
+
+    # Post-commit reindex for documents committed without embeddings. The row
+    # is durable either way; this only rebuilds the vectors.
+    if reindex_doc_ids:
+        try:
+            from app.tasks.celery_tasks.document_reindex_tasks import (
+                reindex_document_task,
+            )
+
+            for doc_id in dict.fromkeys(reindex_doc_ids):
+                try:
+                    reindex_document_task.apply_async(
+                        args=[doc_id, str(created_by_id or "system")],
+                        countdown=30,
+                    )
+                except Exception:  # best-effort reindex schedule; doc stays flagged
+                    logger.exception(
+                        "kb_persistence: failed to schedule reindex for document_id=%s",
+                        doc_id,
+                    )
+        except Exception:  # import failure must not undo a successful commit
+            logger.exception(
+                "kb_persistence: failed to import reindex task; %d doc(s) stay flagged",
+                len(reindex_doc_ids),
+            )
 
     if dispatch_events:
         for payload in committed_creates:

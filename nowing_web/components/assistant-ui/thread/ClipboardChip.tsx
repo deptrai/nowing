@@ -6,7 +6,7 @@ import { type FC, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export const ClipboardChip: FC<{ text: string; onDismiss: () => void }> = ({ text, onDismiss }) => {
+export const ClipboardChip: FC<{ text: string; onDismiss: () => void }> = ({ text, onDismiss }) => { // pi-lens-ignore: typescript:71007 -- client-to-client callback prop
 	const t = useTranslations("chat");
 	const [expanded, setExpanded] = useState(false);
 	const isLong = text.length > 120;

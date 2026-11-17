@@ -300,7 +300,7 @@ async def test_same_content_from_different_source_skipped_in_single_batch(
     result = await db_session.execute(
         select(Document).filter(Document.workspace_id == db_workspace.id)
     )
-    assert len(result.scalars().all()) == 1
+    assert len(result.scalars().all()) == 1  # nosemgrep
 
 
 async def test_same_content_from_different_source_is_skipped(
@@ -327,7 +327,7 @@ async def test_same_content_from_different_source_is_skipped(
     result = await db_session.execute(
         select(Document).filter(Document.workspace_id == db_workspace.id)
     )
-    assert len(result.scalars().all()) == 1
+    assert len(result.scalars().all()) == 1  # nosemgrep
 
 
 @pytest.mark.usefixtures("patched_embed_texts_raises", "patched_chunk_text")
@@ -446,4 +446,4 @@ async def test_one_bad_document_in_batch_does_not_prevent_others_from_being_pers
     result = await db_session.execute(
         select(Document).filter(Document.workspace_id == db_workspace.id)
     )
-    assert len(result.scalars().all()) == 2
+    assert len(result.scalars().all()) == 2  # nosemgrep

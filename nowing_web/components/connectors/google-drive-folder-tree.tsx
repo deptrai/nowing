@@ -229,7 +229,7 @@ export function GoogleDriveFolderTree({
 			<div
 				key={item.id}
 				className="w-full sm:ml-[calc(var(--level)*1.25rem)]"
-				style={
+				style={ // pi-lens-ignore: ast-grep:inline-styles -- per-level indent computed from tree depth
 					{ marginLeft: `${level * indentSize}rem`, "--level": level } as React.CSSProperties & {
 						"--level"?: number;
 					}

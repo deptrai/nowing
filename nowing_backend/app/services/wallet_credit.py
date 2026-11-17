@@ -30,10 +30,10 @@ __all__ = [
     "apply_credit",
     "apply_debit",
     "check_balance",
-    "spendable_micros",
-    "reserve_credit",
-    "release_credit",
     "commit_reserved_credit",
+    "release_credit",
+    "reserve_credit",
+    "spendable_micros",
 ]
 
 

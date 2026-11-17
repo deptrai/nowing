@@ -75,10 +75,10 @@ from app.observability.metrics.memory import (
 from app.observability.metrics.platform import (
     record_auth_failure,
     record_perf_elapsed,
-    record_scraper_ingest_failure,
     record_rate_limit_rejection,
     record_run_event_bus_dropped,
     record_run_event_bus_subscribe_failure,
+    record_scraper_ingest_failure,
 )
 from app.observability.metrics.research import (
     record_anti_bot_detection,
@@ -156,7 +156,6 @@ __all__ = [
     "record_perf_elapsed",
     "record_permission_ask",
     "record_rate_limit_rejection",
-    "record_scraper_ingest_failure",
     "record_run_event_bus_dropped",
     "record_run_event_bus_subscribe_failure",
     "record_run_memory_created",
@@ -165,6 +164,7 @@ __all__ = [
     "record_run_memory_retried",
     "record_run_memory_skipped",
     "record_run_memory_zero_fact",
+    "record_scraper_ingest_failure",
     "record_subagent_invoke_duration",
     "record_subagent_invoke_outcome",
     "record_tool_call_duration",

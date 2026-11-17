@@ -96,6 +96,7 @@ async def get_allowed_read_space_ids(
         .order_by(WorkspaceMembership.workspace_id)
     )
     if auth.is_gated:
+        # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
         stmt = stmt.filter(Workspace.api_access_enabled == True)  # noqa: E712
 
     result = await session.execute(stmt)
@@ -120,7 +121,11 @@ async def _enforce_api_access_gate(
     if auth.is_gated and not workspace.api_access_enabled:
         raise HTTPException(
             status_code=403,
-            detail="API access is not enabled for this workspace.",
+            detail=(
+                "API access is not enabled for this workspace. Enable via "
+                f"PUT /api/v1/workspaces/{workspace_id}/api-access "
+                "(requires API_ACCESS_MANAGE, session auth)."
+            ),
         )
 
     return workspace
@@ -172,6 +177,40 @@ async def check_permission(
     await _enforce_api_access_gate(session, auth, workspace_id)
 
     return membership
+
+
+async def enforce_pat_scope(
+    auth: AuthContext,
+    workspace_id: int,
+    required_scope: str,
+) -> None:
+    """Enforce PAT scope + workspace binding for a workspace-scoped write.
+
+    Session/system principals are unaffected (their authorization comes from
+    ``check_permission``). A PAT must (a) be bound to the same workspace or be
+    unbound/legacy, and (b) carry the required scope. Fail-closed: legacy
+    tokens with ``scopes=[]`` never pass.
+
+    This is the single named seam for REST PAT scope enforcement (AD-2);
+    message text follows the ``app/auth/agent_chat.py`` convention.
+    """
+    if not auth.is_gated:
+        return
+    pat = auth.pat
+    if pat is None:
+        raise HTTPException(status_code=403, detail="permission missing")
+
+    if pat.workspace_id is not None and pat.workspace_id != workspace_id:
+        raise HTTPException(
+            status_code=403,
+            detail="workspace_id outside pat scope",
+        )
+
+    if required_scope not in (pat.scopes or []):
+        raise HTTPException(
+            status_code=403,
+            detail=f"permission missing: {required_scope}",
+        )
 
 
 async def check_workspace_access(
@@ -297,6 +336,7 @@ async def get_default_role(
     result = await session.execute(
         select(WorkspaceRole).filter(
             WorkspaceRole.workspace_id == workspace_id,
+            # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
             WorkspaceRole.is_default == True,  # noqa: E712
         )
     )

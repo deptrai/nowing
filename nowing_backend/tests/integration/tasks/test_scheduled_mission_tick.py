@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
 
 pytestmark = [pytest.mark.integration]
 
@@ -27,7 +26,7 @@ async def test_tick_claims_due_mission_from_db(db_session, db_user, db_workspace
         user_id=db_user.id,
         mission_type="recurring_report",
         status="pending",
-        next_fire_at=datetime.now(timezone.utc) - timedelta(seconds=1),
+        next_fire_at=datetime.now(UTC) - timedelta(seconds=1),
         schedule={"type": "interval", "minutes": 60},
     )
     db_session.add(mission)

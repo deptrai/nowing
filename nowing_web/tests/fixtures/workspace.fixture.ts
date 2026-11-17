@@ -2,7 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { test as base } from "@playwright/test";
 import { acquireTestToken } from "../helpers/api/auth";
-import { createWorkspace, deleteWorkspace, setWorkspaceModelRoles, type WorkspaceRow } from "../helpers/api/workspaces";
+import {
+	createWorkspace,
+	deleteWorkspace,
+	setWorkspaceModelRoles,
+	type WorkspaceRow,
+} from "../helpers/api/workspaces";
 import { uniqueWorkspaceName } from "../helpers/canary";
 
 export type WorkspaceFixtures = {
@@ -70,7 +75,9 @@ export const workspaceFixtures = base.extend<WorkspaceFixtures, { apiTokenWorker
 		);
 		await setWorkspaceModelRoles(request, apiToken, space.id, {
 			chat_model_id: -1,
-			image_gen_model_id: -101,
+			// 0 = auto: portable across CI (synthetic config, no image_gen
+			// entries) and local dev (real config with different fake ids).
+			image_gen_model_id: 0,
 			vision_model_id: -1,
 		});
 		try {

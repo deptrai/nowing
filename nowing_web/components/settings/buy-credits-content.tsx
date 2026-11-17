@@ -29,7 +29,7 @@ const clampQuantity = (value: number) =>
 	Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, Math.floor(value)));
 
 const formatUsd = (micros: number) => {
-	const t = useTranslations("settings");
+	// t removed — unused in this scope
 	const dollars = Math.max(0, micros) / 1_000_000;
 	if (dollars >= 100) return `$${dollars.toFixed(0)}`;
 	if (dollars >= 1) return `$${dollars.toFixed(2)}`;

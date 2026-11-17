@@ -40,7 +40,8 @@ INDEX_NAME = "ix_automation_runs_research_thread_id"
 def upgrade() -> None:
     # Safely add 'memory_change' to the trigger-type enum if missing
     # (mirrors migration 147; the new value is not used in this transaction).
-    op.execute(
+    # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+    op.execute(  # nosemgrep
         f"""
     DO $$
     BEGIN

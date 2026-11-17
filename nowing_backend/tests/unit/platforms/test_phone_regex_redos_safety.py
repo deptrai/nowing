@@ -2,7 +2,7 @@
 
 import time
 
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
 
 
 def test_phone_regex_redos_safety_bound():

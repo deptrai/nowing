@@ -71,7 +71,19 @@ def _load_dotenv_and_set_env_defaults() -> None:
     MUST run before _import_production_app(), since app.config consumes
     these values at import time.
     """
-    from dotenv import load_dotenv
+    from pathlib import Path
+
+    from dotenv import dotenv_values, load_dotenv
+
+    # OAuth callback URLs must target the port uvicorn actually binds.
+    # UVICORN_PORT only lands in os.environ when `import app` loads
+    # .env.local (override=True, app/config/__init__.py) — too late for the
+    # defaults below — so read the file's value directly instead of mutating
+    # os.environ with keys the app will pick up itself on import anyway.
+    _uvicorn_port = dotenv_values(
+        Path(__file__).resolve().parents[2] / ".env.local"
+    ).get("UVICORN_PORT") or os.getenv("UVICORN_PORT", "8000")
+    _backend_url = f"http://localhost:{_uvicorn_port}"
 
     os.environ.setdefault(
         "DATABASE_URL",
@@ -90,6 +102,17 @@ def _load_dotenv_and_set_env_defaults() -> None:
     # Local E2E is almost always cross-port (frontend on random/3000, backend on 8001).
     # Allow any loopback origin so CSRF does not block logins during local testing.
     os.environ.setdefault("CSRF_ALLOW_LOOPBACK", "true")
+
+    # Playwright clones ONE storageState into many parallel browser contexts,
+    # so they all share the same refresh cookie. When one context rotates it,
+    # the others hit reuse-detection (>45s later) and the family is revoked,
+    # causing a 401 storm that logs the suite out mid-test. A day-wide grace
+    # window keeps shared-RT reuse returning access_only for the whole run.
+    os.environ.setdefault("REFRESH_ROTATION_GRACE_SECONDS", "86400")
+    # Minted access tokens must outlive the whole Playwright suite (~40min+):
+    # when the shared token expires mid-run, every context refreshes at once
+    # and the 30/min refresh limiter answers 429 (breaks console-clean specs).
+    os.environ.setdefault("ACCESS_TOKEN_LIFETIME_SECONDS", "86400")
 
     # Story 6.10: enable the inbound email gateway surface for the E2E backend.
     # Otherwise /api/v1/gateway/email/inbound returns 404 because routes are
@@ -117,43 +140,47 @@ def _load_dotenv_and_set_env_defaults() -> None:
     os.environ.setdefault("ATLASSIAN_CLIENT_SECRET", "fake-atlassian-client-secret")
     os.environ.setdefault(
         "CONFLUENCE_REDIRECT_URI",
-        "http://localhost:8000/api/v1/auth/confluence/connector/callback",
+        f"{_backend_url}/api/v1/auth/confluence/connector/callback",
     )
     os.environ.setdefault("NOTION_CLIENT_ID", "fake-notion-client-id")
     os.environ.setdefault("NOTION_CLIENT_SECRET", "fake-notion-client-secret")
     os.environ.setdefault(
         "NOTION_REDIRECT_URI",
-        "http://localhost:8000/api/v1/auth/notion/connector/callback",
+        f"{_backend_url}/api/v1/auth/notion/connector/callback",
     )
     os.environ.setdefault("MICROSOFT_CLIENT_ID", "fake-microsoft-client-id")
     os.environ.setdefault("MICROSOFT_CLIENT_SECRET", "fake-microsoft-client-secret")
     os.environ.setdefault(
         "ONEDRIVE_REDIRECT_URI",
-        "http://localhost:8000/api/v1/auth/onedrive/connector/callback",
+        f"{_backend_url}/api/v1/auth/onedrive/connector/callback",
     )
     os.environ.setdefault("DROPBOX_APP_KEY", "fake-dropbox-app-key")
     os.environ.setdefault("DROPBOX_APP_SECRET", "fake-dropbox-app-secret")
     os.environ.setdefault(
         "DROPBOX_REDIRECT_URI",
-        "http://localhost:8000/api/v1/auth/dropbox/connector/callback",
+        f"{_backend_url}/api/v1/auth/dropbox/connector/callback",
     )
     # Native Google OAuth — fake Flow in tests.e2e.fakes.native_google
     # raises "Fake Google Flow requires redirect_uri." if these are empty,
     # so connector/add routes return 500 in CI where no .env supplies them.
     os.environ.setdefault(
         "GOOGLE_DRIVE_REDIRECT_URI",
-        "http://localhost:8000/api/v1/auth/google/drive/connector/callback",
+        f"{_backend_url}/api/v1/auth/google/drive/connector/callback",
     )
     os.environ.setdefault(
         "GOOGLE_GMAIL_REDIRECT_URI",
-        "http://localhost:8000/api/v1/auth/google/gmail/connector/callback",
+        f"{_backend_url}/api/v1/auth/google/gmail/connector/callback",
     )
     os.environ.setdefault(
         "GOOGLE_CALENDAR_REDIRECT_URI",
-        "http://localhost:8000/api/v1/auth/google/calendar/connector/callback",
+        f"{_backend_url}/api/v1/auth/google/calendar/connector/callback",
     )
     os.environ["SLACK_CLIENT_ID"] = "fake-slack-mcp-client-id"
     os.environ["SLACK_CLIENT_SECRET"] = "fake-slack-mcp-client-secret"
+
+    # BACKEND_URL feeds the Composio callback fallback and other OAuth URLs
+    # (app/config/urls.py) — must point at the real bound port, not :8000.
+    os.environ.setdefault("BACKEND_URL", _backend_url)
 
     # Load .env last so the E2E defaults above win over a developer's .env
     # (e.g. AUTH_TYPE=GOOGLE), while an explicitly exported shell var still

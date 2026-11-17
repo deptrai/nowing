@@ -14,7 +14,7 @@ EMBEDDING_DIM = config.embedding_model_instance.dimension
 
 
 def upgrade() -> None:
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         DO $$
         BEGIN

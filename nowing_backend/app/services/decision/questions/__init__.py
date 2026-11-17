@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.services.decision.questions import (
+    bant_scoring,
     content_filter,
     entity_match,
     entity_match_fanout,
@@ -55,6 +56,12 @@ def get_question_registry() -> QuestionRegistry:
             voice_turn.QUESTIONS,
             version=voice_turn.VERSION,
             required_state_keys=voice_turn.REQUIRED_STATE_KEYS,
+        )
+        registry.register(
+            "bant_scoring",
+            bant_scoring.QUESTIONS,
+            version=bant_scoring.VERSION,
+            required_state_keys=bant_scoring.REQUIRED_STATE_KEYS,
         )
         _question_registry = registry
     return _question_registry

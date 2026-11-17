@@ -5,7 +5,7 @@ import { searchSourceConnectorTypeEnum } from "@/contracts/types/connector.types
  * Schema for OAuth API response (auth_url)
  */
 export const oauthAuthResponseSchema = z.object({
-	auth_url: z.string().url("Invalid auth URL format"),
+	auth_url: z.url("Invalid auth URL format"),
 });
 
 export type OAuthAuthResponse = z.infer<typeof oauthAuthResponseSchema>;

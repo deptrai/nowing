@@ -61,7 +61,7 @@ def exec():
 async def test_executor_cost_micros(exec, monkeypatch) -> None:
     """Arithmetic: should compute cost_micros = billable * rate."""
     monkeypatch.setattr(config, "VIETSTOCK_DATA_MICROS_PER_ITEM", 7500)
-    out = await exec(ScrapeInput(symbol="VNM"))
+    out = await exec(ScrapeInput(symbol="VNM"))  # nosemgrep
     assert out.cost_micros == 7500
 
 
@@ -77,7 +77,7 @@ async def test_executor_degraded_run_is_free(exec, monkeypatch) -> None:
 async def test_executor_cost_micros_invalid_config_defaults(exec, monkeypatch) -> None:
     """Edge: non-integer cost config should fall back to default 5000."""
     monkeypatch.setattr(config, "VIETSTOCK_DATA_MICROS_PER_ITEM", "not-an-int")
-    out = await exec(ScrapeInput(symbol="VNM"))
+    out = await exec(ScrapeInput(symbol="VNM"))  # nosemgrep
     assert out.cost_micros == 5000
 
 
@@ -106,7 +106,7 @@ async def test_executor_ingests_to_chainlens(exec, monkeypatch) -> None:
         workspace_id=1,
         run_id="run-1",
     )
-    out = await exec(ScrapeInput(symbol="VNM"), ctx)
+    out = await exec(ScrapeInput(symbol="VNM"), ctx)  # nosemgrep
 
     assert out.degraded is False
     assert out.ingest_job_id == "job-123"

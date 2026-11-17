@@ -263,7 +263,9 @@ async def validate_llm_config(
             )
             return False, "LLM returned an empty response"
 
-    except Exception as e:  # catch LLM validation errors and return False with error message
+    except (
+        Exception
+    ) as e:  # catch LLM validation errors and return False with error message
         error_msg = f"Failed to validate LLM configuration: {e!s}"
         logger.error(error_msg)
         return False, error_msg
@@ -560,7 +562,7 @@ def get_planner_llm() -> ChatLiteLLM | None:
     )
 
     planner_cfg = next(
-        (cfg for cfg in config.GLOBAL_LLM_CONFIGS if cfg.get("is_planner") is True),
+        (cfg for cfg in config.GLOBAL_LLM_CONFIGS if cfg.get("is_planner")),
         None,
     )
     if not planner_cfg:

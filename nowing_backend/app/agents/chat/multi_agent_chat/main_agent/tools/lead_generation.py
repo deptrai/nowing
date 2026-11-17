@@ -93,7 +93,9 @@ def create_multi_source_lead_gen_tool(
                 )
                 await session.commit()
                 return result
-        except Exception as exc:  # lead generation service failure; rollback and return error string
+        except (
+            Exception
+        ) as exc:  # lead generation service failure; rollback and return error string
             if session is not None:
                 with contextlib.suppress(Exception):
                     await session.rollback()
@@ -101,3 +103,99 @@ def create_multi_source_lead_gen_tool(
             return f"Lỗi khi tìm kiếm leads: {exc}"
 
     return multi_source_lead_gen
+
+
+def create_save_leads_tool(workspace_id: int):
+    """Factory for the ``save_leads`` chat tool.
+
+    Lets the agent persist leads it discovered through non-orchestrator tools
+    (medirus_scrape, google_maps, comment crawls, ...) into the workspace leads
+    table — closing the gap where only multi_source_lead_gen could write.
+    """
+
+    @tool
+    async def save_leads(
+        leads: list[dict[str, Any]],
+        table_id: str | None = None,
+        client_id: str | None = None,
+    ) -> str:
+        """Lưu danh sách leads đã thu thập được vào bảng leads của workspace.
+
+        Dùng sau khi cào/thu thập được leads qua các tool khác (medirus_scrape,
+        google_maps, comment crawler, web crawler) — các tool đó chỉ trả data
+        chứ không tự lưu. Tool này ghi vào bảng leads (tự khử trùng lặp,
+        lọc DNC, mã hóa thông tin liên hệ đã xác minh).
+
+        Args:
+            leads: Danh sách lead, mỗi lead là object với các key:
+                - name (bắt buộc nếu không có phone/email): tên người/doanh nghiệp
+                - phone, email (khuyến nghị có ít nhất một)
+                - source: nguồn, ví dụ "tiktok", "google-maps", "facebook"
+                - source_url: link bài/comment/profile bằng chứng
+                - location: địa chỉ/thành phố
+                - industry: ngành ("spa", "nhà thuốc đông y", ...)
+                - fit_score: điểm phù hợp 0-100 nếu có
+                - note: ghi chú ngữ cảnh (nội dung comment hỏi mua, ...)
+            table_id: ID bảng leads đích (để trống sẽ lưu vào bảng chung).
+            client_id: ID chiến dịch/phân loại (mặc định "chat").
+        """
+        from app.services.lead_batch_service import LeadBatchService
+
+        if not leads:
+            return "Không có lead nào để lưu."
+        if len(leads) > 200:
+            return "Quá nhiều leads một lần — tối đa 200 leads/lần, hãy chia nhỏ."
+
+        lead_dicts: list[dict[str, Any]] = []
+        for item in leads:
+            if not isinstance(item, dict):
+                continue
+            name = (
+                item.get("name") or item.get("company_name") or item.get("contact_name")
+            )
+            lead_dicts.append(
+                {
+                    "client_id": client_id or "chat",
+                    "table_id": table_id,
+                    "source": item.get("source") or "chat_agent",
+                    "source_url": item.get("source_url") or item.get("url"),
+                    "company_name": (str(name)[:55] if name else None),
+                    "phone": item.get("phone"),
+                    "email": item.get("email"),
+                    "location": (
+                        str(item["location"])[:99] if item.get("location") else None
+                    ),
+                    "industry": item.get("industry"),
+                    "fit_score": float(item.get("fit_score") or 0),
+                    "metadata": {"note": item["note"]} if item.get("note") else {},
+                }
+            )
+
+        session = None
+        try:
+            async with async_session_maker() as session_:
+                session = session_
+                summary = await LeadBatchService().ingest_batch(
+                    session, workspace_id, lead_dicts
+                )
+                await session.commit()
+        except Exception as exc:
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    await session.rollback()
+            logger.exception("save_leads failed: %s", exc)
+            return f"Lỗi khi lưu leads: {exc}"
+
+        lines = [
+            "### Đã lưu leads vào bảng dữ liệu",
+            f"- **Đã lưu:** `{summary.get('ingested_count', 0)} leads`",
+            f"- **Bị bỏ qua (DNC/blacklist):** `{summary.get('skipped_blacklisted_count', 0)}`",
+            f"- **Lỗi:** `{summary.get('failed_count', 0)}`",
+        ]
+        if table_id:
+            lines.append(
+                f"- **Tab Bảng Dữ Liệu:** [Xem Bảng Dữ Liệu Live](#table_id={table_id})"
+            )
+        return "\n".join(lines)
+
+    return save_leads

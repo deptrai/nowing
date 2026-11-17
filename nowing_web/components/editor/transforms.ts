@@ -18,7 +18,7 @@ const insertList = (editor: PlateEditor, type: string) => {
 	);
 };
 
-const insertBlockMap: Record<string, (editor: PlateEditor, type: string) => void> = {
+const insertBlockMap = {
 	[KEYS.listTodo]: insertList,
 	[KEYS.ol]: insertList,
 	[KEYS.ul]: insertList,
@@ -28,12 +28,12 @@ const insertBlockMap: Record<string, (editor: PlateEditor, type: string) => void
 	[KEYS.toggle]: (editor) => {
 		editor.tf.insertNodes(editor.api.create.block({ type: KEYS.toggle }), { select: true });
 	},
-};
+} satisfies Record<string, (editor: PlateEditor, type: string) => void>;
 
-const insertInlineMap: Record<string, (editor: PlateEditor, type: string) => void> = {
+const insertInlineMap = {
 	[KEYS.link]: (editor) => triggerFloatingLink(editor, { focused: true }),
 	[KEYS.equation]: (editor) => insertInlineEquation(editor),
-};
+} satisfies Record<string, (editor: PlateEditor, type: string) => void>;
 
 type InsertBlockOptions = {
 	upsert?: boolean;
@@ -62,7 +62,7 @@ export const insertBlock = (
 		}
 
 		if (type in insertBlockMap) {
-			insertBlockMap[type](editor, type);
+			(insertBlockMap as Record<string, (editor: PlateEditor, type: string) => void>)[type](editor, type);
 		} else {
 			editor.tf.insertNodes(editor.api.create.block({ type }), {
 				at: PathApi.next(path),
@@ -77,8 +77,8 @@ export const insertBlock = (
 };
 
 export const insertInlineElement = (editor: PlateEditor, type: string) => {
-	if (insertInlineMap[type]) {
-		insertInlineMap[type](editor, type);
+	if (type in insertInlineMap) {
+		(insertInlineMap as Record<string, (editor: PlateEditor, type: string) => void>)[type](editor, type);
 	}
 };
 
@@ -94,10 +94,7 @@ const setList = (editor: PlateEditor, type: string, entry: NodeEntry<TElement>) 
 	);
 };
 
-const setBlockMap: Record<
-	string,
-	(editor: PlateEditor, type: string, entry: NodeEntry<TElement>) => void
-> = {
+const setBlockMap = {
 	[KEYS.listTodo]: setList,
 	[KEYS.ol]: setList,
 	[KEYS.ul]: setList,
@@ -108,7 +105,10 @@ const setBlockMap: Record<
 	[KEYS.toggle]: (editor, _type, entry) => {
 		editor.tf.setNodes({ type: KEYS.toggle }, { at: entry[1] });
 	},
-};
+} satisfies Record<
+	string,
+	(editor: PlateEditor, type: string, entry: NodeEntry<TElement>) => void
+>;
 
 export const setBlockType = (editor: PlateEditor, type: string, { at }: { at?: Path } = {}) => {
 	editor.tf.withoutNormalizing(() => {
@@ -119,7 +119,7 @@ export const setBlockType = (editor: PlateEditor, type: string, { at }: { at?: P
 				editor.tf.unsetNodes([KEYS.listType, "indent"], { at: path });
 			}
 			if (type in setBlockMap) {
-				return setBlockMap[type](editor, type, entry);
+				return (setBlockMap as Record<string, (editor: PlateEditor, type: string, entry: NodeEntry<TElement>) => void>)[type](editor, type, entry);
 			}
 			if (node.type !== type) {
 				editor.tf.setNodes({ type }, { at: path });

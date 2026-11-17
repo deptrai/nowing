@@ -115,8 +115,8 @@ function ApprovalCard({
 		return "";
 	}, [args.connector_id, validAccounts]);
 
-	const [selectedAccountId, setSelectedAccountId] = useState<string>(defaultAccountId);
-	const [selectedParentPageId, setSelectedParentPageId] = useState<string>(
+	const [selectedAccountId, setSelectedAccountId] = useState(defaultAccountId);
+	const [selectedParentPageId, setSelectedParentPageId] = useState(
 		args.parent_page_id ? String(args.parent_page_id) : "__none__"
 	);
 
@@ -315,7 +315,7 @@ function ApprovalCard({
 				{(pendingEdits?.content ?? args.content) != null && (
 					<div
 						className="max-h-[7rem] overflow-hidden text-sm"
-						style={{
+						style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 							maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 							WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
 						}}

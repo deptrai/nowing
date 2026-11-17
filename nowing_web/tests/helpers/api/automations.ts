@@ -28,6 +28,14 @@ export async function createAutomation(
 			definition: {
 				schema_version: "1.1",
 				name,
+				// Explicit billable model snapshot — bypasses the workspace model
+				// role check (positive ids count as BYOK and are always allowed),
+				// so this works regardless of which global models exist in the env.
+				models: {
+					chat_model_id: 1,
+					image_gen_model_id: 1,
+					vision_model_id: 1,
+				},
 				plan: [
 					{
 						step_id: "s1",

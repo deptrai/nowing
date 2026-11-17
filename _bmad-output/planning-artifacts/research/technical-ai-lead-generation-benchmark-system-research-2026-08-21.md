@@ -9,7 +9,7 @@
 ## 1. TỔNG QUAN NGHIÊN CỨU & BỐI CẢNH KIẾN TRÚC NOWING
 
 Hệ thống **Nowing Platform** định vị là *Next-Generation Autonomous Workstation & AI Lead Intelligence Engine*, tích hợp sâu giữa:
-1. **Data Scraping Hub (DSH) & 25+ Platform Scrapers:** Thu thập dữ liệu từ các sàn BĐS (*Batdongsan, Chợ Tốt, Mua Bán*), Doanh nghiệp/Thuế (*Mã Số Thuế, Đấu Thầu Mua Sắm Công*), Thị trường Tuyển dụng (*TopCV, ITviec, VietnamWorks, Indeed, LinkedIn*), Địa điểm (*Google Maps, SERP*), Thương mại điện tử (*Shopee, Amazon, Walmart*), và Mạng xã hội (*TikTok, YouTube, Instagram, Telegram, Reddit, XActions*).
+1. **Data Scraping Hub (DSH) & 25+ Platform Scrapers:** Thu thập dữ liệu từ các sàn BĐS (*Batdongsan, Chợ Tốt, Mua Bán*), Doanh nghiệp/Thuế (*Mã Số Thuế, Đấu Thầu Mua Sắm Công*), Thị trường Tuyển dụng (*TopCV, ITviec, VietnamWorks, Indeed, LinkedIn*), Địa điểm (*Google Maps, SERP*), Thương mại điện tử (*Shopee, Amazon, Walmart*), và Mạng xã hội (*TikTok, YouTube, Instagram, Telegram, Reddit, Medirus*).
 2. **Unified Lead Intelligence Pipeline (Epic 21, 23, 26):** Điều phối tự động từ phân tích ý định (`LeadGenOrchestrator`), bóc tách & giải mã thông tin ẩn (`SocialEntityExtractor`), khử trùng gom cụm thực thể (`EntityDeduplicationService`), mã hóa bảo mật Nghị định 13/2023/NĐ-CP (`VerifiedContactEncryption`), cho đến ghi dữ liệu phân vùng PostgreSQL tốc độ cao (`leads`, `verified_contacts`).
 3. **Multi-Agent Runtime & Hybrid LLM Router:** Vận hành các Agent chuyên biệt, bóc tách tri thức bộ nhớ dài hạn (`Memory`), và streaming phản hồi SSE thời gian thực.
 

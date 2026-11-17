@@ -11,11 +11,11 @@ Run each prompt below in a separate session (ideally a different LLM), then past
 cd /Users/luisphan/Documents/GitHub/nowing
 git diff e442062f12a1036e0a06e96e2c8a75f8497529e5 -- \
   nowing_backend/app/config/entities.py \
-  nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py \
+  nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py \
   nowing_backend/app/routes/social_routes.py \
-  nowing_backend/tests/unit/platforms/test_xactions_mapper.py \
+  nowing_backend/tests/unit/platforms/test_medirus_mapper.py \
   nowing_backend/tests/unit/routes/test_social_routes.py > /tmp/diff.txt
-cat nowing_backend/app/proprietary/platforms/xactions/action_matrix.py >> /tmp/diff.txt
+cat nowing_backend/app/proprietary/platforms/medirus/action_matrix.py >> /tmp/diff.txt
 cat nowing_backend/tests/unit/platforms/test_canonical_action_matrix.py >> /tmp/diff.txt
 ```
 )

@@ -306,7 +306,7 @@ async def search_private_data(
                 workspace=workspace,
                 correlation_id=auth_ctx.correlation_id,
             )
-    except (TimeoutError, asyncio.TimeoutError) as exc:
+    except TimeoutError as exc:
         logger.warning(
             "Private data search exceeded 5.0s hard execution deadline for workspace %s",
             body.workspaceId,

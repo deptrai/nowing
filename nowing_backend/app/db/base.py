@@ -129,11 +129,13 @@ async def _drop_invalid_index(conn, name: str) -> None:
         {"n": name},
     )
     row = result.first()
-    if row is not None and row[0] is False:
+    if row is not None and not row[0]:
         logger.warning(
             "[startup] dropping invalid leftover index %s before rebuild", name
         )
-        await conn.execute(text(f'DROP INDEX CONCURRENTLY IF EXISTS "{name}"'))
+        await conn.execute(
+            text(f'DROP INDEX CONCURRENTLY IF EXISTS "{name}"')
+        )  # nosemgrep
 
 
 async def setup_indexes() -> None:
@@ -141,12 +143,14 @@ async def setup_indexes() -> None:
     lock_timeout_ms = int(config.DB_DDL_LOCK_TIMEOUT_MS)
     async with engine.connect() as base_conn:
         conn = await base_conn.execution_options(isolation_level="AUTOCOMMIT")
-        await conn.execute(text(f"SET lock_timeout = {lock_timeout_ms}"))
+        await conn.execute(text(f"SET lock_timeout = {lock_timeout_ms}"))  # nosemgrep
         for name, table, ddl in _INDEX_DEFINITIONS:
             try:
                 await _drop_invalid_index(conn, name)
                 await conn.execute(text(ddl))
-            except Exception as exc:  # index creation failure; log warning and retry on next boot
+            except (
+                Exception
+            ) as exc:  # index creation failure; log warning and retry on next boot
                 logger.warning(
                     "[startup] index %s on %s not ready (%s: %s); "
                     "will retry on next boot",
@@ -167,7 +171,9 @@ async def create_db_and_tables():
 
     lock_timeout_ms = int(config.DB_DDL_LOCK_TIMEOUT_MS)
     async with engine.begin() as conn:
-        await conn.execute(text(f"SET LOCAL lock_timeout = {lock_timeout_ms}"))
+        await conn.execute(
+            text(f"SET LOCAL lock_timeout = {lock_timeout_ms}")
+        )  # nosemgrep
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
@@ -182,7 +188,9 @@ async def create_db_and_tables():
 
         try:
             await conn.run_sync(ensure_publication)
-        except Exception as exc:  # zero publication setup failure; log warning and proceed
+        except (
+            Exception
+        ) as exc:  # zero publication setup failure; log warning and proceed
             logger.warning("[startup] ensure_publication encountered error: %s", exc)
     await setup_indexes()
 

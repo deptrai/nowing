@@ -237,6 +237,7 @@ class BulkOpsService:
         # Cannot archive active workspaces unless inactive_days > 0
         if action == BulkAction.ARCHIVE_INACTIVE_WORKSPACES:
             # If is_active is explicitly True, or not specified (which would include active workspaces)
+            # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
             targeting_active = is_active_val is not False
             if targeting_active and (inactive_days_val is None or inactive_days_val <= 0):
                 raise HTTPException(
@@ -276,11 +277,13 @@ class BulkOpsService:
 
             if field_name == "is_active" and model is Workspace:
                 if op == "eq":
+                    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
                     if val is True:
                         conditions.append(model.archived_at.is_(None))
                     else:
                         conditions.append(model.archived_at.is_not(None))
                 elif op == "neq":
+                    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
                     if val is True:
                         conditions.append(model.archived_at.is_not(None))
                     else:

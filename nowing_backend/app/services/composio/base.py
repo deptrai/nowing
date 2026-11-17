@@ -29,6 +29,7 @@ class ComposioClientMixin:
             raise ValueError("COMPOSIO_API_KEY is required but not configured")
 
         self.file_download_dir = file_download_dir or self.DEFAULT_DOWNLOAD_DIR
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- os.makedirs failure propagates to caller
         os.makedirs(self.file_download_dir, exist_ok=True)
 
         self.client = _composio_service_mod.Composio(
@@ -209,7 +210,9 @@ class ComposioClientMixin:
                 dangerously_skip_version_check=True,
             )
             return {"success": True, "data": result}
-        except Exception as e:  # catch Composio tool execution error and return error dict
+        except (
+            Exception
+        ) as e:  # catch Composio tool execution error and return error dict
             logger.error(f"Failed to execute tool {tool_name}: {e!s}")
             return {"success": False, "error": str(e)}
 

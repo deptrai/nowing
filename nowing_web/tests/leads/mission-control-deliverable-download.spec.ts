@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openContextualDock } from "../helpers/ui/dock";
 
 test.describe("Mission Control — deliverable download (26.9b)", () => {
 	test("should render deliverables and download xlsx on click", async ({ page, workspace }) => {
@@ -108,6 +109,7 @@ test.describe("Mission Control — deliverable download (26.9b)", () => {
 		});
 
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openContextualDock(page);
 
 		await expect(page.getByTestId("mission-control-widget")).toBeVisible({
 			timeout: 10000,

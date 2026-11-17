@@ -58,7 +58,7 @@
   - **Action:** Resolved — frontend UI, chat mode routing, slash prompt, quick chip, artifact card and panel rendering implemented and verified (tsc + biome green).
   - **Reason / when to revisit:** Implemented 2026-08-26; remaining work is Playwright E2E full-stack run.
 
-## Deferred from: code review of 4-8e-ci-deploy-gate-for-chat-regression (2026-09-02)
+## Deferred from: code review of 4-8e-ci-deploy-gate-for-chat-regression (2026-09-02) — TRIAGED 2026-10-11 (1 open — xem section cuối file)
 
 - **Workflow references non-existent GitHub Action versions [chat-regression-gate.yml:44,47,52] — high**
 - **Missing dataset ingestion step before running benchmark [chat-regression-gate.yml:68-74] — medium**
@@ -214,7 +214,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (best-effort persistence deferred to ingest service hardening.)
   - **Reason / when to revisit:** Pre-existing `NowingIngestService` reliability debt; not introduced by Story 14.2a. Revisit when chainlens ingest durability is hardened or the service persistence contract is centralized.
 
-## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24)
+## Deferred from: code review of 14-2a-news-entity-extraction (2026-08-24) — RESOLVED 2026-10-11 (DISMISSED confirmed)
 
 - **Finding:** Pre-reserve atomic rate limiter bucket before LLM call in `extract_budget.py:270`.
   - **Action:** **DISMISSED** — pre-flight credit reservation is handled by capability billing gate; atomic token bucket in extract_budget is rate-limit protection only.
@@ -256,7 +256,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (no `DELETE /users` or `DELETE /workspaces/{id}/members` endpoint exists to remove the invited member user after the test. Cannot resolve without a backend API change.)
   - **Reason / when to revisit:** Pre-existing E2E cleanup pattern; revisit during test-hygiene sprint.
 
-## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22)
+## Deferred from: code review of 24-7-multi-channel-drip-outreach-campaign-engine (2026-08-22) — RESOLVED 2026-10-11 (DISMISSED confirmed — owned by Story 26.x)
 
 - **Finding:** Cross-cutting `billing_event_service.py` refund/relock code is pre-existing and not introduced by Story 24.7.
   - **Action:** **DISMISSED** — pre-existing code owned by Story 26.x contact-unlock/refund.
@@ -271,7 +271,7 @@
   - **Action:** Resolved from: 24-6-two-way-ai-outreach-auto-reply-agent.md.
   - **Resolution:** Added `POST /api/v1/gateway/bindings/{binding_id}/send` in `app/routes/gateway_webhook_routes.py`; on success it calls `pause_auto_reply(str(binding.id))` for 24h. Unit test `tests/unit/gateway/test_webhook_routes.py::test_send_message_to_binding_pauses_auto_reply` passes.
 
-## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21) — RESOLVED 2026-10-11 (all findings DISMISSED/allocated/resolved)
 
 - **Finding:** `FakeAsyncSession` seam in `workspace_credit_service.py:141-146,322-328` (`_deduct_credits_fake`, `_record_spend_fake`) lets unit tests exercise fake paths instead of production `UPDATE ... WHERE ... RETURNING` SQL.
   - **Action:** **DISMISSED** — pre-existing test architecture seam; preserved for backwards compatibility.
@@ -288,20 +288,20 @@
 - **Finding:** `MissionControlWidget.tsx:239` pre-existing TypeScript build fix.
   - **Action:** **DISMISSED** — out of scope for Story 24.3 review; build cleanly passing.
   - **Reason / when to revisit:** Not in scope for Story 24.3; handle in its owning build-debt story.
-- **Finding:** `.agents/skills/bmad-agent-e2e-tester/` and `_bmad/memory/bmad-agent-e2e-tester/` are a new XActions skill unrelated to Story 24.3.
-  - **Action:** **DISMISSED** — new XActions testing skill; verified valid standalone tool.
+- **Finding:** `.agents/skills/bmad-agent-e2e-tester/` and `_bmad/memory/bmad-agent-e2e-tester/` are a new Medirus skill unrelated to Story 24.3.
+  - **Action:** **DISMISSED** — new Medirus testing skill; verified valid standalone tool.
   - **Reason / when to revisit:** Out of scope; route to the agent/skill story that owns it.
 
 ## Deferred from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-08-19)
 
 - **Finding:** Pre-compile regex token pattern at module level in `phone_extractor.py`.
-  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Regex patterns moved to module-level constants (`_SUB_LETTER_O_REGEX`, `_SUB_LETTER_L_REGEX`, `_SUB_DELIMITERS_REGEX`, `_TOKEN_PATTERN`) and verified by `tests/unit/proprietary/platforms/xactions/test_phone_extractor.py`.
-  - **Reason / when to revisit:** Pre-existing pattern in `xactions/phone_extractor.py`; not introduced by 26.7 diff. Revisit during phone extractor performance tuning.
+  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Regex patterns moved to module-level constants (`_SUB_LETTER_O_REGEX`, `_SUB_LETTER_L_REGEX`, `_SUB_DELIMITERS_REGEX`, `_TOKEN_PATTERN`) and verified by `tests/unit/proprietary/platforms/medirus/test_phone_extractor.py`.
+  - **Reason / when to revisit:** Pre-existing pattern in `medirus/phone_extractor.py`; not introduced by 26.7 diff. Revisit during phone extractor performance tuning.
 - **Finding:** Validate `is_valid_vietnam_tax_code` against 100 known-good masothue fixtures before ratifying.
-  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Added `tests/fixtures/masothue_tax_codes.json` with 100 valid, non-phone-like MSTs and `TestMasothueFixtures` in `tests/unit/proprietary/platforms/xactions/test_tax_code.py`.
+  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Added `tests/fixtures/masothue_tax_codes.json` with 100 valid, non-phone-like MSTs and `TestMasothueFixtures` in `tests/unit/proprietary/platforms/medirus/test_tax_code.py`.
   - **Reason / when to revisit:** Fixtures not yet available; revisit when masothue fixture corpus is consolidated.
 - **Finding:** Add FastMCP hermetic integration test for `dsh_worker` / `nowing_mcp` reusing `tests/e2e/fakes/mcp_runtime.py`.
-  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Enhanced `tests/e2e/fakes/mcp_runtime.py` with `**kwargs` in `_FakeClientSession.call_tool`, patch targets for `app.proprietary.platforms.xactions.mcp_client`, and `reset()`. Added `tests/integration/platforms/test_xactions_mcp_client_hermetic.py` with 5 hermetic test cases.
+  - **Action:** Resolved from: code review of 26-7-hermetic-quality-gates-benchmark-anti-zombie (2026-09-10). Enhanced `tests/e2e/fakes/mcp_runtime.py` with `**kwargs` in `_FakeClientSession.call_tool`, patch targets for `app.proprietary.platforms.medirus.mcp_client`, and `reset()`. Added `tests/integration/platforms/test_medirus_mcp_client_hermetic.py` with 5 hermetic test cases.
   - **Reason / when to revisit:** Out of scope for the `nowing_evals` cassette suite; revisit when AD-107 FastMCP transport is explicitly required for `dsh_worker`.
 
 ## Deferred from: code review of 26-9b-pro-excel-formatter-daytona (2026-08-20)
@@ -326,7 +326,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (functional logging exists; structured logs and metrics are a production-hardening follow-up.)
   - **Reason / when to revisit:** Functional logging exists; structured logs and metrics are a production-hardening follow-up, not a 26.2 launch blocker and not in the ACs.
 
-## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21)
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-21) — RESOLVED 2026-10-11 (DISMISSED confirmed — belongs to Stories 25.1/24.5/24.2/24.4/25.2)
 
 - **Finding:** `ImpersonationGuardMiddleware` and CORS regex for `chrome-extension://` origins were added in the 24.3 diff but belong to Story 25.1 / 24.5.
   - **Action:** **DISMISSED** — components belong to completed Stories 25.1 and 24.5; verified integrated in main app middleware pipeline.
@@ -381,7 +381,7 @@
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (CRM UI tabs deferred to frontend story.)
   - **Reason / when to revisit:** Frontend contracts and UI components are scoped to Story 21.6 (Zalo Integration) and Story 21.13 (Multi-Table Tabs).
 
-## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17)
+## Deferred from: code review of 24-3-multi-seat-team-crm-pipeline-and-shared-credits (2026-08-17) — RESOLVED 2026-10-11 (duplicate of 08-21 block, DISMISSED confirmed)
 
 - **Finding:** Scope creep từ story khác trong diff 24.3: `ImpersonationGuardMiddleware` và chỉnh CORS regex trong `app/app.py` thuộc Story 25.1/24.5.
   - **Action:** **DISMISSED** — components belong to completed Stories 25.1 and 24.5; verified integrated in main app middleware pipeline.
@@ -662,7 +662,7 @@
   - **Action:** Resolved. Updated `_charge_platform_meter` in `app/capabilities/core/billing.py` to detect `output.degraded`, record a 0-cost `TokenUsage` audit row, and skip `service.charge`. This fix is cross-platform and applies to `batdongsan`, `muaban_bds`, and `chotot` platform scrapers.
 - **Verification:** `ruff check app/capabilities/core/billing.py` ✅ / `pytest tests/unit/capabilities/test_billing.py -q` ✅ 63 passed / `pytest tests/unit/capabilities/batdongsan ...` ✅ 44 passed.
 
-## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-05)
+## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-05) — TRIAGED 2026-10-11 (3 open — xem section cuối file)
 
 - Double-submit on `POST /automations/{id}/run` — no idempotency key; two concurrent POSTs create two PENDING runs. Pre-existing pattern (Telegram `/run` has same gap). Needs idempotency key or dedup lock.
 - Double query in `RunService.launch` — `_authorize` loads automation via `session.get`, then `launch_run`→`resolve_active_automation` re-queries via `select`. Minor inefficiency; defensive double-check. Could pass the already-loaded automation into `launch_run`.
@@ -670,13 +670,13 @@
 - No test for provider-down SSE scenario (connection reset mid-stream in `nowing_chat`). Test gap — `stream_sse` raises `ToolError` on `httpx.RequestError` but no test covers mid-stream reset.
 - No test for credit/quota exhaustion during chat (402 mid-stream). Test gap — `_FAILURE_HINTS[402]` exists but no chat test asserts the 402 path.
 
-## Deferred from: code review of 2-6-indeed-jobs-scraper (2026-08-08)
+## Deferred from: code review of 2-6-indeed-jobs-scraper (2026-08-08) — TRIAGED 2026-10-11 (1 open — xem section cuối file)
 
 - No timeout on detail page fetch — `scraper.py:590-622` calls `WebCrawlerConnector.crawl_url()` and `StealthyFetcher.fetch()` without explicit timeout. Would need architectural change to thread timeout through connector. Pre-existing pattern across all scrapers.
 - No test for multi-page pagination — `test_scraper.py` tests `max_items=2` but doesn't test `max_pages > 1`. Test gap, not a code bug.
 - Billing rate 5000 vs spec's recommended 3500 — `INDEED_SCRAPE_MICROS_PER_ITEM` defaults to 5000, spec recommends ~3500. Business decision, not a code bug.
 
-## Deferred from: code review of 2-10-exa-mcp-search-connector (2026-08-08)
+## Deferred from: code review of 2-10-exa-mcp-search-connector (2026-08-08) — RESOLVED 2026-10-11 (pre-existing LangGraph pattern, dismissed)
 
 - Registry shared across concurrent tool calls — pre-existing pattern from capability tools; LangGraph state merge handles reconciliation. Not introduced by this diff.
 
@@ -770,7 +770,7 @@
   - **Action:** Resolved from: code review of 25-2-admin-user-lifecycle-management (2026-09-11). Verified `nowing_web` tsc type checking succeeds with no errors in `admin-users-api.service.ts`.
   - **Reason / when to revisit:** Pre-existing TypeScript error unrelated to the 24.3 diff. Revisit when Story 25.1 (Multi-Tenant User & Workspace Hub) or the admin-users refactor is next reviewed.
 
-## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11)
+## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11) — RESOLVED 2026-10-11 (migrations b8b3fae31175 + e5b50d5e687e landed)
 
 - ~~**Finding:** `MemoryRelation` has no `client_id` and `MemoryRepository.add_relation` does not set tenant GUCs, so a workspace member could create a relation that spans clients.~~
   - **Resolution (2026-08-11):** Added `client_id` to `MemoryRelation`, composite index, RLS policies in migration `b8b3fae31175`, and hardened `MemoryRepository.add_relation` to derive scope from the source memory, set tenant GUCs, and reject cross-workspace/cross-client targets.
@@ -873,7 +873,7 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (DocumentsSidebar.tsx component test requires frontend test infrastructure not yet in place for this component.)
 - **Reason / when to revisit:** Behavior change từ `openEditorPanel` sang `openDocumentTab` nằm ngoài scope rõ ràng của Story 7.4; cần xử lý khi test khung tab/document được triển khai hoặc khi refactor DocumentsSidebar.
 
-## Tech-debt: Epic 13 code deprecation (2026-08-08)
+## Tech-debt: Epic 13 code deprecation (2026-08-08) — RESOLVED 2026-10-11 (cleanup landed commit 542b84d61; td-8 signed off)
 
 - **Source:** SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md` adopted.
 - **Issue:** `canonical_entities` tables, migrations, merge logic, and search surfaces (Stories 13.1–13.3, Epic 13) are now out of scope because `chainlens-research` owns the canonical index. Keeping the code in `develop` risks future features coupling to a deprecated local index.
@@ -975,7 +975,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   resolved: 2026-09-13 — duplicate of earlier topcv-scraper defer item; tracked once.
   evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.
 
-## Deferred from: code review of 18-3-agent-registry deferred resolution (2026-08-10)
+## Deferred from: code review of 18-3-agent-registry deferred resolution (2026-08-10) — TRIAGED 2026-10-11 (5 open — xem section cuối file)
 
 - Tool catalog tools stored in `AgentConfig` may still be ignored by the main-agent runtime because subagent/MCP dispatch is environment-driven.
 - Admin `PATCH` has no optimistic locking (`updated_at` comparison) — acceptable last-write-wins for the current admin surface.
@@ -984,7 +984,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - Max-length boundary tests and tests for enabled/disabled tool overlap are out of scope for this chunk.
 - `enabled_tools` / `disabled_tools` are not validated as disjoint and are not de-duplicated; currently harmless.
 
-## Deferred from: code review of 18-4-agentconfig-prompt-injection (2026-08-10)
+## Deferred from: code review of 18-4-agentconfig-prompt-injection (2026-08-10) — TRIAGED 2026-10-11 (3 open — xem section cuối file)
 
 - OpenTelemetry metrics for agent prompt/tool filter usage are not added; audit logs cover the merge event.
 - `enabled_tools` / `disabled_tools` overlap and duplicate-name validation is not enforced in the schema.
@@ -999,120 +999,120 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - Epoch sentinel: `_MISSING_PUB_DATE` (1970-01-01) surfaces in UI when pubDate is missing; deliberate deterministic design to avoid re-index churn, accepted at review. **RESOLVED (2026-08-13):** sentinel stays in canonical data/metadata (anti-churn); RSS source markdown now renders "Unknown" via `_format_pub_date` instead of the epoch value. No frontend renders `metadata.pubDate` directly (verified by grep).
 - ~~Connector deletion orphans canonical entities: deleting a connector does not clean up its canonical entities; pre-existing general behavior for all connector types.~~ **RESOLVED (2026-08-13):** delete connector route collects document links during the batch deletion loop and then removes canonical sources by record_ids + sweeps orphaned `news_article` entities. Verified by `tests/integration/routes/test_search_source_connectors_routes.py`.
 
-## Resolved/Dismissed from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+## Resolved/Dismissed from: code review of 21-8-social-ingress-via-medirus-integration (2026-08-15)
 
 - **Finding:** Redundant status fields in SocialMonitoredTarget
   - **Action:** **DISMISSED** — pre-existing flexible schema; `is_active` and `status` are intentionally left for future target states.
 
 - **Finding:** Confusing duplicate timing fields in SocialMonitoredTarget — Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. (app/db.py:4882-4884)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** Three timing-related fields: realtime_stream (bool), scrape_interval_minutes (default 15), and poll_interval_seconds (default 900). The last two are the same value in different units, creating confusion. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Redundant timestamp fields in SocialMonitoredTarget — Both last_polled_at and last_scraped_at exist with no clear distinction in purpose. Could lead to inconsistent tracking. (app/db.py:4886-4887)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** Both last_polled_at and last_scraped_at exist with no clear distinction in purpose. Could lead to inconsistent tracking. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** SocialPost.target_id is nullable but has CASCADE relationship — target_id is nullable with a CASCADE foreign key. If a target is deleted, posts with NULL target_id would remain, but posts with a target_id would be deleted. This creates inconsistent behavior. (app/db.py:4910-4915)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** target_id is nullable with a CASCADE foreign key. If a target is deleted, posts with NULL target_id would remain, but posts with a target_id would be deleted. This creates inconsistent behavior. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** No validation of account_id in proxy binding — The bind_account_proxy method accepts any account_id string without validation. No checks for format, length, or allowed characters. (app/proprietary/platforms/xactions/adapter.py:82-84)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** No validation of account_id in proxy binding — The bind_account_proxy method accepts any account_id string without validation. No checks for format, length, or allowed characters. (app/proprietary/platforms/medirus/adapter.py:82-84)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The bind_account_proxy method accepts any account_id string without validation. No checks for format, length, or allowed characters. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** ReDoS timeout check placement allows partial execution — The timeout check is inside the loop, so if the first candidate is slow, it breaks. But if the regex itself is slow on the normalized string, it may still timeout after the loop. The timeout doesn't protect the normalization step itself. (app/proprietary/platforms/xactions/phone_extractor.py:118-121)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** ReDoS timeout check placement allows partial execution — The timeout check is inside the loop, so if the first candidate is slow, it breaks. But if the regex itself is slow on the normalized string, it may still timeout after the loop. The timeout doesn't protect the normalization step itself. (app/proprietary/platforms/medirus/phone_extractor.py:118-121)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The timeout check is inside the loop, so if the first candidate is slow, it breaks. But if the regex itself is slow on the normalized string, it may still timeout after the loop. The timeout doesn't protect the normalization step itself. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** Phone regex allows invalid Vietnamese prefixes — The regex allows 9\d which matches any digit 0-9 in the third position. Vietnamese mobile prefixes are more specific (e.g., 90, 91, 92, etc., not 93, 94, 95, 96, 97, 98, 99). (app/proprietary/platforms/xactions/phone_extractor.py:44-46)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Phone regex allows invalid Vietnamese prefixes — The regex allows 9\d which matches any digit 0-9 in the third position. Vietnamese mobile prefixes are more specific (e.g., 90, 91, 92, etc., not 93, 94, 95, 96, 97, 98, 99). (app/proprietary/platforms/medirus/phone_extractor.py:44-46)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The regex allows 9\d which matches any digit 0-9 in the third position. Vietnamese mobile prefixes are more specific (e.g., 90, 91, 92, etc., not 93, 94, 95, 96, 97, 98, 99). Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** Token pattern may miss valid obfuscated phones — The token pattern requires 7-25 characters. A valid obfuscated phone like 'o9.123.456' (10 chars) would match, but edge cases might not. The pattern is complex and may have blind spots. (app/proprietary/platforms/xactions/phone_extractor.py:96)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Token pattern may miss valid obfuscated phones — The token pattern requires 7-25 characters. A valid obfuscated phone like 'o9.123.456' (10 chars) would match, but edge cases might not. The pattern is complex and may have blind spots. (app/proprietary/platforms/medirus/phone_extractor.py:96)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The token pattern requires 7-25 characters. A valid obfuscated phone like 'o9.123.456' (10 chars) would match, but edge cases might not. The pattern is complex and may have blind spots. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** Intent classification has keyword overlap — Keywords are checked sequentially without weighting. A post containing 'tìm việc để bán' (find job to sell) would be classified as 'hiring' (first match) rather than the more nuanced intent. No mechanism for mixed intents. (app/proprietary/platforms/xactions/phone_extractor.py:148-193)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Intent classification has keyword overlap — Keywords are checked sequentially without weighting. A post containing 'tìm việc để bán' (find job to sell) would be classified as 'hiring' (first match) rather than the more nuanced intent. No mechanism for mixed intents. (app/proprietary/platforms/medirus/phone_extractor.py:148-193)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** Keywords are checked sequentially without weighting. A post containing 'tìm việc để bán' (find job to sell) would be classified as 'hiring' (first match) rather than the more nuanced intent. No mechanism for mixed intents. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** Location extraction is hardcoded and incomplete — The location list is hardcoded with Vietnamese provinces/districts. It's incomplete, unmaintainable, and doesn't handle typos or abbreviations. (app/proprietary/platforms/xactions/phone_extractor.py:60-73)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Location extraction is hardcoded and incomplete — The location list is hardcoded with Vietnamese provinces/districts. It's incomplete, unmaintainable, and doesn't handle typos or abbreviations. (app/proprietary/platforms/medirus/phone_extractor.py:60-73)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The location list is hardcoded with Vietnamese provinces/districts. It's incomplete, unmaintainable, and doesn't handle typos or abbreviations. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** Email regex is overly simplistic — The email regex doesn't validate TLDs properly and could match invalid emails like user@com or user@.com. (app/proprietary/platforms/xactions/phone_extractor.py:49-51)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Email regex is overly simplistic — The email regex doesn't validate TLDs properly and could match invalid emails like user@com or user@.com. (app/proprietary/platforms/medirus/phone_extractor.py:49-51)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The email regex doesn't validate TLDs properly and could match invalid emails like user@com or user@.com. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No dead letter queue for failed messages — Failed messages are logged but not moved to a dead letter queue. They're ACKed even on failure, so they're lost forever. (app/tasks/social_stream_worker.py:186-192)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** Failed messages are logged but not moved to a dead letter queue. They're ACKed even on failure, so they're lost forever. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No rate limiting on stream consumer — The consumer has no rate limiting. If the stream has millions of messages, it could overwhelm the database. (app/tasks/social_stream_worker.py:142-197)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The consumer has no rate limiting. If the stream has millions of messages, it could overwhelm the database. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No pagination in search results — The query uses .limit(payload.limit) but has no offset/cursor. Users can only get the first N results, not page through them. (app/capabilities/social/search_leads/executor.py:59)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** The query uses .limit(payload.limit) but has no offset/cursor. Users can only get the first N results, not page through them. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Test mocks don't validate SQL queries — The test mocks the database session but doesn't verify the SQL query is correct. It could pass even if the query has bugs. (tests/unit/capabilities/test_social_search_leads.py)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added SQL statement inspection in `test_social_search_leads_capability_execution` and `test_social_search_leads_uses_offset` asserting `workspace_id`, `LIMIT`, and `OFFSET` in generated queries.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Added SQL statement inspection in `test_social_search_leads_capability_execution` and `test_social_search_leads_uses_offset` asserting `workspace_id`, `LIMIT`, and `OFFSET` in generated queries.
   - **Reason / when to revisit:** The test mocks the database session but doesn't verify the SQL query is correct. It could pass even if the query has bugs. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** ReDoS test has generous timeout — The test asserts duration < 0.10s (100ms) but the spec requires 50ms. This gives 2x headroom and could miss regressions. (tests/unit/platforms/test_phone_regex_redos_safety.py)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Verified `assert duration < 0.05` is enforced in `tests/unit/platforms/test_phone_regex_redos_safety.py` and `tests/unit/proprietary/platforms/xactions/test_phone_extractor.py`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Verified `assert duration < 0.05` is enforced in `tests/unit/platforms/test_phone_regex_redos_safety.py` and `tests/unit/proprietary/platforms/medirus/test_phone_extractor.py`.
   - **Reason / when to revisit:** The test asserts duration < 0.10s (100ms) but the spec requires 50ms. This gives 2x headroom and could miss regressions. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** Integration test uses mock database — Despite being marked as an integration test, it mocks the database session. This doesn't test actual database persistence. (tests/integration/platforms/test_social_redis_stream.py)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Verified `tests/integration/platforms/test_social_redis_stream.py` uses real PostgreSQL persistence via `platform_db_session` asserting `SocialPost` and `Lead` table rows.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Verified `tests/integration/platforms/test_social_redis_stream.py` uses real PostgreSQL persistence via `platform_db_session` asserting `SocialPost` and `Lead` table rows.
   - **Reason / when to revisit:** Despite being marked as an integration test, it mocks the database session. This doesn't test actual database persistence. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No composite index on frequently queried columns — While there are indexes on platform, external_post_id, published_at, intent_tag, and raw_entities, there's no composite index on (platform, intent_tag, published_at) which the search capability likely needs. (app/db.py:4901-4907)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** While there are indexes on platform, external_post_id, published_at, intent_tag, and raw_entities, there's no composite index on (platform, intent_tag, published_at) which the search capability likely needs. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** XActions subprocess timeout hardcoded at 30s — Timeout hardcoded at 30s. No configurable timeout for different operations (scraping vs simple queries). Could be too short for large Facebook group scrapes. (app/proprietary/platforms/xactions/adapter.py:126)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Medirus subprocess timeout hardcoded at 30s — Timeout hardcoded at 30s. No configurable timeout for different operations (scraping vs simple queries). Could be too short for large Facebook group scrapes. (app/proprietary/platforms/medirus/adapter.py:126)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** Timeout hardcoded at 30s. No configurable timeout for different operations (scraping vs simple queries). Could be too short for large Facebook group scrapes. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** Timeout breaks loop mid-processing without indication — Timeout breaks loop mid-processing, returning partial results. No indication to caller that results are incomplete due to timeout. Could miss valid phone numbers. (app/proprietary/platforms/xactions/phone_extractor.py:118-121)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Timeout breaks loop mid-processing without indication — Timeout breaks loop mid-processing, returning partial results. No indication to caller that results are incomplete due to timeout. Could miss valid phone numbers. (app/proprietary/platforms/medirus/phone_extractor.py:118-121)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** Timeout breaks loop mid-processing, returning partial results. No indication to caller that results are incomplete due to timeout. Could miss valid phone numbers. Out-of-scope or future improvement for Story 21.8.
 
-- **Finding:** Province regex may exceed engine limits — Regex built from 60+ province names. Sorted by length (reverse) to match longer names first, but still could have false positives on partial matches. No validation that regex doesn't exceed engine limits. (app/proprietary/platforms/xactions/phone_extractor.py:196-199)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+- **Finding:** Province regex may exceed engine limits — Regex built from 60+ province names. Sorted by length (reverse) to match longer names first, but still could have false positives on partial matches. No validation that regex doesn't exceed engine limits. (app/proprietary/platforms/medirus/phone_extractor.py:196-199)
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** Regex built from 60+ province names. Sorted by length (reverse) to match longer names first, but still could have false positives on partial matches. No validation that regex doesn't exceed engine limits. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for platform values in SocialMonitoredTarget — No validation that platform values are from allowed set ('facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'). Could insert invalid platform values. (app/db.py:4876)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** No validation that platform values are from allowed set ('facebook_group', 'facebook_page', 'twitter_keyword', 'twitter_user'). Could insert invalid platform values. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for interval values in SocialMonitoredTarget — No CHECK constraint to prevent negative values or unreasonably small intervals (e.g., 0 or 1 second). Could cause excessive polling and rate limiting issues. (app/db.py:4883-4884)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** No CHECK constraint to prevent negative values or unreasonably small intervals (e.g., 0 or 1 second). Could cause excessive polling and rate limiting issues. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for platform values in SocialPost — No CHECK constraint or enum to restrict platform to 'facebook' or 'twitter'. Could insert invalid platform values. (app/db.py:4916)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** No CHECK constraint or enum to restrict platform to 'facebook' or 'twitter'. Could insert invalid platform values. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No CHECK constraint for intent_tag values in SocialPost — No CHECK constraint or enum to restrict intent_tag to documented values. Could insert invalid intent tags. (app/db.py:4923)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** No CHECK constraint or enum to restrict intent_tag to documented values. Could insert invalid intent tags. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No validation for raw_entities structure in SocialPost — No validation that raw_entities structure matches expected schema (phones, emails, prices, locations arrays). Could insert malformed JSON. (app/db.py:4928-4930)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** No validation that raw_entities structure matches expected schema (phones, emails, prices, locations arrays). Could insert malformed JSON. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** No validation for embedding dimension in SocialPost — No validation that embedding dimension matches configured model. If model changes, existing embeddings could become invalid or cause query errors. (app/db.py:4932)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** No validation that embedding dimension matches configured model. If model changes, existing embeddings could become invalid or cause query errors. Out-of-scope or future improvement for Story 21.8.
 
 - **Finding:** CASCADE delete causes data loss if target deleted — CASCADE delete means if target is deleted, all associated posts are deleted. Could cause data loss if target is accidentally deleted. No soft delete or archival mechanism. (app/db.py:4910-4915)
-  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-xactions-integration.md`.
+  - **Action:** **DISMISSED** — out-of-scope or future improvement for Story 21.8. in `21-8-social-ingress-via-medirus-integration.md`.
   - **Reason / when to revisit:** CASCADE delete means if target is deleted, all associated posts are deleted. Could cause data loss if target is accidentally deleted. No soft delete or archival mechanism. Out-of-scope or future improvement for Story 21.8.
 
-## Resolved from: re-review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+## Resolved from: re-review of 21-8-social-ingress-via-medirus-integration (2026-08-15)
 
 - **Finding:** Email alert channel is still `pass` in `app/alerts/engine/notify.py:146-152` — `AlertEngine` is supposed to fire Telegram/Email, but the email branch is not implemented. (app/alerts/engine/notify.py:146-152)
   - **Action:** Resolved. Implemented `_email` using `smtplib` + optional `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM/SMTP_TLS` env; logs a warning and skips if not configured.
@@ -1126,37 +1126,37 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** No test for social post → alert-engine notification path — no test creates an `AlertRule` and asserts notification firing. (app/tasks/social_stream_worker.py:254-293)
   - **Action:** Resolved. Added `tests/unit/tasks/test_social_stream_worker.py` covering `_evaluate_alerts_for_social_post` and duplicate lead guard.
 
-- **Finding:** ReDoS timeout not enforced on initial `normalize_vietnamese_text` regex calls — the 50ms timer only checks inside the candidate loop, not the initial normalization regex. (app/proprietary/platforms/xactions/phone_extractor.py:76-145)
+- **Finding:** ReDoS timeout not enforced on initial `normalize_vietnamese_text` regex calls — the 50ms timer only checks inside the candidate loop, not the initial normalization regex. (app/proprietary/platforms/medirus/phone_extractor.py:76-145)
   - **Action:** Resolved. Moved `start_time` before `normalize_vietnamese_text` and added a timeout check immediately after; added a 200k input-length cap as a secondary defense.
 
-## Deferred from: code review of 21-8-social-ingress-via-xactions-integration (2026-08-15 second pass)
+## Deferred from: code review of 21-8-social-ingress-via-medirus-integration (2026-08-15 second pass)
 
 - **Finding:** No trigram/GIN index on social search keyword search — `content.ilike('%...%')` and `author_name.ilike('%...%')` will full-scan `social_posts` as the table grows. (app/capabilities/social/search_leads/executor.py:65-72; app/db.py:5067)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `idx_social_posts_trgm_content` and `idx_social_posts_trgm_author` GIN indexes with `gin_trgm_ops` to `SocialPost.__table_args__` in `app/models/leads/social.py`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Added `idx_social_posts_trgm_content` and `idx_social_posts_trgm_author` GIN indexes with `gin_trgm_ops` to `SocialPost.__table_args__` in `app/models/leads/social.py`.
   - **Reason / when to revisit:** Query performance issue, not correctness. Add `pg_trgm` GIN index when search latency becomes a concern or as part of an NFR/performance pass.
 
 - **Finding:** Model/migration index drift — SQLAlchemy model uses `ix_social_posts_target_id` while migration 204 creates `idx_social_posts_target_id`; `updated_at` is `index=True` in model but missing in migration; `published_at` index is `ASC` in model but `DESC` in migration. (app/db.py:5050-5120; alembic/versions/204_add_social_tables.py:78-89)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Replaced implicit `index=True` with explicit `Index('idx_social_posts_target_id', 'target_id')` in `SocialPost.__table_args__` in `app/models/leads/social.py`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Replaced implicit `index=True` with explicit `Index('idx_social_posts_target_id', 'target_id')` in `SocialPost.__table_args__` in `app/models/leads/social.py`.
   - **Reason / when to revisit:** Duplicate or mismatched indexes waste space but do not affect correctness. Resolve in a future migration-hardening pass.
 
 - **Finding:** `social_routes.py` only exposes target creation — no list, get, update, or delete endpoints. (app/routes/social_routes.py:52-103)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Confirmed list, get, update, and delete endpoints are fully implemented in `social_routes.py` with 12 unit tests passing.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Confirmed list, get, update, and delete endpoints are fully implemented in `social_routes.py` with 12 unit tests passing.
   - **Reason / when to revisit:** CRUD completeness is out-of-scope for the MVP; add endpoints when the UI requires management screens.
 
 - **Finding:** `target_url` and `proxy_url` are stored as arbitrary strings with no URL/scheme validation. (app/routes/social_routes.py:26-32, 79-91)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `validate_url_scheme` validator enforcing `http://` or `https://` in `SocialTargetCreate` and `SocialTargetUpdate` in `social_routes.py` with unit tests.
-  - **Reason / when to revisit:** SSRF risk is real but the URLs are consumed by the XActions scraper, which already has its own proxy parsing. Add `HttpUrl` validation in a hardening pass.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Added `validate_url_scheme` validator enforcing `http://` or `https://` in `SocialTargetCreate` and `SocialTargetUpdate` in `social_routes.py` with unit tests.
+  - **Reason / when to revisit:** SSRF risk is real but the URLs are consumed by the Medirus scraper, which already has its own proxy parsing. Add `HttpUrl` validation in a hardening pass.
 
 - **Finding:** Search/target input schemas lack enum validation for platform, intent, category, status and no bounds for keyword/offset. (app/capabilities/social/search_leads/schemas.py:11-13; app/routes/social_routes.py:22-32)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `SocialPlatform` and `SocialIntent` Literal enums, bounded `keyword` to 500 chars, `offset` to 10000, and added `SocialTargetStatus` enum with interval bounds in `social_routes.py`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Added `SocialPlatform` and `SocialIntent` Literal enums, bounded `keyword` to 500 chars, `offset` to 10000, and added `SocialTargetStatus` enum with interval bounds in `social_routes.py`.
   - **Reason / when to revisit:** Typos produce empty results rather than data corruption. Add Pydantic enums/CHECK constraints in a future validation pass.
 
 - **Finding:** Social search ordering places `NULL published_at` first. (app/capabilities/social/search_leads/executor.py:77)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Fixed NULL ordering with `desc(SocialPost.published_at).nullslast()`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Fixed NULL ordering with `desc(SocialPost.published_at).nullslast()`.
   - **Reason / when to revisit:** Default `DESC NULLS FIRST` ordering may show undated posts above recent ones. Add `nulls_last` when UX confirms newest-first intent.
 
 - **Finding:** `SocialMonitoredTarget.posts` and `Workspace` social relationships use `cascade="all, delete-orphan"` without `passive_deletes=True`. (app/db.py:5048-5051, 2110-2121)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Added `passive_deletes=True` to `SocialMonitoredTarget.posts` and `Workspace.social_*` relationships in `app/models/leads/social.py` and `app/models/workspaces.py`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Added `passive_deletes=True` to `SocialMonitoredTarget.posts` and `Workspace.social_*` relationships in `app/models/leads/social.py` and `app/models/workspaces.py`.
   - **Reason / when to revisit:** PostgreSQL FKs already have `ON DELETE CASCADE`; SQLAlchemy loads children on delete. Add `passive_deletes=True` in a performance pass.
 
 - **Finding:** Redis consumer group starts at stream ID `0` and never reclaims pending messages from crashed consumers. (app/tasks/social_stream_worker.py:500-530)
@@ -1164,18 +1164,18 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** New group reading from beginning is recoverable, and `XAUTOCLAIM` is not required for the first release. Add when consumer durability is prioritized.
 
 - **Finding:** `run_social_stream_consumer` runs a single `xreadgroup` batch and returns, not a continuous processing loop. (app/tasks/social_stream_worker.py:481-584)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Enhanced `run_social_stream_consumer` with `max_loops` parameter in `app/tasks/social_stream_worker.py` allowing continuous batch processing while respecting bounded execution in Celery worker tasks.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Enhanced `run_social_stream_consumer` with `max_loops` parameter in `app/tasks/social_stream_worker.py` allowing continuous batch processing while respecting bounded execution in Celery worker tasks.
   - **Reason / when to revisit:** Intended as a Celery-driven tick; if external scheduling is chosen, this is fine. Revisit when finalizing deployment/operations model.
 
 - **Finding:** `published_at` parser is narrow and may corrupt RFC-2822/lowercase-z timestamps. (app/tasks/social_stream_worker.py:109-121)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Extended parser to handle lowercase 'z' and RFC-2822 via `email.utils.parsedate_to_datetime`.
-  - **Reason / when to revisit:** Current XActions payloads use ISO-8601. Add broader parsing if Twitter timestamps remain unparsed in production.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Extended parser to handle lowercase 'z' and RFC-2822 via `email.utils.parsedate_to_datetime`.
+  - **Reason / when to revisit:** Current Medirus payloads use ISO-8601. Add broader parsing if Twitter timestamps remain unparsed in production.
 
 - **Finding:** Engagement bonus thresholds are strict `>` (off-by-one) at 10 reactions / 5 comments. (app/tasks/social_stream_worker.py:150-151)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Fixed off-by-one with `>=` thresholds.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Fixed off-by-one with `>=` thresholds.
   - **Reason / when to revisit:** Boundary behavior is marginal; adjust to `>=` if product confirms inclusive thresholds.
 
-- **Finding:** Facebook group ingest always passes `auth_cookie=None`; per-target cookie store not implemented. (app/tasks/celery_tasks/social_xactions_ingest.py:115-121)
+- **Finding:** Facebook group ingest always passes `auth_cookie=None`; per-target cookie store not implemented. (app/tasks/celery_tasks/social_medirus_ingest.py:115-121)
   - **Action:** Allocated to Target Roadmap Epics in `sprint-change-proposal-2026-09-11-deferred-epics-roadmap.md`. (implement per-target cookie store when Facebook group ingest is productionized.)
   - **Reason / when to revisit:** Global env cookies are acceptable for the first release. Add per-target cookie column when multi-tenant Facebook scraping is required.
 
@@ -1183,7 +1183,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Action:** Resolved from: code review of story-12-9-job-market-alerts (2026-09-11). Added `record_gateway_outbound` for email channel and partial SMTP credentials validation in `app/alerts/engine/notify.py` with unit tests.
   - **Reason / when to revisit:** Operational observability improvements; add `record_gateway_outbound` and centralized env checks after core email path is stable.
 
-## Resolved from: second pass code review of 21-8-social-ingress-via-xactions-integration (2026-08-15)
+## Resolved from: second pass code review of 21-8-social-ingress-via-medirus-integration (2026-08-15)
 
 - **Finding:** Stream messages that fail validation or persistence are not ACKed or dead-lettered — bad messages remain in PEL. (app/tasks/social_stream_worker.py:579-625)
   - **Action:** Resolved. `run_social_stream_consumer` now moves `None` returns to `stream:social:failed` and ACKs.
@@ -1191,7 +1191,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** `workspace_id` from stream payload is not validated against `SocialMonitoredTarget.workspace_id` — cross-tenant write possible. (app/tasks/social_stream_worker.py:389-426)
   - **Action:** Resolved. Worker now resolves the target, compares `workspace_id`, and rejects mismatches.
 
-- **Finding:** Per-target scheduler uses non-atomic `exists`/`delay` and overrides short `scrape_interval_minutes` with a 300s min TTL. (app/tasks/celery_tasks/social_xactions_ingest.py:31-70, 216-248)
+- **Finding:** Per-target scheduler uses non-atomic `exists`/`delay` and overrides short `scrape_interval_minutes` with a 300s min TTL. (app/tasks/celery_tasks/social_medirus_ingest.py:31-70, 216-248)
   - **Action:** Resolved. Added a 60s atomic per-target scheduling lock (`nx=True, ex=60`) and clamped intervals to `[1, 1440]`.
 
 - **Finding:** Alert rule evaluation is not isolated and can abort all rules for a post. (app/tasks/social_stream_worker.py:325-380)
@@ -1257,11 +1257,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Reason / when to revisit:** Add companion migration in Story 21.3 to keep alembic in sync.
 
 - **Finding:** `app/db.py` reintroduces top-level circular `SpatialPlanningZone` import. (app/db.py:4762)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Replaced circular import from `app.db` with direct import from `app.db.base` in `app/proprietary/platforms/spatial_planning/models.py`.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Replaced circular import from `app.db` with direct import from `app.db.base` in `app/proprietary/platforms/spatial_planning/models.py`.
   - **Reason / when to revisit:** Fix in Story 10.8 by moving import inside `create_db_and_tables`.
 
 - **Finding:** SQLAlchemy `cascade="delete-orphan"` for `ZaloMessageLog` conflicts with migration `ON DELETE SET NULL`. (app/db.py:5157-5161,5222-5224)
-  - **Action:** Resolved from: code review of 21-8-social-ingress-via-xactions-integration (2026-09-11). Changed `Lead.zalo_message_logs` cascade to `"save-update, merge"` with `passive_deletes=True` in `app/models/leads/main.py` to align with `ON DELETE SET NULL` DDL constraint.
+  - **Action:** Resolved from: code review of 21-8-social-ingress-via-medirus-integration (2026-09-11). Changed `Lead.zalo_message_logs` cascade to `"save-update, merge"` with `passive_deletes=True` in `app/models/leads/main.py` to align with `ON DELETE SET NULL` DDL constraint.
   - **Reason / when to revisit:** Align ORM/migration delete semantics when finalizing 21.6 data model.
 
 - **Finding:** `PhoneResolutionResponse` hard-codes 1.5 credits for async `pending` results. (app/routes/leads_routes.py:595-602)
@@ -1423,18 +1423,18 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   - **Resolved:** 2026-09-10.
 
 
-## Resolved from: code review of 21-8g-xactions-mcp-chat-connector (2026-09-10)
+## Resolved from: code review of 21-8g-medirus-mcp-chat-connector (2026-09-10)
 
-- **Finding:** `seed_xactions_connectors` performed N+1 queries at startup and could re-provision connectors for `[DELETING]` workspaces.
-  - **Action:** Resolved. Replaced per-workspace existence checks with a single set lookup of existing XActions connector `workspace_id`s; added a `[DELETING]` guard in `ensure_workspace_xactions_connector`. Added integration tests for N+1-safe seeding, idempotency and deletion skip.
+- **Finding:** `seed_medirus_connectors` performed N+1 queries at startup and could re-provision connectors for `[DELETING]` workspaces.
+  - **Action:** Resolved. Replaced per-workspace existence checks with a single set lookup of existing Medirus connector `workspace_id`s; added a `[DELETING]` guard in `ensure_workspace_medirus_connector`. Added integration tests for N+1-safe seeding, idempotency and deletion skip.
   - **Resolved:** 2026-09-10.
 
 - **Finding:** `config/__init__.py` loaded `.env.local` with `override=True` without documenting the intended precedence.
   - **Action:** Resolved. Added explicit comments clarifying the base `.env` is loaded without override, and `.env.local` (git-ignored per-machine overrides) is loaded with `override=True` so local values win.
   - **Resolved:** 2026-09-10.
 
-- **Finding:** XActions meta-tools were built statically and bypassed cache invalidation on daemon schema changes.
-  - **Action:** Resolved. `_load_http_mcp_tools` for `XACTIONS_MCP_CONNECTOR` now always re-creates meta-tools from the live `create_xactions_meta_tools` gateway instead of honoring a stale `cached_tools` shortcut, while still persisting the current surface for observability.
+- **Finding:** Medirus meta-tools were built statically and bypassed cache invalidation on daemon schema changes.
+  - **Action:** Resolved. `_load_http_mcp_tools` for `MEDIRUS_MCP_CONNECTOR` now always re-creates meta-tools from the live `create_medirus_meta_tools` gateway instead of honoring a stale `cached_tools` shortcut, while still persisting the current surface for observability.
   - **Resolved:** 2026-09-10.
 
 ## Resolved from: code review of story-30.9 (2026-09-10)
@@ -1485,7 +1485,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   resolved: 2026-09-12 — job `migration-downgrade-smoke` trong backend-tests.yml: upgrade head → downgrade -1 → upgrade head trên pgvector service, wired vào test-gate (commit 37a63026f)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-audit-hygiene-cleanup.md` (gốc: `AUDIT_TECHNICAL_DEBT_2026-09-12.md`)
-  summary: Fix mutation-gate baseline — `mutation-nowing-summary-latest.json` verdict FAIL: cosmic-ray baseline failed cho `proprietary/platforms/xactions/mcp_client` (exit 1)
+  summary: Fix mutation-gate baseline — `mutation-nowing-summary-latest.json` verdict FAIL: cosmic-ray baseline failed cho `proprietary/platforms/medirus/mcp_client` (exit 1)
   evidence: Split từ intent "fix hết" audit 2026-09-12 — gate hỏng = mất tín hiệu test-effectiveness
   resolved: 2026-09-12 — root cause là quoting `-m "unit or not integration"` bị ăn qua chuỗi TOML→shell (refactor 40697ef8e) → deselect hết test không mark → baseline exit 1. Fix bằng single-quote; gate chạy end-to-end, 44/44 killed với --skip-noise-operators = 100% PASS (commit 37a63026f)
 
@@ -1695,13 +1695,13 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: Return dispatched target telemetry instead of raw HTTP post count in _ingest_social_target when REDIS_STREAM_ENABLED
-  evidence: Review finding from Story 36.1; when XActions returns data: [] over MCP and pushes to Redis stream, task logging reports 0 posts ingested
+  evidence: Review finding from Story 36.1; when Medirus returns data: [] over MCP and pushes to Redis stream, task logging reports 0 posts ingested
 
 ## Deferred from: code review of spec-36-1-wire-x-crawl-post-fallback (2026-09-13)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: Unsupported-platform targets stay is_active=True and are re-evaluated every scheduler tick
-  evidence: Review finding; _check_and_trigger_social_targets skips platform-not-in-SUPPORTED_PLATFORMS with debug log only, never marks unsupported (social_xactions_ingest.py:296)
+  evidence: Review finding; _check_and_trigger_social_targets skips platform-not-in-SUPPORTED_PLATFORMS with debug log only, never marks unsupported (social_medirus_ingest.py:296)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: ingest_raw_post_to_stream pushes dict with None/list/dict values to xadd → redis DataError, silent failure
@@ -1709,7 +1709,7 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: code_str in _is_tool_not_found_error/_is_permanent_fallback_error not case-folded; alt MCP codes (-32601, "unknown tool") unrecognized
-  evidence: Review finding (adapter_v2.py:112-131); extension for non-XActions MCP servers
+  evidence: Review finding (adapter_v2.py:112-131); extension for non-Medirus MCP servers
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: Facebook ID-based targets (target_url=None) not resolved via _facebook_page_url/_facebook_group_url in fallback_crawl_post → marked unsupported
@@ -1717,23 +1717,23 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-1-wire-x-crawl-post-fallback.md`
   summary: Fallback tests pass URL via target_id with target_url=None; no coverage for production layout where target_url holds the HTTP URL and target_id is a slug
-  evidence: Review finding (test_xactions_adapter_v2.py); production-realism gap in test fixtures
+  evidence: Review finding (test_medirus_adapter_v2.py); production-realism gap in test fixtures
 
 ## Deferred from: code review of story-36.3 (2026-09-14) — RESOLVED 2026-09-14
 
-- **Finding:** Successful ingest leaves paused target in `status="paused"` indefinitely (`social_xactions_ingest.py:322`). After a paused target cools down and successfully fetches, `target.status` is never reset to `"active"` — only `last_scraped_at` updates. Scheduler still picks up paused targets so functionally it keeps running, but the status lies about lifecycle.
+- **Finding:** Successful ingest leaves paused target in `status="paused"` indefinitely (`social_medirus_ingest.py:322`). After a paused target cools down and successfully fetches, `target.status` is never reset to `"active"` — only `last_scraped_at` updates. Scheduler still picks up paused targets so functionally it keeps running, but the status lies about lifecycle.
   - **Action:** Resolved 2026-09-14 — `_ingest_social_target` now sets `target.status = "active"` when prior status was `"paused"` after successful ingest. Test `test_ingest_social_target_resumes_paused_to_active_on_success` covers the transition.
 
-- **Finding:** Paused target waits `cooldown + scrape_interval` before becoming due again (`social_xactions_ingest.py:370-374`). `_pause_target` pushes `last_scraped_at` into the future by `cooldown`, then the scheduler also subtracts `scrape_interval_minutes` from `now` — so a paused target's effective resume is `cooldown + scrape_interval`, longer than the canonical `cooldown` alone.
+- **Finding:** Paused target waits `cooldown + scrape_interval` before becoming due again (`social_medirus_ingest.py:370-374`). `_pause_target` pushes `last_scraped_at` into the future by `cooldown`, then the scheduler also subtracts `scrape_interval_minutes` from `now` — so a paused target's effective resume is `cooldown + scrape_interval`, longer than the canonical `cooldown` alone.
   - **Action:** Resolved 2026-09-14 — `_check_and_trigger_social_targets` due-check now branches by status. `paused` targets are due when `last_scraped_at <= now` (cooldown expired); `active` targets keep `last_scraped_at <= now - scrape_interval_minutes`. Tests `test_check_social_targets_paused_due_when_cooldown_expired` and `test_check_social_targets_paused_not_due_during_cooldown` cover both branches.
 
-## Deferred from: code review of story-36.5 (2026-09-14)
+## Deferred from: code review of story-36.5 (2026-09-14) — RESOLVED 2026-10-11 (wontfix-justified: 30s probe trade-off accepted at review)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-5-stream-consumer-schema-contract-dlq.md`
   summary: `_LAG_STATE` module-global throttle ineffective across multi-process Celery workers — each process probes independently
   evidence: Review finding (social_stream_worker.py:64); trade-off accepted — probe cost is low at 30s intervals
 
-## Deferred from: code review of story-36.6b (2026-09-15)
+## Deferred from: code review of story-36.6b (2026-09-15) — TRIAGED 2026-10-11 (1 open — xem section cuối file)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: `_facebook_group_url` / `_facebook_page_url` use case-sensitive `startswith("http")` — `" HTTPS://..."` or `"https..."` with leading whitespace produces malformed URL
@@ -1748,18 +1748,18 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
   evidence: Review finding (adapter_v2.py:255-258); pre-existing since 36.6a — surfaced only when target objects are unpersisted DTOs
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
-  summary: `XACTIONS_USE_UNIFIED_DISPATCH` and `XACTIONS_LEGACY_TOOL_DEPRECATION` are absent from `nowing_backend/.env.example` — operators have no env-doc reference for the two flags
-  evidence: Review finding; `XACTIONS_STREAM_SINGLE_WRITER_ENABLED` documented at .env.example:788 but the 36.6a/36.6b flags are not
+  summary: `MEDIRUS_USE_UNIFIED_DISPATCH` and `MEDIRUS_LEGACY_TOOL_DEPRECATION` are absent from `nowing_backend/.env.example` — operators have no env-doc reference for the two flags
+  evidence: Review finding; `MEDIRUS_STREAM_SINGLE_WRITER_ENABLED` documented at .env.example:788 but the 36.6a/36.6b flags are not
 
-## Deferred from: code review of story-36.6b second-pass (2026-09-15)
+## Deferred from: code review of story-36.6b second-pass (2026-09-15) — RESOLVED 2026-10-11 (all 4 test gaps fixed in commit 318b40113)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: `map_async(target)` with `client=None` not covered when both flags ON — only explicit client arg tested
-  evidence: Review finding (test_xactions_mapper.py); `client=None` fallback to `CanonicalActionMatrix.get(None)` exercised elsewhere
+  evidence: Review finding (test_medirus_mapper.py); `client=None` fallback to `CanonicalActionMatrix.get(None)` exercised elsewhere
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: flag-alone no-op test covers only `facebook_group`/`twitter_user`; `facebook_page`/`twitter_keyword` sync+async no-op paths untested
-  evidence: Review finding (test_xactions_mapper.py:241-282); shared gate, no per-platform divergence
+  evidence: Review finding (test_medirus_mapper.py:241-282); shared gate, no per-platform divergence
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-36-6b-legacy-tool-deprecation.md`
   summary: `test_static_fallback_matrix_legacy_descriptors` does not assert `optionalArgs == ["limit"]` — regression in optionalArgs would silently skip limit injection
@@ -1776,13 +1776,13 @@ All 8 items from the two deferred blocks above (lines 1736-1774) are resolved:
 - `_facebook_group_url`/`_facebook_page_url` — now strip+lowercase scheme check (adapter_v2.py:98-106), matching `fallback_crawl_post` canonical form
 - `_unified_envelope` — prefers `target.target_url` when descriptor's required arg is `url` (adapter_v2.py:264-275)
 - `context.targetId` — explicit `is not None` check, `id=0` no longer falsy-fallback (adapter_v2.py:288-292)
-- `.env.example` — `XACTIONS_USE_UNIFIED_DISPATCH` + `XACTIONS_LEGACY_TOOL_DEPRECATION` documented at lines ~789-796
-- `map_async(client=None)` — covered by `test_map_async_default_client_none_uses_static_fallback` (test_xactions_mapper.py)
-- flag-alone no-op — parametrized to all 4 legacy kinds for sync + async (test_xactions_mapper.py)
+- `.env.example` — `MEDIRUS_USE_UNIFIED_DISPATCH` + `MEDIRUS_LEGACY_TOOL_DEPRECATION` documented at lines ~789-796
+- `map_async(client=None)` — covered by `test_map_async_default_client_none_uses_static_fallback` (test_medirus_mapper.py)
+- flag-alone no-op — parametrized to all 4 legacy kinds for sync + async (test_medirus_mapper.py)
 - `optionalArgs == ["limit"]` — asserted in `test_static_fallback_matrix_legacy_descriptors` (test_canonical_action_matrix.py:144-157)
 - `_merge_with_static` — emits INFO log naming platforms served from static fallback on partial catalog (action_matrix.py:185-215)
 
-Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_action_matrix.py + test_social_xactions_ingest.py + test_social_routes.py → 181/181 pass.
+Verification: pytest tests/unit/platforms/test_medirus_*.py + test_canonical_action_matrix.py + test_social_medirus_ingest.py + test_social_routes.py → 181/181 pass.
 
 ## Resolved from: epic-31 leftover defers (2026-09-16)
 
@@ -1795,7 +1795,7 @@ Verification: pytest tests/unit/platforms/test_xactions_*.py + test_canonical_ac
 
 All items previously deferred from these reviews were resolved in a follow-up pass — none remain open.
 
-## Deferred from: code review of spec-38-2-voice-agent-worker-runtime-silero-vad-streaming.md (2026-09-18)
+## Deferred from: code review of spec-38-2-voice-agent-worker-runtime-silero-vad-streaming.md (2026-09-18) — RESOLVED 2026-10-11 (voice dispatcher landed in Story 38.7, commit 4b2776b0f)
 - Implement `"voice"` channel dispatcher in Sequencer [app/services/sequencer/dispatch.py:508] — deferred: out-of-scope for Story 38.2 worker runtime; belongs to Story 38.7 outbound trigger campaign integration.
 
 ## 2026-09-20 — ChainLens contents review deferrals (Story 20.5)
@@ -1865,7 +1865,7 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-4-content-guardrails-jev-noul-battery.md`
   summary: Live-verify rag run showed Jev `is_relevant` over-drops VN text lacking literal geo terms — 6/18 real Quận 3 listings scored rel=0.04–0.09 and were hard-dropped despite being correct results. Fixed same-day via demote-to-tail for relevance-negative verdicts on rag surfaces.
   evidence: `scripts/verify_content_guardrails_39_4.py --mode rag` (2026-09-22); threshold tuning could not help — Jev was already confident (rel≤0.09); issue is text-limited judgment, not gate calibration.
-  resolved: 2026-09-22 — commit `64eef5446`: `_filter_rag_results` + `private_provider.search` move `DROP+reasons=("irrelevant",)` results to tail instead of removing; injection/mask_failed still hard-drop. Residual watch item: demoted docs still consume agent context tokens — if tail-noise becomes a problem, add `DECISION_FILTER_DROP_IRRELEVANT` env to flip back to hard-drop.
+  resolved: 2026-09-22 — commit `64eef5446`: `_filter_rag_results` + `private_provider.search` move `DROP+reasons=("irrelevant",)` results to tail instead of removing; injection/mask_failed still hard-drop. Residual watch item resolved 2026-10-10: measured context-token delta (avg 91.5 tokens/chunk VN, +549 tokens overhead at 33% demote rate / top_k=20) and implemented bounded cap `DECISION_RAG_DEMOTED_CAP = 5` (~460 tokens ceiling) plus `DECISION_FILTER_DROP_IRRELEVANT` hard-drop switch.
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-7-decision-telemetry-dashboard-cost-tracking.md`
   summary: Cost alert evaluate on-read — `AdminHealthAlert` chỉ fire khi có admin mở dashboard sau khi breach; không có periodic check nên alert không fire khi zero page views.
   evidence: spec Design Notes + review (no findings against it — accepted design); nếu ops cần alert proactive (fire khi không ai xem dashboard), thêm Celery beat entry gọi cùng `_maybe_insert_cost_alert` logic — phải dùng advisory lock sẵn có để tránh race với on-read path.
@@ -1887,7 +1887,7 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   evidence: radar.py `run_periodic_signal_scan` broadcast loop (AC-1 literal đọc); nếu spam thành vấn đề, thêm filter theo workspace industry/ICP hoặc signal subscription opt-in.
   resolved: 2026-09-22 — `MAX_INCORPORATION_SIGNALS_PER_SCAN = 25` cap per workspace per scan; items vượt cap recur ở run sau qua dedupe-20h (không mất data). Relevance filter theo ICP vẫn là product decision — chưa implement.
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
-  summary: `stream:telegram:raw_events` không có producer trong repo — `TelegramStreamDaemon` chưa được instantiate; consumer AC-2 inert end-to-end tới khi producer ngoài (XActions?) push events.
+  summary: `stream:telegram:raw_events` không có producer trong repo — `TelegramStreamDaemon` chưa được instantiate; consumer AC-2 inert end-to-end tới khi producer ngoài (Medirus?) push events.
   evidence: verification-gap review 2026-09-22 (stream_daemon.py:132-164 chỉ re-export, không caller); cần xác nhận ai produce stream này trong deployment.
   status: BLOCKED (external) — 2026-09-22 re-verified: `TelegramStreamDaemon.handle_incoming_message()` tồn tại và push đúng `stream:telegram:raw_events`, nhưng không có instantiation/Telethon client loop nào trong repo (chỉ re-export qua `app/alerts/engine/telegram_listener.py`). Cần external deployment wiring — không phải code gap trong repo này.
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-1-proactive-intent-signal-radar-background-ingestion-tele.md`
@@ -1908,7 +1908,7 @@ All items previously deferred from these reviews were resolved in a follow-up pa
 - source_spec: `_bmad-output/implementation-artifacts/spec-39-6-voice-agent-post-stt-semantic-decisions.md`
   summary: Voice room-metadata orchestrator wiring — `create_call_room` has zero production callers, so `workspace_id`/`user_id`/`session_id` never reach `ctx.room.metadata`; voice telemetry stays log-only and `voice_escalation` context fields stay None until the call dispatcher attaches them.
   evidence: `LiveKitTelephonyClient.create_call_room`/`end_call` have no in-repo call sites (only tests); `VoiceSDRAgent` parses metadata correctly but no producer exists. Settle by wiring the outbound-call dispatcher (epic 38 orchestrator) to attach keys, then verify a `usage_type='decision' task='voice'` TokenUsage row lands.
-  status: BLOCKED (story dependency) — 2026-09-24 re-verified: the producer is Story 38.7 "Outbound Trigger Engine" (`sprint-status.yaml: backlog`). The consumer side is done — `VoiceSDRAgent` parses `ctx.room.metadata` → `workspace_id`/`user_id`/`session_id` and degrades to log-only when absent. LiveKit infra now ready: `livekit-dev` Docker container running on :7880 with `LIVEKIT_API_KEY/SECRET` dev keys in `.env.local`; `create_call_room` smoke-tested against the real server — room `call_dev-smoke-test` created with full `{workspace_id, user_id, session_id}` metadata. Nothing in-repo to wire until 38.7 lands; when it does, its `create_call_room(metadata=...)` call completes the path.
+  status: RESOLVED at code level — 2026-10-10: 38.7 landed; producer now wired in BOTH dispatch paths — `dispatch.py _send_voice_dispatch` and `voice_tasks._async_dispatch_voice_call` call `create_call_room(metadata={workspace_id,user_id,session_id,phone_e164,lead_id})` before `dispatch_sip_outbound` (also fixed a live `dispatch_call` AttributeError bug — method never existed). Remaining: live-call verify a `usage_type='decision' task='voice'` TokenUsage row lands. Previous note (2026-09-24): the producer is Story 38.7 "Outbound Trigger Engine" (`sprint-status.yaml: backlog`). The consumer side is done — `VoiceSDRAgent` parses `ctx.room.metadata` → `workspace_id`/`user_id`/`session_id` and degrades to log-only when absent. LiveKit infra now ready: `livekit-dev` Docker container running on :7880 with `LIVEKIT_API_KEY/SECRET` dev keys in `.env.local`; `create_call_room` smoke-tested against the real server — room `call_dev-smoke-test` created with full `{workspace_id, user_id, session_id}` metadata. Nothing in-repo to wire until 38.7 lands; when it does, its `create_call_room(metadata=...)` call completes the path.
 - source_spec: `_bmad-output/implementation-artifacts/stories/37-3-smart-meeting-booking-engine-for-auto-reply-google-lark.md`
   summary: RESOLVED — prospect-facing booking page implemented at `nowing_web/app/book/[workspace_id]/[lead_id]/page.tsx` backed by new unauthenticated `app/routes/public_booking_routes.py` (`/api/v1/public/book/{ws}/{lead}/slots|book`, rate-limited, lead-UUID-as-capability). Browser-verified via Chrome MCP on real backend:4445: slots render with ICT labels, invalid lead → 404, book with bad creds → 502 surfaced as VN error + lock released.
   evidence: remaining gap is a real-calendar happy path (needs working Google/Lark creds, not the dummy connector used in E2E).
@@ -1965,3 +1965,106 @@ All items previously deferred from these reviews were resolved in a follow-up pa
   production credentials but the contract path is verified end-to-end.
 - ~~Browser verification~~ DONE 2026-09-23 (Chrome MCP, ws 46): tiers,
   slider, modal, countdown tick, fail-closed 503s all verified live.
+
+---
+
+## Triage sweep 2026-10-11 — Open items còn lại (14 findings, 13 unique) — RESOLVED 2026-10-12 via spec-debt-sweep-open-findings.md
+
+Sweep toàn bộ sổ cái deferred-work.md: ~96 block; 10 block đóng bằng RESOLVED marker, 6 block TRIAGED. Danh sách 14 findings dưới đây đã được xử lý hoàn toàn theo `_bmad-output/implementation-artifacts/spec-debt-sweep-open-findings.md`:
+
+### Block: 4-8e-ci-deploy-gate-for-chat-regression — RESOLVED
+- **Integration test thiếu cho gate-failure notification path**: Resolved. Test `test_notify_gate_failure_called_on_gate_violation` trong `nowing_evals/tests/suites/chat/test_regression.py`.
+
+### Block: 7-7-mcp-server-tool-expansion — RESOLVED
+- **Double query trong `RunService.launch`**: Resolved. Documented intentional defensive re-query trong `nowing_backend/app/automations/services/run.py:81-84`.
+- **Test gap — provider-down SSE mid-stream**: Resolved. Test `test_chat_stream_sse_request_error_mid_stream_raises_tool_error` trong `nowing_mcp/tests/test_chat_tool.py`.
+- **Test gap — 402 mid-stream**: Resolved. Test `test_chat_stream_sse_402_mid_stream_raises_tool_error` trong `nowing_mcp/tests/test_chat_tool.py`.
+
+### Block: 2-6-indeed-jobs-scraper — RESOLVED
+- **Test gap — multi-page pagination**: Resolved. Test `test_respects_max_pages_across_multiple_pages` trong `nowing_backend/tests/unit/proprietary/platforms/indeed/test_scraper.py`.
+
+### Block: 18-3-agent-registry — RESOLVED
+- **Tool catalog tools bị main-agent runtime bỏ qua**: Resolved. Documented by-design filter trong `nowing_backend/app/agents/chat/multi_agent_chat/main_agent/runtime/factory.py:213-217`.
+- **FE không pre-validate `client_id`**: Resolved. Trim `client_id`, handle và toast rõ ràng 400 error từ backend API trong `nowing_web/app/admin/agent-registry/page.tsx`.
+- **UI soft-deleted agents + char counter**: Resolved. Added character counter `x/8000` và `is_active` filter (All / Active / Inactive) trong `nowing_web/app/admin/agent-registry/page.tsx`.
+- **Boundary tests thiếu**: Resolved. Tests max-length boundary và overlap trong `nowing_backend/tests/integration/routes/test_admin_agent_registry.py`.
+- **`enabled_tools`/`disabled_tools` overlap không được validate**: Resolved. `_validate_tools_disjoint` model_validator và deduplication trong `nowing_backend/app/schemas/agent_config.py` và unit tests `tests/unit/schemas/test_agent_config.py`.
+
+### Block: 18-4-agentconfig-prompt-injection — RESOLVED
+- **`platform_metadata` concurrent updates không log/serialize**: Resolved. Audit log structured snapshot trong `nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py:233-241`.
+- **Render-time size check thiếu**: Resolved. 4096-byte hard cap với marker truncate trong `nowing_backend/app/tasks/chat/streaming/flows/new_chat/input_state.py:284-301` và unit tests `tests/unit/tasks/chat/test_new_chat_orchestrator.py`.
+- **`enabled_tools`/`disabled_tools` overlap**: Resolved chung tại `schemas/agent_config.py`.
+
+### Block: story-36.6b — RESOLVED
+- **`context.targetId` fallback string slug**: Resolved. `_safe_int_target_id` trong `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` và safe target_id coercion trong `nowing_backend/app/tasks/social_stream_worker.py`. Unit tests trong `test_medirus_adapter_v2.py` và `test_social_stream_worker.py`.
+
+
+## Deferred from: code review of spec-debt-sweep-retro-action-items.md (2026-10-13) — RESOLVED 2026-10-13
+
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `session.get(Lead, lead_id)` scalar lookup vs composite PK (id, workspace_id) in compliance_purge_service lead-purge path — likely InvalidRequestError; lead_ids_to_check drops workspace_id~~
+  RESOLVED: `lead_keys_to_check` tuple `(lead_id, ws_id)` và lookup `await session.get(Lead, (lead_id, ws_id))` trong `compliance_purge_service.py:98-118`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `hubspot_webhook` fail-opens when `HUBSPOT_WEBHOOK_SECRET` is empty (`verify_hubspot_signature` returns True); also signature algorithm may not match HubSpot v3 spec (method+uri+body+timestamp, base64 HMAC)~~
+  RESOLVED: Fail-closed khi secret rỗng/None, triển khai chuẩn HubSpot v3 signature (method + request_uri + body + timestamp, HMAC-SHA256 base64) và timestamp replay validation (300s window) trong `crm_webhook_service.py` & `crm_routes.py`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `xautoclaim` called with hardcoded `start_id="0-0"` every consumer loop — rescans PEL from start instead of advancing cursor~~
+  RESOLVED: Cursor advance `autoclaim_cursor = claim_res[0]` (hoặc fallback `0-0` nếu rỗng/0-0) trong `social_stream_worker.py:1080-1110`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `cdp_stream` finally-block cleanup is sequential without per-step guards — a throwing `pubsub.unsubscribe()` skips `redis.delete(stream_lock_key)`, leaving lock until 3600s TTL → 409 on reconnect~~
+  RESOLVED: Tách từng bước cleanup (`unsubscribe`, `close`, `redis.delete`) vào các khối `try...except` độc lập trong `dsh_routes.py:480-492`.
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`
+  summary: `WorkspaceActivityTimeline` `fetchTimeline` does not guard undefined workspaceId (fetch to `/workspaces/undefined/...`) and has no AbortController on workspace change~~
+  RESOLVED: Guard `if (!workspaceId) return;` và thêm `AbortController` cleanup trong `WorkspaceActivityTimeline.tsx`.
+
+## Deferred from: code review of spec-debt-sweep-retro-action-items.md (2026-10-13, round 2)
+
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md`~~
+  ~~summary: `hubspot_webhook` (`nowing_backend/app/routes/crm_routes.py:290`) computes `request_uri = str(request.url)` — unverified `medium` (`maybe-false`); if Uvicorn runs behind a TLS-terminating reverse proxy without `--proxy-headers` / `--forwarded-allow-ips`, `str(request.url)` carries `http://` instead of external `https://` signed by HubSpot. Requires checking production Uvicorn/Dokploy proxy flags before trusting `X-Forwarded-Proto` / `X-Forwarded-Host`.~~
+  **RESOLVED (verified 2026-10-14, code-level):** `ProxyHeadersMiddleware` đã được đăng ký trong `nowing_backend/app/app/factory.py:176` (`app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")`). Middleware này đọc `X-Forwarded-Proto`/`X-Forwarded-Host` từ Cloudflare/Dokploy Traefik (mặc định Traefik gửi `X-Forwarded-Proto`), nên `str(request.url)` trong `hubspot_webhook` sẽ mang scheme `https://` khớp với URL HubSpot đã ký. Không cần flag `--proxy-headers` của Uvicorn CLI vì ASGI middleware đã cover. Chữ ký vẫn fail-closed: `trusted_hosts="*"` rộng nhưng không tạo lỗ hổng — attacker spoof `X-Forwarded-Proto` chỉ đổi được `request_uri` trong phép tính HMAC, vẫn cần secret để ký hợp lệ. Đóng finding này; nếu production webhook từng trả 401 do scheme mismatch thì mới cần mở lại và check Traefik config.
+
+## Deferred from: debt sweep 3 retro action items (2026-10-13)
+
+- **Finding / Item 28:** `epic-31-retro-item-28`: Bổ sung telemetry giám sát mức tiêu thụ tài nguyên cgroup (OOM/throttling) của container Dokploy.
+  - **Status:** BLOCKED-OUTSIDE-REPO
+  - **Reason / when to revisit:** Yêu cầu quyền truy cập hạ tầng host Dokploy/Docker cgroup v2 metrics (`/sys/fs/cgroup/memory.events`, `cpu.stat`), nằm ngoài phạm vi codebase nội bộ. Revisit khi có phiên bảo trì hạ tầng production Dokploy.
+
+- ~~**Finding / Item 35:** `epic-33-retro-item-35`: Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu.~~
+  - ~~**Status:** BLOCKED-OUTSIDE-REPO~~
+  - **RESOLVED 2026-10-14:** Chính sách đã được Product Owner xác định và ghi thành văn bản tại `_bmad-output/planning-artifacts/credit-refund-policy-compliance-purge-draft-2026-10-13.md`; `sprint-status.yaml` đánh dấu `epic-33-retro-item-35` = `done` (ref policy doc). Bản ghi BLOCKED-OUTSIDE-REPO trước đó là stale.
+
+## Deferred from: Epic 42 Hermes-replay e2e (2026-11-17, live verification)
+
+- **Finding:** `api_access_enabled` gate — PAT chỉ thấy/call được workspace có `api_access_enabled=true` (`GET /workspaces` trả `[]` silently cho PAT, `RequirePermission` 403 ở write endpoints). **Update 2026-11-17:** `PUT /workspaces/{id}/api-access` ĐÃ tồn tại (`core.py:430`, perm `API_ACCESS_MANAGE`, session-only) — gap thực sự chỉ là **discoverability**: 403 body không nói flag nào/cách bật, agent ngoài vấp mà không biết tại sao.
+  - **Action:** (a) 403 detail nêu rõ flag + route bật; (b) docs external-agent onboarding trong `nowing_mcp` README.
+  - **Reason / when to revisit:** Gate cố ý (fail-closed đúng thiết kế bảo mật). Đã spec trong `spec-42-9-lead-pat-scope-hardening.md` (T3).
+
+- **Finding:** `google_search` scraper fail khi thiếu Playwright/Patchright browser binaries ("Executable doesn't exist ... ms-playwright/chromium-1228") — dev env dependency, không phải bug code.
+  - **Action:** Thêm `patchright install` (hoặc playwright install) vào dev setup docs / setup script. Agent đã failover graceful sang Google Maps — đúng thiết kế degraded.
+  - **Reason / when to revisit:** Revisit khi làm dev-onboarding pass hoặc CI image chuẩn cho scrapers.
+
+- **Finding:** Medirus MCP session "session is closed or tainted" 1 lần trong live run (sau đó retry + `medirus_scrape_or_local` fallback thành công). Root cause session lifecycle chưa rõ (stale session cache sau khi daemon restart?).
+  - **Action:** Quan sát thêm; nếu tái diễn → audit `MedirusMcpClient` session reuse/refresh trên daemon restart.
+  - **Reason / when to revisit:** Transient, đã có fallback đúng spec. Revisit khi có báo cáo lặp hoặc production log đầy đủ.
+
+- **Finding:** `MissingWorkspaceId` trong `medirus-mcp.log` chưa verify được trực tiếp (daemon log không đọc được từ backend side; daemon sống, calls đã fire).
+  - **Action:** Runtime verify sau deploy — grep `medirus-mcp.log` để xác nhận 42.8 triệt tiêu warning.
+  - **Reason / when to revisit:** Code-level đã test (injection tại wiring layer). Revisit trong PR merge note / deploy checklist.
+
+## Deferred from: code review spec-42-9 (2026-11-17)
+
+- **Finding:** PAT-scope sweep còn thiếu 4 file routes (spec 42-10 dự kiến): `enrichment_routes.py` (enrich_leads_bulk :80, enrich_cost :121, enrich_lead :149, list_verified_contacts :197, list_enrichment_requests :227), `lead_scoring_routes.py` (score_leads perm `LEADS_SCORE` + 4 endpoint), `lead_clipper_routes.py` (clip_lead :341, get_zalo_copilot_context :486), `outbound_routes.py` (zalo-draft :173, zns-send :251, telegram-alert :556). Tất cả `get_auth_context` + perm nhưng thiếu seam `RequirePatScope` → PAT scopes bất kỳ (kể cả `[]` + `api_access_enabled`) vẫn gọi được endpoint tốn credit — cùng class lỗ hổng 42.9 vá.
+  - **Action:** Viết spec 42-10 mở rộng sweep — thêm `_pat_scope` + test pinning từng endpoint, cùng shape spec 42-9.
+  - **Reason / when to revisit:** Decision sau 4-layer review 42.9 — user chọn narrow Goal thay vì kéo dài spec. Revisit ngay khi bắt đầu hardening pass tiếp theo.
+
+- **Finding:** `reverse_icp` gắn `leads:read` nhưng thực chất chạy LLM (asymmetry scope-vs-cost so với `resolve_phone → leads:enrich`).
+  - **Action:** Chuẩn hoá convention scope-theo-cost (endpoint tốn credit/LLM nên đòi `enrich`/`write` chứ không `read`) trong spec sweep tiếp theo.
+  - **Reason / when to revisit:** Cần decision về convention — không đổi ngầm trong bundle 42.9.
+
+## Deferred from: spec-42-10 census (2026-11-17)
+
+- **Finding:** PAT-scope sweep vẫn còn sót ít nhất 2 file lead-domain: `dnc_routes.py` (endpoints dùng `Permission.LEADS_READ`/`LEADS_WRITE` tại :210, :266, :296 — DNC = do-not-contact, lead-ops domain) và `lead_pipeline_routes.py` (:73 inline check `has_permission(LEADS_WRITE or CRM_WRITE)` — không qua `check_permission` nên PAT bypass cả scope lẫn api-access gate, giống `resolve_phone` trước 42.9). Census toàn `app/routes/`: ~80 file dùng `get_auth_context` chưa có seam, nhưng phần lớn ngoài domain leads:* (PAT convention hiện chỉ cover leads domain).
+  - **Action:** Spec 42-11 (hoặc gộp vào hardening bundle tiếp): seam `dnc_routes` theo perm khai báo (read/write), `lead_pipeline_routes` vừa seam vừa gate. Đồng thời census lại file nào còn inline `has_permission`/`get_user_permissions` không qua `check_permission` (bypass api-access gate cho PAT).
+  - **Reason / when to revisit:** Phát hiện trong lúc verify 42-10 — ngoài enumeration spec 42-10 (đã narrow theo decision user ở 42.9). Revisit cùng lúc 42-10 merge hoặc hardening pass sau.
+
+

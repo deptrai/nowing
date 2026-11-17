@@ -61,12 +61,9 @@ function renderOAuthPage(title: string, message: string): string {
 
 export function writeOAuthPage(
   res: http.ServerResponse,
-  statusCode: number,
-  title: string,
-  message: string,
-  _tone?: 'success' | 'error' | 'neutral',
+  args: { statusCode: number; title: string; message: string; tone?: 'success' | 'error' | 'neutral' },
 ): void {
   res
-    .writeHead(statusCode, { 'content-type': 'text/html; charset=utf-8' })
-    .end(renderOAuthPage(title, message));
+    .writeHead(args.statusCode, { 'content-type': 'text/html; charset=utf-8' })
+    .end(renderOAuthPage(args.title, args.message));
 }

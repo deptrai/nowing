@@ -218,6 +218,7 @@ def is_known_text_only_chat_model(
             value = info.get("supports_vision")  # type: ignore[union-attr]
         except AttributeError:
             value = None
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         if value is False:
             return True
 

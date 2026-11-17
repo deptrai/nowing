@@ -445,7 +445,7 @@ export function LayoutShell({
 									aria-valuenow={sidebarWidth}
 									tabIndex={0}
 									onPointerDown={onResizePointerDown}
-									style={{ touchAction: "none" }}
+									style={{ touchAction: "none" }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic sidebar width for drag-resize
 									className={cn(
 										"absolute top-0 right-0 h-full w-4 translate-x-1/2 z-50 m-0 border-0 bg-transparent p-0 select-none cursor-col-resize",
 										"after:content-[''] after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-transparent hover:after:bg-border/80 after:transition-colors",

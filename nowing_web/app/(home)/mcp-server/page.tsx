@@ -63,7 +63,7 @@ const CURSOR_CONFIG = `{
   }
 }`;
 
-function useSteps(t: (k: string) => string) {
+function getSteps(t: (k: string) => string) {
 	return [
 		{ icon: KeyRound, title: t("step1_title"), description: t("step1_desc") },
 		{ icon: TerminalSquare, title: t("step2_title"), description: t("step2_desc") },
@@ -72,7 +72,7 @@ function useSteps(t: (k: string) => string) {
 }
 
 /** Mirrors the tool registry in nowing_mcp (see its README). */
-function useToolGroups(t: (k: string) => string) {
+function getToolGroups(t: (k: string) => string) {
 	return [
 		{
 			icon: Server,
@@ -151,8 +151,8 @@ export const dynamic = "force-dynamic";
 
 export default async function McpServerPage() {
 	const t = await getTranslations("mcpServer");
-	const STEPS = useSteps(t);
-	const TOOL_GROUPS = useToolGroups(t);
+	const STEPS = getSteps(t);
+	const TOOL_GROUPS = getToolGroups(t);
 	const FAQ = useFaq(t);
 	return (
 		<>

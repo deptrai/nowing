@@ -32,7 +32,7 @@ test.describe("Auto-Reply messaging settings", () => {
 	test("owner can enable auto-reply and persist fallback + recipient", async ({ page }) => {
 		await page.goto(`/dashboard/${workspaceId}/user-settings/messaging-channels`);
 
-		const card = page.getByText("AI Tự Động Trả Lời Tin Nhắn 24/7").locator("xpath=../../..");
+		const card = page.getByText(/AI Auto-Reply 24\/7|AI Tự Động Trả Lời Tin Nhắn 24\/7/i).locator("xpath=../../..");
 		await expect(card).toBeVisible();
 
 		const toggle = card.getByTestId("auto-reply-toggle");
@@ -61,7 +61,7 @@ test.describe("Auto-Reply messaging settings", () => {
 		await page.goto(`/dashboard/${workspaceId}/user-settings/messaging-channels`);
 
 		const reloadedCard = page
-			.getByText("AI Tự Động Trả Lời Tin Nhắn 24/7")
+			.getByText(/AI Auto-Reply 24\/7|AI Tự Động Trả Lời Tin Nhắn 24\/7/i)
 			.locator("xpath=../../..");
 		await expect(reloadedCard).toBeVisible();
 		const reloadedToggle = reloadedCard.getByTestId("auto-reply-toggle");

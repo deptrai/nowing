@@ -231,7 +231,7 @@ function Row({
 			{/* Track holds the list twice; the -50% shift wraps seamlessly (margins, not gap). */}
 			<div
 				className="flex w-max shrink-0 group-hover:paused motion-reduce:paused"
-				style={{ animation: `${animation} ${duration}s linear infinite` }}
+				style={{ animation: `${animation} ${duration}s linear infinite` }} // pi-lens-ignore: ast-grep:inline-styles -- animation name+duration come from props
 			>
 				{[...posts, ...posts].map((post, i) => (
 					<EmbedBoundary
@@ -279,7 +279,7 @@ export function SocialProof() {
 			<div
 				ref={ref}
 				className="mt-10 flex min-h-[1360px] flex-col gap-4"
-				style={{
+				style={{ // pi-lens-ignore: ast-grep:inline-styles -- static mask gradient, long value kept inline for readability
 					maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
 					WebkitMaskImage:
 						"linear-gradient(to right, transparent, black 6%, black 94%, transparent)",

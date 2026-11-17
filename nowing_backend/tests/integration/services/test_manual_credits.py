@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import delete, select
@@ -50,7 +50,7 @@ async def test_adjust_credits_credit_success(
             CreditTransaction.workspace_id == db_workspace.id
         )
     )
-    assert len(tx_count.scalars().all()) == 1
+    assert len(tx_count.scalars().all()) == 1  # nosemgrep
 
 
 async def test_adjust_credits_debit_success(
@@ -157,7 +157,7 @@ async def test_adjust_credits_staff_quota_guardrail(
             CreditTransaction.direction == "CREDIT",
         )
     )
-    assert len(audit.scalars().all()) == 1
+    assert len(audit.scalars().all()) == 1  # nosemgrep
 
 
 async def test_adjust_credits_idempotency_double_submit(
@@ -194,7 +194,7 @@ async def test_adjust_credits_idempotency_double_submit(
             CreditTransaction.idempotency_key == idempotency_key
         )
     )
-    assert len(all_tx.scalars().all()) == 1
+    assert len(all_tx.scalars().all()) == 1  # nosemgrep
 
     await db_session.refresh(db_workspace)
     assert db_workspace.credit_micros_balance == 25 * CREDIT_TO_MICROS
@@ -276,7 +276,7 @@ async def test_adjust_credits_concurrent_quota_guard(
             all_tx = await session.execute(
                 select(CreditTransaction).where(CreditTransaction.workspace_id == workspace_id)
             )
-            assert len(all_tx.scalars().all()) == 1
+            assert len(all_tx.scalars().all()) == 1  # nosemgrep
 
             ws = await session.get(Workspace, workspace_id)
             assert ws is not None

@@ -1,4 +1,4 @@
-# Adversarial Architecture Review: Nowing <-> XActions Connection Spine
+# Adversarial Architecture Review: Nowing <-> Medirus Connection Spine
 
 **Target:** `/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md`  
 **Date:** 2026-09-13  
@@ -17,7 +17,7 @@
 | ID | Severity | Area | Conflict Core |
 |---|---|---|---|
 | **C1** | Critical | Stream Payload Contract | CamelCase vs Snake_case field mismatch; Pydantic ValidationError drops 100% events |
-| **C2** | Critical | Multi-Tenancy Context | XActions thin event lacks `target_id`/`workspace_id`; DB drops all unowned records |
+| **C2** | Critical | Multi-Tenancy Context | Medirus thin event lacks `target_id`/`workspace_id`; DB drops all unowned records |
 | **C3** | Critical | Data Plane Dereferencing | Thin pointer has no `content`; worker extraction yields 0 leads and 0.0 fit scores |
 | **C4** | Critical | Client Lifecycle in Runtime | AD-5 proc-scoped singleton crashes on Celery `run_async_celery_task` loop teardown |
 | **H1** | High | Control Plane RPC Schema | Flat vs nested `args` in `x_scrape`; parameter stripping or schema validation failure |
@@ -26,7 +26,7 @@
 | **H4** | High | Governor & Multi-Workspace | Global 15 burst / 60 RPM on `nowing` causes inter-workspace starvation via Celery beat |
 | **M1** | Medium | Checkpoint Semantic Inversion | ACL `lastCursor` resumes backward in history; periodic monitoring starves of fresh delta posts |
 | **M2** | Medium | Crawler StoreBatch Gap | Non-social crawlers (Shopee, etc.) omit `storeBatch`; stream hook never fires |
-| **M3** | Medium | Discovery Taxonomy Mismatch | Compound platform keys in Nowing vs atomic descriptors in XActions break dynamic mapping |
+| **M3** | Medium | Discovery Taxonomy Mismatch | Compound platform keys in Nowing vs atomic descriptors in Medirus break dynamic mapping |
 | **M4** | Medium | Error Policy Coupling | Adapter mapping table cannot mutate Celery tasks or DB models without layering violation |
 | **L1** | Low | Documentation Invariant | Spine specifies `UNIQUE(platform, external_post_id)` while DB requires `workspace_id` |
 | **L2** | Low | Stream Trimming Divergence | AD-3 specifies MAXLEN ~1M while existing adapter uses 20,000; memory unbounded |
@@ -39,7 +39,7 @@
 
 #### Finding C1: Stream Payload Contract Mismatch (Wire Casing & Required Fields)
 - **Lỗ hổng:**
-  AD-3 định nghĩa thin event do XActions emit: `{id, platform, externalId, category, authorId, crawledAt, storageRef, scraperId}` (sử dụng camelCase chuẩn JavaScript/Node.js).
+  AD-3 định nghĩa thin event do Medirus emit: `{id, platform, externalId, category, authorId, crawledAt, storageRef, scraperId}` (sử dụng camelCase chuẩn JavaScript/Node.js).
   Trong khi đó, Nowing consumer (`app/tasks/social_stream_worker.py`, lines 51-80) định nghĩa `SocialPostEvent(BaseModel)` với `extra="ignore"`, yêu cầu bắt buộc:
   - `platform: str`
   - `external_post_id: str` (không có default value, không có `validation_alias` hoặc alias)
@@ -48,7 +48,7 @@
   - `storage_ref: str | None = None`
   - `scraper_id: str | None = None`
 - **Hai Unit minh họa:**
-  - *Unit A (XActions AbstractCrawler):* Tuân thủ AD-3, sau `storeBatch` thực hiện `xAdd` vào `stream:social:raw_posts` với payload:
+  - *Unit A (Medirus AbstractCrawler):* Tuân thủ AD-3, sau `storeBatch` thực hiện `xAdd` vào `stream:social:raw_posts` với payload:
     `{"id": "fb_123", "platform": "facebook", "externalId": "100200300", "category": "social", "authorId": "usr_1", "crawledAt": "2026-09-13T10:00:00Z", "storageRef": "fb_123"}`.
   - *Unit B (Nowing social_stream_worker):* Nhận message từ Redis. `SocialPostEvent.model_validate(payload)` được gọi. Vì payload có `externalId` thay vì `external_post_id`, Pydantic loại bỏ `externalId` (do `extra="ignore"`) và báo lỗi `ValidationError: Field required: external_post_id`.
   Hàm `process_social_post_event` bắt `ValidationError`, log warning `"Invalid social post event"` và return `None`. Message bị ACK và đưa vào DLQ hoặc biến mất.
@@ -62,7 +62,7 @@
 
 #### Finding C2: Mất hoàn toàn Multi-Tenant Context (`target_id`, `workspace_id`) khiến Post không thể ghi DB
 - **Lỗ hổng:**
-  AD-4 cấm Nowing adapter ghi vào stream (`adapter_v2.ingest_raw_post_to_stream` bị loại bỏ) và chỉ định XActions là SOLE WRITER.
+  AD-4 cấm Nowing adapter ghi vào stream (`adapter_v2.ingest_raw_post_to_stream` bị loại bỏ) và chỉ định Medirus là SOLE WRITER.
   AD-3 quy định thin event chỉ gồm 8 trường kỹ thuật của scraper.
   Tuy nhiên, cơ sở dữ liệu của Nowing (`app/models/leads/social.py`, line 90 và `app/tasks/social_stream_worker.py`, lines 275-295) yêu cầu:
   - Cột `social_posts.workspace_id` là `NOT NULL` với `ForeignKey("workspaces.id")`.
@@ -81,7 +81,7 @@
         return None
     ```
 - **Hai Unit minh họa:**
-  - *Unit A (XActions AbstractCrawler):* Crawl dữ liệu và ghi vào Redis Stream với đúng 8 trường theo AD-3. XActions hoàn toàn không biết `target_id` hay `workspace_id` trong Postgres của Nowing là gì.
+  - *Unit A (Medirus AbstractCrawler):* Crawl dữ liệu và ghi vào Redis Stream với đúng 8 trường theo AD-3. Medirus hoàn toàn không biết `target_id` hay `workspace_id` trong Postgres của Nowing là gì.
   - *Unit B (Nowing social_stream_worker):* Đọc event từ Redis Stream. Trường `target_id` là `None`, `workspace_id` là `None`. Consumer không thể xác định bài viết thuộc tenant/workspace nào, ghi log warning và hủy bỏ bản ghi (`return None`).
 - **Hậu quả:** Dữ liệu crawl về thành công 100% nhưng không thể lưu vào cơ sở dữ liệu Nowing. Toàn bộ bài viết bị drop trong im lặng.
 - **Đề xuất siết AD:**
@@ -95,7 +95,7 @@
   Spine khẳng định nguyên tắc tại Consistency Conventions:
   *"Thin pointer `{id,platform,externalId,category,authorId,crawledAt,storageRef,scraperId}`; payload đầy đủ lấy từ `storageRef`/artifact — không nhồi content vào stream."*
   Đồng thời, phần "Deferred" ghi nhận:
-  *"Artifact delivery mechanism (Q1): shared volume `XACTIONS_ARTIFACT_ROOT` hay presigned URL — chốt khi biết topo deploy prod."*
+  *"Artifact delivery mechanism (Q1): shared volume `MEDIRUS_ARTIFACT_ROOT` hay presigned URL — chốt khi biết topo deploy prod."*
   Tuy nhiên, tại Nowing consumer (`app/tasks/social_stream_worker.py`, lines 240-255):
   ```python
   extractor = SocialEntityExtractor()
@@ -105,7 +105,7 @@
   ```
   Consumer lấy trực tiếp `event.content` để trích xuất số điện thoại, email, địa chỉ, giá cả, tính intent và fit score. Consumer **hoàn toàn không có code dereference `storageRef`**.
 - **Hai Unit minh họa:**
-  - *Unit A (XActions AbstractCrawler):* Tuân thủ AD-3, chỉ emit con trỏ mỏng không có `content` (hoặc `content` rỗng), gán `storageRef = "fs:/tmp/xactions/posts/123.json"`.
+  - *Unit A (Medirus AbstractCrawler):* Tuân thủ AD-3, chỉ emit con trỏ mỏng không có `content` (hoặc `content` rỗng), gán `storageRef = "fs:/tmp/medirus/posts/123.json"`.
   - *Unit B (Nowing social_stream_worker):* Parse `event.content` rỗng (`""`). `SocialEntityExtractor` trả về 0 phone, 0 email, intent = `"other"`. `fit_score` luôn bằng `0.0`. Điều kiện `if intent_tag in SOCIAL_LEAD_INTENTS` không bao giờ thỏa mãn.
 - **Hậu quả:** Bản ghi lưu vào `social_posts` có nội dung rỗng. Không có bất kỳ CRM `Lead` nào được tạo ra. Mục tiêu kinh doanh cốt lõi của việc tích hợp mạng xã hội bị tê liệt hoàn toàn.
 - **Đề xuất siết AD:**
@@ -117,7 +117,7 @@
 #### Finding C4: Vòng đời Client MCP bị phá hủy bởi cơ chế Event Loop của Celery Worker
 - **Lỗ hổng:**
   AD-5 quy định:
-  *"Persistent shared `XActionsMcpClient` per worker ... Rule: proc-scoped singleton (`get_client()`), initialize 1 lần, keep-alive; call_tool stateless".*
+  *"Persistent shared `MedirusMcpClient` per worker ... Rule: proc-scoped singleton (`get_client()`), initialize 1 lần, keep-alive; call_tool stateless".*
   Trong khi đó, runtime thực tế của Nowing (`app/tasks/celery_tasks/__init__.py`, lines 115-165) định nghĩa chuẩn thực thi mọi async Celery task qua hàm `run_async_celery_task`:
   ```python
   def run_async_celery_task[T](coro_factory: Callable[[], Awaitable[T]]) -> T:
@@ -133,11 +133,11 @@
   Mỗi lần Celery task chạy, một `asyncio.AbstractEventLoop` mới được khởi tạo và bị **đóng (`loop.close()`) ngay khi task kết thúc** để dọn dẹp các connection pool của `asyncpg`.
 - **Hai Unit minh họa:**
   - *Unit A (Task 1 - ingest_social_target_task):* Gọi `get_client()`. Client khởi tạo `streamablehttp_client`, bind session và transport vào Event Loop của Task 1. Task 1 hoàn thành, loop của Task 1 bị đóng (`loop.close()`).
-  - *Unit B (Task 2 - ingest_social_target_task chạy sau đó trên cùng worker process):* Nhận lại instance singleton `XActionsMcpClient`. Task 2 gọi `client.call_tool(...)` trên Event Loop mới của Task 2. Session MCP cố gắng sử dụng stream/connection gắn với loop cũ đã bị đóng.
+  - *Unit B (Task 2 - ingest_social_target_task chạy sau đó trên cùng worker process):* Nhận lại instance singleton `MedirusMcpClient`. Task 2 gọi `client.call_tool(...)` trên Event Loop mới của Task 2. Session MCP cố gắng sử dụng stream/connection gắn với loop cũ đã bị đóng.
   Python ném ngoại lệ nghiêm trọng: `RuntimeError: Event loop is closed` hoặc `RuntimeError: Task <...> attached to a different loop`.
 - **Hậu quả:** Celery worker chạy thành công đúng 1 task đầu tiên, sau đó vĩnh viễn crash ở tất cả các task tiếp theo cho đến khi tiến trình worker bị khởi động lại.
 - **Đề xuất siết AD:**
-  - Sửa đổi **AD-5 Rule:** Loại bỏ khái niệm "proc-scoped singleton trần". Định nghĩa `XActionsMcpClientPool` gắn theo vòng đời của Event Loop hiện hành (`loop-scoped client cache` hoặc thread-local loop check):
+  - Sửa đổi **AD-5 Rule:** Loại bỏ khái niệm "proc-scoped singleton trần". Định nghĩa `MedirusMcpClientPool` gắn theo vòng đời của Event Loop hiện hành (`loop-scoped client cache` hoặc thread-local loop check):
     ```python
     # Rule kiểm tra loop trước khi dùng
     if client._loop is None or client._loop.is_closed():
@@ -152,7 +152,7 @@
 #### Finding H1: Xung đột cấu trúc tham số `args` phẳng (Flat) vs lồng nhau (Nested) trong `x_scrape`
 - **Lỗ hổng:**
   AD-2 quy định: `x_scrape` nhận `{platform, action, args, accountId?, proxyUrl?, dryRun?}`. Ở đây `args` là một object lồng nhau (nested dictionary).
-  Tuy nhiên, trong code Nowing hiện tại (`app/proprietary/platforms/xactions/adapter_v2.py`, lines 40-75):
+  Tuy nhiên, trong code Nowing hiện tại (`app/proprietary/platforms/medirus/adapter_v2.py`, lines 40-75):
   ```python
   "chotot_category": {
       "tool": "x_scrape",
@@ -165,7 +165,7 @@
   ```
   Nowing đang build tham số phẳng (flat), nơi `category` và `keyword` là sibling của `platform` và `action`.
 - **Hai Unit minh họa:**
-  - *Unit A (XActions server.js):* Implement schema `x_scrape` theo AD-2, yêu cầu `args: { type: "object" }`. Handler đọc `const { platform, action, args } = params; return scrape(platform, action, args);`.
+  - *Unit A (Medirus server.js):* Implement schema `x_scrape` theo AD-2, yêu cầu `args: { type: "object" }`. Handler đọc `const { platform, action, args } = params; return scrape(platform, action, args);`.
   - *Unit B (Nowing adapter_v2.py):* Gửi `{ "platform": "shopee", "action": "search", "keyword": "laptop", "dryRun": false }`.
   Server MCP kiểm tra schema thấy thiếu trường bắt buộc `args` -> ném lỗi `XACT_4001: Invalid arguments (missing args)`. Hoặc server lấy `params.args` nhận `undefined`, gọi `scrape("shopee", "search", undefined)` -> Scraper chạy không có keyword tìm kiếm.
 - **Hậu quả:** Toàn bộ các lệnh scrape gửi qua `x_scrape` bị lỗi schema hoặc mất tham số lọc.
@@ -181,30 +181,30 @@
 #### Finding H2: Split-Brain Ingestion — Xung đột hai đường truyền dữ liệu (MCP Response vs Redis Stream)
 - **Lỗ hổng:**
   Spine nêu nguyên tắc: *"lệnh đi MCP, data đi stream"*.
-  Tuy nhiên, `scrape()` trong XActions là hàm đồng bộ (blocking) trả về kết quả mảng items, và MCP `x_scrape` đóng gói mảng này vào `result.data`.
-  Trong `social_xactions_ingest.py` (lines 180-210), Celery task `ingest_social_target`:
+  Tuy nhiên, `scrape()` trong Medirus là hàm đồng bộ (blocking) trả về kết quả mảng items, và MCP `x_scrape` đóng gói mảng này vào `result.data`.
+  Trong `social_medirus_ingest.py` (lines 180-210), Celery task `ingest_social_target`:
   1. Await `adapter.fetch_posts_for_target(target)`.
   2. Hàm này parse `result.data` từ MCP response.
   Nếu AD-4 loại bỏ bước Nowing ghi vào stream, thì Celery task này sẽ làm gì với `posts` nhận được từ MCP?
-  Nếu Celery task tự lưu `posts` vào database, trong khi `AbstractCrawler` ở XActions cũng vừa bắn các posts đó vào Redis Stream -> `social_stream_worker` cũng đọc và UPSERT:
+  Nếu Celery task tự lưu `posts` vào database, trong khi `AbstractCrawler` ở Medirus cũng vừa bắn các posts đó vào Redis Stream -> `social_stream_worker` cũng đọc và UPSERT:
   Hai worker chạy song song cùng insert/update một bài viết, dẫn đến race condition tại logic tính Lead và gửi Alert (`_create_lead_from_social_post` và `_evaluate_alerts_for_social_post`).
   Ngược lại, nếu Celery task chỉ gọi MCP rồi vứt bỏ `result.data`: thì việc `x_scrape` giữ connection HTTP chờ crawler cào xong hàng trăm items là lãng phí tài nguyên và dễ dính HTTP timeout (mặc định 60s).
 - **Hai Unit minh họa:**
-  - *Unit A (XActions Scraper):* Chạy crawl 25 bài Facebook. Ghi 25 bài vào Redis Stream, đồng thời trả 25 bài trong `result.data` qua MCP response.
+  - *Unit A (Medirus Scraper):* Chạy crawl 25 bài Facebook. Ghi 25 bài vào Redis Stream, đồng thời trả 25 bài trong `result.data` qua MCP response.
   - *Unit B (Nowing):* Celery task `ingest_social_target` nhận 25 bài từ MCP; cùng lúc Celery worker `process_social_stream` nhận 25 bài từ Redis. Cả hai cùng thực thi `LeadAssignmentService.assign_leads_batch`, gây duplicate email alert và phân bổ lead trùng lặp.
 - **Hậu quả:** Race condition, duplicate business actions (Alert, Lead notification), hoặc timeout kết nối MCP.
 - **Đề xuất siết AD:**
   - Bổ sung vào **AD-2 & AD-4 Rule:** Xác định rõ ngữ nghĩa phản hồi của `x_scrape` khi chế độ streaming bật (`REDIS_STREAM_ENABLED=true`):
     `x_scrape` trên control-plane chỉ trả về execution summary:
     `{ success: true, meta: { totalCrawled: 25, streamKey: "stream:social:raw_posts", durationMs: 4200 }, data: [] }`.
-    `social_xactions_ingest` chỉ chịu trách nhiệm trigger và cập nhật `target.last_scraped_at`, tuyệt đối không xử lý dữ liệu từ MCP response. Toàn bộ dữ liệu đi duy nhất qua Data plane (Redis Stream).
+    `social_medirus_ingest` chỉ chịu trách nhiệm trigger và cập nhật `target.last_scraped_at`, tuyệt đối không xử lý dữ liệu từ MCP response. Toàn bộ dữ liệu đi duy nhất qua Data plane (Redis Stream).
 
 ---
 
 #### Finding H3: Scraper các domain phi Social trả về Entity Object (`jobs`, `products`, `listings`) gây vỡ Parser
 - **Lỗ hổng:**
   Spine mở rộng scope ra 9 domain: ecom, realestate, recruitment, procurement, v.v. (AD-SOC-9).
-  Nhưng các crawler hiện có trong XActions không trả về mảng post đồng nhất:
+  Nhưng các crawler hiện có trong Medirus không trả về mảng post đồng nhất:
   - TopCV (`src/scrapers/recruitment/topcv/crawler.js`, line 113): trả về `{ jobs: [...], pageInfo: {...} }`.
   - Shopee (`src/scrapers/ecom/shopee/crawler.js`, line 160): trả về `{ products: [...], pageInfo: {...} }`.
   - Batdongsan (`src/scrapers/realestate/batdongsan/crawler.js`, line 160): trả về `{ listings: [...], pageInfo: {...} }`.
@@ -232,20 +232,20 @@
 
 #### Finding H4: Thundering Herd & Nghẽn Quota giữa các Workspace do gộp chung Consumer Quota
 - **Lỗ hổng:**
-  AD-8 quy định: Mọi call từ Nowing đều gắn `X-Consumer-Id: nowing`. XActions Rate Governor áp quota tĩnh: `rpmLimit: 60`, `burstLimit: 15`.
-  AD-8 yêu cầu: *"Throttle theo workspace do nowing tự giới hạn trước khi gọi — không dựa vào XActions per-user quota."*
-  Tuy nhiên, trong Nowing (`app/tasks/celery_tasks/social_xactions_ingest.py`, lines 225-260), scheduler `check_social_monitored_targets_task` chạy mỗi phút:
+  AD-8 quy định: Mọi call từ Nowing đều gắn `X-Consumer-Id: nowing`. Medirus Rate Governor áp quota tĩnh: `rpmLimit: 60`, `burstLimit: 15`.
+  AD-8 yêu cầu: *"Throttle theo workspace do nowing tự giới hạn trước khi gọi — không dựa vào Medirus per-user quota."*
+  Tuy nhiên, trong Nowing (`app/tasks/celery_tasks/social_medirus_ingest.py`, lines 225-260), scheduler `check_social_monitored_targets_task` chạy mỗi phút:
   Quét toàn bộ target của TẤT CẢ các workspace đến hạn cào và đẩy đồng loạt vào Celery (`ingest_social_target_task.delay(target.id)`).
   Nowing **hoàn toàn không có cơ chế client-side rate limiter / token bucket** theo workspace trước khi gọi MCP.
 - **Hai Unit minh họa:**
   - *Unit A (Workspace X có 20 targets):* Đến chu kỳ 15 phút, 20 task Celery của Workspace X kích hoạt đồng thời, gửi 20 HTTP requests với `X-Consumer-Id: nowing`.
   - *Unit B (Workspace Y có 1 target quan trọng):* Gửi request thứ 21 cùng thời điểm.
-  XActions Governor chỉ cho phép burst 15 requests, 6 requests còn lại (bao gồm cả request của Workspace Y) bị từ chối ngay với mã lỗi `XACT_4291` (Rate Limited).
+  Medirus Governor chỉ cho phép burst 15 requests, 6 requests còn lại (bao gồm cả request của Workspace Y) bị từ chối ngay với mã lỗi `XACT_4291` (Rate Limited).
 - **Hậu quả:** Hiện tượng "Noisy Neighbor" — một workspace nhiều target sẽ làm sập quota của toàn bộ các workspace khác trong hệ thống Nowing. Các task bị retry dồn toa gây bão request (thundering herd).
 - **Đề xuất siết AD:**
   - Bổ sung vào **AD-8 Rule:**
     1. Ở phía Nowing: Bắt buộc cấu hình Celery rate limit trên queue `connectors` (ví dụ `rate_limit="30/m"`) hoặc sử dụng Redis Token Bucket trước khi dispatch MCP call.
-    2. Ở phía XActions: Cho phép header phụ `X-Workspace-Id: <id>`. `AdaptiveRateGovernor` duy trì quota con per-workspace (ví dụ mỗi workspace tối đa 10 RPM, burst 3) bên cạnh global consumer ceiling để chống độc quyền tài nguyên.
+    2. Ở phía Medirus: Cho phép header phụ `X-Workspace-Id: <id>`. `AdaptiveRateGovernor` duy trì quota con per-workspace (ví dụ mỗi workspace tối đa 10 RPM, burst 3) bên cạnh global consumer ceiling để chống độc quyền tài nguyên.
 
 ---
 
@@ -253,13 +253,13 @@
 
 #### Finding M1: Nghịch đảo ngữ nghĩa Checkpoint (Forward Crawl vs Backward Resume)
 - **Lỗ hổng:**
-  AD-9 cấm Nowing truyền cursor và giao phó toàn bộ cho ACL (Auto Checkpoint Lookup) của XActions.
-  Trong XActions `base-crawler.js` (lines 450-465), ACL tìm checkpoint cũ và tự động inject `[cursorField] = checkpoint.lastCursor`.
+  AD-9 cấm Nowing truyền cursor và giao phó toàn bộ cho ACL (Auto Checkpoint Lookup) của Medirus.
+  Trong Medirus `base-crawler.js` (lines 450-465), ACL tìm checkpoint cũ và tự động inject `[cursorField] = checkpoint.lastCursor`.
   Trong pagination của hầu hết mạng xã hội (Twitter, Facebook, Mastodon): `cursor` hoặc `max_id` dùng để cuộn trang ngược về quá khứ (lấy bài cũ hơn).
   Khi Nowing chạy Celery định kỳ 15 phút một lần để cào "bài mới phát sinh", việc tự động nhồi `lastCursor` (vốn là con trỏ của bài cũ nhất ở đợt cào trước) sẽ khiến crawler tiếp tục cào sâu hơn vào quá khứ thay vì cào các bài viết mới xuất hiện ở đầu feed.
 - **Hai Unit minh họa:**
   - *Unit A (Nowing Scheduler):* Chạy lúc 10:00 (cào 20 bài mới nhất), checkpoint lưu cursor bài thứ 20. Đến 10:15, scheduler kích hoạt crawl mới để tìm bài đăng từ 10:00 - 10:15.
-  - *Unit B (XActions ACL):* Tự động lấy `lastCursor` của đợt 10:00 đưa vào args. Crawler bắt đầu tải từ bài thứ 21 trở về trước (lịch sử cũ). Toàn bộ bài đăng mới trong khoảng 10:00 - 10:15 bị bỏ qua hoàn toàn.
+  - *Unit B (Medirus ACL):* Tự động lấy `lastCursor` của đợt 10:00 đưa vào args. Crawler bắt đầu tải từ bài thứ 21 trở về trước (lịch sử cũ). Toàn bộ bài đăng mới trong khoảng 10:00 - 10:15 bị bỏ qua hoàn toàn.
 - **Hậu quả:** Hệ thống giám sát thời gian thực bị mù thông tin mới, chỉ cào lặp lại lịch sử cũ.
 - **Đề xuất siết AD:**
   - Sửa đổi **AD-9 Rule:** Phân định rõ 2 chế độ crawl trong `x_scrape`:
@@ -271,7 +271,7 @@
 #### Finding M2: Lỗ hổng thiếu `storeBatch` và `checkpointResolver` ở các Scraper VN
 - **Lỗ hổng:**
   AD-3 quy định hook stream phát ra sau `storeBatch`.
-  Tuy nhiên, mã nguồn XActions cho thấy:
+  Tuy nhiên, mã nguồn Medirus cho thấy:
   - `ShopeeCrawler` (`src/scrapers/ecom/shopee/crawler.js`) không hề gọi `this.store.storeBatch` (chỉ gọi `saveCheckpoint` trực tiếp).
   - Nhiều crawler VN như `chotot`, `topcv`, `masothue` không định nghĩa `checkpointResolver` trong descriptor.
 - **Hai Unit minh họa:**
@@ -283,21 +283,21 @@
 
 ---
 
-#### Finding M3: Xung đột Taxonomy giữa Platform Key của Nowing và Action Descriptor của XActions
+#### Finding M3: Xung đột Taxonomy giữa Platform Key của Nowing và Action Descriptor của Medirus
 - **Lỗ hổng:**
   AD-6 yêu cầu `UniversalScrapeTargetMapper` loại bỏ hard-code `PLATFORM_TOOL_MAP` và build dynamic map từ `x_actions_list` (AD-7).
   Trong cơ sở dữ liệu Nowing, trường `SocialMonitoredTarget.platform` lưu các định danh ghép (compound): `"chotot_category"`, `"shopee_keyword"`, `"topcv_search"`, `"masothue_lookup"`.
-  Trong XActions, `x_actions_list` trả về các descriptor nguyên tử (atomic):
+  Trong Medirus, `x_actions_list` trả về các descriptor nguyên tử (atomic):
   `{ platform: "chotot", action: "posts", requiredArgs: ["category"] }`,
   `{ platform: "shopee", action: "search", requiredArgs: ["keyword"] }`.
 - **Hai Unit minh họa:**
-  - *Unit A (XActions x_actions_list):* Trả về danh sách platform chuẩn: `shopee`, `topcv`, `chotot`.
+  - *Unit A (Medirus x_actions_list):* Trả về danh sách platform chuẩn: `shopee`, `topcv`, `chotot`.
   - *Unit B (Nowing Dynamic Mapper):* Nhận target có `platform = "shopee_keyword"`. Mapper tìm trong danh sách descriptor không có platform nào tên là `"shopee_keyword"`. Mapper coi đây là platform không hỗ trợ (`unsupported`) và từ chối xử lý.
 - **Hậu quả:** Toàn bộ các target hiện có trong hệ thống Nowing bị vô hiệu hóa khi chuyển sang dynamic discovery.
 - **Đề xuất siết AD:**
   - Bổ sung vào **AD-6 Rule:** Định nghĩa quy tắc phân rã (decomposition pattern) chuẩn cho Nowing mapper:
     Chuỗi `<platform>_<target_type>` trong Nowing DB được phân rã thành: `platform = parts[0]`, `target_type = parts[1]`.
-    Mapper đối chiếu `target_type` với danh sách `action` và `requiredArgs` trong descriptor của XActions để tự động suy ra tool call tương ứng.
+    Mapper đối chiếu `target_type` với danh sách `action` và `requiredArgs` trong descriptor của Medirus để tự động suy ra tool call tương ứng.
 
 ---
 
@@ -313,7 +313,7 @@
 - **Đề xuất siết AD:**
   - Sửa đổi **AD-10 Rule:** Chia rõ 2 tầng mapping:
     1. **Tầng Adapter (Error Classification):** Ánh xạ error envelope `XACT_*` thành cây Exception domain chuẩn mực trong Python:
-       `XActionsRateLimitError(retry_after)`, `XActionsResourceExhaustedError`, `XActionsAuthenticationError`, `XActionsFatalTargetError`.
+       `MedirusRateLimitError(retry_after)`, `MedirusResourceExhaustedError`, `MedirusAuthenticationError`, `MedirusFatalTargetError`.
     2. **Tầng Orchestrator (Task Policy):** Một bảng declarative policy dict đặt tại module Celery tasks mapping từ `Exception class` sang `TaskDirective(action="pause"|"retry"|"halt")`.
 
 ---
@@ -354,7 +354,7 @@
    Thay đổi từ "proc-scoped singleton" sang "loop-aware persistent client" có cơ chế tự bind lại khi Celery tạo Event Loop mới.
 
 4. **Sửa AD-8 (Rate Limit & Multi-Tenant Protection):**
-   Bổ sung quy định Nowing phải rate-limit outbound trước khi gọi MCP. Bổ sung header `X-Workspace-Id` vào XActions Governor để ngăn ngừa starvation giữa các workspace.
+   Bổ sung quy định Nowing phải rate-limit outbound trước khi gọi MCP. Bổ sung header `X-Workspace-Id` vào Medirus Governor để ngăn ngừa starvation giữa các workspace.
 
 5. **Sửa AD-9 (Crawl Mode Distinction):**
    Tách rõ `mode: "delta"` (top-down crawl dừng tại duplicate, bỏ qua lastCursor) cho scheduled tasks và `mode: "backfill"` (tiếp tục từ lastCursor) cho historical tasks.

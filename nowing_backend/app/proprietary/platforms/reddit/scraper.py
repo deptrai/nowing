@@ -126,6 +126,7 @@ async def fan_out(
 
 def _emit(partial: dict[str, Any], *, include_nsfw: bool) -> dict[str, Any] | None:
     """Stamp ``scrapedAt``, apply the NSFW gate, and wrap as an output dict."""
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     if not include_nsfw and partial.get("over18") is True:
         return None
     return RedditItem(**{**partial, "scrapedAt": now_iso()}).to_output()
@@ -172,6 +173,7 @@ async def _paginate_listing(
             if date_limit and _before(data.get("created_utc"), date_limit):
                 crossed_cutoff = True
                 continue
+            # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
             if not include_nsfw and data.get("over_18") is True:
                 continue
             yield data

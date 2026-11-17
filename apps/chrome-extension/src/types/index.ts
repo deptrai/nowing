@@ -21,7 +21,7 @@ export interface LeadClipPayload {
   post_content?: string | null;
   price?: string | null;
   location?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   dedupe_hash?: string | null;
 }
 

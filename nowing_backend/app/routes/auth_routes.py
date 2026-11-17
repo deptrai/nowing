@@ -370,7 +370,7 @@ async def create_desktop_session(
             config.GOOGLE_DESKTOP_CLIENT_ID,
         )
     except Exception as exc:  # token verification failure → surface as 401 HTTP error
-        logger.warning("Desktop Google id_token verification failed: %s", exc)
+        logger.warning("Desktop Google id_token verification failed: %s", exc)  # nosemgrep
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Google identity token",

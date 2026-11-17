@@ -15,10 +15,15 @@ from app.db import (
     get_async_session,
     get_default_roles_config,
 )
-from app.dependencies.auth import RequirePermission, RequireWorkspaceAccess
+from app.dependencies.auth import (
+    RequirePatScope,
+    RequirePermission,
+    RequireWorkspaceAccess,
+)
 from app.routes.model_connections_routes import compute_llm_setup_status
 from app.schemas import (
     WorkspaceApiAccessUpdate,
+    WorkspaceBalanceRead,
     WorkspaceCreate,
     WorkspaceRead,
     WorkspaceUpdate,
@@ -94,12 +99,12 @@ async def create_workspace(
         # Create default roles and owner membership
         await create_default_roles_and_membership(session, db_workspace.id, user.id)
 
-        # Auto-provision XActions connector for the workspace
-        from app.services.xactions_connector_seed import (
-            ensure_workspace_xactions_connector,
+        # Auto-provision Medirus connector for the workspace
+        from app.services.medirus_connector_seed import (
+            ensure_workspace_medirus_connector,
         )
 
-        await ensure_workspace_xactions_connector(session, db_workspace.id, user.id)
+        await ensure_workspace_medirus_connector(session, db_workspace.id, user.id)
 
         await session.commit()
         await session.refresh(db_workspace)
@@ -142,9 +147,7 @@ async def read_workspaces(
         not_deleting = ~Workspace.name.startswith("[DELETING] ")
 
         api_access_filter = (
-            Workspace.api_access_enabled == True  # noqa: E712
-            if auth.is_gated
-            else True
+            Workspace.api_access_enabled.is_(True) if auth.is_gated else True
         )
 
         if owned_only:
@@ -189,7 +192,7 @@ async def read_workspaces(
                 select(WorkspaceMembership).filter(
                     WorkspaceMembership.workspace_id == space.id,
                     WorkspaceMembership.user_id == user.id,
-                    WorkspaceMembership.is_owner == True,  # noqa: E712
+                    WorkspaceMembership.is_owner.is_(True),
                 )
             )
             is_owner = ownership_result.scalars().first() is not None
@@ -256,6 +259,26 @@ async def read_workspace(
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch workspace: {e!s}"
         ) from e
+
+
+@router.get("/workspaces/{workspace_id}/credits/balance", response_model=WorkspaceBalanceRead)
+async def get_credits_balance(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    _membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # D1 (spec 42.9): balance là lead-ops read — PAT scope dùng leads:read,
+    # không mở namespace `credits:read` mới.
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
+):
+    """Return the workspace's current credit balance in micros."""
+    workspace = await session.get(Workspace, workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    return WorkspaceBalanceRead(
+        workspace_id=workspace_id,
+        credit_micros_balance=workspace.credit_micros_balance,
+    )
 
 
 @router.put("/workspaces/{workspace_id}", response_model=WorkspaceRead)
@@ -505,7 +528,9 @@ async def delete_workspace(
             from app.tasks.celery_tasks.document_tasks import delete_workspace_task
 
             delete_workspace_task.delay(workspace_id)
-        except Exception as dispatch_error:  # celery dispatch failure; revert rename and surface error
+        except (
+            Exception
+        ) as dispatch_error:  # celery dispatch failure; revert rename and surface error
             db_workspace.name = base_name
             await session.commit()
             raise HTTPException(

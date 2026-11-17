@@ -112,6 +112,7 @@ function toFreeChatHttpError(status: number, body: string): Error & { errorCode?
 		else errorCode = "SERVER_ERROR";
 	}
 
+	// nosemgrep: javascript.lang.security.insecure-object-assign.insecure-object-assign
 	return Object.assign(new Error(message), { errorCode });
 }
 
@@ -313,6 +314,7 @@ export function FreeChatPage() {
 							break;
 
 						case "error":
+							// nosemgrep: javascript.lang.security.insecure-object-assign.insecure-object-assign
 							throw Object.assign(new Error(parsed.errorText || "Server error"), {
 								errorCode: parsed.errorCode,
 							});

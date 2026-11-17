@@ -205,6 +205,12 @@ async def ingest_stream_leads_to_db(
         return 0
 
     async with async_session_maker() as session, session.begin():
+        # Story 42.7: scraper-path leads arrive without table_id — resolve
+        # keyed default tables before the upsert so they never stay NULL.
+        # Lazy import: lead_batch_service imports generate_lead_hmac from here.
+        from app.services.lead_batch_service import LeadBatchService
+
+        await LeadBatchService()._resolve_lead_table_ids(session, workspace_id, leads)
         await session.execute(stmt)
 
     return len(leads)

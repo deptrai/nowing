@@ -35,13 +35,13 @@ export const GithubConfig: FC<GithubConfigProps> = ({
 	onNameChange,
 }) => {
 	const t = useTranslations("assistant");
-	const [githubPat, setGithubPat] = useState<string>(
+	const [githubPat, setGithubPat] = useState(
 		(connector.config?.GITHUB_PAT as string) || ""
 	);
-	const [repoFullNames, setRepoFullNames] = useState<string>(
+	const [repoFullNames, setRepoFullNames] = useState(
 		arrayToString(stringToArray(connector.config?.repo_full_names))
 	);
-	const [name, setName] = useState<string>(connector.name || "");
+	const [name, setName] = useState(connector.name || "");
 
 	const handleGithubPatChange = (value: string) => {
 		setGithubPat(value);

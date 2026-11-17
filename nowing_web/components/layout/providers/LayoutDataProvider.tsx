@@ -11,6 +11,7 @@ import {
 	Brain,
 	Puzzle,
 	Shapes,
+	Users,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -300,10 +301,17 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 	const isUsageActive = pathname?.includes("/usage") === true;
 	const isConnectorsActive = pathname?.includes("/connectors") === true;
 	const isMemoryBrowserActive = pathname?.includes("/research/memory-browser") === true;
+	const isLeadsActive = pathname?.endsWith("/leads") === true;
 	const navItems: NavItem[] = useMemo(
 		() =>
 			(
 				[
+					{
+						title: tNav("leads"),
+						url: `/dashboard/${workspaceId}/leads`,
+						icon: Users,
+						isActive: isLeadsActive,
+					},
 					{
 						title: tNav("health_analytics"),
 						url: `/dashboard/${workspaceId}/health`,
@@ -356,6 +364,7 @@ export function LayoutDataProvider({ workspaceId, children }: LayoutDataProvider
 			isAutomationsActive,
 			isArtifactsActive,
 			isMemoryBrowserActive,
+			isLeadsActive,
 			tNav,
 			isPlaybooksActive,
 		]

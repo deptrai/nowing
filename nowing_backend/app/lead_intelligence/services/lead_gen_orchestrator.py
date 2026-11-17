@@ -27,7 +27,7 @@ from app.lead_intelligence.services.deduplication_service import (
 from app.lead_intelligence.services.micro_extraction_worker import (
     MicroExtractionWorker,
 )
-from app.services.location_normalize import remove_diacritics
+from app.services.location_normalize import remove_diacritics, resolve_city_code
 from app.services.location_normalize.divisions import (
     PROVINCES_DATA,
     get_districts_by_province,
@@ -356,24 +356,41 @@ class LeadGenOrchestrator:
         # Extract text representations from raw data dict
         data = raw_record.data or {}
         text_parts: list[str] = [
-            str(data.get("title", "")),
-            str(data.get("company_name", "")),
-            str(data.get("name", "")),
-            str(data.get("address", "")),
-            str(data.get("city", "")),
-            str(data.get("description", "")),
-            str(data.get("content_snippet", "")),
-            str(data.get("industry", "")),
-            str(data.get("body", "")),
-            str(data.get("job_title", "")),
+            str(data[k])
+            for k in (
+                "title",
+                "company_name",
+                "company",
+                "name",
+                "address",
+                "city",
+                "district",
+                "location",
+                "description",
+                "content_snippet",
+                "industry",
+                "body",
+                "job_title",
+            )
+            if data.get(k) is not None and str(data[k]).strip()
         ]
         combined_text = " ".join(text_parts).lower()
 
         # Check negative keywords
-        if icp_criteria and icp_criteria.negative_keywords:
-            for nkw in icp_criteria.negative_keywords:
-                if nkw and nkw.lower().strip() in combined_text:
-                    return False, 0.0
+        negative_keywords: list[str] = []
+        if icp_criteria:
+            if isinstance(icp_criteria, dict):
+                raw_nkw = icp_criteria.get("negative_keywords") or []
+            else:
+                raw_nkw = getattr(icp_criteria, "negative_keywords", []) or []
+            if isinstance(raw_nkw, str):
+                negative_keywords = [raw_nkw]
+            elif isinstance(raw_nkw, list):
+                negative_keywords = [str(k) for k in raw_nkw if k]
+
+        for nkw in negative_keywords:
+            if nkw and nkw.lower().strip() in combined_text:
+                return False, 0.0
 
         # Hierarchical Location Pre-filter (AC-3)
         if location_profile:
@@ -383,6 +400,64 @@ class LeadGenOrchestrator:
             if not matched:
                 return False, 0.0
             return True, loc_score
+
+        # Check embedded location_profile in ICPCriteria
+        embedded_profile = None
+        if icp_criteria:
+            if isinstance(icp_criteria, dict):
+                embedded_profile = icp_criteria.get("location_profile")
+            else:
+                embedded_profile = getattr(icp_criteria, "location_profile", None)
+        if embedded_profile:
+            matched, loc_score = cls.evaluate_hierarchical_location_match(
+                combined_text, embedded_profile
+            )
+            if not matched:
+                return False, 0.0
+            return True, loc_score
+
+        # Fallback check against target_locations or city in ICPCriteria
+        target_locations: list[str] = []
+        if icp_criteria:
+            if isinstance(icp_criteria, dict):
+                locs = icp_criteria.get("target_locations") or icp_criteria.get("locations") or []
+                if isinstance(locs, list):
+                    target_locations.extend([str(loc_item) for loc_item in locs if loc_item and str(loc_item).strip()])
+                elif isinstance(locs, str) and locs.strip():
+                    target_locations.append(locs.strip())
+                city_spec = icp_criteria.get("city")
+                if city_spec and str(city_spec).strip() and str(city_spec).strip() not in target_locations:
+                    target_locations.append(str(city_spec).strip())
+            else:
+                locs = getattr(icp_criteria, "target_locations", []) or []
+                if isinstance(locs, list):
+                    target_locations.extend([str(loc_item) for loc_item in locs if loc_item and str(loc_item).strip()])
+                elif isinstance(locs, str) and locs.strip():
+                    target_locations.append(locs.strip())
+                city_spec = getattr(icp_criteria, "city", None)
+                if city_spec and str(city_spec).strip() and str(city_spec).strip() not in target_locations:
+                    target_locations.append(str(city_spec).strip())
+
+        if target_locations:
+            best_score = 0.0
+            any_matched = False
+            for raw_loc in target_locations:
+                target_loc = str(raw_loc or "").strip()
+                if not target_loc:
+                    continue
+                if target_loc.lower() in ("toàn quốc", "*"):
+                    any_matched = True
+                    best_score = max(best_score, 75.0)
+                    continue
+                p_code = resolve_city_code(target_loc) or target_loc
+                target_profile = {"province_code": p_code, "province_name": target_loc}
+                m, s = cls.evaluate_hierarchical_location_match(combined_text, target_profile)
+                if m:
+                    any_matched = True
+                    best_score = max(best_score, s)
+            if not any_matched:
+                return False, 0.0
+            return True, best_score
 
         return True, 100.0
 

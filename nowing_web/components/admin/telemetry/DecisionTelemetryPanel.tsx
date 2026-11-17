@@ -42,8 +42,8 @@ interface DecisionTelemetryPanelProps {
 
 export default function DecisionTelemetryPanel({ tick }: DecisionTelemetryPanelProps) {
 	const t = useTranslations("admin");
-	const [windowHours, setWindowHours] = useState<number>(24);
-	const [workspaceId, setWorkspaceId] = useState<string>("");
+	const [windowHours, setWindowHours] = useState(24);
+	const [workspaceId, setWorkspaceId] = useState("");
 	const [data, setData] = useState<DecisionTelemetry | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);

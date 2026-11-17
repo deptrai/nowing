@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
+from celery import Task
+
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
 from app.config import config
@@ -52,7 +55,10 @@ def _maybe_escalate(
 ) -> None:
     if ctx is None or ctx.run_id is None:
         return
-    capture_platform_anti_bot_screenshot_task.delay(
+    # celery wraps the task in a PromiseProxy; cast to Task so type checkers
+    # see the runtime-present .delay() API.
+    task = cast(Task, capture_platform_anti_bot_screenshot_task)
+    task.delay(
         url=url or f"https://{_DOMAIN}",
         run_id=ctx.run_id,
         workspace_id=ctx.workspace_id,
@@ -107,8 +113,18 @@ def build_scrape_executor(
             total=payload.max_items,
             unit="item",
         )
+
+        async def _local() -> ChototScrapeOutput:
+            return await scrape_fn(actor_input, limit=payload.max_items)
+
         try:
-            raw = await scrape_fn(actor_input, limit=payload.max_items)
+            raw = await medirus_scrape_or_local(
+                platform="chotot",
+                action="search_listings",
+                args=payload.model_dump(),
+                local_fn=_local,
+                ctx=ctx,
+            )
         except ChototBdsRateLimitedError:
             logger.exception("chotot.scrape rate limited")
             _maybe_escalate(ctx, "rate_limited")
@@ -165,7 +181,9 @@ def build_scrape_executor(
                 category=payload.category,
                 total=0,
             )
-        except Exception as exc:  # unexpected actor failure → structured degraded failure response
+        except (
+            Exception
+        ) as exc:  # unexpected actor failure → structured degraded failure response
             logger.exception("chotot.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],

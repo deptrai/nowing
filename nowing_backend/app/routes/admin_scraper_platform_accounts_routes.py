@@ -40,7 +40,9 @@ def _to_read(
         try:
             credentials = decrypt_credentials(account.encrypted_credentials)
         except Exception:  # decryption failure; continue with None credentials
-            logger.exception("Failed to decrypt credentials for account %s", account.id)
+            logger.exception(
+                "Failed to decrypt credentials for account %s", account.id
+            )  # nosemgrep
     return ScraperPlatformAccountRead(
         id=account.id,
         platform=account.platform,
@@ -258,6 +260,7 @@ async def telethon_verify_login_code(
     if not raw_data:
         raise ValueError("Auth flow expired or not found in Redis cache")
 
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- malformed JSON propagates to caller
     data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
     proxy_config = (
         parse_proxy_url(data.get("proxy_url")) if data.get("proxy_url") else None
@@ -344,6 +347,7 @@ async def telethon_verify_2fa_password(
     if not raw_data:
         raise ValueError("Auth flow expired or not found in Redis cache")
 
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- malformed JSON propagates to caller
     data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
     proxy_config = (
         parse_proxy_url(data.get("proxy_url")) if data.get("proxy_url") else None

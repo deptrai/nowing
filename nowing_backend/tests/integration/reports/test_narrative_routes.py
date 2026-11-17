@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 import pytest
@@ -26,7 +27,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 @pytest.fixture
 async def authed_workspace_setup(
     db_session: AsyncSession,
-) -> tuple[AsyncClient, User, Workspace]:
+) -> AsyncGenerator[tuple[AsyncClient, User, Workspace], None]:
     """Create a user, workspace with OWNER membership, and an authenticated client."""
     user = User(
         id=uuid4(),
@@ -129,7 +130,9 @@ async def test_generate_narrative_report_success(authed_workspace_setup) -> None
     assert meta["template_id"] == "news_digest"
 
 
-async def test_generate_narrative_report_unknown_template_404(authed_workspace_setup) -> None:
+async def test_generate_narrative_report_unknown_template_404(
+    authed_workspace_setup,
+) -> None:
     """POST /workspaces/{id}/reports/narrative returns 404 for unknown template."""
     client, _user, workspace = authed_workspace_setup
 
@@ -146,7 +149,9 @@ async def test_generate_narrative_report_unknown_template_404(authed_workspace_s
     assert "not found" in res.text.lower()
 
 
-async def test_generate_narrative_report_degraded_on_missing_param(authed_workspace_setup) -> None:
+async def test_generate_narrative_report_degraded_on_missing_param(
+    authed_workspace_setup,
+) -> None:
     """Missing required topic/symbol results in degraded report without 500 error (AC-4)."""
     client, _user, workspace = authed_workspace_setup
 

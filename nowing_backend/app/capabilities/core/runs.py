@@ -356,7 +356,7 @@ async def _maybe_cleanup(
     # ponytail: LIMIT-bounded so a long backlog never lands as one giant delete.
     # `table` is one of two hardcoded literals below — never user input.
     await session.execute(
-        text(
+        text(  # nosemgrep
             f"DELETE FROM {table} WHERE id IN "
             f"(SELECT id FROM {table} WHERE created_at < :cutoff LIMIT :batch)"
         ),

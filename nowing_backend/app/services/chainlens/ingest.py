@@ -98,9 +98,9 @@ async def _guardrail_filter_chunks(
     storing it unmasked is the worst outcome.
 
     Only ``workspace_id`` is forwarded — ingest runs in background tasks
-    with no attributable user, and TokenUsage.user_id is NOT NULL, so
-    telemetry stays log-only here (a session is never shared across the
-    FILTER_CONCURRENCY fan-out regardless).
+    with no attributable user, recorded as system-level usage
+    (TokenUsage.user_id is nullable per AI-39.5; a session is never shared
+    across the FILTER_CONCURRENCY fan-out regardless).
     """
     if not chunks or not (
         decision_config.decision_enabled()
@@ -135,11 +135,12 @@ async def _guardrail_filter_chunks(
             kept.append(chunk)
         return kept
     except Exception:
-        logger.warning(
-            "[content_filter] ingest filter failed — ingesting unfiltered",
+        logger.error(
+            "[content_filter] ingest filter failed — dropping batch because "
+            "content filter was unavailable",
             exc_info=True,
         )
-        return list(chunks)
+        return []
 
 
 def _iter_batches(items: Sequence[Any], batch_size: int) -> list[list[Any]]:
@@ -479,7 +480,10 @@ class NowingIngestService:
                     first_chunk_dict = _chunk_to_dict(first_chunk)
                     metadata = first_chunk_dict.get("metadata") or {}
                     if isinstance(exc.response_body, dict):
-                        response_error = exc.response_body.get("error") or "response_body_without_error"
+                        response_error = (
+                            exc.response_body.get("error")
+                            or "response_body_without_error"
+                        )
                     else:
                         response_error = str(exc) or "response_body_unavailable"
                     logger.error(

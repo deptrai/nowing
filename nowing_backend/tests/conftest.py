@@ -22,6 +22,12 @@ if not os.environ.get("EMBEDDING_MODEL"):
 os.environ.setdefault("AUTH_TYPE", "LOCAL")
 os.environ.setdefault("REGISTRATION_ENABLED", "TRUE")
 
+# Unit tests must never reach the live Medirus gateway: a developer .env with
+# MEDIRUS_USE_UNIFIED_DISPATCH=true would route executor calls to the local
+# daemon (localhost:3333) instead of the injected fake scrape_fn. Hard-set
+# (not setdefault) so tests stay hermetic regardless of .env contents.
+os.environ["MEDIRUS_USE_UNIFIED_DISPATCH"] = "false"
+
 # The ETL pipeline requires a parser provider. DOCLING is installed and used
 # across both local tests and E2E, so default to it when the operator has not
 # explicitly chosen UNSTRUCTURED / LLAMACLOUD.

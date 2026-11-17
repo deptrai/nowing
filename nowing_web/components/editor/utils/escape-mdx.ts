@@ -42,6 +42,7 @@ function escapeCurlyBraces(md: string): string {
 	return parts
 		.map((part, i) => {
 			if (i % 2 === 1) return part;
+			// pi-lens-ignore: ast-grep:incomplete-string-escaping -- lookbehind (?<!\\) intentionally skips already-escaped chars
 			return part.replace(/(?<!\\)\{/g, "\\{").replace(/(?<!\\)\}/g, "\\}");
 		})
 		.join("");

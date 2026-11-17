@@ -104,6 +104,7 @@ def handle_terminal_exception(
             is_expected=is_expected,
             extra=error_extra,
         )
+        # pi-lens-ignore: ast-grep:no-yield-from-non-iterable -- source is a generator (iterable)
         yield from iter_final_frames(streaming_service)
 
     return (

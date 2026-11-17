@@ -1,6 +1,7 @@
 import importlib
 import sys
 import uuid
+from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import pytest
@@ -73,10 +74,15 @@ async def async_engine():
             await conn.run_sync(Base.metadata.create_all)
         else:
             tables_to_create = [
-                t for t in Base.metadata.sorted_tables
+                t
+                for t in Base.metadata.sorted_tables
                 if t.name != "spatial_planning_zones"
             ]
-            await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=tables_to_create))
+            await conn.run_sync(
+                lambda sync_conn: Base.metadata.create_all(
+                    sync_conn, tables=tables_to_create
+                )
+            )
 
     yield engine
 
@@ -90,7 +96,7 @@ async def async_engine():
 
 
 @pytest_asyncio.fixture
-async def db_session(async_engine) -> AsyncSession:
+async def db_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
     # Bind the session to a connection that holds an outer transaction.
     # join_transaction_mode="create_savepoint" makes session.commit() release
     # a SAVEPOINT instead of committing the outer transaction, so the final
@@ -110,7 +116,7 @@ async def db_session(async_engine) -> AsyncSession:
 @pytest_asyncio.fixture
 async def db_vertical_client(
     db_session: AsyncSession,
-) -> "app_db.VerticalClient":
+):
     """An active vertical client used by lead/phone integration tests."""
     client = app_db.VerticalClient(
         client_id="bds",

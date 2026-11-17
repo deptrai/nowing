@@ -39,7 +39,7 @@ _CANONICAL_PLATFORM_ENDPOINTS: dict[str, str] = {
     "vietnamworks": "https://www.vietnamworks.com",
     "vietstock": "https://vietstock.vn",
     "walmart": "https://www.walmart.com",
-    "xactions": "https://x.com",
+    "medirus": "https://x.com",
     "youtube": "https://www.youtube.com",
 }
 

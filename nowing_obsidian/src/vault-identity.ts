@@ -12,7 +12,9 @@ export async function computeVaultFingerprint(app: App): Promise<string> {
 	const paths = app.vault
 		.getMarkdownFiles()
 		.map((f) => f.path)
-		.sort();
+		// Explicit code-unit order — NOT localeCompare. The fingerprint must be
+		// byte-identical across devices regardless of OS locale.
+		.sort(compareCodeUnit);
 	const payload = `${vaultName}\n${paths.join("\n")}`;
 	const bytes = new TextEncoder().encode(payload);
 	const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -40,4 +42,11 @@ export function generateVaultUuid(): string {
 		16,
 		20,
 	)}-${hex.slice(20)}`;
+}
+
+/** Code-unit string ordering for fingerprint input (locale-independent). */
+function compareCodeUnit(a: string, b: string): number {
+	if (a < b) return -1;
+	if (a > b) return 1;
+	return 0;
 }

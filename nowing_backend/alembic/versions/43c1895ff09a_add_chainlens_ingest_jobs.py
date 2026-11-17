@@ -23,7 +23,7 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         "chainlens_ingest_jobs",
-        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True), nullable=False),  # pyright: ignore[reportAttributeAccessIssue]
         sa.Column(
             "workspace_id",
             sa.Integer,
@@ -34,19 +34,19 @@ def upgrade() -> None:
         sa.Column("parent_ingest_job_id", sa.String(255), nullable=True),
         sa.Column(
             "child_ingest_job_ids",
-            sa.dialects.postgresql.JSONB,
+            sa.dialects.postgresql.JSONB,  # pyright: ignore[reportAttributeAccessIssue]
             nullable=False,
             server_default=sa.text("'[]'::jsonb"),
         ),
         sa.Column(
             "noop_source_ids",
-            sa.dialects.postgresql.JSONB,
+            sa.dialects.postgresql.JSONB,  # pyright: ignore[reportAttributeAccessIssue]
             nullable=False,
             server_default=sa.text("'[]'::jsonb"),
         ),
         sa.Column(
             "ingested_source_ids",
-            sa.dialects.postgresql.JSONB,
+            sa.dialects.postgresql.JSONB,  # pyright: ignore[reportAttributeAccessIssue]
             nullable=False,
             server_default=sa.text("'[]'::jsonb"),
         ),
@@ -57,7 +57,7 @@ def upgrade() -> None:
             server_default=sa.text("'pending'"),
         ),
         sa.Column("error", sa.Text, nullable=True),
-        sa.Column("dead_letter_payload", sa.dialects.postgresql.JSONB, nullable=True),
+        sa.Column("dead_letter_payload", sa.dialects.postgresql.JSONB, nullable=True),  # pyright: ignore[reportAttributeAccessIssue]
         sa.Column("run_id", sa.String(255), nullable=True),
         sa.Column(
             "created_at",

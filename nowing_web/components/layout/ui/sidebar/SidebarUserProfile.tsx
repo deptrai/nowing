@@ -127,7 +127,7 @@ function UserAvatar({
 				sizeClass,
 				"flex shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white select-none"
 			)}
-			style={{ backgroundColor: bgColor }}
+			style={{ backgroundColor: bgColor }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic avatar background color
 		>
 			{initials}
 		</div>
@@ -172,7 +172,7 @@ export function SidebarUserProfile({
 		if (isLoggingOut || !onLogout) return;
 		setIsLoggingOut(true);
 		try {
-			await onLogout();
+			onLogout();
 		} finally {
 			setIsLoggingOut(false);
 		}

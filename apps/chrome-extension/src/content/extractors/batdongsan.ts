@@ -3,15 +3,16 @@
  * Extracts listing title, price, area, address, author contact, and phone.
  */
 
-import { LeadClipPayload } from '../../types';
+import { LeadClipPayload } from '../../types/index.js';
 import {
   canonicalizeUrl,
   extractEmails,
   extractPrice,
   extractVietnamesePhones,
   normalizeVietnamesePhone,
-} from '../../utils/normalizer';
+} from '../../utils/normalizer.js';
 
+// pi-lens-ignore: high-complexity — one extractor per site, branching mirrors page variants
 export function extractBatdongsanLead(): LeadClipPayload | null {
   const url = window.location.href;
   if (!url.includes('batdongsan.com.vn')) return null;
@@ -69,7 +70,7 @@ export function extractBatdongsanLead(): LeadClipPayload | null {
   const description = descEl?.textContent?.trim() || '';
 
   // Fallback scanner if phone not found in explicit selector
-  const fullText = document.body.innerText || '';
+  const fullText = document.body.textContent || '';
   if (!phone) {
     const phones = extractVietnamesePhones(description || fullText);
     if (phones.length > 0) phone = phones[0];

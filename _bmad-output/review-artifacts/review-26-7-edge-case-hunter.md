@@ -55,7 +55,7 @@
 
 - **Severity:** high
 - **Files / Lines:**
-  - `nowing_backend/app/proprietary/platforms/xactions/tax_code.py:42-45` (`_KEYWORD_TAX_PATTERN`, `_STANDALONE_TAX_PATTERN`)
+  - `nowing_backend/app/proprietary/platforms/medirus/tax_code.py:42-45` (`_KEYWORD_TAX_PATTERN`, `_STANDALONE_TAX_PATTERN`)
 - **Evidence:**
   ```python
   _KEYWORD_TAX_PATTERN = re.compile(
@@ -229,7 +229,7 @@
 
 - **Severity:** medium
 - **Files / Lines:**
-  - `nowing_backend/app/proprietary/platforms/xactions/tax_code.py:70-76`
+  - `nowing_backend/app/proprietary/platforms/medirus/tax_code.py:70-76`
 - **Evidence:**
   ```python
   for match in _STANDALONE_TAX_PATTERN.finditer(text):
@@ -391,7 +391,7 @@
 
 - **Severity:** low
 - **Files / Lines:**
-  - `nowing_backend/tests/unit/proprietary/platforms/xactions/test_tax_code.py:30-38`
+  - `nowing_backend/tests/unit/proprietary/platforms/medirus/test_tax_code.py:30-38`
 - **Evidence:** The test `test_formatted_tax_code_with_spaces_or_dashes` calls `is_valid_vietnam_tax_code`, not `extract_tax_ids`.
 - **Unhandled edge case:** The suite tests the validator but never verifies the extractor handles the same formats.
 - **Fix / test to add:**
@@ -501,7 +501,7 @@ The following tasks from the spec were not addressed in the diff and are not edg
 
 - **Task 6 (60s hard timeouts):** `nowing_backend/app/tasks/dsh_worker.py`, scraper modules, and `app/services/phone_waterfall_service.py` are unchanged. The test endpoint has the `httpx` default 60s only on the client side, not a server-side guarantee.
 - **Task 5.4 (CI chaos workflow):** `.github/workflows/chaos-gate.yml` is missing.
-- **Task 7.1:** The existing `tests/unit/proprietary/platforms/xactions/test_phone_extractor.py` is not extended with the `TestPhoneExtractionHermetic` class.
+- **Task 7.1:** The existing `tests/unit/proprietary/platforms/medirus/test_phone_extractor.py` is not extended with the `TestPhoneExtractionHermetic` class.
 - **Task 7.2:** `tests/integration/services/test_lead_extraction_hermetic.py` is missing.
 
 ---

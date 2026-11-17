@@ -88,6 +88,7 @@ async def publish_web_app(
     if result.status == "deploy_failed":
         # Feature-gate / permission failures must surface as 403, not 422.
         if result.message and (
+            # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- FP: 'is' inside the string literal
             "Web Builder is not enabled" in result.message
             or "workspace plan" in result.message
         ):
@@ -368,7 +369,9 @@ async def apply_mark_tool_patch(
             await asyncio.to_thread(
                 target_file.write_text, result.patched_code, encoding="utf-8"
             )
-        except Exception as exc:  # local file write failure → surface as typed HTTP error
+        except (
+            Exception
+        ) as exc:  # local file write failure → surface as typed HTTP error
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Could not write target file: {exc}",
@@ -395,7 +398,9 @@ async def apply_mark_tool_patch(
             call_details=call_details,
         )
         await session.commit()
-    except Exception:  # best-effort token usage tracking; failure doesn't fail primary op
+    except (
+        Exception
+    ):  # best-effort token usage tracking; failure doesn't fail primary op
         logger.exception("Failed to record web_builder_mark token usage")
         with contextlib.suppress(Exception):
             await session.rollback()

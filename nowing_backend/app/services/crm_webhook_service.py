@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
-import json
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any
-import uuid
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,20 +50,61 @@ def map_stage_to_status(external_stage: str) -> str | None:
     return _STAGE_MAPPING.get(normalized)
 
 
+HUBSPOT_TIMESTAMP_MAX_AGE_MS = 300_000
+
+
 def verify_hubspot_signature(
-    request_body: bytes,
-    signature: str | None,
+    request_body: bytes | str,
+    signature_header: str | None = None,
     secret: str | None = None,
+    *,
+    method: str = "POST",
+    request_uri: str = "",
+    timestamp: str | bytes | int | float | None = None,
+    signature: str | None = None,
 ) -> bool:
-    """Verify HubSpot webhook signature (v1 / v2 HMAC-SHA256)."""
-    if not signature:
+    """Verify HubSpot webhook v3 signature (HMAC-SHA256 base64 with timestamp replay window)."""
+    sig = signature_header if signature_header is not None else signature
+    key = (
+        secret
+        if secret is not None
+        else getattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
+    )
+    if not key or not sig or not isinstance(sig, str):
+        if not key:
+            logger.warning("HUBSPOT_WEBHOOK_SECRET not configured; rejecting webhook")
         return False
-    key = secret or getattr(config, "HUBSPOT_WEBHOOK_SECRET", "")
-    if not key:
-        logger.warning("HUBSPOT_WEBHOOK_SECRET not configured; skipping check in dev")
-        return True
-    expected = hmac.new(key.encode(), request_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(signature, expected)
+
+    if not timestamp:
+        return False
+
+    ts_str = (
+        timestamp.decode("utf-8", errors="ignore")
+        if isinstance(timestamp, bytes)
+        else str(timestamp).strip()
+    )
+    if not ts_str:
+        return False
+
+    try:
+        ts_int = int(ts_str)
+    except (ValueError, TypeError):
+        return False
+
+    ts_ms = ts_int * 1000 if ts_int < 10_000_000_000 else ts_int
+    now_ms = int(time.time() * 1000)
+    if abs(now_ms - ts_ms) > HUBSPOT_TIMESTAMP_MAX_AGE_MS:
+        return False
+
+    body_bytes = (
+        request_body if isinstance(request_body, bytes) else request_body.encode()
+    )
+    ts_bytes = ts_str.encode()
+    source = f"{method}{request_uri}".encode() + body_bytes + ts_bytes
+    expected_v3 = base64.b64encode(
+        hmac.new(key.encode(), source, hashlib.sha256).digest()
+    ).decode()
+    return hmac.compare_digest(expected_v3, sig)
 
 
 class CrmWebhookService:
@@ -101,14 +141,17 @@ class CrmWebhookService:
             )
             res = await self.session.execute(stmt)
             contact = res.scalars().first()
-            lead = await self.session.get(Lead, (contact.lead_id, contact.workspace_id)) if contact else None
+            lead = (
+                await self.session.get(Lead, (contact.lead_id, contact.workspace_id))
+                if contact
+                else None
+            )
 
             if not lead:
                 logger.info("No lead found for HubSpot deal %s", deal_id)
                 results.append({"deal_id": deal_id, "status": "lead_not_found"})
                 continue
 
-            old_status = lead.status
             lead.status = new_status
             lead.updated_at = datetime.now(UTC)
 
@@ -136,12 +179,14 @@ class CrmWebhookService:
                     "lead status updated but sync log not written",
                     lead.workspace_id,
                 )
-            results.append({
-                "deal_id": deal_id,
-                "lead_id": str(lead.id),
-                "status": "updated",
-                "new_lead_status": new_status,
-            })
+            results.append(
+                {
+                    "deal_id": deal_id,
+                    "lead_id": str(lead.id),
+                    "status": "updated",
+                    "new_lead_status": new_status,
+                }
+            )
 
         await self.session.flush()
         return results
@@ -163,25 +208,32 @@ class CrmWebhookService:
         # Try finding by external_chat_ids in VerifiedContact
         if opp_id:
             stmt = select(VerifiedContact).where(
-                VerifiedContact.external_chat_ids.contains({"salesforce_opp_id": opp_id})
+                VerifiedContact.external_chat_ids.contains(
+                    {"salesforce_opp_id": opp_id}
+                )
             )
             res = await self.session.execute(stmt)
             contact = res.scalars().first()
             if contact:
-                lead = await self.session.get(Lead, (contact.lead_id, contact.workspace_id))
+                lead = await self.session.get(
+                    Lead, (contact.lead_id, contact.workspace_id)
+                )
 
         # Fallback: match by email via VerifiedContact
         if not lead and email:
-            c_stmt = select(VerifiedContact).where(VerifiedContact.email == email.lower())
+            c_stmt = select(VerifiedContact).where(
+                VerifiedContact.email == email.lower()
+            )
             c_res = await self.session.execute(c_stmt)
             contact = c_res.scalars().first()
             if contact:
-                lead = await self.session.get(Lead, (contact.lead_id, contact.workspace_id))
+                lead = await self.session.get(
+                    Lead, (contact.lead_id, contact.workspace_id)
+                )
 
         if not lead:
             return {"opportunity_id": opp_id, "status": "lead_not_found"}
 
-        old_status = lead.status
         lead.status = new_status
         lead.updated_at = datetime.now(UTC)
 

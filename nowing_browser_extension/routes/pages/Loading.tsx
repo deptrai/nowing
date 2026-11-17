@@ -19,6 +19,7 @@ const Loading = () => {
 							<span
 								key={i}
 								className="inline-block animate-pulse text-teal-400"
+								// pi-lens-ignore: ast-grep:inline-styles -- per-letter animation delay is dynamic
 								style={{
 									animationDelay: `${i * 0.1}s`,
 									animationDuration: "1.5s",

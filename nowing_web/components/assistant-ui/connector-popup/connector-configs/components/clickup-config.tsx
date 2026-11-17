@@ -19,12 +19,12 @@ export const ClickUpConfig: FC<ClickUpConfigProps> = ({
 	onNameChange,
 }) => {
 	const t = useTranslations("assistant"); // Check if this is an OAuth connector (has access_token or _token_encrypted flag)
-	const isOAuth = !!(connector.config?.access_token || connector.config?._token_encrypted);
+	const isOAuth = Boolean(connector.config?.access_token || connector.config?._token_encrypted);
 
-	const [apiToken, setApiToken] = useState<string>(
+	const [apiToken, setApiToken] = useState(
 		(connector.config?.CLICKUP_API_TOKEN as string) || ""
 	);
-	const [name, setName] = useState<string>(connector.name || "");
+	const [name, setName] = useState(connector.name || "");
 
 	const handleApiTokenChange = (value: string) => {
 		setApiToken(value);

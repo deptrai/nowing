@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertTriangle, Ban, Wrench } from "lucide-react";
-import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -18,7 +17,6 @@ export const ConnectorStatusBadge: FC<ConnectorStatusBadgeProps> = ({
 	statusMessage,
 	className,
 }) => {
-	const t = useTranslations("assistant");
 	if (status === "active") {
 		return null;
 	}

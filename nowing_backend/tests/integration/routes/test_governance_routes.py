@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 import httpx
 import pytest
 import pytest_asyncio
@@ -235,7 +233,10 @@ async def test_create_dnc_record_normalizes_and_marks_superseded(
 ):
     """AC-5: Creates DNC record and flags global supersession."""
     # Pre-seed a global DNC entry for the same phone
-    from app.lead_intelligence.dnc.normalizer import hash_phone_hmac, normalize_phone_e164
+    from app.lead_intelligence.dnc.normalizer import (
+        hash_phone_hmac,
+        normalize_phone_e164,
+    )
 
     phone = "+84901234567"
     norm = normalize_phone_e164(phone)

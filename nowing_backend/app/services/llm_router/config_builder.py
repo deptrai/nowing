@@ -57,7 +57,9 @@ class RouterConfigBuilder:
                 deployment["tpm"] = config["tpm"]
 
             return deployment
-        except Exception as e:  # log warning and return None for invalid deployment configuration
+        except (
+            Exception
+        ) as e:  # log warning and return None for invalid deployment configuration
             logger.warning("Failed to convert config to deployment: %s", e)
             return None
 
@@ -79,7 +81,7 @@ class RouterConfigBuilder:
         model_list: list[dict] = []
         premium_models: set[str] = set()
         for config in global_configs:
-            if config.get("router_pool_eligible") is False:
+            if not config.get("router_pool_eligible", True):
                 continue
             deployment = RouterConfigBuilder.config_to_deployment(config)
             if deployment:

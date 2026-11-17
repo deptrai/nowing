@@ -7,7 +7,7 @@ export function ComposerSuggestionAnchor({ point }: { point: ComposerSuggestionA
 	return (
 		<PopoverAnchor
 			className="pointer-events-none fixed size-0"
-			style={{
+			style={{ // pi-lens-ignore: ast-grep:inline-styles -- anchor position computed from caret rect per keyup
 				left: point.left,
 				top: point.top,
 			}}

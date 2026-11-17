@@ -41,9 +41,9 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '09-23-2026 16:00'
+last_updated: '11-16-2026 22:22'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
-# manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-xactions-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
+# manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
 # - Scanned _bmad-output/implementation-artifacts/ + stories/*.md for story files (frontmatter story_key/epic+story).
 # - Existing sprint-status.yaml preserved with manual statuses; no backlog story upgraded because all file-backed stories already >= ready-for-dev.
@@ -224,7 +224,7 @@ development_status:
   18-8-rate-limiting-tenant-isolation: done
   epic-18-retrospective: done
 
-  epic-20: in-progress
+  epic-20: done
   20-4-service-to-service-auth-cost-ledger-sync: done
   20-1-nowing-scraper-to_chunks: done
   20-2-gap-fill-caller-cost-allocation: done
@@ -232,10 +232,10 @@ development_status:
   20-5-chainlens-contents-url-extraction: done
   20-6-chainlens-code_search-code-search: done
   20-7-chainlens-openai-gateway-model-connections: done
-  20-8-chainlens-webhook-monitors-automations: ready-for-dev
-  20-9-async-research-jobs-resumption: ready-for-dev
-  20-10-chainlens-pulse_feed-curated-intelligence-feed: ready-for-dev
-  20-11-chainlens-pulse_research-angle-deep-research: ready-for-dev
+  20-8-chainlens-webhook-monitors-automations: done
+  20-9-async-research-jobs-resumption: done
+  20-10-chainlens-pulse_feed-curated-intelligence-feed: done
+  20-11-chainlens-pulse_research-angle-deep-research: done
   epic-20-retrospective: done
 
   epic-21: done
@@ -246,14 +246,14 @@ development_status:
   21-5-crm-integration-lark-base-google-sheets-1-click-sync: done
   21-6-vietnam-outbound-automation: done
   21-7-outcome-based-pricing-transparent-credit-ledger: done
-  21-8-social-ingress-via-xactions-integration-foundation: done
-  21-8a-xactions-universal-ingress-productionization: done
+  21-8-social-ingress-via-medirus-integration-foundation: done
+  21-8a-medirus-universal-ingress-productionization: done
   21-8b-redis-stream-consumer-celery-wiring: done
   21-8c-multi-domain-social-target-expansion: done
   21-8d-universal-scrape-target-mapper: done
   21-8e-per-account-proxy-and-cookie-binding: done
-  21-8f-xactions-governance-and-health-integration: done
-  21-8g-xactions-mcp-chat-connector: done
+  21-8f-medirus-governance-and-health-integration: done
+  21-8g-medirus-mcp-chat-connector: done
   21-9-executive-decision-maker-mapping-b2b-lead-outreach: done
   21-10-1-click-reverse-icp-from-website-project-url: done
   21-11-actionable-turn-dispatches: done
@@ -303,7 +303,7 @@ development_status:
   25-7-third-party-health-operations-dashboard: done
   epic-25-retrospective: done
 
-  epic-26: in-progress
+  epic-26: done
   26-25-customer-location-profile-selector-with-progressive-disclosu: done
   26-26-location-aware-adapter-routing-coverage-quality: done
   26-27-pre-flight-lead-plan-summary-plansummarycard: done
@@ -320,7 +320,7 @@ development_status:
   26-11-two-tier-phone-unlock-ux-refinement: done
   26-9a-wide-research-crawl-subgraph: done
   26-9b-pro-excel-formatter-in-daytona-sandbox: done
-  26-9c-native-wide_research-matrix-upgrade: ready-for-dev
+  26-9c-native-wide_research-matrix-upgrade: done
   epic-26-retrospective: done
 
   epic-27: done
@@ -350,7 +350,7 @@ development_status:
   29-6-data-governance-retention-policy-console: done
   epic-29-retrospective: done
 
-  epic-30: in-progress
+  epic-30: done
   30-2-redis-event-bus-subscribe-failure-state-leak: done
   30-5-title_gen-py-lacks-timeout-retry-on-litellm-acompletion: done
   30-8-epic-13-canonical-entity-cleanup: done
@@ -363,72 +363,96 @@ development_status:
   31-2-strict-cname-dns-ingress-ownership-verification: done
   31-3-ast-static-eval-policy-for-dynamic-jsx-expression-matching-i: done
   31-4-entitlement-driven-presentation-studio-format-selection-from: done
-  epic-31-retrospective: optional
+  epic-31-retrospective: done
 
   epic-32: done
   32-1-humanlivetakeoverpopover-ui-with-countdown-timer-and-abort-s: done
   32-2-chrome-extension-chrome-debugger-ondetach-recovery-reconnect: done
   32-3-cryptographic-cdp-session-token-lifecycle-audited-command-lo: done
-  epic-32-retrospective: optional
+  epic-32-retrospective: done
 
   epic-33: done
   33-1-automated-zero-downtime-secret_key-rotation-with-dual-key-fa: done
   33-2-superadmin-cross-workspace-global-right-to-be-forgotten-dnc: done
   33-3-two-phase-transactional-credit-locking-for-phone-waterfall-p: done
-  epic-33-retrospective: optional
+  epic-33-retrospective: done
 
   epic-34: done
   34-1-bi-directional-deal-stage-activity-synchronization-for-hubsp: done
   34-2-web-admin-management-endpoints-for-telegram-userbots-monitor: done
   34-3-dedicated-crm-deal-pipeline-customer-activity-timeline-ui-ta: done
-  epic-34-retrospective: optional
+  epic-34-retrospective: done
 
   epic-35: done
   35-1-redis-consumer-group-pending-message-auto-claim-xautoclaim-d: done
   35-2-o-n-log-n-spatial-windowed-deduplication-for-mass-entity-dat: done
   35-3-per-platform-scraper-failure-metrics-sse-streaming-idle-hear: done
-  epic-35-retrospective: optional
+  epic-35-retrospective: done
 
   epic-36: done
   36-1-wire-x_crawl_post-fallback-graceful-unsupported-marking-p0-u: done
-  36-2-loop-scoped-xactionsmcpclient-connection-cache: done
+  36-2-loop-scoped-medirusmcpclient-connection-cache: done
   36-3-centralized-xact_-task-behavior-error-map: done
   36-4-single-writer-stream-stop-nowing-publishing-to-stream-social: done
   36-5-stream-consumer-schema-contract-dlq-routing: done
   36-6-canonical-action-matrix-legacy-tool-deprecation: done
   epic-36-retrospective: done
 
-  epic-37: in-progress
-  37-1-proactive-intent-signal-radar-background-ingestion-telegram: 
-    review
-  37-2-vietnam-cultural-honorific-relationship-tone-engine: review
-  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark-cale: 
-    review
-  37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper: review
-  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: 
-    review
-  37-6-realtime-prospect-engagement-tracker-telegram-alert-bot-ping: 
-    done
-  37-7-hybrid-pricing-packaging-ui-auto-refund-guarantee-sla: review
-  epic-37-retrospective: optional
+  epic-37: done
+  37-1-proactive-intent-signal-radar-background-ingestion-telegram: done
+  37-2-vietnam-cultural-honorific-relationship-tone-engine: done
+  37-3-smart-meeting-booking-engine-for-auto-reply-google-lark-cale: done
+  37-4-zalo-desktop-web-co-pilot-overlay-in-nowing-lead-clipper: done
+  37-5-sequencer-to-artifact-integration-1-click-mini-pitch-portal: done
+  37-6-realtime-prospect-engagement-tracker-telegram-alert-bot-ping: done
+  37-7-hybrid-pricing-packaging-ui-auto-refund-guarantee-sla: done
+  epic-37-retrospective: done
 
-  epic-38: in-progress
+  epic-38: done
   38-1-livekit-sip-gateway-kamailio-media-infrastructure: done
   38-2-voice-agent-worker-runtime-với-silero-vad-micro-clause-strea: done
-  38-3-anti-false-interruption-multi-tier-barge-in-engine-ducking-k: backlog
-  38-4-telephony-compliance-gate-national-dnc-5656-curfew-scheduler: backlog
-  38-5-telecom-signal-classifier-amd-dead-air-watchdog-engine: backlog
-  38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip-architectur: backlog
-  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: backlog
-  38-8-voice-billing-realtime-metering-qa-scorecard: backlog
-  epic-38-retrospective: optional
+  38-3-anti-false-interruption-multi-tier-barge-in-engine-ducking-k: done
+  38-4-telephony-compliance-gate-national-dnc-5656-curfew-scheduler: done
+  38-5-telecom-signal-classifier-amd-dead-air-watchdog-engine: done
+  38-6-dynamic-did-voice-brandname-multi-tenant-byo-sip-architectur: done
+  38-7-outbound-trigger-engine-speed-to-lead-hiring-radar-integrati: done
+  38-8-voice-billing-realtime-metering-qa-scorecard: done
+  epic-38-retrospective: done
+
+  epic-39: done
+  39-1-decisionservice-port-jev-backend-question-registry: done
+  39-2-subagent-routing-via-jev-choice-r2-highest-impact: done
+  39-3-entity-resolution-confidence-scoring-r3: done
+  39-4-content-guardrails-via-jev-noul-battery-r4: done
+  39-5-intent-classification-via-jev-choice-r5-low: done
+  39-6-voice-agent-post-stt-semantic-decisions-r6-deferred: done
+  39-7-decision-telemetry-dashboard-cost-tracking: done
+  39-8-eval-harness-ci-integration: done
+  epic-39-retrospective: done
+
   epic-40: done
-  40-1-xactions-gateway-client-streamable-http-cutover: done
+  40-1-medirus-gateway-client-streamable-http-cutover: done
   40-2-scraper-playground-thin-proxy-workspace-billing-gate: done
   40-3-decommission-22-internal-platform-crawlers-docker-image-slim: done
   40-4-jev-stream-dedup-pii-guardrail-pipeline: done
   40-5-chainlens-s2s-circuit-breaker-timeout-hardening: done
-  epic-40-retrospective: optional
+  epic-40-retrospective: done
+
+  epic-41: done
+  41-1-websets-api-client-idle-webhook-handler: done
+  41-2-websets-lead-mapper-billing-gate-source-badge: done
+  epic-41-retrospective: done
+
+  epic-42: done
+  42-1-pat-scoped-rest-batch-ingest-verify-harden-contract-document: done
+  42-2-toolresultenvelope-một-result-contract-xuyên-mọi-boundary: done
+  42-3-get-api-v1-scrapers-health-aggregated-channel-status: done
+  42-4-nowing_mcp-lead-tools-leads-ingest-tables-create-leads-list: done
+  42-5-hitl-approve-reject-gemini-functionresponse-mismatch-fix: done
+  42-6-step-cap-graceful-degradation-partial-synthesis-thay-vì-text: done
+  42-7-ia-fix-real-dashboard-id-leads-route-service-level-auto-tabl: done
+  42-8-forward-context-workspaceid-qua-medirus_gateway-dev-quota-fl: done
+  epic-42-retrospective: optional
 validation_reports:
   - story: "3.18"
     type: "code-review"
@@ -734,3 +758,285 @@ action_items:
     owner: "Winston"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-26-retro-2026-09-06.md"
+  - id: "epic-39-retro-item-5-raise-voice_decide_timeout_seconds-defau"
+    epic: 39
+    action: "Raise VOICE_DECIDE_TIMEOUT_SECONDS default to ~0.8s or split timeout
+      for transfer_to_human"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-6-switch-ingest-filter-to-fail-closed-drop"
+    epic: 39
+    action: "Switch ingest filter to fail-closed (drop/requeue flagged batch on Jev
+      error)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-7-_env_float-math-isfinite-for-voice-env-p"
+    epic: 39
+    action: "_env_float+math.isfinite for voice env parse; strip code fences in llm_json.py;
+      thread_id+turn in jev_router dedup key"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-8-trim-entity-resolution-candidate-fields"
+    epic: 39
+    action: "Trim entity-resolution candidate fields; add develop to jev-eval-gate.yml
+      branches"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-9-decide-telemetry-schema-for-background-d"
+    epic: 39
+    action: "Decide telemetry schema for background decisions missing user_id (nullable
+      vs service-account)"
+    owner: "architect"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-10-remove-or-refactor-app-tasks-jev_guardra"
+    epic: 39
+    action: "Remove or refactor app/tasks/jev_guardrails.py stub to use DecisionService"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-11-add-passes_positive-to-confidencegate-co"
+    epic: 39
+    action: "Add passes_positive to ConfidenceGate; consider splitting decision/service.py
+      (662 lines)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-12-pull-epic-38-open-items-ai-38-1-38-5-int"
+    epic: 39
+    action: "Pull Epic 38 open items (AI-38.1..38.5) into backlog before Epic 41;
+      add pre-epic gate check"
+    owner: "pm"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-13-upgrade-inboundintentclassifier-regex-to"
+    epic: 39
+    action: "Upgrade InboundIntentClassifier regex to Jev when slot available"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-39-retro-item-14-measure-context-token-delta-of-demote-no"
+    epic: 39
+    action: "Measure context-token delta of demote-not-drop RAG; decide cap"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-39-retrospective-2026-10-09.md"
+  - id: "epic-41-retro-item-15-fix-extra_metadata-upsert-wipe-_prepare_"
+    epic: 41
+    action: "Fix extra_metadata upsert wipe: _prepare_lead_record default None thay
+      {} + JSONB merge trong set_ (lead_batch_service.py:65-67,146-148) + integration
+      test upsert-merge"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-16-session-rollback-truoc-release_credit-tr"
+    epic: 41
+    action: "session.rollback() truoc release_credit trong flush except-block de tranh
+      credit lock vinh vien (websets_import.py:352-366) + test release-on-exception"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-17-billingevent-event_id-fallback-dung-glob"
+    epic: 41
+    action: "BillingEvent event_id fallback dung global raw position hoac content
+      hash thay idx per-batch de tranh cross-batch collision (websets_import.py:276-280)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-18-truncate-mapped-strings-theo-schema-limi"
+    epic: 41
+    action: "Truncate mapped strings theo schema limits trong map_webset_entity (company_name<=200)
+      va persist imported_count tren failure path (websets_import.py)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-19-owner-none-billing-fail-closed-status-fa"
+    epic: 41
+    action: "owner-None billing: fail-closed status=failed reason=no_workspace_owner
+      thay import free (decided by user) + update test_billing_owner_none_skips_billing"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-20-them-partial-unique-index-billingevent-e"
+    epic: 41
+    action: "Them partial unique index BillingEvent.event_id cho event_entity_type=webset
+      + with_for_update() campaign row trong import_webset (billing.py:247-256). DONE=index
+      only (alembic 248); with_for_update SKIPPED by design — per-flush commits release
+      row locks, unique index + conditional status writes du chong double-debit (commit
+      d3893c777)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-21-websetsservice-hardening-401-x-user-ctx"
+    epic: 41
+    action: "WebsetsService hardening: 401 x-user-ctx rotation, build_retry, circuit
+      breaker theo convention Story 40.5 + cursor A->B->A test (websets.py)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-22-bo-mutable-last_execution_status-khoi-ad"
+    epic: 41
+    action: "Bo mutable last_execution_status khoi adapter singleton - SourceStatusPanel/planner
+      doc WebsetCampaign.status per workspace (adapters/websets.py:62-64,140)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-23-map_webset_entity-reuse-dnc-normalizer-p"
+    epic: 41
+    action: "map_webset_entity reuse dnc/normalizer.py (phone_e164, domain, email)
+      de cung co value_hmac dedup va DNC (websets_import.py:29-142)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-24-hygiene-migration-them-ix_webset_campaig"
+    epic: 41
+    action: "Hygiene: migration them ix_webset_campaigns_created_at; xoa duplicate
+      LeadCard.test.ts; them chotot key + badge config sang i18n-map"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-25-test-gaps-release-on-exception-partial-r"
+    epic: 41
+    action: "Test gaps: release-on-exception, partial-retry reservation, drawer malformed
+      metadata, en/vi key parity"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-26-refactor-import_webset-282-lines-nested"
+    epic: 41
+    action: "Refactor import_webset (282 lines + nested flush 154) thanh staged methods
+      khi cham lan toi (websets_import.py:155-369)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-41-retro-item-27-them-skipped_count-explicit-vao-camp-sta"
+    epic: 41
+    action: "Them skipped_count explicit vao camp.stats (websets_import.py:422-424)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-41-retro-2026-10-10.md"
+  - id: "epic-31-retro-item-28-bổ-sung-telemetry-giám-sát-mức-tiêu-thụ"
+    epic: 31
+    action: "Bổ sung telemetry giám sát mức tiêu thụ tài nguyên cgroup (OOM/throttling)
+      của container Dokploy"
+    owner: "devops"
+    status: deferred
+    ref: "_bmad-output/implementation-artifacts/deferred-work.md"
+  - id: "epic-31-retro-item-29-thiết-lập-synthetic-probe-định-kỳ-kiểm-t"
+    epic: 31
+    action: "Thiết lập synthetic probe định kỳ kiểm tra xác thực DNS TXT / CNAME trên
+      staging/production"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
+  - id: "epic-32-retro-item-30-bổ-sung-kiểm-tra-fail-closed-hoặc-cảnh-b"
+    epic: 32
+    action: "Bổ sung kiểm tra fail-closed hoặc cảnh báo khởi động trong production
+      khi CDP_SESSION_SECRET giữ giá trị mặc định trong app/config/dsh.py"
+    owner: "security-engineer"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-32-retro-item-31-tái-cấu-trúc-phân-tách-router-dsh_routes"
+    epic: 32
+    action: "Tái cấu trúc phân tách router dsh_routes.py (779 dòng) thành các router
+      chuyên biệt (missions.py, cdp.py, takeover.py)"
+    owner: "backend-dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
+  - id: "epic-32-retro-item-32-xây-dựng-playwright-test-fixture-tải-ext"
+    epic: 32
+    action: "Xây dựng Playwright test fixture tải extension MV3 trong CI để kiểm thử
+      luồng chrome.debugger.onDetach và takeover popover thực tế trên Chromium"
+    owner: "qa-lead"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
+  - id: "epic-32-retro-item-33-nghiên-cứu-nâng-cấp-trạng-thái-activedeb"
+    epic: 32
+    action: "Nghiên cứu nâng cấp trạng thái activeDebuggeeTabId trong CdpBridge thành
+      Map<number, SessionContext> nhằm hỗ trợ đa tab đồng thời trong tương lai"
+    owner: "frontend-dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
+  - id: "epic-33-retro-item-34-bổ-sung-logic-tìm-kiếm-và-ẩn-xóa-bản-ghi"
+    epic: 33
+    action: "Bổ sung logic tìm kiếm và ẩn/xóa bản ghi SocialPost liên kết với số điện
+      thoại hoặc email bị purge trong CompliancePurgeService"
+    owner: "dev-backend"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-33-retro-item-35-xác-định-chính-sách-hoàn-trả-tín-dụng-cr"
+    epic: 33
+    action: "Xác định chính sách hoàn trả tín dụng (Credit Refund Policy) khi dữ liệu
+      contact bị thu hồi cưỡng chế theo yêu cầu bảo vệ quyền riêng tư toàn cầu"
+    owner: "product-owner"
+    status: done
+    ref: "_bmad-output/planning-artifacts/credit-refund-policy-compliance-purge-draft-2026-10-13.md"
+  - id: "epic-33-retro-item-36-viết-tài-liệu-hướng-dẫn-vận-hành-cho-sec"
+    epic: 33
+    action: "Viết tài liệu hướng dẫn vận hành cho SecOps (SOP) về quy trình xoay vòng
+      SECRET_KEY và kiểm tra hoàn thành rotate_encryption trước khi gỡ bỏ OLD_SECRET_KEY"
+    owner: "devops"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
+  - id: "epic-34-retro-item-37-chuyển-cơ-chế-xác-thực-của-endpoint-sale"
+    epic: 34
+    action: "Chuyển cơ chế xác thực của endpoint Salesforce webhook sang fail-closed:
+      từ chối nếu SALESFORCE_WEBHOOK_SECRET rỗng hoặc không khớp"
+    owner: "dev-backend"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-34-retro-item-38-sửa-3-cảnh-báo-linter-biome-trong-worksp"
+    epic: 34
+    action: "Sửa 3 cảnh báo linter Biome trong WorkspaceActivityTimeline.tsx (thay
+      thế any bằng type an toàn và chuẩn hóa hook dependencies với useCallback)"
+    owner: "dev-frontend"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-34-retro-item-39-bổ-sung-integration-test-cho-endpoint-we"
+    epic: 34
+    action: "Bổ sung integration test cho endpoint webhook CRM để kiểm thử trọn vẹn
+      luồng transaction cập nhật Lead và CrmSyncLog trên cơ sở dữ liệu thật"
+    owner: "test-engineer"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-35-retro-item-40-bổ-sung-cơ-chế-đếm-số-lần-delivery-attem"
+    epic: 35
+    action: "Bổ sung cơ chế đếm số lần delivery attempts (SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS
+      = 5) cho XAUTOCLAIM trong social_stream_worker.py để đẩy các tin nhắn độc gây
+      sập tiến trình liên tục vào DLQ (stream:social:dead_letter)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-35-retro-item-41-tích-hợp-spatialwindoweddeduplicator-vào"
+    epic: 35
+    action: "Tích hợp SpatialWindowedDeduplicator vào các luồng xử lý thực tế (bds_aggregator
+      hoặc batch ingest), đồng thời bổ sung generator streaming interface để đảm bảo
+      giới hạn bộ nhớ"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-3-remaining-retro-items.md"
+  - id: "epic-35-retro-item-42-đấu-nối-lệnh-gọi-record_scraper_ingest_f"
+    epic: 35
+    action: "Đấu nối lệnh gọi record_scraper_ingest_failure(platform, reason) vào
+      các điểm bắt lỗi của platform scrapers (batdongsan, muaban_bds, facebook, medirus)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-35-retro-item-43-bổ-sung-integration-test-với-redis-cho-l"
+    epic: 35
+    action: "Bổ sung integration test với Redis cho luồng XAUTOCLAIM và route test
+      cho SSE idle heartbeat (/dsh/cdp/stream)"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"
+  - id: "epic-35-retro-item-44-chuẩn-hóa-hàm-tách-từ-trong-spatial_wind"
+    epic: 35
+    action: "Chuẩn hóa hàm tách từ trong spatial_windowed_dedup.py bằng cách tích
+      hợp tiện ích remove_diacritics từ location_normalize"
+    owner: "dev"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/spec-debt-sweep-retro-action-items.md"

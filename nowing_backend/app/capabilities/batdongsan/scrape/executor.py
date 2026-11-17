@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
+
+from celery import Task
 
 from app.capabilities.core import Executor
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
 from app.config import config
@@ -53,7 +56,10 @@ def _maybe_escalate(
 ) -> None:
     if ctx is None or ctx.run_id is None:
         return
-    capture_platform_anti_bot_screenshot_task.delay(
+    # celery wraps the task in a PromiseProxy; cast to Task so type checkers
+    # see the runtime-present .delay() API.
+    task = cast(Task, capture_platform_anti_bot_screenshot_task)
+    task.delay(
         url=url or f"https://{_DOMAIN}",
         run_id=ctx.run_id,
         workspace_id=ctx.workspace_id,
@@ -103,14 +109,28 @@ def build_scrape_executor(
             total=payload.max_items,
             unit="item",
         )
-        try:
+
+        async def _local() -> BatdongsanScrapeOutput | dict[str, Any]:
             kwargs: dict[str, Any] = {
                 "limit": payload.max_items,
                 "resolve_phones": payload.resolve_phones,
             }
             if web_fetch_fn is not None:
                 kwargs["web_fetch_fn"] = web_fetch_fn
-            raw = await scrape_fn(actor_input, **kwargs)
+            return await scrape_fn(actor_input, **kwargs)
+
+        try:
+            raw = await medirus_scrape_or_local(
+                platform="batdongsan",
+                action="search_listings",
+                args={
+                    **payload.model_dump(exclude_unset=True),
+                    "limit": payload.max_items,
+                    "resolve_phones": payload.resolve_phones,
+                },
+                local_fn=_local,
+                ctx=ctx,
+            )
         except BatdongsanRateLimitedError:
             logger.exception("batdongsan.scrape rate limited")
             _maybe_escalate(ctx, "rate_limited")
@@ -139,7 +159,9 @@ def build_scrape_executor(
                 degradation_reason="bot_detected",
                 next_action=_next_action("bot_detected"),
             )
-        except Exception as exc:  # unexpected actor failure → structured degraded failure response
+        except (
+            Exception
+        ) as exc:  # unexpected actor failure → structured degraded failure response
             logger.exception("batdongsan.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],

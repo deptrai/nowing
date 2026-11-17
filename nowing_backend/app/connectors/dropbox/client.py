@@ -304,6 +304,7 @@ class DropboxClient:
         ):
             if resp.status_code != 200:
                 return f"Download failed: {resp.status_code}"
+            # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- write failure propagates to caller
             with open(dest_path, "wb") as f:
                 async for chunk in resp.aiter_bytes(chunk_size=5 * 1024 * 1024):
                     f.write(chunk)

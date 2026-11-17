@@ -71,7 +71,7 @@ test.describe("Story 28.5: Workspace Memory Storage Cap & Retention UI", () => {
 		await page.waitForLoadState("networkidle");
 
 		// Verify Memory Retention section is visible
-		await expect(page.getByText("Memory Retention")).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Memory Retention" })).toBeVisible();
 		await expect(page.getByTestId("data-retention-memory-auto-archive-switch")).toBeChecked();
 		await expect(page.getByTestId("data-retention-memory-days-input")).toHaveValue("180");
 	});

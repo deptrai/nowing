@@ -40,9 +40,9 @@ export function AutoExtractBudgetCard({ workspaceId }: AutoExtractBudgetCardProp
 		enabled: workspaceId > 0,
 	});
 
-	const [itemCap, setItemCap] = useState<string>("");
-	const [spendCapDollars, setSpendCapDollars] = useState<string>("");
-	const [walletPreCheck, setWalletPreCheck] = useState<boolean>(true);
+	const [itemCap, setItemCap] = useState("");
+	const [spendCapDollars, setSpendCapDollars] = useState("");
+	const [walletPreCheck, setWalletPreCheck] = useState(true);
 
 	useEffect(() => {
 		if (!data) return;

@@ -14,7 +14,7 @@
 | Architecture spine (AD-115 → AD-121 for Epic 37; AD-122 → AD-129 + AD-130 for Epic 38) | ✅ Recorded in `ARCHITECTURE-SPINE.md` + Epic 38 audit signoff |
 | Epic 37 story files (`stories/37-1` … `37-7`) | ✅ 7/7 present, frontmatter complete (story_key, priority, target_codebase, architectural_invariants) |
 | Epic 38 approval (`audit-epic-38-voice-ai-sdr-master-signoff.md`) | ✅ Approved with constraints; Zero-Reinvention Matrix + 8 mandatory test suites + 5 refactor directives |
-| Dependency chain (Epics 20–36) | ✅ All `done` — 34 (CRM), 35 (streams), 36 (XActions) landed |
+| Dependency chain (Epics 20–36) | ✅ All `done` — 34 (CRM), 35 (streams), 36 (Medirus) landed |
 | `sprint-status.yaml` | ✅ Valid, last_updated 2026-09-16 |
 
 ## Open concerns (accepted, not blocking)

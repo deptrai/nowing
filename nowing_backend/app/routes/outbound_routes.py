@@ -23,7 +23,7 @@ from app.db import (
     ZaloMessageLog,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePatScope, RequirePermission
 from app.gateway.zalo.client import (
     ZaloClient,
     format_vietnam_phone,
@@ -183,6 +183,8 @@ async def generate_zalo_draft(
     _membership: WorkspaceMembership = Depends(
         RequirePermission(Permission.LEADS_READ.value)
     ),
+    # PAT scope seam (spec 42-10, D3): theo perm khai báo LEADS_READ
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> ZaloDraftResponse:
     """Generate personalized Vietnamese outreach message for Assisted Zalo Co-pilot.
 
@@ -261,6 +263,8 @@ async def send_zns_message(
     _membership: WorkspaceMembership = Depends(
         RequirePermission(Permission.LEADS_WRITE.value)
     ),
+    # PAT scope seam (spec 42-10)
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> ZnsSendResponse:
     """Send transactional notification via official Zalo OA ZNS endpoint.
 
@@ -566,6 +570,8 @@ async def dispatch_lead_telegram_alert(
     _membership: WorkspaceMembership = Depends(
         RequirePermission(Permission.LEADS_READ.value)
     ),
+    # PAT scope seam (spec 42-10, D3): theo perm khai báo LEADS_READ
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> TelegramAlertResponse:
     lead = await _get_lead_or_404(session, lead_id, workspace_id)
     target_ws = lead.workspace_id

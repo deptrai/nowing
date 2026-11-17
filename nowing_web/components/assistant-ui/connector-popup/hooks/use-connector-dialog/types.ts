@@ -56,7 +56,7 @@ export interface UseConnectorDialogBase {
 	setConnectingConnectorType: (value: string | null) => void;
 	isCreatingConnector: boolean;
 	setIsCreatingConnector: (value: boolean) => void;
-	isCreatingConnectorRef: React.MutableRefObject<boolean>;
+	isCreatingConnectorRef: React.RefObject<boolean>;
 
 	handleViewAccountsList: (connectorType: string, connectorTitle?: string) => void;
 	handleBackFromAccountsList: () => void;

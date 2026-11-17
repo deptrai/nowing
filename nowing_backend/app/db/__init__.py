@@ -145,6 +145,7 @@ from app.models.leads import (
     LeadScore,
     LinkedinCompany,
     LinkedinJob,
+    MedirusProxyBinding,
     OutboundMessage,
     OutcomeEvent,
     PhoneWaterfallLog,
@@ -159,7 +160,6 @@ from app.models.leads import (
     SocialPost,
     TelegramCheckpointMessage,
     VerifiedContact,
-    XActionsProxyBinding,
     ZaloConnection,
     ZaloMessageLog,
 )
@@ -228,7 +228,10 @@ from app.automations.persistence import (
 from app.etl_pipeline.cache.persistence.models import CachedParse
 from app.file_storage.persistence import DocumentFile
 from app.indexing_pipeline.cache.persistence.models import CachedEmbeddingSet
+from app.models.browser_operator_audit import BrowserOperatorAuditEvent
+from app.models.webset_campaign import WebsetCampaign
 from app.models.workspace_health import WorkspaceHealthDaily
+from app.models.workspace_sip import WorkspaceSipTrunk
 from app.models.workspaces import (
     BroadcastAnnouncement,
     GlobalDncRecord,
@@ -242,13 +245,11 @@ from app.models.workspaces import (
     WorkspaceMcpToolSetting,
     WorkspaceTable,
 )
-from app.models.browser_operator_audit import BrowserOperatorAuditEvent
 from app.notifications.persistence import Notification
 from app.podcasts.persistence import Podcast, PodcastStatus
 from app.proprietary.platforms.spatial_planning.models import SpatialPlanningZone
 
 __all__ = [
-    "BrowserOperatorAuditEvent",
     "DATABASE_URL",
     # enums
     "DEFAULT_ROLE_PERMISSIONS",
@@ -271,6 +272,7 @@ __all__ = [
     "BaseModel",
     "BillingEvent",
     "BroadcastAnnouncement",
+    "BrowserOperatorAuditEvent",
     "BulkAction",
     "BulkOpError",
     "BulkOpJob",
@@ -331,6 +333,7 @@ __all__ = [
     "Log",
     "LogLevel",
     "LogStatus",
+    "MedirusProxyBinding",
     "MeetingMinutes",
     "MeetingMinutesStatus",
     "Memory",
@@ -400,6 +403,7 @@ __all__ = [
     "VerticalClient",
     "VideoPresentation",
     "VideoPresentationStatus",
+    "WebsetCampaign",
     "Workspace",
     "WorkspaceApp",
     "WorkspaceDncRecord",
@@ -409,9 +413,9 @@ __all__ = [
     "WorkspaceMcpToolSetting",
     "WorkspaceMembership",
     "WorkspaceRole",
+    "WorkspaceSipTrunk",
     "WorkspaceSkill",
     "WorkspaceTable",
-    "XActionsProxyBinding",
     "ZaloConnection",
     "ZaloMessageLog",
     "_enum_values",

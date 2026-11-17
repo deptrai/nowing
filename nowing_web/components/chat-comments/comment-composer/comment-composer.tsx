@@ -16,6 +16,7 @@ function convertDisplayToData(displayContent: string, mentions: InsertedMention[
 	const sortedMentions = [...mentions].sort((a, b) => b.displayName.length - a.displayName.length);
 
 	const mentionPatterns = sortedMentions.map((mention) => ({
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- mention text is escaped via escapeRegExp before interpolation
 		pattern: new RegExp(`@${escapeRegExp(mention.displayName)}(?=\\s|$|[.,!?;:])`, "g"),
 		dataFormat: `@[${mention.id}]`,
 	}));

@@ -133,7 +133,7 @@ Chi tiết triển khai:
 - [ ] **Task 4 — Tích hợp call sites (AC-1, AC-3)**
   - [ ] 4.1 Sửa `nowing_backend/app/lead_intelligence/reverse_icp.py:219-235` để gọi `HybridLLMRouter` thay vì `LLMRouterService.get_router()` trực tiếp.
   - [ ] 4.2 (Tùy chọn 26.2 follow-up) cập nhật `nowing_backend/app/tasks/dsh_worker.py` (hiện tại là entry point sidecar) hoặc `app/services/dsh_mission_service.py` để dùng Hybrid Router cho `extraction` và `reasoning` subtasks.
-  - [ ] 4.3 Thay thế hoặc bổ sung `app/proprietary/platforms/xactions/phone_extractor.py` để dùng `fast_extraction` tier cho entity extraction nếu dữ liệu public.
+  - [ ] 4.3 Thay thế hoặc bổ sung `app/proprietary/platforms/medirus/phone_extractor.py` để dùng `fast_extraction` tier cho entity extraction nếu dữ liệu public.
 
 - [ ] **Task 5 — Quota, usage, và cost tracking (AC-1, AC-2, AC-3)**
   - [ ] 5.1 Thêm `HYBRID_LLM_EXTRACTION` và `HYBRID_LLM_REASONING` vào `app/services/token_tracking_service.py:UsageType`. Mọi lời gọi `HybridLLMRouter` nên được bọc trong `app/services/billable_calls.py:billable_call(..., billing_tier, usage_type)`, vừa tự động kích hoạt `TokenTrackingCallback`, vừa reserve/finalize credits cho tầng premium.

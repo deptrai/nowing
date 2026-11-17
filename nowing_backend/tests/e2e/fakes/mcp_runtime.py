@@ -150,11 +150,11 @@ def install(active_patches: list[Any]) -> None:
             _FakeClientSession,
         ),
         (
-            "app.proprietary.platforms.xactions.mcp_client.streamablehttp_client",
+            "app.proprietary.platforms.medirus.mcp_client.streamablehttp_client",
             _fake_streamablehttp_client,
         ),
         (
-            "app.proprietary.platforms.xactions.mcp_client.ClientSession",
+            "app.proprietary.platforms.medirus.mcp_client.ClientSession",
             _FakeClientSession,
         ),
     ]

@@ -3,7 +3,6 @@ import {
 	AuiIf,
 	MessagePrimitive,
 	useAuiState,
-	useMessagePartText,
 } from "@assistant-ui/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -36,7 +35,6 @@ interface AuthorMetadata {
 }
 
 const UserAvatar: FC<AuthorMetadata> = ({ displayName, avatarUrl }) => {
-	const t = useTranslations("assistant");
 	const [hasError, setHasError] = useState(false);
 
 	const initials = displayName
@@ -73,8 +71,10 @@ const UserAvatar: FC<AuthorMetadata> = ({ displayName, avatarUrl }) => {
 const UserTextPart: FC = () => {
 	const t = useTranslations("assistant");
 	const messageId = useAuiState(({ message }) => message?.id);
-	const part = useMessagePartText();
-	const text = (part as { text?: string }).text ?? "";
+	const partText = useAuiState((s) =>
+		s.part.type === "text" || s.part.type === "reasoning" ? s.part.text : null
+	);
+	const text = partText ?? "";
 	const messageDocumentsMap = useAtomValue(messageDocumentsMapAtom);
 	const mentionedDocs = (messageId ? messageDocumentsMap[messageId] : undefined) ?? [];
 	const openEditorPanel = useSetAtom(openEditorPanelAtom);
@@ -112,7 +112,7 @@ const UserTextPart: FC = () => {
 	const segments = parseMentionSegments(text, mentionedDocs);
 
 	return (
-		<p style={{ whiteSpace: "pre-line" }} className="wrap-break-word">
+		<p className="wrap-break-word whitespace-pre-line">
 			{segments.map((segment) => {
 				if (segment.type === "text") {
 					return <span key={`txt-${segment.start}`}>{segment.value}</span>;

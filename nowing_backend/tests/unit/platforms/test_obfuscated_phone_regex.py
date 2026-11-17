@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
 
 
 @pytest.mark.parametrize(

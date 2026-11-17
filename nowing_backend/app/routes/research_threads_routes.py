@@ -36,6 +36,13 @@ from app.utils.strict_fields import strict_top_k
 
 router = APIRouter()
 
+# Hoisted to a module-level alias so the annotation inside ``Annotated`` is a
+# name, not a call expression in type position (pyright reportInvalidTypeForm).
+_ThreadTopK = strict_top_k(
+    le=5,
+    description="Number of thread-scoped memories to recall.",
+)
+
 
 @router.get(
     "/workspaces/{workspace_id}/research-threads/{thread_id}/context",
@@ -52,13 +59,7 @@ async def get_research_thread_context(
             "most recent (recency-ordered) recall, matching nowing_recall."
         ),
     ),
-    top_k: Annotated[
-        strict_top_k(
-            le=5,
-            description="Number of thread-scoped memories to recall.",
-        ),
-        Query(),
-    ] = 5,
+    top_k: Annotated[_ThreadTopK, Query()] = 5,  # pyright: ignore[reportInvalidTypeForm]  # runtime-built Annotated alias
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
     _membership: WorkspaceMembership = Depends(
@@ -103,7 +104,10 @@ async def get_research_thread_context(
         status = 500 if exc.reason == "provider_error" else 422
         raise HTTPException(
             status_code=status,
-            detail={"code": exc.reason, "message": f"embedding validation failed: {exc.reason}"},
+            detail={
+                "code": exc.reason,
+                "message": f"embedding validation failed: {exc.reason}",
+            },
         ) from exc
 
     citations = await collect_thread_citations(session, thread)

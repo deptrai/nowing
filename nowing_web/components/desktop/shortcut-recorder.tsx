@@ -78,7 +78,9 @@ export function ShortcutRecorder({
 	icon: Icon,
 }: {
 	value: string;
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop
 	onChange: (accelerator: string) => void;
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop
 	onReset: () => void;
 	defaultValue: string;
 	label: string;

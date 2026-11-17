@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.celery_app import celery_app
 from app.connectors.google_sheets import GoogleSheetsConnector
 from app.connectors.lark_base import LarkBaseConnector
-from app.db import ExportJob, Lead, get_async_session_context
+from app.db import ExportJob, Lead, async_session_maker
 from app.services.export_service import ExportService
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ async def _async_lead_export(
     sync_id = f"nowing-export-{export_job_id}"
     export_service = ExportService()
 
-    async with get_async_session_context() as session:
+    async with async_session_maker() as session:
         job = await session.get(ExportJob, UUID(export_job_id))
         if not job:
             logger.error("Export job %s not found", export_job_id)
@@ -107,7 +107,9 @@ async def _async_lead_export(
                 "processed_rows": job.processed_rows,
             }
 
-        except Exception as e:  # export execution failure; mark job failed, commit, and re-raise
+        except (
+            Exception
+        ) as e:  # export execution failure; mark job failed, commit, and re-raise
             logger.exception("Error executing export job %s: %s", export_job_id, e)
             job.status = "failed"
             job.error_message = str(e)

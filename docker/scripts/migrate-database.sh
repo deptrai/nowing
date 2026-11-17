@@ -53,11 +53,11 @@ LOG_FILE="./nowing-migration.log"
 exec > >(tee -a "${LOG_FILE}") 2>&1
 
 # ── Output helpers ────────────────────────────────────────────────────────────
-info()    { printf "${CYAN}[Nowing]${NC} %s\n"        "$1"; }
-success() { printf "${GREEN}[Nowing]${NC} %s\n"       "$1"; }
-warn()    { printf "${YELLOW}[Nowing]${NC} %s\n"      "$1"; }
-error()   { printf "${RED}[Nowing]${NC} ERROR: %s\n"  "$1" >&2; exit 1; }
-step()    { printf "\n${BOLD}${CYAN}── Step %s: %s${NC}\n" "$1" "$2"; }
+info()    { printf '%s\n'        "${CYAN}[Nowing]${NC} $1"; }
+success() { printf '%s\n'       "${GREEN}[Nowing]${NC} $1"; }
+warn()    { printf '%s\n'      "${YELLOW}[Nowing]${NC} $1"; }
+error()   { printf '%s\n'  "${RED}[Nowing]${NC} ERROR: $1" >&2; exit 1; }
+step()    { printf '\n%s\n' "${BOLD}${CYAN}── Step $1: $2${NC}"; }
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 OLD_VOLUME="nowing-data"
@@ -90,7 +90,7 @@ done
 # ── Confirmation helper ───────────────────────────────────────────────────────
 confirm() {
     if $AUTO_YES; then return 0; fi
-    printf "${YELLOW}[Nowing]${NC} %s [y/N] " "$1"
+    printf '%s' "${YELLOW}[Nowing]${NC} $1 [y/N] "
     read -r reply
     [[ "$reply" =~ ^[Yy]$ ]] || { warn "Aborted."; exit 0; }
 }
@@ -104,9 +104,9 @@ cleanup() {
         docker rm   "${TEMP_CONTAINER}" >/dev/null 2>&1 < /dev/null || true
     fi
     if [[ $exit_code -ne 0 ]]; then
-        printf "\n${RED}[Nowing]${NC} Migration data extraction failed (exit code %s).\n" "${exit_code}" >&2
-        printf "${RED}[Nowing]${NC} Full log: %s\n" "${LOG_FILE}" >&2
-        printf "${YELLOW}[Nowing]${NC} Your original data in '${OLD_VOLUME}' is untouched.\n" >&2
+        printf '\n%s\n' "${RED}[Nowing]${NC} Migration data extraction failed (exit code ${exit_code})." >&2
+        printf '%s\n' "${RED}[Nowing]${NC} Full log: ${LOG_FILE}" >&2
+        printf '%s\n' "${YELLOW}[Nowing]${NC} Your original data in '${OLD_VOLUME}' is untouched." >&2
     fi
 }
 trap cleanup EXIT
@@ -193,12 +193,12 @@ fi
 success "All pre-flight checks passed."
 
 # ── Confirmation prompt ───────────────────────────────────────────────────────
-printf "\n${BOLD}Extraction plan:${NC}\n"
-printf "  Source volume   : ${YELLOW}%s${NC}  (PG14 data at /data/postgres)\n" "${OLD_VOLUME}"
-printf "  Old credentials : user=${YELLOW}%s${NC}  db=${YELLOW}%s${NC}\n" "${OLD_DB_USER}" "${OLD_DB_NAME}"
-printf "  Dump saved to   : ${YELLOW}%s${NC}\n" "${DUMP_FILE}"
-printf "  SECRET_KEY to   : ${YELLOW}%s${NC}\n" "${KEY_FILE}"
-printf "  Log file        : ${YELLOW}%s${NC}\n\n" "${LOG_FILE}"
+printf '\n%s\n' "${BOLD}Extraction plan:${NC}"
+printf '%s\n' "  Source volume   : ${YELLOW}${OLD_VOLUME}${NC}  (PG14 data at /data/postgres)"
+printf '%s\n' "  Old credentials : user=${YELLOW}${OLD_DB_USER}${NC}  db=${YELLOW}${OLD_DB_NAME}${NC}"
+printf '%s\n' "  Dump saved to   : ${YELLOW}${DUMP_FILE}${NC}"
+printf '%s\n' "  SECRET_KEY to   : ${YELLOW}${KEY_FILE}${NC}"
+printf '%s\n\n' "  Log file        : ${YELLOW}${LOG_FILE}${NC}"
 confirm "Start data extraction? (Your original data will not be deleted or modified.)"
 
 # ── Step 1: Start temporary PostgreSQL 14 container ──────────────────────────
@@ -217,10 +217,10 @@ DATA_UID=$(docker run --rm -v "${OLD_VOLUME}:/data" alpine \
     stat -c '%u' /data/postgres 2>/dev/null < /dev/null || echo "")
 if [[ -z "${DATA_UID}" || "${DATA_UID}" == "0" ]]; then
     warn "Could not detect data directory UID — falling back to default (may chown files)."
-    USER_FLAG=""
+    USER_FLAG_ARGS=()
 else
     info "Data directory owned by UID ${DATA_UID} — starting temp container as that user."
-    USER_FLAG="--user ${DATA_UID}"
+    USER_FLAG_ARGS=(--user "${DATA_UID}")
 fi
 
 docker run -d \
@@ -230,7 +230,7 @@ docker run -d \
     -e POSTGRES_USER="${OLD_DB_USER}" \
     -e POSTGRES_PASSWORD="${OLD_DB_PASSWORD}" \
     -e POSTGRES_DB="${OLD_DB_NAME}" \
-    ${USER_FLAG} \
+    "${USER_FLAG_ARGS[@]}" \
     "${PG14_IMAGE}" >/dev/null < /dev/null
 
 success "Temporary container '${TEMP_CONTAINER}' started."
@@ -296,8 +296,8 @@ else
         warn "All active browser sessions will be logged out after migration."
         warn "To restore your original key, update SECRET_KEY in ./nowing/.env afterwards."
     else
-        printf "${YELLOW}[Nowing]${NC} Enter the SECRET_KEY from your old container's environment\n"
-        printf "${YELLOW}[Nowing]${NC} (press Enter to generate a new one — existing sessions will be invalidated): "
+        printf '%s\n' "${YELLOW}[Nowing]${NC} Enter the SECRET_KEY from your old container's environment"
+        printf '%s' "${YELLOW}[Nowing]${NC} (press Enter to generate a new one — existing sessions will be invalidated): "
         read -r RECOVERED_KEY
         if [[ -z "${RECOVERED_KEY}" ]]; then
             RECOVERED_KEY=$(openssl rand -base64 32 2>/dev/null \
@@ -312,18 +312,18 @@ printf '%s' "${RECOVERED_KEY}" > "${KEY_FILE}"
 success "SECRET_KEY saved to ${KEY_FILE}"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
-printf "\n${GREEN}${BOLD}"
+printf '\n%s' "${GREEN}${BOLD}"
 printf "══════════════════════════════════════════════════════════════\n"
 printf "  Data extraction complete!\n"
 printf "══════════════════════════════════════════════════════════════\n"
-printf "${NC}\n"
+printf '%s\n' "${NC}"
 
 success "Dump file : ${DUMP_FILE}  (${DUMP_SIZE})"
 success "Secret key: ${KEY_FILE}"
 printf "\n"
 info "Next step — run install.sh from this same directory:"
 printf "\n"
-printf "${CYAN}  curl -fsSL https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.sh | bash${NC}\n"
+printf '%s\n' "${CYAN}  curl -fsSL https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.sh | bash${NC}"
 printf "\n"
 info "install.sh will detect the dump, restore your data into PostgreSQL 17,"
 info "and start the full Nowing stack automatically."

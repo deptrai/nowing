@@ -236,8 +236,8 @@ def upgrade() -> None:
         "vertical_clients",
         "agent_configs",
     ):
-        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
-        op.execute(
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")  # nosemgrep
+        op.execute(  # nosemgrep
             f"""
             CREATE POLICY {table}_client_isolation_policy
             ON {table}
@@ -266,8 +266,8 @@ def downgrade() -> None:
         "vertical_clients",
         "agent_configs",
     ):
-        op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")
-        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
+        op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")  # nosemgrep
+        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")  # nosemgrep
 
     op.drop_index(op.f("ix_research_threads_client_id"), table_name="research_threads")
     op.drop_column("research_threads", "client_id")

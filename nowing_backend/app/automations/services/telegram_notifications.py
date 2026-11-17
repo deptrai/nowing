@@ -200,6 +200,7 @@ async def send_automation_run_telegram_notification(
     automation_run_complete = preferences.get("automation_run_complete")
     if (
         not isinstance(automation_run_complete, dict)
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         or automation_run_complete.get("telegram") is not True
     ):
         return
@@ -217,7 +218,7 @@ async def send_automation_run_telegram_notification(
 
     token = account_token(binding.account)
     if not token:
-        logger.warning("No token available for Telegram account %s", binding.account_id)
+        logger.warning("No token available for Telegram account %s", binding.account_id)  # nosemgrep
         return
 
     if not binding.external_peer_id:

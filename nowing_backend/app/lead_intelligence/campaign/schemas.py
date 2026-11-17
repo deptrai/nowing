@@ -158,16 +158,15 @@ class CampaignSpec(BaseModel):
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-
     @classmethod
-    def from_payload(cls, payload: dict[str, Any]) -> "CampaignSpec":
+    def from_payload(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Accept either a declarative CampaignSpec dict or a frontend CampaignCreateInput dict."""
         if "icp_config" in payload or "source_budget_config" in payload:
             return cls.from_campaign_create_input(payload)
         return cls.model_validate(payload)
 
     @classmethod
-    def from_campaign_create_input(cls, payload: dict[str, Any]) -> "CampaignSpec":
+    def from_campaign_create_input(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Convert frontend CampaignCreateInput shape into internal CampaignSpec."""
         icp_config = payload.get("icp_config") or {}
         source_budget_config = payload.get("source_budget_config") or {}
@@ -176,8 +175,13 @@ class CampaignSpec(BaseModel):
         # Map ICP fields
         location_profile_raw = icp_config.get("location_profile")
         location_profile = None
-        if location_profile_raw and isinstance(location_profile_raw, dict) and location_profile_raw.get("province_code"):
+        if (
+            location_profile_raw
+            and isinstance(location_profile_raw, dict)
+            and location_profile_raw.get("province_code")
+        ):
             from app.lead_intelligence.schemas import LocationProfilePayload
+
             p_code = location_profile_raw["province_code"]
             p_name = location_profile_raw.get("province_name") or p_code
             location_profile = LocationProfilePayload(
@@ -198,7 +202,11 @@ class CampaignSpec(BaseModel):
         icp_criteria = ICPCriteria(
             target_industries=icp_config.get("target_industries", []),
             target_locations=icp_config.get("locations", []),
-            target_company_sizes=icp_config.get("company_size_range") and [icp_config["company_size_range"]] or [],
+            target_company_sizes=(
+                icp_config.get("company_size_range")
+                and [icp_config["company_size_range"]]
+            )
+            or [],
             target_tech_stack=icp_config.get("tech_stack", []),
             target_keywords=keywords,
             negative_keywords=icp_config.get("negative_keywords", []),
@@ -220,7 +228,9 @@ class CampaignSpec(BaseModel):
                     source_name=src,
                     max_leads=per_source_target,
                     priority=1,
-                    auto_unlock=source_budget_config.get("auto_unlock_verified_phones", False),
+                    auto_unlock=source_budget_config.get(
+                        "auto_unlock_verified_phones", False
+                    ),
                 )
             )
 
@@ -241,7 +251,7 @@ class CampaignSpec(BaseModel):
             icp_criteria=icp_criteria,
             intent_tags=icp_config.get("intents", []),
             source_budgets=budgets,
-            target_sources=[s for s in source_budget_config.get("sources", [])],
+            target_sources=list(source_budget_config.get("sources", [])),
             excluded_sources=[],
             excluded_identities=payload.get("excluded_identities") or [],
             max_total_leads=source_budget_config.get("expected_leads_target", 50),

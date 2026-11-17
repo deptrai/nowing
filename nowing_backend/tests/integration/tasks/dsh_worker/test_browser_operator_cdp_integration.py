@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.db import DshMission, User, Workspace
 from app.redis_client import get_redis_client
-from app.routes.dsh_routes import pause_mission, resume_mission
+from app.routes.dsh.takeover import pause_mission, resume_mission
 
 pytestmark = [pytest.mark.integration]
 

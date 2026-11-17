@@ -20,7 +20,7 @@ PROVIDERS: list[tuple[str, dict[str, Any]]] = [
 
 def _load_invoke(module_name: str) -> Any:
     """Lazy-load the invoke module for a write-back action."""
-    return importlib.import_module(
+    return importlib.import_module(  # nosemgrep
         f"app.automations.actions.builtin.{module_name}.invoke"
     )
 

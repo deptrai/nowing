@@ -49,6 +49,10 @@ async def clipper_client(
     db_workspace: Workspace,
 ) -> AsyncGenerator[tuple[httpx.AsyncClient, PersonalAccessToken], None]:
     """Provides an AsyncClient configured with a scoped Clipper PAT."""
+    # PAT trên ws api_access_enabled=False giờ bị gate chặn (spec 42-10):
+    # bật flag để test đi qua gate vào scope check (pattern giống
+    # tests/integration/lead_batch/test_pat_batch_ingest_e2e.py).
+    db_workspace.api_access_enabled = True
     pat = PersonalAccessToken(
         user_id=db_user.id,
         user=db_user,

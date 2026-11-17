@@ -59,10 +59,11 @@ function normalizeRootPath(pathValue: string): string {
 
 function normalizeList(value: string[] | null | undefined): string[] {
   if (!value || value.length === 0) return [];
-  return value
-    .filter((entry): entry is string => typeof entry === 'string')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'string') return [];
+    const trimmed = entry.trim();
+    return trimmed ? [trimmed] : [];
+  });
 }
 
 function normalizeExtensions(value: string[] | null | undefined): string[] | null {
@@ -78,9 +79,9 @@ function buildOptionsSignature(
 ): string {
   return JSON.stringify({
     workspaceId,
-    rootPaths: [...rootPaths].sort(),
-    excludePatterns: [...excludePatterns].sort(),
-    fileExtensions: fileExtensions ? [...fileExtensions].sort() : null,
+    rootPaths: [...rootPaths].sort((a, b) => a.localeCompare(b)),
+    excludePatterns: [...excludePatterns].sort((a, b) => a.localeCompare(b)),
+    fileExtensions: fileExtensions ? [...fileExtensions].sort((a, b) => a.localeCompare(b)) : null,
   });
 }
 

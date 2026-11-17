@@ -14,6 +14,7 @@ import { BANNER_CONNECTORS, BANNER_DISMISSED_KEY } from "./constants";
 
 export const ConnectToolsBanner: FC<{
 	isThreadEmpty: boolean;
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop
 	onVisibleChange?: (visible: boolean) => void;
 }> = ({ isThreadEmpty, onVisibleChange }) => {
 	const t = useTranslations("chat");
@@ -74,7 +75,7 @@ export const ConnectToolsBanner: FC<{
 							<Avatar
 								key={type}
 								className="size-5"
-								style={{ zIndex: BANNER_CONNECTORS.length - i }}
+								style={{ zIndex: BANNER_CONNECTORS.length - i }} // pi-lens-ignore: ast-grep:inline-styles -- per-item stacking order
 								aria-hidden="true"
 							>
 								<AvatarFallback className="bg-accent text-[10px]">

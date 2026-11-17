@@ -13,7 +13,7 @@
 
 The working tree diff contains four categories of problems:
 
-1. **Scope-creep / mismatch** — it adds `masothue/10.8` parser/test changes, an unrelated `MissionControlWidget` TypeScript fix, and a whole `.agents/skills/bmad-agent-e2e-tester` (XActions) skill that do not belong to Story 24.3.
+1. **Scope-creep / mismatch** — it adds `masothue/10.8` parser/test changes, an unrelated `MissionControlWidget` TypeScript fix, and a whole `.agents/skills/bmad-agent-e2e-tester` (Medirus) skill that do not belong to Story 24.3.
 2. **Regression introduced by the masothue parser diff** — the proposed one-line change in `parsers.py` would cause an `IndexError` and is directly contradicted by the new test added in the same diff.
 3. **Unaddressed HIGH implementation findings** against the spec and invariants:
    - `WorkspaceCreditService.deduct_credits` is not atomic (INV-24.4 / AC-4).
@@ -54,7 +54,7 @@ These changes belong to Story 10.8 / 24.2 (MST / Waterfall Phone & Tax Code). Th
 ### 1.3 `.agents/skills/bmad-agent-e2e-tester/` and `_bmad/memory/bmad-agent-e2e-tester/`
 
 - New skill/sanctum diff starts at `review-24-3-working-tree.diff:894` and continues through the end of the file (`.memlog.md`, `SKILL.md`, `assets/*`, `scripts/*`, `_bmad/memory/...`).
-- The skill references an **XActions** project (`api/server.js :3000`, `src/mcp/server.js :3001`, `XACTIONS_SESSION_COOKIE`), not Nowing.
+- The skill references an **Medirus** project (`api/server.js :3000`, `src/mcp/server.js :3001`, `MEDIRUS_SESSION_COOKIE`), not Nowing.
 - **Disposition:** Completely unrelated to Story 24.3. Remove from the diff or route to the agent-builder / skill story.
 
 ---
@@ -245,7 +245,7 @@ Concrete test problems:
 
 The 24.3 implementation has strong adjacent integration tests (`test_kanban_concurrency.py`, `test_credit_deduction_race.py`) and the major data-model / migration work is in place, but the working tree diff under review:
 
-- includes unrelated and partially broken code (masothue, MissionControl, XActions agent skill),
+- includes unrelated and partially broken code (masothue, MissionControl, Medirus agent skill),
 - does not resolve the three HIGH NFR/acceptance findings (credit atomicity, exception contract, INV-23.6 visibility),
 - contains a test suite that passes without exercising production behavior,
 - and has inconsistent acceptance artifacts (PASS with CONCERNS vs. Request Changes).

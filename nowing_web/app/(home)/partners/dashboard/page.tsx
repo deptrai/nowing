@@ -108,7 +108,7 @@ export default function PartnerDashboardPage() {
 		loadDashboard();
 	}, [loadDashboard]);
 
-	const handleApply = async (e: React.FormEvent) => {
+	const handleApply = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!claimCode.trim()) {
 			toast.error(t("toast_enter_code"));
@@ -148,7 +148,7 @@ export default function PartnerDashboardPage() {
 		setTimeout(() => setCopied(false), 2000);
 	};
 
-	const handleRequestPayout = async (e: React.FormEvent) => {
+	const handleRequestPayout = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		const amount = parseFloat(payoutAmountUsd);
 		if (Number.isNaN(amount) || amount < 20) {

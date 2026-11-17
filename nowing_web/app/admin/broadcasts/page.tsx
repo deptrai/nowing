@@ -131,7 +131,7 @@ export default function AdminBroadcastsPage() {
 		setIsModalOpen(true);
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		setFormError("");
 		setIsSubmitting(true);

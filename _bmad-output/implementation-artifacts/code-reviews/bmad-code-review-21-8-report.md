@@ -1,7 +1,7 @@
 # Báo Cáo Thẩm Định Code Review (Adversarial Code Review Report)
 
 **Dự án:** Nowing Platform  
-**Story được Review:** [Story 21.8: Social Ingress via XActions Integration (Facebook Groups & Twitter Feed)](file:///Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-xactions-integration.md)  
+**Story được Review:** [Story 21.8: Social Ingress via Medirus Integration (Facebook Groups & Twitter Feed)](file:///Users/luisphan/Documents/GitHub/nowing/_bmad-output/implementation-artifacts/stories/21-8-social-ingress-via-medirus-integration.md)  
 **Ngày thực hiện:** 2026-08-15  
 **Phương pháp:** 3-Layer Adversarial Code Review (Acceptance Auditor, Blind Hunter, Edge Case Hunter) + Triage & Immediate Remediation  
 **Kết luận:** 🟢 **`APPROVED / FULLY PATCHED & VERIFIED` (VƯỢT QUA KIỂM DUYỆT 100%)**
@@ -11,7 +11,7 @@
 ## 🔍 1. TỔNG HỢP KẾT QUẢ TỪ 3 LỚP HUNTERS
 
 ### 🕵️ Layer 1: Acceptance Auditor (Thẩm định AC & Constraints)
-* **AC-1 (XActions Stealth Session & Sticky Proxy Mapping):** `bind_account_proxy()` và `_execute_xactions_command()` bảo đảm ánh xạ 1-to-1 giữa proxy IP dân cư và từng tài khoản (AD-SOC-3). `PASS`.
+* **AC-1 (Medirus Stealth Session & Sticky Proxy Mapping):** `bind_account_proxy()` và `_execute_medirus_command()` bảo đảm ánh xạ 1-to-1 giữa proxy IP dân cư và từng tài khoản (AD-SOC-3). `PASS`.
 * **AC-2 (PostgreSQL Idempotency & Redis Stream Buffer):** Model `SocialPost` có unique constraint `(platform, external_post_id)`, index GIN trên `raw_entities`. Đẩy event buffer vào `stream:social:raw_posts` (AD-SOC-4, AD-SOC-6). `PASS`.
 * **AC-3 (3-Step Vietnamese Phone & Entity Extraction Pipeline):** Đạt 12/12 biến thể viết lách SĐT tiếng Việt (`o9xx`, `O90.xx`, `038-xx`, `không chín...`, `09l...`). Bóc tách giá, email, địa điểm, gán nhãn `intent_tag` ('sell', 'buy', 'hiring', 'seeking'). `PASS`.
 * **AC-4 (Alert Engine & Stream Processing):** `compute_fit_score()` gán điểm chất lượng (0.0 đến 1.0) và gán nhãn thương mại, thực hiện idempotent UPSERT. `PASS`.
@@ -38,8 +38,8 @@
 rootdir: /Users/luisphan/Documents/GitHub/nowing/nowing_backend
 collected 40 items
 
-tests/unit/proprietary/platforms/xactions/test_phone_extractor.py ......... [ 50%]
-tests/unit/proprietary/platforms/xactions/test_xactions_adapter.py ....     [ 60%]
+tests/unit/proprietary/platforms/medirus/test_phone_extractor.py ......... [ 50%]
+tests/unit/proprietary/platforms/medirus/test_medirus_adapter.py ....     [ 60%]
 tests/unit/platforms/test_obfuscated_phone_regex.py ............            [ 90%]
 tests/unit/platforms/test_phone_regex_redos_safety.py .                     [ 92%]
 tests/integration/platforms/test_social_redis_stream.py .                   [ 95%]

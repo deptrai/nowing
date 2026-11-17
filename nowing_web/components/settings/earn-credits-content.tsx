@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 // Compact dollar label for a task's reward (e.g. "+$0.03").
 const formatRewardUsd = (micros: number) => {
-	const t = useTranslations("settings");
+	// t removed — unused in this scope
 	const dollars = micros / 1_000_000;
 	if (dollars >= 1) return `+$${dollars.toFixed(2)}`;
 	return `+$${dollars.toFixed(2)}`;

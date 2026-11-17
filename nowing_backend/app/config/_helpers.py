@@ -229,6 +229,7 @@ def load_global_llm_configs():
         # marks multiple configs ``is_planner: true``, only the first one
         # is used at runtime — surface the others at startup so the
         # mistake is caught before traffic, not silently buried.
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         planner_cfgs = [c for c in configs if c.get("is_planner") is True]
         if len(planner_cfgs) > 1:
             extra_ids = [c.get("id") for c in planner_cfgs[1:]]

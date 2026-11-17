@@ -1,4 +1,6 @@
 const STORE_KEY = 'activeWorkspaceId';
+// Lazily imported ESM electron-store; minimal surface used.
+// pi-lens-ignore: ast-grep:no-any-type
 let store: any = null;
 
 async function getStore() {
@@ -11,6 +13,8 @@ async function getStore() {
     // One-time migration from the legacy `active-search-space` store so the
     // user's last-selected workspace survives the rename.
     if (store.get(STORE_KEY) == null) {
+      // Legacy store read once for migration.
+      // pi-lens-ignore: ast-grep:no-any-type
       const legacy: any = new Store({
         name: 'active-search-space',
         defaults: { activeSearchSpaceId: null as string | null },

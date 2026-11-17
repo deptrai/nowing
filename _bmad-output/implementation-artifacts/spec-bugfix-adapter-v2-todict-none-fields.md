@@ -6,9 +6,9 @@ status: 'done'
 baseline_commit: '6bb056d3b93e4a5d31b18f08f3e7d525c5e736db'
 review_loop_iteration: 0
 context:
-  - 'nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py'
-  - 'nowing_backend/app/proprietary/platforms/xactions/models.py'
-  - 'nowing_backend/app/proprietary/platforms/xactions/adapter.py'
+  - 'nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py'
+  - 'nowing_backend/app/proprietary/platforms/medirus/models.py'
+  - 'nowing_backend/app/proprietary/platforms/medirus/adapter.py'
   - 'spec-36-4-single-writer-stream-cleanup.md'
 ---
 
@@ -16,11 +16,11 @@ context:
 
 ## Intent
 
-**Problem:** `XActionsSocialAdapterV2.ingest_raw_post_to_stream` (adapter_v2.py) gọi `post.to_dict()` rồi `redis_client.xadd(STREAM_SOCIAL_RAW_POSTS, payload, ...)`. `SocialPostData.to_dict()` dùng `asdict(self)` và KHÔNG filter các field `None`. Redis `xadd` reject `None` values bằng `redis.exceptions.DataError: Invalid input of type: 'NoneType'`. Exception bị `except Exception` nuốt thành `return None` + `logger.exception` → **lỗi bị silent, dual-write không bao giờ ghi được entry nào**.
+**Problem:** `MedirusSocialAdapterV2.ingest_raw_post_to_stream` (adapter_v2.py) gọi `post.to_dict()` rồi `redis_client.xadd(STREAM_SOCIAL_RAW_POSTS, payload, ...)`. `SocialPostData.to_dict()` dùng `asdict(self)` và KHÔNG filter các field `None`. Redis `xadd` reject `None` values bằng `redis.exceptions.DataError: Invalid input of type: 'NoneType'`. Exception bị `except Exception` nuốt thành `return None` + `logger.exception` → **lỗi bị silent, dual-write không bao giờ ghi được entry nào**.
 
 Verified live on 2026-09-14: tạo SocialPostData với nhiều optional fields = `None` → `xadd` luôn throw `DataError`, `XLEN stream:social:raw_posts` không tăng.
 
-**Impact:** Spec 36.4 nói "dual-write fallback khi flag OFF" nhưng fallback đó thực tế đã chết từ trước (pre-existing bug từ Story 21.8). Khi XActions REQ-X2 chưa live, Nowing không publish raw post nào vào `stream:social:raw_posts` — consumer `social_stream_worker` không có data mới.
+**Impact:** Spec 36.4 nói "dual-write fallback khi flag OFF" nhưng fallback đó thực tế đã chết từ trước (pre-existing bug từ Story 21.8). Khi Medirus REQ-X2 chưa live, Nowing không publish raw post nào vào `stream:social:raw_posts` — consumer `social_stream_worker` không có data mới.
 
 **Approach:** Filter `None` values khỏi payload trước khi `xadd` — hoặc bằng cách build payload thủ công giống legacy `adapter.py` (`or ""` cho từng field, `if x is not None` cho optional), hoặc `{k: v for k, v in post.to_dict().items() if v is not None}` + convert datetime/list sang string. Phương án build thủ công an toàn hơn vì nó cũng normalize `media_urls` (list → JSON string) và `reactions_count` (int → string) như Redis stream convention.
 
@@ -50,11 +50,11 @@ Verified live on 2026-09-14: tạo SocialPostData với nhiều optional fields 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py` — sửa payload construction trong `ingest_raw_post_to_stream` để loại bỏ `None` và serialize datetime/list/dict đúng cách. Cân nhắc reuse logic từ `adapter.py:ingest_raw_post_to_stream` (v1) hoặc viết payload builder dùng chung.
-- [x] `nowing_backend/tests/unit/platforms/test_xactions_adapter_v2.py` — thêm test: post có nhiều `None` fields → `xadd` được gọi với payload không có `None` value nào, `xadd` return msg_id. (Test: `test_ingest_raw_post_to_stream_payload_has_no_none_values`)
+- [x] `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` — sửa payload construction trong `ingest_raw_post_to_stream` để loại bỏ `None` và serialize datetime/list/dict đúng cách. Cân nhắc reuse logic từ `adapter.py:ingest_raw_post_to_stream` (v1) hoặc viết payload builder dùng chung.
+- [x] `nowing_backend/tests/unit/platforms/test_medirus_adapter_v2.py` — thêm test: post có nhiều `None` fields → `xadd` được gọi với payload không có `None` value nào, `xadd` return msg_id. (Test: `test_ingest_raw_post_to_stream_payload_has_no_none_values`)
 
 **Acceptance Criteria:**
-- Given `XACTIONS_STREAM_SINGLE_WRITER_ENABLED=False`, khi gọi `await adapter.ingest_raw_post_to_stream(post, redis_client)` với post có `author_id=None`, `published_at=None`, `category=None`, `client_id=None` → `xadd` được gọi, không `DataError`, return msg_id hợp lệ.
+- Given `MEDIRUS_STREAM_SINGLE_WRITER_ENABLED=False`, khi gọi `await adapter.ingest_raw_post_to_stream(post, redis_client)` với post có `author_id=None`, `published_at=None`, `category=None`, `client_id=None` → `xadd` được gọi, không `DataError`, return msg_id hợp lệ.
 - Given post có `media_urls=["a"]`, `raw_entities={"k":1}`, `published_at=datetime.now()` → payload chứa JSON string / ISO string tương ứng, không raw Python object.
 - Given Redis down → `xadd` raise, function trả `None`, log exception, không propagate.
 
@@ -80,7 +80,7 @@ Cân nhắc: extract shared `_build_stream_payload(post)` helper giữa v1 và v
 ## Verification
 
 **Commands:**
-- `cd nowing_backend && uv run pytest tests/unit/platforms/test_xactions_adapter_v2.py -k "ingest_raw_post" -v` — pass.
+- `cd nowing_backend && uv run pytest tests/unit/platforms/test_medirus_adapter_v2.py -k "ingest_raw_post" -v` — pass.
 - `cd nowing_backend && uv run python -c "..."` (manual: tạo post với None fields → gọi ingest → check `XLEN` tăng).
-- `cd nowing_backend && uv run ruff check app/proprietary/platforms/xactions/adapter_v2.py` — clean.
+- `cd nowing_backend && uv run ruff check app/proprietary/platforms/medirus/adapter_v2.py` — clean.
 

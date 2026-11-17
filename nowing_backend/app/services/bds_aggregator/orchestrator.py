@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.config.decision as decision_config
 from app.capabilities.core.store import get_capability
 from app.config import config
+from app.services.dedup.spatial_windowed_dedup import SpatialWindowedDeduplicator
 from app.services.scraper_chunks.serializer import to_chunks
 
 from .dedupe import deduplicate, find_match_candidates, merge_group
@@ -206,7 +207,9 @@ async def _persist_bds_aggregates(
     for listing in listings:
         try:
             chunks.extend(_bds_to_chunk(listing, fetched_at))
-        except Exception:  # per-listing chunk serialization failure; continue remaining listings
+        except (
+            Exception
+        ):  # per-listing chunk serialization failure; continue remaining listings
             logger.exception(
                 "BDS listing %s chunk serialization failed", listing.canonical_id
             )
@@ -229,7 +232,9 @@ async def _persist_bds_aggregates(
         if result.status == "partial":
             return "partial", result.error
         return "failed", result.error
-    except Exception as exc:  # ingest failure → report ("failed", reason) to caller, not a crash
+    except (
+        Exception
+    ) as exc:  # ingest failure → report ("failed", reason) to caller, not a crash
         logger.exception("BDS aggregate chainlens ingest failed")
         return "failed", str(exc)
 
@@ -255,7 +260,9 @@ async def _execute_source(
     except ValidationError as exc:
         logger.warning("vn_bds.aggregate validation error for %s: %s", source, exc)
         return [], 0, True, "invalid_input"
-    except Exception as exc:  # per-source failure → degraded empty result; other sources still run
+    except (
+        Exception
+    ) as exc:  # per-source failure → degraded empty result; other sources still run
         logger.exception("vn_bds.aggregate source %s failed: %s", source, exc)
         return [], 0, True, "api_error"
 
@@ -352,6 +359,58 @@ async def _refine_dedup_with_jev(
         return deduped
 
 
+def _pre_dedupe_raw_items(
+    items: list[dict[str, Any]],
+    source: str,
+    default_city: str | None = None,
+) -> list[dict[str, Any]]:
+    """Fail-open pre-filter of raw scraper listings using SpatialWindowedDeduplicator.
+
+    Additive-safe: only drops intra-source duplicates before normalization.
+    Cross-source matching and merging in ``bds_aggregator.dedupe`` remain intact.
+    """
+    if not items or len(items) <= 1:
+        return items
+
+    try:
+
+        def _bucket_fn(item: dict[str, Any]) -> str:
+            key = SpatialWindowedDeduplicator._default_bucket_fn(item)
+            if key == "global" and default_city:
+                return SpatialWindowedDeduplicator._default_bucket_fn(
+                    {"city": default_city}
+                )
+            return key
+
+        deduplicator = SpatialWindowedDeduplicator(bucket_fn=_bucket_fn)
+        deduped: list[dict[str, Any]] = []
+        dropped_titles: list[str] = []
+        for group in deduplicator.deduplicate_stream(items, pre_sorted_by_bucket=False):
+            deduped.append(group.canonical)
+            dropped_titles.extend(
+                str(d.get("title") or d.get("url") or "<no-title>")
+                for d in group.duplicates
+            )
+        dropped = len(items) - len(deduped)
+        if dropped > 0:
+            # Auditable: Jaccard on short titles can false-positive merge
+            # genuinely different listings in the same district — log titles.
+            logger.info(
+                "Spatial dedup pre-filter dropped %d duplicate raw items for source %s: %s",
+                dropped,
+                source,
+                dropped_titles,
+            )
+        return deduped
+    except Exception:
+        logger.warning(
+            "Spatial dedup pre-filter failed for source %s; retaining raw items",
+            source,
+            exc_info=True,
+        )
+        return items
+
+
 async def aggregate(
     payload: VnBdsAggregateInput,
     source_executors: dict[str, Callable[..., Awaitable[Any]]] | None = None,
@@ -375,7 +434,9 @@ async def aggregate(
 
     for source, result in zip(selected, results, strict=True):
         if isinstance(result, Exception):
-            logger.error("vn_bds.aggregate unhandled exception from %s: %r", source, result)
+            logger.error(
+                "vn_bds.aggregate unhandled exception from %s: %r", source, result
+            )
             source_breakdown.update(_source_breakdown(source, [], 0, True, "api_error"))
             degradation_reasons.append(f"{source}: api_error")
             any_degraded = True
@@ -392,12 +453,16 @@ async def aggregate(
                 degradation_reasons.append(f"{source}: {reason}")
             continue
 
-        for raw in items:
+        raw_items_to_normalize = _pre_dedupe_raw_items(items, source, payload.city)
+
+        for raw in raw_items_to_normalize:
             try:
                 listing = normalize_listing(source, raw)
                 listing.provenance.source_input = provenance_input
                 normalized.append(listing)
-            except Exception:  # per-listing normalize failure; continue remaining listings
+            except (
+                Exception
+            ):  # per-listing normalize failure; continue remaining listings
                 logger.exception("vn_bds.aggregate normalize failed for %s", source)
 
     deduped = deduplicate(normalized)

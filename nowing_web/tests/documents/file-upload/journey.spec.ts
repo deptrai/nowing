@@ -51,7 +51,9 @@ async function uploadAndAssert({
 		waitUntil: "domcontentloaded",
 	});
 
-	await page.getByRole("button", { name: "Upload" }).click();
+	// Upload moved inside the "+" composer menu (aria-label = composer_menu_tooltip).
+	await page.getByRole("button", { name: "Upload files, manage tools and more" }).click();
+	await page.getByRole("menuitem", { name: "Upload Files" }).click();
 	const dialog = page.getByRole("dialog", { name: "Upload Documents" });
 	await expect(dialog).toBeVisible();
 

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlparse
 
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.lead_intelligence.adapters._query_parser import (
     extract_price_range,
 )
@@ -22,6 +24,16 @@ from app.proprietary.platforms.vietnamworks.scraper import scrape_vietnamworks
 from app.services.pii.redact import redact_job_pii
 
 logger = logging.getLogger(__name__)
+
+_VN_LOCATION_IDS = {
+    "HN": 24,
+    "SG": 29,
+    "DN": 17,
+    "BD": 71,
+    "DNA": 19,
+    "HP": 2,
+    "CT": 13,
+}
 
 
 def _extract_domain(url: str | None) -> str | None:
@@ -60,14 +72,16 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
 
     source_name = "vietnamworks"
     category = LeadSourceCategory.JOB_MARKET
-    supported_provinces = ["HN", "SG", "DN", "BD", "DNA", "HP", "CT", "*"]
-    coverage_quality_by_location = {
-        "HN": "high",
-        "SG": "high",
-        "DN": "medium",
-        "BD": "medium",
-        "DNA": "medium",
-    }
+    supported_provinces = ("HN", "SG", "DN", "BD", "DNA", "HP", "CT", "*")
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "high",
+            "SG": "high",
+            "DN": "medium",
+            "BD": "medium",
+            "DNA": "medium",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"
@@ -102,20 +116,25 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
             params["salary_max"] = max_price
         if location:
             from app.services.location_normalize import resolve_city_code
+
             code = resolve_city_code(str(location))
-            _VN_LOCATION_IDS = {
-                "HN": 24,
-                "SG": 29,
-                "DN": 17,
-                "BD": 71,
-                "DNA": 19,
-                "HP": 2,
-                "CT": 13,
-            }
             if code and code in _VN_LOCATION_IDS:
                 params["locationId"] = _VN_LOCATION_IDS[code]
 
-        output = await scrape_vietnamworks(params)
+        async def _local() -> dict[str, Any]:
+            return await scrape_vietnamworks(params)
+
+        output = await medirus_scrape_or_local(
+            platform="vietnamworks",
+            action="search_jobs",
+            args={
+                "keyword": params["keyword"],
+                "location": params.get("locationId"),
+                "maxItems": params.get("max_items"),
+                "maxPages": params.get("max_pages"),
+            },
+            local_fn=_local,
+        )
 
         if output.get("degraded"):
             logger.warning(
@@ -128,6 +147,7 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
         if location:
             loc_str = str(location).lower().strip()
             from app.services.location_normalize import resolve_city_code
+
             code = resolve_city_code(loc_str)
             filtered = []
             for it in items:
@@ -187,18 +207,35 @@ class VietnamWorksLeadAdapter(LeadSourceAdapter):
         salary_raw = data.get("salary_raw")
         salary_val = _select_salary_value(salary_min, salary_max, salary_raw)
 
+        industry = (
+            data.get("industry")
+            or data.get("category")
+            or data.get("job_category")
+            or "Tuyển dụng"
+        )
+        data["industry"] = industry
+
+        source_url = data.get("source_url") or data.get("url")
+        if source_url:
+            data["source_url"] = source_url
+
+        domain = (
+            _extract_domain(data.get("company_website") or source_url)
+            or "vietnamworks.com"
+        )
+
         return NormalizedLead(
             source_name=self.source_name,
             source_id=raw_record.source_id,
             title=data.get("title") or "Tuyển dụng nhân sự",
             company_name=data.get("company") or "Doanh nghiệp tuyển dụng",
-            canonical_domain=_extract_domain(data.get("company_website") or data.get("source_url")),
+            canonical_domain=domain,
             primary_phone=primary_phone,
             primary_email=primary_email,
             city=data.get("location"),
             address=data.get("location"),
             price=_to_float(salary_val),
-            source_url=data.get("source_url"),
+            source_url=source_url,
             confidence_score=85.0 if (primary_phone or primary_email) else 70.0,
             sources=[self.source_name],
             contact_candidates=candidates,

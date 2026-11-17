@@ -10,7 +10,7 @@ from collections.abc import Sequence
 
 # revision identifiers, used by Alembic.
 revision: str = "47537dffa86b"
-down_revision: str | None = ("226", "8f0e6aa7aa87")
+down_revision: str | None = ("226", "8f0e6aa7aa87")  # pyright: ignore[reportAssignmentType]
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

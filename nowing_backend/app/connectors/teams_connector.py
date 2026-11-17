@@ -105,12 +105,12 @@ class TeamsConnector:
                             config_data["refresh_token"]
                         )
 
-                    logger.info(
+                    logger.info(  # nosemgrep
                         "Decrypted Teams credentials for connector %s",
                         self._connector_id,
                     )
                 except Exception as e:  # credential decryption failure; raise ValueError
-                    logger.error(
+                    logger.error(  # nosemgrep
                         "Failed to decrypt Teams credentials for connector %s: %s",
                         self._connector_id,
                         str(e),
@@ -127,7 +127,7 @@ class TeamsConnector:
         # Check if token is expired and refreshable
         if self._credentials.is_expired and self._credentials.is_refreshable:
             try:
-                logger.info(
+                logger.info(  # nosemgrep
                     "Teams token expired for connector %s, refreshing...",
                     self._connector_id,
                 )
@@ -164,12 +164,12 @@ class TeamsConnector:
 
                 self._credentials = TeamsAuthCredentialsBase.from_dict(config_data)
 
-                logger.info(
+                logger.info(  # nosemgrep
                     "Successfully refreshed Teams token for connector %s",
                     self._connector_id,
                 )
             except Exception as e:  # token refresh failure; raise ValueError
-                logger.error(
+                logger.error(  # nosemgrep
                     "Failed to refresh Teams token for connector %s: %s",
                     self._connector_id,
                     str(e),

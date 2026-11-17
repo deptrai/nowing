@@ -51,6 +51,7 @@ def parse_sse_stream(wire: str) -> list[dict[str, Any]]:
             if not payload:
                 continue
             with contextlib.suppress(json.JSONDecodeError):
+                # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- already inside contextlib.suppress
                 events.append(json.loads(payload))
     return events
 
@@ -181,6 +182,7 @@ def live_query(query: str) -> None:
 
     headers: dict[str, str] = {"Content-Type": "application/json"}
     if api_key:
+        # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
         headers["Authorization"] = f"Bearer {api_key}"
 
     body = {

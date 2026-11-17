@@ -44,7 +44,9 @@ _AUTHORIZATION_BEARER_PREFIX = "Bearer "
 
 # ChainLens HMAC fast-path header. Must match packages/shared/src/auth/hmac.ts.
 _USER_CTX_HEADER = "x-user-ctx"
-_USER_CTX_TTL_MS = 60 * 1000
+# ChainLens x-user-ctx protocol enforces 30s TTL with a 5s future-skew tolerance
+# (packages/shared/src/auth/hmac.ts: exp > nowMs + 35_000 is rejected as forever-token).
+_USER_CTX_TTL_MS = 30 * 1000
 
 # Guard against obviously bogus cost values; does not limit legitimate billing.
 _MAX_REASONABLE_COST_DOLLARS = 1_000_000.0
@@ -84,7 +86,9 @@ class ChainLensServiceAuth:
             getattr(cfg, "CHAINLENS_AUTH_CONTEXT_SECRET", "") or ""
         ).strip()
         self._hmac_user_id = (
-            getattr(cfg, "CHAINLENS_HMAC_USER_ID", "00000000-0000-0000-0000-000000000001")
+            getattr(
+                cfg, "CHAINLENS_HMAC_USER_ID", "00000000-0000-0000-0000-000000000001"
+            )
             or "00000000-0000-0000-0000-000000000001"
         ).strip()
 
@@ -241,6 +245,7 @@ class ChainLensServiceAuth:
 
         if self._tokens:
             token = self.current_token
+            # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- runtime credential value, not hardcoded
             headers["Authorization"] = f"{_AUTHORIZATION_BEARER_PREFIX}{token}"
 
         user_ctx = self._sign_user_context()

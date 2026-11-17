@@ -90,6 +90,11 @@ class WorkspaceMcpToolUpdate(BaseModel):
     enabled: StrictBool
 
 
+class WorkspaceBalanceRead(BaseModel):
+    workspace_id: int
+    credit_micros_balance: int
+
+
 class WorkspaceLimitUsage(BaseModel):
     documents: int
     members: int

@@ -58,6 +58,7 @@ export function VersionHistoryDialog({
 	documentId,
 }: {
 	open: boolean;
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop, not an RSC boundary
 	onOpenChange: (open: boolean) => void;
 	documentId: number;
 }) {
@@ -99,7 +100,7 @@ function VersionHistoryPanel({ documentId }: { documentId: number }) {
 	const [versions, setVersions] = useState<DocumentVersionSummary[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
-	const [versionContent, setVersionContent] = useState<string>("");
+	const [versionContent, setVersionContent] = useState("");
 	const [contentLoading, setContentLoading] = useState(false);
 	const [restoring, setRestoring] = useState(false);
 	const [copied, setCopied] = useState(false);

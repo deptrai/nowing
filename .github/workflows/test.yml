@@ -22,6 +22,9 @@ on:
     # Weekly burn-in on Sundays at 2 AM UTC
     - cron: "0 2 * * 0"
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -35,16 +38,23 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    # pull-requests: read lets dorny/paths-filter list changed files via the
+    # GitHub API on pull_request events; contents: read is for checkout.
+    permissions:
+      contents: read
+      pull-requests: read  # needed for paths-filter to inspect PR changes on pull_request events
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Paths filter
         id: filter
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
         with:
           filters: |
             backend:
@@ -64,19 +74,21 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
         if: needs.changes.outputs.backend == 'true'
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -94,17 +106,17 @@ jobs:
 
       - name: Set up Node.js
         if: needs.changes.outputs.web == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6.5.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install pnpm
         if: needs.changes.outputs.web == 'true'
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
 
       - name: Cache pnpm store
         if: needs.changes.outputs.web == 'true'
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.pnpm-store
@@ -139,18 +151,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -160,7 +174,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -188,15 +202,17 @@ jobs:
 
       - name: Run unit tests (shard ${{ matrix.shard }})
         working-directory: nowing_backend
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
-          idx=$(( ${{ matrix.shard }} - 1 ))
+          idx=$(( "$SHARD" - 1 ))
           shard_file=$(printf "unit-shard-%02d" "$idx")
           uv run pytest --override-ini="addopts=" -v --tb=short "@${shard_file}" \
-            --junitxml=pytest-unit-${{ matrix.shard }}.xml
+            --junitxml="pytest-unit-${SHARD}.xml"
 
       - name: Upload unit test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: backend-unit-shard-${{ matrix.shard }}
           path: nowing_backend/pytest-unit-${{ matrix.shard }}.xml
@@ -211,7 +227,7 @@ jobs:
 
     services:
       postgres:
-        image: pgvector/pgvector:pg17
+        image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -226,18 +242,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -247,7 +265,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -267,7 +285,7 @@ jobs:
 
       - name: Upload integration test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: backend-integration
           path: nowing_backend/pytest-integration.xml
@@ -282,18 +300,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -303,7 +323,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -319,7 +339,7 @@ jobs:
 
       - name: Upload contract test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: backend-contract
           path: nowing_backend/pytest-contract.xml
@@ -334,18 +354,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6.5.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
 
       - name: Cache pnpm store
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.pnpm-store
@@ -355,7 +377,7 @@ jobs:
             pnpm-${{ runner.os }}-
 
       - name: Cache Next.js build
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: nowing_web/.next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('nowing_web/pnpm-lock.yaml') }}-${{ github.sha }}
@@ -373,7 +395,7 @@ jobs:
 
       - name: Upload Next.js build logs on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: frontend-build-failure
           path: |
@@ -394,18 +416,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: |
             ~/.cache/uv
@@ -415,7 +439,7 @@ jobs:
             python-deps-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ env.EMBEDDING_MODEL }}
@@ -448,7 +472,7 @@ jobs:
 
       - name: Upload burn-in failure logs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: burn-in-failures
           path: nowing_backend/.pytest_cache/
@@ -463,29 +487,35 @@ jobs:
 
     steps:
       - name: Download all test artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
         with:
           path: artifacts
 
       - name: Generate summary
+        env:
+          LINT_RESULT: ${{ needs.lint.result }}
+          BACKEND_UNIT_RESULT: ${{ needs.backend-unit.result }}
+          BACKEND_INTEGRATION_RESULT: ${{ needs.backend-integration.result }}
+          FRONTEND_BUILD_RESULT: ${{ needs.frontend-build.result }}
+          BURN_IN_RESULT: ${{ needs.burn-in.result }}
         run: |
-          echo "## Test Execution Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Stage | Result |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Lint | ${{ needs.lint.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Backend Unit | ${{ needs.backend-unit.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Backend Integration | ${{ needs.backend-integration.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Frontend Build | ${{ needs.frontend-build.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Burn-In | ${{ needs.burn-in.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-
-          if [ "${{ needs.burn-in.result }}" == "failure" ]; then
-            echo "⚠️ **Flaky tests detected in burn-in** - Review burn-in artifacts" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          echo "### Artifact files" >> "$GITHUB_STEP_SUMMARY"
-          find artifacts -type f | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY" || true
+          {
+            echo "## Test Execution Summary"
+            echo ""
+            echo "| Stage | Result |"
+            echo "| --- | --- |"
+            echo "| Lint | $LINT_RESULT |"
+            echo "| Backend Unit | $BACKEND_UNIT_RESULT |"
+            echo "| Backend Integration | $BACKEND_INTEGRATION_RESULT |"
+            echo "| Frontend Build | $FRONTEND_BUILD_RESULT |"
+            echo "| Burn-In | $BURN_IN_RESULT |"
+            echo ""
+            if [ "$BURN_IN_RESULT" = "failure" ]; then
+              echo "⚠️ **Flaky tests detected in burn-in** - Review burn-in artifacts"
+            fi
+            echo "### Artifact files"
+            find artifacts -type f | sed 's/^/- /' || true
+          } >> "$GITHUB_STEP_SUMMARY"
 
   quality-gate:
     name: Quality Gate
@@ -496,7 +526,7 @@ jobs:
 
     steps:
       - name: Download all test artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
         with:
           path: artifacts
 
@@ -543,20 +573,25 @@ jobs:
 
       - name: Enforce quality threshold (P1 >= 95%)
         run: |
-          pass_rate="${{ steps.pass-rate.outputs.pass-rate }}"
+          pass_rate="${STEPS_PASS_RATE_OUTPUTS_PASS_RATE}"
           echo "Pass rate: ${pass_rate}%"
           python3 - <<'PY'
           import sys
-          pass_rate = float("${{ steps.pass-rate.outputs.pass-rate }}")
+          pass_rate = float("${STEPS_PASS_RATE_OUTPUTS_PASS_RATE}")
           if pass_rate < 95.0:
               print(f"::error::Pass rate {pass_rate:.2f}% is below P1 threshold (95%)")
               sys.exit(1)
           print(f"::notice::Pass rate {pass_rate:.2f}% meets P1 threshold (>= 95%)")
           PY
+        env:
+          STEPS_PASS_RATE_OUTPUTS_PASS_RATE: ${{ steps.pass-rate.outputs.pass-rate }}
 
       - name: Notify on failure
         if: failure()
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"❌ Quality gate failed for ${{ github.repository }} on ${{ github.ref }}"}' \
-            "${{ secrets.SLACK_WEBHOOK_URL }}" || true
+            --data "{\"text\":\"❌ Quality gate failed for ${GITHUB_REPOSITORY} on ${GITHUB_REF}\"}" \
+            "$SLACK_WEBHOOK_URL" || true

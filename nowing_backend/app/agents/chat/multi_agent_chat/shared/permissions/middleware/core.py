@@ -27,12 +27,11 @@ from langchain_core.tools import BaseTool
 from langgraph.runtime import Runtime
 
 from app.agents.chat.multi_agent_chat.shared.permissions.model import Ruleset
-from app.agents.chat.runtime.errors import CorrectedError, RejectedError
 from app.services.user_tool_allowlist import TrustedToolSaver
 
 from ..ask.edit import merge_edited_args
 from ..ask.request import request_permission_decision
-from ..deny import build_deny_message
+from ..deny import build_deny_message, build_reject_message
 from .evaluation import evaluate_tool_call
 from .pattern_resolver import PatternResolver
 from .ruleset_view import all_rulesets
@@ -118,6 +117,7 @@ class PermissionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
 
         rulesets = all_rulesets(self._static_rulesets, self._runtime_ruleset)
         deny_messages: list[ToolMessage] = []
+        reject_messages: list[ToolMessage] = []
         kept_calls: list[dict[str, Any]] = []
         promotions: list[_AlwaysPromotion] = []
         any_change = False
@@ -171,17 +171,26 @@ class PermissionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                             promotions.append(promotion)
                     kept_calls.append(final_call)
                 elif kind == "reject":
+                    # Spec 42.5: KHÔNG raise RejectedError/CorrectedError —
+                    # exception thoát ra stream loop, checkpoint giữ tool_call
+                    # lơ lửng không ToolMessage → Gemini 400 C1 (mismatch).
+                    # Synthesize ToolMessage error và drop pending call thay thế.
                     feedback = decision.get("feedback")
-                    if isinstance(feedback, str) and feedback.strip():
-                        raise CorrectedError(feedback, tool=name)
-                    raise RejectedError(
-                        tool=name, pattern=patterns[0] if patterns else None
+                    reject_messages.append(
+                        build_reject_message(
+                            call,
+                            feedback if isinstance(feedback, str) else None,
+                        )
                     )
+                    any_change = True
                 else:
+                    # Unknown decision → fail closed như reject (spec 42.5):
+                    # synthesize ToolMessage, không raise thoát stream loop.
                     logger.warning(
                         "Unknown permission decision %r; treating as reject", kind
                     )
-                    raise RejectedError(tool=name)
+                    reject_messages.append(build_reject_message(call, None))
+                    any_change = True
                 continue
 
             kept_calls.append(call)
@@ -193,6 +202,8 @@ class PermissionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         result_messages: list[Any] = [updated]
         if deny_messages:
             result_messages.extend(deny_messages)
+        if reject_messages:
+            result_messages.extend(reject_messages)
         return {"messages": result_messages}, promotions
 
     def _build_always_promotion(self, tool_name: str) -> _AlwaysPromotion | None:

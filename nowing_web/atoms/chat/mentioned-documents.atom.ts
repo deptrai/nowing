@@ -111,14 +111,16 @@ export const submittedMentionsAtom = atom<MentionedDocumentInfo[] | null>(null);
 export function deriveMentionedPayload(mentions: ReadonlyArray<MentionedDocumentInfo>) {
 	const seen = new Set<string>();
 	const deduped = mentions.filter((m) => {
-		const key =
-			m.kind === "doc"
-				? `doc:${m.document_type}:${m.id}`
-				: m.kind === "connector"
-					? `connector:${m.connector_type}:${m.id}`
-					: m.kind === "thread"
-						? `thread:${m.id}`
-						: `folder:${m.id}`;
+		let key: string;
+		if (m.kind === "doc") {
+			key = `doc:${m.document_type}:${m.id}`;
+		} else if (m.kind === "connector") {
+			key = `connector:${m.connector_type}:${m.id}`;
+		} else if (m.kind === "thread") {
+			key = `thread:${m.id}`;
+		} else {
+			key = `folder:${m.id}`;
+		}
 		if (seen.has(key)) return false;
 		seen.add(key);
 		return true;

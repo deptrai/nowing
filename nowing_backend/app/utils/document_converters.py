@@ -4,6 +4,7 @@ import logging
 import threading
 import warnings
 
+import litellm
 import numpy as np
 from litellm import get_model_info, token_counter
 
@@ -79,7 +80,16 @@ def embed_texts(texts: list[str]) -> list[np.ndarray]:
         truncated = [truncate_for_embedding(t) for t in texts]
         if config.is_local_embedding_model:
             return [config.embedding_model_instance.embed(t) for t in truncated]
-        return config.embedding_model_instance.embed_batch(truncated)
+        # litellm quirk: for provider "ollama" the module-level ``litellm.api_base``
+        # global wins over the per-call ``api_base`` kwarg (litellm/main.py:5448).
+        # Something in the LLM stack sets it to the chat proxy (:8317), which
+        # would 404 on /api/embed — clear it for the duration of the call.
+        saved_api_base = litellm.api_base
+        try:
+            litellm.api_base = None
+            return config.embedding_model_instance.embed_batch(truncated)
+        finally:
+            litellm.api_base = saved_api_base
 
 
 def get_model_context_window(model_name: str) -> int:
@@ -89,13 +99,15 @@ def get_model_context_window(model_name: str) -> int:
         context_window = model_info.get("max_input_tokens")
         # Handle case where key exists but value is None
         if context_window is None:
-            logger.warning(
+            logger.warning(  # nosemgrep
                 "max_input_tokens is None for %s, using default 4096 tokens.",
                 model_name,
             )
             return 4096  # Conservative fallback
         return context_window
-    except Exception:  # litellm model-info probe failure → fallback to default 4096 tokens
+    except (
+        Exception
+    ):  # litellm model-info probe failure → fallback to default 4096 tokens
         logger.exception(
             "Could not get model info for %s, using default 4096 tokens.",
             model_name,
@@ -141,7 +153,9 @@ def optimize_content_for_context_window(
     available_tokens = context_window - reserved_tokens
 
     if available_tokens <= 100:  # Minimum viable content
-        logger.warning("Very limited tokens available for content: %s", available_tokens)
+        logger.warning(
+            "Very limited tokens available for content: %s", available_tokens
+        )  # nosemgrep
         return content[:500]  # Fallback to first 500 chars
 
     # Binary search to find optimal content length

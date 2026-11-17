@@ -23,8 +23,8 @@ const PARAM_KEYS = ["temperature", "max_tokens", "top_k", "top_p"] as const;
 
 export default function InferenceParamsEditor({ params, setParams }: InferenceParamsEditorProps) {
 	const t = useTranslations("common");
-	const [selectedKey, setSelectedKey] = useState<string>("");
-	const [value, setValue] = useState<string>("");
+	const [selectedKey, setSelectedKey] = useState("");
+	const [value, setValue] = useState("");
 
 	const handleAdd = () => {
 		if (!selectedKey || value === "") return;

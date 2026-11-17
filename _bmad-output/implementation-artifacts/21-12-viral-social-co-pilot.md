@@ -2,7 +2,7 @@
 
 Status: in-progress
 
-<!-- Note: Governed by architecture-xactions-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-7), AD-11 (Memory), AD-25 (PII Redaction), AD-31 (Tenant Isolation), and UX Contract ux-contract-workspace-mode-switch.md -->
+<!-- Note: Governed by architecture-medirus-social-integration-2026-08-15 (AD-SOC-1 to AD-SOC-7), AD-11 (Memory), AD-25 (PII Redaction), AD-31 (Tenant Isolation), and UX Contract ux-contract-workspace-mode-switch.md -->
 
 ## Story
 
@@ -21,7 +21,7 @@ So that I can build a compounding inbound lead generation engine alongside outbo
 - **And** it persists the `VoiceProfile` payload into the Knowledge Base as a `Memory` record (`type = "semantic"`, `tags = ["voice_profile", "social_copilot"]`, `source_type = "manual"`, `workspace_id`, `client_id`) with fields `profile_name`, `is_active: bool`, and metadata in `source_input`, returning the active `profile_id`.
 
 ### 2. Viral Outlier Identification, Zero-Division Safety & Redis Caching
-- **Given** target industry niche keywords or monitored group/account feeds from XActions (`social_posts`),
+- **Given** target industry niche keywords or monitored group/account feeds from Medirus (`social_posts`),
 - **When** `ViralPostAnalyzer.find_outliers(target_keywords, min_multiplier=3.0, min_engagement=10)` runs,
 - **Then** it calculates the author baseline engagement score ($\text{Engagement} = \text{Reactions} + 2 \times \text{Comments} + 3 \times \text{Shares}$) with zero-division protection ($\text{Baseline} = \max(\text{Baseline}_{\text{author}}, 1.0)$), caching the baseline in Redis (`cache:social:baseline:{platform}:{author_id}`, TTL: 3600s),
 - **And** it filters for outlier posts where $\text{Score} \ge \max(10, 3.0 \times \text{Baseline}$) (or top 5th percentile within the niche dataset), returning structured metadata (`platform`, `external_post_id`, `engagement_score`, `baseline_ratio`, `content`, `published_at`).
@@ -115,7 +115,7 @@ So that I can build a compounding inbound lead generation engine alongside outbo
 ## Dev Notes
 
 ### Architecture Invariants & Guardrails
-- **Zero-Reinvention XActions Integration (AD-SOC-1):** Tận dụng dữ liệu mạng xã hội đã thu thập từ `social_posts` và `XActionsSocialAdapter` (Facebook, Twitter/X).
+- **Zero-Reinvention Medirus Integration (AD-SOC-1):** Tận dụng dữ liệu mạng xã hội đã thu thập từ `social_posts` và `MedirusSocialAdapter` (Facebook, Twitter/X).
 - **First-Class Memory Storage (AD-11 / AD-35):** Lưu trữ hồ sơ giọng văn `VoiceProfile` trực tiếp trong bảng `memories` với `type = MemoryType.SEMANTIC` và `tags = ["voice_profile"]`. Không tạo bảng vector riêng biệt.
 - **PII Compliance & Sanitization (AD-25):** Mọi nội dung bài đăng mẫu từ mạng xã hội phải được chạy qua `app/services/pii/redact.py` (`context="social_template"`) trước khi hiển thị hoặc đưa vào context sinh bài.
 - **Tenant Isolation (AD-31):** Mọi truy vấn `social_posts`, `memories`, và `voice_profiles` bắt buộc lọc theo `workspace_id` và `client_id`.
@@ -187,7 +187,7 @@ SAMPLE_VOICE_PROFILE_JSON = {
 - **E2E tests:** `nowing_web/tests/content/social-copilot.spec.ts`
 
 ### References
-- [Architecture Spine: architecture-xactions-social-integration-2026-08-15/ARCHITECTURE-SPINE.md] (AD-SOC-1, AD-SOC-6)
+- [Architecture Spine: architecture-medirus-social-integration-2026-08-15/ARCHITECTURE-SPINE.md] (AD-SOC-1, AD-SOC-6)
 - [PII Redaction Architecture: app/services/pii/redact.py] (AD-25 Data Privacy)
 - [UX Contract: ux-contract-workspace-mode-switch.md#N2.4] (Content Mode navigation & surfaces)
 - [Epics Document: epics.md#Story 21.12] (FR-82 Viral Social Outbound Co-pilot)

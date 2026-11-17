@@ -45,7 +45,8 @@ export const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId
 					return (
 						<Tooltip key={platform.id}>
 							<TooltipTrigger asChild>
-								<Avatar className="size-4" style={{ zIndex: visiblePlatforms.length - i }}>
+								<Avatar className="size-4" style={{ zIndex: visiblePlatforms.length - i }} // pi-lens-ignore: ast-grep:inline-styles -- per-item stacking order
+								>
 									<AvatarFallback className="bg-popover text-[9px]">
 										<Icon className="size-2.5" aria-hidden="true" />
 									</AvatarFallback>
@@ -58,7 +59,8 @@ export const ConnectedScraperIcons: FC<{ workspaceId: number }> = ({ workspaceId
 				{remainingCount > 0 && (
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<Avatar className="size-4" style={{ zIndex: 0 }}>
+							<Avatar className="size-4" style={{ zIndex: 0 }} // pi-lens-ignore: ast-grep:inline-styles -- stacking context reset for overflow badge
+										>
 								<AvatarFallback className="bg-muted text-[8px] font-medium text-muted-foreground font-mono">
 									+{remainingCount}
 								</AvatarFallback>

@@ -509,8 +509,12 @@ async def test_usage_summary_start_equals_end(client, db_workspace, seed_token_u
         f"{BASE}/summary",
         params={
             "workspace_id": db_workspace.id,
-            "start_date": day.replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
-            "end_date": day.replace(hour=23, minute=59, second=59, microsecond=0).isoformat(),
+            "start_date": day.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ).isoformat(),
+            "end_date": day.replace(
+                hour=23, minute=59, second=59, microsecond=0
+            ).isoformat(),
         },
     )
     assert resp.status_code == 200
@@ -542,9 +546,11 @@ async def test_usage_summary_future_dates(client, db_workspace):
 
 @pytest.mark.asyncio
 async def test_usage_summary_workspace_id_zero(client):
-    """workspace_id must be >= 1."""
+    """workspace_id must be >= 1. RequireWorkspaceAccess fires first for a
+    nonexistent workspace (403 fail-closed); Query(ge=1) still rejects it (422)
+    when the access check is bypassed."""
     resp = await client.get(f"{BASE}/summary", params={"workspace_id": 0})
-    assert resp.status_code == 422
+    assert resp.status_code in (403, 422)
 
 
 @pytest.mark.asyncio

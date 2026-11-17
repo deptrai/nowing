@@ -41,7 +41,7 @@ export function markQuitting(): void {
 }
 
 export function createMainWindow(initialPath = '/dashboard'): BrowserWindow {
-  mainWindow = new BrowserWindow({
+  const options: Electron.BrowserWindowConstructorOptions = {
     title: WINDOW_TITLE,
     width: 1280,
     height: 800,
@@ -56,13 +56,12 @@ export function createMainWindow(initialPath = '/dashboard'): BrowserWindow {
       devTools: !app.isPackaged,
     },
     show: false,
-    ...(isMac
-      ? {
-          titleBarStyle: 'hidden' as const,
-          trafficLightPosition: { x: 12, y: 10 },
-        }
-      : {}),
-  });
+  };
+  if (isMac) {
+    options.titleBarStyle = 'hidden';
+    options.trafficLightPosition = { x: 12, y: 10 };
+  }
+  mainWindow = new BrowserWindow(options);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();

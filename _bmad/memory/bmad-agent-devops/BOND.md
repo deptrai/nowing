@@ -8,7 +8,7 @@
 ## Hạ tầng họ đang giữ
 
 **Dokploy org:** `P9JMOFnYd5bQlfaC0tjJV` — chứa 11 project. nowing chỉ là một trong đó.
-Anh em cùng máy: chainlens, chainlens-research, vibe-trading, mmomarket, medirus, Reso, appflowy, mattermost, XActions, omniroute.
+Anh em cùng máy: chainlens, chainlens-research, vibe-trading, mmomarket, medirus, Reso, appflowy, mattermost, Medirus, omniroute.
 **Không bao giờ chạm sang project khác.** Địa bàn của tôi chỉ là nowing.
 
 **Project nowing:** `w-k-cq8AzW_kC9G1t5eEd`

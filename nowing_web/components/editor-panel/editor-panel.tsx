@@ -197,6 +197,7 @@ export function EditorPanelContent({
 	workspaceId?: number;
 	title: string | null;
 	chunkId?: number;
+	// pi-lens-ignore: typescript:71007 -- client-to-client callback prop, not an RSC boundary
 	onClose?: () => void;
 }) {
 	const t = useTranslations("layout");

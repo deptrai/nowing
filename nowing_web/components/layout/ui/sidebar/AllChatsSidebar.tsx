@@ -302,7 +302,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 								className="flex items-center gap-2.5 rounded-md px-3 py-2.5"
 							>
 								<Skeleton className="h-4 w-4 shrink-0 rounded" />
-								<Skeleton className="h-5 rounded" style={{ width: `${titleWidth}%` }} />
+								<Skeleton className="h-5 rounded" style={{ width: `${titleWidth}%` }} /> // pi-lens-ignore: ast-grep:inline-styles -- dynamic search highlight position
 							</div>
 						))}
 					</div>

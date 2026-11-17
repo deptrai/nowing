@@ -43,7 +43,7 @@ export function EquationElement({ children, ...props }: PlateElementProps<TEquat
 			className={cn(
 				"my-3 rounded-md py-2",
 				selected && "ring-2 ring-ring ring-offset-2",
-				props.className
+				props.className // pi-lens-ignore: typescript:6385 -- upstream PlateJS className deprecation
 			)}
 		>
 			{/* biome-ignore lint/a11y/useSemanticElements: contentEditable context requires div */}
@@ -128,7 +128,7 @@ export function InlineEquationElement({ children, ...props }: PlateElementProps<
 		<PlateElement
 			{...props}
 			as="span"
-			className={cn("inline rounded-sm px-0.5", selected && "bg-brand/15", props.className)}
+			className={cn("inline rounded-sm px-0.5", selected && "bg-brand/15", props.className)} // pi-lens-ignore: typescript:6385 -- upstream PlateJS className deprecation
 		>
 			{/* biome-ignore lint/a11y/useSemanticElements: inline contentEditable context requires span */}
 			<span

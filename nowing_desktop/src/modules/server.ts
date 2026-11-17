@@ -45,12 +45,14 @@ export async function startNextServer(): Promise<void> {
   const serverScript = path.join(standalonePath, 'server.js');
   const backendInternalUrl = process.env.NOWING_BACKEND_INTERNAL_URL || process.env.HOSTED_BACKEND_URL;
 
+  const env: NodeJS.ProcessEnv = { ...process.env, PORT: String(serverPort) };
+  if (backendInternalUrl) {
+    env.NOWING_BACKEND_INTERNAL_URL = backendInternalUrl;
+  }
   const child = utilityProcess.fork(serverScript, [], {
     cwd: standalonePath,
     env: {
-      ...process.env,
-      ...(backendInternalUrl ? { NOWING_BACKEND_INTERNAL_URL: backendInternalUrl } : {}),
-      PORT: String(serverPort),
+      ...env,
       // Loopback bind: avoids 0.0.0.0 leaking into request.url and redirect origins.
       HOSTNAME: SERVER_HOST,
       NODE_ENV: 'production',

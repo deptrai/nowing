@@ -472,7 +472,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 								"h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-500",
 								isRunning && "animate-pulse"
 							)}
-							style={{ width: `${progressPercent}%` }}
+							style={{ width: `${progressPercent}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic widget position
 						/>
 					</div>
 				</div>
@@ -551,7 +551,7 @@ export const MissionControlWidget: React.FC<MissionControlWidgetProps> = ({
 							<div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
 								<div
 									className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-									style={{ width: `${tokenVelocityDisplay.budgetPercent}%` }}
+									style={{ width: `${tokenVelocityDisplay.budgetPercent}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic widget position
 								/>
 							</div>
 						</div>

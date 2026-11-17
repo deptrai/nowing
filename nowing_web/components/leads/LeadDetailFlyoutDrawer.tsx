@@ -16,7 +16,6 @@ import {
 	Network,
 	Phone,
 	Send,
-	Share2,
 	Sparkles,
 	Tag,
 	UserCheck,
@@ -30,6 +29,7 @@ import type { LeadActivityLog } from "@/contracts/types/lead-pipeline.types";
 import type { Lead } from "@/contracts/types/leads.types";
 import { leadPipelineApiService } from "@/lib/apis/lead-pipeline-api.service";
 import { copyToClipboard, isAllowedUrl } from "@/lib/utils";
+import { LeadSourceBadge } from "./LeadSourceBadge";
 import { PhoneUnlockPill } from "./PhoneUnlockPill";
 import { ZaloOutreachButton } from "./zalo-outreach-button";
 
@@ -42,6 +42,17 @@ export interface LeadDetailFlyoutDrawerProps {
 	onReportInvalidPhone?: (lead: Lead) => void;
 	unlockedPhone?: string | null;
 	onPhoneChange?: (leadId: string, phone: string | null, unlocked: boolean) => void;
+}
+
+/** Extract `metadata.websets` from a lead, returning undefined for malformed
+ * (null / array / non-object) payloads so the enrichments section stays safe. */
+export function resolveWebsetsMetadata(
+	lead: Pick<Lead, "metadata" | "extra_metadata"> | null | undefined
+): Record<string, unknown> | undefined {
+	const raw = lead?.metadata?.websets || lead?.extra_metadata?.websets;
+	return typeof raw === "object" && raw !== null && !Array.isArray(raw)
+		? (raw as Record<string, unknown>)
+		: undefined;
 }
 
 export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
@@ -66,6 +77,8 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 
 	const displayPhone = localUnlockedPhone ?? lead?.phone ?? null;
 	const isContactUnlocked = leadUnlocked;
+
+	const websetsMetadata = resolveWebsetsMetadata(lead);
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -117,7 +130,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 	const intentScore = lead.intent_score ?? 0;
 	const compositeScore = lead.composite_score ?? 0;
 
-	const handleAddNote = async (e: React.FormEvent) => {
+	const handleAddNote = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!newNote.trim() || !lead?.id || isSubmittingNote) return;
 
@@ -158,9 +171,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 					<div className="px-6 py-5 border-b border-border bg-muted/30 soc-caro-grid flex items-start justify-between">
 						<div className="space-y-1 pr-4">
 							<div className="flex items-center gap-2">
-								<span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-									{lead.source}
-								</span>
+								<LeadSourceBadge source={lead.source} />
 								{lead.status && (
 									<span className="text-[10px] font-medium px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
 										{lead.status}
@@ -206,7 +217,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 									<div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
 										<div
 											className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-											style={{ width: `${Math.min(100, Math.max(0, fitScore))}%` }}
+											style={{ width: `${Math.min(100, Math.max(0, fitScore))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic score bar width percentage
 										/>
 									</div>
 								</div>
@@ -220,7 +231,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 										<div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
 											<div
 												className="h-full bg-blue-500 rounded-full transition-all duration-300"
-												style={{ width: `${Math.min(100, Math.max(0, intentScore))}%` }}
+												style={{ width: `${Math.min(100, Math.max(0, intentScore))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic score bar width percentage
 											/>
 										</div>
 									</div>
@@ -237,7 +248,7 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 										<div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
 											<div
 												className="h-full bg-amber-500 rounded-full transition-all duration-300"
-												style={{ width: `${Math.min(100, Math.max(0, compositeScore))}%` }}
+												style={{ width: `${Math.min(100, Math.max(0, compositeScore))}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic score bar width percentage
 											/>
 										</div>
 									</div>
@@ -408,6 +419,70 @@ export const LeadDetailFlyoutDrawer: React.FC<LeadDetailFlyoutDrawerProps> = ({
 								</div>
 							)}
 						</div>
+
+						{/* Websets Enrichments */}
+						{websetsMetadata && Object.keys(websetsMetadata).length > 0 && (
+							<div
+								data-testid="websets-enrichments-section"
+								className="p-4 rounded-xl bg-muted/40 border border-border space-y-3"
+							>
+								<div className="flex items-center justify-between">
+									<span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+										<Globe
+											className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+											aria-hidden="true"
+										/>
+										{t("websets_enrichments_title", {
+											count: Object.keys(websetsMetadata).length,
+										})}
+									</span>
+								</div>
+								<div className="grid grid-cols-1 gap-2">
+									{Object.entries(websetsMetadata).map(([key, item]) => {
+										const obj =
+											typeof item === "object" && item !== null
+												? (item as Record<string, unknown>)
+												: null;
+										const val = obj && "value" in obj ? obj.value : item;
+										const groundingUrl = obj
+											? typeof obj.groundingUrl === "string"
+												? obj.groundingUrl
+												: typeof obj.grounding_url === "string"
+													? obj.grounding_url
+													: null
+											: null;
+										return (
+											<div
+												key={key}
+												className="p-2.5 rounded-lg bg-card border border-border text-xs space-y-1"
+											>
+												<div className="flex items-center justify-between gap-2">
+													<span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold">
+														{key}
+													</span>
+													{groundingUrl && isAllowedUrl(groundingUrl) && (
+														<a
+															href={groundingUrl}
+															target="_blank"
+															rel="noopener noreferrer"
+															className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline"
+														>
+															<span>{t("source_link_label")}</span>
+															<ExternalLink className="w-2.5 h-2.5" aria-hidden="true" />
+														</a>
+													)}
+												</div>
+												<div className="font-medium text-foreground break-words">
+													{typeof val === "object" && val !== null
+														? JSON.stringify(val)
+														: String(val ?? "—")}
+												</div>
+											</div>
+										);
+									})}
+								</div>
+							</div>
+						)}
 
 						{/* Full Content Snippet */}
 						{lead.content_snippet && (

@@ -26,10 +26,11 @@ inputDocuments:
   - "_bmad-output/planning-artifacts/pilot-plan-c-memo-2026-08-05.md (context)"
   - "_bmad-output/planning-artifacts/research/technical-spike-vietnamworks-api-2026-08-05.md (context)"
   - "_bmad-output/planning-artifacts/research/technical-spike-topcv-itviec-2026-08-05.md (context)"
-  - "_bmad-output/specs/spec-xactions-connection/SPEC.md (Epic 36 source)"
+  - "_bmad-output/specs/spec-medirus-connection/SPEC.md (Epic 36 source)"
   - "_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-09-13/ARCHITECTURE-SPINE.md (Epic 36 ADs)"
   - "_bmad-output/planning-artifacts/ux-spec-epic37-revenue-engine-mobile-responsive-2026-09-17.md (Epic 37 UX spec)"
   - "_bmad-output/planning-artifacts/MASTER-INTEGRATION-PLAN-TRINITY-2026-09-24.md (Epic 40 Trinity Master Integration)"
+  - "_bmad-output/planning-artifacts/ux-plan-agent-experience-improvements-2026-11-16.md (Epic 42 source — agent experience + lead pipeline hardening, v4 incl. §11 Invariants)"
 ---
 
 # Nowing - Epic Breakdown
@@ -68,7 +69,7 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[IN-PROGRESS]` **FR-69 Outcome-Based Pricing & Transparent Credit Ledger** → **E21.7** ($0 chat & sequencer, pay per verified lead / outcome meeting).
 `[DONE]` **FR-80 1-Click Reverse-ICP from Website / Project URL** → **E21.10** (auto-generate buyer personas, scraper targets & filter presets).
 `[DONE]` **FR-81 Actionable Turn Dispatches (Suggested Action Pills)** → **E21.11** (contextual 1-click execution chips after scrape turns).
-`[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via XActions FB/Twitter).
+`[DONE]` **FR-82 Viral Social Outbound Co-pilot** → **E21.12** (AI Voice Learner + Viral post analyzer via Medirus FB/Twitter).
 `[DONE]` **FR-84 Smart Whitelist & Do-Not-Call (DNC) Compliance Engine** → **E21.14 P0** (Decree 91/2020/NĐ-CP, CSV import, opt-out protection).
 `[DONE]` **FR-85 Unified Multi-Source AI Lead Generation Orchestrator** → **E21.15 P0** (1-chat parallel retrieval across all 15+ scrapers into live table).
 `[NEW]` **FR-69.2 Customer Location Profile** → **E26.25** (progressive province/district/ward selector, GSO/TCTK codes, smart search & quick chips).
@@ -423,7 +424,7 @@ CafeF / Vietstock data. **FR-50 re-scoped 2026-08-08:** Nowing feed/crawl infras
 masothue.com company data, official business registry, national public procurement tenders. **FR-51 re-scoped 2026-08-08:** Nowing feed/crawl partially done (16.1, 16.5), but Nowing does not keep a local company index. Company alerts/timeline merged into Epic 6.11/6.12. **Done:** 16.1, 16.5; **Backlog:** 16.2.
 
 ### Epic 17: E-commerce Intelligence
-Lazada / Shopee / TikTok Shop product data. **FR-52 re-scoped 2026-08-08:** Nowing feed/crawl partially done (17.2), 17.1 and 17.5 blocked-by-external XActions. Nowing does not keep a local product index. Price-drop alerts/competitor tracking merged into Epic 6.11. **Done:** 17.2; **Backlog/Blocked:** 17.1, 17.5. Governed by `architecture-shopee-ecommerce-2026-08-15`.
+Lazada / Shopee / TikTok Shop product data. **FR-52 re-scoped 2026-08-08:** Nowing feed/crawl partially done (17.2), 17.1 and 17.5 blocked-by-external Medirus. Nowing does not keep a local product index. Price-drop alerts/competitor tracking merged into Epic 6.11. **Done:** 17.2; **Backlog/Blocked:** 17.1, 17.5. Governed by `architecture-shopee-ecommerce-2026-08-15`.
 
 ### Epic 18: Vertical Client Platform
 Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **FR-56/57 [DONE] in PRD 2026-08-24.** **Done:** 18.1–18.8.
@@ -440,8 +441,8 @@ Public channel web preview, MTProto Userbot session pool, distributed mutex lock
 ### Epic 28: Self-Host Trust, Data Portability & Cloud GA Legal Readiness
 Người dùng self-host và cloud có thể tin tưởng Nowing với research memory dài hạn: dữ liệu có thể xuất, được mã hóa, quản lý bởi policy rõ ràng, và self-host chạy trong <10 phút. **FRs:** FR-95 (Data export & portability), FR-96 (Encryption-at-rest & key management), FR-97 (ToS/legal review + retention), FR-98 (Self-host OSS onboarding <10 min), **FR-99** (recall precision/noise gate — GA launch gate). **ARs:** AR-11, AR-12, AR-13, AR-14, AR-15. **UX-DRs:** UX-DR-PRFAQ-2 (self-host onboarding), UX-DR-PRFAQ-4 (cost control dashboard). **Stories:** 28.1–28.6 (28.6 = recall precision ratification, FR-99). **Dependencies:** Epic 1 (auth), Epic 3 (memory schema), Epic 8 (billing/cost). Post-MVP UX-DR-PRFAQ-1/3 (memory browser/correction) thuộc Epic 3.
 
-### Epic 36: XActions Unified Connection Contract (Nowing-side)
-Contract kết nối nowing↔XActions: MCP client loop-scoped, x_crawl_post fallback, error map tập trung, single-writer stream, dynamic action discovery. **FRs:** FR-XC1..XC6 (spec-xactions-connection CAP-1..6). **Governed by** `architecture-Nowing-2026-09-13` (AD-1..10). **XActions-side** giao qua XACTIONS-REQUIREMENTS-2026-09-13.md. **Stories:** 36.1–36.6. **Dependencies:** Epic 21 (lead-gen), Epic 35 (stream consumer), XActions-side REQ-X1..X4.
+### Epic 36: Medirus Unified Connection Contract (Nowing-side)
+Contract kết nối nowing↔Medirus: MCP client loop-scoped, x_crawl_post fallback, error map tập trung, single-writer stream, dynamic action discovery. **FRs:** FR-XC1..XC6 (spec-medirus-connection CAP-1..6). **Governed by** `architecture-Nowing-2026-09-13` (AD-1..10). **Medirus-side** giao qua MEDIRUS-REQUIREMENTS-2026-09-13.md. **Stories:** 36.1–36.6. **Dependencies:** Epic 21 (lead-gen), Epic 35 (stream consumer), Medirus-side REQ-X1..X4.
 
 ### Epic 29: SaaS Operations, Advanced Admin Governance & Analyst Workspace
 Nowing nâng cấp từ single-tenant ops lên SaaS operations console: superadmin quản lý workspace/tenant, subscription tier/quota, bulk operations, audit; owner/admin/analyst có dashboard health/adoption và memory browser/research timeline. **FRs:** FR-100 (Custom workspace roles & permissions builder), FR-101 (Workspace health & adoption analytics dashboard), FR-102 (Tenant subscription tier & quota management), FR-103 (Admin bulk operations console), FR-104 (Memory browser & research timeline for analyst). **ARs:** AR-17, AR-18. **UX-DRs:** UX-DR-PRFAQ-5 (SaaS admin operations console), UX-DR-PRFAQ-6 (analyst memory browser / research timeline). **Stories:** 29.1–29.6. **Dependencies:** Epic 1 (auth/RBAC), Epic 3 (memory schema/provenance), Epic 8 (billing/cost/wallet), Epic 25 (admin platform operations baseline), Epic 28 (retention/right-to-delete cho 29.6).
@@ -2730,9 +2731,9 @@ So that I can verify authentic legal data rather than unverified third-party est
 - Unit test: `test_dangkykinhdoanh_pdf.py` — Vietnamese font & Unicode NFC decoding.
 - Integration test: `test_business_gov_vn.py` — official data accessible and stored in `official_enterprise_registrations`.
 
-_AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Governed by `architecture-bds-planning-and-dkkd-2026-08-15` & `architecture-xactions-social-integration-2026-08-15`_
+_AD-GIS-3 · AD-GIS-5 · AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Governed by `architecture-bds-planning-and-dkkd-2026-08-15` & `architecture-medirus-social-integration-2026-08-15`_
 
-> **XActions Delegation Note (AD-SOC-1 & AD-SOC-9):** Do NOT build raw headless browser crawlers or captcha solvers inside Nowing. Raw portal scraping of `dangkykinhdoanh.gov.vn` (government captcha, session warmup, PDF download) is delegated to XActions (`x_dangkykinhdoanh` MCP tool). Nowing focuses purely on `DkkdLeadAdapter` ingestion, PDF/Unicode normalization, extraction of charter capital/shareholders into `official_enterprise_registrations`, and Confidence Gate verification (Story 21.21).
+> **Medirus Delegation Note (AD-SOC-1 & AD-SOC-9):** Do NOT build raw headless browser crawlers or captcha solvers inside Nowing. Raw portal scraping of `dangkykinhdoanh.gov.vn` (government captcha, session warmup, PDF download) is delegated to Medirus (`x_dangkykinhdoanh` MCP tool). Nowing focuses purely on `DkkdLeadAdapter` ingestion, PDF/Unicode normalization, extraction of charter capital/shareholders into `official_enterprise_registrations`, and Confidence Gate verification (Story 21.21).
 
 ---
 
@@ -2806,16 +2807,16 @@ _AD-PROC-1 · AD-PROC-2 · AD-PROC-3 · AD-PROC-4 · AD-PROC-5 · AD-PROC-6 · A
 
 ### Story 17.1: Lazada Product Data
 
-> **Blocked-by-external (2026-08-23):** Raw scraping và anti-bot proxy rotation được giao cho `XActions` (`x_lazada_search` / `x_lazada_product` MCP tools) theo AD-SOC-1/AD-SOC-9. Story 17.1 chỉ implement `LazadaLeadAdapter` + normalization sau khi MCP tool sẵn sàng. Chuyển `backlog` trong `sprint-status.yaml` cho đến khi XActions tool tồn tại.
+> **Blocked-by-external (2026-08-23):** Raw scraping và anti-bot proxy rotation được giao cho `Medirus` (`x_lazada_search` / `x_lazada_product` MCP tools) theo AD-SOC-1/AD-SOC-9. Story 17.1 chỉ implement `LazadaLeadAdapter` + normalization sau khi MCP tool sẵn sàng. Chuyển `backlog` trong `sprint-status.yaml` cho đến khi Medirus tool tồn tại.
 
 As a product researcher,
 I want product data from Lazada Vietnam including price, seller, ratings, and variants,
 So that I can perform pricing analysis and competitor tracking.
 
 **Acceptance Criteria:**
-- **Given** the `XActions` `x_lazada_search` / `x_lazada_product` MCP tool is available and returns product data, **When** a user searches by product keyword, **Then** product listings are returned with: title, price, original price, discount, rating, review count, seller name, variants.
-- **Given** product data is fetched from XActions, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'xactions_adapter'`, `sourceId` (stable: normalized `title` + `seller_id` + `sku` if available), `domain: 'lazada.vn'`, `fetchedAt`, `contentType: 'product'` are set.
-- **Given** the XActions tool returns anti-bot/captcha, **When** the adapter handles it, **Then** it propagates `degraded=true` with `degradation_reason: ANTI_BOT`; no in-house Playwright crawler is built inside Nowing.
+- **Given** the `Medirus` `x_lazada_search` / `x_lazada_product` MCP tool is available and returns product data, **When** a user searches by product keyword, **Then** product listings are returned with: title, price, original price, discount, rating, review count, seller name, variants.
+- **Given** product data is fetched from Medirus, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'medirus_adapter'`, `sourceId` (stable: normalized `title` + `seller_id` + `sku` if available), `domain: 'lazada.vn'`, `fetchedAt`, `contentType: 'product'` are set.
+- **Given** the Medirus tool returns anti-bot/captcha, **When** the adapter handles it, **Then** it propagates `degraded=true` with `degradation_reason: ANTI_BOT`; no in-house Playwright crawler is built inside Nowing.
 - **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
 - **Given** the user queries product data, **When** the agent calls `chainlens-research` `POST /api/v1/search`, **Then** indexed results are returned with citations.
 
@@ -2825,9 +2826,9 @@ So that I can perform pricing analysis and competitor tracking.
 - Anti-bot test: `test_lazada_graceful_degradation.py` — backs off on 403/CAPTCHA
 - Integration test: `test_lazada_ingest_chainlens.py` — chunks sent to `chainlens-research`
 
-_AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Method: Consumes XActions MCP tool / Fast API JSON_
+_AD-34 · AD-35 · AD-SOC-1 · AD-SOC-9 · Method: Consumes Medirus MCP tool / Fast API JSON_
 
-> **XActions Delegation Note (AD-SOC-1 & AD-SOC-9):** Do NOT build in-house Lazada Playwright crawlers inside Nowing. Raw product scraping and anti-bot proxy rotation are delegated to XActions (`x_lazada_search` / `x_lazada_product` MCP tools). Nowing focuses on `LazadaLeadAdapter`, schema normalization into `ecommerce_products`, Confidence Gate verification, and `chainlens-research` ingestion.
+> **Medirus Delegation Note (AD-SOC-1 & AD-SOC-9):** Do NOT build in-house Lazada Playwright crawlers inside Nowing. Raw product scraping and anti-bot proxy rotation are delegated to Medirus (`x_lazada_search` / `x_lazada_product` MCP tools). Nowing focuses on `LazadaLeadAdapter`, schema normalization into `ecommerce_products`, Confidence Gate verification, and `chainlens-research` ingestion.
 
 ### Story 17.2: Shopee Vietnam In-House Scraper & Price Normalization
 
@@ -2853,21 +2854,21 @@ _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-4 · Governed by `architecture-shopee-ec
 
 ### Story 17.5: TikTok Shop Product & Trending SKUs Ingestion
 
-> **Blocked-by-external (2026-08-23):** Codebase hiện chỉ có public TikTok video scraper, không có TikTok Shop. Raw scraping TikTok Shop được giao cho `XActions` (`x_tiktok_shop_products` MCP tool) theo AD-SOC-1/AD-SOC-2/AD-SOC-9. Story 17.5 chỉ implement adapter + normalization sau khi MCP tool sẵn sàng. When implemented, reuse `ecommerce_products` + `ecommerce_price_history` schema and alert patterns from Shopee architecture (AD-EC-1..6).
+> **Blocked-by-external (2026-08-23):** Codebase hiện chỉ có public TikTok video scraper, không có TikTok Shop. Raw scraping TikTok Shop được giao cho `Medirus` (`x_tiktok_shop_products` MCP tool) theo AD-SOC-1/AD-SOC-2/AD-SOC-9. Story 17.5 chỉ implement adapter + normalization sau khi MCP tool sẵn sàng. When implemented, reuse `ecommerce_products` + `ecommerce_price_history` schema and alert patterns from Shopee architecture (AD-EC-1..6).
 
 As a social commerce researcher,
 I want product, pricing, and sales volume data from TikTok Shop Vietnam,
 So that I can analyze viral e-commerce trends, top KOC promoted products, and competitive pricing.
 
 **Acceptance Criteria:**
-- **Given** the `XActions` `x_tiktok_shop_products` MCP tool is available, **When** a user provides a search query or category, **Then** product listings are returned with title, current price (using divisor `1.0`), units sold, shop name, rating, and creator/affiliate metrics.
-- **Given** product data is fetched from XActions, **When** normalized and stored, **Then** records are saved into `ecommerce_products` with `platform: 'tiktok_shop'` and linked to `ecommerce_price_history`.
+- **Given** the `Medirus` `x_tiktok_shop_products` MCP tool is available, **When** a user provides a search query or category, **Then** product listings are returned with title, current price (using divisor `1.0`), units sold, shop name, rating, and creator/affiliate metrics.
+- **Given** product data is fetched from Medirus, **When** normalized and stored, **Then** records are saved into `ecommerce_products` with `platform: 'tiktok_shop'` and linked to `ecommerce_price_history`.
 - **Given** historical product runs, **When** analyzed, **Then** the engine calculates sales velocity `(sold_t2 - sold_t1) / delta_days` to classify trending breakout SKUs.
 - **Given** an AI Agent session, **When** calling `ecommerce_search_products(platform='tiktok_shop', query=...)`, **Then** top trending products with sales velocity metrics are returned.
 
 _AD-EC-1 · AD-EC-2 · AD-EC-3 · AD-EC-6 · AD-SOC-1 · AD-SOC-2 · AD-SOC-9_
 
-> **XActions Delegation Note (AD-SOC-1, AD-SOC-2 & AD-SOC-9):** Do NOT build anti-tamper TikTok signature bridges (`msToken`, `_signature`) inside Nowing. Raw TikTok Shop scraping and crawler sessions are delegated to XActions (`x_tiktok_shop_products` MCP tool). Nowing focuses on `TikTokShopLeadAdapter`, schema mapping into `ecommerce_products` / `ecommerce_price_history`, trending sales velocity calculations, and AI Agent query tools.
+> **Medirus Delegation Note (AD-SOC-1, AD-SOC-2 & AD-SOC-9):** Do NOT build anti-tamper TikTok signature bridges (`msToken`, `_signature`) inside Nowing. Raw TikTok Shop scraping and crawler sessions are delegated to Medirus (`x_tiktok_shop_products` MCP tool). Nowing focuses on `TikTokShopLeadAdapter`, schema mapping into `ecommerce_products` / `ecommerce_price_history`, trending sales velocity calculations, and AI Agent query tools.
 
 
 
@@ -3058,7 +3059,7 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 > **Epic Goal:** Umbrella / tracking epic cho hệ sinh thái săn lead. Implementation chi tiết đã phân tán sang các epic con: E23 (Lead Capture, Real-Time Enrichment & Automated Outreach), E24 (Enterprise Lead Conversion & Multi-Channel Outreach + Team CRM), E25 (Platform Administration & Multi-Tenant Operations), E26 (Autonomous Lead Missions & Deep Sales Research). Epic 21 detailed stories (21.1–21.21) below are **superseded** by E23–E26 stories; kept for historical traceability.
 
 **Status:** `[in-progress]`  
-**Governed by Architecture Spines:** `architecture-xactions-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
+**Governed by Architecture Spines:** `architecture-medirus-social-integration-2026-08-15`, `architecture-linkedin-b2b-2026-08-15`, `epic21-architecture-update.md` (AD-31 to AD-49).  
 **UX Contracts (đã lưu trữ):** `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-lead-intelligence-panel.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-workspace-mode-switch.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-sidebar-onboarding.md`, `_bmad-output/planning-artifacts/ux-designs/archive/ux-Nowing-2026-07-22-superseded/ux-contract-positive-reply-notifications.md`. UX chuẩn hiện tại: `ux-designs/ux-Nowing-2026-08-15/`.
 
 ---
@@ -3182,16 +3183,16 @@ _FR-69 · AD-8 · AD-10 · AD-31 · AD-42_
 
 ---
 
-### Story 21.8: Social Ingress via XActions Integration — Foundation
+### Story 21.8: Social Ingress via Medirus Integration — Foundation
 
 As a B2B sales development representative or real estate investor,
-I want a foundation to ingest social posts via XActions (`/Users/luisphan/Documents/GitHub/XActions`),
+I want a foundation to ingest social posts via Medirus (`/Users/luisphan/Documents/GitHub/Medirus`),
 So that I can capture real-time conversations and extract contact numbers without building scrapers from scratch.
 
 **Baseline Scope (Done):**
 - PostgreSQL schema `social_monitored_targets` and `social_posts` with unique constraint `(platform, external_post_id)`.
 - `SocialEntityExtractor` for Vietnamese phone/price/location/intent extraction (50ms ReDoS timeout).
-- Redis Stream `stream:social:raw_posts` producer from Python `XActionsSocialAdapter`.
+- Redis Stream `stream:social:raw_posts` producer from Python `MedirusSocialAdapter`.
 - Unit and integration tests for regex and Redis stream.
 
 **Deferred to Stories 21.8a–f:**
@@ -3200,7 +3201,7 @@ So that I can capture real-time conversations and extract contact numbers withou
 - Multi-domain social target expansion (21.8c).
 - Universal scrape target mapper (21.8d).
 - Per-account proxy and cookie binding (21.8e).
-- XActions governance and health integration (21.8f).
+- Medirus governance and health integration (21.8f).
 
 **Validation & Testing:**
 - Unit test: `test_obfuscated_phone_regex.py` — verifies extraction of 10+ obfuscated VN phone variants.
@@ -3213,11 +3214,11 @@ _AD-SOC-1 · AD-SOC-2 · AD-SOC-4 · AD-SOC-5 · AD-SOC-6 · AD-SOC-7_
 
 ---
 
-### Story 21.8a: XActions Universal Ingress Productionization
+### Story 21.8a: Medirus Universal Ingress Productionization
 
 As a Nowing B2B sales development representative and real estate investor,
-I want XActions social ingress to run over MCP streamable-http, support every configured platform, process the Redis stream end-to-end, and expose health/governance telemetry,
-so that I can ingest leads from any vertical reliably, without spawning Node subprocesses, without duplicate posts, and without losing data when XActions throttles or proxies fail.
+I want Medirus social ingress to run over MCP streamable-http, support every configured platform, process the Redis stream end-to-end, and expose health/governance telemetry,
+so that I can ingest leads from any vertical reliably, without spawning Node subprocesses, without duplicate posts, and without losing data when Medirus throttles or proxies fail.
 
 **Consolidated from Stories 21.8a–f:**
 - 21.8a: MCP StreamableHTTP transport
@@ -3225,25 +3226,25 @@ so that I can ingest leads from any vertical reliably, without spawning Node sub
 - 21.8c: Multi-domain social target expansion
 - 21.8d: Universal scrape target mapper
 - 21.8e: Per-account proxy and cookie binding
-- 21.8f: XActions governance and health integration
+- 21.8f: Medirus governance and health integration
 
 **Acceptance Criteria:**
-1. **Given** `XACTIONS_MCP_URL`, `XACTIONS_MCP_API_KEY`, `XACTIONS_CONSUMER_ID` configured, **When** the adapter runs, **Then** it uses `mcp.client.streamable_http.streamablehttp_client` with Bearer auth and `X-Consumer-Id` headers, and reuses sessions across calls.
-2. **Given** a tool call, **When** XActions returns JSON, **Then** the client parses `success`, `data`, `meta` (incl. `datasetArtifactPath`), and `summary` correctly, and empty/non-JSON responses degrade safely.
-3. **Given** `XACT_4291`, `PROXY_EXHAUSTED`/`XACT_5030`, `ACCOUNT_HIBERNATION`, `XACT_4010`, `XACT_5000`, **When** they occur, **Then** the client raises `XActionsMcpError` with `code`, `retry_after`, `suggested_action`; the scheduler retries 4291 after `retry_after`, pauses target on hibernation/proxy exhaustion, and stops on auth expired.
+1. **Given** `MEDIRUS_MCP_URL`, `MEDIRUS_MCP_API_KEY`, `MEDIRUS_CONSUMER_ID` configured, **When** the adapter runs, **Then** it uses `mcp.client.streamable_http.streamablehttp_client` with Bearer auth and `X-Consumer-Id` headers, and reuses sessions across calls.
+2. **Given** a tool call, **When** Medirus returns JSON, **Then** the client parses `success`, `data`, `meta` (incl. `datasetArtifactPath`), and `summary` correctly, and empty/non-JSON responses degrade safely.
+3. **Given** `XACT_4291`, `PROXY_EXHAUSTED`/`XACT_5030`, `ACCOUNT_HIBERNATION`, `XACT_4010`, `XACT_5000`, **When** they occur, **Then** the client raises `MedirusMcpError` with `code`, `retry_after`, `suggested_action`; the scheduler retries 4291 after `retry_after`, pauses target on hibernation/proxy exhaustion, and stops on auth expired.
 4. **Given** messages in `stream:social:raw_posts`, **When** Celery beat enqueues `process_social_stream` every 30 seconds, **Then** the consumer group `social_processors` persists posts to `SocialPost`, creates `Lead` for high-intent posts, evaluates `AlertRule`, ACKs, and DLQs failures.
 5. **Given** `POST /workspaces/{id}/social-monitored-targets`, **When** any supported platform is used, **Then** it is accepted and persisted. Supported: `facebook_group`, `facebook_page`, `twitter_keyword`, `twitter_user`, `tiktok_hashtag`, `chotot_category`, `shopee_keyword`, `topcv_search`, `vietnamworks_search`, `linkedin_company`, `batdongsan_category`, `masothue_lookup`, `b2b_registry_search`.
 6. **Given** an existing target, **When** `GET`/`PATCH`/`DELETE` endpoints are called, **Then** the operation succeeds with workspace-scoped tenancy and permission check.
-7. **Given** a `SocialMonitoredTarget`, **When** `UniversalScrapeTargetMapper.map(target)` runs, **Then** it returns `(tool_name, arguments)` for the matching XActions tool (Facebook/Twitter named tools or `x_scrape` for VN domains; fallback to `x_crawl_post`).
-8. **Given** a target with `account_id`/`proxy_url`, **When** the scheduler runs, **Then** the request includes those values; fallback to `XACTIONS_FACEBOOK_ACCOUNT_ID` or `x_facebook_list_accounts`; bindings stored in `xactions_proxy_bindings`.
+7. **Given** a `SocialMonitoredTarget`, **When** `UniversalScrapeTargetMapper.map(target)` runs, **Then** it returns `(tool_name, arguments)` for the matching Medirus tool (Facebook/Twitter named tools or `x_scrape` for VN domains; fallback to `x_crawl_post`).
+8. **Given** a target with `account_id`/`proxy_url`, **When** the scheduler runs, **Then** the request includes those values; fallback to `MEDIRUS_FACEBOOK_ACCOUNT_ID` or `x_facebook_list_accounts`; bindings stored in `medirus_proxy_bindings`.
 9. **Given** admin telemetry, **When** `x_governor_status` and `x_admin_stream_metrics` are called, **Then** health/proxy/quota and stream lag metrics are returned; and `x_admin_stream_alerts` breaches send admin Telegram/Email alerts.
 10. **Given** the implementation complete, **Then** unit/integration tests cover transport, error matrix, mapper, stream end-to-end, and an opt-in MCP smoke test.
 
 **Validation & Testing:**
-- Unit test: `test_xactions_mcp_client.py` — session reuse, auth headers, envelope parsing, error codes.
-- Unit test: `test_xactions_mapper.py` — all 13 platforms return correct tool/args.
+- Unit test: `test_medirus_mcp_client.py` — session reuse, auth headers, envelope parsing, error codes.
+- Unit test: `test_medirus_mapper.py` — all 13 platforms return correct tool/args.
 - Integration test: `test_social_redis_stream.py` — producer/consumer end-to-end.
-- Optional smoke: `test_xactions_mcp_smoke.py` — live daemon `list_tools()`.
+- Optional smoke: `test_medirus_mcp_smoke.py` — live daemon `list_tools()`.
 
 **Status:** `[ready-for-dev]`
 
@@ -3262,21 +3263,21 @@ _AD-SOC-4 · AD-SOC-6 · AD-SOC-7_
 _AD-SOC-9 · AD-SOC-1_
 
 ### Story 21.8d: Universal Scrape Target Mapper
-*Status: done.* Consolidated into 21.8a; kept for historical traceability. Maps `SocialMonitoredTarget` to XActions tool and arguments.
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Maps `SocialMonitoredTarget` to Medirus tool and arguments.
 
 _AD-SOC-9 · AD-SOC-4_
 
 ### Story 21.8e: Per-Account Proxy and Cookie Binding
-*Status: done.* Consolidated into 21.8a; kept for historical traceability. Per-account XActions account and proxy binding.
+*Status: done.* Consolidated into 21.8a; kept for historical traceability. Per-account Medirus account and proxy binding.
 
 _AD-SOC-3 · AD-SOC-11_
 
-### Story 21.8f: XActions Governance and Health Integration
+### Story 21.8f: Medirus Governance and Health Integration
 *Status: done.* Consolidated into 21.8a; kept for historical traceability. Admin telemetry and alert hooks.
 
 _AD-SOC-11 · AD-SOC-7_
 
-### Story 21.8g: XActions MCP Chat Connector
+### Story 21.8g: Medirus MCP Chat Connector
 *Status: done.* Consolidated into 21.8a; kept for historical traceability. MCP chat connector integration.
 
 _AD-SOC-1 · AD-SOC-4_
@@ -3335,7 +3336,7 @@ So that I can build an organic inbound lead engine alongside outbound prospectin
 
 **Acceptance Criteria:**
 - **Given** user's social profile handle or sample writings in `Content Mode`, **When** `VoiceProfileLearner` runs, **Then** it analyzes tone, sentence structure, hook patterns, and vocabulary, saving a `VoiceProfile` record in Knowledge Base (`tag: "voice_profile"`).
-- **Given** industry niche keywords, **When** `ViralPostAnalyzer` queries XActions feed, **Then** it identifies outlier posts (engagement $\ge 3\times$ author baseline), categorizes "Why it worked" (`contrarian_hook`, `story_shift`, `value_list`), and generates draft variations matching user's voice.
+- **Given** industry niche keywords, **When** `ViralPostAnalyzer` queries Medirus feed, **Then** it identifies outlier posts (engagement $\ge 3\times$ author baseline), categorizes "Why it worked" (`contrarian_hook`, `story_shift`, `value_list`), and generates draft variations matching user's voice.
 - **Given** generated post draft, **When** presented on UI, **Then** the user reviews, edits, and copies the post (Human-in-the-loop: AI never auto-posts to user's personal account).
 
 _FR-82 · AD-SOC-1 · AD-SOC-6_
@@ -3385,7 +3386,7 @@ So that Nowing's AI Orchestrator automatically plans and triggers parallel searc
   2. `ChototLeadAdapter` (Chợ Tốt Nhà, BĐS, Xe, Đồ điện tử)
   3. `JobMarketLeadAdapter` (TopCV & ITviec recruitment postings)
   4. `EnterpriseProcurementLeadAdapter` (Masothue & Cổng Mua Sắm Công)
-  5. `SocialLeadAdapter` (Facebook Groups & Twitter Feed via XActions)
+  5. `SocialLeadAdapter` (Facebook Groups & Twitter Feed via Medirus)
 - **Given** a chat prompt (e.g. *"Tìm 30 công ty IT tại Hà Nội và 20 môi giới BĐS Cầu Giấy"*), **When** `LeadGenOrchestrator` executes, **Then** it decomposes the query into sub-tasks and invokes all relevant scraper adapters concurrently via `asyncio.gather(return_exceptions=True)`.
 - **Given** raw multi-source streams, **When** ingested, **Then** `EntityDeduplicationService` unifies duplicates by Phone/Email/TaxID into standard `Lead` records.
 - **Given** lead creation, **When** persisted, **Then** Zero-cache (`zero.nowing.net`) streams rows directly into the active Table tab with cell highlight animation.
@@ -4994,11 +4995,11 @@ So that scraper failures are surfaced immediately on Prometheus and idle client 
 - **And** long-running SSE connections emit keep-alive comments every 15 seconds.
 
 
-## Epic 36: XActions Unified Connection Contract (Nowing-side)
+## Epic 36: Medirus Unified Connection Contract (Nowing-side)
 
-*Status: backlog.* Governed by `ARCHITECTURE-SPINE.md` (AD-1..10, AD-SOC-1..11) and `spec-xactions-connection/SPEC.md` (CAP-1..6). Cross-repo: các yêu cầu phía XActions được đặc tả trong `_bmad-output/planning-artifacts/XACTIONS-REQUIREMENTS-2026-09-13.md` (nằm ngoài phạm vi epic này).
+*Status: backlog.* Governed by `ARCHITECTURE-SPINE.md` (AD-1..10, AD-SOC-1..11) and `spec-medirus-connection/SPEC.md` (CAP-1..6). Cross-repo: các yêu cầu phía Medirus được đặc tả trong `_bmad-output/planning-artifacts/MEDIRUS-REQUIREMENTS-2026-09-13.md` (nằm ngoài phạm vi epic này).
 
-> **Boundary:** Epic này chỉ chứa connection contract phía Nowing — MCP client, dispatch mapper, stream consumer, error mapping. Các story có trạng thái `blocked-by-external` (17.1 Lazada, 17.5 TikTok Shop và các `SocialMonitoredTarget` thuộc VN-domain) KHÔNG thuộc epic này; các story này sẽ được unblock khi Epic 36 và phần việc phía XActions hoàn tất.
+> **Boundary:** Epic này chỉ chứa connection contract phía Nowing — MCP client, dispatch mapper, stream consumer, error mapping. Các story có trạng thái `blocked-by-external` (17.1 Lazada, 17.5 TikTok Shop và các `SocialMonitoredTarget` thuộc VN-domain) KHÔNG thuộc epic này; các story này sẽ được unblock khi Epic 36 và phần việc phía Medirus hoàn tất.
 
 ### Story Execution & Dependency Matrix
 
@@ -5007,16 +5008,16 @@ So that scraper failures are surfaced immediately on Prometheus and idle client 
 | 36.1 | `x_crawl_post` fallback + graceful unsupported | None (local) | Phase 1 — immediate |
 | 36.2 | Loop-scoped MCP client cache | None (local) | Phase 1 — immediate |
 | 36.3 | Centralized `XACT_*` error map | None (local) | Phase 1 — immediate |
-| 36.4 | Single-writer stream cleanup | **Blocked by REQ-X2** (XActions stream hook); feature flag | Phase 2 — external |
+| 36.4 | Single-writer stream cleanup | **Blocked by REQ-X2** (Medirus stream hook); feature flag | Phase 2 — external |
 | 36.5 | Stream consumer schema contract + DLQ | Depends on 36.4 + REQ-X2 | Phase 2 — external |
 | 36.6 | Canonical action matrix + legacy tool deprecation | **Blocked by REQ-X1 + REQ-X3**; feature flag | Phase 2 — external |
 
-> **Deploy order (hard):** Phase-2 stories MUST NOT deploy before the matching XActions REQ ships and `health_probe_xactions` verifies it. All Phase-2 dispatch paths sit behind feature flags (`XACTIONS_USE_UNIFIED_DISPATCH`, `XACTIONS_STREAM_SINGLE_WRITER_ENABLED`) for rollback without redeploy. Phase-1 stories are safe to ship independently.
+> **Deploy order (hard):** Phase-2 stories MUST NOT deploy before the matching Medirus REQ ships and `health_probe_medirus` verifies it. All Phase-2 dispatch paths sit behind feature flags (`MEDIRUS_USE_UNIFIED_DISPATCH`, `MEDIRUS_STREAM_SINGLE_WRITER_ENABLED`) for rollback without redeploy. Phase-1 stories are safe to ship independently.
 
 ### Story 36.1: Wire `x_crawl_post` Fallback & Graceful Unsupported Marking (P0 — unblock VN targets now)
 
 As a Backend Engineer,
-I want the XActions adapter to fall back to `x_crawl_post` when `x_scrape` is unavailable and to mark unserveable targets unsupported,
+I want the Medirus adapter to fall back to `x_crawl_post` when `x_scrape` is unavailable and to mark unserveable targets unsupported,
 So that VN-domain monitored targets return post-detail data instead of failing silently with XACT_404 (tool_not_found).
 
 **Acceptance Criteria:**
@@ -5025,14 +5026,14 @@ So that VN-domain monitored targets return post-detail data instead of failing s
 - **And** when `target` has no valid `http(s)` `target_url`/`target_id`, **Then** `fallback_crawl_post` does not raise — the target is marked `unsupported` (`status='unsupported'`, `is_active=False`, committed) so the scheduler stops dispatching it.
 - **And** when `x_crawl_post` also fails (timeout, `XACT_4001`, `XACT_5000`), the failure routes through the centralized error map (Story 36.3) — transient errors pause/retry, permanent errors mark `unsupported` after a retry threshold rather than on the first hiccup.
 
-### Story 36.2: Loop-Scoped `XActionsMcpClient` Connection Cache
+### Story 36.2: Loop-Scoped `MedirusMcpClient` Connection Cache
 
 As a Backend Engineer,
 I want the MCP client bound to the running asyncio loop with re-initialization on loop change and serialized calls,
 So that consecutive Celery tasks on the same worker reuse a live session without crashing or leaking.
 
 **Acceptance Criteria:**
-- **Given** `run_async_celery_task` creates a `new_event_loop()` per task and closes it, **When** two ingest tasks run on the same worker, **Then** each gets a working `XActionsMcpClient` session.
+- **Given** `run_async_celery_task` creates a `new_event_loop()` per task and closes it, **When** two ingest tasks run on the same worker, **Then** each gets a working `MedirusMcpClient` session.
 - **And** the client keys its session cache by `asyncio.get_running_loop()` and calls `session.initialize()` whenever the current loop differs from the cached loop or is closed; failed initialize evicts the cache entry rather than leaving a half-initialized client.
 - **And** the cache is a `weakref.WeakKeyDictionary` keyed on the loop so dead loops and their clients are garbage-collected — no unbounded retention across thousands of tasks.
 - **And** `call_tool` is serialized through a lock so concurrent coroutines on one loop cannot interleave streamable-http frames.
@@ -5041,11 +5042,11 @@ So that consecutive Celery tasks on the same worker reuse a live session without
 ### Story 36.3: Centralized `XACT_*` → Task-Behavior Error Map
 
 As a Backend Engineer,
-I want a single mapping from XActions error codes to task behavior, with the adapter returning a behavior enum and the Celery layer executing it,
+I want a single mapping from Medirus error codes to task behavior, with the adapter returning a behavior enum and the Celery layer executing it,
 So that every caller handles rate-limit, hibernation, and fatal errors identically.
 
 **Acceptance Criteria:**
-- **Given** the adapter raises `XActionsMcpError` with a `code`, **When** the ingest task handles it, **Then** behavior is dispatched via one centralized map: `XACT_4291` → `retry(countdown=clamp(retry_after, 5..3600), max_retries=5)`; `ACCOUNT_HIBERNATION`/`PROXY_EXHAUSTED`/`XACT_5030` → pause target (set `last_scraped_at` into the future by `retry_after` or a default cooldown); `XACT_4010` → halt target; `XACT_5000` → retry up to 3 times then DLQ + halt; `XACT_4001` → log `suggestedAction` and pause.
+- **Given** the adapter raises `MedirusMcpError` with a `code`, **When** the ingest task handles it, **Then** behavior is dispatched via one centralized map: `XACT_4291` → `retry(countdown=clamp(retry_after, 5..3600), max_retries=5)`; `ACCOUNT_HIBERNATION`/`PROXY_EXHAUSTED`/`XACT_5030` → pause target (set `last_scraped_at` into the future by `retry_after` or a default cooldown); `XACT_4010` → halt target; `XACT_5000` → retry up to 3 times then DLQ + halt; `XACT_4001` → log `suggestedAction` and pause.
 - **And** the adapter returns a `TaskBehavior` enum + metadata (never calls `task.retry` itself) so non-Celery callers (API routes, CLI, health probes) are not coupled to Celery primitives.
 - **And** an unmapped `code` or `code=None` falls through to a default `raise`/`pause` rather than a `KeyError`.
 - **And** `XACT_5000` exhausting retries writes to `stream:social:failed` and halts the target rather than crash-looping every interval.
@@ -5054,13 +5055,13 @@ So that every caller handles rate-limit, hibernation, and fatal errors identical
 
 As a Backend Engineer,
 I want Nowing to consume `stream:social:raw_posts` only and never publish raw posts into it,
-So that XActions is the sole writer and the stream carries one canonical event schema.
+So that Medirus is the sole writer and the stream carries one canonical event schema.
 
 **Acceptance Criteria:**
-- **Given** `REDIS_STREAM_ENABLED` and the XActions stream hook (REQ-X2) is live, **When** Nowing ingests, **Then** it consumes exclusively via a consumer group and never executes `XADD` against `stream:social:raw_posts`.
+- **Given** `REDIS_STREAM_ENABLED` and the Medirus stream hook (REQ-X2) is live, **When** Nowing ingests, **Then** it consumes exclusively via a consumer group and never executes `XADD` against `stream:social:raw_posts`.
 - **And** `adapter_v2.ingest_raw_post_to_stream` is removed from the external stream path; if Nowing needs an internal ingest channel it uses a distinct name (e.g. `stream:social:internal_raw_posts`).
-- **And** the cutover is gated by feature flag `XACTIONS_STREAM_SINGLE_WRITER_ENABLED`; while the flag is off the legacy dual-write path still runs so no data is lost during the transition.
-- **And** the story MUST NOT deploy until REQ-X2 is deployed and `health_probe_xactions` confirms XActions emits events for the target platforms — otherwise VN/non-social ingestion blacks out.
+- **And** the cutover is gated by feature flag `MEDIRUS_STREAM_SINGLE_WRITER_ENABLED`; while the flag is off the legacy dual-write path still runs so no data is lost during the transition.
+- **And** the story MUST NOT deploy until REQ-X2 is deployed and `health_probe_medirus` confirms Medirus emits events for the target platforms — otherwise VN/non-social ingestion blacks out.
 
 ### Story 36.5: Stream Consumer Schema Contract & DLQ Routing
 
@@ -5070,7 +5071,7 @@ So that malformed or context-less events never drop silently or wedge the pendin
 
 **Acceptance Criteria:**
 - **Given** an incoming thin event missing `workspace_id` or `content_snippet`, **When** the consumer parses the payload, **Then** it logs the schema-violation reason, routes the message to dead-letter queue `stream:social:failed`, and `XACK`s the original message so it does not sit in the PEL.
-- **And** `SocialPostEvent` accepts `content_snippet` as an alias for `content` (`validation_alias=AliasChoices('content','content_snippet')`) so the field XActions emits is not silently discarded.
+- **And** `SocialPostEvent` accepts `content_snippet` as an alias for `content` (`validation_alias=AliasChoices('content','content_snippet')`) so the field Medirus emits is not silently discarded.
 - **And** an event with `schema_version` above the supported max routes to DLQ with `UNSUPPORTED_SCHEMA_VERSION`; a payload that fails JSON serialization on the DLQ path falls back to `repr()` and still `XACK`s.
 - **And** a valid event produces a `social_post` with correct `workspace_id` and content for entity extraction (lead creation + `UNIQUE(workspace_id, platform, external_post_id)` dedup is owned by Epic 21/17 pipeline, out of scope here).
 - **And** the consumer exposes a lag probe (`XINFO GROUPS` /`XPENDING`) on `stream:social:raw_posts`; when consumer lag crosses a threshold it logs/alerts so ingestion stoppage is not silent while the stream approaches `MAXLEN` truncation.
@@ -5078,17 +5079,17 @@ So that malformed or context-less events never drop silently or wedge the pendin
 ### Story 36.6: Canonical Action Matrix & Legacy Tool Deprecation
 
 As a Backend Engineer,
-I want target dispatch and validation driven by the XActions canonical action catalog instead of a hard-coded `PLATFORM_TOOL_MAP`,
-So that action-name or argument changes on XActions never require editing Nowing code.
+I want target dispatch and validation driven by the Medirus canonical action catalog instead of a hard-coded `PLATFORM_TOOL_MAP`,
+So that action-name or argument changes on Medirus never require editing Nowing code.
 
 **Acceptance Criteria:**
 - **Given** `x_actions_list` returns canonical `ActionDescriptor[]` for all platforms, **When** `UniversalScrapeTargetMapper` or a `SocialMonitoredTarget` resolves, **Then** the dispatch `action` and payload `args` are derived from the descriptor's canonical `action`/`requiredArgs` and dispatched via `x_scrape` — not from hard-coded tool/action mappings.
 - **And** dispatch arguments are packaged as `x_scrape` nested form `{platform, action, args, context:{targetId, workspaceId}, accountId?, proxyUrl?}` — never flat top-level fields.
 - **And** the catalog is cached with a TTL; on refresh failure or an empty/partial catalog it serves the stale cache or a validated static fallback matrix rather than failing all mappings.
-- **And** `SocialMonitoredTarget` creation/update validates `platform`+`action` against the matrix (falling back to the static matrix when XActions is down) and rejects unsupported combinations with a `422` error.
-- **And** legacy per-platform tools migrate to `x_scrape` only behind feature flag `XACTIONS_USE_UNIFIED_DISPATCH` and only for platforms whose descriptor + stream routing are confirmed live — so working Facebook/Twitter monitoring does not regress.
+- **And** `SocialMonitoredTarget` creation/update validates `platform`+`action` against the matrix (falling back to the static matrix when Medirus is down) and rejects unsupported combinations with a `422` error.
+- **And** legacy per-platform tools migrate to `x_scrape` only behind feature flag `MEDIRUS_USE_UNIFIED_DISPATCH` and only for platforms whose descriptor + stream routing are confirmed live — so working Facebook/Twitter monitoring does not regress.
 
-> **Cross-repo note:** `SocialMonitoredTarget.platform` values must equal XActions canonical platform keys; the shared matrix (REQ-X4) is the single source both sides validate against.
+> **Cross-repo note:** `SocialMonitoredTarget.platform` values must equal Medirus canonical platform keys; the shared matrix (REQ-X4) is the single source both sides validate against.
 
 
 ## Epic 37: Nowing Revenue Engine — Unified Outbound Workstation
@@ -5442,32 +5443,34 @@ So that model upgrades (new `jev-x.y.z`) are validated against the 80-case Vietn
 **Source:** `_bmad-output/planning-artifacts/MASTER-INTEGRATION-PLAN-TRINITY-2026-09-24.md`
 **Architecture Invariants:** AD-1..11, AD-SOC-1..11 (`architecture-Nowing-2026-09-13`), AD-J1..J8 (`architecture-jev-decision-service-2026-09-21`), AD-101..110 (`architecture-unified-nowing-chainlens-dsh-2026-08-17`).
 
-**Goal:** Chuyển đổi Nowing thành tầng điều phối và gateway cào dữ liệu duy nhất thông qua XActions (`:3001`), đóng gói các endpoint Scraper Playground thành thin proxy có kiểm soát billing, giải phóng 22 scraper cũ trong Nowing để giảm tải bảo trì và thu gọn Docker image; đồng thời cắm tầng quyết định Jev (Epic 39) vào luồng stream ingest để tự động dedup và lọc PII, và gia cố bảo vệ timeout cho kết nối với ChainLens.
+**Goal:** Chuyển đổi Nowing thành tầng điều phối và gateway cào dữ liệu duy nhất thông qua Medirus (`:3001`), đóng gói các endpoint Scraper Playground thành thin proxy có kiểm soát billing, giải phóng 22 scraper cũ trong Nowing để giảm tải bảo trì và thu gọn Docker image; đồng thời cắm tầng quyết định Jev (Epic 39) vào luồng stream ingest để tự động dedup và lọc PII, và gia cố bảo vệ timeout cho kết nối với ChainLens.
 
-### Story 40.1: XActions Gateway Client & Streamable-HTTP Cutover
+> **⚠️ Websets Integration (2026-10-10):** ChainLens Epic 57 introduces `websets` — standalone dataset builder with `Medirus` as bounded discovery channel (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam). `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API; `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting). **Port note:** `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10).
+
+### Story 40.1: Medirus Gateway Client & Streamable-HTTP Cutover
 
 As a Lead Generation Engine,
-I want the backend scraper subsystem to route all external scraping requests through `XActionsMcpClient` via Streamable-HTTP (`http://xactions:3001/mcp`) using `adapter_v2.py`,
-So that Nowing delegates heavy scraping, anti-bot bypass, and proxy management entirely to XActions with sub-4s fail-fast resilience.
+I want the backend scraper subsystem to route all external scraping requests through `MedirusMcpClient` via Streamable-HTTP (`http://medirus:3001/mcp`) using `adapter_v2.py`,
+So that Nowing delegates heavy scraping, anti-bot bypass, and proxy management entirely to Medirus with sub-4s fail-fast resilience.
 
 **Acceptance Criteria:**
-- **Given** `NOWING_XACTIONS_USE_V2=true` and an active XActions daemon on port 3001, **When** any subagent calls `task(scraper)` or a background ingest job runs, **Then** `adapter_v2.py` dispatches the command via `XActionsMcpClient.call_tool("x_scrape", ...)` with payload `{platform, action, args, context}` per AD-2.
-- **And** `XActionsMcpClient` implements an active Circuit Breaker: calls timeout after 4.0 seconds; 3 consecutive timeouts/5xx errors trip the breaker into `OPEN` state for 60 seconds.
+- **Given** `NOWING_MEDIRUS_USE_V2=true` and an active Medirus daemon on port 3001, **When** any subagent calls `task(scraper)` or a background ingest job runs, **Then** `adapter_v2.py` dispatches the command via `MedirusMcpClient.call_tool("x_scrape", ...)` with payload `{platform, action, args, context}` per AD-2.
+- **And** `MedirusMcpClient` implements an active Circuit Breaker: calls timeout after 4.0 seconds; 3 consecutive timeouts/5xx errors trip the breaker into `OPEN` state for 60 seconds.
 - **And** when the circuit breaker is `OPEN`, requests fail-fast with a typed `PlatformError(XACT_4001, "scraper_temporarily_unavailable")` without holding worker threads.
 - **And** for single queries, the client parses the synchronous preview envelope ($\le 30$ records) and returns a typed `PaginatedResponse` to the caller.
-- **And** for bulk requests, XActions emits thin events to Redis Stream `stream:social:raw_posts`, and `adapter_v2.py` returns immediately with `stream: true` and stream pointer metadata.
+- **And** for bulk requests, Medirus emits thin events to Redis Stream `stream:social:raw_posts`, and `adapter_v2.py` returns immediately with `stream: true` and stream pointer metadata.
 
 ### Story 40.2: Scraper Playground Thin Proxy & Workspace Billing Gate
 
 As a Workspace Member or Developer,
-I want the API Playground in Nowing Web (`/dashboard/[workspace_id]/playground`) to execute platform scrapes through XActions via a backend thin proxy while preserving credit metering,
+I want the API Playground in Nowing Web (`/dashboard/[workspace_id]/playground`) to execute platform scrapes through Medirus via a backend thin proxy while preserving credit metering,
 So that I can test live data scraping and verify extracted contact/listing fields without running scraper engines locally in Nowing.
 
 **Acceptance Criteria:**
 - **Given** an authenticated request to `POST /api/v1/scrapers/{platform}/{verb}` from Playground UI, **When** the workspace has sufficient credit balance (e.g. 1.5 credits per lead check), **Then** the endpoint soft-locks credits via `wallet_credit.check_balance`.
-- **And** the backend forwards the scrape parameters directly to `XActionsMcpClient.call_tool("x_scrape", ...)` without executing any local browser or crawler logic.
-- **And** upon receiving a successful preview response from XActions, the endpoint debits the wallet, records a `BillingEvent`, and formats the output into the Playground JSON preview.
-- **And** if XActions returns an anti-bot or session failure, credits are released/refunded immediately, and a structured error envelope is returned to the UI.
+- **And** the backend forwards the scrape parameters directly to `MedirusMcpClient.call_tool("x_scrape", ...)` without executing any local browser or crawler logic.
+- **And** upon receiving a successful preview response from Medirus, the endpoint debits the wallet, records a `BillingEvent`, and formats the output into the Playground JSON preview.
+- **And** if Medirus returns an anti-bot or session failure, credits are released/refunded immediately, and a structured error envelope is returned to the UI.
 - **And** the navigation, platform icons, and verb list in `nowing_web/lib/playground/catalog.ts` remain 100% functional with zero UI regressions.
 
 ### Story 40.3: Decommission 22 Internal Platform Crawlers & Docker Image Slimming
@@ -5512,6 +5515,189 @@ So that private knowledge base searches and deep web research never trigger dist
 
 ### Epic 40 Non-Goals
 
-- **No New Custom Crawlers in Nowing:** Nowing will never implement platform-specific web scraping logic again; any new data source must be authored as a crawler inside `XActions`.
+- **No New Custom Crawlers in Nowing:** Nowing will never implement platform-specific web scraping logic again; any new data source must be authored as a crawler inside `Medirus`.
 - **No Direct Raw Scraping in Chat Hot-Path:** Subagent chat turns will not synchronously wait $>5$s for live web scraping; scraping is either served from indexed cache or dispatched asynchronously via Redis Streams.
 - **No Modification to Billing Ledger Primitives:** Credit wallet pricing (1.5 credits/lead) and soft-lock deduction semantics remain unchanged.
+
+> **⚠️ Websets Integration (2026-10-10):** ChainLens Epic 57 introduces `websets` — standalone dataset builder with `Medirus` as bounded discovery channel (VN business platforms: batdongsan, chotot, masothue, muasamcong, topcv, vietnamworks, linkedin jobs, ipvietnam). `Nowing` remains consumer of processed data via `chainlens` `/v1/websets` API; `MedirusMcpClient`/`adapter_v2.py` still needed for non-websets scraping (Scraper Playground, outbound prospecting). **Port note:** `apps/api` uses `MEDIRUS_BASE_URL=http://localhost:3001`, `apps/worker` uses `MEDIRUS_BASE_URL=http://localhost:3333` (verified 2026-10-10).
+
+---
+
+## Epic 41: Websets Integration `[new]`
+
+**Source:** `_bmad-output/planning-artifacts/prds/PRD-ECOSYSTEM-TRINITY-ALIGNMENT.md` (§2.5 Websets Integration); upstream product spec: `chainlens-research/_bmad-output/planning-artifacts/epics.md` Epic 57 "Websets — Dataset Builder".
+**Upstream Status (verified 2026-10-10):** ChainLens `/v1/websets` REST surface is live — `apps/api/src/websets/` + `apps/worker/src/processors/webset-run.processor.ts`; Epic 57 stories 57-1..57-3, 57-5..57-8 done (only 57-4 Exa v0 SDK parity backlog). Websets dashboard UI belongs to the ChainLens web app (DASHBOARD.md Flow Q).
+
+**Goal:** Biến Nowing thành consumer của ChainLens Websets — tạo webset (discovery + criteria + enrichment đã do ChainLens xử lý), nhận webhook `webset.idle` khi pipeline drain, import các entity `verified`/`ready` vào Lead pipeline của Nowing, và debit credit workspace theo số lead nhập thành công. Nowing KHÔNG scrape, KHÔNG enrich, KHÔNG xây webset dashboard.
+
+**Contract với ChainLens:**
+- `POST /v1/websets` — body: `source {type: 'web'|'medirus', platform?, action?}`, `columns[]` (key `^[a-z0-9_]{1,64}$`, type ∈ text/number/date/options/email/phone/url), `criteria` (prompt ≤ 10_000 chars, rules ≤ 50, operators eq/gt/gte/lt/lte/contains), `metadata.webhookUrl` để nhận drain webhook.
+- `GET /v1/websets/:id` — metadata + stats only (KHÔNG trả entity rows).
+- `GET /v1/websets/:id/items?limit≤100&cursor=&status=` — keyset cursor pagination; entity status ∈ pending_verification/rejected/verified/enriching/ready/failed/quota_exceeded.
+- `POST /v1/websets/:id/import` — CSV import vào webset.
+- Outbound webhook `webset.idle`: plain JSON POST `{event, id, websetId, runId, stats, costDollars, completedAt}`, `User-Agent: ChainLens-Webhook/1.0`, retry 3 attempts (2s/8s/32s), **KHÔNG có signature/auth header** → Nowing tự bảo mật bằng secret token nhúng trong webhook URL.
+
+### Story 41.1: Websets API Client & Idle Webhook Handler
+
+As a Lead Generation Engine,
+I want a `WebsetsService` in `app/services/` that creates websets via `POST /v1/websets` with `metadata.webhookUrl`, lists items via `GET /v1/websets/:id/items` (keyset cursor), and a webhook endpoint that receives `webset.idle` events,
+So that Nowing can launch a ChainLens dataset build and be notified when verified entities are ready to import — without any local scraping or enrichment.
+
+**Acceptance Criteria:**
+- **Given** `CHAINLENS_API_KEY` configured, **When** Nowing creates a webset, **Then** the client sends `Authorization: Bearer <key>` (reusing `app/services/chainlens/auth.py` outbound headers + timeout/circuit-breaker conventions from Story 40.5) and passes `metadata.webhookUrl = {BACKEND_URL}/api/v1/webhooks/chainlens/webset-idle?t=<per_webset_secret>` — reusing `app/config/urls.py` `BACKEND_URL` (prod: `BACKEND_URL=https://api.nowing.net`, no new env var).
+- **And** `GET /v1/websets/:id/items` is consumed with keyset cursor pagination (`limit ≤ 100`, `status=ready,verified` filter) — full drain loops until `nextCursor` absent.
+- **And** a new `LeadSourceAdapter` at `app/lead_intelligence/adapters/websets.py` registered in `LeadSourceAdapterRegistry` (Story 21.15 pattern): when a campaign spec selects source `websets`, the adapter calls `POST /v1/websets`, inserts the `webset_campaigns` row, and returns `status='pending'` — websets is async, so leads do NOT appear in the `execute` response; they arrive via webhook import into the same campaign.
+- **And** inbound `POST /api/v1/webhooks/chainlens/webset-idle` mounts on the existing `app/routes/chainlens_webhooks.py` router (prefix `/api/v1/webhooks/chainlens`, Story 20.8) and validates the per-webset secret token from the `t` query param (constant-time compare, stored in a new `webset_campaigns` table — alembic migration with `webset_id` UNIQUE indexed, `campaign_id`, `workspace_id`, `webhook_secret`, `stats` JSONB, `last_delivery_id`, `imported_count`; the indexed `webset_id` lookup is required because the webhook payload carries only `websetId`) and returns 2xx quickly (< 1s); invalid/missing token → 401 without touching business logic.
+- **And** token-in-URL is the primary auth because ChainLens `webset.idle` delivery (`apps/worker/src/lib/webhook-delivery.service.ts`) sends plain JSON with no signature header — unlike monitor webhooks which are HMAC-SHA256 signed via `X-ChainLens-Signature` (`pulse-webhook.processor.ts`, `subscription.hmacSecret`). Adding HMAC signing to webset.idle is a cross-repo follow-up on the ChainLens side, not a blocker for this story.
+- **And** a valid `webset.idle` payload (`websetId`, `stats`, `costDollars`) enqueues a Celery import task idempotently — duplicate deliveries (retry 2s/8s/32s) must not trigger duplicate imports (dedup by `id` UUID stored in Redis/DB).
+- **And** if ChainLens is unreachable or returns 5xx, the client fails fast per the 40.5 timeout contract; workspace callers receive a typed `degraded` result, never a hang.
+
+### Story 41.2: Websets→Lead Mapper, Billing Gate & Source Badge
+
+As a Workspace Member,
+I want verified webset entities to be mapped into Nowing leads with per-lead credit debit and a `websets` source badge on the Lead Matrix,
+So that dataset results flow into the same campaign/lead pipeline as every other source with correct billing and provenance.
+
+**Acceptance Criteria:**
+- **Given** an import task for a `webset.idle` event, **When** items are fetched with `status=ready`, **Then** each entity's `enrichments` cells (Record<colKey, {value, status, groundingUrl}>) are mapped onto the Nowing `Lead` schema: `source = 'websets'`, `source_url` = entity/grounding URL, company/contact fields from mapped columns; unmapped columns land in lead `metadata.websets` for forward-compat.
+- **And** only `ready`/`verified` entities import — `pending_verification`, `rejected`, `failed`, `quota_exceeded` are skipped and counted in the import summary.
+- **And** the billing gate soft-locks credits before import and debits **per successfully imported lead** at the existing 1.5 credits/lead rate (Epic 40 pricing unchanged); insufficient balance stops import with `quota_exceeded` surfaced to the campaign result.
+- **And** import is idempotent per (websetId, entityId) — re-running a drained webset never duplicates leads or double-debits credits.
+- **And** UX surface covers three points: (a) a `websets` entry added to the `SOURCE_FILTERS` chip list and the filter predicate in `nowing_web/components/leads/NowingLeadMatrix.tsx` (~lines 65-66 chips, ~lines 160-172 predicate); (b) a `websets` source badge/tag on imported leads in Lead Matrix / Split-Canvas; (c) `PlanSummaryCard` renders `status='pending'` for the websets allocation as a non-error state (e.g. "Đang xây dataset qua ChainLens…" badge with spinner/pulse styling) — distinct from `degraded`, since async dataset build is the normal path, not a failure. No new pages, no webset management UI (webset CRUD/build UX lives in the ChainLens dashboard).
+
+---
+
+### Epic 41 Non-Goals
+
+- **No webset dashboard/builder UI in Nowing** — webset creation UX, criteria editor, and dataset browsing live in the ChainLens web app (`/dashboard/websets`). Nowing only stores the webset↔campaign mapping and shows imported leads.
+- **No local discovery/enrichment** — SearchProviderChain, Medirus bounded channel, criteria verification, and enrichment all execute inside ChainLens; Nowing never re-scrapes webset entities.
+- **No Medirus bypass changes** — `MedirusMcpClient`/`adapter_v2.py` remain for non-websets scraping (Scraper Playground, outbound prospecting).
+- **No new billing model** — existing wallet soft-lock/debit and 1.5 credits/lead pricing apply; ChainLens-side `costDollars` is recorded as telemetry only, not billed twice.
+
+---
+
+## Epic 42: Agent Experience & Lead Pipeline Hardening `[new]`
+
+**Source:** `ux-plan-agent-experience-improvements-2026-11-16.md` v4 (§1–8 lanes + §11 Invariants). Nguồn gốc: 2 case study thực chiến — campaign trầm hương qua Pi session (14 bugs found/fixed) và Hermes daingan-ops (sys.path.insert bypass + 46 browser calls tìm leads page).
+
+**Lane key:** A = tool-result contract, B = external surface (REST/MCP/PAT), C = chat-turn resilience, D = IA/leads surface, E = gateway/ops internals.
+
+**Vấn đề:** Nowing hiển thị với agent external/internal và human operator như hệ thống "lỗi vô hình" — dryRun stub trông giống success, `data:[]` nhầm lẫn "không có lead" với "kênh chết", agent scrape xong không có đường persist, PAT/session auth không có seam cho external agent, turn dài 21 phút chết không partial output.
+
+**Mục tiêu:** mọi failure phải phân biệt `empty_result | failed | degraded` kèm lý do + recovery path; external agent có "cửa sau" đúng chuẩn (PAT + ingest REST/MCP); ingest funnel tập trung tại `LeadBatchService.ingest_batch` (AD-1); HITL/step-cap không giết turn.
+
+**Invariants áp dụng (§11):** AD-1 lead-write funnel (với AD-1b exception được chỉ định: auto-table get-or-create nằm TRONG `ingest_batch` — table-creation không phải lead-write), AD-2 PAT authz contract (scope + workspace match + attribution), AD-3 một ToolResultEnvelope xuyên boundary, AD-4 ingest contract (idempotency/validation/client_id/HMAC conflict), AD-6 repro-before-fix — áp dụng cho MỌI correctness bug được đặt tên trong epic (42.5, E1, E2), không chỉ 42.5.
+
+### Story 42.1: PAT-scoped REST batch ingest — verify & harden contract + document persistence guard
+
+**As an** external agent integrator (Hermes/dainganxanh-type),
+**I want** to push leads via `POST /api/v1/workspaces/{id}/leads/batch-ingest` authenticated by PAT scope `leads:write`, không cần session cookie,
+**So that** lead ingestion hoạt động cho non-browser consumers mà vẫn audit được attribution theo token (PDPD).
+
+**Acceptance Criteria:**
+- **Given** route + auth infra đã tồn tại (`app/routes/lead_batch_routes.py:118` với `RequirePermission(LEADS_WRITE)`; `get_auth_context` `app/users.py:336` đã resolve PAT qua `AuthContext.pat_auth`), **When** caller gửi PAT hợp lệ scope `leads:write` + header `Idempotency-Key` tới endpoint, **Then** request đi qua `LeadBatchService.ingest_batch` — verify end-to-end bằng test, KHÔNG build lại route (AD-2).
+- **And** PAT thiếu scope `leads:write` → 403 rõ ràng; PAT scoped workspace A nhưng path `workspace_id=B` → 403 (cross-workspace injection guard); behavior khi PAT principal không phải workspace member được nêu rõ trong contract.
+- **And** batch trộn degenerate + valid leads → **reject-all** `422 {status:'failed', rejected_indexes:[...], reason_map:{idx:reason}}` — policy explicit, không partial-drop lặng lẽ (AD-4).
+- **And** idempotency: `UNIQUE(client_id, value_hmac)` + `ON CONFLICT DO NOTHING` — verify constraint tồn tại, nếu chưa thì migration; re-push cùng batch không duplicate lead, không double-debit.
+- **And** mọi ingest qua PAT log `actor_pat_token_id` vào ledger để attribution.
+- **And** khi embed fails trong `commit_staged_filesystem_state` (doc-persist path), document row vẫn commit với `unindexed: true` flag + có reindex retry (`schedule_reindex` hoặc backfill job + counter) — không nằm unindexed mãi (A3).
+
+**Implementation notes:** Route + PAT resolution đã có sẵn trong code — công việc = verify allowlist/scope path, thêm workspace-match guard, formalize 422 batch-reject shape, verify UNIQUE constraint. Ước: **vừa**.
+
+### Story 42.2: ToolResultEnvelope — một result contract xuyên mọi boundary
+
+**As a** chat agent hoặc external agent consumer,
+**I want** mọi tool call trả `{status, reason, recovery_hint, items}` theo một schema duy nhất,
+**So that** không còn nhầm `data:[]` là "không có lead" với "kênh chết", và recovery hint trả credential/file/retest-command cụ thể (A1+A2).
+
+**Contract (normative):** `ToolResultEnvelope = {status: 'success'|'empty_result'|'failed'|'degraded'|'preview', reason: str|null, recovery_hint: str|null, items: list}` — `status` và `items` bắt buộc; `recovery_hint` sanitize + length-cap ≤500 chars (nội dung untrusted từ Medirus `suggestedAction`, forward verbatim nhưng đánh dấu untrusted).
+
+**Acceptance Criteria:**
+- **Given** new module `app/capabilities/core/tool_result.py` với `ToolResultEnvelope` + `from_medirus(result)` + `from_exception(exc)` + hint map (seed: MEDIRUS_4001, 4010, 4030, 5000) **kèm default branch** cho code ngoài seed (`hint_map.get(code, {status:'failed', recovery_hint:'generic: check logs, retry'})`), **When** `medirus_gateway._format_result`, `medirus_gateway.execute`, và executor returns chạy, **Then** tất cả đều emit envelope đúng contract trên.
+- **And** hint map map mỗi code → `{credential_needed, config_file, retest_command}` theo bảng A2 trong plan.
+- **And** `dryRun` stub KHÔNG BAO GIỜ trông giống success — envelope phân biệt `preview` vs `executed`.
+- **And** unit tests cover 4 seed codes + default branch + generic exception path.
+
+### Story 42.3: `GET /api/v1/scrapers/health` — aggregated channel status
+
+**As an** agent planning a scrape,
+**I want** một endpoint trả per-channel last-run status từ `runs` table aggregate,
+**So that** không phải probe từng kênh để biết cái nào chết — và endpoint KHÔNG live-probe lên kênh chết (cached aggregation only — binding, không deferred).
+
+**Acceptance Criteria:**
+- **Given** `runs` table (`app/models/scraper.py:104`) có `capability`, `status`, `error`, `duration_ms`, `created_at`, **When** `GET /api/v1/scrapers/health` được gọi, **Then** query `WHERE created_at >= now() - interval '24 hours'` + `GROUP BY capability` trả `{channel, last_status, last_error_code, last_seen_at, success_rate_24h}`.
+- **And** `success_rate_24h = attempts ? hits/attempts : null` — channel idle >24h không trả 0% giả; `last_seen_at` lấy run mới nhất all-time.
+- **And** endpoint chỉ đọc DB — không scrape, không ping channel.
+- **And** channel chưa từng chạy → `last_status: 'unknown'`, không error.
+- **And** authz: require workspace-scoped session hoặc PAT — filter `runs` theo `workspace_id` của caller, không leak cross-workspace.
+- **And** response < 200ms trên 10k runs (index `ix_runs_workspace_created` sẵn — verify query plan).
+
+### Story 42.4: `nowing_mcp` lead tools — `leads.ingest`, `tables.create`, `leads.list`, `credits.balance`
+
+**As an** external agent đi qua MCP,
+**I want** 4 tools mới trong `nowing_mcp/mcp_server/features/` expose lead operations hiện có,
+**So that** không phải `sys.path.insert` vào nowing_backend hay POST REST trực tiếp.
+
+**Acceptance Criteria:**
+- **Given** `leads.ingest` wraps `LeadBatchService.ingest_batch` (same AD-1 funnel, same validation), **When** agent call với leads payload, **Then** kết quả giống hệt REST ingest — kể cả dedupe, error shape, và actor attribution theo AD-4 (MCP auth principal map được về user/workspace và ghi vào ledger).
+- **And** `tables.create` → `WorkspaceTable` service; `leads.list` → query workspace leads với `limit = max(1, min(limit or 50, 200))` và `offset >= 0` (clamp chống unbounded query); `credits.balance` → chỉ trả balance của workspace caller được scope, workspace không wallet → `{status:'failed', reason:'no_wallet'}`.
+- **And** mỗi tool ≤ 40 dòng wrapper + registration trong MCP server tool list.
+- **And** auth: reuse MCP server's existing auth mechanism (không re-invent).
+
+### Story 42.5: HITL approve/reject → Gemini functionResponse mismatch fix
+
+**As a** user approve HOẶC reject một HITL tool call,
+**I want** turn tiếp tục bình thường sau quyết định,
+**So that** không còn `invalid Gemini function call history: functionResponse count N does not match pending functionCall count M` (C1).
+
+**Acceptance Criteria:**
+- **Given** checkpoint-state fixture (~52 messages, bắt được từ thread 2 production repro), **When** fixture replay qua HITL approve path, **Then** test log chứng minh root cause TRƯỚC khi fix (AD-6 — repro trước, fix sau).
+- **And** sau approve: checkpoint history không chứa duplicate `functionResponse` cho cùng pending `functionCall`; sau reject: pending call bị drop + emit `cancelled` `functionResponse` — cả hai path đều match count.
+- **And** regression test: approve → turn complete; reject → turn complete; không `chat_stream_error` trong log.
+
+### Story 42.6: Step-cap graceful degradation — partial synthesis thay vì `text=0`
+
+**As a** user gửi request dài,
+**I want** khi agent chạm step cap (run limit 80), turn vẫn kết thúc với partial answer + explicit notice,
+**So that** không mất toàn bộ tool-call results khi turn bị cắt (C3+C4).
+
+**Acceptance Criteria:**
+- **Given** agent đạt run limit (`ModelCallLimitMiddleware run_limit=80`, `app/agents/chat/multi_agent_chat/shared/middleware/resilience/model_call_limit.py:19`), **When** finalize chạy, **Then** force-synthesize: summarize tool results đã có, emit `partial: true` trong `status_marker` của finalize payload, text nêu rõ "đã xử lý N tool calls, chưa hoàn tất".
+- **And** force-synthesize lỗi/timeout → fallback notice-only partial (danh sách tool calls đã chạy) — không crash, user vẫn thấy output.
+- **And** cap hit với 0 tool result → text "no tool calls completed" + `partial: true` — không summarize empty set.
+- **And** `status_marker` được enumerate (allowed values + `partial` flag documented); consumer cũ phải ignore-unknown — verify FE/parser không vỡ.
+- **And** e2e: một turn cố ý vượt cap → UI hiển thị partial answer, không blank.
+
+### Story 42.7: IA fix — real `/dashboard/{id}/leads` route + service-level auto-table + empty state
+
+**As a** user (và agent navigate Nowing),
+**I want** `/dashboard/{id}/leads` là real route, leads từ mọi ingest path tự động có table, và empty state hướng dẫn,
+**So that** không còn 46 browser calls tìm leads page, không còn `table_id=NULL` orphan leads (D1+D2+D3).
+
+**Acceptance Criteria:**
+- **Given** `LeadBatchService.ingest_batch` (owner được chỉ định — AD-1b exception) khi `table_id` absent, **When** ingest chạy, **Then** get-or-create default `WorkspaceTable` keyed `client_id` với `UNIQUE(workspace_id, key)` + `ON CONFLICT DO NOTHING` rồi re-select — race-safe, 2 ingest đồng thời không tạo 2 tables.
+- **And** `table_id` có nhưng table đã bị xóa → recreate default + relink lead — orphan dangling cũng được cứu.
+- **And** FE route `/dashboard/{id}/leads` mount leads canvas (hiện chỉ có `new-chat?mode=leads`) + nav link.
+- **And** empty state hiển thị CTA "Chưa có lead — săn qua chat" với link.
+- **And** 109-lead orphan scenario không tái phát: lead từ REST/MCP/chat-tool đều có table; existing orphans được backfill một lần.
+
+### Story 42.8: Forward `context.workspaceId` qua medirus_gateway + dev quota flag
+
+**As a** Medirus stream consumer,
+**I want** `context.workspaceId` forward đúng từ gateway call,
+**So that** stream events không bị drop do `[StreamPublisher:MissingWorkspaceId]` (E2), và dev có `NOWING_DEV_BYPASS_QUOTA` flag cho local testing (E3).
+
+**Acceptance Criteria:**
+- **Given** `workspace_id` đi vào `create_medirus_meta_tools(deps)` qua tool-wiring layer, **When** trace xuống `_execute_medirus_tool`, **Then** mọi MCP call gửi `{context: {workspaceId: <id>}}` — nếu deps thiếu, fix ở tool-wiring (registry) chứ không patch trong call.
+- **And** `NOWING_DEV_BYPASS_QUOTA=1` chỉ honor khi `settings.is_self_hosted == true` **VÀ** không phải production profile — prod self-hosted vẫn bị chặn (`TokenQuotaService.credit_get_usage`); `DEBUG=true` KHÔNG tự động bypass.
+- **And** dev flag log warning khi active.
+- **And** `medirus-mcp.log` không còn `MissingWorkspaceId` warnings sau fix.
+
+### Epic 42 Non-Goals
+
+- No `CampaignSpec` supply-side implementation (epic 43 — §10 plan file chỉ là design đã sign-off).
+- No credential provisioning (FB cookie, YOUTUBE_API_KEY, Zalo/IG account, Shopee proxy, Telegram relay) — chỉ surface dạng actionable hints.
+- No Medirus daemon refactor (`mcp.sh` → `mcp_client.py` là job của repo dainganxanh).
+- No `_prepare_lead_record` contact_name drop ngoài phạm vi auto-table (đã note riêng).
+- No E1 memory-spike fix trong epic này — E1 là investigation lane chạy nền song song; fix chỉ commit sau khi py-spy/tracemalloc có data (vẫn tuân AD-6 repro-before-fix).
+- Deferred scope (không ràng buộc epic này): single lock rule, single credit authority (user vs workspace balance), config contract ports/env.

@@ -215,6 +215,7 @@ def parse_quote(raw: dict[str, Any] | None, symbol: str) -> VietstockQuote:
 
     # Live envelope: unwrap if present.
     if "isSuccess" in raw:
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         if raw.get("isSuccess") is False:
             errors = raw.get("errors")
             raise VietstockAccessBlockedError(f"Vietstock quote API error: {errors}")

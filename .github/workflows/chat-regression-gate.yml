@@ -87,15 +87,17 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: '3.12'
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5.4.2
 
       - name: Sync eval dependencies
         working-directory: nowing_evals
@@ -129,20 +131,26 @@ jobs:
           CHAT_EVAL_SEARCH_SPACE_ID: ${{ github.event.inputs.search_space_id }}
           CHAT_EVAL_WORKSPACE_ID: ${{ github.event.inputs.workspace_id }}
           CHAT_EVAL_MAX_CASES: ${{ github.event.inputs.n }}
+          ARG_SEARCH_SPACE_ID: ${{ env.NOWING_EVAL_SEARCH_SPACE_ID != '' && format('--search-space-id {0}', env.NOWING_EVAL_SEARCH_SPACE_ID) || '' }}
+          ARG_TAGS: ${{ env.NOWING_EVAL_TAGS != '' && format('--tags {0}', env.NOWING_EVAL_TAGS) || '' }}
+          ARG_TIER: ${{ env.NOWING_EVAL_TIER != '' && format('--tier {0}', env.NOWING_EVAL_TIER) || '' }}
+          ARG_WORKSPACE_ID: ${{ env.NOWING_EVAL_WORKSPACE_ID != '' && format('--workspace-id {0}', env.NOWING_EVAL_WORKSPACE_ID) || '' }}
+          ARG_BACKEND_BUILD_ID: ${{ env.NOWING_EVAL_BACKEND_BUILD_ID != '' && format('--backend-build-id {0}', env.NOWING_EVAL_BACKEND_BUILD_ID) || '' }}
+          ARG_FAIL_ON_UNRATIFIED: ${{ env.NOWING_EVAL_FAIL_ON_UNRATIFIED == 'true' && '--fail-on-unratified' || '' }}
         run: >-
           uv run --active python -m nowing_evals run chat regression
-          --environment '${{ env.NOWING_EVAL_MODE }}'
-          ${{ env.NOWING_EVAL_SEARCH_SPACE_ID != '' && format('--search-space-id {0}', env.NOWING_EVAL_SEARCH_SPACE_ID) || '' }}
-          --n '${{ env.NOWING_EVAL_N }}'
-          --modes '${{ env.NOWING_EVAL_MODES }}'
-          --concurrency '${{ env.NOWING_EVAL_CONCURRENCY }}'
-          --max-total-cost-micros '${{ env.NOWING_EVAL_MAX_TOTAL_COST_MICROS }}'
-          --profile '${{ env.NOWING_EVAL_PROFILE }}'
-          ${{ env.NOWING_EVAL_TAGS != '' && format('--tags {0}', env.NOWING_EVAL_TAGS) || '' }}
-          ${{ env.NOWING_EVAL_TIER != '' && format('--tier {0}', env.NOWING_EVAL_TIER) || '' }}
-          ${{ env.NOWING_EVAL_WORKSPACE_ID != '' && format('--workspace-id {0}', env.NOWING_EVAL_WORKSPACE_ID) || '' }}
-          ${{ env.NOWING_EVAL_BACKEND_BUILD_ID != '' && format('--backend-build-id {0}', env.NOWING_EVAL_BACKEND_BUILD_ID) || '' }}
-          ${{ env.NOWING_EVAL_FAIL_ON_UNRATIFIED == 'true' && '--fail-on-unratified' || '' }}
+          --environment '${NOWING_EVAL_MODE}'
+          $ARG_SEARCH_SPACE_ID
+          --n '${NOWING_EVAL_N}'
+          --modes '${NOWING_EVAL_MODES}'
+          --concurrency '${NOWING_EVAL_CONCURRENCY}'
+          --max-total-cost-micros '${NOWING_EVAL_MAX_TOTAL_COST_MICROS}'
+          --profile '${NOWING_EVAL_PROFILE}'
+          $ARG_TAGS
+          $ARG_TIER
+          $ARG_WORKSPACE_ID
+          $ARG_BACKEND_BUILD_ID
+          $ARG_FAIL_ON_UNRATIFIED
 
       - name: Write GitHub Step Summary
         if: always()
@@ -164,7 +172,7 @@ jobs:
 
       - name: Upload run artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: chat-regression-run-${{ github.run_id }}
           path: |

@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { ExpandedGifOverlay, useExpandedGif } from "@/components/ui/expanded-gif-overlay";
+import { ExpandedMediaOverlay, useExpandedMedia } from "@/components/ui/expanded-gif-overlay";
 
 function getUseCases(t: (k: string) => string) {
 	return [
@@ -52,7 +52,7 @@ function UseCaseCard({
 	src: string;
 	className?: string;
 }) {
-	const { expanded, open, close } = useExpandedGif();
+	const { expanded, open, close } = useExpandedMedia();
 
 	return (
 		<>
@@ -102,7 +102,7 @@ function UseCaseCard({
 			</motion.div>
 
 			<AnimatePresence>
-				{expanded && <ExpandedGifOverlay src={src} alt={title} onClose={close} />}
+				{expanded && <ExpandedMediaOverlay src={src} alt={title} onClose={close} />}
 			</AnimatePresence>
 		</>
 	);

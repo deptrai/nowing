@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.context import AuthContext
 from app.db import WorkspaceMembership, get_async_session
 from app.users import get_auth_context
-from app.utils.rbac import check_permission, check_workspace_access
+from app.utils.rbac import check_permission, check_workspace_access, enforce_pat_scope
 
 
 async def _resolve_permission(
@@ -70,6 +70,28 @@ class RequirePermission:
         return await _resolve_permission(
             workspace_id, session, auth, self.permission, self.message
         )
+
+
+class RequirePatScope:
+    """FastAPI dependency that enforces a PAT scope for a workspace write.
+
+    Session/system principals pass through unchanged — their authorization is
+    handled by :class:`RequirePermission`. PAT callers must be bound to the
+    path ``workspace_id`` (when the token is bound) and carry ``scope``.
+
+    Usage::
+        _scope: None = Depends(RequirePatScope("leads:write")),
+    """
+
+    def __init__(self, scope: str) -> None:
+        self.scope = scope
+
+    async def __call__(
+        self,
+        workspace_id: int,
+        auth: Annotated[AuthContext, Depends(get_auth_context)],
+    ) -> None:
+        await enforce_pat_scope(auth, workspace_id, self.scope)
 
 
 class RequireWorkspaceAccess:
@@ -378,6 +400,7 @@ class RequireWorkspaceAccessFromBody:
 
 
 __all__ = [
+    "RequirePatScope",
     "RequirePermission",
     "RequirePermissionFromBody",
     "RequirePermissionFromEntity",

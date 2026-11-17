@@ -19,7 +19,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePatScope, RequirePermission
 from app.lead_intelligence.dnc.normalizer import (
     hash_phone_hmac,
     normalize_domain,
@@ -212,6 +212,8 @@ async def list_dnc_records(
             "You don't have permission to view compliance records in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-11): list DNC cần scope leads:read
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> DncListResponse:
     """List and search workspace DNC entries with pagination."""
 
@@ -268,6 +270,8 @@ async def create_dnc_record(
             "You don't have permission to modify compliance records in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-11): tạo/blacklist DNC cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> DncRecordRead:
     """Add a single phone, email, domain or tax ID to the workspace DNC blacklist."""
 
@@ -298,6 +302,8 @@ async def delete_dnc_record(
             "You don't have permission to modify compliance records in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-11): xóa DNC cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> None:
     """Remove an entry from the workspace DNC blacklist."""
 
@@ -336,6 +342,8 @@ async def import_dnc_csv(
             "You don't have permission to import compliance records in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-11): import CSV DNC cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> DncCsvImportResponse:
     """Bulk import DNC entries from CSV file (up to 5,000 rows)."""
 

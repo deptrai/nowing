@@ -290,7 +290,7 @@ def test_runner_runs_shutdown_asyncgens_before_close() -> None:
 
     # Force a GC pass to surface any 'coroutine was never awaited'
     # warnings that would indicate the cleanup is broken.
-    gc.collect()
+    gc.collect()  # pi-lens-ignore: python-cross-language-method -- stdlib gc.collect()
 
 
 @contextmanager
@@ -392,7 +392,9 @@ def test_runner_disposes_mcp_client_around_call_and_before_close() -> None:
 
     with (
         _patch_shared_engine(engine_stub),
-        patch.object(celery_pkg, "_dispose_loop_mcp_client", side_effect=_tracking_dispose),
+        patch.object(
+            celery_pkg, "_dispose_loop_mcp_client", side_effect=_tracking_dispose
+        ),
     ):
         result = run_async_celery_task(_body)
 
@@ -422,7 +424,7 @@ def test_runner_swallows_mcp_client_dispose_errors() -> None:
     with (
         _patch_shared_engine(engine_stub),
         patch(
-            "app.proprietary.platforms.xactions.mcp_client.release_shared_client_for_loop",
+            "app.proprietary.platforms.medirus.mcp_client.release_shared_client_for_loop",
             side_effect=_angry_release,
         ),
     ):
@@ -433,7 +435,6 @@ def test_runner_swallows_mcp_client_dispose_errors() -> None:
 
 def test_runner_mcp_client_timeout_protection() -> None:
     """If release_shared_client_for_loop hangs, the runner times out and closes safely."""
-    import app.tasks.celery_tasks as celery_pkg
     from app.tasks.celery_tasks import run_async_celery_task
 
     engine_stub = _StaleLoopEngine()
@@ -451,7 +452,7 @@ def test_runner_mcp_client_timeout_protection() -> None:
     with (
         _patch_shared_engine(engine_stub),
         patch(
-            "app.proprietary.platforms.xactions.mcp_client.release_shared_client_for_loop",
+            "app.proprietary.platforms.medirus.mcp_client.release_shared_client_for_loop",
             side_effect=_hanging_release,
         ),
         patch("asyncio.wait_for", side_effect=_fast_wait_for),

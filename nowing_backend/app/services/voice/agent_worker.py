@@ -29,6 +29,7 @@ import json
 import logging
 import os
 import sys
+import time
 from collections.abc import AsyncIterable, AsyncIterator
 from typing import Any
 from uuid import UUID
@@ -55,17 +56,32 @@ from app.config import (
     LIVEKIT_URL,
     OPENAI_API_KEY,
     SEQUENCER_VOICE_ENABLED,
+    VOICE_BARGE_IN_SILENCE_PACKET_MS,
+    VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED,
     VOICE_LLM_PROVIDER,
+    VOICE_RECORDING_DISCLOSURE_TEXT,
     VOICE_STT_PROVIDER,
     VOICE_TTS_PROVIDER,
     VOICE_VAD_MIN_SILENCE_MS,
     VOICE_VAD_SPEECH_THRESHOLD,
+)
+from app.services.voice.barge_in import (
+    BargeInEngine,
+    BargeInState,
+    create_silence_frame,
+)
+from app.services.voice.compliance_gate import (
+    is_opt_out_utterance,
 )
 from app.services.voice.filler_audio import FillerAudioBank, get_filler_bank
 from app.services.voice.micro_clause_streamer import MicroClauseStreamer
 from app.services.voice.semantic_gate import (
     VoiceTurnAssessment,
     evaluate_voice_turn,
+)
+from app.services.voice.telecom_classifier import (
+    AMDDetector,
+    DeadAirWatchdog,
 )
 from app.services.voice.telephony_client import LiveKitTelephonyClient
 
@@ -216,8 +232,14 @@ class _WhisperSTTAdapter(stt.STT):
             tmp.write(wav_bytes)
 
         try:
-            result = await asyncio.to_thread(self._service.transcribe_file, tmp_path, language=lang)
-            text = result.get("text", "") if isinstance(result, dict) else getattr(result, "text", "")
+            result = await asyncio.to_thread(
+                self._service.transcribe_file, tmp_path, language=lang
+            )
+            text = (
+                result.get("text", "")
+                if isinstance(result, dict)
+                else getattr(result, "text", "")
+            )
             return stt.SpeechEvent(
                 type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                 alternatives=[stt.SpeechData(text=text, language=lang)],
@@ -275,6 +297,7 @@ class _KokoroTTSAdapter(tts.TTS):
         conn_options: Any = None,
     ) -> tts.ChunkedStream:
         from livekit.agents import APIConnectOptions
+
         return _KokoroChunkedStream(
             tts=self,
             input_text=text,
@@ -341,6 +364,8 @@ class VoiceSDRAgent(Agent):
         user_id: UUID | None = None,
         call_session_id: str | None = None,
         room_name: str | None = None,
+        phone_e164: str | None = None,
+        barge_in_engine: BargeInEngine | None = None,
     ) -> None:
         super().__init__(
             instructions=(
@@ -360,6 +385,25 @@ class VoiceSDRAgent(Agent):
         self._user_id = user_id
         self._call_session_id = call_session_id
         self._room_name = room_name
+        # Story 38.4: target E.164 number — required to register a permanent
+        # DNC record the moment the customer refuses further contact.
+        self._phone_e164 = phone_e164
+        # Story 38.5: telecom signal classifier (AMD) + dead-air watchdog
+        self._amd_detector = AMDDetector()
+        self._dead_air_watchdog = DeadAirWatchdog()
+
+        # Story 38.3: Multi-tier barge-in engine
+        if barge_in_engine is not None:
+            self._barge_in_engine = barge_in_engine
+        elif SEQUENCER_VOICE_ENABLED:
+            self._barge_in_engine = BargeInEngine(enabled=SEQUENCER_VOICE_ENABLED)
+        else:
+            self._barge_in_engine = None
+
+    @property
+    def barge_in_engine(self) -> BargeInEngine | None:
+        """Return the active BargeInEngine instance, if enabled."""
+        return self._barge_in_engine
 
     # ------------------------------------------------------------------
     # LiveKit Agent lifecycle hooks
@@ -370,9 +414,33 @@ class VoiceSDRAgent(Agent):
         self._filler_bank = get_filler_bank()
         try:
             session = self.session
-            logger.info("VoiceSDRAgent entering room: %s", getattr(getattr(session, "room", None), "name", "unknown"))
+            logger.info(
+                "VoiceSDRAgent entering room: %s",
+                getattr(getattr(session, "room", None), "name", "unknown"),
+            )
             if not self._prewarmed:
                 await self._prewarm_stt_tts(session)
+
+            # Story 38.4: Decree 91 / Decree 13 PDPD mandatory recording disclosure
+            # within the first 3 seconds of customer pickup.
+            if VOICE_COMPLIANCE_RECORDING_DISCLOSURE_ENABLED and session is not None:
+                try:
+                    session.say(
+                        text=VOICE_RECORDING_DISCLOSURE_TEXT,
+                        allow_interruptions=False,
+                        add_to_chat_ctx=False,
+                    )
+                    logger.info("[compliance] played recording disclosure announcement")
+                except Exception as exc:
+                    logger.warning(
+                        "[compliance] failed to play recording disclosure: %s", exc
+                    )
+
+            # Barge-in speech events flow through stt_node — the AgentSession
+            # has no "speech_event" emission, so no session-level listener is
+            # registered here.
+            if self._barge_in_engine is None:
+                logger.debug("Barge-in engine not activated (flag disabled or absent)")
         except Exception as exc:
             logger.debug("on_enter initialization notice: %s", exc)
 
@@ -410,6 +478,14 @@ class VoiceSDRAgent(Agent):
 
         assessment = await self._evaluate_turn(new_message)
 
+        # Story 38.4: Decree 91 immediate opt-out. Customer refusal wins over
+        # every other branch — register permanent DNC, apologise, and hang up
+        # within the 2-second legal deadline.
+        if is_opt_out_utterance(getattr(new_message, "text_content", "") or ""):
+            self._cancel_filler_watchdog()
+            await self._handle_immediate_opt_out(session)
+            raise StopResponse()
+
         if assessment.transfer:
             # Transfer wins over suppression (spec 39.6 precedence) —
             # when both fire, escalate and ignore the suppress flag.
@@ -444,7 +520,7 @@ class VoiceSDRAgent(Agent):
         await super().on_user_turn_completed(turn_ctx, new_message)
 
     # ------------------------------------------------------------------
-    # TTS Node with MicroClauseStreamer pipeline
+    # TTS Node with MicroClauseStreamer pipeline & Ducking Gain
     # ------------------------------------------------------------------
 
     async def tts_node(
@@ -453,7 +529,8 @@ class VoiceSDRAgent(Agent):
         """Custom TTS node intercepting LLM text chunks.
 
         Cuts at Vietnamese punctuation or 5 tokens via MicroClauseStreamer,
-        and signals first-token arrival to stop the filler watchdog.
+        signals first-token arrival to stop the filler watchdog, and
+        applies ducking gain envelope from BargeInEngine to each AudioFrame.
         """
         streamer = MicroClauseStreamer()
 
@@ -464,16 +541,199 @@ class VoiceSDRAgent(Agent):
                 yield chunk
 
         clauses = streamer.stream_clauses(_monitored_text())
-        async for frame in Agent.default.tts_node(self, clauses, model_settings):
-            yield frame
+        speech_started = False
+        try:
+            async for frame in Agent.default.tts_node(self, clauses, model_settings):
+                if not speech_started:
+                    speech_started = True
+                    if self._barge_in_engine is not None:
+                        self._barge_in_engine.on_bot_speech_started()
+
+                if self._barge_in_engine is not None:
+                    # Evaluate the KWS deadline on every frame: a customer who
+                    # speaks but whose STT transcript never arrives would
+                    # otherwise leave the engine pinned in DUCKING at -14dB
+                    # for the rest of the call.
+                    if (
+                        self._barge_in_engine.check_timeouts()
+                        == BargeInState.INTERRUPTED
+                    ):
+                        await self._trigger_barge_in_interruption()
+                    frame = self._barge_in_engine.apply_gain(frame)
+                yield frame
+        finally:
+            if speech_started and self._barge_in_engine is not None:
+                self._barge_in_engine.on_bot_speech_stopped()
+            # Story 38.5: start the dead-air silence clock once the bot
+            # finishes speaking — the watchdog probes at 3.0s and hangs up
+            # before 8.0s if the customer never responds.
+            self._dead_air_watchdog.on_bot_speech_stopped()
+
+    # ------------------------------------------------------------------
+    # STT Node & Barge-in Speech Events
+    # ------------------------------------------------------------------
+
+    async def stt_node(
+        self, audio: AsyncIterable[rtc.AudioFrame], model_settings: Any
+    ) -> AsyncIterable[stt.SpeechEvent | str]:
+        """Custom STT node intercepting SpeechEvents for barge-in engine."""
+        async for event in Agent.default.stt_node(self, audio, model_settings):
+            if isinstance(event, stt.SpeechEvent):
+                await self.handle_speech_event(event)
+            yield event
+
+    async def handle_speech_event(self, ev: Any) -> BargeInState:
+        """Handle STT SpeechEvent or transcript event for barge-in and AMD logic."""
+        # Story 38.5: customer made sound -> reset dead-air silence timer
+        self._dead_air_watchdog.on_customer_speech_started()
+
+        # Story 38.5: Answering Machine Detection in the first 3 seconds
+        if not self._amd_detector.is_evaluated:
+            ev_type_str = ""
+            if hasattr(ev, "type"):
+                ev_type_str = getattr(ev.type, "name", str(ev.type)).upper()
+            if "START_OF_SPEECH" in ev_type_str:
+                self._amd_detector.on_speech_started()
+
+            transcript_text = ""
+            if hasattr(ev, "alternatives") and ev.alternatives:
+                first_alt = ev.alternatives[0]
+                transcript_text = getattr(first_alt, "text", "") or ""
+            elif hasattr(ev, "text"):
+                transcript_text = getattr(ev, "text", "") or ""
+
+            if transcript_text:
+                amd_result = self._amd_detector.evaluate(transcript_text)
+                if amd_result.is_machine:
+                    logger.warning(
+                        "[AMD] Machine detected: %s (reason: %s) — terminating call in <= 4s",
+                        amd_result.signal,
+                        amd_result.reason,
+                    )
+                    session: AgentSession | None = None
+                    with contextlib.suppress(Exception):
+                        session = self.session
+                    if session is not None:
+                        with contextlib.suppress(Exception):
+                            session.interrupt()
+                    if self._room_name:
+                        try:
+                            async with LiveKitTelephonyClient() as tel:
+                                await tel.end_call(room_name=self._room_name)
+                        except Exception as exc:
+                            logger.debug("[AMD] end_call notice: %s", exc)
+                    return BargeInState.INTERRUPTED
+
+        if self._barge_in_engine is None:
+            return BargeInState.IDLE
+
+        state = self._barge_in_engine.on_speech_event(ev)
+        if state == BargeInState.INTERRUPTED:
+            await self._trigger_barge_in_interruption()
+        return state
+
+    async def on_speech_event(self, ev: Any) -> BargeInState:
+        """Alias for handle_speech_event."""
+        return await self.handle_speech_event(ev)
+
+    async def _trigger_barge_in_interruption(self) -> None:
+        """Execute real barge-in: interrupt LLM/TTS in < 50ms and send 40ms silence."""
+        session: AgentSession | None = None
+        with contextlib.suppress(Exception):
+            session = self.session
+
+        if session is None:
+            return
+
+        try:
+            # Cancel LLM/TTS immediately (< 50ms)
+            session.interrupt()
+            logger.info("[barge_in] real barge-in detected — interrupted bot speech")
+        except Exception as exc:
+            logger.warning("[barge_in] session.interrupt failed (fail-open): %s", exc)
+            return
+
+        # Send 40ms SIP silence packet
+        try:
+            silence_frame = create_silence_frame(
+                duration_ms=VOICE_BARGE_IN_SILENCE_PACKET_MS,
+                sample_rate=24000,
+                num_channels=1,
+            )
+
+            async def _single_frame() -> AsyncIterator[rtc.AudioFrame]:
+                yield silence_frame
+
+            session.say(
+                text="",
+                audio=_single_frame(),
+                allow_interruptions=False,
+                add_to_chat_ctx=False,
+            )
+        except Exception as exc:
+            logger.debug("[barge_in] sending silence packet notice: %s", exc)
+
+    async def _handle_immediate_opt_out(self, session: AgentSession | None) -> None:
+        """Execute Decree 91 immediate opt-out: register DNC and hang up in < 2s."""
+        logger.warning(
+            "[compliance] customer opt-out triggered — room=%s call_session_id=%s ws=%s",
+            self._room_name,
+            self._call_session_id,
+            self._workspace_id,
+        )
+
+        # 1. Apologise politely and hang up without delay
+        if session is not None:
+            # Cut any in-flight LLM/TTS audio immediately
+            with contextlib.suppress(Exception):
+                session.interrupt()
+
+            # Play farewell notice; suppress CancelledError so DNC persistence
+            # still runs even if customer drops the call while we speak.
+            try:
+                handle = session.say(
+                    "Dạ em xin lỗi đã làm phiền, em xin phép dừng cuộc gọi tại đây ạ.",
+                    allow_interruptions=False,
+                    add_to_chat_ctx=False,
+                )
+                if hasattr(handle, "wait_for_playout"):
+                    with contextlib.suppress(Exception, asyncio.CancelledError):
+                        await asyncio.wait_for(handle.wait_for_playout(), timeout=2.0)
+            except (Exception, asyncio.CancelledError):
+                pass
+
+            # Terminate the telephony leg via LiveKit SIP API
+            if self._room_name:
+                try:
+                    async with LiveKitTelephonyClient() as telephony:
+                        await telephony.end_call(room_name=self._room_name)
+                except Exception as exc:
+                    logger.debug("[compliance] end_call notification: %s", exc)
+
+        # 2. Register permanent opt-out in WorkspaceDncRecord (fail-safe)
+        if self._workspace_id and hasattr(self, "_phone_e164") and self._phone_e164:
+            try:
+                from app.db import get_async_session
+                from app.lead_intelligence.dnc.service import register_contact_opt_out
+
+                async for db_session in get_async_session():
+                    await register_contact_opt_out(
+                        db_session,
+                        self._workspace_id,
+                        "phone",
+                        self._phone_e164,
+                        reason="voice_customer_refusal",
+                    )
+                    await db_session.commit()
+                    break
+            except Exception as exc:
+                logger.error("[compliance] failed to persist opt-out DNC: %s", exc)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _evaluate_turn(
-        self, new_message: llm.ChatMessage
-    ) -> VoiceTurnAssessment:
+    async def _evaluate_turn(self, new_message: llm.ChatMessage) -> VoiceTurnAssessment:
         """Run the Story 39.6 semantic gate over the turn's transcript.
 
         Fail-open absolute: ``evaluate_voice_turn`` never raises by
@@ -627,6 +887,8 @@ class VoiceSDRAgent(Agent):
 
 def _parse_room_metadata(raw: Any) -> dict[str, Any]:
     """Parse room metadata JSON into a dict; ``{}`` on any failure."""
+    if isinstance(raw, dict):
+        return raw
     if not isinstance(raw, str) or not raw.strip():
         return {}
     try:
@@ -689,24 +951,84 @@ async def entrypoint(ctx: JobContext) -> None:
     # from create_call_room, ``workspace_id``/``user_id`` when the
     # orchestrator attaches them. Missing/malformed keys degrade to
     # log-only telemetry; they never block the call.
-    metadata = _parse_room_metadata(getattr(ctx.room, "metadata", None))
-    session_id_meta = metadata.get("session_id")
+    room_meta = _parse_room_metadata(getattr(ctx.room, "metadata", None))
+    job_meta = _parse_room_metadata(
+        getattr(getattr(ctx, "job", None), "metadata", None)
+    )
+    metadata = {k: v for k, v in job_meta.items() if v is not None}
+    metadata.update({k: v for k, v in room_meta.items() if v is not None})
+
+    session_id_meta = metadata.get("session_id") or metadata.get("call_session_id")
+    phone_meta = metadata.get("phone_e164") or metadata.get("phone")
     agent = VoiceSDRAgent(
         workspace_id=_coerce_int(metadata.get("workspace_id")),
         user_id=_coerce_uuid(metadata.get("user_id")),
-        call_session_id=(
-            session_id_meta if isinstance(session_id_meta, str) else None
-        ),
+        call_session_id=(str(session_id_meta) if session_id_meta is not None else None),
         room_name=ctx.room.name,
+        phone_e164=str(phone_meta) if phone_meta is not None else None,
     )
+    call_start_time = time.monotonic()
     await session.start(agent=agent, room=ctx.room)
 
     # Keep session alive until room disconnects or job shuts down
     disconnect_event = asyncio.Event()
+    qa_dispatched = False
 
     @ctx.room.on("disconnected")
     def _on_room_disconnected(*args: Any, **kwargs: Any) -> None:
+        nonlocal qa_dispatched
         disconnect_event.set()
+        if qa_dispatched:
+            return
+        qa_dispatched = True
+
+        try:
+            ws_id = _coerce_int(metadata.get("workspace_id"))
+            lead_id = metadata.get("lead_id")
+            if not ws_id or not lead_id:
+                logger.info(
+                    "Skipping post-call QA dispatch: missing workspace_id or lead_id (ws=%s, lead=%s)",
+                    ws_id,
+                    lead_id,
+                )
+                return
+
+            duration_seconds = max(0.0, time.monotonic() - call_start_time)
+            user_id = metadata.get("user_id")
+            call_session_id = (
+                metadata.get("session_id")
+                or metadata.get("call_session_id")
+                or getattr(agent, "_call_session_id", None)
+                or ""
+            )
+            campaign_id = metadata.get("campaign_id")
+
+            from app.tasks.celery_tasks.voice_tasks import process_post_call_qa_task
+
+            process_post_call_qa_task.delay(
+                workspace_id=ws_id,
+                lead_id=str(lead_id),
+                user_id=str(user_id) if user_id else None,
+                call_session_id=str(call_session_id),
+                duration_seconds=float(duration_seconds),
+                transcript="",
+                campaign_id=str(campaign_id) if campaign_id is not None else None,
+                hangup_cause="completed",
+                room_name=getattr(ctx.room, "name", None),
+            )
+            logger.info(
+                "Dispatched post-call QA task for room %s (ws=%s, lead=%s, duration=%.1fs)",
+                getattr(ctx.room, "name", None),
+                ws_id,
+                lead_id,
+                duration_seconds,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to dispatch post-call QA task for room %s: %s",
+                getattr(ctx.room, "name", None),
+                exc,
+            )
 
     ctx.add_shutdown_callback(lambda: disconnect_event.set())
 

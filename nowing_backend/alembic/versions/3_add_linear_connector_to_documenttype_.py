@@ -22,7 +22,7 @@ NEW_VALUE = "LINEAR_CONNECTOR"
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
     DO $$
     BEGIN
@@ -64,20 +64,18 @@ def downgrade() -> None:
     column_name = "document_type"
 
     # 1. Rename the current enum type
-    op.execute(f"ALTER TYPE {ENUM_NAME} RENAME TO {old_enum_name}")
-
+    op.execute(f"ALTER TYPE {ENUM_NAME} RENAME TO {old_enum_name}")  # nosemgrep
     # 2. Create the new enum type with the old values
-    op.execute(f"CREATE TYPE {ENUM_NAME} AS ENUM({old_values_sql})")
-
+    op.execute(f"CREATE TYPE {ENUM_NAME} AS ENUM({old_values_sql})")  # nosemgrep
     # 3. Update the table:
-    op.execute(f"DELETE FROM {table_name} WHERE {column_name}::text = '{NEW_VALUE}'")
+    op.execute(f"DELETE FROM {table_name} WHERE {column_name}::text = '{NEW_VALUE}'")  # nosemgrep
 
     # 4. Alter the column to use the new enum type (casting old values)
-    op.execute(
+    op.execute(  # nosemgrep
         f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
         f"TYPE {ENUM_NAME} USING {column_name}::text::{ENUM_NAME}"
     )
 
     # 5. Drop the old enum type
-    op.execute(f"DROP TYPE {old_enum_name}")
+    op.execute(f"DROP TYPE {old_enum_name}")  # nosemgrep
     # ### end Alembic commands ###

@@ -1,8 +1,12 @@
 "use client";
 
 import {
+	type Cell as TanStackCell,
+	type Column as TanStackColumn,
 	type ColumnDef,
 	type ColumnFiltersState,
+	type Header as TanStackHeader,
+	type HeaderGroup as TanStackHeaderGroup,
 	flexRender,
 	getCoreRowModel,
 	getFacetedUniqueValues,
@@ -12,6 +16,7 @@ import {
 	type PaginationState,
 	type Row,
 	type SortingState,
+	type Table as TanStackTable,
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
@@ -46,11 +51,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import React, { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-	createLogMutationAtom,
-	deleteLogMutationAtom,
-	updateLogMutationAtom,
-} from "@/atoms/logs/log-mutation.atoms";
+import { deleteLogMutationAtom } from "@/atoms/logs/log-mutation.atoms";
 import { JsonMetadataViewer } from "@/components/json-metadata-viewer";
 import {
 	AlertDialog,
@@ -94,9 +95,9 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { CreateLogRequest, Log, UpdateLogRequest } from "@/contracts/types/log.types";
+import type { Log } from "@/contracts/types/log.types";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { type LogLevel, type LogStatus, useLogs, useLogsSummary } from "@/hooks/use-logs";
+import { type LogLevel, type LogStatus, type LogSummary, useLogs, useLogsSummary } from "@/hooks/use-logs";
 import { cn } from "@/lib/utils";
 
 // Define animation variants for reuse
@@ -133,13 +134,11 @@ const logStatusConfig = {
 function MessageDetails({
 	message,
 	taskName,
-	metadata,
 	createdAt,
 	children,
 }: {
 	message: string;
 	taskName?: string;
-	metadata?: any;
 	createdAt?: string;
 	children: React.ReactNode;
 }) {
@@ -283,7 +282,6 @@ const createColumns = (t: (key: string) => string): ColumnDef<Log>[] => [
 				<MessageDetails
 					message={message}
 					taskName={taskName}
-					metadata={row.original.log_metadata}
 					createdAt={createdAt}
 				>
 					<div className="flex flex-col gap-1 max-w-[400px] cursor-pointer">
@@ -343,34 +341,6 @@ export default function LogsManagePage() {
 	const workspaceId = Number(params.workspace_id);
 
 	const { mutateAsync: deleteLogMutation } = useAtomValue(deleteLogMutationAtom);
-	const { mutateAsync: updateLogMutation } = useAtomValue(updateLogMutationAtom);
-	const { mutateAsync: createLogMutation } = useAtomValue(createLogMutationAtom);
-
-	const createLog = useCallback(
-		async (data: CreateLogRequest) => {
-			try {
-				await createLogMutation(data);
-				return true;
-			} catch (error) {
-				console.error("Failed to create log:", error);
-				return false;
-			}
-		},
-		[createLogMutation]
-	);
-
-	const updateLog = useCallback(
-		async (logId: number, data: UpdateLogRequest) => {
-			try {
-				await updateLogMutation({ logId, data });
-				return true;
-			} catch (error) {
-				console.error("Failed to update log:", error);
-				return false;
-			}
-		},
-		[updateLogMutation]
-	);
 
 	const deleteLog = useCallback(
 		async (id: number) => {
@@ -437,13 +407,13 @@ export default function LogsManagePage() {
 		const levelColumn = table.getColumn("level");
 		if (!levelColumn) return [];
 		return Array.from(levelColumn.getFacetedUniqueValues().keys()).sort();
-	}, [table.getColumn]);
+	}, [table]);
 
 	const uniqueStatuses = useMemo(() => {
 		const statusColumn = table.getColumn("status");
 		if (!statusColumn) return [];
 		return Array.from(statusColumn.getFacetedUniqueValues().keys()).sort();
-	}, [table.getColumn]);
+	}, [table]);
 
 	const handleDeleteRows = async () => {
 		const selectedRows = table.getSelectedRowModel().rows;
@@ -467,7 +437,7 @@ export default function LogsManagePage() {
 
 			await refreshLogs();
 			table.resetRowSelection();
-		} catch (error: any) {
+		} catch (error) {
 			console.error("Error deleting logs:", error);
 			toast.error(t("delete_logs_error"));
 		}
@@ -567,7 +537,7 @@ function LogsSummaryDashboard({
 	onRefresh,
 	isRefreshing = false,
 }: {
-	summary: any;
+	summary?: LogSummary;
 	loading: boolean;
 	error: string | null;
 	onRefresh: () => void | Promise<void>;
@@ -700,7 +670,7 @@ function LogsFilters({
 	onBulkDelete,
 	id,
 }: {
-	table: any;
+	table: TanStackTable<Log>;
 	uniqueLevels: string[];
 	uniqueStatuses: string[];
 	inputRef: React.RefObject<HTMLInputElement | null>;
@@ -784,8 +754,8 @@ function LogsFilters({
 						<DropdownMenuLabel>{t("toggle_columns")}</DropdownMenuLabel>
 						{table
 							.getAllColumns()
-							.filter((column: any) => column.getCanHide())
-							.map((column: any) => (
+							.filter((column: TanStackColumn<Log>) => column.getCanHide())
+							.map((column: TanStackColumn<Log>) => (
 								<DropdownMenuCheckboxItem
 									key={column.id}
 									className="capitalize"
@@ -845,7 +815,7 @@ function FilterDropdown({
 	t,
 }: {
 	title: string;
-	column: any;
+	column?: TanStackColumn<Log>;
 	options: string[];
 	id: string;
 	t: (key: string) => string;
@@ -853,7 +823,7 @@ function FilterDropdown({
 	const selectedValues = useMemo(() => {
 		const filterValue = column?.getFilterValue() as string[];
 		return filterValue ?? [];
-	}, [column?.getFilterValue]);
+	}, [column]);
 
 	const handleValueChange = (checked: boolean, value: string) => {
 		const filterValue = column?.getFilterValue() as string[];
@@ -919,13 +889,13 @@ function LogsTable({
 	id,
 	t,
 }: {
-	table: any;
+	table: TanStackTable<Log>;
 	logs: Log[];
 	loading: boolean;
 	error: string | null;
 	onRefresh: () => void;
 	id: string;
-	t: (key: string, params?: any) => string;
+	t: (key: string, params?: Record<string, string | number>) => string;
 }) {
 	if (loading) {
 		return (
@@ -991,12 +961,12 @@ function LogsTable({
 			>
 				<Table className="table-fixed">
 					<TableHeader>
-						{table.getHeaderGroups().map((headerGroup: any) => (
+						{table.getHeaderGroups().map((headerGroup: TanStackHeaderGroup<Log>) => (
 							<TableRow key={headerGroup.id} className="hover:bg-transparent">
-								{headerGroup.headers.map((header: any) => (
+								{headerGroup.headers.map((header: TanStackHeader<Log, unknown>) => (
 									<TableHead
 										key={header.id}
-										style={{ width: `${header.getSize()}px` }}
+										style={{ width: `${header.getSize()}px` }} // pi-lens-ignore: ast-grep:inline-styles — dynamic column width
 										className={cn(
 											"h-12 px-4 py-3",
 											header.column.id === "select" ? "ps-4 pe-0" : "",
@@ -1030,7 +1000,7 @@ function LogsTable({
 					<TableBody>
 						<AnimatePresence mode="popLayout">
 							{table.getRowModel().rows?.length ? (
-								table.getRowModel().rows.map((row: any, index: number) => (
+								table.getRowModel().rows.map((row: Row<Log>, index: number) => (
 									<motion.tr
 										key={row.id}
 										initial={{ opacity: 0, y: 10 }}
@@ -1050,7 +1020,7 @@ function LogsTable({
 											row.getIsSelected() ? "bg-muted/50" : ""
 										)}
 									>
-										{row.getVisibleCells().map((cell: any) => {
+										{row.getVisibleCells().map((cell: TanStackCell<Log, unknown>) => {
 											const isCreatedAt = cell.column.id === "created_at";
 											const isMessage = cell.column.id === "message";
 											return (
@@ -1090,7 +1060,7 @@ function LogsTable({
 }
 
 // Pagination Component
-function LogsPagination({ table, id, t }: { table: any; id: string; t: (key: string) => string }) {
+function LogsPagination({ table, id, t }: { table: TanStackTable<Log>; id: string; t: (key: string) => string }) {
 	return (
 		<div className="flex items-center justify-between gap-8 mt-6">
 			<motion.div

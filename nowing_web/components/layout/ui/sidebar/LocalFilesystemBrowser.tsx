@@ -418,7 +418,7 @@ export function LocalFilesystemBrowser({
 						variant="ghost"
 						onClick={() => toggleFolder(folder.key)}
 						className="h-8 w-full justify-start gap-1.5 px-2 text-left text-sm font-normal hover:bg-accent hover:text-accent-foreground"
-						style={{ paddingInlineStart: `${depth * 12 + 8}px` }}
+						style={{ paddingInlineStart: `${depth * 12 + 8}px` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic file tree indent
 						draggable={false}
 					>
 						{isExpanded ? (
@@ -451,7 +451,7 @@ export function LocalFilesystemBrowser({
 												? "hover:bg-accent hover:text-accent-foreground"
 												: "cursor-not-allowed opacity-60"
 										)}
-										style={{ paddingInlineStart: `${(depth + 1) * 12 + 22}px` }}
+										style={{ paddingInlineStart: `${(depth + 1) * 12 + 22}px` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic file tree indent
 										title={
 											isOpenable
 												? file.fullPath

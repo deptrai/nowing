@@ -33,7 +33,7 @@ export const updateWorkspaceMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: ["update-workspace", activeWorkspaceId],
-		enabled: !!activeWorkspaceId,
+		enabled: Boolean(activeWorkspaceId),
 		mutationFn: async (request: UpdateWorkspaceRequest) => {
 			return workspacesApiService.updateWorkspace(request);
 		},
@@ -57,7 +57,7 @@ export const updateWorkspaceApiAccessMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: ["update-workspace-api-access", activeWorkspaceId],
-		enabled: !!activeWorkspaceId,
+		enabled: Boolean(activeWorkspaceId),
 		mutationFn: async (request: UpdateWorkspaceApiAccessRequest) => {
 			return workspacesApiService.updateWorkspaceApiAccess(request);
 		},
@@ -79,7 +79,7 @@ export const updateWorkspaceMcpToolMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: ["update-workspace-mcp-tool", activeWorkspaceId],
-		enabled: !!activeWorkspaceId,
+		enabled: Boolean(activeWorkspaceId),
 		mutationFn: async (request: UpdateWorkspaceMcpToolRequest) => {
 			return workspacesApiService.updateWorkspaceMcpTool(request);
 		},
@@ -98,7 +98,7 @@ export const deleteWorkspaceMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: ["delete-workspace", activeWorkspaceId],
-		enabled: !!activeWorkspaceId,
+		enabled: Boolean(activeWorkspaceId),
 		mutationFn: async (request: DeleteWorkspaceRequest) => {
 			return workspacesApiService.deleteWorkspace(request);
 		},

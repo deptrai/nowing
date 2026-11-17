@@ -386,10 +386,10 @@ class Workspace(BaseModel, TimestampMixin):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    xactions_proxy_bindings = relationship(
-        "XActionsProxyBinding",
+    medirus_proxy_bindings = relationship(
+        "MedirusProxyBinding",
         back_populates="workspace",
-        order_by="XActionsProxyBinding.id",
+        order_by="MedirusProxyBinding.id",
         cascade="all, delete-orphan",
     )
     zalo_connections = relationship(
@@ -652,6 +652,12 @@ class WorkspaceTable(Base, TimestampMixin):
 
     __tablename__ = "workspace_tables"
     __table_args__ = (
+        # Composite, table-wide unique would block multiple NULL-keyed user
+        # tables; (workspace_id, key) only constrains auto-created tables
+        # (Story 42.7). Postgres allows any number of NULL keys here.
+        UniqueConstraint(
+            "workspace_id", "key", name="uq_workspace_tables_workspace_key"
+        ),
         Index("ix_workspace_tables_workspace_created", "workspace_id", "created_at"),
     )
 
@@ -663,6 +669,9 @@ class WorkspaceTable(Base, TimestampMixin):
         index=True,
     )
     name = Column(String(200), nullable=False)
+    # Stable key for auto-created default tables (Story 42.7): `key = client_id`
+    # (or "default"). User-created tables keep key=NULL.
+    key = Column(Text, nullable=True)
     icon = Column(
         String(50), nullable=False, default="table", server_default=text("'table'")
     )

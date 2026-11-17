@@ -9,7 +9,7 @@ export const membersAtom = atomWithQuery((get) => {
 
 	return {
 		queryKey: cacheKeys.members.all(workspaceId?.toString() ?? ""),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		staleTime: 3 * 1000, // 3 seconds - short staleness for live collaboration
 		refetchInterval: 2 * 60 * 1000, // 2 minutes
 		queryFn: async () => {
@@ -28,7 +28,7 @@ export const myAccessAtom = atomWithQuery((get) => {
 
 	return {
 		queryKey: cacheKeys.members.myAccess(workspaceId?.toString() ?? ""),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		staleTime: 5 * 60 * 1000, // 5 minutes
 		queryFn: async () => {
 			if (!workspaceId) {

@@ -118,6 +118,7 @@ async def discover_single_mcp_connector(connector_id: int) -> None:
                     bypass_internal_hitl=True,
                     cached_tools=None,
                     connector_type=ct,
+                    workspace_id=connector.workspace_id,
                 ),
                 timeout=_MCP_DISCOVERY_TIMEOUT_SECONDS,
             )
@@ -298,6 +299,7 @@ async def load_mcp_tools(
                             bypass_internal_hitl=bypass_internal_hitl,
                             cached_tools=cached_tools,
                             connector_type=task.get("connector_type"),
+                            workspace_id=workspace_id,
                         ),
                         timeout=_MCP_DISCOVERY_TIMEOUT_SECONDS,
                     )

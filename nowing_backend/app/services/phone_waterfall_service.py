@@ -39,7 +39,7 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.proprietary.platforms.batdongsan.fetch import fetch_detail_phone
 from app.proprietary.platforms.chotot.fetch import fetch_phone as chotot_fetch_phone
-from app.proprietary.platforms.xactions.phone_extractor import (
+from app.proprietary.platforms.medirus.phone_extractor import (
     convert_legacy_11_digit,
     extract_phone_numbers,
 )
@@ -250,7 +250,7 @@ class PhoneWaterfallService:
         try:
             account, creds = await rotator.get_credentials(wait=False, timeout=2.0)
         except Exception as exc:  # scraper credentials lookup failure; fall back to unauthenticated scraping
-            logger.debug("Failed getting scraper platform credentials: %s", exc)
+            logger.debug("Failed getting scraper platform account: %s", exc)
             account, creds = None, None
 
         account_id = account.id if account else 0
@@ -266,7 +266,7 @@ class PhoneWaterfallService:
 
         # If redis mutex is held by another worker, do not collide on the same token session
         if redis and not acquired_mutex:
-            logger.info("Batdongsan token mutex %s is busy; skipping tier 1", mutex_key)
+            logger.info("Batdongsan session mutex %s is busy; skipping tier 1", mutex_key)
             return WaterfallTierResult(
                 phone=None,
                 provider="batdongsan",

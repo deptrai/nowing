@@ -13,8 +13,8 @@ SCRATCH_URL = f"postgresql+asyncpg://postgres:postgres@localhost:5432/{SCRATCH_D
 
 async def main() -> None:
     admin = await asyncpg.connect(ADMIN_DSN)
-    await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')
-    await admin.execute(f'CREATE DATABASE "{SCRATCH_DB}"')
+    await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')  # nosemgrep
+    await admin.execute(f'CREATE DATABASE "{SCRATCH_DB}"')  # nosemgrep
     await admin.close()
 
     from app.db import Base
@@ -37,7 +37,7 @@ async def main() -> None:
     finally:
         await engine.dispose()
         admin = await asyncpg.connect(ADMIN_DSN)
-        await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')
+        await admin.execute(f'DROP DATABASE IF EXISTS "{SCRATCH_DB}" WITH (FORCE)')  # nosemgrep
         await admin.close()
 
     print(

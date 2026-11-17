@@ -140,6 +140,7 @@ async def create_slide_audio(state: State, config: RunnableConfig) -> dict[str, 
                 kwargs["api_base"] = app_config.TTS_SERVICE_API_BASE
 
             response = await aspeech(**kwargs)
+            # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- write failure propagates to caller
             with open(chunk_path, "wb") as f:
                 f.write(response.content)
 

@@ -4,8 +4,8 @@
  * feeds it to the overlay. Pill only renders while a phone is detected.
  */
 
-import { detectActiveZaloPhone } from './detector';
-import { ZaloCopilotOverlay } from './overlay';
+import { detectActiveZaloPhone } from './detector.js';
+import { ZaloCopilotOverlay } from './overlay.js';
 
 let overlay: ZaloCopilotOverlay | null = null;
 let observer: MutationObserver | null = null;

@@ -357,6 +357,7 @@ class CodeSearchExecutor:
                                         # as estimated rather than metered.
                                         cost_basis = (
                                             "estimated"
+                                            # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
                                             if data.get("estimated") is True
                                             else "actual"
                                         )

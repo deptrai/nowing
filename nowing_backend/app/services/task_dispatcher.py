@@ -10,6 +10,7 @@ from typing import Protocol
 
 
 class TaskDispatcher(Protocol):
+    # pi-lens-ignore: ast-grep:no-ellipsis-body -- Protocol stub is idiomatic
     async def dispatch_file_processing(
         self,
         *,

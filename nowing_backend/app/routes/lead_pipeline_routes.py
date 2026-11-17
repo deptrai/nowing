@@ -22,7 +22,7 @@ from app.db import (
     get_async_session,
     has_permission,
 )
-from app.dependencies.auth import RequireWorkspaceAccess
+from app.dependencies.auth import RequirePatScope, RequireWorkspaceAccess
 from app.redis_client import get_redis_client
 from app.schemas.lead_pipeline import (
     BatchLeadAssignmentRequest,
@@ -169,6 +169,8 @@ async def list_pipeline_stages(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11, D2): list stages là read; auto-seed idempotent bootstrap
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> list[LeadPipelineStage]:
     """Retrieve Kanban pipeline stages ordered by position."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -187,6 +189,8 @@ async def create_pipeline_stage(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): tạo stage cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> LeadPipelineStage:
     """Create a custom Kanban stage for the workspace."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -236,6 +240,8 @@ async def transition_lead_stage(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): chuyển stage cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> LeadStageTransitionResponse | JSONResponse:
     """Move lead across Kanban stages with Optimistic Concurrency Control (OCC).
 
@@ -350,6 +356,8 @@ async def list_lead_activities(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): xem timeline/activities cần scope leads:read
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> list[LeadActivityLog]:
     """Chronological timeline of all interactions with the lead."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -380,6 +388,8 @@ async def create_lead_activity(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): tạo activity cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> LeadActivityLog:
     """Record a manual internal note or interaction log."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -413,6 +423,8 @@ async def assign_or_reassign_lead(
     session: AsyncSession = Depends(get_async_session),
     redis_client: Any = Depends(get_redis_client),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): assign/reassign lead cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> dict[str, Any]:
     """Manually assign or reassign lead to a designated member."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -456,6 +468,8 @@ async def assign_leads_batch(
     session: AsyncSession = Depends(get_async_session),
     redis_client: Any = Depends(get_redis_client),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): assign-batch cần scope leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> dict[str, Any]:
     """Batch round-robin distribution of newly imported leads."""
     if not payload.lead_ids:
@@ -517,6 +531,8 @@ async def get_my_spend_status(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): xem spend-status của chính mình cần scope leads:read
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> dict[str, Any]:
     """Retrieve calling user's spend cap status in this workspace."""
     if not auth or not auth.user:
@@ -555,6 +571,8 @@ async def update_member_spend_cap(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11, D1): set spend cap là lead-ops management → leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> None:
     """Owner/Admin sets monthly spend cap for a workspace member."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -589,6 +607,8 @@ async def update_member_lead_capacity(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11, D1): set lead capacity là lead-ops management → leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> None:
     """Configure lead acceptance toggle and max capacity for a member."""
     await _set_lead_tenant_context(session, workspace_id, membership)
@@ -626,6 +646,8 @@ async def list_meeting_slots(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11): xem meeting slots cần scope leads:read
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
     redis_client: Any = Depends(get_redis_client),
 ) -> MeetingSlotsResponse:
     """Return free meeting slots (ICT working hours) for the workspace calendar."""
@@ -680,6 +702,8 @@ async def book_meeting_for_lead(
     auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_async_session),
     membership: WorkspaceMembership = Depends(RequireWorkspaceAccess()),
+    # PAT scope seam (spec 42-11, D3): book meeting là mutation → leads:write
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> MeetingBookResponse:
     """Book a concrete slot on the workspace calendar and sync the CRM lead.
 

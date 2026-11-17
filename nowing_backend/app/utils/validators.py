@@ -709,6 +709,7 @@ def validate_connector_config(
     # Validate each field is not empty
     for key in rules["required"]:
         # Special handling for Google connectors that don't allow None or empty strings
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         if rules.get("allow_none_or_empty") is False:
             if key not in config or config[key] in (None, ""):
                 raise ValueError(f"{key} is required and cannot be empty")

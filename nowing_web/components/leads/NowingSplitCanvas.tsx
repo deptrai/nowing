@@ -101,10 +101,17 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [searchQuery, setSearchQuery] = useState("");
 
+	// Story 42.7: standalone mount (no chat thread) → render the leads canvas
+	// full-width instead of the chat split view.
+	const isStandalone = !hasActiveThread && !chatSlot;
+
 	// When the dock is expanded, collapse the outer sidebar and the left chat
 	// panel to their minimums so the right dock can take up the whole workspace.
 	// Restore previous sizes when collapsing the dock again.
+	// Story 42.7: skipped in standalone mode — there is no chat panel or dock
+	// to restore on /leads, so shrinking leftWidth would corrupt state.
 	useEffect(() => {
+		if (isStandalone) return;
 		if (isDockOpen && isDockExpanded) {
 			if (preExpandLeftWidth === null) {
 				setPreExpandLeftWidth(leftWidth);
@@ -125,6 +132,7 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 	}, [
 		isDockOpen,
 		isDockExpanded,
+		isStandalone,
 		leftWidth,
 		preExpandLeftWidth,
 		preExpandSidebarCollapsed,
@@ -428,17 +436,45 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 		<main
 			ref={containerRef}
 			aria-label={t("split_canvas_desktop")}
-			data-testid="nowing-split-canvas"
+			data-testid={isStandalone ? "nowing-leads-canvas-standalone" : "nowing-split-canvas"}
 			className={cn(
 				"relative w-full h-full flex bg-background text-foreground overflow-hidden",
 				isDragging && "select-none cursor-col-resize",
 				className
 			)}
 		>
+			{/* Standalone Leads Canvas: no chat panel, matrix takes the full width */}
+			{isStandalone ? (
+				<div className="w-full h-full flex flex-col overflow-hidden">
+					<DynamicRightPanelCanvas
+						leads={displayLeads}
+						isLoading={loading}
+						workspaceId={workspaceId}
+						sourceFilter={sourceFilter}
+						onSourceFilterChange={setSourceFilter}
+						statusFilter={statusFilter}
+						onStatusFilterChange={setStatusFilter}
+						searchQuery={searchQuery}
+						onSearchQueryChange={setSearchQuery}
+						onRefresh={refetch}
+						onOpenReverseIcp={() => setIsReverseIcpOpen(true)}
+						shimmerCount={shimmerCount}
+						onOpenDnc={() => setIsDncOpen(true)}
+						missionControl={missionControl}
+						latestMission={latestMission}
+						missionLoading={missionLoading}
+						missionError={missionError}
+						onOpenCompanyGraph={handleOpenCompanyGraph}
+						unlockedPhones={unlockedPhones}
+						onPhoneChange={handlePhoneChange}
+					/>
+				</div>
+			) : (
+			<>
 			{/* Left Panel: Chat Co-pilot */}
 			{!isFullscreen && !isCollapsed && (
 				<div
-					style={{
+					style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic split ratio
 						width: hasActiveThread && isDockOpen ? `${leftWidth}px` : "100%",
 					}}
 					className={cn(
@@ -524,33 +560,6 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 				/>
 			)}
 
-			{/* Slide-over Detail Flyout Drawer */}
-			<LeadDetailFlyoutDrawer
-				lead={activeDrawerLead}
-				isOpen={activeDrawerLead !== null}
-				onClose={handleCloseDrawer}
-				workspaceId={workspaceId}
-				onOpenCompanyGraph={handleOpenCompanyGraph}
-				onReportInvalidPhone={(lead) => {
-					toast.info(`Đã mở báo cáo SĐT sai cho lead: ${lead.company_name}`);
-				}}
-				unlockedPhone={activeDrawerLead ? unlockedPhones[activeDrawerLead.id] : undefined}
-				onPhoneChange={handlePhoneChange}
-			/>
-
-			{/* Company Graph Modal / Drawer */}
-			{selectedCompanyForGraph && (
-				<CompanyGraphDrawer
-					companyName={selectedCompanyForGraph}
-					isOpen={isGraphDrawerOpen}
-					onClose={() => {
-						setIsGraphDrawerOpen(false);
-						setSelectedCompanyForGraph(null);
-					}}
-					workspaceId={String(workspaceId)}
-				/>
-			)}
-
 			{/* Reverse ICP Modal */}
 			<ReverseIcpModal
 				isOpen={isReverseIcpOpen}
@@ -565,6 +574,34 @@ export const NowingSplitCanvas: React.FC<NowingSplitCanvasProps> = ({
 				onClose={() => setIsDncOpen(false)}
 				workspaceId={String(workspaceId)}
 			/>
+			</>
+			)}
+
+			{/* Story 42.7: shared overlays — stay mounted in standalone mode so
+			    canvas callbacks (flyout, reverse-ICP, DNC, graph) open on /leads. */}
+			<LeadDetailFlyoutDrawer
+				lead={activeDrawerLead}
+				isOpen={activeDrawerLead !== null}
+				onClose={handleCloseDrawer}
+				workspaceId={workspaceId}
+				onOpenCompanyGraph={handleOpenCompanyGraph}
+				onReportInvalidPhone={(lead) => {
+					toast.info(`Đã mở báo cáo SĐT sai cho lead: ${lead.company_name}`);
+				}}
+				unlockedPhone={activeDrawerLead ? unlockedPhones[activeDrawerLead.id] : undefined}
+				onPhoneChange={handlePhoneChange}
+			/>
+			{selectedCompanyForGraph && (
+				<CompanyGraphDrawer
+					companyName={selectedCompanyForGraph}
+					isOpen={isGraphDrawerOpen}
+					onClose={() => {
+						setIsGraphDrawerOpen(false);
+						setSelectedCompanyForGraph(null);
+					}}
+					workspaceId={String(workspaceId)}
+				/>
+			)}
 		</main>
 	);
 };

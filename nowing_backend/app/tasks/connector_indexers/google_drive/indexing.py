@@ -28,16 +28,37 @@ async def _process_single_file_core(
     workspace_id: int,
     user_id: str,
     *,
-    skip_fn: SkipFn,
-    extract_fn: Any,
-    pipeline_cls: Any,
-    mark_failed_fn: Any,
+    skip_fn: SkipFn | None = None,
+    extract_fn: Any | None = None,
+    pipeline_cls: Any | None = None,
+    mark_failed_fn: Any | None = None,
     vision_llm: Any | None = None,
 ) -> tuple[int, int, int]:
     """Download, extract, and index a single Drive file via the pipeline.
 
     Returns (indexed, skipped, failed).
     """
+    if skip_fn is None:
+        from app.tasks.connector_indexers.google_drive.file_filter import (
+            _should_skip_file,
+        )
+
+        skip_fn = _should_skip_file
+    if extract_fn is None:
+        from app.connectors.google_drive import download_and_extract_content
+
+        extract_fn = download_and_extract_content
+    if pipeline_cls is None:
+        from app.indexing_pipeline.indexing_pipeline_service import (
+            IndexingPipelineService,
+        )
+
+        pipeline_cls = IndexingPipelineService
+    if mark_failed_fn is None:
+        from app.tasks.connector_indexers.base import mark_connector_documents_failed
+
+        mark_failed_fn = mark_connector_documents_failed
+
     file_name = file.get("name", "Unknown")
 
     try:
@@ -107,10 +128,10 @@ async def _index_selected_files_core(
     connector_id: int,
     workspace_id: int,
     user_id: str,
-    get_file_fn: GetFileFn,
-    skip_fn: SkipFn,
-    download_and_index_fn: DownloadAndIndexFn,
-    create_placeholders_fn: Any,
+    get_file_fn: GetFileFn | None = None,
+    skip_fn: SkipFn | None = None,
+    download_and_index_fn: DownloadAndIndexFn | None = None,
+    create_placeholders_fn: Any | None = None,
     on_heartbeat: Any | None = None,
     extract_fn: Any | None = None,
     vision_llm: Any | None = None,
@@ -122,6 +143,32 @@ async def _index_selected_files_core(
 
     Returns (indexed_count, skipped_count, unsupported_count, errors).
     """
+    if get_file_fn is None:
+        from app.connectors.google_drive import get_file_by_id
+
+        get_file_fn = get_file_by_id
+    if skip_fn is None:
+        from app.tasks.connector_indexers.google_drive.file_filter import (
+            _should_skip_file,
+        )
+
+        skip_fn = _should_skip_file
+    if download_and_index_fn is None:
+        from app.tasks.connector_indexers.google_drive.download import (
+            download_and_index,
+        )
+
+        download_and_index_fn = download_and_index
+    if create_placeholders_fn is None:
+        from app.tasks.connector_indexers.google_drive.document import (
+            _create_drive_placeholders,
+        )
+
+        create_placeholders_fn = _create_drive_placeholders
+    if extract_fn is None:
+        from app.connectors.google_drive import download_and_extract_content
+
+        extract_fn = download_and_extract_content
     etl_credit_service = EtlCreditService(session)
     available_micros = await etl_credit_service.get_available_micros(user_id)
     batch_estimated_pages = 0

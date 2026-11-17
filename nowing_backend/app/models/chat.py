@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     ARRAY,
@@ -772,7 +772,7 @@ class InboundEmailEvent(Base, TimestampMixin):
         String(32),
         nullable=False,
         default=InboundEmailEventStatus.RECEIVED,
-        server_default=text(f"'{InboundEmailEventStatus.RECEIVED.value}'"),
+        server_default=text(f"'{InboundEmailEventStatus.RECEIVED.value}'"),  # nosemgrep
         index=True,
     )
     dedupe_key = Column(String(64), nullable=False, index=True)

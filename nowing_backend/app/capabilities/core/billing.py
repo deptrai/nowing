@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.capabilities.core.types import (
     BillableInput,
@@ -47,6 +48,17 @@ async def _debit_with_workspace_spend_cap(
     """
     if cost_micros <= 0:
         return None
+
+    # Serialize concurrent debits for the same workspace owner: parallel agent
+    # tool runs each lock the membership + wallet rows and can deadlock without
+    # a shared ordering point. Same pg_advisory_xact_lock pattern as billing
+    # service refund paths.
+    lock_key = int.from_bytes(
+        hashlib.sha256(f"{workspace_id}:{user_id}".encode()).digest()[:8],
+        "big",
+        signed=True,
+    )
+    await session.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": lock_key})
 
     credit_svc = WorkspaceCreditService(session=session)
     try:
@@ -756,7 +768,7 @@ async def _record_chainlens_cost_allocation(
                 run_id=ctx.run_id,
             )
         except Exception:  # best-effort usage telemetry; log and continue
-            logger.exception(
+            logger.exception(  # nosemgrep
                 "Failed to record %s token usage for run %s; continuing",
                 usage_type,
                 ctx.run_id,

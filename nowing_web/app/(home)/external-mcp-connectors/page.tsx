@@ -63,7 +63,7 @@ const HTTP_CONFIG = `{
   "transport": "streamable-http"
 }`;
 
-function useSteps(t: (k: string) => string) {
+function getSteps(t: (k: string) => string) {
 	return [
 		{ icon: Plug, title: t("step1_title"), description: t("step1_desc") },
 		{ icon: Wrench, title: t("step2_title"), description: t("step2_desc") },
@@ -113,7 +113,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ExternalMcpConnectorsPage() {
 	const t = await getTranslations("extMcp");
-	const STEPS = useSteps(t);
+	const STEPS = getSteps(t);
 	const FAQ = useFaq(t);
 	return (
 		<>

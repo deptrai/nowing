@@ -60,6 +60,7 @@ def is_presentation_studio_enabled_for_workspace(ws: Workspace | None) -> bool:
         return False
     if ws is None:
         return False
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- tri-state check (None treated same as True until row exists)
     return getattr(ws, "presentation_studio_enabled", None) is not False
 
 

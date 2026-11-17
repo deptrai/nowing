@@ -15,10 +15,14 @@ _BACKEND_ROOT = os.path.abspath(
 if _BACKEND_ROOT not in sys.path:
     sys.path.insert(0, _BACKEND_ROOT)
 
-from mcp.server.lowlevel.server import request_ctx as mcp_request_ctx  # noqa: E402
-from mcp_server.config import Settings  # noqa: E402
-from mcp_server.core.auth import identity  # noqa: E402
-from mcp_server.server import build_server  # noqa: E402
+_MCP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _MCP_ROOT not in sys.path:
+    sys.path.insert(0, _MCP_ROOT)
+
+from mcp.server.lowlevel.server import request_ctx as mcp_request_ctx
+from mcp_server.config import Settings
+from mcp_server.core.auth import identity
+from mcp_server.server import build_server
 
 _FAKE_TOOLS = [
     {"name": "nowing_list_workspaces", "enabled": True},
@@ -192,7 +196,7 @@ def test_chat_retries_on_thread_busy(monkeypatch, settings):
     from mcp_server.core.errors import ThreadBusyError
 
     monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
-    mcp, client = build_server(settings)
+    mcp, _client = build_server(settings)
 
     original = FakeNowingClient.stream_sse
 
@@ -258,7 +262,7 @@ def test_chat_skips_non_json_sse_and_handles_empty(monkeypatch, settings):
 def test_chat_json_format_returns_chat_id_and_text(monkeypatch, settings):
     """response_format=json returns chat_id + text in JSON."""
     monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
-    mcp, client = build_server(settings)
+    mcp, _client = build_server(settings)
     token = mcp_request_ctx.set(SimpleNamespace())
     identity_token = identity.bind_api_key("nw_pat_test")
     try:
@@ -277,3 +281,89 @@ def test_chat_json_format_returns_chat_id_and_text(monkeypatch, settings):
     payload = _json.loads(result[0].text)
     assert payload["chat_id"] == 5
     assert "Hello world." in payload["text"]
+
+
+def test_chat_propagates_midstream_sse_error_event(monkeypatch, settings):
+    """SSE error event mid-stream raises ToolError, not swallowed."""
+    monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
+    mcp, client = build_server(settings)
+    client.sse_events = [
+        {"type": "start", "messageId": "m1"},
+        {"type": "text-start", "id": "t1"},
+        {"type": "text-delta", "id": "t1", "delta": "Generating response..."},
+        {"type": "error", "message": "Upstream LLM provider is down"},
+        "[DONE]",
+    ]
+    token = mcp_request_ctx.set(SimpleNamespace())
+    identity_token = identity.bind_api_key("nw_pat_test")
+    try:
+        with pytest.raises(Exception) as exc:
+            asyncio.run(
+                mcp.call_tool("nowing_chat", {"user_query": "Hi", "chat_id": 5})
+            )
+    finally:
+        identity.unbind_api_key(identity_token)
+        mcp_request_ctx.reset(token)
+
+    assert "The agent reported an error" in str(exc.value)
+    assert "Upstream LLM provider is down" in str(exc.value)
+
+
+def test_chat_handles_http_402_payment_required(monkeypatch, settings):
+    """HTTP 402 Payment Required raises ToolError with clear credit/quota message."""
+    from mcp_server.core.errors import ToolError
+
+    monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
+    mcp, _client = build_server(settings)
+
+    async def payment_required_stream(self, method: str, path: str, **kwargs):
+        raise ToolError("The workspace is out of credits for this operation.")
+        yield  # make it an async generator
+
+    monkeypatch.setattr(FakeNowingClient, "stream_sse", payment_required_stream)
+
+    token = mcp_request_ctx.set(SimpleNamespace())
+    identity_token = identity.bind_api_key("nw_pat_test")
+    try:
+        with pytest.raises(Exception) as exc:
+            asyncio.run(
+                mcp.call_tool("nowing_chat", {"user_query": "Hi", "chat_id": 5})
+            )
+    finally:
+        identity.unbind_api_key(identity_token)
+        mcp_request_ctx.reset(token)
+
+    assert "out of credits" in str(exc.value).lower()
+
+
+def test_chat_handles_midstream_request_error(monkeypatch, settings):
+    """Mid-stream network error (httpx.RequestError) raises ToolError with reachability message."""
+    from mcp_server.core.errors import ToolError
+
+    monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
+    mcp, _client = build_server(settings)
+
+    async def network_error_stream(self, method: str, path: str, **kwargs):
+        yield SimpleNamespace(
+            data='{"type": "text-delta", "id": "t1", "delta": "Part 1"}'
+        )
+        raise ToolError(
+            "Could not reach Nowing at http://localhost:8000: Connection refused. "
+            "Confirm the backend is running and NOWING_BASE_URL is correct."
+        )
+
+    monkeypatch.setattr(FakeNowingClient, "stream_sse", network_error_stream)
+
+    token = mcp_request_ctx.set(SimpleNamespace())
+    identity_token = identity.bind_api_key("nw_pat_test")
+    try:
+        with pytest.raises(Exception) as exc:
+            asyncio.run(
+                mcp.call_tool("nowing_chat", {"user_query": "Hi", "chat_id": 5})
+            )
+    finally:
+        identity.unbind_api_key(identity_token)
+        mcp_request_ctx.reset(token)
+
+    assert "Could not reach Nowing" in str(exc.value)
+

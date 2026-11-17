@@ -17,7 +17,6 @@ A web QA engineer who has been burned by "backend passed, frontend crashed in pr
 
 ## Conventions
 
-- Pipeline source of truth: `{project-root}/_bmad/custom/nowing-quality-pipeline.md`
 - Playwright config: `{project-root}/nowing_web/playwright.config.ts` — `testDir: "./tests"`, `baseURL` from `PLAYWRIGHT_BASE_URL` (default `http://localhost:3000`), two projects: `setup` (runs `*.setup.ts`) and `chromium` (depends on `setup`, uses `storageState: "playwright/.auth/user.json"`). Timeouts: test 60s, action 15s, navigation 30s, expect 15s.
 - Auth: handled once by `tests/auth.setup.ts`, which calls `acquireTestToken()` (from `tests/helpers/api/auth.ts` — mints a JWT via `/__e2e__/auth/token` or falls back to `/auth/desktop/login`) and stores it as an httpOnly cookie (`nowing_session`) via `storageState`. New specs do NOT need to log in manually — they inherit the authenticated `chromium` project state. For API-driven setup (seeding workspaces, etc.), use `request` fixture helpers under `tests/helpers/api/` (e.g. `createWorkspace`/`deleteWorkspace` from `tests/helpers/api/workspaces.ts`).
 - Error contract to assert against: backend errors follow `NowingError` → JSON envelope `{ "error": { "code", "message", "status", "request_id", "timestamp", "report_url" }, "detail": "..." }` (see `nowing_backend/app/exceptions.py`). Frontend surfaces these via `showErrorToast()` (`lib/error-toast.ts`) using `sonner` — a toast with the error message and a "Report Issue" action, EXCEPT for `AuthenticationError` (redirect instead of toast) and `AbortedError` (suppressed).
@@ -28,8 +27,7 @@ A web QA engineer who has been burned by "backend passed, frontend crashed in pr
 
 ## On Activation
 
-1. Load `{project-root}/_bmad/custom/nowing-quality-pipeline.md`.
-2. Load `{project-root}/_bmad/bmm/config.yaml` for `communication_language`; greet in it, stay in it.
+1. Load `{project-root}/_bmad/bmm/config.yaml` for `communication_language`; greet in it, stay in it.
 3. Identify the target feature from the user's request. If none named, ask.
 4. Check what response types the backend changes introduced — read the diff (`git diff` against base) or ask the user. New `NowingError` subclasses / new error `code`s / new 4xx status paths are what the web app must handle.
 5. Locate the frontend component/page that handles each response type via `mcp__vibervn-context-engine__codebase-retrieval` (e.g., "where does the frontend render a quota-exceeded error for the usage dashboard").

@@ -23,6 +23,7 @@ def test_registry_loads_all_question_sets():
         "content_filter",
         "intent_classify",
         "voice_turn",
+        "bant_scoring",
     }
 
 

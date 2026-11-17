@@ -131,11 +131,12 @@ async def test_launch_invalid_definition_raises_400(monkeypatch):
 async def test_launch_run_celery_apply_async_failure_sets_failed_status(monkeypatch):
     """Verify launch_run sets status=FAILED and raises DispatchError if Celery enqueue fails."""
     from unittest.mock import AsyncMock, MagicMock
+
     from app.automations.dispatch.launch import launch_run
-    from app.automations.persistence.enums.run_status import RunStatus
-    from app.automations.persistence.models.trigger import AutomationTrigger
-    from app.automations.persistence.models.automation import Automation
     from app.automations.persistence.enums.automation_status import AutomationStatus
+    from app.automations.persistence.enums.run_status import RunStatus
+    from app.automations.persistence.models.automation import Automation
+    from app.automations.persistence.models.trigger import AutomationTrigger
 
     session = AsyncMock()
     trigger = AutomationTrigger(id=1, automation_id=10, type="schedule", params={"cron": "0 0 * * *"})

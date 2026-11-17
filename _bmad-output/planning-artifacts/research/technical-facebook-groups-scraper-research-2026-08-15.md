@@ -27,7 +27,7 @@ Facebook (Meta) áp dụng các biện pháp phòng thủ bot nghiêm ngặt nh�
              [ Làn 1: Public Fast Path ]                 [ Làn 2: Deep Group Stream ]
           (Fanpage & Kênh Công khai)                     (Nhóm Kín / Thảo luận / SĐT)
                        │                                           │
-         Puppeteer/Playwright Stealth                 Cookie Session Pool (Via xactions)
+         Puppeteer/Playwright Stealth                 Cookie Session Pool (Via medirus)
              (Headless + Tor/Proxy)                   (Sticky SOCKS5 Residential Proxy)
                        │                                           │
                        └─────────────────────┬─────────────────────┘
@@ -44,8 +44,8 @@ Facebook (Meta) áp dụng các biện pháp phòng thủ bot nghiêm ngặt nh�
 * Không cần đăng nhập tài khoản chính; thu thập các bài viết công khai trên Fanpage tin tức, bất động sản, việc làm.
 * Điều hướng trực tiếp: `https://www.facebook.com/{page_name}` hoặc `https://m.facebook.com/{page_name}`.
 
-### Làn 2: Deep Group Stream & Comments (Cookie Session Pool qua xactions)
-* Tận dụng hạ tầng MCP server `xactions` hiện có của Nowing (`x_facebook_group_posts`, `x_facebook_group_comments`, `x_facebook_posts`).
+### Làn 2: Deep Group Stream & Comments (Cookie Session Pool qua medirus)
+* Tận dụng hạ tầng MCP server `medirus` hiện có của Nowing (`x_facebook_group_posts`, `x_facebook_group_comments`, `x_facebook_posts`).
 * Lưu trữ cookie Facebook dạng mã hóa AES-256 trong bảng `scraper_platform_accounts` (`platform='facebook'`).
 * Ghép cố định 1-to-1 giữa mỗi tài khoản Facebook phụ (nick clone/nuôi) với một Sticky Residential Proxy tại Việt Nam (`socks5h://`).
 * Giới hạn Token Bucket: Tối đa 20 requests/giờ/tài khoản, có human-like delay (3–8 giây ngẫu nhiên giữa các lần cuộn trang).

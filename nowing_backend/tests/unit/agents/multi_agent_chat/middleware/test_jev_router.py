@@ -88,9 +88,7 @@ class _FakeSessionMaker:
 
 def _result(value: str = "batdongsan", confidence: float = 0.9) -> DecisionResult:
     return DecisionResult(
-        answers={
-            "subagent": Answer(kind="choice", value=value, confidence=confidence)
-        },
+        answers={"subagent": Answer(kind="choice", value=value, confidence=confidence)},
         model="jev-1.13.0",
         backend="stub",
         latency_ms=1.0,
@@ -276,9 +274,7 @@ async def test_short_message_skips_decide(monkeypatch):
     mw = _make_mw(service, monkeypatch)
 
     for text in ("hi", "   ", ""):
-        out = await mw.abefore_model(
-            _state(HumanMessage(content=text)), MagicMock()
-        )
+        out = await mw.abefore_model(_state(HumanMessage(content=text)), MagicMock())
         assert out is None
     assert service.calls == []
 
@@ -365,6 +361,28 @@ async def test_same_text_repeated_dedups(monkeypatch):
     assert len(service.calls) == 1
 
 
+@pytest.mark.unit
+async def test_same_text_different_thread_id_reclassifies_when_message_id_none(
+    monkeypatch,
+):
+    """When message id is missing, dedup incorporates thread_id so another
+    thread with identical text classifies instead of being suppressed."""
+    service = _StubService(_result())
+    mw = _make_mw(service, monkeypatch)
+
+    runtime1 = MagicMock(config={"configurable": {"thread_id": "thread-1"}})
+    runtime2 = MagicMock(config={"configurable": {"thread_id": "thread-2"}})
+
+    state = _state(HumanMessage(content="Tìm chung cư Q7"))
+
+    assert await mw.abefore_model(state, runtime1) is not None
+    assert mw._last_classified == "thread-1:Tìm chung cư Q7"
+
+    assert await mw.abefore_model(state, runtime2) is not None
+    assert mw._last_classified == "thread-2:Tìm chung cư Q7"
+    assert len(service.calls) == 2
+
+
 # ---------------------------------------------------------------------------
 # FLAGS_OFF — builder gating
 # ---------------------------------------------------------------------------
@@ -378,9 +396,7 @@ def test_builder_returns_none_when_flag_off():
 
 @pytest.mark.unit
 def test_builder_returns_none_on_kill_switch():
-    flags = AgentFeatureFlags(
-        disable_new_agent_stack=True, enable_jev_router=True
-    )
+    flags = AgentFeatureFlags(disable_new_agent_stack=True, enable_jev_router=True)
     assert build_jev_router_mw(flags, _DESCRIPTORS) is None
 
 
@@ -569,9 +585,7 @@ async def test_non_uuid_user_id_passes_none_and_still_hints(monkeypatch):
     maker = _FakeSessionMaker()
     monkeypatch.setattr(app.db, "async_session_maker", maker)
     service = _StubService(_result())
-    mw = _make_mw(
-        service, monkeypatch, workspace_id=7, user_id="not-a-uuid"
-    )
+    mw = _make_mw(service, monkeypatch, workspace_id=7, user_id="not-a-uuid")
 
     out = await mw.abefore_model(
         _state(HumanMessage(content="Tìm chung cư Q7")), MagicMock()
@@ -752,9 +766,7 @@ async def test_end_to_end_through_real_decision_service(monkeypatch):
     # A structurally valid choice answer over the ACTUAL criteria —
     # keys match exactly, sum to 1, chosen value is the argmax.
     probabilities = dict.fromkeys(criteria, 0.0)
-    probabilities.update(
-        {"batdongsan": 0.9, "chainlens": 0.05, "none_needed": 0.05}
-    )
+    probabilities.update({"batdongsan": 0.9, "chainlens": 0.05, "none_needed": 0.05})
     backend = _StubBackend(
         BackendResult(
             answers={

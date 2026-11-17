@@ -10,7 +10,8 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 				body: JSON.stringify({
 					items: [
 						{
-							id: "lead-1",
+							id: "11111111-1111-4111-8111-111111111111",
+							workspace_id: 1,
 							company_name: "Nguyễn Văn Hùng",
 							title: "Bán nhà mặt tiền Thủ Đức 8.5 Tỷ",
 							source: "batdongsan",
@@ -21,7 +22,8 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 							created_at: new Date().toISOString(),
 						},
 						{
-							id: "lead-2",
+							id: "22222222-2222-4222-8222-222222222222",
+							workspace_id: 1,
 							company_name: "Công ty TNHH BĐS An Phú",
 							title: "Cần thuê kho xưởng 1000m2 Bình Dương",
 							source: "facebook",
@@ -31,8 +33,25 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 							price: "50 Triệu/tháng",
 							created_at: new Date().toISOString(),
 						},
+						{
+							id: "33333333-3333-4333-8333-333333333333",
+							workspace_id: 1,
+							company_name: "Công ty TNHH Websets Corp",
+							title: "Webset verified lead Q7",
+							source: "websets",
+							phone: "0912345678",
+							fit_score: 88,
+							location: "Quận 7, TP.HCM",
+							price: "3 Tỷ",
+							created_at: new Date().toISOString(),
+							extra_metadata: {
+								websets: {
+									district: { value: "Quận 7", groundingUrl: "https://example.com" },
+								},
+							},
+						},
 					],
-					total: 2,
+					total: 3,
 					limit: 20,
 					offset: 0,
 				}),
@@ -40,9 +59,32 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		});
 	});
 
-	test("should redirect /leads to /new-chat?mode=leads", async ({ page, workspace }) => {
+	// The contextual right dock starts closed (dockOpenAtom default) — leads
+	// mode shows a FloatingReopenPill until the user opens it.
+	async function openDock(page: import("@playwright/test").Page) {
+		// i18n: en "Open canvas" / vi "Mở canvas"; pill mounts async — waitFor avoids
+		// the isVisible() race right after page.goto.
+		const pill = page.getByRole("button", { name: /open canvas|mở canvas/i });
+		const visible = await pill
+			.waitFor({ state: "visible", timeout: 5000 })
+			.then(() => true)
+			.catch(() => false);
+		if (visible) await pill.click();
+	}
+
+	test("Story 42.7: /leads mounts standalone leads canvas without redirect", async ({
+		page,
+		workspace,
+	}) => {
 		await page.goto(`/dashboard/${workspace.id}/leads`);
-		await expect(page).toHaveURL(new RegExp(`/dashboard/${workspace.id}/new-chat\\?mode=leads`));
+		await expect(page).toHaveURL(new RegExp(`/dashboard/${workspace.id}/leads$`));
+		await expect(page.locator("[data-testid='nowing-leads-canvas-standalone']")).toBeVisible();
+		await expect(page.locator("[data-testid='nowing-lead-matrix']")).toBeVisible();
+		await expect(page.locator("[data-testid^='lead-row-']").first()).toBeVisible();
+
+		// Interaction: row click opens the flyout drawer (overlays stay mounted).
+		await page.locator("[data-testid^='lead-row-']").first().click();
+		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toBeVisible();
 	});
 
 	test("should render 2-panel split canvas with resizer and data matrix on new-chat", async ({
@@ -50,6 +92,7 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		workspace,
 	}) => {
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
 
 		// AC1: Split canvas panels exist
 		await expect(page.locator("[data-testid='nowing-split-canvas']")).toBeVisible();
@@ -62,6 +105,7 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 		workspace,
 	}) => {
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
 
 		const checkboxes = page.locator("input[type='checkbox'][data-lead-checkbox]");
 		await checkboxes.nth(0).check();
@@ -76,11 +120,39 @@ test.describe("Story 21.16: Nowing Split-View Canvas & Workspace Modernization",
 
 	test("should open flyout detail drawer on row click", async ({ page, workspace }) => {
 		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
 
-		await page.click("[data-testid='lead-row-lead-1']");
+		await page.locator("[data-testid^='lead-row-']").first().click();
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toBeVisible();
 		await expect(page.locator("[data-testid='lead-detail-flyout-drawer']")).toContainText(
 			"Nguyễn Văn Hùng"
 		);
+	});
+
+	test("Story 41.2: websets source filter shows only websets leads", async ({
+		page,
+		workspace,
+	}) => {
+		await page.goto(`/dashboard/${workspace.id}/new-chat?mode=leads`);
+		await openDock(page);
+
+		const matrix = page.locator("[data-testid='nowing-lead-matrix']");
+		await expect(matrix).toBeVisible();
+		await expect(page.locator("[data-testid^='lead-row-']")).toHaveCount(3);
+
+		// Open source dropdown (trigger shows current option label "Tất cả nguồn"/"All sources")
+		await page
+			.getByRole("button", { name: /tất cả nguồn|all sources/i })
+			.first()
+			.click();
+		await page.getByRole("button", { name: /ChainLens Websets/i }).click();
+
+		await expect(page.locator("[data-testid^='lead-row-']")).toHaveCount(1);
+		await expect(matrix).toContainText("Công ty TNHH Websets Corp");
+		await expect(matrix).not.toContainText("Nguyễn Văn Hùng");
+
+		// Open the websets lead → drawer shows unmapped enrichment cells
+		await page.locator("[data-testid^='lead-row-']").first().click();
+		await expect(page.locator("[data-testid='websets-enrichments-section']")).toBeVisible();
 	});
 });

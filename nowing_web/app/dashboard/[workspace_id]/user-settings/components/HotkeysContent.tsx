@@ -14,7 +14,7 @@ import { useElectronAPI } from "@/hooks/use-platform";
 type ShortcutKey = "generalAssist" | "quickAsk" | "screenshotAssist";
 type ShortcutMap = typeof DEFAULT_SHORTCUTS;
 
-function useHotkeyRows(t: (k: string) => string) {
+function getHotkeyRows(t: (k: string) => string) {
 	return [
 		{ key: "generalAssist" as ShortcutKey, label: t("hotkey_general"), icon: Rocket },
 		{ key: "screenshotAssist" as ShortcutKey, label: t("hotkey_screenshot"), icon: Crop },
@@ -131,7 +131,7 @@ function HotkeyRow({
 
 export function HotkeysContent() {
 	const t = useTranslations("userSettings");
-	const HOTKEY_ROWS = useHotkeyRows(t);
+	const HOTKEY_ROWS = getHotkeyRows(t);
 	const api = useElectronAPI();
 	const [shortcuts, setShortcuts] = useState(DEFAULT_SHORTCUTS);
 	const [shortcutsLoaded, setShortcutsLoaded] = useState(false);

@@ -4,6 +4,7 @@ so missing PostGIS does not break all integration tests)."""
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -53,7 +54,7 @@ async def platform_async_engine():
 
 
 @pytest_asyncio.fixture
-async def platform_db_session(platform_async_engine) -> AsyncSession:
+async def platform_db_session(platform_async_engine) -> AsyncGenerator[AsyncSession, None]:
     """Transaction-scoped session for platform integration tests."""
     async with platform_async_engine.connect() as conn:
         transaction = await conn.begin()

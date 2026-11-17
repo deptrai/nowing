@@ -155,7 +155,7 @@ def _build_spec(location: LocationProfilePayload | None = None) -> CampaignSpec:
     )
 
 
-def test_create_preflight_plan_returns_enriched_response(registry: LeadSourceAdapterRegistry) -> None:
+async def test_create_preflight_plan_returns_enriched_response(registry: LeadSourceAdapterRegistry) -> None:
     """AC-1: create_preflight_plan returns CampaignPlanResponse with all required fields."""
     planner = LeadGenPlanner(registry=registry)
     spec = _build_spec(
@@ -165,7 +165,7 @@ def test_create_preflight_plan_returns_enriched_response(registry: LeadSourceAda
         )
     )
 
-    plan = planner.create_preflight_plan(spec)
+    plan = await planner.create_preflight_plan(spec)
 
     assert plan.campaign_name == "Test Pre-Flight Plan"
     assert plan.workspace_id == 1
@@ -178,7 +178,7 @@ def test_create_preflight_plan_returns_enriched_response(registry: LeadSourceAda
     assert isinstance(plan.warnings, list)
 
 
-def test_source_allocations_coverage_quality(registry: LeadSourceAdapterRegistry) -> None:
+async def test_source_allocations_coverage_quality(registry: LeadSourceAdapterRegistry) -> None:
     """AC-1: source_allocations contain coverage scores and quality labels."""
     planner = LeadGenPlanner(registry=registry)
     spec = _build_spec(
@@ -191,7 +191,7 @@ def test_source_allocations_coverage_quality(registry: LeadSourceAdapterRegistry
     # Force all mock adapters to be included in plan for this assertion
     spec.target_sources = ["batdongsan", "topcv", "degraded_social"]
 
-    plan = planner.create_preflight_plan(spec)
+    plan = await planner.create_preflight_plan(spec)
     by_name = {a.source_name: a for a in plan.source_allocations}
 
     assert "batdongsan" in by_name
@@ -225,7 +225,7 @@ def test_coverage_quality_mapping(registry: LeadSourceAdapterRegistry) -> None:
     assert planner._map_coverage_quality(0.15) == "none"
 
 
-def test_fallback_warning_for_uncovered_location() -> None:
+async def test_fallback_warning_for_uncovered_location() -> None:
     """AC-1: fallback warning appears when no adapter covers the target location."""
     reg = LeadSourceAdapterRegistry()
     reg._adapters.clear()
@@ -245,7 +245,7 @@ def test_fallback_warning_for_uncovered_location() -> None:
         SourceBudget(source_name="strict_topcv", max_leads=30, priority=1),
     ]
 
-    plan = planner.create_preflight_plan(spec)
+    plan = await planner.create_preflight_plan(spec)
 
     assert any("No adapter has explicit coverage" in w for w in plan.warnings)
     assert any(
@@ -253,7 +253,7 @@ def test_fallback_warning_for_uncovered_location() -> None:
     )
 
 
-def test_degraded_adapter_status(registry: LeadSourceAdapterRegistry) -> None:
+async def test_degraded_adapter_status(registry: LeadSourceAdapterRegistry) -> None:
     """AC-1: adapter with last_execution_status != ok is marked degraded."""
     planner = LeadGenPlanner(registry=registry)
     spec = _build_spec(
@@ -265,14 +265,14 @@ def test_degraded_adapter_status(registry: LeadSourceAdapterRegistry) -> None:
     # Force degraded_social to be included in plan
     spec.target_sources = ["degraded_social"]
 
-    plan = planner.create_preflight_plan(spec)
+    plan = await planner.create_preflight_plan(spec)
     degraded = [a for a in plan.source_allocations if a.source_name == "degraded_social"]
     assert degraded
     assert degraded[0].status == "degraded"
     assert "degraded" in (degraded[0].degraded_reason or "").lower()
 
 
-def test_cost_with_auto_unlock(registry: LeadSourceAdapterRegistry) -> None:
+async def test_cost_with_auto_unlock(registry: LeadSourceAdapterRegistry) -> None:
     """AC-1: cost reflects verified phone unlock pricing when auto_unlock is set."""
     planner = LeadGenPlanner(registry=registry)
     spec = _build_spec(
@@ -285,7 +285,7 @@ def test_cost_with_auto_unlock(registry: LeadSourceAdapterRegistry) -> None:
         SourceBudget(source_name="batdongsan", max_leads=50, priority=2, auto_unlock=True),
     ]
 
-    plan = planner.create_preflight_plan(spec)
+    plan = await planner.create_preflight_plan(spec)
 
     assert plan.estimated_cost_vnd == 100 * 5000
     assert plan.estimated_cost_micros == plan.estimated_cost_vnd * 40

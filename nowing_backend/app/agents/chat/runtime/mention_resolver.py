@@ -221,6 +221,7 @@ async def resolve_mentions(
     for mention in resolved:
         if not mention.title:
             continue
+        # pi-lens-ignore: ast-grep:no-secret-in-env-var-name -- mention placeholder label, not a credential
         token = f"@{mention.title}"
         if token in seen_tokens:
             continue

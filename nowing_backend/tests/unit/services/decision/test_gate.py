@@ -106,3 +106,41 @@ def test_gate_passes_negative_missing_or_bad_value():
     assert not gate.passes_negative(
         Answer(kind="noul", value="not-a-number", confidence=0.5)
     )
+
+
+# ---------------------------------------------------------------------------
+# passes_positive — noul "confidently true"
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_gate_passes_positive_noul():
+    """A noul value IS P(yes) — confidently true means P(yes) >= threshold."""
+    gate = ConfidenceGate(threshold=0.9)
+    assert gate.passes_positive(Answer(kind="noul", value=0.95, confidence=0.95))
+    assert gate.passes_positive(Answer(kind="noul", value=0.9, confidence=0.9))
+    assert not gate.passes_positive(Answer(kind="noul", value=0.89, confidence=0.89))
+    assert not gate.passes_positive(Answer(kind="noul", value=0.05, confidence=0.05))
+
+
+@pytest.mark.unit
+def test_gate_passes_positive_non_noul_kinds():
+    """Only noul answers have a meaningful positive direction via passes_positive."""
+    gate = ConfidenceGate(threshold=0.5)
+    assert not gate.passes_positive(Answer(kind="choice", value="a", confidence=0.99))
+    assert not gate.passes_positive(Answer(kind="score", value=2.0, confidence=1.0))
+
+
+@pytest.mark.unit
+def test_gate_passes_positive_missing_or_bad_value():
+    gate = ConfidenceGate(threshold=0.5)
+    assert not gate.passes_positive(None)
+    assert not gate.passes_positive(
+        Answer(kind="noul", value=float("nan"), confidence=0.5)
+    )
+    assert not gate.passes_positive(
+        Answer(kind="noul", value=float("inf"), confidence=0.5)
+    )
+    assert not gate.passes_positive(
+        Answer(kind="noul", value="not-a-number", confidence=0.5)
+    )

@@ -142,7 +142,7 @@ Review 2026-09-22 — 3 layers (blind-hunter, edge-case-hunter, verification-gap
 
 ## Live Verification (2026-09-23, real `api.typesafe.ai` + real data)
 
-`TYPESAFE_API_KEY` từ XActions env (không commit); `DECISION_BACKEND=jev DECISION_ENABLED=true DECISION_ENTITY_ENABLED=true`.
+`TYPESAFE_API_KEY` từ Medirus env (không commit); `DECISION_BACKEND=jev DECISION_ENABLED=true DECISION_ENTITY_ENABLED=true`.
 
 | Mode | Command | Result |
 |---|---|---|

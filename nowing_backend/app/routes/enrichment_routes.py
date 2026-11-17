@@ -16,7 +16,7 @@ from app.db import (
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePatScope, RequirePermission
 from app.lead_intelligence.enrichment.schemas import (
     BulkEnrichmentInput,
     EnrichmentCostOutput,
@@ -84,6 +84,8 @@ async def enrich_leads_bulk(
             "You don't have permission to enrich leads in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-10): enrich cần scope leads:enrich
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_ENRICH.value)),
 ) -> list[EnrichmentOutput]:
     """Enrich many leads at once (AC-8); one EnrichmentOutput per lead."""
     workspace = await session.get(Workspace, workspace_id)
@@ -125,6 +127,8 @@ async def enrich_cost(
             "You don't have permission to enrich leads in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-10)
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_ENRICH.value)),
 ) -> EnrichmentCostOutput:
     """Project the cost of enriching a set of leads (AC-8)."""
     per_contact = int(config.CONTACT_ENRICHMENT_MICROS_PER_CONTACT or 0)
@@ -153,6 +157,8 @@ async def enrich_lead(
             "You don't have permission to enrich leads in this workspace",
         )
     ),
+    # PAT scope seam (spec 42-10)
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_ENRICH.value)),
 ) -> EnrichmentOutput:
     """Enrich one lead with verified contacts (AC-1, returns 202 Accepted)."""
     workspace = await session.get(Workspace, workspace_id)
@@ -195,6 +201,8 @@ async def list_verified_contacts(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    # PAT scope seam (spec 42-10): permission check chạy inline trong body
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> list[VerifiedContactRead]:
     """Return decrypted verified contacts for a lead (AC-6, newest first)."""
     await _require_lead_read(session, auth, workspace_id)
@@ -225,6 +233,8 @@ async def list_enrichment_requests(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    # PAT scope seam (spec 42-10): permission check chạy inline trong body
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_READ.value)),
 ) -> list[EnrichmentRequestRead]:
     """List enrichment requests for one lead (newest first, AC-8)."""
     await _require_lead_read(session, auth, workspace_id)

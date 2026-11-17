@@ -41,6 +41,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ inputs.workspace_id }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   release-gate:
     name: Live memory recall measurement and ship gate
@@ -53,18 +56,22 @@ jobs:
     steps:
       - name: Validate backend_build_id is not blank
         run: |
-          if [ -z "$(echo "${{ inputs.backend_build_id }}" | tr -d '[:space:]')" ]; then
+          if [ -z "$(echo "${INPUTS_BACKEND_BUILD_ID}" | tr -d '[:space:]')" ]; then
             echo "::error::backend_build_id must not be blank"
             exit 1
           fi
+        env:
+          INPUTS_BACKEND_BUILD_ID: ${{ inputs.backend_build_id }}
 
       - name: Validate top_k range
         run: |
-          top_k="${{ inputs.top_k }}"
+          top_k="${INPUTS_TOP_K}"
           if ! [[ "$top_k" =~ ^[0-9]+$ ]] || [ "$top_k" -lt 1 ] || [ "$top_k" -gt 5 ]; then
             echo "::error::top_k must be an integer between 1 and 5; got: $top_k"
             exit 1
           fi
+        env:
+          INPUTS_TOP_K: ${{ inputs.top_k }}
 
       # Isolated per run attempt so a re-run (or a concurrent dispatch, despite
       # the concurrency group above) can never read or upload another run's
@@ -72,18 +79,20 @@ jobs:
       # block because the `runner` context isn't available there.
       - name: Compute isolated eval data dir
         run: |
-          echo "EVAL_DATA_DIR=${{ runner.temp }}/nowing-eval-data-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_ENV"
+          echo "EVAL_DATA_DIR=${RUNNER_TEMP}/nowing-eval-data-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
 
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: '3.12'
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Sync eval dependencies
         working-directory: nowing_evals
@@ -107,11 +116,13 @@ jobs:
             exit 1
           fi
           echo "Live build_id: ${live_build_id}"
-          expected_build_id="$(echo "${{ inputs.backend_build_id }}" | tr -d '[:space:]')"
+          expected_build_id="$(echo "${INPUTS_BACKEND_BUILD_ID}" | tr -d '[:space:]')"
           if [ "$live_build_id" != "$expected_build_id" ]; then
             echo "::error::Build ID mismatch: /health reports '${live_build_id}', expected '${expected_build_id}'"
             exit 1
           fi
+        env:
+          INPUTS_BACKEND_BUILD_ID: ${{ inputs.backend_build_id }}
 
       - name: Seed the labeled corpus
         working-directory: nowing_evals
@@ -121,8 +132,11 @@ jobs:
         working-directory: nowing_evals
         run: >-
           uv run --active python -m nowing_evals run memory recall
-          --top-k "${{ inputs.top_k }}"
-          --backend-build-id "${{ inputs.backend_build_id }}"
+          --top-k "${INPUTS_TOP_K}"
+          --backend-build-id "${INPUTS_BACKEND_BUILD_ID}"
+        env:
+          INPUTS_BACKEND_BUILD_ID: ${{ inputs.backend_build_id }}
+          INPUTS_TOP_K: ${{ inputs.top_k }}
 
       - name: Ship gate
         working-directory: nowing_evals
@@ -135,7 +149,7 @@ jobs:
 
       - name: Upload run artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: memory-recall-run-${{ inputs.workspace_id }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.EVAL_DATA_DIR }}/memory/runs/

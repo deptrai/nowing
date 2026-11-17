@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
-
-
-from typing_extensions import Self
-from pydantic import model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AntiBotEscalationRead(BaseModel):

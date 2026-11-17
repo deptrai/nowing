@@ -101,6 +101,75 @@ export async function registerUser(
  * every test does not trip the 5/minute login rate limit on the fallback path.
  */
 const _tokenCache = new Map<string, Promise<string>>();
+const _sessionCache = new Map<string, Promise<TestSession>>();
+
+export interface TestSession {
+	access_token: string;
+	/** Present when the backend issues refresh tokens (needed so the browser can refresh instead of logging out on the first 401). */
+	refresh_token: string | null;
+}
+
+async function loginForSession(request: APIRequestContext): Promise<TestSession> {
+	try {
+		const response = await request.post(`${BACKEND_URL}/__e2e__/auth/token`, {
+			data: { email: TEST_USER_EMAIL },
+			headers: {
+				"Content-Type": "application/json",
+				"X-E2E-Mint-Secret": E2E_MINT_SECRET,
+				Origin: FRONTEND_ORIGIN,
+			},
+		});
+		if (!response.ok()) throw new Error(`mint failed (${response.status()})`);
+		const json = (await response.json()) as {
+			access_token: string;
+			refresh_token?: string | null;
+		};
+		return { access_token: json.access_token, refresh_token: json.refresh_token ?? null };
+	} catch {
+		const response = await request.post(`${BACKEND_URL}/auth/desktop/login`, {
+			data: { email: TEST_USER_EMAIL, password: TEST_USER_PASSWORD },
+			headers: { "Content-Type": "application/json", Origin: FRONTEND_ORIGIN },
+		});
+		if (!response.ok()) {
+			throw new Error(
+				`Login to ${BACKEND_URL}/auth/desktop/login failed (${response.status()}): ${await response.text()}`
+			);
+		}
+		const json = (await response.json()) as {
+			access_token: string;
+			refresh_token?: string | null;
+		};
+		return { access_token: json.access_token, refresh_token: json.refresh_token ?? null };
+	}
+}
+
+/**
+ * Like acquireTestToken but also returns the refresh token so browser
+ * contexts can survive access-token expiry (see tests/auth.setup.ts).
+ */
+export async function acquireTestSession(request: APIRequestContext): Promise<TestSession> {
+	const cached = _sessionCache.get("default");
+	if (cached) return cached;
+	const pending = (async () => {
+		try {
+			return await loginForSession(request);
+		} catch {
+			try {
+				await registerUser(request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
+			} catch {
+				// User might already exist, continue to login
+			}
+			return await loginForSession(request);
+		}
+	})();
+	_sessionCache.set("default", pending);
+	try {
+		return await pending;
+	} catch (err) {
+		_sessionCache.delete("default");
+		throw err;
+	}
+}
 
 export async function acquireTestToken(request: APIRequestContext): Promise<string> {
 	const cached = _tokenCache.get("default");

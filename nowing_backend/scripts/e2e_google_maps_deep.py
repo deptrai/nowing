@@ -419,7 +419,7 @@ async def step_search_closed() -> None:
     dean = next((i for i in found if "DeLuca" in (i.get("title") or "")), None)
     _check(
         "permanently closed place flagged",
-        dean is not None and dean.get("permanentlyClosed") is True,
+        dean is not None and bool(dean.get("permanentlyClosed")),
         f"title={dean.get('title') if dean else None}, closed={dean.get('permanentlyClosed') if dean else None}",
     )
     skipped = await scrape_places(

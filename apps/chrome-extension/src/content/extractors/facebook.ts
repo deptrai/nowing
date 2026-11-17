@@ -3,14 +3,15 @@
  * Extracts post content, author name, phone numbers, price, and canonical link.
  */
 
-import { LeadClipPayload } from '../../types';
+import { LeadClipPayload } from '../../types/index.js';
 import {
   canonicalizeUrl,
   extractEmails,
   extractPrice,
   extractVietnamesePhones,
-} from '../../utils/normalizer';
+} from '../../utils/normalizer.js';
 
+// pi-lens-ignore: high-complexity — one extractor per site, branching mirrors page variants
 export function extractFacebookLead(): LeadClipPayload | null {
   const url = window.location.href;
   if (!url.includes('facebook.com')) return null;
@@ -36,7 +37,7 @@ export function extractFacebookLead(): LeadClipPayload | null {
   const authorCandidates = document.querySelectorAll(
     'h2 strong, h3 strong, a[role="link"] strong, [data-ad-preview="message"] strong'
   );
-  for (const el of Array.from(authorCandidates)) {
+  for (const el of authorCandidates) {
     const name = el.textContent?.trim();
     if (name && name.length > 2 && name.length < 50) {
       authorName = name;
@@ -53,7 +54,7 @@ export function extractFacebookLead(): LeadClipPayload | null {
   }
 
   // 3. Phone & Email regex fallback scanner
-  const fullText = document.body.innerText || '';
+  const fullText = document.body.textContent || '';
   const phones = extractVietnamesePhones(postContent || fullText);
   const emails = extractEmails(postContent || fullText);
   const detectedPhone = phones.length > 0 ? phones[0] : null;

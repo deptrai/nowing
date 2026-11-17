@@ -4,7 +4,6 @@ import { test } from "node:test";
 test("Panel width clamp calculates correct bounding constraints (AC-1)", () => {
 	const minWidth = 360;
 	const maxWidth = 650;
-	const defaultWidth = 420;
 
 	const clampWidth = (w: number) => Math.max(minWidth, Math.min(maxWidth, w));
 

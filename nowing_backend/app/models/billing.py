@@ -104,7 +104,7 @@ class TokenUsage(BaseModel, TimestampMixin):
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     client_id = Column(Text, nullable=True, index=True)
@@ -256,6 +256,12 @@ class BillingEvent(Base, TimestampMixin):
             "event_id",
             unique=True,
             postgresql_where=text("event_entity_type = 'outcome_event'"),
+        ),
+        Index(
+            "ix_billing_events_webset_event_unique",
+            "event_id",
+            unique=True,
+            postgresql_where=text("event_entity_type = 'webset'"),
         ),
     )
 

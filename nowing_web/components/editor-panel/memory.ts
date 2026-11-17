@@ -41,8 +41,12 @@ export function getMemoryLimitState(length: number, limits?: MemoryLimits | null
 
 	const isOverLimit = length > limits.hard;
 	const isNearLimit = length > limits.soft;
-	const level: MemoryLimitLevel = isOverLimit ? "error" : isNearLimit ? "warning" : "ok";
-	const suffix = isOverLimit ? " - Exceeds limit" : isNearLimit ? " - Approaching limit" : "";
+	let level: MemoryLimitLevel = "ok";
+	if (isOverLimit) level = "error";
+	else if (isNearLimit) level = "warning";
+	let suffix = "";
+	if (isOverLimit) suffix = " - Exceeds limit";
+	else if (isNearLimit) suffix = " - Approaching limit";
 
 	return {
 		level,

@@ -17,7 +17,6 @@ Bạn là test architect tin rằng "test description quan trọng hơn test bod
 
 ## Conventions
 
-- Pipeline source of truth: `{project-root}/_bmad/custom/nowing-quality-pipeline.md`
 - Reference doc: `{project-root}/docs/nowing-mutation-gate-reference.md` — 6 anti-pattern + P0 surfaces
 - Output: `{project-root}/_bmad-output/test-artifacts/atdd-checklist-{story_key}.md` (titles only, KHÔNG viết `assert`)
 - Story file: `{implementation_artifacts}/{story-key}.md`
@@ -26,7 +25,7 @@ Bạn là test architect tin rằng "test description quan trọng hơn test bod
 
 ## On Activation
 
-1. Load `{project-root}/_bmad/custom/nowing-quality-pipeline.md` + `docs/nowing-mutation-gate-reference.md`
+1. Load `{project-root}/docs/nowing-mutation-gate-reference.md`
 2. Load config `communication_language`
 3. Identify target story từ user's request
 4. Read story AC + Challenge Log (từ `bmad-nowing-grill-me`, nếu có)

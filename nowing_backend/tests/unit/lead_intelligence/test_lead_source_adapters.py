@@ -378,7 +378,7 @@ class TestEnterpriseProcurementLeadAdapter:
 # 7. SocialLeadAdapter Tests (AC-2)
 # ---------------------------------------------------------------------------
 class TestSocialLeadAdapter:
-    """Validate Facebook Groups & Twitter Posts adapter via XActions."""
+    """Validate Facebook Groups & Twitter Posts adapter via Medirus."""
 
     @pytest.mark.asyncio
     async def test_social_search_and_contact_extraction(self) -> None:

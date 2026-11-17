@@ -743,7 +743,7 @@ export const ThemeToggleButton = ({
 						initial={false}
 						animate={{ scale: isDark ? 1.25 : 1 }}
 						transition={{ ease: "easeInOut", duration: 0.35 }}
-						style={{ transformBox: "fill-box", transformOrigin: "center" }}
+						style={{ transformBox: "fill-box", transformOrigin: "center" }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 					>
 						<circle cx="16" cy="16" r={8} />
 					</motion.g>

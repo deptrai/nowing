@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "../thread-skeleton.module.css";
+
 import {
 	type AppendMessage,
 	AssistantRuntimeProvider,
@@ -125,14 +127,10 @@ function parseUrlChatId(id: string | string[] | undefined): number {
 function ThreadMessagesSkeleton() {
 	return (
 		<div
-			className="aui-root aui-thread-root @container flex h-full min-h-0 flex-col bg-panel"
-			style={{
-				["--thread-max-width" as string]: "42rem",
-			}}
+			className={`${styles.threadRoot} aui-root aui-thread-root @container flex h-full min-h-0 flex-col bg-panel`}
 		>
 			<div
-				className="aui-thread-viewport relative flex flex-1 min-h-0 flex-col overflow-y-auto px-4 scroll-smooth"
-				style={{ scrollbarGutter: "stable" }}
+				className={`${styles.viewport} aui-thread-viewport relative flex flex-1 min-h-0 flex-col overflow-y-auto px-4 scroll-smooth`}
 			>
 				<div
 					aria-hidden
@@ -165,8 +163,7 @@ function ThreadMessagesSkeleton() {
 				</div>
 
 				<div
-					className="aui-chat-composer-footer sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col items-stretch bg-gradient-to-t from-panel from-60% to-transparent px-4 pt-6"
-					style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+					className={`${styles.composerFooter} aui-chat-composer-footer sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col items-stretch bg-gradient-to-t from-panel from-60% to-transparent px-4 pt-6`}
 				>
 					<div className="aui-chat-composer-area relative mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-3 overflow-visible">
 						<Skeleton className="h-28 w-full rounded-3xl" />

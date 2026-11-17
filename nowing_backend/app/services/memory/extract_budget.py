@@ -229,7 +229,9 @@ def _rate_count_sync(workspace_id: int) -> int:
     try:
         raw = _redis_client().get(key)
         return int(raw) if raw is not None else 0
-    except Exception:  # Redis down → in-memory rate count fallback keeps gate functional
+    except (
+        Exception
+    ):  # Redis down → in-memory rate count fallback keeps gate functional
         logger.warning(
             "memory_extract_rate_count_redis_unavailable workspace_id=%s fallback=in_memory",
             workspace_id,
@@ -267,7 +269,9 @@ def _record_extraction_sync(workspace_id: int) -> int:
     try:
         client = _redis_client()
         return int(client.eval(_INCR_EXPIRE_LUA, 1, key, window))
-    except Exception:  # Redis down → in-memory rate increment fallback keeps gate functional
+    except (
+        Exception
+    ):  # Redis down → in-memory rate increment fallback keeps gate functional
         logger.warning(
             "memory_extract_rate_increment_redis_unavailable workspace_id=%s fallback=in_memory",
             workspace_id,
@@ -340,7 +344,9 @@ async def _check_budget(
 
     try:
         spent = await _period_spend_micros(session, workspace_id)
-    except Exception:  # spend query failure → fail-closed when configured, else allow with warning
+    except (
+        Exception
+    ):  # spend query failure → fail-closed when configured, else allow with warning
         if fail_closed:
             logger.warning(
                 "memory_extract_skip reason=%s workspace_id=%s stage=%s "
@@ -404,7 +410,9 @@ async def _check_rate(
 
     try:
         rate = await _rate_count(workspace_id)
-    except Exception:  # rate count failure → fail-closed when configured, else allow with warning
+    except (
+        Exception
+    ):  # rate count failure → fail-closed when configured, else allow with warning
         if fail_closed:
             logger.warning(
                 "memory_extract_skip reason=%s workspace_id=%s stage=%s "
@@ -463,7 +471,9 @@ async def check_extract_allowed(
     """
     try:
         workspace_id = workspace.id
-    except Exception:  # detached ORM instance → treat as unreadable workspace, never raise into caller
+    except (
+        Exception
+    ):  # detached ORM instance → treat as unreadable workspace, never raise into caller
         # A detached/expired ORM instance (Story 3.13 will reuse this gate from
         # a different path) must not raise into the caller.
         logger.warning(
@@ -487,11 +497,14 @@ async def check_extract_allowed(
 
         # 2. Wallet eligibility pre-check (Story 8.14: can be disabled per workspace).
         # Default to enabled (``None`` or ``True`` both run the pre-check).
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- tri-state None/True vs False check
         wallet_pre_check = limits.auto_extract_wallet_pre_check is not False
         if wallet_pre_check:
             try:
                 spendable = await _wallet_spendable_micros(session, attributed_user_id)
-            except Exception:  # wallet query failure → fail-closed skip to protect spend quota
+            except (
+                Exception
+            ):  # wallet query failure → fail-closed skip to protect spend quota
                 logger.warning(
                     "memory_extract_skip reason=%s workspace_id=%s stage=service "
                     "wallet_check_failed=true",
@@ -576,7 +589,9 @@ async def check_workspace_gates(
         )
         if blocked is not None:
             return blocked
-    except Exception:  # enqueue gate failure → fall through to allow rather than block memory writes
+    except (
+        Exception
+    ):  # enqueue gate failure → fall through to allow rather than block memory writes
         logger.warning(
             "memory_extract_enqueue_gate_error falling_through=true", exc_info=True
         )

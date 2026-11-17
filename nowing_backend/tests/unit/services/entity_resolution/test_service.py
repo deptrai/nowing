@@ -58,14 +58,10 @@ def _score_answer(top: int, confidence: float = 0.9) -> Answer:
     """3-level score whose value IS the probability-weighted mean."""
     probs = {str(i): (0.9 if i == top else 0.05) for i in range(3)}
     value = sum(int(level) * p for level, p in probs.items())
-    return Answer(
-        kind="score", value=value, confidence=confidence, probabilities=probs
-    )
+    return Answer(kind="score", value=value, confidence=confidence, probabilities=probs)
 
 
-def _choice_answer(
-    chosen: str, options: list[str], confidence: float = 0.9
-) -> Answer:
+def _choice_answer(chosen: str, options: list[str], confidence: float = 0.9) -> Answer:
     rest = (1.0 - 0.9) / (len(options) - 1)
     probs = {o: (0.9 if o == chosen else rest) for o in options}
     return Answer(
@@ -85,9 +81,7 @@ def _result(answers: dict[str, Answer]) -> BackendResult:
 async def test_score_pair_high_score_auto_merge(_enabled, monkeypatch):
     _patch_service(
         monkeypatch,
-        DecisionService(
-            _StubBackend(_result({"is_same": _score_answer(2)}))
-        ),
+        DecisionService(_StubBackend(_result({"is_same": _score_answer(2)}))),
     )
     res = await score_entity_pair({"name": "A"}, {"name": "A"})
     assert res.verdict is EntityVerdict.AUTO_MERGE
@@ -97,9 +91,7 @@ async def test_score_pair_high_score_auto_merge(_enabled, monkeypatch):
 async def test_score_pair_middle_score_review(_enabled, monkeypatch):
     _patch_service(
         monkeypatch,
-        DecisionService(
-            _StubBackend(_result({"is_same": _score_answer(1)}))
-        ),
+        DecisionService(_StubBackend(_result({"is_same": _score_answer(1)}))),
     )
     res = await score_entity_pair({"name": "A"}, {"name": "B"})
     assert res.verdict is EntityVerdict.REVIEW
@@ -108,9 +100,7 @@ async def test_score_pair_middle_score_review(_enabled, monkeypatch):
 async def test_score_pair_low_score_separate(_enabled, monkeypatch):
     _patch_service(
         monkeypatch,
-        DecisionService(
-            _StubBackend(_result({"is_same": _score_answer(0)}))
-        ),
+        DecisionService(_StubBackend(_result({"is_same": _score_answer(0)}))),
     )
     res = await score_entity_pair({"name": "A"}, {"name": "B"})
     assert res.verdict is EntityVerdict.SEPARATE
@@ -121,9 +111,7 @@ async def test_score_pair_low_confidence_reviews(_enabled, monkeypatch):
     _patch_service(
         monkeypatch,
         DecisionService(
-            _StubBackend(
-                _result({"is_same": _score_answer(2, confidence=0.5)})
-            )
+            _StubBackend(_result({"is_same": _score_answer(2, confidence=0.5)}))
         ),
     )
     res = await score_entity_pair({"name": "A"}, {"name": "A"})
@@ -133,9 +121,7 @@ async def test_score_pair_low_confidence_reviews(_enabled, monkeypatch):
 async def test_score_pair_decision_error_propagates(_enabled, monkeypatch):
     _patch_service(
         monkeypatch,
-        DecisionService(
-            _StubBackend(exc=DecisionError("down", code="timeout"))
-        ),
+        DecisionService(_StubBackend(exc=DecisionError("down", code="timeout"))),
     )
     with pytest.raises(DecisionError):
         await score_entity_pair({"name": "A"}, {"name": "A"})
@@ -153,9 +139,7 @@ async def test_confirm_match_returns_chosen_candidate(_enabled, monkeypatch):
         criteria = list(questions["match_decision"].criteria.keys())
         # candidates first, no_match last (MockBackend picks options[0])
         assert criteria == options
-        return _result(
-            {"match_decision": _choice_answer("cand-1", criteria)}
-        )
+        return _result({"match_decision": _choice_answer("cand-1", criteria)})
 
     _patch_service(monkeypatch, DecisionService(_StubBackend(_answer)))
     chosen = await confirm_entity_match(
@@ -168,40 +152,26 @@ async def test_confirm_match_returns_chosen_candidate(_enabled, monkeypatch):
 async def test_confirm_match_no_match_returns_none(_enabled, monkeypatch):
     def _answer(state, questions):
         criteria = list(questions["match_decision"].criteria.keys())
-        return _result(
-            {"match_decision": _choice_answer("no_match", criteria)}
-        )
+        return _result({"match_decision": _choice_answer("no_match", criteria)})
 
     _patch_service(monkeypatch, DecisionService(_StubBackend(_answer)))
-    chosen = await confirm_entity_match(
-        {"name": "anchor"}, {"cand-1": {"name": "A"}}
-    )
+    chosen = await confirm_entity_match({"name": "anchor"}, {"cand-1": {"name": "A"}})
     assert chosen is None
 
 
-async def test_confirm_match_low_confidence_returns_none(
-    _enabled, monkeypatch
-):
+async def test_confirm_match_low_confidence_returns_none(_enabled, monkeypatch):
     def _answer(state, questions):
         criteria = list(questions["match_decision"].criteria.keys())
         return _result(
-            {
-                "match_decision": _choice_answer(
-                    "cand-1", criteria, confidence=0.4
-                )
-            }
+            {"match_decision": _choice_answer("cand-1", criteria, confidence=0.4)}
         )
 
     _patch_service(monkeypatch, DecisionService(_StubBackend(_answer)))
-    chosen = await confirm_entity_match(
-        {"name": "anchor"}, {"cand-1": {"name": "A"}}
-    )
+    chosen = await confirm_entity_match({"name": "anchor"}, {"cand-1": {"name": "A"}})
     assert chosen is None
 
 
-async def test_confirm_match_empty_candidates_no_decide(
-    _enabled, monkeypatch
-):
+async def test_confirm_match_empty_candidates_no_decide(_enabled, monkeypatch):
     backend = _StubBackend(_result({}))
     _patch_service(monkeypatch, DecisionService(backend))
     chosen = await confirm_entity_match({"name": "anchor"}, {})
@@ -263,9 +233,7 @@ async def test_refine_confirmed_pair_merges(_enabled, monkeypatch):
 async def test_refine_no_match_keeps_separate(_enabled, monkeypatch):
     def _answer(state, questions):
         criteria = list(questions["match_decision"].criteria.keys())
-        return _result(
-            {"match_decision": _choice_answer("no_match", criteria)}
-        )
+        return _result({"match_decision": _choice_answer("no_match", criteria)})
 
     _patch_service(monkeypatch, DecisionService(_StubBackend(_answer)))
     items = [_item("a"), _item("b")]
@@ -300,18 +268,14 @@ async def test_refine_decision_error_skips_anchor(_enabled, monkeypatch):
     # Anchors sorted by candidate count desc → anchor 0 (2 cands) runs
     # first and fails; anchor 1 (1 cand) still confirms d.
     items = [_item("a"), _item("b"), _item("c"), _item("d")]
-    refined, stats = await refine_entity_groups(
-        items, {0: [1, 2], 1: [3]}, **_kwargs()
-    )
+    refined, stats = await refine_entity_groups(items, {0: [1, 2], 1: [3]}, **_kwargs())
     assert stats.errors == 1
     assert stats.confirmed == 1
     assert stats.aborted is False
     assert len(refined) == 3  # b+d merged; a, c untouched
 
 
-async def test_refine_circuit_breaker_aborts_after_3_errors(
-    _enabled, monkeypatch
-):
+async def test_refine_circuit_breaker_aborts_after_3_errors(_enabled, monkeypatch):
     backend = _StubBackend(exc=DecisionError("down", code="timeout"))
     _patch_service(monkeypatch, DecisionService(backend))
     items = [_item(c) for c in "abcde"]
@@ -337,9 +301,7 @@ async def test_refine_max_calls_cap(_enabled, monkeypatch):
     _patch_service(monkeypatch, DecisionService(backend))
     items = [_item(c) for c in "abcdef"]
     pairs = {0: [5], 1: [5], 2: [5], 3: [5]}
-    refined, stats = await refine_entity_groups(
-        items, pairs, max_calls=2, **_kwargs()
-    )
+    refined, stats = await refine_entity_groups(items, pairs, max_calls=2, **_kwargs())
     assert refined == items
     assert stats.calls == 2
     assert stats.skipped_cap == 2
@@ -352,13 +314,7 @@ async def test_refine_candidate_cap_per_anchor(_enabled, monkeypatch):
     def _backend(state, questions):
         seen["criteria"] = list(questions["match_decision"].criteria.keys())
         seen["candidates"] = list(state["candidates"].keys())
-        return _result(
-            {
-                "match_decision": _choice_answer(
-                    "no_match", seen["criteria"]
-                )
-            }
-        )
+        return _result({"match_decision": _choice_answer("no_match", seen["criteria"])})
 
     _patch_service(monkeypatch, DecisionService(_StubBackend(_backend)))
     items = [_item(c) for c in "abcde"]
@@ -392,9 +348,7 @@ async def test_refine_wall_clock_deadline_aborts(_enabled, monkeypatch):
     assert backend.calls == 0
 
 
-async def test_refine_single_pass_no_reeval_after_merge(
-    _enabled, monkeypatch
-):
+async def test_refine_single_pass_no_reeval_after_merge(_enabled, monkeypatch):
     """A merged entity is never re-decided: each pair gets ONE call."""
     calls: list[tuple[str, list[str]]] = []
 
@@ -403,18 +357,41 @@ async def test_refine_single_pass_no_reeval_after_merge(
         criteria = list(questions["match_decision"].criteria.keys())
         calls.append((anchor, criteria))
         # confirm the first candidate offered
-        return _result(
-            {"match_decision": _choice_answer(criteria[0], criteria)}
-        )
+        return _result({"match_decision": _choice_answer(criteria[0], criteria)})
 
     _patch_service(monkeypatch, DecisionService(_StubBackend(_backend)))
     items = [_item("a"), _item("b"), _item("c")]
-    refined, stats = await refine_entity_groups(
-        items, {0: [1], 1: [2]}, **_kwargs()
-    )
+    refined, stats = await refine_entity_groups(items, {0: [1], 1: [2]}, **_kwargs())
     assert stats.calls == 2  # both anchors ran, exactly once each
     # a+b merged via anchor a; c merged into the same component via b —
     # union-find collapses transitively even though "a" was never
     # re-evaluated against "c".
     assert len(refined) == 1
     assert refined[0]["members"] == ["a", "b", "c"]
+
+
+async def test_confirm_match_trims_candidate_fields(_enabled, monkeypatch):
+    captured_state = {}
+
+    def _backend(state, questions):
+        captured_state.update(state)
+        criteria = list(questions["match_decision"].criteria.keys())
+        return _result({"match_decision": _choice_answer(criteria[0], criteria)})
+
+    _patch_service(monkeypatch, DecisionService(_StubBackend(_backend)))
+    anchor = {"id": "anc-1", "name": "A" * 300, "extra_bloat": "x" * 1000}
+    candidates = {
+        "cand-1": {
+            "id": "cand-1",
+            "name": "B" * 300,
+            "address": "Addr " * 60,
+            "unrelated_large_field": "huge " * 500,
+        }
+    }
+    await confirm_entity_match(anchor, candidates)
+    cand_state = captured_state["candidates"]["cand-1"]
+    assert len(cand_state["name"]) == 200
+    assert len(cand_state["address"]) == 200
+    assert "unrelated_large_field" not in cand_state
+    assert len(captured_state["anchor"]["name"]) == 200
+    assert "extra_bloat" not in captured_state["anchor"]

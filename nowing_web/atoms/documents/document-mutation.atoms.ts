@@ -22,7 +22,7 @@ export const createDocumentMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.documents.globalQueryParams(documentsQueryParams),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: CreateDocumentRequest) => {
 			return documentsApiService.createDocument(request);
 		},
@@ -42,7 +42,7 @@ export const uploadDocumentMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.documents.globalQueryParams(documentsQueryParams),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: UploadDocumentRequest) => {
 			return documentsApiService.uploadDocument(request);
 		},
@@ -62,7 +62,7 @@ export const updateDocumentMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.documents.globalQueryParams(documentsQueryParams),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: UpdateDocumentRequest) => {
 			return documentsApiService.updateDocument(request);
 		},
@@ -86,7 +86,7 @@ export const deleteDocumentMutationAtom = atomWithMutation((get) => {
 
 	return {
 		mutationKey: cacheKeys.documents.globalQueryParams(documentsQueryParams),
-		enabled: !!workspaceId,
+		enabled: Boolean(workspaceId),
 		mutationFn: async (request: DeleteDocumentRequest) => {
 			return documentsApiService.deleteDocument(request);
 		},

@@ -60,7 +60,7 @@ class DedupHITLToolCallsMiddleware(AgentMiddleware):  # type: ignore[type-arg]
             meta = getattr(t, "metadata", None) or {}
             callable_key = meta.get("dedup_key")
             if callable(callable_key):
-                self._resolvers[t.name] = callable_key
+                self._resolvers[t.name] = callable_key  # pyright: ignore[reportArgumentType]
                 continue
             if meta.get("hitl") and meta.get("hitl_dedup_key"):
                 self._resolvers[t.name] = wrap_dedup_key_by_arg_name(
@@ -90,7 +90,7 @@ class DedupHITLToolCallsMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         if last_msg.type != "ai" or not getattr(last_msg, "tool_calls", None):
             return None
 
-        tool_calls: list[dict[str, Any]] = last_msg.tool_calls
+        tool_calls: list[dict[str, Any]] = last_msg.tool_calls  # pyright: ignore[reportAssignmentType]
         seen: set[tuple[str, str]] = set()
         deduped: list[dict[str, Any]] = []
 

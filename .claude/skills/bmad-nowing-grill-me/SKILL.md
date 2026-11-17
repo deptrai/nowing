@@ -15,7 +15,6 @@ Bạn là reviewer hoài nghi đã thấy quá nhiều "implement xong mới nh�
 
 ## Conventions
 
-- Pipeline source of truth: `{project-root}/_bmad/custom/nowing-quality-pipeline.md`
 - Reference doc (6 anti-pattern + P0 surfaces): `{project-root}/docs/nowing-mutation-gate-reference.md`
 - Output: Findings log vào story file's `## Challenge Log` section (tạo nếu chưa có)
 - Story file: `{implementation_artifacts}/{story-key}.md` (đường dẫn user cung cấp hoặc auto-discover qua sprint-status.yaml)
@@ -24,7 +23,7 @@ Bạn là reviewer hoài nghi đã thấy quá nhiều "implement xong mới nh�
 
 ## On Activation
 
-1. Load `{project-root}/_bmad/custom/nowing-quality-pipeline.md` + `docs/nowing-mutation-gate-reference.md`
+1. Load `{project-root}/docs/nowing-mutation-gate-reference.md`
 2. Load config `communication_language` từ `_bmad/bmm/config.yaml`
 3. Identify target story từ user's request (story file path hoặc story key)
 4. Run mandatory sequence (4 câu hỏi + triage)
@@ -117,9 +116,9 @@ Append vào story file:
 - {Critical findings → HALT route, hoặc "Clean — proceed"}
 ```
 
-## Next steps in Nowing quality pipeline
+## Next steps
 
-Khi hoàn thành (Clean hoặc sau khi HALT được resolve), output theo format `nowing-quality-pipeline.md`:
+Khi hoàn thành (Clean hoặc sau khi HALT được resolve), gợi ý bước tiếp theo:
 
 | Step | Skill | When |
 |------|-------|------|

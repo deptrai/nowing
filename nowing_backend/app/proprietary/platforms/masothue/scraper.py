@@ -33,7 +33,7 @@ def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
-def _normalize_tax_code(value: str & None) -> str | None:
+def _normalize_tax_code(value: str | None) -> str | None:
     if not value:
         return None
     normalized = value.strip().replace(" ", "").replace("-", "")

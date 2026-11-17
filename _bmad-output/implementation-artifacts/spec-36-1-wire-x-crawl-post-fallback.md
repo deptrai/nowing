@@ -12,7 +12,7 @@ context: []
 
 ## Intent
 
-**Problem:** Các monitored target thuộc VN-domain (Chợ Tốt, Shopee, TopCV, BĐS,...) gọi tool `x_scrape` trên XActions nhưng tool này chưa tồn tại trong daemon, gây lỗi `XACT_404` (`tool_not_found`). Hàm `fallback_crawl_post` đã được định nghĩa nhưng chưa từng được gọi trong production code, thiếu tham số `platform` bắt buộc (gây `XACT_4001`), và quăng `ValueError` nếu target không có HTTP URL thay vì đánh dấu `unsupported`.
+**Problem:** Các monitored target thuộc VN-domain (Chợ Tốt, Shopee, TopCV, BĐS,...) gọi tool `x_scrape` trên Medirus nhưng tool này chưa tồn tại trong daemon, gây lỗi `XACT_404` (`tool_not_found`). Hàm `fallback_crawl_post` đã được định nghĩa nhưng chưa từng được gọi trong production code, thiếu tham số `platform` bắt buộc (gây `XACT_4001`), và quăng `ValueError` nếu target không có HTTP URL thay vì đánh dấu `unsupported`.
 
 **Approach:** Khi `fetch_posts_for_target` bắt gặp lỗi `XACT_404`/`tool_not_found`, tự động kích hoạt fallback sang `x_crawl_post` với đủ tham số `{platform, url}`. Nếu target không có URL hợp lệ hoặc platform không hỗ trợ fallback, đánh dấu target thành `status='unsupported'`, `is_active=False` trong cơ sở dữ liệu để scheduler không lặp lại vô hạn.
 
@@ -35,25 +35,25 @@ context: []
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| Fallback thành công | Target có URL `https://...`, `x_scrape` trả `XACT_404` | Gọi `x_crawl_post` với `{"platform": "...", "url": "..."}`, parse và trả danh sách post | Bắt `XActionsMcpError(code="XACT_404")`, kích hoạt fallback |
+| Fallback thành công | Target có URL `https://...`, `x_scrape` trả `XACT_404` | Gọi `x_crawl_post` với `{"platform": "...", "url": "..."}`, parse và trả danh sách post | Bắt `MedirusMcpError(code="XACT_404")`, kích hoạt fallback |
 | Target không có HTTP URL | Target chỉ có keyword/slug (vd `target_id="laptop"`, `target_url=None`), `x_scrape` trả `XACT_404` | Không raise `ValueError`; raise `TargetUnsupportedError`; Celery task set `status='unsupported'`, `is_active=False`, commit DB và return 0 | Không retry Celery |
 | Fallback `x_crawl_post` cũng bị `XACT_404` hoặc `XACT_4001` | Daemon không hỗ trợ URL/platform cho `x_crawl_post` | Raise `TargetUnsupportedError`; task set `status='unsupported'`, `is_active=False` | Dừng retry, log warning |
-| Fallback gặp rate limit `XACT_4291` | `x_crawl_post` trả 429 | Re-raise `XActionsMcpError` để Celery task kích hoạt `task.retry(countdown=...)` | Retry theo `retry_after` |
+| Fallback gặp rate limit `XACT_4291` | `x_crawl_post` trả 429 | Re-raise `MedirusMcpError` để Celery task kích hoạt `task.retry(countdown=...)` | Retry theo `retry_after` |
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py` -- Cập nhật `UniversalScrapeTargetMapper.fallback_crawl_post` bổ sung `platform`, định nghĩa `TargetUnsupportedError`, và cập nhật `XActionsSocialAdapterV2.fetch_posts_for_target` bắt `XACT_404` để gọi fallback.
-- `nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py` -- Bổ sung handler cho `TargetUnsupportedError` trong `_ingest_social_target`, gọi hàm phụ trợ đánh dấu `status='unsupported'`, `is_active=False`, commit và dừng task.
-- `nowing_backend/tests/unit/platforms/test_xactions_adapter_v2.py` -- Cập nhật và bổ sung unit tests cho luồng fallback, tham số `platform`, xử lý non-URL và `TargetUnsupportedError`.
+- `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` -- Cập nhật `UniversalScrapeTargetMapper.fallback_crawl_post` bổ sung `platform`, định nghĩa `TargetUnsupportedError`, và cập nhật `MedirusSocialAdapterV2.fetch_posts_for_target` bắt `XACT_404` để gọi fallback.
+- `nowing_backend/app/tasks/celery_tasks/social_medirus_ingest.py` -- Bổ sung handler cho `TargetUnsupportedError` trong `_ingest_social_target`, gọi hàm phụ trợ đánh dấu `status='unsupported'`, `is_active=False`, commit và dừng task.
+- `nowing_backend/tests/unit/platforms/test_medirus_adapter_v2.py` -- Cập nhật và bổ sung unit tests cho luồng fallback, tham số `platform`, xử lý non-URL và `TargetUnsupportedError`.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py` -- Thêm `TargetUnsupportedError`, sửa `fallback_crawl_post` bổ sung `platform` và kiểm tra HTTP URL an toàn, thêm logic try fallback trong `fetch_posts_for_target` khi gặp `XACT_404` -- Ngăn chặn crash và unblock target VN qua `x_crawl_post`.
-- [x] `nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py` -- Bắt `TargetUnsupportedError` trong `_ingest_social_target`, cập nhật `target.status = 'unsupported'`, `target.is_active = False`, commit DB -- Ngăn chặn scheduler Celery beat lặp lại tác vụ không được hỗ trợ.
-- [x] `nowing_backend/tests/unit/platforms/test_xactions_adapter_v2.py` -- Viết unit test cho `fallback_crawl_post` (truyền platform, kiểm tra non-URL), mock tool call trả `XACT_404` kích hoạt fallback thành công và thất bại -- Bảo đảm độ bao phủ và ngăn chặn regression.
+- [x] `nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py` -- Thêm `TargetUnsupportedError`, sửa `fallback_crawl_post` bổ sung `platform` và kiểm tra HTTP URL an toàn, thêm logic try fallback trong `fetch_posts_for_target` khi gặp `XACT_404` -- Ngăn chặn crash và unblock target VN qua `x_crawl_post`.
+- [x] `nowing_backend/app/tasks/celery_tasks/social_medirus_ingest.py` -- Bắt `TargetUnsupportedError` trong `_ingest_social_target`, cập nhật `target.status = 'unsupported'`, `target.is_active = False`, commit DB -- Ngăn chặn scheduler Celery beat lặp lại tác vụ không được hỗ trợ.
+- [x] `nowing_backend/tests/unit/platforms/test_medirus_adapter_v2.py` -- Viết unit test cho `fallback_crawl_post` (truyền platform, kiểm tra non-URL), mock tool call trả `XACT_404` kích hoạt fallback thành công và thất bại -- Bảo đảm độ bao phủ và ngăn chặn regression.
 
 **Acceptance Criteria:**
 - Given a `SocialMonitoredTarget` with a valid HTTP URL whose primary tool call returns `XACT_404 (tool_not_found)`, when `fetch_posts_for_target` runs, then it retries with `x_crawl_post` including both `platform` and `url`.
@@ -75,36 +75,36 @@ return "x_crawl_post", {"platform": platform, "url": target_url}
 ## Verification
 
 **Commands:**
-- `pytest nowing_backend/tests/unit/platforms/test_xactions_adapter_v2.py` -- expected: 100% passed
+- `pytest nowing_backend/tests/unit/platforms/test_medirus_adapter_v2.py` -- expected: 100% passed
 
 ## Suggested Review Order
 
 **Fallback Dispatch & Protocol Adaptation**
 
 - Tool not found and permanent error detection logic
-  [`adapter_v2.py:112`](../../nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py#L112)
+  [`adapter_v2.py:112`](../../nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py#L112)
 
 - Fallback crawl post target URL validation and platform injection
-  [`adapter_v2.py:152`](../../nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py#L152)
+  [`adapter_v2.py:152`](../../nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py#L152)
 
 - Primary tool failure interception, fallback execution, and dryRun handling
-  [`adapter_v2.py:191`](../../nowing_backend/app/proprietary/platforms/xactions/adapter_v2.py#L191)
+  [`adapter_v2.py:191`](../../nowing_backend/app/proprietary/platforms/medirus/adapter_v2.py#L191)
 
 **Celery Ingestion & Lifecycle Management**
 
 - Target permanently unsupported state persistence without retry
-  [`social_xactions_ingest.py:116`](../../nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py#L116)
+  [`social_medirus_ingest.py:116`](../../nowing_backend/app/tasks/celery_tasks/social_medirus_ingest.py#L116)
 
 - Ingest task TargetUnsupportedError interception and execution halting
-  [`social_xactions_ingest.py:193`](../../nowing_backend/app/tasks/celery_tasks/social_xactions_ingest.py#L193)
+  [`social_medirus_ingest.py:193`](../../nowing_backend/app/tasks/celery_tasks/social_medirus_ingest.py#L193)
 
 **Test Verification**
 
 - Unit tests for adapter fallback paths, permanent errors, and dict payloads
-  [`test_xactions_adapter_v2.py:1`](../../nowing_backend/tests/unit/platforms/test_xactions_adapter_v2.py#L1)
+  [`test_medirus_adapter_v2.py:1`](../../nowing_backend/tests/unit/platforms/test_medirus_adapter_v2.py#L1)
 
 - Ingestion task unsupported state handling and skipping tests
-  [`test_social_xactions_ingest.py:1`](../../nowing_backend/tests/unit/tasks/celery_tasks/test_social_xactions_ingest.py#L1)
+  [`test_social_medirus_ingest.py:1`](../../nowing_backend/tests/unit/tasks/celery_tasks/test_social_medirus_ingest.py#L1)
 
 ### Review Findings
 
@@ -117,12 +117,12 @@ return "x_crawl_post", {"platform": platform, "url": target_url}
 - [x] [Review][Patch] `target.platform=None` crashes `.split` [adapter_v2.py:302] — added `or ""` guard.
 - [x] [Review][Patch] `raw_entities` list crashes `.get` consumer [adapter_v2.py:313] — coerce list to dict.
 - [x] [Review][Patch] Stale return type `list[dict]` → `list[SocialPostData]` [adapter_v2.py:191].
-- [x] [Review][Defer] Unsupported-platform targets loop active forever [social_xactions_ingest.py:296] — pre-existing scheduler design; reason: out of story scope.
+- [x] [Review][Defer] Unsupported-platform targets loop active forever [social_medirus_ingest.py:296] — pre-existing scheduler design; reason: out of story scope.
 - [x] [Review][Defer] `ingest_raw_post_to_stream` xAdd dict with None/list/dict → DataError [adapter_v2.py:335] — pre-existing; AD-4 removes it in Phase 2.
-- [x] [Review][Defer] `_mark_target_unsupported` reason not persisted (no column) [social_xactions_ingest.py:116] — needs schema change (Ask First); tracked in deferred-work.md.
-- [x] [Review][Defer] `code_str` case-fold / alt MCP codes (-32601) [adapter_v2.py:112-131] — spec extension for non-XActions servers.
+- [x] [Review][Defer] `_mark_target_unsupported` reason not persisted (no column) [social_medirus_ingest.py:116] — needs schema change (Ask First); tracked in deferred-work.md.
+- [x] [Review][Defer] `code_str` case-fold / alt MCP codes (-32601) [adapter_v2.py:112-131] — spec extension for non-Medirus servers.
 - [x] [Review][Defer] FB ID-based targets not mapped to canonical URL in fallback [adapter_v2.py:162-167] — scope expansion beyond spec AC.
-- [x] [Review][Defer] Tests use `target_id` for URL, not `target_url` [test_xactions_adapter_v2.py] — production-realism gap; add coverage later.
+- [x] [Review][Defer] Tests use `target_id` for URL, not `target_url` [test_medirus_adapter_v2.py] — production-realism gap; add coverage later.
 
 **Rejected:**
 - `map()` `ValueError` unreachable — `SUPPORTED_PLATFORMS` ≡ `PLATFORM_TOOL_MAP` keys; scheduler pre-filters. (false)

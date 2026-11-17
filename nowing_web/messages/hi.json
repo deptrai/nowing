@@ -238,7 +238,8 @@
 		"logs": "लॉग",
 		"all_workspaces": "सभी सर्च स्पेस",
 		"team": "टीम",
-		"health_analytics": "स्वास्थ्य और विश्लेषण"
+		"health_analytics": "स्वास्थ्य और विश्लेषण",
+		"leads": "लीड्स"
 	},
 	"pricing": {
 		"title": "Nowing मूल्य निर्धारण",
@@ -1130,7 +1131,10 @@
 		"enter_target_url": "Enter target company URL (e.g. https://example.com)",
 		"btn_start_reverse_icp": "Start Reverse-ICP Discovery",
 		"dnc_modal_title": "Do-Not-Call (DNC) & Blacklist Management",
-		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs."
+		"dnc_modal_desc": "Prevent cold-calling or emailing specific phone numbers, domains, and tax IDs.",
+		"empty_no_leads_title": "अभी कोई लीड नहीं",
+		"empty_no_leads_hint": "सहायक के साथ बातचीत करके लीड खोजें।",
+		"empty_no_leads_cta": "चैट के ज़रिए लीड खोजें"
 	},
 	"usage": {
 		"auto_extract_budget_title": "Auto-Extract Budget",

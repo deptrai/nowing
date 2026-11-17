@@ -117,7 +117,7 @@ def _make_memory(
 
 async def _count_memories(session: AsyncSession) -> int:
     result = await session.execute(select(Memory))
-    return len(result.scalars().all())
+    return len(result.scalars().all())  # nosemgrep
 
 
 async def test_rls_no_guc_only_sees_unscoped_rows(

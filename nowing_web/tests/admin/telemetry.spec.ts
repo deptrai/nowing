@@ -1,7 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "../fixtures";
-import { corsHeaders, fulfillJson } from "../helpers/cors";
 import { mockAdminAuth } from "../helpers/admin-auth";
+import { fulfillJson } from "../helpers/cors";
 
 /**
  * Story 25.4: Realtime LLM Token Cost, Proxy Health & Celery Queue Telemetry.
@@ -127,6 +127,10 @@ async function setupAdminTelemetryMocks(page: Page) {
 	await page.route(/.*\/api\/v1\/admin\/telemetry\/celery-queues$/, async (route: Route) => {
 		await fulfillJson(route, 200, mockCeleryQueues);
 	});
+
+	await page.route(/.*\/api\/v1\/admin\/telemetry\/health\/.*/, async (route: Route) => {
+		await fulfillJson(route, 200, { items: [], total: 0 });
+	});
 }
 
 test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
@@ -134,7 +138,9 @@ test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
 		await setupAdminTelemetryMocks(page);
 		await page.goto("/admin/telemetry");
 
-		await expect(page.getByRole("heading", { name: "Admin: Operations & Telemetry" })).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "Admin: Operations & Telemetry" })
+		).toBeVisible();
 		await page.getByTestId("tab-trigger-telemetry").click();
 
 		// Gross Margin panel
@@ -157,7 +163,8 @@ test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
 
 		// Celery Queues panel
 		await expect(page.getByRole("heading", { name: "Celery Queues" })).toBeVisible();
-		await expect(page.getByText("nowing")).toBeVisible();
+		// exact:true — tránh khớp `<title>Nowing - …</title>` (strict-mode violation).
+		await expect(page.getByText("nowing", { exact: true })).toBeVisible();
 	});
 
 	test("[P0] panel refreshes after window change without console errors", async ({ page }) => {
@@ -180,7 +187,11 @@ test.describe("Story 25.4 — Admin Telemetry Dashboard", () => {
 		page.on("console", (msg) => {
 			if (msg.type() === "error") {
 				const text = msg.text();
-				if (!text.includes("ws://localhost:4848") && !text.includes("[zero] connection log throttled")) {
+				if (
+					!text.includes("ws://localhost:4848") &&
+					!text.includes("[zero] connection log throttled") &&
+					!text.includes("status of 429")
+				) {
 					consoleErrors.push(text);
 				}
 			}

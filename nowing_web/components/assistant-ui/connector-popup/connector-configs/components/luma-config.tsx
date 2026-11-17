@@ -14,8 +14,8 @@ export interface LumaConfigProps extends ConnectorConfigProps {
 
 export const LumaConfig: FC<LumaConfigProps> = ({ connector, onConfigChange, onNameChange }) => {
 	const t = useTranslations("assistant");
-	const [apiKey, setApiKey] = useState<string>((connector.config?.LUMA_API_KEY as string) || "");
-	const [name, setName] = useState<string>(connector.name || "");
+	const [apiKey, setApiKey] = useState((connector.config?.LUMA_API_KEY as string) || "");
+	const [name, setName] = useState(connector.name || "");
 
 	const handleApiKeyChange = (value: string) => {
 		setApiKey(value);

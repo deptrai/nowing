@@ -5,7 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.lead_intelligence.adapters.base import LeadSourceCategory
+from app.lead_intelligence.adapters.base import (
+    LeadSourceCategory,
+    resolve_exec_status,
+)
 from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
 from app.lead_intelligence.campaign.schemas import (
     CampaignPlanResponse,
@@ -33,7 +36,9 @@ class LeadGenPlanner:
         Returns:
             A tuple of (subtask_plans, expected_sources).
         """
-        resolved_adapters, location_fallback = self.registry.resolve_adapters_for_campaign(spec)
+        resolved_adapters, location_fallback = (
+            self.registry.resolve_adapters_for_campaign(spec)
+        )
 
         warnings: list[str] = []
         if location_fallback:
@@ -70,9 +75,7 @@ class LeadGenPlanner:
 
             # Determine query for this specific adapter
             adapter_query = self._build_query_for_adapter(spec, adapter.category)
-            adapter_limit = budget_map.get(
-                src_key, min(50, spec.max_total_leads)
-            )
+            adapter_limit = budget_map.get(src_key, min(50, spec.max_total_leads))
             adapter_priority = priority_map.get(src_key, 1)
 
             # Build platform specific filters from ICP
@@ -114,7 +117,7 @@ class LeadGenPlanner:
             return "low"
         return "none"
 
-    def _build_source_allocations(
+    async def _build_source_allocations(
         self, spec: CampaignSpec, resolved_adapters: list[Any]
     ) -> list[SourcePlanAllocation]:
         """Build pre-flight source allocations with coverage metadata."""
@@ -135,28 +138,37 @@ class LeadGenPlanner:
             )
             coverage_quality = self._map_coverage_quality(coverage_score)
 
+            exec_status = await resolve_exec_status(adapter, spec.workspace_id)
+
             status: str = "ready"
             degraded_reason: str | None = None
-            if coverage_quality in ("low", "none"):
+            if exec_status == "pending":
+                status = "pending"
+                degraded_reason = "Asynchronous webset build in progress"
+            elif coverage_quality in ("low", "none"):
                 status = "degraded"
                 degraded_reason = (
                     f"Location coverage for {src_name} is {coverage_quality} "
                     f"for the targeted province/districts."
                 )
-            elif getattr(adapter, "last_execution_status", "ok") != "ok":
+            elif exec_status != "ok":
                 status = "degraded"
                 degraded_reason = (
                     f"Adapter {src_name} reported last execution status: "
-                    f"{adapter.last_execution_status}"
+                    f"{exec_status}"
                 )
 
-            supported_provinces = list(getattr(adapter, "supported_provinces", ["*"]) or ["*"])
+            supported_provinces = list(
+                getattr(adapter, "supported_provinces", ["*"]) or ["*"]
+            )
 
             allocations.append(
                 SourcePlanAllocation(
                     source_name=src_name,
                     category=adapter.category.value,
-                    allocated_limit=budget_map.get(src_key, min(50, spec.max_total_leads)),
+                    allocated_limit=budget_map.get(
+                        src_key, min(50, spec.max_total_leads)
+                    ),
                     priority=priority_map.get(src_key, 1),
                     location_coverage_quality=coverage_quality,
                     location_coverage_score=round(coverage_score, 4),
@@ -179,20 +191,21 @@ class LeadGenPlanner:
     def _estimate_cost(self, spec: CampaignSpec) -> tuple[int, int]:
         """Return (cost_vnd, cost_micros) for the campaign."""
         # FR-69: base lead 1,500 VND; verified unlock 5,000 VND.
-        auto_unlock = (
-            spec.source_budgets
-            and any(getattr(b, "auto_unlock", False) for b in spec.source_budgets)
+        auto_unlock = spec.source_budgets and any(
+            getattr(b, "auto_unlock", False) for b in spec.source_budgets
         )
         cost_per_lead = 5000 if auto_unlock else 1500
         cost_vnd = spec.max_total_leads * cost_per_lead
         cost_micros = cost_vnd * 40
         return cost_vnd, cost_micros
 
-    def create_preflight_plan(self, spec: CampaignSpec) -> CampaignPlanResponse:
+    async def create_preflight_plan(self, spec: CampaignSpec) -> CampaignPlanResponse:
         """Build an enriched CampaignPlanResponse without mutating plan_from_campaign."""
         subtasks, expected_sources = self.plan_from_campaign(spec)
 
-        resolved_adapters, location_fallback = self.registry.resolve_adapters_for_campaign(spec)
+        resolved_adapters, location_fallback = (
+            self.registry.resolve_adapters_for_campaign(spec)
+        )
 
         warnings: list[str] = []
         if location_fallback:
@@ -203,8 +216,10 @@ class LeadGenPlanner:
             )
             warnings.append(warning_msg)
 
-        source_allocations = self._build_source_allocations(spec, resolved_adapters)
-        estimated_reachable_leads = self._estimate_reachable_leads(spec, source_allocations)
+        source_allocations = await self._build_source_allocations(spec, resolved_adapters)
+        estimated_reachable_leads = self._estimate_reachable_leads(
+            spec, source_allocations
+        )
         estimated_cost_vnd, estimated_cost_micros = self._estimate_cost(spec)
 
         return CampaignPlanResponse(
@@ -270,9 +285,7 @@ class LeadGenPlanner:
             district_codes = list(
                 getattr(spec.location_profile, "district_codes", []) or []
             )
-            ward_names = list(
-                getattr(spec.location_profile, "ward_names", []) or []
-            )
+            ward_names = list(getattr(spec.location_profile, "ward_names", []) or [])
             if district_codes:
                 recovery.append(f"Mở rộng ra toàn tỉnh {province}")
             if ward_names:

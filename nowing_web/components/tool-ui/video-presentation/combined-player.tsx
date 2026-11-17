@@ -57,7 +57,7 @@ function Watermark() {
 	});
 
 	return (
-		<div style={{ ...WATERMARK_STYLES.container, opacity }}>
+		<div style={{ ...WATERMARK_STYLES.container, opacity }}> // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 			{/* eslint-disable-next-line @next/next/no-img-element */}
 			<img src="/icon-128.svg" alt="" style={WATERMARK_STYLES.logo} />
 			<span style={WATERMARK_STYLES.text}>Nowing</span>
@@ -125,7 +125,7 @@ export function CombinedPlayer({ slides }: CombinedPlayerProps) {
 				fps={FPS}
 				compositionWidth={1920}
 				compositionHeight={1080}
-				style={{ width: "100%", aspectRatio: "16/9" }}
+				style={{ width: "100%", aspectRatio: "16/9" }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 				controls
 				loop
 				acknowledgeRemotionLicense

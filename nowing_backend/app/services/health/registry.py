@@ -17,13 +17,13 @@ from app.services.health.probe_base import HealthProbe
 from app.services.health.probes.chainlens_probe import ChainLensHealthProbe
 from app.services.health.probes.connector_probe import ConnectorHealthProbe
 from app.services.health.probes.infrastructure_probe import InfrastructureHealthProbe
+from app.services.health.probes.medirus_probe import MedirusHealthProbe
 from app.services.health.probes.messaging_probe import MessagingHealthProbe
 from app.services.health.probes.model_probe import ModelHealthProbe
 from app.services.health.probes.payment_probe import PaymentHealthProbe
 from app.services.health.probes.proxy_probe import ProxyHealthProbe
 from app.services.health.probes.scraper_probe import ScraperHealthProbe
 from app.services.health.probes.storage_probe import StorageHealthProbe
-from app.services.health.probes.xactions_probe import XActionsHealthProbe
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ CANONICAL_SCRAPER_PLATFORMS = [
     ("vietnamworks", "VietnamWorks Jobs", "Recruitment"),
     ("vietstock", "Vietstock Financial Portal", "Vietnam Finance"),
     ("walmart", "Walmart Marketplace", "E-Commerce"),
-    ("xactions", "Xactions Social Graph", "B2B Lead Intelligence"),
+    ("medirus", "Medirus Social Graph", "B2B Lead Intelligence"),
     ("youtube", "YouTube Videos & Channels", "Video & Media"),
 ]
 
@@ -79,7 +79,7 @@ def _platform_from_capability_name(name: str) -> str:
     first_part = name.split(".", 1)[0].lower()
     # Map composite namespaces to canonical platform slugs.
     aliases = {
-        "b2b": "xactions",
+        "b2b": "medirus",
         "ecommerce": "amazon",
         "google_maps": "google_maps",
         "google_search": "google_search",
@@ -207,23 +207,23 @@ class HealthProbeRegistry:
             else:
                 name = cap.description or platform.replace("_", " ").title()
                 group = "Platform Scrapers"
-            # XActions uses the dedicated MCP health probe, not generic HTTP scraper probe.
-            if platform == "xactions":
-                from app.services.health.probes.xactions_probe import (
-                    XActionsHealthProbe,
+            # Medirus uses the dedicated MCP health probe, not generic HTTP scraper probe.
+            if platform == "medirus":
+                from app.services.health.probes.medirus_probe import (
+                    MedirusHealthProbe,
                 )
-                cls.register(XActionsHealthProbe())
+                cls.register(MedirusHealthProbe())
             else:
                 cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
             registered_platforms.add(platform)
 
         for platform, name, group in CANONICAL_SCRAPER_PLATFORMS:
             if platform not in registered_platforms and platform not in capability_platforms:
-                if platform == "xactions":
-                    from app.services.health.probes.xactions_probe import (
-                        XActionsHealthProbe,
+                if platform == "medirus":
+                    from app.services.health.probes.medirus_probe import (
+                        MedirusHealthProbe,
                     )
-                    cls.register(XActionsHealthProbe())
+                    cls.register(MedirusHealthProbe())
                 else:
                     cls.register(ScraperHealthProbe(platform=platform, service_name=name, display_group=group))
                 registered_platforms.add(platform)
@@ -288,7 +288,7 @@ class HealthProbeRegistry:
         storage_provider = "s3"
         cls.register(StorageHealthProbe(provider=storage_provider))
 
-        cls.register(XActionsHealthProbe())
+        cls.register(MedirusHealthProbe())
 
     @classmethod
     async def _discover_dynamic_probes(cls) -> None:

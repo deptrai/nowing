@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CANONICAL_PERMISSIONS } from "@/contracts/types/permissions.types";
 import { governanceApiService } from "@/lib/apis/governance-api.service";
-import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { AuditLogPanel } from "./audit-log-panel";
 import { DncPanel } from "./dnc-panel";
 import { RetentionPolicyPanel } from "./retention-policy-panel";

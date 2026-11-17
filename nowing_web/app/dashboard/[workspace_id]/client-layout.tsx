@@ -92,14 +92,14 @@ export function DashboardClientLayout({
 	}, [electronAPI, setPendingUserImageUrls]);
 
 	useEffect(() => {
-		const activeSeacrhSpaceId =
+		const activeSearchSpaceId =
 			typeof workspace_id === "string"
 				? workspace_id
 				: Array.isArray(workspace_id) && workspace_id.length > 0
 					? workspace_id[0]
 					: "";
-		if (!activeSeacrhSpaceId) return;
-		setActiveWorkspaceIdState(activeSeacrhSpaceId);
+		if (!activeSearchSpaceId) return;
+		setActiveWorkspaceIdState(activeSearchSpaceId);
 
 		// Sync to Electron store if stored value is null (first navigation)
 		if (electronAPI?.getActiveWorkspace && electronAPI.setActiveWorkspace) {
@@ -108,7 +108,7 @@ export function DashboardClientLayout({
 				.getActiveWorkspace()
 				.then((stored: string | null) => {
 					if (!stored) {
-						setActiveWorkspace(activeSeacrhSpaceId);
+						setActiveWorkspace(activeSearchSpaceId);
 					}
 				})
 				.catch(() => {});

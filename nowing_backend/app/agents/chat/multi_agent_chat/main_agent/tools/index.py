@@ -9,6 +9,7 @@ MAIN_AGENT_NOWING_TOOL_NAMES_ORDERED: tuple[str, ...] = (
     "update_memory",
     "create_automation",
     "multi_source_lead_gen",
+    "save_leads",
     "build_web_app",
     "generate_presentation",
     "generate_meeting_minutes",

@@ -135,7 +135,7 @@ context: []
 **Manual checks (nếu chạy được live):**
 - `DECISION_BACKEND=jev DECISION_VOICE_ENABLED=true TYPESAFE_API_KEY=... uv run python` — `evaluate_voice_turn("cho tôi nói chuyện với người thật")` → `transfer=True`.
 
-**Live verify 2026-09-22** (real `api.typesafe.ai`, `DECISION_BACKEND=jev`, key từ XActions env):
+**Live verify 2026-09-22** (real `api.typesafe.ai`, `DECISION_BACKEND=jev`, key từ Medirus env):
 - `"cho tôi nói chuyện với người thật"` → `transfer=True`, `frustration=1.01`, **765ms**
 - `"nhà này giá bao nhiêu vậy"` → respond, `frustration=0.0`, **313ms**
 - `"ừ"` → `suppress=True` qua LOCAL_BACKCHANNELS — **0 Jev call**

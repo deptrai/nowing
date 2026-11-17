@@ -77,7 +77,8 @@ def _record_queue_latency(task=None, **_kwargs):
             scheduled=scheduled,
             operation=operation,
         )
-    except Exception as exc:  # queue latency metric recording failure; suppress exception
+    # queue latency metric recording failure; suppress exception
+    except Exception as exc:
         logger.debug("Suppressed %r", exc)
 
 
@@ -113,12 +114,13 @@ async def _run_scraper_rule_subscriber() -> None:
     try:
         redis = await get_redis_client()
         await scraper_rule_pubsub.start_rule_subscriber(redis)
-    except Exception as exc:  # scraper rule pubsub subscriber start failure; fallback to TTL cache
-        # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
+    # Worker TTL cache (5s) provides a safe fallback when pub/sub is down.
+    except Exception as exc:  # scraper rule pubsub subscriber start failure
         logger.debug("Suppressed %r", exc)
 
 
 def _start_scraper_rule_subscriber_thread() -> None:
+    # pi-lens-ignore: python-thread-global-write — daemon thread, no shared mutable state
     threading.Thread(
         target=lambda: asyncio.run(_run_scraper_rule_subscriber()),
         daemon=True,
@@ -214,7 +216,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.rss_tasks",
         "app.tasks.celery_tasks.obsidian_tasks",
         "app.tasks.celery_tasks.schedule_checker_task",
-        "app.tasks.celery_tasks.social_xactions_ingest",
+        "app.tasks.celery_tasks.social_medirus_ingest",
         "app.tasks.celery_tasks.social_stream_worker",
         "app.tasks.celery_tasks.signal_radar_tasks",
         "app.tasks.celery_tasks.decision_telemetry_task",
@@ -249,6 +251,9 @@ celery_app = Celery(
         "app.tasks.celery_tasks.health_retention_task",
         "app.tasks.celery_tasks.workspace_health_tasks",
         "app.tasks.celery_tasks.bulk_op_tasks",
+        "app.tasks.celery_tasks.voice_tasks",
+        "app.tasks.celery_tasks.dns_probe_task",
+        "app.tasks.webset_import",
     ],
 )
 
@@ -320,7 +325,8 @@ celery_app.conf.update(
         "health_probe_messaging": {"queue": HEALTH_QUEUE},
         "health_probe_payment": {"queue": HEALTH_QUEUE},
         "health_probe_storage": {"queue": HEALTH_QUEUE},
-        "health_probe_xactions": {"queue": HEALTH_QUEUE},
+        "health_probe_medirus": {"queue": HEALTH_QUEUE},
+        "dns_synthetic_probe_periodic": {"queue": HEALTH_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
@@ -348,7 +354,7 @@ celery_app.conf.beat_schedule = {
         },
     },
     # Check social targets (Facebook groups, Twitter keywords) and trigger
-    # XActions ingest tasks for any that are due.
+    # Medirus ingest tasks for any that are due.
     "check-social-monitored-targets": {
         "task": "check_social_monitored_targets",
         "schedule": crontab(minute="*"),
@@ -382,6 +388,19 @@ celery_app.conf.beat_schedule = {
         "task": "evaluate_decision_daily_cost_alert",
         "schedule": crontab(minute="*/15"),
         "options": {"expires": 300},
+    },
+    # Consume `stream:prospect:engagement` for pitch portal speed-to-lead (AI-38.2).
+    "consume-prospect-engagement-stream": {
+        "task": "consume_prospect_engagement_stream",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
+    },
+    # Synthetic DNS probe for active custom domains (Story 31 / Retro Item 29).
+    # Runs every 2 hours to detect missing TXT/CNAME records and alert.
+    "dns-synthetic-probe-periodic": {
+        "task": "dns_synthetic_probe_periodic",
+        "schedule": crontab(minute="15", hour="*/2"),
+        "options": {"expires": 1800},
     },
     # Cleanup stale connector indexing notifications every 5 minutes
     # This detects tasks that crashed or timed out without proper cleanup
@@ -551,8 +570,8 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {"expires": 120},
     },
-    "health-probe-xactions": {
-        "task": "health_probe_xactions",
+    "health-probe-medirus": {
+        "task": "health_probe_medirus",
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
         "options": {"expires": 120},
     },

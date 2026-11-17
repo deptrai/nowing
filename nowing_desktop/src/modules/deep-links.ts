@@ -16,7 +16,12 @@ function handleDeepLink(url: string) {
   const win = getMainWindow();
   if (!win) return;
 
-  const parsed = new URL(url);
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
   trackEvent('desktop_deep_link_received', {
     host: parsed.hostname,
     path: parsed.pathname,

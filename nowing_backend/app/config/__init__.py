@@ -45,35 +45,38 @@ from app.config._helpers import (  # noqa: E402
 # Import order matters: later modules may override earlier ones for legacy
 # constants defined in more than one place (e.g. ``FILE_STORAGE_LOCAL_PATH``
 # is canonical in ``web_builder``).
-from app.config.agents import *  # noqa: E402, F403
-from app.config.auth import *  # noqa: E402, F403
-from app.config.billing import *  # noqa: E402, F403
-from app.config.celery import *  # noqa: E402, F403
-from app.config.chainlens import *  # noqa: E402, F403
-from app.config.connectors import *  # noqa: E402, F403
-from app.config.core import *  # noqa: E402, F403
-from app.config.database import *  # noqa: E402, F403
-from app.config.decision import *  # noqa: E402, F403
-from app.config.dsh import *  # noqa: E402, F403
-from app.config.entities import *  # noqa: E402, F403
-from app.config.etl import *  # noqa: E402, F403
-from app.config.events import *  # noqa: E402, F403
-from app.config.gateway import *  # noqa: E402, F403
-from app.config.llm import *  # noqa: E402, F403
-from app.config.media import *  # noqa: E402, F403
-from app.config.memory import *  # noqa: E402, F403
-from app.config.oauth import *  # noqa: E402, F403
-from app.config.quota import *  # noqa: E402, F403
-from app.config.research import *  # noqa: E402, F403
-from app.config.scraper import *  # noqa: E402, F403
-from app.config.storage import *  # noqa: E402, F403
-from app.config.urls import *  # noqa: E402, F403
-from app.config.voice import *  # noqa: E402, F403
-from app.config.web_builder import *  # noqa: E402, F403
+from app.config.agents import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.auth import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.billing import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.celery import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.chainlens import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.connectors import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.core import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.database import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.decision import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.dsh import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.e2e import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.entities import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.etl import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.events import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.gateway import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.llm import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.media import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.memory import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.oauth import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.quota import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.research import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.scraper import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.storage import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.urls import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.voice import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
+from app.config.web_builder import *  # noqa: E402, F403  # pi-lens-ignore: ast-grep:no-star-imports -- namespace shim
 
 
 class Config:
     """Backward-compatible config namespace."""
+
+    DEPLOYMENT_MODE: str
 
     def __getattr__(self, name: str):
         """Resolve attribute from the package namespace."""
@@ -149,6 +152,14 @@ ANTHROPIC_API_KEY = config.ANTHROPIC_API_KEY
 OPENAI_API_KEY = config.OPENAI_API_KEY
 SIP_OUTBOUND_GATEWAY_PORT = config.SIP_OUTBOUND_GATEWAY_PORT
 SIP_GATEWAY_SIP_URI = config.SIP_GATEWAY_SIP_URI
+VOICE_BARGE_IN_BACKCHANNEL_WORDS = config.VOICE_BARGE_IN_BACKCHANNEL_WORDS
+VOICE_BARGE_IN_DUCKING_DB = config.VOICE_BARGE_IN_DUCKING_DB
+VOICE_BARGE_IN_DUCKING_RAMP_MS = config.VOICE_BARGE_IN_DUCKING_RAMP_MS
+VOICE_BARGE_IN_ECHO_LOCKOUT_MS = config.VOICE_BARGE_IN_ECHO_LOCKOUT_MS
+VOICE_BARGE_IN_INTERRUPT_DEADLINE_MS = config.VOICE_BARGE_IN_INTERRUPT_DEADLINE_MS
+VOICE_BARGE_IN_KWS_TIMEOUT_MS = config.VOICE_BARGE_IN_KWS_TIMEOUT_MS
+VOICE_BARGE_IN_SILENCE_PACKET_MS = config.VOICE_BARGE_IN_SILENCE_PACKET_MS
+VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD = config.VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD
 
 __all__ = [
     "BASE_DIR",
@@ -161,6 +172,14 @@ __all__ = [
     "SIP_GATEWAY_SIP_URI",
     "SIP_OUTBOUND_GATEWAY_HOST",
     "SIP_OUTBOUND_GATEWAY_PORT",
+    "VOICE_BARGE_IN_BACKCHANNEL_WORDS",
+    "VOICE_BARGE_IN_DUCKING_DB",
+    "VOICE_BARGE_IN_DUCKING_RAMP_MS",
+    "VOICE_BARGE_IN_ECHO_LOCKOUT_MS",
+    "VOICE_BARGE_IN_INTERRUPT_DEADLINE_MS",
+    "VOICE_BARGE_IN_KWS_TIMEOUT_MS",
+    "VOICE_BARGE_IN_SILENCE_PACKET_MS",
+    "VOICE_BARGE_IN_SPEECH_PROB_THRESHOLD",
     "WEB_BUILDER_TXT_VERIFY_LABEL",
     "WEB_BUILDER_TXT_VERIFY_PREFIX",
     "Config",

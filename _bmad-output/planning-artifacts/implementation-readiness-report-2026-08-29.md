@@ -31,7 +31,7 @@ documents_included:
     - _bmad-output/planning-artifacts/architecture/architecture-socksnode-proxy-integration-2026-08-22/
     - _bmad-output/planning-artifacts/architecture/architecture-telegram-scraper-2026-08-15/
     - _bmad-output/planning-artifacts/architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/
-    - _bmad-output/planning-artifacts/architecture/architecture-xactions-social-integration-2026-08-15/
+    - _bmad-output/planning-artifacts/architecture/architecture-medirus-social-integration-2026-08-15/
   epics_stories:
     - _bmad-output/planning-artifacts/epics.md
     - _bmad-output/planning-artifacts/epic-11-architecture-review-2026-08-03.md
@@ -87,7 +87,7 @@ documents_included:
 - `architecture/architecture-socksnode-proxy-integration-2026-08-22/`
 - `architecture/architecture-telegram-scraper-2026-08-15/`
 - `architecture/architecture-unified-nowing-chainlens-dsh-2026-08-17/`
-- `architecture/architecture-xactions-social-integration-2026-08-15/`
+- `architecture/architecture-medirus-social-integration-2026-08-15/`
 
 ### Epics & Stories Documents Found
 

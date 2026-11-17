@@ -187,7 +187,7 @@ async def sample_chat_queries(
     actions_by_key: dict[tuple[int, str | None], list[AgentActionLog]] = {}
     for log in action_rows:
         key = (log.thread_id, log.chat_turn_id)
-        actions_by_key.setdefault(key, []).append(log)
+        actions_by_key.setdefault(key, []).append(log)  # pyright: ignore[reportArgumentType]
 
     results: list[dict[str, Any]] = []
     for msg, _thread, workspace in rows:
@@ -209,7 +209,7 @@ async def sample_chat_queries(
         # Deduplicate while preserving order.
         mentioned_doc_ids = list(dict.fromkeys(mentioned_doc_ids))
 
-        tags = _classify_tags(query_text, tool_names, mentioned_doc_ids)
+        tags = _classify_tags(query_text, tool_names, mentioned_doc_ids)  # pyright: ignore[reportArgumentType]
 
         if dry_run:
             continue

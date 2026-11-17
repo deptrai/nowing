@@ -187,7 +187,7 @@ const MobileCitationDrawer: FC = () => {
 								"border-border bg-background dark:border-foreground/20 relative flex size-6 items-center justify-center rounded-full border shadow-xs",
 								index > 0 && "-ml-2"
 							)}
-							style={{ zIndex: maxIcons - index }}
+							style={{ zIndex: maxIcons - index }} // pi-lens-ignore: ast-grep:inline-styles -- per-item stacking order
 						>
 							{citation.favicon ? (
 								// biome-ignore lint/performance/noImgElement: external favicon from arbitrary domain
@@ -207,7 +207,7 @@ const MobileCitationDrawer: FC = () => {
 					{remainingCount > 0 && (
 						<div
 							className="border-border bg-background dark:border-foreground/20 relative -ml-2 flex size-6 items-center justify-center rounded-full border shadow-xs"
-							style={{ zIndex: 0 }}
+							style={{ zIndex: 0 }} // pi-lens-ignore: ast-grep:inline-styles -- stacking context reset for overflow badge
 						>
 							<span className="text-muted-foreground text-[10px] font-medium tracking-tight">
 								•••

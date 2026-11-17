@@ -1,5 +1,4 @@
 "use client";
-
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { Loader2, RotateCcw, Undo2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -24,7 +23,6 @@ import { podcastsApiService } from "@/lib/apis/podcasts-api.service";
 import { BriefReview } from "./brief-review";
 import { PodcastErrorState, PodcastPlayer } from "./player";
 import type { GeneratePodcastArgs, GeneratePodcastResult } from "./schema";
-
 function WorkingState({
 	title,
 	label,
@@ -34,7 +32,7 @@ function WorkingState({
 	label: string;
 	action?: ReactNode;
 }) {
-	const t = useTranslations("toolUi");
+	
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
 			<div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
@@ -47,7 +45,6 @@ function WorkingState({
 		</div>
 	);
 }
-
 function NoticeState({ title, message }: { title: string; message: string }) {
 	return (
 		<div className="my-4 max-w-lg overflow-hidden rounded-2xl border bg-muted/30 select-none">
@@ -58,7 +55,6 @@ function NoticeState({ title, message }: { title: string; message: string }) {
 		</div>
 	);
 }
-
 /**
  * Regenerating reopens the brief and ultimately replaces the current audio,
  * so a stray click is guarded by an inline confirm step.
@@ -67,7 +63,6 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 	const t = useTranslations("toolUi");
 	const [confirming, setConfirming] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-
 	const regenerate = async () => {
 		setIsSubmitting(true);
 		try {
@@ -79,7 +74,6 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 			setConfirming(false);
 		}
 	};
-
 	if (!confirming) {
 		return (
 			<Button
@@ -94,7 +88,6 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 			</Button>
 		);
 	}
-
 	return (
 		<div className="flex items-center gap-2">
 			<span className="text-xs text-muted-foreground">{t("tu_reopen_the_brief_and")}</span>
@@ -120,7 +113,6 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 		</div>
 	);
 }
-
 /**
  * The way out of an in-flight generation depends on what already exists:
  * a regeneration is reverted (the stored episode survives, so no confirm),
@@ -130,7 +122,6 @@ function RegenerateButton({ podcast }: { podcast: LivePodcast }) {
 function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisode: boolean }) {
 	const t = useTranslations("toolUi");
 	const [isSubmitting, setIsSubmitting] = useState(false);
-
 	const run = async (call: (id: number) => Promise<unknown>, failure: string) => {
 		setIsSubmitting(true);
 		try {
@@ -141,7 +132,6 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 			setIsSubmitting(false);
 		}
 	};
-
 	if (hasEpisode) {
 		return (
 			<Button
@@ -163,7 +153,6 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 			</Button>
 		);
 	}
-
 	return (
 		<AlertDialog>
 			<AlertDialogTrigger asChild>
@@ -195,9 +184,7 @@ function BackOutButton({ podcastId, hasEpisode }: { podcastId: number; hasEpisod
 		</AlertDialog>
 	);
 }
-
 const BACK_OUT_STATUSES = new Set(["awaiting_brief", "drafting", "rendering"]);
-
 /** Status-driven card for an authenticated viewer, fed by Zero push. */
 function LivePodcastCard({
 	podcastId,
@@ -208,7 +195,6 @@ function LivePodcastCard({
 }) {
 	const t = useTranslations("toolUi");
 	const { podcast, isLoading } = usePodcastLive(podcastId);
-
 	// Whether a finished episode exists decides revert-vs-cancel, and Zero
 	// doesn't publish audio fields — so the in-flight states check over REST,
 	// re-checking on each status change (a fresh podcast gains its episode,
@@ -228,18 +214,14 @@ function LivePodcastCard({
 			stale = true;
 		};
 	}, [podcastId, status]);
-
 	if (!podcast) {
 		if (isLoading) {
 			return <WorkingState title={fallbackTitle} label={t("tu_loading_podcast")} />;
 		}
 		return <NoticeState title={t("tu_podcast_unavailable")} message={t("podcast_no_access")} />;
 	}
-
 	const title = podcast.title || fallbackTitle;
-
 	const backOut = <BackOutButton podcastId={podcast.id} hasEpisode={hasEpisode} />;
-
 	switch (podcast.status) {
 		case "pending":
 			return <WorkingState title={title} label={t("f_preparing_brief")} />;
@@ -312,7 +294,6 @@ function LivePodcastCard({
 			);
 	}
 }
-
 /**
  * Tool UI for `generate_podcast`. The tool only prepares the podcast (it
  * returns with the brief awaiting review), so this card follows the lifecycle
@@ -329,11 +310,9 @@ export const GeneratePodcastToolUI = ({
 	const pathname = usePathname();
 	const isPublicRoute = !!pathname?.startsWith("/public/");
 	const title = args.podcast_title || "Nowing Podcast";
-
 	if (status.type === "running" || status.type === "requires-action") {
 		return <WorkingState title={title} label={t("podcast_preparing")} />;
 	}
-
 	if (status.type === "incomplete") {
 		if (status.reason === "cancelled") {
 			return (
@@ -349,22 +328,18 @@ export const GeneratePodcastToolUI = ({
 			);
 		}
 	}
-
 	if (!result) {
 		return <WorkingState title={title} label={t("podcast_preparing")} />;
 	}
-
 	if (result.podcast_id) {
 		if (isPublicRoute) {
 			return <PodcastPlayer podcastId={result.podcast_id} title={result.title || title} />;
 		}
 		return <LivePodcastCard podcastId={result.podcast_id} fallbackTitle={result.title || title} />;
 	}
-
 	if (result.status === "failed" || result.status === "error") {
 		return <PodcastErrorState title={title} error={result.error || t("generation_failed")} />;
 	}
-
 	// Legacy saved chats: results identified only by a Celery task id can't be
 	// recovered through the lifecycle API.
 	return <NoticeState title={t("tu_podcast_unavailable")} message={t("podcast_legacy_version")} />;

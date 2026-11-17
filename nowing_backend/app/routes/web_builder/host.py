@@ -89,7 +89,7 @@ async def host_web_app(
     ws_stmt = select(Workspace).where(Workspace.id == app_entity.workspace_id)
     ws_res = await session.execute(ws_stmt)
     ws = ws_res.scalars().first()
-    if ws and ws.web_builder_enabled is False:
+    if ws and not ws.web_builder_enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Web Builder is disabled for this workspace",
@@ -181,7 +181,7 @@ async def host_web_app_static(
     ws_stmt = select(Workspace).where(Workspace.id == app_entity.workspace_id)
     ws_res = await session.execute(ws_stmt)
     ws = ws_res.scalars().first()
-    if ws and ws.web_builder_enabled is False:
+    if ws and not ws.web_builder_enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Web Builder is disabled for this workspace",

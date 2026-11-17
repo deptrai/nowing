@@ -50,4 +50,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     with op.get_context().autocommit_block():
-        op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {INDEX_NAME}")
+        op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {INDEX_NAME}")  # nosemgrep

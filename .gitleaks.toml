@@ -1,0 +1,21 @@
+title = "Nowing gitleaks allowlist"
+
+[allowlist]
+description = "Test fixtures and vendored content contain captured third-party payloads and documented example tokens, not repo secrets."
+paths = [
+  '''.*/fixtures/''',
+  '''.*/tests/''',
+  '''_bmad/''',
+  '''_bmad-output/''',
+  '''\.kiro/''',
+  '''\.cursor/''',
+  '''\.agents/''',
+  '''\.claude/''',
+  '''\.rules/''',
+  '''nowing_backend/\.env$''',
+]
+# Public placeholder credentials (well-known dev values documented by vendors).
+regexes = [
+  # Azurite storage emulator devstoreaccount1 key (published by Microsoft).
+  '''Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq''',
+]

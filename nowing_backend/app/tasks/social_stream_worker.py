@@ -44,11 +44,11 @@ from app.db import (
     Workspace,
     async_session_maker,
 )
-from app.proprietary.platforms.xactions.constants import (
+from app.proprietary.platforms.medirus.constants import (
     STREAM_SOCIAL_DEAD_LETTER,
     STREAM_SOCIAL_RAW_POSTS,
 )
-from app.proprietary.platforms.xactions.phone_extractor import SocialEntityExtractor
+from app.proprietary.platforms.medirus.phone_extractor import SocialEntityExtractor
 from app.tasks.jev_guardrails import sanitize_pii_content
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 CONSUMER_GROUP_NAME = "social_processors"
 MAX_MESSAGES_PER_BATCH = 100
 AUTOCLAIM_MIN_IDLE_TIME_MS = 60_000  # Reclaim messages stuck in PEL > 60s (Story 35.1)
+SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS = 5
 BATCH_SLEEP_SECONDS = 0.01
 
 SUPPORTED_SCHEMA_VERSION_MAX = 1
@@ -63,6 +64,7 @@ SOCIAL_STREAM_LAG_WARN_THRESHOLD = 1000
 LAG_CHECK_INTERVAL_SECONDS = 30.0
 DLQ_MAXLEN = 50000
 _LAG_STATE: dict[str, float] = {"last_check": float("-inf")}
+_AUTOCLAIM_CURSOR: str = "0-0"
 
 DLQ_REASON_UNSUPPORTED_SCHEMA_VERSION = "UNSUPPORTED_SCHEMA_VERSION"
 DLQ_REASON_INVALID_SCHEMA_VERSION = "INVALID_SCHEMA_VERSION"
@@ -71,6 +73,7 @@ DLQ_REASON_MISSING_TARGET_ID = "MISSING_TARGET_ID"
 DLQ_REASON_MISSING_CONTENT = "MISSING_CONTENT"
 DLQ_REASON_SCHEMA_VALIDATION_ERROR = "SCHEMA_VALIDATION_ERROR"
 DLQ_REASON_RUNTIME_FAILURE = "RUNTIME_FAILURE"
+DLQ_REASON_MAX_DELIVERY_ATTEMPTS = "MAX_DELIVERY_ATTEMPTS"
 
 SOCIAL_LEAD_CAPABILITY_ID = "social.search_leads"
 SOCIAL_LEAD_INTENTS = {"sell", "buy", "hiring", "seeking"}
@@ -109,6 +112,18 @@ class SocialPostEvent(BaseModel):
     scraper_id: str | None = None
     benchmark_health: str | None = None
     benchmark_alert: bool | str | None = False
+
+    @field_validator("target_id", mode="before")
+    @classmethod
+    def _coerce_target_id(cls, v: Any) -> int | None:
+        """Safely coerce target_id to a positive integer or None."""
+        if v is None or isinstance(v, bool):
+            return None
+        try:
+            val = int(v)
+            return val if val > 0 else None
+        except (ValueError, TypeError):
+            return None
 
     @model_validator(mode="before")
     @classmethod
@@ -263,10 +278,14 @@ async def _create_lead_from_social_post(
     # Workspace-level privacy overrides for scraped social leads.
     workspace = await session.get(Workspace, workspace_id)
     workspace_settings = (
-        workspace.icp_criteria if isinstance(workspace, Workspace) and workspace.icp_criteria else {}
+        workspace.icp_criteria
+        if isinstance(workspace, Workspace) and workspace.icp_criteria
+        else {}
     )
     consent_status = workspace_settings.get("social_lead_consent_status", "public")
-    legal_basis = workspace_settings.get("social_lead_legal_basis", "legitimate_interest")
+    legal_basis = workspace_settings.get(
+        "social_lead_legal_basis", "legitimate_interest"
+    )
 
     company_name = (
         event.author_name
@@ -350,7 +369,9 @@ async def _create_lead_from_social_post(
             lead_ids=[lead.id],
         )
     except Exception:  # best-effort lead assignment; log exception and continue
-        logger.exception("Failed to auto-assign social lead in workspace %s", workspace_id)
+        logger.exception(
+            "Failed to auto-assign social lead in workspace %s", workspace_id
+        )
 
     try:
         await session.commit()
@@ -642,7 +663,9 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
                 None,
             )
         if isinstance(raw_version, bool):
-            logger.warning("Invalid schema_version %r (boolean not allowed)", raw_version)
+            logger.warning(
+                "Invalid schema_version %r (boolean not allowed)", raw_version
+            )
             return ValidationResult(
                 False,
                 DLQ_REASON_INVALID_SCHEMA_VERSION,
@@ -650,7 +673,9 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
                 None,
             )
         if isinstance(raw_version, float) and not raw_version.is_integer():
-            logger.warning("Invalid schema_version %r (non-integer float not allowed)", raw_version)
+            logger.warning(
+                "Invalid schema_version %r (non-integer float not allowed)", raw_version
+            )
             return ValidationResult(
                 False,
                 DLQ_REASON_INVALID_SCHEMA_VERSION,
@@ -660,7 +685,9 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
         try:
             version = int(raw_version)
         except (ValueError, TypeError):
-            logger.warning("Invalid schema_version %r; cannot parse integer", raw_version)
+            logger.warning(
+                "Invalid schema_version %r; cannot parse integer", raw_version
+            )
             return ValidationResult(
                 False,
                 DLQ_REASON_INVALID_SCHEMA_VERSION,
@@ -694,7 +721,11 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
     has_content = bool(
         (isinstance(content, str) and content.strip())
         or (isinstance(content_snippet, str) and content_snippet.strip())
-        or (content is not None and not isinstance(content, str) and str(content).strip())
+        or (
+            content is not None
+            and not isinstance(content, str)
+            and str(content).strip()
+        )
         or (
             content_snippet is not None
             and not isinstance(content_snippet, str)
@@ -721,7 +752,7 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
             if int(raw_ws) > 0:
                 has_workspace = True
         except (ValueError, TypeError):
-            pass
+            logger.debug("Non-integer workspace_id %r in stream event", raw_ws)
 
     raw_target = payload.get("target_id")
     has_target = False
@@ -730,7 +761,7 @@ def _validate_event_schema(payload: Any) -> ValidationResult:
             if int(raw_target) > 0:
                 has_target = True
         except (ValueError, TypeError):
-            pass
+            logger.debug("Non-integer target_id %r in stream event", raw_target)
 
     if not has_target:
         if not has_workspace:
@@ -837,7 +868,9 @@ async def _check_stream_lag(redis_client: Any) -> dict[str, Any] | None:
         if isinstance(groups_info, list):
             for g in groups_info:
                 if isinstance(g, dict):
-                    name = g.get("name") if g.get("name") is not None else g.get(b"name")
+                    name = (
+                        g.get("name") if g.get("name") is not None else g.get(b"name")
+                    )
                     if isinstance(name, bytes):
                         name = name.decode("utf-8", errors="replace")
                     if name == CONSUMER_GROUP_NAME:
@@ -917,6 +950,78 @@ def _default_consumer_name() -> str:
     return f"{socket.gethostname()}-{os.getpid()}"
 
 
+async def _get_delivery_counts(redis_client: Any, msg_ids: list[str]) -> dict[str, int]:
+    """Retrieve delivery attempt counts for messages in PEL via a single batched XPENDING range call."""
+    if not msg_ids:
+        return {}
+    # Honor monkeypatched _get_delivery_count in test suites
+    custom_single = globals().get("_get_delivery_count")
+    if custom_single is not None and custom_single is not _default_get_delivery_count:
+        return {mid: await custom_single(redis_client, mid) for mid in msg_ids}
+
+    counts: dict[str, int] = {}
+    try:
+        min_id = msg_ids[0]
+        max_id = msg_ids[-1]
+        batch_count = max(len(msg_ids) * 2, 100) if len(msg_ids) > 1 else 1
+        entries = None
+        if hasattr(redis_client, "xpending_range"):
+            entries = await redis_client.xpending_range(
+                name=STREAM_SOCIAL_RAW_POSTS,
+                groupname=CONSUMER_GROUP_NAME,
+                min=min_id,
+                max=max_id,
+                count=batch_count,
+            )
+        elif hasattr(redis_client, "xpending"):
+            with contextlib.suppress(TypeError):
+                entries = await redis_client.xpending(
+                    name=STREAM_SOCIAL_RAW_POSTS,
+                    groupname=CONSUMER_GROUP_NAME,
+                    min=min_id,
+                    max=max_id,
+                    count=batch_count,
+                )
+
+        if entries and isinstance(entries, list):
+            for entry in entries:
+                mid = None
+                cnt = 1
+                if isinstance(entry, dict):
+                    raw_mid = entry.get("message_id")
+                    mid = (
+                        raw_mid.decode()
+                        if isinstance(raw_mid, bytes)
+                        else str(raw_mid)
+                        if raw_mid is not None
+                        else None
+                    )
+                    cnt = int(
+                        entry.get("times_delivered")
+                        or entry.get("deliveries_count")
+                        or entry.get("delivery_count")
+                        or 1
+                    )
+                elif isinstance(entry, (list, tuple)) and len(entry) >= 4:
+                    raw_id = entry[0]
+                    mid = raw_id.decode() if isinstance(raw_id, bytes) else str(raw_id)
+                    cnt = int(entry[3] or 1)
+                if mid:
+                    counts[mid] = cnt
+    except Exception as exc:
+        logger.warning("Failed checking delivery counts via XPENDING range: %s", exc)
+    return counts
+
+
+async def _default_get_delivery_count(redis_client: Any, msg_id: str) -> int:
+    """Retrieve delivery attempt count for a single message in PEL via XPENDING."""
+    counts = await _get_delivery_counts(redis_client, [msg_id])
+    return counts.get(msg_id, 1)
+
+
+_get_delivery_count = _default_get_delivery_count
+
+
 async def run_social_stream_consumer(
     redis_client: Any | None = None,
     consumer_name: str | None = None,
@@ -930,12 +1035,12 @@ async def run_social_stream_consumer(
     if redis_client is None:
         import redis.asyncio as aioredis
 
-        # The single-writer social raw-posts stream lives on the XActions-side
+        # The single-writer social raw-posts stream lives on the Medirus-side
         # Redis instance, which can differ from the app REDIS_APP_URL
-        # (cache/queues). Prefer the dedicated XACTIONS_STREAM_REDIS_URL when
+        # (cache/queues). Prefer the dedicated MEDIRUS_STREAM_REDIS_URL when
         # set; fall back to REDIS_APP_URL for same-instance deployments.
         stream_url = (
-            getattr(config, "XACTIONS_STREAM_REDIS_URL", "") or config.REDIS_APP_URL
+            getattr(config, "MEDIRUS_STREAM_REDIS_URL", "") or config.REDIS_APP_URL
         )
         redis_client = aioredis.from_url(stream_url, decode_responses=True)
         created_locally = True
@@ -958,12 +1063,16 @@ async def run_social_stream_consumer(
                     exc,
                 )
                 return 0
-        except Exception as exc:  # consumer group creation failure; log exception and return 0
+        except (
+            Exception
+        ) as exc:  # consumer group creation failure; log exception and return 0
             logger.exception("Failed to create Redis consumer group: %s", exc)
             return 0
 
+        global _AUTOCLAIM_CURSOR
         count = min(batch_size, max_messages_per_batch)
         total_processed = 0
+        autoclaim_cursor = _AUTOCLAIM_CURSOR
 
         for _ in range(max(1, max_loops)):
             entries = None
@@ -974,16 +1083,56 @@ async def run_social_stream_consumer(
                     groupname=CONSUMER_GROUP_NAME,
                     consumername=consumer_name,
                     min_idle_time=AUTOCLAIM_MIN_IDLE_TIME_MS,
-                    start_id="0-0",
+                    start_id=autoclaim_cursor,
                     count=count,
                 )
-                if claim_res and len(claim_res) >= 2 and claim_res[1]:
+                if claim_res and len(claim_res) >= 2:
+                    next_start_raw = claim_res[0]
+                    next_start = (
+                        next_start_raw.decode()
+                        if isinstance(next_start_raw, bytes)
+                        else str(next_start_raw or "0-0")
+                    )
+                    reclaimed_entries = claim_res[1]
+                    autoclaim_cursor = "0-0" if next_start == "0-0" else next_start
+                else:
+                    reclaimed_entries = []
+                    autoclaim_cursor = "0-0"
+                _AUTOCLAIM_CURSOR = autoclaim_cursor
+
+                if reclaimed_entries:
                     logger.info(
                         "XAUTOCLAIM reclaimed %d pending messages from dead workers",
-                        len(claim_res[1]),
+                        len(reclaimed_entries),
                     )
-                    entries = [(STREAM_SOCIAL_RAW_POSTS, claim_res[1])]
+                    msg_ids = [mid for mid, _ in reclaimed_entries]
+                    delivery_counts = await _get_delivery_counts(redis_client, msg_ids)
+
+                    claimed_messages = []
+                    for msg_id, payload in reclaimed_entries:
+                        delivery_count = delivery_counts.get(msg_id, 1)
+                        if delivery_count >= SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS:
+                            logger.warning(
+                                "Message %s reached max delivery attempts (%d >= %d); routing to DLQ",
+                                msg_id,
+                                delivery_count,
+                                SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS,
+                            )
+                            await _route_to_dlq(
+                                redis_client=redis_client,
+                                msg_id=msg_id,
+                                payload=payload,
+                                dlq_reason=DLQ_REASON_MAX_DELIVERY_ATTEMPTS,
+                                error=f"Max delivery attempts exceeded: {delivery_count} >= {SOCIAL_STREAM_MAX_DELIVERY_ATTEMPTS}",
+                            )
+                        else:
+                            claimed_messages.append((msg_id, payload))
+
+                    if claimed_messages:
+                        entries = [(STREAM_SOCIAL_RAW_POSTS, claimed_messages)]
             except Exception as claim_exc:
+                autoclaim_cursor = "0-0"
+                _AUTOCLAIM_CURSOR = "0-0"
                 logger.debug("XAUTOCLAIM check skipped or failed: %s", claim_exc)
 
             # Fall back to reading new messages if no pending messages were claimed
@@ -996,7 +1145,9 @@ async def run_social_stream_consumer(
                         count=count,
                         block=block_ms,
                     )
-                except Exception as exc:  # stream read failure; log error and break consumer loop
+                except (
+                    Exception
+                ) as exc:  # stream read failure; log error and break consumer loop
                     logger.error("Error reading from social stream: %s", exc)
                     break
 
@@ -1005,8 +1156,10 @@ async def run_social_stream_consumer(
                 await _check_stream_lag(redis_client)
                 _LAG_STATE["last_check"] = now
 
-            if not entries:
+            if not entries and autoclaim_cursor == "0-0":
                 break
+            if not entries:
+                continue
 
             async with async_session_maker() as session:
                 session_broken = False
@@ -1047,7 +1200,9 @@ async def run_social_stream_consumer(
                                         CONSUMER_GROUP_NAME,
                                         msg_id,
                                     )
-                                except Exception:  # best-effort message ACK; log exception
+                                except (
+                                    Exception
+                                ):  # best-effort message ACK; log exception
                                     logger.exception(
                                         "Failed to ACK social stream message %s",
                                         msg_id,
@@ -1070,7 +1225,9 @@ async def run_social_stream_consumer(
                             try:
                                 await session.rollback()
                             except Exception:
-                                logger.exception("Session rollback failed — marking session as broken")
+                                logger.exception(
+                                    "Session rollback failed — marking session as broken"
+                                )
                                 session_broken = True
                             logger.exception(
                                 "Failed processing social stream message %s: %s",

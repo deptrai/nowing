@@ -8,12 +8,13 @@ All heavy lifting (HMAC, DNC, pg_insert ON CONFLICT) is delegated to
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import case, not_, or_
+from sqlalchemy import case, not_, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
@@ -30,23 +31,64 @@ from app.lead_intelligence.dnc.normalizer import (
 )
 from app.lead_intelligence.dnc.service import DncComplianceService
 from app.lead_intelligence.services.lead_stream_service import generate_lead_hmac
+from app.models.workspaces import VerticalClient, WorkspaceTable
 from app.services.pii.verified_contact_encryption import VerifiedContactEncryption
 
 logger = logging.getLogger(__name__)
 
 
 class LeadItemValidationError(ValueError):
-    """Raised when a batch item is degenerate or malformed."""
+    """Raised when a batch item is degenerate or malformed.
+
+    Carries the structured reject-all payload so callers can return
+    ``{status:'failed', rejected_indexes:[...], reason_map:{idx: reason}}``
+    without re-deriving which rows failed.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        rejected_indexes: list[int] | None = None,
+        reason_map: dict[int, str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.rejected_indexes = rejected_indexes or []
+        self.reason_map = reason_map or {}
+
+    def as_payload(self) -> dict[str, Any]:
+        return {
+            "status": "failed",
+            "rejected_indexes": list(self.rejected_indexes),
+            "reason_map": {
+                str(idx): reason for idx, reason in self.reason_map.items()
+            },
+        }
 
 
 def _reject_degenerate_leads(leads: list[dict[str, Any]]) -> None:
+    """Reject the whole batch when any lead is degenerate (collect-all).
+
+    A lead with no phone, email, domain and company_name carries no
+    dedupe key, so letting the rest of the batch through would silently drop
+    rows. Collect every failing index and reject-all (AD-4).
+    """
+    reason_map: dict[int, str] = {}
     for idx, lead in enumerate(leads):
         if not any(
             lead.get(field) for field in ("phone", "email", "domain", "company_name")
         ):
-            raise LeadItemValidationError(
-                f"Lead at index {idx} is degenerate: phone, email, domain and company_name are all empty"
+            reason_map[idx] = (
+                "degenerate lead: phone, email, domain and company_name are all empty"
             )
+    if reason_map:
+        raise LeadItemValidationError(
+            "Batch rejected: "
+            f"{len(reason_map)} degenerate lead(s) at indexes "
+            f"{sorted(reason_map)}",
+            rejected_indexes=sorted(reason_map),
+            reason_map=reason_map,
+        )
 
 
 def _prepare_lead_record(
@@ -61,11 +103,27 @@ def _prepare_lead_record(
         workspace_id, company, domain
     )
 
+    extra_metadata = item.get("extra_metadata")
+    if extra_metadata is None:
+        extra_metadata = item.get("metadata") or {}
+
+    # Story 42.7: ``save_leads`` passes ``table_id`` as a str UUID — coerce
+    # valid str UUIDs so the Never rule (valid caller table preserved) covers
+    # that path; invalid values are treated as absent → default table.
+    raw_table_id = item.get("table_id")
+    table_id: UUID | str | None = raw_table_id
+    if isinstance(raw_table_id, str) and raw_table_id:
+        try:
+            table_id = UUID(raw_table_id)
+        except ValueError:
+            table_id = None
+
     return {
         "id": uuid4(),
         "workspace_id": workspace_id,
-        "client_id": item.get("client_id", "default"),
-        "table_id": item.get("table_id"),
+        # Normalize: non-str / empty client_id would break grouping + key DDL.
+        "client_id": str(item.get("client_id") or "default"),
+        "table_id": table_id,
         "source": item.get("source", "batch_ingest"),
         "source_url": item.get("source_url"),
         "company_name": company,
@@ -84,6 +142,7 @@ def _prepare_lead_record(
         "phone": item.get("phone"),
         "email": item.get("email"),
         "tax_id": item.get("tax_id"),
+        "extra_metadata": extra_metadata,
     }
 
 
@@ -138,6 +197,12 @@ def _build_batch_upsert_stmt(leads: list[dict[str, Any]]) -> Any:
             "client_id": stmt.excluded.client_id,
             "table_id": func.coalesce(stmt.excluded.table_id, Lead.table_id),
             "source_url": func.coalesce(stmt.excluded.source_url, Lead.source_url),
+            # JSONB top-level merge: excluded keys win, existing keys preserved.
+            # Plain coalesce(excluded, existing) would wipe metadata whenever an
+            # item carries an empty-or-new dict instead of the full old payload.
+            "extra_metadata": func.coalesce(
+                Lead.extra_metadata, text("'{}'::jsonb")
+            ).concat(func.coalesce(stmt.excluded.extra_metadata, text("'{}'::jsonb"))),
             "industry": func.coalesce(stmt.excluded.industry, Lead.industry),
             "location": func.coalesce(stmt.excluded.location, Lead.location),
             "intent_score": stmt.excluded.intent_score,
@@ -209,6 +274,149 @@ class LeadBatchService:
         self._cipher = VerifiedContactEncryption()
         self._dnc = DncComplianceService(secret_key=config.SECRET_KEY)
 
+    async def _null_nonexistent_client_ids(
+        self, session: AsyncSession, contacts: list[dict[str, Any]]
+    ) -> None:
+        """Null out verified_contacts client_id values missing from vertical_clients.
+
+        Leads may carry synthetic client ids ("default", campaign slugs) while
+        verified_contacts enforces an FK on client_id — resolve real ids once
+        per batch so a fake id cannot abort the whole insert.
+        """
+        candidate_ids = {c["client_id"] for c in contacts if c.get("client_id")}
+        if not candidate_ids:
+            return
+        valid_client_ids = set(
+            (
+                await session.execute(
+                    select(VerticalClient.client_id).where(
+                        VerticalClient.client_id.in_(candidate_ids)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for c in contacts:
+            if c["client_id"] not in valid_client_ids:
+                c["client_id"] = None
+
+    async def _resolve_lead_table_ids(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        leads: list[dict[str, Any]],
+    ) -> None:
+        """Assign a ``table_id`` to every lead row missing a valid one (Story 42.7).
+
+        Leads are grouped by ``client_id``; each group resolves to a default
+        ``WorkspaceTable`` keyed ``key = client_id`` (fallback ``"default"``),
+        get-or-created race-safe via ``INSERT ... ON CONFLICT (workspace_id,
+        key) DO NOTHING`` + re-SELECT. Caller-provided ``table_id`` values are
+        preserved when they point at an existing row; stale (deleted) ids fall
+        back to the default table instead of crashing the FK.
+        """
+        if not leads:
+            return
+
+        # 1. Which candidate table_ids actually exist? (stale detection)
+        candidate_ids = {
+            lead["table_id"] for lead in leads if isinstance(lead.get("table_id"), UUID)
+        }
+        existing_ids: set[UUID] = set()
+        if candidate_ids:
+            existing_ids = set(
+                (
+                    await session.execute(
+                        select(WorkspaceTable.id).where(
+                            WorkspaceTable.id.in_(candidate_ids),
+                            WorkspaceTable.workspace_id == workspace_id,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+        # 2. Group rows needing the default table by client_id. Keys are
+        # casefolded so "Acme" and "acme" share one table, and bounded so an
+        # arbitrarily long client_id cannot blow past the Text/varchar DDL.
+        needs_key: dict[str, list[dict[str, Any]]] = {}
+        for lead in leads:
+            table_id = lead.get("table_id")
+            if isinstance(table_id, UUID) and table_id in existing_ids:
+                continue  # valid caller-provided table: keep it (Never rule)
+            raw_key = str(lead.get("client_id") or "default").casefold()
+            key = (
+                raw_key
+                if len(raw_key) <= 128
+                else hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+            )
+            needs_key.setdefault(key, []).append(lead)
+
+        if not needs_key:
+            return
+
+        # 3. Which keys already have a default table?
+        existing_keys = set(
+            (
+                await session.execute(
+                    select(WorkspaceTable.key).where(
+                        WorkspaceTable.workspace_id == workspace_id,
+                        WorkspaceTable.key.in_(list(needs_key)),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        # 4. Get-or-create per missing key (race-safe).
+        key_to_id: dict[str, UUID] = {}
+        missing_keys = [k for k in needs_key if k not in existing_keys]
+        if missing_keys:
+            insert_stmt = (
+                pg_insert(WorkspaceTable)
+                .values(
+                    [
+                        {
+                            "id": uuid4(),
+                            "workspace_id": workspace_id,
+                            "name": ("Leads" if k == "default" else k)[:200],
+                            "key": k,
+                        }
+                        for k in sorted(missing_keys)
+                    ]
+                )
+                .on_conflict_do_nothing(index_elements=["workspace_id", "key"])
+                .returning(WorkspaceTable.id, WorkspaceTable.key)
+            )
+            result = await session.execute(insert_stmt)
+            for row in result.all():
+                key_to_id[row.key] = row.id
+
+        # 5. Re-SELECT for rows lost to a concurrent insert (race window).
+        unresolved_keys = [k for k in needs_key if k not in key_to_id]
+        if unresolved_keys:
+            resolved = (
+                await session.execute(
+                    select(WorkspaceTable.key, WorkspaceTable.id).where(
+                        WorkspaceTable.workspace_id == workspace_id,
+                        WorkspaceTable.key.in_(unresolved_keys),
+                    )
+                )
+            ).all()
+            for row in resolved:
+                key_to_id[row.key] = row.id
+
+        default_id = key_to_id.get("default")
+        for key, rows in needs_key.items():
+            # Unconditional: an unresolved key must never leave a stale (FK
+            # dangling) table_id on the row — default (or None) is safer.
+            table_id = key_to_id.get(key, default_id)
+            for lead in rows:
+                lead["table_id"] = table_id
+
     async def ingest_batch(
         self,
         session: AsyncSession,
@@ -229,7 +437,7 @@ class LeadBatchService:
             for item in leads
         ]
 
-        # 2. DNC batch check (fail-closed)
+        # 1b. DNC batch check (fail-closed)
         dnc_leads = await self._dnc.batch_filter_leads(
             workspace_id,
             [
@@ -250,6 +458,11 @@ class LeadBatchService:
                 lead["status"] = "blacklisted"
                 blocked_hmacs.add(lead["value_hmac"])
             non_blocked.append(lead)
+
+        # 1c. Resolve default tables per client_id AFTER the DNC filter so a
+        # fully-blacklisted batch never creates empty WorkspaceTables
+        # (absent/stale table_id → get-or-create keyed table, Story 42.7).
+        await self._resolve_lead_table_ids(session, workspace_id, non_blocked)
 
         # 3. Bulk upsert leads (all, including blacklisted)
         upsert_stmt = _build_batch_upsert_stmt(non_blocked)
@@ -307,6 +520,8 @@ class LeadBatchService:
             contacts_to_insert.append(contact)
 
         if contacts_to_insert:
+            await self._null_nonexistent_client_ids(session, contacts_to_insert)
+
             contact_upsert = _build_contacts_upsert_stmt(contacts_to_insert)
             if contact_upsert is not None:
                 await session.execute(contact_upsert)

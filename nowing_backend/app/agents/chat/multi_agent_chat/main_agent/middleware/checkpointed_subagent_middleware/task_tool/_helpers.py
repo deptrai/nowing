@@ -10,7 +10,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Awaitable
-from typing import NoReturn, TypeVar
+from typing import NoReturn
 
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphInterrupt
@@ -43,12 +43,9 @@ class SubagentInvokeTimeoutError(Exception):
         self.elapsed_seconds = elapsed_seconds
 
 
-_T = TypeVar("_T")
-
-
 async def _ainvoke_with_timeout[T](
-    coro: Awaitable[_T], *, subagent_type: str, started_at: float
-) -> _T:
+    coro: Awaitable[T], *, subagent_type: str, started_at: float
+) -> T:
     """Apply the subagent invoke timeout to ``coro`` (non-positive disables it).
 
     On expiry the task is cancelled and :class:`SubagentInvokeTimeoutError` is
@@ -64,6 +61,24 @@ async def _ainvoke_with_timeout[T](
     except TimeoutError as exc:
         elapsed = time.perf_counter() - started_at
         raise SubagentInvokeTimeoutError(subagent_type, elapsed) from exc
+
+
+def _synthesize_error_command(exc: BaseException, *, tool_call_id: str) -> Command:
+    """Turn a subagent failure into a ToolMessage the parent can read.
+
+    A raised exception inside the ``task`` tool is re-raised by LangGraph's
+    default tool-error handler and kills the whole chat stream. The parent
+    agent must instead see the failure and decide what to do next (skip the
+    broken source, answer from the sources that worked).
+    """
+    content = (
+        f"Subagent failed: {type(exc).__name__}: {exc}. "
+        "Treat as status=error; continue with the results you already have "
+        "or re-route to a different specialist."
+    )
+    return Command(
+        update={"messages": [ToolMessage(content=content, tool_call_id=tool_call_id)]}
+    )
 
 
 def _synthesize_timeout_command(

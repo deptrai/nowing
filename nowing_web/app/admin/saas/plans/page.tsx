@@ -76,14 +76,14 @@ export default function AdminSaasPlansPage() {
 
 	// Form states
 	const [formTier, setFormTier] = useState("");
-	const [formDocs, setFormDocs] = useState<string>("");
-	const [formMembers, setFormMembers] = useState<string>("");
-	const [formRuns, setFormRuns] = useState<string>("");
-	const [formStorageGb, setFormStorageGb] = useState<string>("");
-	const [formCredits, setFormCredits] = useState<string>("");
-	const [formSources, setFormSources] = useState<string>("");
-	const [formSupport, setFormSupport] = useState<string>("email");
-	const [formPriceDollars, setFormPriceDollars] = useState<string>("0");
+	const [formDocs, setFormDocs] = useState("");
+	const [formMembers, setFormMembers] = useState("");
+	const [formRuns, setFormRuns] = useState("");
+	const [formStorageGb, setFormStorageGb] = useState("");
+	const [formCredits, setFormCredits] = useState("");
+	const [formSources, setFormSources] = useState("");
+	const [formSupport, setFormSupport] = useState("email");
+	const [formPriceDollars, setFormPriceDollars] = useState("0");
 	const [formCurrency, setFormCurrency] = useState<string>("USD");
 
 	const { data: plans, isLoading } = useQuery({
@@ -177,7 +177,7 @@ export default function AdminSaasPlansPage() {
 		setFormCurrency(plan.currency || "USD");
 	};
 
-	const handleCreateSubmit = (e: React.FormEvent) => {
+	const handleCreateSubmit = (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!formTier.trim()) {
 			toast.error(t("plans_tier_required"));
@@ -201,7 +201,7 @@ export default function AdminSaasPlansPage() {
 		createMutation.mutate(payload);
 	};
 
-	const handleUpdateSubmit = (e: React.FormEvent) => {
+	const handleUpdateSubmit = (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!editingPlan) return;
 

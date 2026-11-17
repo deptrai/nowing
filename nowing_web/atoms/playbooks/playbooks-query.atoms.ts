@@ -19,7 +19,7 @@ export const playbooksListAtom = atomFamily((vertical: string) =>
 				DEFAULT_OFFSET,
 				effectiveVertical
 			),
-			enabled: !!workspaceId,
+			enabled: Boolean(workspaceId),
 			staleTime: 60 * 1000,
 			queryFn: async () => {
 				if (!workspaceId) {

@@ -102,7 +102,7 @@ test.describe("Pointer-Based Tabs — Story 4-7", () => {
 
 		// The "new chat" tab should be visible with "New Chat" fallback title
 		await expect(page.locator("[data-tab-id='chat-new']")).toBeVisible({ timeout: 30_000 });
-		await expect(page.getByText("New Chat")).toBeVisible();
+		await expect(page.getByRole("tab", { name: "New chat" })).toBeVisible();
 	});
 
 	test("page reload preserves tabs (v2 localStorage persistence)", async ({

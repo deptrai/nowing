@@ -379,6 +379,7 @@ async def update_search_source_connector(
                 minutes=effective_frequency
             )
     elif (
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         effective_periodic_enabled is False
         and "periodic_indexing_enabled" in update_data
     ):

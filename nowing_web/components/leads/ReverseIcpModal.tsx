@@ -51,13 +51,13 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 }) => {
 	const t = useTranslations("leads");
 	const router = useRouter();
-	const [url, setUrl] = useState<string>("");
-	const [customInstructions, setCustomInstructions] = useState<string>("");
-	const [loading, setLoading] = useState<boolean>(false);
+	const [url, setUrl] = useState("");
+	const [customInstructions, setCustomInstructions] = useState("");
+	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<ReverseIcpResponse | null>(null);
-	const [selectedPersonaIdx, setSelectedPersonaIdx] = useState<number>(0);
-	const [progressStep, setProgressStep] = useState<number>(1);
+	const [selectedPersonaIdx, setSelectedPersonaIdx] = useState(0);
+	const [progressStep, setProgressStep] = useState(1);
 	const [copiedQuery, setCopiedQuery] = useState<string | null>(null);
 
 	// Reset state when modal opens
@@ -82,7 +82,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 
 	if (!isOpen) return null;
 
-	const handleAnalyze = async (e?: React.FormEvent) => {
+	const handleAnalyze = async (e?: React.SubmitEvent) => {
 		if (e) e.preventDefault();
 		const trimmedUrl = url.trim();
 		if (!trimmedUrl) {
@@ -277,7 +277,7 @@ export const ReverseIcpModal: React.FC<ReverseIcpModalProps> = ({
 								<div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
 									<div
 										className="h-full bg-emerald-500 transition-all duration-500"
-										style={{ width: `${progressStep * 33.3}%` }}
+										style={{ width: `${progressStep * 33.3}%` }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic modal position
 									/>
 								</div>
 							</div>

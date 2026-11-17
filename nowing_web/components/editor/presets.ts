@@ -74,8 +74,8 @@ export const readonlyPreset: AnyPluginConfig[] = [
 export type EditorPreset = "full" | "minimal" | "readonly";
 
 /** Map from preset name to plugin array */
-export const presetMap: Record<EditorPreset, AnyPluginConfig[]> = {
+export const presetMap = {
 	full: fullPreset,
 	minimal: minimalPreset,
 	readonly: readonlyPreset,
-};
+} satisfies Record<EditorPreset, AnyPluginConfig[]>;

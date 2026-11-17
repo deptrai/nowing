@@ -43,11 +43,11 @@ export const MultiTableTabs: React.FC<MultiTableTabsProps> = ({
 	onDeleteTable,
 }) => {
 	const t = useTranslations("leads");
-	const [isAdding, setIsAdding] = useState<boolean>(false);
-	const [newTableName, setNewTableName] = useState<string>("");
-	const [newTableIcon, setNewTableIcon] = useState<string>("table");
+	const [isAdding, setIsAdding] = useState(false);
+	const [newTableName, setNewTableName] = useState("");
+	const [newTableIcon, setNewTableIcon] = useState("table");
 	const [editingTableId, setEditingTableId] = useState<string | null>(null);
-	const [editName, setEditName] = useState<string>("");
+	const [editName, setEditName] = useState("");
 
 	const handleStartAdd = () => {
 		setIsAdding(true);

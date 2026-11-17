@@ -36,7 +36,7 @@ export const CompanyGraphDrawer: React.FC<CompanyGraphDrawerProps> = ({
 }) => {
 	const t = useTranslations("leads");
 	const [data, setData] = useState<CompanyGraph | null>(null);
-	const [loading, setLoading] = useState<boolean>(false);
+	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {

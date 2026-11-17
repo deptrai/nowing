@@ -2,7 +2,7 @@ import { app, clipboard, dialog } from 'electron';
 
 export function showErrorDialog(title: string, error: unknown): void {
   const err = error instanceof Error ? error : new Error(String(error));
-  console.error(`${title}:`, err);
+  console.error('[error]', title, err);
 
   if (app.isReady()) {
     const detail = err.stack || err.message;

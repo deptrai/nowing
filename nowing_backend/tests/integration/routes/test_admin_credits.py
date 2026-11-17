@@ -227,7 +227,7 @@ async def test_post_admin_credits_adjust_idempotent_double_submit(
     tx_count = await db_session.execute(
         select(CreditTransaction).where(CreditTransaction.idempotency_key == idem)
     )
-    assert len(tx_count.scalars().all()) == 1
+    assert len(tx_count.scalars().all()) == 1  # nosemgrep
 
     await db_session.refresh(db_workspace)
     assert db_workspace.credit_micros_balance == 25 * 10_000

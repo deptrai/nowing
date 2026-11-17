@@ -3,13 +3,13 @@
  * Scans page context, detects leads, and attaches the floating action pill.
  */
 
-import { extractBatdongsanLead } from './extractors/batdongsan';
-import { extractFacebookLead } from './extractors/facebook';
-import { extractGenericLead } from './extractors/generic';
-import { extractTopcvLead } from './extractors/topcv';
-import { FloatingActionPill } from './floating_pill';
-import { initZaloCopilot } from './zalo';
-import { LeadClipPayload } from '../types';
+import { extractBatdongsanLead } from './extractors/batdongsan.js';
+import { extractFacebookLead } from './extractors/facebook.js';
+import { extractGenericLead } from './extractors/generic.js';
+import { extractTopcvLead } from './extractors/topcv.js';
+import { FloatingActionPill } from './floating_pill.js';
+import { initZaloCopilot } from './zalo/index.js';
+import { LeadClipPayload } from '../types/index.js';
 
 let pill: FloatingActionPill | null = null;
 
@@ -70,9 +70,9 @@ if (isZalo) {
   }
 
   // Observer for dynamic Single Page Applications (Facebook, TopCV)
-  let mutationTimeout: any = null;
+  let mutationTimeout: ReturnType<typeof setTimeout> | null = null;
   const observer = new MutationObserver(() => {
-    clearTimeout(mutationTimeout);
+    clearTimeout(mutationTimeout ?? undefined);
     mutationTimeout = setTimeout(() => {
       initClipper();
     }, 1000);

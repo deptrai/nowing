@@ -168,7 +168,7 @@ export function ImageSkeleton({ maxWidth = "512px" }: { maxWidth?: string }) {
 	return (
 		<Card
 			className="w-full overflow-hidden rounded-2xl border-0 shadow-none select-none animate-pulse"
-			style={{ maxWidth }}
+			style={{ maxWidth }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 		>
 			<div className="aspect-square bg-muted flex items-center justify-center">
 				<ImageIcon className="size-12 text-muted-foreground/30" aria-hidden="true" />
@@ -190,7 +190,7 @@ export function ImageLoading({
 	return (
 		<Card
 			className="w-full overflow-hidden rounded-2xl border-0 shadow-none select-none"
-			style={{ maxWidth }}
+			style={{ maxWidth }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 		>
 			<div className="aspect-square bg-muted flex items-center justify-center">
 				<TextShimmerLoader text={title} size="md" />
@@ -244,7 +244,7 @@ export function Image({
 					"w-full overflow-hidden rounded-2xl border-0 shadow-none select-none",
 					className
 				)}
-				style={{ maxWidth }}
+				style={{ maxWidth }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 			>
 				<div className="aspect-square bg-muted flex items-center justify-center">
 					<div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -263,7 +263,7 @@ export function Image({
 				"group w-full overflow-hidden rounded-2xl border-0 shadow-none select-none cursor-pointer transition-shadow duration-200 hover:shadow-lg",
 				className
 			)}
-			style={{ maxWidth }}
+			style={{ maxWidth }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 			onClick={handleClick}
 			onMouseEnter={() => setIsHovered(true)}
 			onMouseLeave={() => setIsHovered(false)}

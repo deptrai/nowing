@@ -46,6 +46,7 @@ async def resolve_pat(
             PersonalAccessToken.token_hash == hash_pat(token),
             (PersonalAccessToken.expires_at.is_(None))
             | (PersonalAccessToken.expires_at > now),
+            # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
             User.is_active == True,  # noqa: E712
         )
     )
@@ -62,7 +63,7 @@ async def _touch_last_used(token_id: int) -> None:
             )
             await session.commit()
     except Exception:  # best-effort touch last_used_at; doesn't fail caller auth flow
-        logger.exception("Failed to update PAT last_used_at for token %s", token_id)
+        logger.exception("Failed to update PAT last_used_at for token %s", token_id)  # nosemgrep
 
 
 def maybe_touch_last_used(pat: PersonalAccessToken) -> None:

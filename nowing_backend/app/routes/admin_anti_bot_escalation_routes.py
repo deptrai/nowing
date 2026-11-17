@@ -11,7 +11,6 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from app.rate_limiter import limiter
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -29,6 +28,7 @@ from app.db import (
     get_async_session,
 )
 from app.file_storage.factory import get_storage_backend
+from app.rate_limiter import limiter
 from app.schemas.anti_bot_escalation import (
     AntiBotEscalationListResponse,
     AntiBotEscalationRead,

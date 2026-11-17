@@ -26,6 +26,17 @@ def _env_flag(name: str, default: bool) -> bool:
     return raw.strip().lower() == "true"
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        val = int(raw.strip())
+        return max(0, val)
+    except ValueError:
+        return default
+
+
 def _env_fallback_backend() -> str:
     """Read DECISION_FALLBACK_BACKEND, failing CLOSED on a bad value.
 
@@ -95,6 +106,14 @@ DECISION_TIMEOUT_SECONDS = (
     max(0.1, _DECISION_TIMEOUT_RAW) if math.isfinite(_DECISION_TIMEOUT_RAW) else 5.0
 )
 
+# Demote-to-tail RAG cap (Story 39.4 / retro item AI-39.10):
+# Cap on number of relevance-negative documents kept at tail of RAG results
+# to bound LLM context token inflation. Default 5 docs (~460 tokens).
+DECISION_RAG_DEMOTED_CAP = _env_int("DECISION_RAG_DEMOTED_CAP", 5)
+
+# Optional switch to hard-drop irrelevant docs instead of demote-to-tail
+DECISION_FILTER_DROP_IRRELEVANT = _env_flag("DECISION_FILTER_DROP_IRRELEVANT", False)
+
 # Per-task flags — default on so DECISION_ENABLED=true is the single
 # opt-in; each flag selectively disables its task.
 DECISION_ROUTING_ENABLED = _env_flag("DECISION_ROUTING_ENABLED", True)
@@ -131,20 +150,34 @@ def decision_task_enabled(task: str) -> bool:
     return _env_flag(f"DECISION_{key.upper()}_ENABLED", _DECISION_TASK_DEFAULTS[key])
 
 
+def decision_rag_demoted_cap() -> int:
+    """Max relevance-negative docs demoted to tail in RAG, read fresh."""
+    return _env_int("DECISION_RAG_DEMOTED_CAP", 5)
+
+
+def decision_drop_irrelevant() -> bool:
+    """Whether to hard-drop irrelevant docs on RAG surfaces, read fresh."""
+    return _env_flag("DECISION_FILTER_DROP_IRRELEVANT", False)
+
+
 __all__ = [
     "DECISION_BACKEND",
     "DECISION_DAILY_COST_ALERT_USD",
     "DECISION_ENABLED",
     "DECISION_ENTITY_ENABLED",
     "DECISION_FALLBACK_BACKEND",
+    "DECISION_FILTER_DROP_IRRELEVANT",
     "DECISION_FILTER_ENABLED",
     "DECISION_INTENT_ENABLED",
     "DECISION_JEV_COST_PER_BTOK_INPUT_USD",
     "DECISION_JEV_MODEL",
     "DECISION_LLM_MODEL",
+    "DECISION_RAG_DEMOTED_CAP",
     "DECISION_ROUTING_ENABLED",
     "DECISION_TIMEOUT_SECONDS",
     "DECISION_VOICE_ENABLED",
+    "decision_drop_irrelevant",
     "decision_enabled",
+    "decision_rag_demoted_cap",
     "decision_task_enabled",
 ]

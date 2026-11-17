@@ -243,7 +243,10 @@ class PrivateProviderService:
                     if verdict.action is GuardrailAction.DROP:
                         # Relevance-negative demotes to the tail instead of
                         # dropping (same recall-safe rule as connector RAG).
-                        if "irrelevant" in verdict.reasons:
+                        if (
+                            "irrelevant" in verdict.reasons
+                            and not decision_config.decision_drop_irrelevant()
+                        ):
                             demoted.append(chunk)
                         continue
                     if verdict.action is GuardrailAction.MASK:
@@ -253,7 +256,8 @@ class PrivateProviderService:
                             continue
                         chunk.content = verdict.masked_text
                     kept_chunks.append(chunk)
-                chunks = kept_chunks + demoted
+                cap = decision_config.decision_rag_demoted_cap()
+                chunks = kept_chunks + demoted[:cap]
             except Exception:
                 logger.warning(
                     "[content_filter] private_provider filter failed — "
@@ -345,9 +349,7 @@ class PrivateProviderService:
             return connector_doc_types
 
         # Both supplied: restrict the search to the overlap, if any.
-        intersection = [
-            dt for dt in connector_doc_types if dt in source_doc_types
-        ]
+        intersection = [dt for dt in connector_doc_types if dt in source_doc_types]
         if not intersection:
             return []
         return intersection
@@ -468,7 +470,9 @@ class PrivateProviderService:
                 query_embedding=query_embedding,
                 top_k=memory_top_k,
             )
-        except Exception:  # best-effort memory search; continue with empty memory results
+        except (
+            Exception
+        ):  # best-effort memory search; continue with empty memory results
             logger.warning(
                 "Memory search failed for workspace %d", workspace_id, exc_info=True
             )
@@ -483,7 +487,9 @@ class PrivateProviderService:
                     query_embedding=query_embedding,
                     top_k=memory_top_k,
                 )
-            except Exception:  # best-effort user memory search; continue with empty results
+            except (
+                Exception
+            ):  # best-effort user memory search; continue with empty results
                 logger.warning(
                     "User-scoped memory search failed for user %s in workspace %d",
                     user_id,

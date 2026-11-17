@@ -173,18 +173,18 @@ class SocialPost(Base, TimestampMixin):
     target = relationship("SocialMonitoredTarget", back_populates="posts")
 
 
-class XActionsProxyBinding(Base, TimestampMixin):
-    """Binds a Nowing workspace to an XActions account and proxy (Story 21.8e)."""
+class MedirusProxyBinding(Base, TimestampMixin):
+    """Binds a Nowing workspace to an Medirus account and proxy (Story 21.8e)."""
 
-    __tablename__ = "xactions_proxy_bindings"
+    __tablename__ = "medirus_proxy_bindings"
 
     __table_args__ = (
         UniqueConstraint(
             "workspace_id", "account_id", "platform",
-            name="uq_xactions_proxy_binding",
+            name="uq_medirus_proxy_binding",
         ),
-        Index("idx_xactions_proxy_bindings_workspace_id", "workspace_id"),
-        Index("idx_xactions_proxy_bindings_active", "is_active"),
+        Index("idx_medirus_proxy_bindings_workspace_id", "workspace_id"),
+        Index("idx_medirus_proxy_bindings_active", "is_active"),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -199,7 +199,7 @@ class XActionsProxyBinding(Base, TimestampMixin):
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
     last_bound_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
-    workspace = relationship("Workspace", back_populates="xactions_proxy_bindings")
+    workspace = relationship("Workspace", back_populates="medirus_proxy_bindings")
 
 class ZaloConnection(Base, TimestampMixin):
     """Zalo Official Account connection for a workspace (Story 21.6 / AD-41)."""

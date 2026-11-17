@@ -28,7 +28,7 @@ export function findZaloInput(): HTMLElement | null {
 }
 
 export function getZaloInputDraft(input: HTMLElement): string {
-  return (input.innerText || '').trim();
+  return (input.textContent || '').trim();
 }
 
 function moveCaretToEnd(el: HTMLElement) {
@@ -52,6 +52,7 @@ function dispatchInsertFallback(el: HTMLElement, text: string) {
       composed: true,
     })
   );
+  // pi-lens-ignore: ast-grep:prefer-dom-node-text-content -- innerText write preserves newlines in contenteditable
   el.innerText = text;
   el.dispatchEvent(
     new InputEvent('input', {
@@ -80,6 +81,7 @@ export function insertIntoZaloComposer(
   let payload = text;
   if (mode === 'overwrite') {
     // selectAll within the focused contenteditable, then insertText replaces.
+    // pi-lens-ignore: typescript:6387 -- execCommand required for contenteditable paste
     document.execCommand('selectAll', false);
   } else {
     moveCaretToEnd(input);
@@ -87,6 +89,7 @@ export function insertIntoZaloComposer(
     if (existing) payload = `\n${text}`;
   }
 
+  // pi-lens-ignore: typescript:6387 -- execCommand required for contenteditable paste
   const ok = document.execCommand('insertText', false, payload);
   if (!ok) {
     const draft = mode === 'append' ? getZaloInputDraft(input) : '';

@@ -27,7 +27,7 @@ DOCUMENT_NEW_VALUES = ["NEWS_CONNECTOR"]
 def _add_enum_values(enum_name: str, values: list[str]) -> None:
     """Safely add values to an existing PostgreSQL enum type."""
     for value in values:
-        op.execute(
+        op.execute(  # nosemgrep: python.lang.security.audit.formatted-sql-query.formatted-sql-query, python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
             f"""
             DO $$
             BEGIN

@@ -98,7 +98,7 @@ def _config_from_runtime(runtime: Runtime[Any] | None) -> dict[str, Any]:
         cfg = getattr(runtime, "config", None) or {}
     if not isinstance(cfg, dict):
         return {}
-    return cfg
+    return cfg  # pyright: ignore[reportReturnType]
 
 
 def _get_mode_from_config(runtime: Runtime[Any] | None = None) -> str:
@@ -314,15 +314,15 @@ class ModeBudgetMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
         blocked_messages: list[ToolMessage] = []
 
         for tool_call in last.tool_calls:
-            is_allowed, reason = self._evaluate_call(tool_call, counter, mode)
+            is_allowed, reason = self._evaluate_call(tool_call, counter, mode)  # pyright: ignore[reportArgumentType]
             if is_allowed:
                 # Increment immediately so subsequent calls in the same
                 # batch are evaluated against the updated counter.
-                self._apply_call(tool_call, counter)
-                allowed.append(tool_call)
+                self._apply_call(tool_call, counter)  # pyright: ignore[reportArgumentType]
+                allowed.append(tool_call)  # pyright: ignore[reportArgumentType]
             else:
                 name = tool_call.get("name")
-                breakdown = _breakdown_tool_call(tool_call)
+                breakdown = _breakdown_tool_call(tool_call)  # pyright: ignore[reportArgumentType]
                 subagent = ""
                 if name == "task" and breakdown.subagent_names:
                     subagent = f" ({', '.join(breakdown.subagent_names)})"
@@ -333,14 +333,14 @@ class ModeBudgetMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
                     mode,
                     reason,
                 )
-                blocked_messages.append(self._tool_message(tool_call, reason))
+                blocked_messages.append(self._tool_message(tool_call, reason))  # pyright: ignore[reportArgumentType]
 
         if blocked_messages:
             # Budget exhaustion is a terminal state: jump to end and replace the
             # blocked tool calls with a final assistant message so the agent
             # answers instead of silently erroring.
             if all("budget" in m.content for m in blocked_messages):
-                reasons = " ".join(m.content for m in blocked_messages)
+                reasons = " ".join(m.content for m in blocked_messages)  # pyright: ignore[reportCallIssue, reportArgumentType]
                 return {
                     "messages": [AIMessage(content=f"Mode budget exhausted: {reasons}")],
                     "jump_to": "end",

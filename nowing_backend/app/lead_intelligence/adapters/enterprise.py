@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 from typing import Any
 
+from app.capabilities.core.medirus_proxy import medirus_scrape_or_local
 from app.lead_intelligence.adapters.base import (
     ContactCandidate,
     LeadSourceAdapter,
@@ -24,12 +26,14 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
 
     source_name = "enterprise"
     category = LeadSourceCategory.ENTERPRISE
-    supported_provinces = ["*"]
-    coverage_quality_by_location = {
-        "HN": "medium",
-        "SG": "medium",
-        "DN": "low",
-    }
+    supported_provinces = ("*",)
+    coverage_quality_by_location = MappingProxyType(
+        {
+            "HN": "medium",
+            "SG": "medium",
+            "DN": "low",
+        }
+    )
 
     def __init__(self) -> None:
         self.last_execution_status = "ok"
@@ -45,30 +49,30 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
         from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
         from app.proprietary.platforms.masothue.scraper import scrape_masothue
 
-        inp = MasothueSearchInput(keyword=query, max_items=min(limit, 20))
-        output = await scrape_masothue(inp)
+        inp = MasothueSearchInput(query=query, max_items=min(limit, 20))
 
-        if output.degraded:
+        async def _local() -> dict[str, Any]:
+            output = await scrape_masothue(inp)
+            return {
+                "items": [comp.to_output() for comp in output.items],
+                "degraded": output.degraded,
+                "degradation_reason": output.degradation_reason,
+            }
+
+        raw = await medirus_scrape_or_local(
+            platform="masothue",
+            action="search",
+            args={"query": query, "max_items": min(limit, 20)},
+            local_fn=_local,
+        )
+
+        if raw.get("degraded"):
             logger.warning(
-                "Masothue scraper degraded: %s", output.degradation_reason
+                "Masothue scraper degraded: %s", raw.get("degradation_reason")
             )
             self.last_execution_status = "degraded"
 
-        results = []
-        for comp in output.companies:
-            results.append(
-                {
-                    "id": comp.tax_code,
-                    "tax_id": comp.tax_code,
-                    "company_name": comp.company_name,
-                    "representative": comp.representative,
-                    "phone": comp.phone,
-                    "address": comp.address,
-                    "industry": comp.industry_name,
-                    "status": comp.status,
-                }
-            )
-        return results
+        return raw.get("items", []) or []
 
     async def search_leads(
         self,
@@ -97,7 +101,17 @@ class EnterpriseProcurementLeadAdapter(LeadSourceAdapter):
                         source_id=str(
                             item.get("tax_id") or item.get("id") or f"ent_{idx}"
                         ),
-                        data=item,
+                        data={
+                            **item,
+                            "id": item.get("tax_code") or item.get("id"),
+                            "tax_id": item.get("tax_code") or item.get("tax_id"),
+                            "company_name": item.get("name")
+                            or item.get("company_name"),
+                            "representative": item.get("legal_representative")
+                            or item.get("representative"),
+                            "industry": item.get("main_industry")
+                            or item.get("industry"),
+                        },
                         category=self.category,
                     )
                     for idx, item in enumerate(items)

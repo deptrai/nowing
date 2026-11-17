@@ -17,6 +17,6 @@ def test_record_scraper_ingest_failure():
         record_scraper_ingest_failure("batdongsan", "captcha_detected")
 
     mock_add.assert_called_once()
-    args, kwargs = mock_add.call_args
+    args, _kwargs = mock_add.call_args
     assert args[1] == 1  # count increment
     assert args[2] == {"platform": "batdongsan", "reason": "captcha_detected"}

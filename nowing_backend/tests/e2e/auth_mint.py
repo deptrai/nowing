@@ -22,6 +22,7 @@ from sqlalchemy import select
 
 from app.db import User, async_session_maker
 from app.users import get_jwt_strategy
+from app.utils.refresh_tokens import create_refresh_token
 
 _logger = logging.getLogger("nowing.e2e.auth_mint")
 
@@ -32,6 +33,7 @@ class MintRequest(BaseModel):
 
 class MintResponse(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
 
 
@@ -59,7 +61,15 @@ async def mint_test_token(
             status_code=404, detail=f"e2e user {body.email!r} not seeded"
         )
     token = await get_jwt_strategy().write_token(user)
-    return MintResponse(access_token=token)
+    # Ensure test user always has sufficient credit for E2E runs (Story 21.3)
+    if user.credit_micros_balance < 20_000_000:
+        user.credit_micros_balance = 100_000_000
+        user.credit_micros_reserved = 0
+        await session.commit()
+    # The browser session also needs a refresh cookie: without one, the
+    # client logs out on the first 401 after the access token expires.
+    refresh = await create_refresh_token(user.id)
+    return MintResponse(access_token=token, refresh_token=refresh)
 
 
 def install(app: FastAPI) -> None:

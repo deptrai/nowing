@@ -51,7 +51,7 @@ const StdioConfigSchema = z.object({
 
 const HttpConfigSchema = z.object({
 	name: z.string().optional(),
-	url: z.string().url("URL must be a valid URL"),
+	url: z.url("URL must be a valid URL"),
 	headers: z.record(z.string(), z.string()).optional().default({}),
 	transport: z.enum(["streamable-http", "http", "sse"]),
 });
@@ -264,7 +264,7 @@ export const getConfigCacheStats = () => {
 	return {
 		size: configCache.size,
 		entries: Array.from(configCache.entries()).map(([key, value]) => ({
-			configPreview: key.substring(0, 50) + (key.length > 50 ? "..." : ""),
+			configPreview: key.slice(0, 50) + (key.length > 50 ? "..." : ""),
 			timestamp: new Date(value.timestamp).toISOString(),
 			age: Date.now() - value.timestamp,
 		})),

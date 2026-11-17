@@ -6,7 +6,7 @@
  * regions, then a whole-body fallback scan for Vietnamese mobile numbers.
  */
 
-import { extractVietnamesePhones } from '../../utils/normalizer';
+import { extractVietnamesePhones } from '../../utils/normalizer.js';
 
 // Selectors ordered by likelihood of containing the *active* conversation's
 // identity. Semantic attributes first per AD-118; class fragments are a
@@ -56,7 +56,7 @@ export function detectActiveZaloPhone(): string | null {
   // Real Zalo Web renders chat links either as `<a class="text-is-link">`
   // with no href (URL lives in the anchor text) or as plain text inside
   // the message bubble — so scan anchors first, then leaf text nodes.
-  for (const anchor of Array.from(document.querySelectorAll('a'))) {
+  for (const anchor of document.querySelectorAll('a')) {
     const phone =
       phoneFromZaloLink(anchor.getAttribute('href')) ||
       phoneFromZaloLink(anchor.textContent);
@@ -78,7 +78,7 @@ export function detectActiveZaloPhone(): string | null {
 
   // 3. Header-ish regions: text content + title/aria attributes.
   for (const selector of HEADER_CANDIDATE_SELECTORS) {
-    for (const el of Array.from(document.querySelectorAll(selector))) {
+    for (const el of document.querySelectorAll(selector)) {
       const phone =
         extractPhone(el.textContent) ||
         extractPhone(el.getAttribute('title')) ||

@@ -29,12 +29,12 @@ def _owner_clause(table: str) -> str:
 
 
 def _create_policy(table: str, with_bypass: bool) -> None:
-    op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")
+    op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")  # nosemgrep
     bypass = ""
     if with_bypass:
         bypass = " OR current_setting('app.internal_service', true) = 'true'"
     owner = _owner_clause(table)
-    op.execute(
+    op.execute(  # nosemgrep
         f"""
         CREATE POLICY {table}_client_isolation_policy
         ON {table}

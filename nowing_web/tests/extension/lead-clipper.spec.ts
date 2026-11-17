@@ -16,7 +16,10 @@ test.describe("Nowing Lead Clipper Extension E2E", () => {
 		// Verify the extension title & branding header
 		await expect(page.locator("body")).toBeVisible();
 		await expect(
-			page.getByText(/Nowing/i).or(page.getByText(/Lead Clipper/i)).first()
+			page
+				.getByText(/Nowing/i)
+				.or(page.getByText(/Lead Clipper/i))
+				.first()
 		).toBeVisible({ timeout: 10_000 });
 	});
 

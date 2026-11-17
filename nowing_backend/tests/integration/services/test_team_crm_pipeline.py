@@ -12,13 +12,15 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Lead, LeadActivityLog, LeadPipelineStage, User, Workspace, WorkspaceMembership
-from app.routes.lead_pipeline_routes import _ensure_default_stages
-from app.schemas.lead_pipeline import (
-    LeadActivityLogCreate,
-    LeadStageTransitionRequest,
+from app.db import (
+    Lead,
+    LeadActivityLog,
+    LeadPipelineStage,
+    User,
+    Workspace,
+    WorkspaceMembership,
 )
-from app.services.lead_assignment_service import LeadAssignmentService
+from app.routes.lead_pipeline_routes import _ensure_default_stages
 from app.services.workspace_credit_service import WorkspaceCreditService
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
@@ -48,11 +50,18 @@ async def test_pipeline_stages_auto_seeding(
     db_session: AsyncSession,
     db_workspace: Workspace,
 ):
-    """Pipeline stages are auto-seeded with 5 default stages ordered by position."""
+    """Pipeline stages are auto-seeded with 6 default stages ordered by position."""
     stages = await _ensure_default_stages(db_session, db_workspace.id)
-    assert len(stages) == 5
-    assert [s.slug for s in stages] == ["new", "approaching", "qualified", "won", "lost"]
-    assert [s.position for s in stages] == [0, 1, 2, 3, 4]
+    assert len(stages) == 6
+    assert [s.slug for s in stages] == [
+        "new",
+        "approaching",
+        "qualified",
+        "meeting_scheduled",
+        "won",
+        "lost",
+    ]
+    assert [s.position for s in stages] == [0, 1, 2, 3, 4, 5]
 
 
 async def test_occ_stage_transition_success_and_activity_log(
@@ -80,7 +89,10 @@ async def test_occ_stage_transition_success_and_activity_log(
         actor_user_id=db_user.id,
         activity_type="stage_changed",
         title=f"Chuyển trạng thái sang '{stage_approaching.name}'",
-        details={"from_stage_id": str(stage_new.id), "to_stage_id": str(stage_approaching.id)},
+        details={
+            "from_stage_id": str(stage_new.id),
+            "to_stage_id": str(stage_approaching.id),
+        },
     )
     db_session.add(log)
     await db_session.flush()
@@ -91,10 +103,14 @@ async def test_occ_stage_transition_success_and_activity_log(
     assert lead.stage_id == stage_approaching.id
 
     logs = (
-        await db_session.execute(
-            select(LeadActivityLog).where(LeadActivityLog.lead_id == lead.id)
+        (
+            await db_session.execute(
+                select(LeadActivityLog).where(LeadActivityLog.lead_id == lead.id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(logs) == 1
     assert logs[0].activity_type == "stage_changed"
     assert logs[0].details["to_stage_id"] == str(stage_approaching.id)
@@ -146,13 +162,17 @@ async def test_member_spend_cap_and_lead_capacity_persistence(
 ):
     """Updating member spend cap and lead capacity persists values on WorkspaceMembership."""
     membership = (
-        await db_session.execute(
-            select(WorkspaceMembership).where(
-                WorkspaceMembership.workspace_id == db_workspace.id,
-                WorkspaceMembership.user_id == db_user.id,
+        (
+            await db_session.execute(
+                select(WorkspaceMembership).where(
+                    WorkspaceMembership.workspace_id == db_workspace.id,
+                    WorkspaceMembership.user_id == db_user.id,
+                )
             )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     assert membership is not None
 
     credit_service = WorkspaceCreditService(db_session)

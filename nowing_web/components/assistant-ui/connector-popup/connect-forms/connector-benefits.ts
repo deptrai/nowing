@@ -3,7 +3,7 @@
  * Returns null if no benefits are defined for the connector
  */
 export function getConnectorBenefits(connectorType: string): string[] | null {
-	const benefits: Record<string, string[]> = {
+	const benefits = {
 		LINEAR_CONNECTOR: [
 			"Search through all your Linear issues and comments",
 			"Access issue titles, descriptions, and full discussion threads",
@@ -111,7 +111,7 @@ export function getConnectorBenefits(connectorType: string): string[] | null {
 			"Each device is identifiable, so you can revoke a vault from one machine",
 			"Full support for your vault's folder structure",
 		],
-	};
+	} satisfies Record<string, string[]>;
 
-	return benefits[connectorType] || null;
+	return (benefits as Record<string, string[]>)[connectorType] || null;
 }

@@ -40,6 +40,24 @@ FREE_EMAIL_DOMAINS = frozenset(
     }
 )
 
+AGGREGATOR_PLATFORM_DOMAINS = frozenset(
+    {
+        "batdongsan.com.vn",
+        "itviec.com",
+        "topcv.vn",
+        "vietnamworks.com",
+        "chotot.vn",
+        "chotot.com",
+        "muaban.net",
+        "muasamcong.gov.vn",
+        "facebook.com",
+        "tiktok.com",
+        "shopee.vn",
+        "telegram.org",
+        "t.me",
+    }
+)
+
 
 def compute_phone_hmac(phone: str, secret: str = "nowing_default_lead_secret") -> str:
     """
@@ -103,10 +121,14 @@ class EntityDeduplicationService:
             ):
                 keys.append(f"tax:{cleaned_tax}")
 
-        # 3. Canonical Domain key (exclude generic consumer email domains)
+        # 3. Canonical Domain key (exclude generic consumer email & portal domains)
         if lead.canonical_domain:
             cleaned_domain = lead.canonical_domain.strip().lower()
-            if cleaned_domain not in FREE_EMAIL_DOMAINS and "." in cleaned_domain:
+            if (
+                cleaned_domain not in FREE_EMAIL_DOMAINS
+                and cleaned_domain not in AGGREGATOR_PLATFORM_DOMAINS
+                and "." in cleaned_domain
+            ):
                 keys.append(f"domain:{cleaned_domain}")
 
         # 4. Primary Email key

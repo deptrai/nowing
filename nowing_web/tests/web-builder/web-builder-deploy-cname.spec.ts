@@ -133,19 +133,19 @@ test.describe("Story 27.1c: Web App Deploy & Custom CNAME", () => {
 
 		await page.goto("/dashboard/1/web-builder");
 
-		// Verify app card is visible
-		const appCard = page.locator(`[data-testid="app-card-${app.id}"]`);
+		// The app list renders plain <button> cards keyed by app name (no testids).
+		const appCard = page.getByRole("button", { name: new RegExp(app.name) });
 		await expect(appCard).toBeVisible();
 
-		// Click Publish button
-		const publishBtn = page.locator('[data-testid="publish-btn"]');
+		// Click Publish button (label is t("publish") = "1-Click Publish")
+		const publishBtn = page.getByRole("button", { name: /publish/i });
 		await expect(publishBtn).toBeVisible();
 		await publishBtn.click();
 
 		// Should show success toast or live indicator
-		await expect(page.locator("text=LIVE HTTPS").or(page.locator("text=Live HTTPS"))).toBeVisible({
-			timeout: 5000,
-		});
+		await expect(
+			page.locator("text=LIVE HTTPS").or(page.locator("text=Live HTTPS")).first()
+		).toBeVisible({ timeout: 5000 });
 	});
 
 	test("AC-2: User configures custom domain and sees CNAME instruction target", async ({
@@ -185,8 +185,15 @@ test.describe("Story 27.1c: Web App Deploy & Custom CNAME", () => {
 		);
 
 		await page.goto("/dashboard/1/web-builder");
-		await expect(page.locator('[data-testid="web-builder-upgrade-prompt"]')).toBeVisible({
-			timeout: 5000,
+		// react-query retries the apps list ~3x before surfacing the 403 — allow
+		// the gate enough time to appear.
+		await expect(
+			page
+				.locator('[data-testid="web-builder-upgrade-prompt"]')
+				.or(page.locator('[data-testid="web-builder-disabled-gate"]'))
+				.first()
+		).toBeVisible({
+			timeout: 20_000,
 		});
 	});
 });

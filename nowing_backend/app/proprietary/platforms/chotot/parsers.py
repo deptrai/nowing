@@ -152,8 +152,10 @@ def _build_detail_url(list_id: Any, category: str = "bds") -> str | None:
 
 def _seller_type(raw: dict[str, Any]) -> str | None:
     """Classify seller as ``company`` / ``individual`` / ``shop``."""
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     if raw.get("company_ad") is True:
         return "company"
+    # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
     if raw.get("shop") or raw.get("is_shop_verified") is True:
         return "shop"
     return "individual"

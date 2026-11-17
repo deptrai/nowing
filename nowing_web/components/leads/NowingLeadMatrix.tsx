@@ -14,7 +14,6 @@ import {
 	MessageSquare,
 	Minimize2,
 	Network,
-	Phone,
 	RefreshCw,
 	Search,
 	ShieldAlert,
@@ -22,6 +21,7 @@ import {
 	Sparkles,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import NextLink from "next/link";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -35,7 +35,7 @@ import {
 } from "@/atoms/leads/leads-canvas.atoms";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Lead } from "@/contracts/types/leads.types";
-import { cn, copyToClipboard } from "@/lib/utils";
+import { cn, copyToClipboard, isAllowedUrl } from "@/lib/utils";
 import { PhoneUnlockPill } from "./PhoneUnlockPill";
 import { ShimmerSkeletonRow } from "./ShimmerSkeletonRow";
 import { SendExportDropdown } from "./send-export-dropdown";
@@ -63,6 +63,7 @@ export interface NowingLeadMatrixProps {
 
 const SOURCE_OPTIONS: Array<{ id: string; icon: string }> = [
 	{ id: "all", icon: "🔍" },
+	{ id: "websets", icon: "🌐" },
 	{ id: "batdongsan", icon: "🏠" },
 	{ id: "chotot", icon: "🛒" },
 	{ id: "facebook", icon: "👥" },
@@ -159,18 +160,16 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 		return leads.filter((lead) => {
 			// Source filter
 			if (sourceFilter !== "all") {
-				if (sourceFilter === "batdongsan" && !lead.source.includes("batdongsan")) return false;
-				if (sourceFilter === "chotot" && !lead.source.includes("chotot")) return false;
-				if (sourceFilter === "facebook" && !lead.source.includes("facebook")) return false;
-				if (sourceFilter === "telegram" && !lead.source.includes("telegram")) return false;
-				if (
-					sourceFilter === "topcv" &&
-					!lead.source.includes("topcv") &&
-					!lead.source.includes("itviec")
-				)
+				const src = (lead.source || "").toLowerCase();
+				if (sourceFilter === "websets" && !src.includes("webset")) return false;
+				if (sourceFilter === "batdongsan" && !src.includes("batdongsan")) return false;
+				if (sourceFilter === "chotot" && !src.includes("chotot")) return false;
+				if (sourceFilter === "facebook" && !src.includes("facebook")) return false;
+				if (sourceFilter === "telegram" && !src.includes("telegram")) return false;
+				if (sourceFilter === "topcv" && !src.includes("topcv") && !src.includes("itviec"))
 					return false;
-				if (sourceFilter === "tender" && !lead.source.includes("muasamcong")) return false;
-				if (sourceFilter === "linkedin" && !lead.source.includes("linkedin")) return false;
+				if (sourceFilter === "tender" && !src.includes("muasamcong")) return false;
+				if (sourceFilter === "linkedin" && !src.includes("linkedin")) return false;
 			}
 			// Status filter
 			if (statusFilter !== "all" && lead.status !== statusFilter) {
@@ -246,11 +245,17 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 	};
 
 	const handleOpenLarkSync = () => {
-		window.open("https://open.larksuite.com/", "_blank");
+		if (isAllowedUrl("https://open.larksuite.com/")) {
+			// pi-lens-ignore: ast-grep:no-open-redirect -- literal trusted larksuite URL
+			window.open("https://open.larksuite.com/", "_blank", "noopener,noreferrer");
+		}
 	};
 
 	const handleOpenGoogleSheetsSync = () => {
-		window.open("https://sheets.google.com/", "_blank");
+		if (isAllowedUrl("https://sheets.google.com/")) {
+			// pi-lens-ignore: ast-grep:no-open-redirect -- literal trusted google sheets URL
+			window.open("https://sheets.google.com/", "_blank", "noopener,noreferrer");
+		}
 	};
 
 	const handleShareLink = async () => {
@@ -512,6 +517,30 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 			{/* Main High-Density Fluid Data Matrix Grid */}
 			<div className="flex-1 overflow-auto bg-background/50 relative scrollbar-thin">
 				{filteredLeads.length === 0 && shimmerCount === 0 ? (
+				leads.length === 0 && !isLoading && !searchQuery && sourceFilter === "all" && statusFilter === "all" ? (
+					/* Story 42.7: workspace truly has no leads → CTA to hunt via chat */
+					<div className="flex flex-col items-center justify-center h-full p-8 text-center select-none">
+						<div className="size-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
+							<Sparkles
+								className="size-5 text-emerald-600 dark:text-emerald-400"
+								aria-hidden="true"
+							/>
+						</div>
+						<h3 className="text-sm font-bold text-foreground">
+							{t("empty_no_leads_title")}
+						</h3>
+						<p className="text-xs text-muted-foreground mt-1 max-w-sm mb-4">
+							{t("empty_no_leads_hint")}
+						</p>
+						<NextLink
+							href={`/dashboard/${workspaceId}/new-chat`}
+							className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition-colors cursor-pointer"
+						>
+							<Sparkles className="size-3.5" aria-hidden="true" />
+							{t("empty_no_leads_cta")}
+						</NextLink>
+					</div>
+				) : (
 					<div className="flex flex-col items-center justify-center h-full p-8 text-center select-none">
 						<div className="size-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
 							<Sparkles
@@ -529,7 +558,8 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 							Hãy nhập yêu cầu trong khung Chat hoặc thay đổi bộ lọc nguồn dữ liệu bên trên.
 						</p>
 					</div>
-				) : (
+				)
+			) : (
 					<table className="w-full text-left border-collapse text-xs sm:text-[13px] table-auto">
 						{/* Table Header Row */}
 						<thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md border-b border-border/80 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/90 select-none">
@@ -594,6 +624,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										>
 											<input
 												type="checkbox"
+												data-lead-checkbox=""
 												checked={isSelected}
 												onChange={() => {}}
 												className="rounded border-border text-emerald-600 focus:ring-emerald-500 size-3.5 cursor-pointer align-middle"
@@ -721,7 +752,11 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 
 										{/* Industry */}
 										<td className="px-3 text-muted-foreground text-xs min-w-[90px] max-w-[140px]">
-											<span className="truncate block">{lead.industry || "Bất động sản"}</span>
+											{lead.industry ? (
+												<span className="truncate block">{lead.industry}</span>
+											) : (
+												<span className="text-muted-foreground/40 text-xs">—</span>
+											)}
 										</td>
 
 										{/* Contact & Multi-channel Info */}
@@ -732,7 +767,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 										>
 											<div className="flex flex-col gap-1">
 												{/* Phone */}
-												{rowLead.phone ? (
+												{rowLead.phone || rowLead.is_new_from_zero ? (
 													<PhoneUnlockPill
 														lead={rowLead}
 														workspaceId={workspaceId}
@@ -765,7 +800,7 @@ export const NowingLeadMatrix: React.FC<NowingLeadMatrixProps> = ({
 												) : null}
 
 												{/* Fallback if no phone and no email: show domain/source link or subtitle */}
-												{!rowLead.phone && !rowLead.email ? (
+												{!rowLead.phone && !rowLead.email && !rowLead.is_new_from_zero ? (
 													rowLead.source_url ? (
 														<a
 															href={rowLead.source_url}

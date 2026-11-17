@@ -210,6 +210,7 @@ class TestSequenceExecutionIntegration:
                 if "Sequence" in name and "Step" not in name and "Enrollment" not in name:
                     return sequence
                 if "Lead" in name:
+                    assert isinstance(ident, tuple) and len(ident) == 2
                     return lead
                 return MagicMock(id=1, user_id=uuid4())
 

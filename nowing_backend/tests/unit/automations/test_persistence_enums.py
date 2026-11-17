@@ -48,4 +48,5 @@ def test_trigger_type_keeps_manual_member_even_though_unregistered() -> None:
         "event",
         "manual",
         "memory_change",
+        "chainlens_monitor",
     }

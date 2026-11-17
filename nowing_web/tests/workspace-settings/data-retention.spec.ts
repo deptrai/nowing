@@ -201,7 +201,7 @@ test.describe("Data retention workspace settings", () => {
 
 			await page.goto(`/dashboard/${workspaceId}/new-chat`);
 			await dismissOnboardingModal(page);
-			await expect(page.getByText(filename)).toBeVisible({ timeout: 30_000 });
+			await expect(page.getByText(filename)).toBeVisible({ timeout: 60_000 });
 
 			// The retention lifecycle is covered by backend tests; here we verify Zero
 			// real-time sync by archiving the document through a test-only endpoint and

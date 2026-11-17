@@ -1,5 +1,4 @@
 "use client";
-
 import {
 	BoldIcon,
 	Code2Icon,
@@ -14,21 +13,18 @@ import {
 import { useTranslations } from "next-intl";
 import { KEYS } from "platejs";
 import { useEditorReadOnly, useEditorRef } from "platejs/react";
-
 import { useEditorSave } from "@/components/editor/editor-save-context";
 import { ShortcutKbd } from "@/components/ui/shortcut-kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { usePlatformShortcut } from "@/hooks/use-platform-shortcut";
-
 import { InsertToolbarButton } from "./insert-toolbar-button";
 import { LinkToolbarButton } from "./link-toolbar-button";
 import { MarkToolbarButton } from "./mark-toolbar-button";
 import { ModeToolbarButton } from "./mode-toolbar-button";
 import { ToolbarButton, ToolbarGroup } from "./toolbar";
 import { TurnIntoToolbarButton } from "./turn-into-toolbar-button";
-
 function TooltipWithShortcut({ label, keys }: { label: string; keys: string[] }) {
-	const t = useTranslations("ui");
+	
 	return (
 		<span className="flex items-center">
 			{label}
@@ -36,14 +32,12 @@ function TooltipWithShortcut({ label, keys }: { label: string; keys: string[] })
 		</span>
 	);
 }
-
 export function FixedToolbarButtons() {
 	const t = useTranslations("ui");
 	const readOnly = useEditorReadOnly();
 	const editor = useEditorRef();
 	const { onSave, hasUnsavedChanges, isSaving, canToggleMode } = useEditorSave();
 	const { shortcutKeys } = usePlatformShortcut();
-
 	return (
 		<div className="flex w-full items-center">
 			{/* Scrollable editing buttons */}
@@ -62,7 +56,6 @@ export function FixedToolbarButtons() {
 							>
 								<UndoIcon />
 							</ToolbarButton>
-
 							<ToolbarButton
 								tooltip={
 									<TooltipWithShortcut
@@ -78,12 +71,10 @@ export function FixedToolbarButtons() {
 								<RedoIcon />
 							</ToolbarButton>
 						</ToolbarGroup>
-
 						<ToolbarGroup>
 							<InsertToolbarButton />
 							<TurnIntoToolbarButton />
 						</ToolbarGroup>
-
 						<ToolbarGroup>
 							<MarkToolbarButton
 								nodeType={KEYS.bold}
@@ -93,7 +84,6 @@ export function FixedToolbarButtons() {
 							>
 								<BoldIcon />
 							</MarkToolbarButton>
-
 							<MarkToolbarButton
 								nodeType={KEYS.italic}
 								tooltip={
@@ -102,7 +92,6 @@ export function FixedToolbarButtons() {
 							>
 								<ItalicIcon />
 							</MarkToolbarButton>
-
 							<MarkToolbarButton
 								nodeType={KEYS.underline}
 								tooltip={
@@ -111,7 +100,6 @@ export function FixedToolbarButtons() {
 							>
 								<UnderlineIcon />
 							</MarkToolbarButton>
-
 							<MarkToolbarButton
 								nodeType={KEYS.strikethrough}
 								tooltip={
@@ -123,7 +111,6 @@ export function FixedToolbarButtons() {
 							>
 								<StrikethroughIcon />
 							</MarkToolbarButton>
-
 							<MarkToolbarButton
 								nodeType={KEYS.code}
 								tooltip={
@@ -132,7 +119,6 @@ export function FixedToolbarButtons() {
 							>
 								<Code2Icon />
 							</MarkToolbarButton>
-
 							<MarkToolbarButton
 								nodeType={KEYS.highlight}
 								tooltip={
@@ -145,14 +131,12 @@ export function FixedToolbarButtons() {
 								<HighlighterIcon />
 							</MarkToolbarButton>
 						</ToolbarGroup>
-
 						<ToolbarGroup>
 							<LinkToolbarButton />
 						</ToolbarGroup>
 					</>
 				)}
 			</div>
-
 			{/* Fixed right-side buttons (Save + Mode) */}
 			<div className="flex shrink-0 items-center">
 				{/* Save button — only in edit mode with unsaved changes */}
@@ -177,7 +161,6 @@ export function FixedToolbarButtons() {
 						</ToolbarButton>
 					</ToolbarGroup>
 				)}
-
 				{/* Mode toggle */}
 				{canToggleMode && (
 					<ToolbarGroup>

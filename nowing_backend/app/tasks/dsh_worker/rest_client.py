@@ -95,6 +95,7 @@ class DshRestClient:
         output: str | None = None,
         output_schema: dict[str, Any] | None = None,
         mode: str = "balanced",
+        num_entities: int | None = None,
     ) -> dict[str, Any]:
         """Call the local chainlens.research capability directly.
 
@@ -110,6 +111,7 @@ class DshRestClient:
                 output=output,  # type: ignore[arg-type]
                 output_schema=output_schema,
                 workspace_id=workspace_id,
+                num_entities=num_entities,
             )
         except Exception as exc:  # invalid research input validation failure; wrap in DshTransientError
             raise DshTransientError(f"Invalid chainlens.research payload: {exc}") from exc

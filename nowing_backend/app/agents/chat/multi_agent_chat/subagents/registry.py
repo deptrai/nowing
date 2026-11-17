@@ -99,6 +99,7 @@ _perf_log = get_perf_logger()
 
 
 class SubagentBuilder(Protocol):
+    # pi-lens-ignore: ast-grep:no-ellipsis-body -- Protocol stub is idiomatic
     def __call__(
         self,
         *,

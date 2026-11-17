@@ -7,21 +7,31 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field, field_validator
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    Header,
+    HTTPException,
+    Request,
+    status,
+)
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import (
     Lead,
+    LeadActivityLog,
     Permission,
     VerifiedContact,
     Workspace,
     WorkspaceMembership,
     get_async_session,
 )
-from app.dependencies.auth import RequirePermission
+from app.dependencies.auth import RequirePatScope, RequirePermission
 from app.rate_limiter import limiter
 from app.services import wallet_credit
 from app.services.billing_event_service import BillingEventService
@@ -90,17 +100,10 @@ class BatchLeadIngestRequest(BaseModel):
     """Batch lead ingestion request body."""
 
     task_id: str | None = None
+    # Degenerate-lead validation lives in ``LeadBatchService.ingest_batch``
+    # (``_reject_degenerate_leads``) so every funnel caller — REST, agent
+    # tools, orchestrators — shares one rule and one structured 422 payload.
     leads: list[LeadItem] = Field(..., min_length=1, max_length=100)
-
-    @field_validator("leads")
-    @classmethod
-    def _reject_degenerate(cls, leads: list[LeadItem]) -> list[LeadItem]:
-        for idx, lead in enumerate(leads):
-            if not any([lead.phone, lead.email, lead.domain]):
-                raise ValueError(
-                    f"Lead at index {idx} is degenerate: phone, email and domain are all empty"
-                )
-        return leads
 
 
 class BatchLeadIngestResponse(BaseModel):
@@ -132,8 +135,15 @@ async def batch_ingest_leads(
             "You don't have permission to create leads in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> BatchLeadIngestResponse:
-    """Ingest a batch of leads with DNC filtering and PII encryption."""
+    """Ingest a batch of leads with DNC filtering and PII encryption.
+
+    PAT callers must expose ``leads:write`` and, when the token is workspace
+    bound, target that same workspace (``RequirePatScope``). Session callers
+    are authorized by ``RequirePermission`` alone, as before.
+    """
 
     workspace = await session.get(Workspace, workspace_id)
     if workspace is None:
@@ -150,10 +160,34 @@ async def batch_ingest_leads(
             leads=[item.model_dump() for item in body.leads],
         )
     except LeadItemValidationError as exc:
-        raise HTTPException(
+        await session.rollback()
+        return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+            content=exc.as_payload(),
+        )
+
+    # PAT attribution ledger: one row per ingested lead. Session callers keep
+    # their previous (log-free) behavior; the PAT path needs a durable record of
+    # which token wrote what (and with which idempotency key).
+    if auth.pat is not None:
+        details = {
+            "actor_pat_token_id": auth.pat.id,
+            "pat_token_prefix": auth.pat.token_prefix,
+            "idempotency_key": idempotency_key,
+            "source": "batch_ingest",
+            "task_id": body.task_id,
+        }
+        for lead_id in result["accepted_lead_ids"]:
+            session.add(
+                LeadActivityLog(
+                    workspace_id=workspace_id,
+                    lead_id=lead_id,
+                    actor_user_id=auth.user.id,
+                    activity_type="batch_ingested",
+                    title="Lead ingested via PAT batch ingest",
+                    details={**details},
+                )
+            )
 
     await session.commit()
     return BatchLeadIngestResponse(**result)
@@ -206,6 +240,7 @@ async def unlock_contact(
             "You don't have permission to unlock contacts in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> ContactUnlockResponse:
     """Unlock a verified contact, bill 1500 micros, and record an audit log."""
 
@@ -275,6 +310,7 @@ async def relock_contact(
             "You don't have permission to relock contacts in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> ContactUnlockResponse:
     """Accidentally re-lock a contact and refund the 1.5 credit unlock (Story 26.5)."""
 
@@ -389,6 +425,7 @@ async def pii_opt_out(
             "You don't have permission to opt-out PII in this workspace",
         )
     ),
+    _pat_scope: None = Depends(RequirePatScope(Permission.LEADS_WRITE.value)),
 ) -> PIIOptOutResponse:
     """Process a PDPD Decree 13 opt-out request (Right to be Forgotten)."""
 

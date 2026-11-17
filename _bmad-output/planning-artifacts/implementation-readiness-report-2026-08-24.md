@@ -499,7 +499,7 @@ Các ràng buộc, giả định và phạm vi ngoài/tách biệt PRD đáng ch
 
 #### Đánh giá tổng quan
 
-PRD `prd-Nowing-2026-07-22/prd.md` là bản hợp nhất (canonical) gồm 72 FR và 11 NFR, bao gồm cả hai FR của Epic 27 (FR-93, FR-94) nhờ Amendment 2026-08-20. PRD phân định rõ ranh giới giữa Nowing, ChainLens-Research và XActions, định nghĩa non-goals và các ràng buộc kiến trúc quan trọng. Tuy nhiên, có một số điểm cần lưu ý trước khi coi PRD là hoàn chỉnh cho Epic 27.
+PRD `prd-Nowing-2026-07-22/prd.md` là bản hợp nhất (canonical) gồm 72 FR và 11 NFR, bao gồm cả hai FR của Epic 27 (FR-93, FR-94) nhờ Amendment 2026-08-20. PRD phân định rõ ranh giới giữa Nowing, ChainLens-Research và Medirus, định nghĩa non-goals và các ràng buộc kiến trúc quan trọng. Tuy nhiên, có một số điểm cần lưu ý trước khi coi PRD là hoàn chỉnh cho Epic 27.
 
 #### Độ đầy đủ cho Epic 27
 

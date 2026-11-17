@@ -24,7 +24,7 @@ so that I can verify authentic legal data rather than unverified third-party est
 
 ## Dev Notes
 
-- Raw portal scraping of `dangkykinhdoanh.gov.vn` is delegated to XActions (`x_dangkykinhdoanh` MCP tool) per AD-SOC-1 / AD-SOC-9.
+- Raw portal scraping of `dangkykinhdoanh.gov.vn` is delegated to Medirus (`x_dangkykinhdoanh` MCP tool) per AD-SOC-1 / AD-SOC-9.
 - Nowing focus: `DkkdLeadAdapter` ingestion, PDF/Unicode normalization, extraction of charter capital/shareholders into `official_enterprise_registrations`, and Confidence Gate verification.
 
 ## Verification

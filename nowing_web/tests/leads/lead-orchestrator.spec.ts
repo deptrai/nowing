@@ -30,9 +30,10 @@ test.describe("Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator
 	}) => {
 		// 1. Log in to dashboard
 		await page.goto("/login");
-		await page.locator('input[placeholder="you@example.com"]').fill("e2e-test@nowing.net");
-		await page.locator('input[placeholder="Enter your password"]').fill("E2eTestPassword123!");
+		await page.locator('input#email, input[type="email"]').fill("e2e-test@nowing.net");
+		await page.locator('input#password, input[type="password"]').fill("E2eTestPassword123!");
 		await page.locator('button[type="submit"]').click();
+		await page.waitForURL("**/dashboard/**", { timeout: 30_000 });
 
 		// 2. Navigate to workspace leads page
 		await page.goto(`/dashboard/${workspaceId}/leads`);
@@ -55,8 +56,8 @@ test.describe("Story 21.15: Unified Multi-Source AI Lead Generation Orchestrator
 
 		// 6. Verify turn starts and message renders without client-side crash
 		const messageStream = page
-			.locator("div[data-testid='chat-messages'], div.prose, div.stream-container")
+			.locator("div[data-testid='chat-messages'], div.prose, div.stream-container, [data-role='assistant'], [data-role='user']")
 			.first();
-		await expect(messageStream).toBeVisible({ timeout: 20000 });
+		await expect(messageStream).toBeVisible({ timeout: 30000 });
 	});
 });

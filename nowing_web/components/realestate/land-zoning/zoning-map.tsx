@@ -66,7 +66,7 @@ export default function ZoningMap({ latitude, longitude, zones }: Zone) {
 							<p
 								key={zone.id ?? `${zone.zone_code}-${zone.province}`}
 								className="text-sm"
-								style={{ color: zone.polarity_color }}
+								style={{ color: zone.polarity_color }} // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 							>
 								{zone.zone_name} ({zone.zone_code})
 							</p>

@@ -110,10 +110,10 @@ def _dispose_shared_checkpointer_pool(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def _dispose_loop_mcp_client(loop: asyncio.AbstractEventLoop) -> None:
-    """Release any loop-scoped XActionsMcpClient bound to this loop."""
+    """Release any loop-scoped MedirusMcpClient bound to this loop."""
     if loop.is_closed():
         with contextlib.suppress(Exception):
-            from app.proprietary.platforms.xactions.mcp_client import (
+            from app.proprietary.platforms.medirus.mcp_client import (
                 _CLIENTS_LOCK,
                 _LOOP_CLIENTS,
             )
@@ -122,7 +122,7 @@ def _dispose_loop_mcp_client(loop: asyncio.AbstractEventLoop) -> None:
                 _LOOP_CLIENTS.pop(loop, None)
         return
     try:
-        from app.proprietary.platforms.xactions.mcp_client import (
+        from app.proprietary.platforms.medirus.mcp_client import (
             release_shared_client_for_loop,
         )
 

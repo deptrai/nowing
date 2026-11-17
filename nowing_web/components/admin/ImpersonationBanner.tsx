@@ -6,7 +6,7 @@ import { adminUsersApiService } from "@/lib/apis/admin-users-api.service";
 export const ImpersonationBanner = () => {
 	const router = useRouter();
 	const session = useSession();
-	const [timeLeft, setTimeLeft] = useState<number>(0);
+	const [timeLeft, setTimeLeft] = useState(0);
 
 	const accessExpiresAt = session.accessExpiresAt;
 

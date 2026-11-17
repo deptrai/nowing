@@ -14,7 +14,7 @@ Status: done
 ## Story
 
 As a growth operator and enterprise sales manager,
-I want multi-platform lead scraping (Batdongsan, Chợ Tốt, TopCV, Masothue, Social XActions) executed asynchronously across a dedicated Celery worker pool and streamed via Redis Streams directly into PostgreSQL and the live browser matrix,
+I want multi-platform lead scraping (Batdongsan, Chợ Tốt, TopCV, Masothue, Social Medirus) executed asynchronously across a dedicated Celery worker pool and streamed via Redis Streams directly into PostgreSQL and the live browser matrix,
 So that chat SSE streams remain fast and responsive (< 100ms first token), scrapers never block each other or cause OOM crashes, and newly discovered leads pulse into the data table in real time as they are extracted.
 
 ---
@@ -22,7 +22,7 @@ So that chat SSE streams remain fast and responsive (< 100ms first token), scrap
 ## Acceptance Criteria
 
 ### AC-1 — Dedicated Celery Queue & Non-Blocking Orchestration Dispatch
-**Given** a lead generation prompt requiring multi-source scraping (Batdongsan, Chợ Tốt, TopCV, Masothue, XActions),
+**Given** a lead generation prompt requiring multi-source scraping (Batdongsan, Chợ Tốt, TopCV, Masothue, Medirus),
 **When** `LeadGenOrchestrator` dispatches scraping tasks,
 **Then** tasks are routed to the dedicated Celery queue `nowing.lead_scrapers` (isolated from `celery_default` to prevent chat SSE starvation).
 **And** the orchestrator returns a `job_id` and initial streaming response within 100ms without blocking on scraper HTTP calls.
@@ -79,7 +79,7 @@ So that chat SSE streams remain fast and responsive (< 100ms first token), scrap
 
 - [x] **Task 4: Celery Scraper Task Definitions (`nowing_backend/app/tasks/lead_scrapers.py`)**
   - [x] Define `@celery_app.task(queue="nowing.lead_scrapers") def run_platform_scrape_task(workspace_id, platform, query_params)`.
-  - [x] Wire scraper adapters (Batdongsan, Chợ Tốt, TopCV, Masothue, Social XActions) into Celery task execution loop with stream buffering.
+  - [x] Wire scraper adapters (Batdongsan, Chợ Tốt, TopCV, Masothue, Social Medirus) into Celery task execution loop with stream buffering.
   - [x] Implement `reclaim_pending_stream_messages` for dead-letter recovery via `XCLAIM` after 30s inactivity.
 
 - [x] **Task 5: Frontend Stream Pulse Animation & Matrix Sync (`nowing_web/`)**

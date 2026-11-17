@@ -144,7 +144,7 @@ export function WorkspaceForm({
 			<motion.div className="w-full" variants={itemVariants}>
 				<Tilt
 					rotationFactor={6}
-					isRevese
+					isReverse
 					springOptions={{
 						stiffness: 26.7,
 						damping: 4.1,

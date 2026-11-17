@@ -71,7 +71,7 @@ export function Spotlight({
 				isHovered ? "opacity-100" : "opacity-0",
 				className
 			)}
-			style={{
+			style={{ // pi-lens-ignore: ast-grep:inline-styles -- dynamic style
 				width: size,
 				height: size,
 				left: spotlightLeft,

@@ -18,6 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +34,7 @@ import type {
 	AdminAgentConfigUpdateRequest,
 } from "@/contracts/types/admin-agent-registry.types";
 import { adminAgentRegistryApiService } from "@/lib/apis/admin-agent-registry-api.service";
+import { cn } from "@/lib/utils";
 
 const emptyDraft: AdminAgentConfigCreateRequest = {
 	client_id: "",
@@ -58,23 +66,27 @@ export default function AgentRegistryAdminPage() {
 	const [agents, setAgents] = useState<AdminAgentConfigRead[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [filterClientId, setFilterClientId] = useState("");
+	const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editAgent, setEditAgent] = useState<AdminAgentConfigRead | null>(null);
 	const [draft, setDraft] = useState<AdminAgentConfigCreateRequest & { id?: string }>(emptyDraft);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const loadAgents = useCallback(async (clientId?: string) => {
-		setLoading(true);
-		try {
-			const data = await adminAgentRegistryApiService.listAgents(clientId);
-			setAgents(data);
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : t("agents_load_failed"));
-		} finally {
-			setLoading(false);
-		}
-	}, []);
+	const loadAgents = useCallback(
+		async (clientId?: string) => {
+			setLoading(true);
+			try {
+				const data = await adminAgentRegistryApiService.listAgents(clientId);
+				setAgents(data);
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : t("agents_load_failed"));
+			} finally {
+				setLoading(false);
+			}
+		},
+		[t]
+	);
 
 	useEffect(() => {
 		if (user?.is_superuser) {
@@ -83,9 +95,22 @@ export default function AgentRegistryAdminPage() {
 	}, [user, loadAgents]);
 
 	const filteredAgents = useMemo(() => {
-		if (!filterClientId.trim()) return agents;
-		return agents.filter((a) => a.client_id.toLowerCase().includes(filterClientId.toLowerCase()));
-	}, [agents, filterClientId]);
+		return agents.filter((a) => {
+			if (
+				filterClientId.trim() &&
+				!a.client_id.toLowerCase().includes(filterClientId.toLowerCase())
+			) {
+				return false;
+			}
+			if (filterActive === "active" && !a.is_active) {
+				return false;
+			}
+			if (filterActive === "inactive" && a.is_active) {
+				return false;
+			}
+			return true;
+		});
+	}, [agents, filterClientId, filterActive]);
 
 	function openCreate() {
 		setDraft(emptyDraft);
@@ -123,25 +148,27 @@ export default function AgentRegistryAdminPage() {
 			return;
 		}
 
-		const { id: _id, client_id: rawClientId, ...base } = draft;
-		const client_id = rawClientId.trim();
+		const client_id = draft.client_id.trim();
+		const basePayload = {
+			name: draft.name.trim(),
+			display_name: draft.display_name.trim(),
+			slug: draft.slug.trim(),
+			system_instructions: draft.system_instructions?.trim() || null,
+			enabled_tools: draft.enabled_tools,
+			disabled_tools: draft.disabled_tools,
+			model_name: draft.model_name?.trim() || null,
+			citations_enabled: draft.citations_enabled,
+			is_active: draft.is_active,
+		};
 		const createPayload: AdminAgentConfigCreateRequest = {
 			client_id,
-			name: base.name.trim(),
-			display_name: base.display_name.trim(),
-			slug: base.slug.trim(),
-			system_instructions: base.system_instructions?.trim() || null,
-			enabled_tools: base.enabled_tools,
-			disabled_tools: base.disabled_tools,
-			model_name: base.model_name?.trim() || null,
-			citations_enabled: base.citations_enabled,
-			is_active: base.is_active,
+			...basePayload,
 		};
 
 		setIsSubmitting(true);
 		try {
 			if (editAgent) {
-				const update: AdminAgentConfigUpdateRequest = base;
+				const update: AdminAgentConfigUpdateRequest = basePayload;
 				await adminAgentRegistryApiService.updateAgent(editAgent.id, update);
 				toast.success(t("agents_updated"));
 			} else {
@@ -194,7 +221,7 @@ export default function AgentRegistryAdminPage() {
 						{t("agents_subtitle")}
 					</p>
 				</div>
-				<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center gap-2">
 					<Input
 						placeholder={t("agents_filter_client")}
 						value={filterClientId}
@@ -206,6 +233,19 @@ export default function AgentRegistryAdminPage() {
 						}}
 						className="w-56"
 					/>
+					<Select
+						value={filterActive}
+						onValueChange={(val) => setFilterActive(val as "all" | "active" | "inactive")}
+					>
+						<SelectTrigger className="w-28">
+							<SelectValue placeholder="Status" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All</SelectItem>
+							<SelectItem value="active">{t("agents_active")}</SelectItem>
+							<SelectItem value="inactive">{t("agents_inactive")}</SelectItem>
+						</SelectContent>
+					</Select>
 					<Button onClick={() => void loadAgents(filterClientId.trim() || undefined)}>
 						{t("agents_refresh")}
 					</Button>
@@ -346,7 +386,19 @@ export default function AgentRegistryAdminPage() {
 						</div>
 
 						<div className="space-y-2 sm:col-span-2">
-							<Label htmlFor="system_instructions">{t("agents_system_instructions")}</Label>
+							<div className="flex items-center justify-between">
+								<Label htmlFor="system_instructions">{t("agents_system_instructions")}</Label>
+								<span
+									className={cn(
+										"text-xs font-mono",
+										(draft.system_instructions?.length ?? 0) > 8000
+											? "text-destructive font-medium"
+											: "text-muted-foreground"
+									)}
+								>
+									{draft.system_instructions?.length ?? 0}/8000
+								</span>
+							</div>
 							<Textarea
 								id="system_instructions"
 								value={draft.system_instructions ?? ""}

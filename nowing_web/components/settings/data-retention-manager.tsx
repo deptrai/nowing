@@ -52,11 +52,11 @@ export function DataRetentionManager({
 	);
 
 	const [autoArchive, setAutoArchive] = useState(false);
-	const [retentionDays, setRetentionDays] = useState<string>("");
+	const [retentionDays, setRetentionDays] = useState("");
 	const [action, setAction] = useState<"archive" | "delete">("archive");
 
 	const [memoryAutoArchive, setMemoryAutoArchive] = useState(false);
-	const [memoryRetentionDays, setMemoryRetentionDays] = useState<string>("");
+	const [memoryRetentionDays, setMemoryRetentionDays] = useState("");
 	const [memoryAction, setMemoryAction] = useState<"archive" | "delete">("archive");
 
 	const [saving, setSaving] = useState(false);
@@ -106,7 +106,7 @@ export function DataRetentionManager({
 	]);
 
 	const handleSave = useCallback(
-		async (e?: React.FormEvent) => {
+		async (e?: React.SubmitEvent) => {
 			e?.preventDefault();
 			if (!isOwner) {
 				toast.error(t("retention_only_owners"));

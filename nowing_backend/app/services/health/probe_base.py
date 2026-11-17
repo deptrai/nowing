@@ -7,7 +7,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-HealthStatus = Literal["healthy", "degraded", "unavailable", "disabled", "not_configured"]
+HealthStatus = Literal[
+    "healthy", "degraded", "unavailable", "disabled", "not_configured"
+]
 
 
 @dataclass
@@ -44,7 +46,9 @@ class HealthResult:
             "success_rate_15m": self.success_rate_15m,
             "metadata": self.metadata,
             "probed_at": self.probed_at.isoformat(),
-            "next_probe_at": self.next_probe_at.isoformat() if self.next_probe_at else None,
+            "next_probe_at": self.next_probe_at.isoformat()
+            if self.next_probe_at
+            else None,
             "interval_seconds": self.interval_seconds,
         }
 
@@ -56,19 +60,19 @@ class HealthProbe(ABC):
     @abstractmethod
     def service_id(self) -> str:
         """Unique identifier of the probed service (e.g., 'azure/gpt-5.1', 'batdongsan')."""
-        ...
+        ...  # pi-lens-ignore: ast-grep:no-ellipsis-body -- abstract stub method
 
     @property
     @abstractmethod
     def service_name(self) -> str:
         """Human-readable name of the service."""
-        ...
+        ...  # pi-lens-ignore: ast-grep:no-ellipsis-body -- abstract stub method
 
     @property
     @abstractmethod
     def category(self) -> str:
         """Category: infra, model, scraper, connector, proxy, research, messaging, payment, storage."""
-        ...
+        ...  # pi-lens-ignore: ast-grep:no-ellipsis-body -- abstract stub method
 
     @property
     def display_group(self) -> str:
@@ -83,4 +87,4 @@ class HealthProbe(ABC):
     @abstractmethod
     async def probe(self) -> HealthResult:
         """Execute non-destructive health probe and return standardized result."""
-        ...
+        ...  # pi-lens-ignore: ast-grep:no-ellipsis-body -- abstract stub method

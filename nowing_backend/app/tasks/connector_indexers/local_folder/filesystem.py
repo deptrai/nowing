@@ -44,6 +44,7 @@ def _compute_raw_file_hash(file_path: str) -> str:
     underlying file hasn't changed at all.
     """
     h = hashlib.sha256()
+    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python -- open failure propagates to caller
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)

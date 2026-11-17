@@ -45,8 +45,8 @@ interface CeleryQueuePanelProps {
 export default function CeleryQueuePanel({ tick }: CeleryQueuePanelProps) {
 	const t = useTranslations("telemetry");
 	const [queues, setQueues] = useState<CeleryQueueInfo[]>([]);
-	const [overall, setOverall] = useState<string>("unavailable");
-	const [activeWorkers, setActiveWorkers] = useState<number>(0);
+	const [overall, setOverall] = useState("unavailable");
+	const [activeWorkers, setActiveWorkers] = useState(0);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [confirmQueue, setConfirmQueue] = useState<string | null>(null);

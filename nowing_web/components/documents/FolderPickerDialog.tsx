@@ -95,7 +95,7 @@ export function FolderPickerDialog({
 							size="icon"
 							disabled={isDisabled}
 							className="absolute top-1/2 z-10 size-4 -translate-y-1/2 p-0"
-							style={{ left: `${depth * 16 + 8}px` }}
+							style={{ left: `${depth * 16 + 8}px` }} // pi-lens-ignore: ast-grep:inline-styles -- per-depth indent computed from tree level
 							aria-label={
 								isExpanded
 									? t("collapse_folder", { name: f.name })
@@ -122,7 +122,7 @@ export function FolderPickerDialog({
 							isSelected && "bg-accent text-accent-foreground",
 							isDisabled && "cursor-not-allowed opacity-40"
 						)}
-						style={{ paddingLeft: `${depth * 16 + 8}px` }}
+						style={{ paddingLeft: `${depth * 16 + 8}px` }} // pi-lens-ignore: ast-grep:inline-styles -- per-depth indent computed from tree level
 						onClick={() => {
 							if (!isDisabled) setSelectedId(f.id);
 						}}

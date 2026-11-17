@@ -32,6 +32,7 @@ async def _check_and_trigger_schedules():
             now = datetime.now(UTC)
             result = await session.execute(
                 select(SearchSourceConnector).filter(
+                    # pi-lens-ignore: ast-grep:no-comparison-to-true-false -- SQLAlchemy expression requires == literal
                     SearchSourceConnector.periodic_indexing_enabled == True,  # noqa: E712
                     SearchSourceConnector.next_scheduled_at <= now,
                 )

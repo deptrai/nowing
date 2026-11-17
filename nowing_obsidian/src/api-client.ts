@@ -141,9 +141,9 @@ export class NowingApiClient {
 			"/api/v1/obsidian/sync",
 			{ vault_id: input.vaultId, notes: input.notes }
 		);
-		const failed = resp.items
-			.filter((it) => it.status === "error")
-			.map((it) => it.path);
+		const failed = resp.items.flatMap((it) =>
+			it.status === "error" ? [it.path] : [],
+		);
 		return { indexed: resp.indexed, failed };
 	}
 
@@ -166,9 +166,11 @@ export class NowingApiClient {
 				})),
 			}
 		);
-		const failed = resp.items
-			.filter((it) => it.status === "error")
-			.map((it) => ({ oldPath: it.old_path, newPath: it.new_path }));
+		const failed = resp.items.flatMap((it) =>
+			it.status === "error"
+				? [{ oldPath: it.old_path, newPath: it.new_path }]
+				: [],
+		);
 		return { renamed: resp.renamed, failed };
 	}
 
@@ -182,9 +184,9 @@ export class NowingApiClient {
 			"/api/v1/obsidian/notes",
 			{ vault_id: input.vaultId, paths: input.paths }
 		);
-		const failed = resp.items
-			.filter((it) => it.status === "error")
-			.map((it) => it.path);
+		const failed = resp.items.flatMap((it) =>
+			it.status === "error" ? [it.path] : [],
+		);
 		return { deleted: resp.deleted, failed };
 	}
 
@@ -208,6 +210,7 @@ export class NowingApiClient {
 		if (Date.now() < this.authBlockedUntil) {
 			throw new AuthError("Token rejected. Paste a fresh one in settings.");
 		}
+		// pi-lens-ignore: ast-grep:no-known-value-widening — Content-Type is added conditionally below; the index signature is required
 		const headers: Record<string, string> = {
 			Authorization: `Bearer ${token}`,
 			Accept: "application/json",

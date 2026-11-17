@@ -170,4 +170,14 @@ export async function mockWorkspaceReady(page: Page) {
 	await page.route("**/api/v1/workspaces/1/scrapers/capabilities**", async (route: Route) => {
 		await fulfillJson(route, 200, []);
 	});
+
+	// Entitlement — registered after the generic workspaces** route so
+	// this handler wins (Playwright matches last-registered first).
+	await page.route("**/api/v1/workspaces/1/entitlement**", async (route: Route) => {
+		await fulfillJson(route, 200, {
+			plan_tier: "pro",
+			can_use_pptx: true,
+			self_hosted: false,
+		});
+	});
 }

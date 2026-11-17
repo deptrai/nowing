@@ -121,7 +121,7 @@
 
 - **Severity:** low
 - **AC/spec constraint violated or missing:** Open Questions / Risks #1: "Validate against 100 known-good tax codes from masothue fixtures before ratifying. If the fixtures are not available, treat this as a design subtask and do not flip `baseline_ratified`." The new test has only 2 valid + 1 branch/invalid examples.
-- **Evidence:** `nowing_backend/tests/unit/proprietary/platforms/xactions/test_tax_code.py:1-83` (`review-26-7.diff:565-654`).
+- **Evidence:** `nowing_backend/tests/unit/proprietary/platforms/medirus/test_tax_code.py:1-83` (`review-26-7.diff:565-654`).
 - **Concrete fix or ask:** Add a fixture-driven corpus (or a synthetic 100-case set) and do not set `baseline_ratified: true` until that is done.
 
 #### `nowing_evals` suite tests do not cover replay flow or `ExtractorClient`

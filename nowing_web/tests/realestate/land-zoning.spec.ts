@@ -67,9 +67,9 @@ test.describe("Land Zoning Modal", () => {
 		await page.getByRole("button", { name: /kiểm tra quy hoạch/i }).click();
 
 		// Wait for the mocked result to render
-		await expect(page.getByText(/cảnh báo.*rủi ro/i)).toBeVisible();
-		await expect(page.getByText(/đất giao thông.*dgt/i)).toBeVisible();
-		await expect(page.getByText(/mở rộng đường/i)).toBeVisible();
+		await expect(page.getByText(/cảnh báo.*rủi ro/i).first()).toBeVisible();
+		await expect(page.getByText(/đất giao thông.*dgt/i).first()).toBeVisible();
+		await expect(page.getByText(/mở rộng đường/i).first()).toBeVisible();
 
 		// No Next.js crash overlay
 		await expect(page.getByText(/application error/i)).toHaveCount(0);

@@ -184,15 +184,15 @@ class _SSEParser:
         "first_token_time_ms",
         "gap_fill_needed",
         "insufficient_evidence_flag",
+        "message",
         "model",
+        "next_action",
         "request_accepted_at",
         "resolved_mode",
         "saw_done",
         "saw_engine_first_token",
         "saw_first_token",
         "saw_heartbeat",
-        "next_action",
-        "message",
         "saw_unknown",
         "sources",
         "start_time",
@@ -620,6 +620,7 @@ class _SSEParser:
             if completion_int is not None:
                 self.tokens_completion = completion_int
 
+        # pi-lens-ignore: ast-grep:no-identity-operator-on-literals -- strict bool check, intentional
         if self.estimated is True:
             self.cost_basis = "estimated"
         else:
