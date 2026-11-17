@@ -252,6 +252,17 @@ class TestEnterpriseAdapterVerified:
         assert lead.verified is False
 
 
+def _savepoint_session() -> MagicMock:
+    """Session mock: begin_nested() trả async CM, commit() awaitable."""
+    sp = MagicMock()
+    sp.__aenter__ = AsyncMock(return_value=None)
+    sp.__aexit__ = AsyncMock(return_value=None)
+    session = MagicMock()
+    session.begin_nested = MagicMock(return_value=sp)
+    session.commit = AsyncMock()
+    return session
+
+
 class TestExecuteAndPersistSeam:
     """COUNTERS_VIZ + seam integration: filter chạy đúng chỗ trong execute_and_persist."""
 
@@ -296,7 +307,7 @@ class TestExecuteAndPersistSeam:
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
 
         result = await orchestrator.execute_and_persist(
-            session=MagicMock(),
+            session=_savepoint_session(),
             workspace_id=1,
             query="thiết bị",
             campaign_spec=_supply_spec(),
@@ -328,7 +339,7 @@ class TestExecuteAndPersistSeam:
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
 
         result = await orchestrator.execute_and_persist(
-            session=MagicMock(),
+            session=_savepoint_session(),
             workspace_id=1,
             query="thiết bị",
             campaign_spec=_supply_spec(),
@@ -361,7 +372,7 @@ class TestExecuteAndPersistSeam:
 
         spec = CampaignSpec(name="demand test", workspace_id=1)
         result = await orchestrator.execute_and_persist(
-            session=MagicMock(),
+            session=_savepoint_session(),
             workspace_id=1,
             query="anything",
             campaign_spec=spec,
@@ -416,7 +427,7 @@ class TestExecuteAndPersistSeam:
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
 
         result = await orchestrator.execute_and_persist(
-            session=MagicMock(),
+            session=_savepoint_session(),
             workspace_id=1,
             query="thiết bị",
             campaign_spec=_supply_spec(min_rating=4.0, require_verified=True),

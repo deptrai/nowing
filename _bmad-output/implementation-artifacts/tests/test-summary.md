@@ -369,3 +369,18 @@ T4: gỡ route guard tạm `direction != "demand"` (campaign_routes.py) + `TestS
 Mock: `search_leads` adapter instances + `MicroExtractionWorker` (không call mạng/LLM thật).
 Regression: integration campaigns 5 + unit lead_intelligence 402 + routes 387 — toàn bộ xanh.
 Note: lead "sparse-identity" case phủ bởi `filtered_no_tax_id` guard đầu (require_tax_id=true) — sparse chỉ reachable khi require_tax_id=false (unit 43.3 cover).
+
+## Spec 44.1 — Lead campaign persistence schema + opt-in binding (2026-11-18)
+
+Commit pending (sau test-summary update). Bảng mới `lead_campaigns`/`campaign_runs`/`campaign_leads` + RLS tenant ENABLE+FORCE (6 policy, predicate workspace-only).
+
+| Test file | Cover | Kết quả |
+|---|---|---|
+| tests/unit/services/test_campaign_service.py (15) | enum khớp FE `campaignStatusSchema`; `open_campaign_run` advisory lock + 409-run-running; get-or-create ON CONFLICT + re-SELECT; junction SAVEPOINT fail-open `junction_failed`; finalize succeeded/failed → campaign status | 15 passed |
+| tests/unit/lead_intelligence/test_campaign_binding.py (6) | opt-in gating (agent path 0 rows nhưng vẫn được commit fix); never infer từ spec.name; early-return finalize; ingest-fail finalize failed; junction role supplier/buyer | 6 passed |
+| tests/integration/campaigns/test_campaign_persist_commit.py (2) | **commit-proof thật**: session mới thấy leads + campaign + run + junction sau request (fix latent bug `/campaigns/execute` không commit); persist=false → 0 rows | 2 passed |
+| Savepoint-mock fixes | test_supply_post_filter/test_supply_role_tagging/test_lead_gen_orchestrator cần `begin_nested` trả async CM | pass |
+| Regression | tests/unit/lead_intelligence + services + routes | 3231 passed |
+| Alembic live (nowing_test @5432) | `upgrade 250→251` → `downgrade -1` → `upgrade head` sạch; 6 RLS policy + FORCE đúng; single head `251` | verified |
+
+**T0 resolved:** `/campaigns/execute?persist=true` trước đây KHÔNG commit (bug tiềm ẩn — leads rollback prod, test suite che bằng savepoint conftest). Fix = `session.commit()` cuối `execute_and_persist`, mọi exit path finalize run. Deviation chấp nhận: models ở `app/models/campaigns.py` (spec ghi `models/leads/campaign.py` — top-level khớp precedent `webset_campaign.py`); `open_campaign_run` set run `'running'` ngay (44.2 map `'queued'` cho response); implicit campaign `source='execute'` cho mọi `/execute` caller (phân biệt 'api' cần auth-kind detect — ghi vào triage).

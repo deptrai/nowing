@@ -288,6 +288,17 @@ class TestMultiSourceLeadGenAgentTool:
             assert "batdongsan" in tool_output
 
 
+def _savepoint_session() -> MagicMock:
+    """Session mock: begin_nested() trả async CM, commit() awaitable."""
+    sp = MagicMock()
+    sp.__aenter__ = AsyncMock(return_value=None)
+    sp.__aexit__ = AsyncMock(return_value=None)
+    session = MagicMock()
+    session.begin_nested = MagicMock(return_value=sp)
+    session.commit = AsyncMock()
+    return session
+
+
 class TestLeadGenOrchestratorPersist:
     """DNC response filtering in execute_and_persist."""
 
@@ -349,7 +360,7 @@ class TestLeadGenOrchestratorPersist:
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
 
         result = await orchestrator.execute_and_persist(
-            session=MagicMock(),
+            session=_savepoint_session(),
             workspace_id=1,
             query="BĐS Hà Nội",
         )

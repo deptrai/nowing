@@ -672,3 +672,43 @@ class DshMissionStatus(StrEnum):
     ERROR = "error"
     CANCELLED = "cancelled"
     DLQ = "dlq"
+
+
+class CampaignStatus(StrEnum):
+    """Lifecycle of a persistent lead campaign (Epic 44.1).
+
+    Phải khớp 1:1 với ``campaignStatusSchema`` FE (campaign.types.ts:4-11).
+    """
+
+    DRAFT = "draft"
+    SCHEDULED = "scheduled"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    ARCHIVED = "archived"
+
+
+class CampaignRunStatus(StrEnum):
+    """Lifecycle of a single campaign run (Epic 44.1)."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class CampaignTrigger(StrEnum):
+    """What started a campaign run (Epic 44.1)."""
+
+    MANUAL = "manual"
+    SCHEDULED = "scheduled"
+    API = "api"
+
+
+class CampaignSource(StrEnum):
+    """Where a persistent campaign row was born (Epic 44.1)."""
+
+    CREATED = "created"
+    EXECUTE = "execute"
+    API = "api"

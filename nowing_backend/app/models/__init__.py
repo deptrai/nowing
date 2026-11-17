@@ -7,11 +7,14 @@ Import this package (or specific modules) to register all tables on
 from __future__ import annotations
 
 # Domain model submodules (imported to register tables on Base.metadata)
+# NOTE: app.db.base được bootstrap trước qua leads để tránh circular import
+# (app.db/__init__ import tên từ app.models.campaigns).
 from app.models import (
     admin_health as admin_health,
     billing as billing,
     browser_operator_audit as browser_operator_audit,
     bulk_ops as bulk_ops,
+    campaigns as campaigns,
     chat as chat,
     connectors as connectors,
     documents as documents,
@@ -27,11 +30,19 @@ from app.models import (
     workspaces as workspaces,
 )
 
+# Explicit re-exports (spec 44.1: `from app.models import LeadCampaign` phải chạy).
+from app.models.campaigns import (
+    CampaignLead as CampaignLead,
+    CampaignRun as CampaignRun,
+    LeadCampaign as LeadCampaign,
+)
+
 __all__ = [
     "admin_health",
     "billing",
     "browser_operator_audit",
     "bulk_ops",
+    "campaigns",
     "chat",
     "connectors",
     "documents",

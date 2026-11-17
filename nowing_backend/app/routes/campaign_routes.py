@@ -9,7 +9,13 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Permission, WorkspaceMembership, get_async_session
+from app.db import (
+    CampaignSource,
+    CampaignTrigger,
+    Permission,
+    WorkspaceMembership,
+    get_async_session,
+)
 from app.dependencies.auth import RequirePermission
 from app.lead_intelligence.campaign.planner import LeadGenPlanner
 from app.lead_intelligence.campaign.presets import (
@@ -23,11 +29,16 @@ from app.lead_intelligence.campaign.schemas import (
     CampaignSpec,
     SourcePlanAllocation,
 )
+from app.lead_intelligence.services import campaign_service
+from app.lead_intelligence.services.campaign_service import (
+    ConcurrentCampaignRunError,
+)
 from app.lead_intelligence.services.lead_gen_orchestrator import (
     LeadGenOrchestrator,
     LeadGenOrchestratorResult,
 )
 from app.users import require_session_context
+from app.tenant_context import set_request_tenant_context
 from app.utils.rbac import check_permission
 
 router = APIRouter(prefix="/workspaces", tags=["campaigns"])
@@ -131,6 +142,11 @@ async def execute_campaign(
     perm = Permission.LEADS_WRITE if persist else Permission.LEADS_READ
     await check_permission(session, auth, workspace_id, perm)
 
+    # Epic 44.1: 3 bảng campaign mới có FORCE RLS theo workspace_id. Route này
+    # không đi qua _set_lead_tenant_context nên set GUC transaction-local ở đây
+    # (superuser bypass trong dev/test; prod role non-superuser cần GUC này).
+    await set_request_tenant_context(session, workspace_id=workspace_id)
+
     if payload.get("workspace_id") != workspace_id:
         payload["workspace_id"] = workspace_id
 
@@ -144,11 +160,37 @@ async def execute_campaign(
     orchestrator = LeadGenOrchestrator()
 
     if persist:
+        # Epic 44.1: get-or-create campaign (implicit, source='execute') +
+        # open run qua seam duy nhất. Chạy khi persist=true; persist=false
+        # không đụng bookkeeping (0 row).
+        campaign = await campaign_service.get_or_create_campaign(
+            session,
+            workspace_id=workspace_id,
+            name=spec.name,
+            direction=spec.direction,
+            source=CampaignSource.EXECUTE.value,
+            created_by=getattr(auth.user, "id", None),
+            input_payload=spec.model_dump(mode="json"),
+        )
+        try:
+            campaign_run = await campaign_service.open_campaign_run(
+                campaign.id,
+                CampaignTrigger.API.value,
+                session,
+                spec_snapshot=spec.model_dump(mode="json"),
+            )
+        except ConcurrentCampaignRunError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
         result = await orchestrator.execute_and_persist(
             session=session,
             workspace_id=workspace_id,
             campaign_spec=spec,
             limit=spec.max_total_leads,
+            campaign=campaign,
+            campaign_run_id=campaign_run.id,
         )
     else:
         result = await orchestrator.execute_multi_source_lead_gen(

@@ -97,8 +97,14 @@ async def _run_persist(
         AsyncMock(return_value=search_result),
     )
     monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
+    sp = MagicMock()
+    sp.__aenter__ = AsyncMock(return_value=None)
+    sp.__aexit__ = AsyncMock(return_value=None)
+    session = MagicMock()
+    session.begin_nested = MagicMock(return_value=sp)
+    session.commit = AsyncMock()
     await orchestrator.execute_and_persist(
-        session=MagicMock(),
+        session=session,
         workspace_id=1,
         query="thiết bị",
         campaign_spec=spec,
@@ -162,8 +168,14 @@ class TestDemandUntagged:
             AsyncMock(return_value=search_result),
         )
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
+        sp = MagicMock()
+        sp.__aenter__ = AsyncMock(return_value=None)
+        sp.__aexit__ = AsyncMock(return_value=None)
+        session = MagicMock()
+        session.begin_nested = MagicMock(return_value=sp)
+        session.commit = AsyncMock()
         await orchestrator.execute_and_persist(
-            session=MagicMock(), workspace_id=1, query="test"
+            session=session, workspace_id=1, query="test"
         )
         meta = ingest_mock.call_args[0][2][0]["extra_metadata"]
         assert not (SUPPLY_TAG_KEYS & meta.keys())

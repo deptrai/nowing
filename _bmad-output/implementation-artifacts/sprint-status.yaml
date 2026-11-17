@@ -462,6 +462,13 @@ development_status:
   43-5-fe-intake-tìm-nhà-cung-cấp-wire-contract: done
   43-6-e2e-supply-campaign-enterprise-masothue: done
   epic-43-retrospective: done
+
+  epic-44: in-progress
+  44-1-lead-campaigns-campaign-runs-campaign-leads-schema-opt-in-binding: done
+  44-2-campaign-crud-launch-async-run-task: backlog
+  44-3-campaign-scheduler-rate-limit-guard: backlog
+  44-4-per-run-usage-accounting-vertical-2-e2e: backlog
+  epic-44-retrospective: backlog
 validation_reports:
   - story: "3.18"
     type: "code-review"

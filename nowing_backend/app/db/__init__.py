@@ -32,6 +32,10 @@ from app.db.enums import (
     DEFAULT_ROLE_PERMISSIONS,
     INCENTIVE_TASKS_CONFIG,
     NATIVE_TO_LEGACY_DOCTYPE,
+    CampaignRunStatus,
+    CampaignSource,
+    CampaignStatus,
+    CampaignTrigger,
     ChatVisibility,
     ConnectionScope,
     CreditPurchaseStatus,
@@ -163,6 +167,11 @@ from app.models.leads import (
     ZaloConnection,
     ZaloMessageLog,
 )
+from app.models.campaigns import (
+    CampaignLead,
+    CampaignRun,
+    LeadCampaign,
+)
 from app.models.memory import (
     AgentActionLog,
     AgentConfig,
@@ -253,6 +262,10 @@ __all__ = [
     "DATABASE_URL",
     # enums
     "DEFAULT_ROLE_PERMISSIONS",
+    "CampaignRunStatus",
+    "CampaignSource",
+    "CampaignStatus",
+    "CampaignTrigger",
     "INCENTIVE_TASKS_CONFIG",
     "NATIVE_TO_LEGACY_DOCTYPE",
     "AffiliatePartner",
@@ -277,6 +290,9 @@ __all__ = [
     "BulkOpError",
     "BulkOpJob",
     "BulkOpJobStatus",
+    "CampaignLead",
+    "CampaignRun",
+    "LeadCampaign",
     "CachedEmbeddingSet",
     "CachedParse",
     "ChainLensChunk",

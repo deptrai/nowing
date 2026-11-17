@@ -90,6 +90,9 @@ class LeadGenOrchestratorResult(BaseModel):
     location_match_metadata: LocationMatchMetadata | None = None
     # Epic 43.3: counters của supply post-filter tại persist seam (demand để rỗng)
     supply_filter_counters: dict[str, int] = Field(default_factory=dict)
+    # Epic 44.1: campaign bookkeeping — chỉ có khi route truyền opt-in campaign.
+    campaign_id: UUID | None = None
+    campaign_run_id: UUID | None = None
 
 
 def _apply_supply_post_filter(
@@ -913,8 +916,17 @@ class LeadGenOrchestrator:
         limit: int = 50,
         filters: dict[str, Any] | None = None,
         campaign_spec: CampaignSpec | None = None,
+        campaign: Any | None = None,
+        campaign_run_id: UUID | None = None,
     ) -> LeadGenOrchestratorResult:
-        """Execute lead generation and atomically persist records via LeadBatchService."""
+        """Execute lead generation and atomically persist records via LeadBatchService.
+
+        Epic 44.1: opt-in bookkeeping qua keyword-only ``campaign`` +
+        ``campaign_run_id`` (KHÔNG bao giờ infer từ ``campaign_spec.name``).
+        Caller truyền ``campaign`` → junction ``campaign_leads`` + finalize
+        run; không truyền → 0 row campaign, vẫn được fix commit T0 ở cuối
+        (leads persist durable cho cả agent path).
+        """
         from app.services.lead_batch_service import LeadBatchService
 
         effective_table_id = (
@@ -939,7 +951,51 @@ class LeadGenOrchestrator:
             limit=limit,
             campaign_spec=campaign_spec,
         )
+
+        campaign_id = getattr(campaign, "id", None) if campaign is not None else None
+
+        # Local helper: finalize run (nếu có) + commit 1 điểm.
+        # Mọi return path của hàm này phải đi qua đây — fix T0 (leads roll back
+        # trong prod vì không commit) và không bỏ run ở trạng thái 'running'.
+        async def _finalize(
+            run_status: str,
+            *,
+            stats: dict[str, Any] | None = None,
+            error: str | None = None,
+            accepted_lead_ids: list[UUID] | None = None,
+            role: str | None = None,
+        ) -> None:
+            if campaign is not None and campaign_run_id is not None:
+                from app.lead_intelligence.services import campaign_service
+
+                if accepted_lead_ids:
+                    await campaign_service.persist_campaign_leads(
+                        session,
+                        campaign=campaign,
+                        run_id=campaign_run_id,
+                        accepted_lead_ids=accepted_lead_ids,
+                        role=role or "buyer",
+                        stats=stats if stats is not None else {},
+                    )
+                await campaign_service.finalize_campaign_run(
+                    session,
+                    run_id=campaign_run_id,
+                    status=run_status,
+                    stats=stats,
+                    error=error,
+                )
+            await session.commit()
+
+        def _tag_result() -> None:
+            search_result.campaign_id = campaign_id
+            search_result.campaign_run_id = campaign_run_id
+
         if not search_result.leads:
+            await _finalize(
+                "succeeded",
+                stats={"ingested_count": 0, "accepted_lead_count": 0},
+            )
+            _tag_result()
             return search_result
 
         # Epic 43.3: supply post-filter tại persist seam — duy nhất một chỗ,
@@ -957,6 +1013,15 @@ class LeadGenOrchestrator:
             search_result.total_deduplicated = len(kept_leads)
             search_result.supply_filter_counters = supply_filter_counters
             if not kept_leads:
+                await _finalize(
+                    "succeeded",
+                    stats={
+                        "ingested_count": 0,
+                        "accepted_lead_count": 0,
+                        "supply_filter_counters": supply_filter_counters,
+                    },
+                )
+                _tag_result()
                 return search_result
 
         # Epic 43.4: supply leads được tag role/visibility qua extra_metadata
@@ -1025,10 +1090,20 @@ class LeadGenOrchestrator:
 
         service = LeadBatchService()
         try:
-            summary = await service.ingest_batch(session, workspace_id, lead_dicts)
+            # Epic 44.1: SAVEPOINT quanh ingest — lỗi DB abort tx; rollback tới
+            # savepoint giữ outer tx khỏe để finalize run 'failed' + commit.
+            async with session.begin_nested():
+                summary = await service.ingest_batch(
+                    session, workspace_id, lead_dicts
+                )
         except Exception as exc:  # lead intelligence operation fallback
             logger.error("Failed to persist leads via LeadBatchService: %s", exc)
-            return LeadGenOrchestratorResult(
+            await _finalize(
+                "failed",
+                error=f"ingest_batch failed: {exc}",
+                stats={"ingested_count": 0, "failed_count": 1},
+            )
+            degraded = LeadGenOrchestratorResult(
                 status="degraded",
                 total_discovered=search_result.total_discovered,
                 total_deduplicated=0,
@@ -1038,7 +1113,10 @@ class LeadGenOrchestrator:
                     "persistence_error",
                 ],
                 table_id=table_id,
+                campaign_id=campaign_id,
+                campaign_run_id=campaign_run_id,
             )
+            return degraded
 
         # Filter response to only the leads that survived DNC and DB upsert.
         accepted = summary.get("accepted") or [True] * len(search_result.leads)
@@ -1050,6 +1128,32 @@ class LeadGenOrchestrator:
         new_lead_ids = summary.get("accepted_lead_ids") or []
         await self._assign_new_leads(session, workspace_id, new_lead_ids)
 
+        # Epic 44.1: junction + finalize run trước commit. Role suy ra từ
+        # campaign direction (buyer=demand, supplier=supply).
+        role = "buyer"
+        if campaign is not None:
+            campaign_direction = getattr(campaign, "direction", None) or (
+                campaign_spec.direction
+                if campaign_spec is not None
+                and hasattr(campaign_spec, "direction")
+                else "demand"
+            )
+            role = "supplier" if campaign_direction == "supply" else "buyer"
+        await _finalize(
+            "succeeded",
+            stats={
+                "ingested_count": summary.get("ingested_count", 0),
+                "skipped_blacklisted_count": summary.get(
+                    "skipped_blacklisted_count", 0
+                ),
+                "failed_count": summary.get("failed_count", 0),
+                "accepted_lead_count": len(new_lead_ids),
+                "execution_time_ms": summary.get("execution_time_ms"),
+            },
+            accepted_lead_ids=list(new_lead_ids),
+            role=role,
+        )
+
         # Update the search result with actual persistence counts.
         existing_summary = getattr(search_result, "deduplication_summary", None)
         if not isinstance(existing_summary, dict):
@@ -1060,6 +1164,7 @@ class LeadGenOrchestrator:
             "dnc_suppressed_count": summary.get("skipped_blacklisted_count", 0),
             "failed_count": summary.get("failed_count", 0),
         }
+        _tag_result()
         return search_result
 
     @staticmethod
