@@ -130,6 +130,30 @@ class SupplyCriteria(BaseModel):
     )
 
 
+def _icp_config_has_content(icp_config: Any) -> bool:
+    """True khi ``icp_config`` mang nội dung ICP thật (non-empty string/list/
+
+    dict/True/non-zero). FE CampaignCreateInput luôn gửi ``icp_config``
+    zeroed (``template`` là nhãn form, không phải ICP data) — zeroed tính
+    là vắng mặt (retro Epic 43 AI-43.2).
+    """
+    if not isinstance(icp_config, dict):
+        return bool(icp_config)
+    for key, value in icp_config.items():
+        if key == "template":
+            continue  # nhãn vertical template của form, không phải ICP content
+        if value in (None, "", [], {}):
+            continue
+        if isinstance(value, (list, dict, set, tuple)) and len(value) == 0:
+            continue
+        if value is False or value == 0:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        return True
+    return False
+
+
 class CampaignSpec(BaseModel):
     """Complete specification of a signal-first lead generation campaign."""
 
@@ -241,12 +265,11 @@ class CampaignSpec(BaseModel):
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> CampaignSpec:
         """Accept either a declarative CampaignSpec dict or a frontend CampaignCreateInput dict."""
-        if (
-            "icp_config" in payload
-            or "source_budget_config" in payload
-            or "direction" in payload
-            or "supply_criteria" in payload
-        ):
+        # Dispatch chỉ trên FE-exclusive keys: ``direction``/``supply_criteria``
+        # từ Epic 43 là native CampaignSpec fields — spec-shaped payload mang
+        # chúng phải qua model_validate, không bị hijack sang create_input
+        # (silent-drop spec fields + reject sai). Retro Epic 43 AI-43.1.
+        if "icp_config" in payload or "source_budget_config" in payload:
             return cls.from_campaign_create_input(payload)
         return cls.model_validate(payload)
 
@@ -269,15 +292,18 @@ class CampaignSpec(BaseModel):
             or payload.get("visibility", "private") != "private"
         ):
             raise ValueError(
-                "direction-scoped fields are not supported via CampaignCreateInput until Epic 43.5"
+                "direction-scoped fields are not supported via CampaignCreateInput"
             )
         icp_config = payload.get("icp_config") or {}
         source_budget_config = payload.get("source_budget_config") or {}
         launch_config = payload.get("launch_config") or {}
 
-        # Supply branch: đọc supply_criteria top-level, bỏ qua ICP demand mapping
+        # Supply branch: đọc supply_criteria top-level, bỏ qua ICP demand mapping.
+        # Retro Epic 43 AI-43.2: FE CampaignCreateInput luôn gửi icp_config
+        # zeroed (template label + empty lists) — chỉ reject khi có nội dung
+        # ICP thật, đúng convention icp_criteria == ICPCriteria() của 43.1.
         if direction == "supply":
-            if payload.get("icp_config"):
+            if _icp_config_has_content(icp_config):
                 raise ValueError(
                     "direction='supply' must not set non-default icp_criteria"
                 )

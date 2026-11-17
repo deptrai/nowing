@@ -3,7 +3,8 @@
 Governed by spec: spec-43-5-fe-intake-tim-nha-cung-cap.md
 - Wire keys top-level: direction="supply" + supply_criteria (D1).
 - require_tax_id default ON (D2), location_profile derive từ locations[0] (D3).
-- Route guard 422 vẫn còn (43.6 mới gỡ) — supply submit dừng ở plan/execute.
+- FE luôn gửi icp_config zeroed — chỉ reject khi có ICP content thật
+  (retro Epic 43 AI-43.2); route guard 422 đã gỡ ở 43.6.
 """
 
 from __future__ import annotations
@@ -110,7 +111,7 @@ class TestSupplyWireContract:
             CampaignSpec.from_campaign_create_input(payload)
 
     def test_supply_from_payload_dispatch(self) -> None:
-        """Pure supply payload (không icp_config/source_budget) → from_payload vẫn dispatch."""
+        """Spec-shaped supply payload (không FE keys) → model_validate path."""
         spec = CampaignSpec.from_payload(
             {
                 "name": "Pure supply",
@@ -125,6 +126,92 @@ class TestSupplyWireContract:
         assert spec.direction == "supply"
         assert spec.supply_criteria is not None
         assert spec.supply_criteria.categories == ["cà phê"]
+
+    def test_supply_zeroed_icp_config_accepted(self) -> None:
+        """Supply + icp_config zeroed (đúng shape FE buildPlanSpec) → accept.
+
+        Retro Epic 43 AI-43.2: FE CampaignCreateInput luôn serialize icp_config
+        (template label + empty fields) — zeroed không tính là 'non-default'.
+        """
+        payload = _supply_payload(
+            icp_config={
+                "template": "b2b_saas",
+                "target_industries": [],
+                "locations": [],
+                "company_size_range": "",
+                "tech_stack": [],
+                "intents": [],
+                "negative_keywords": [],
+                "reverse_icp_url": None,
+                "custom_instructions": None,
+                "location_profile": None,
+            }
+        )
+        spec = CampaignSpec.from_campaign_create_input(payload)
+        assert spec.direction == "supply"
+        assert spec.supply_criteria is not None
+        assert spec.icp_criteria == ICPCriteria()
+
+
+class TestSpecShapedDispatch:
+    """Retro Epic 43 AI-43.1: from_payload dispatch chỉ trên FE-exclusive keys.
+
+    Spec-shaped payload mang direction/supply_criteria phải qua
+    model_validate — không bị hijack sang create_input (silent-drop
+    spec fields, reject sai visibility, bypass AD-5).
+    """
+
+    def test_spec_shaped_demand_fields_preserved(self) -> None:
+        """Spec-shaped demand + direction → mọi field giữ nguyên."""
+        spec = CampaignSpec.from_payload(
+            {
+                "name": "API demand",
+                "workspace_id": 3,
+                "direction": "demand",
+                "query": "cà phê rang xay",
+                "icp_criteria": {
+                    "target_keywords": ["cà phê", "robusta"],
+                    "target_industries": ["F&B"],
+                },
+                "signal_triggers": ["hiring"],
+                "max_total_leads": 200,
+                "target_sources": ["google_maps"],
+            }
+        )
+        assert spec.direction == "demand"
+        assert spec.query == "cà phê rang xay"
+        assert spec.icp_criteria.target_keywords == ["cà phê", "robusta"]
+        assert spec.signal_triggers == ["hiring"]
+        assert spec.max_total_leads == 200
+        assert spec.target_sources == ["google_maps"]
+
+    def test_spec_shaped_visibility_poolable_accepted(self) -> None:
+        """Spec-shaped visibility='poolable' → inert label, accept (AD-5)."""
+        spec = CampaignSpec.from_payload(
+            {
+                "name": "Poolable",
+                "workspace_id": 1,
+                "direction": "demand",
+                "visibility": "poolable",
+            }
+        )
+        assert spec.visibility == "poolable"
+
+    def test_spec_shaped_supply_with_icp_rejected(self) -> None:
+        """Spec-shaped supply + icp_criteria non-default → AD-5 422."""
+        with pytest.raises(ValidationError, match="must not set non-default"):
+            CampaignSpec.from_payload(
+                {
+                    "name": "Bad supply",
+                    "workspace_id": 1,
+                    "direction": "supply",
+                    "supply_criteria": {
+                        "categories": ["vải"],
+                        "locations": ["KH"],
+                    },
+                    "icp_criteria": {"target_industries": ["dệt may"]},
+                }
+            )
 
 
 class TestDemandUnchanged:

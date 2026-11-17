@@ -127,15 +127,53 @@ def _headers(token: str) -> dict[str, str]:
 
 
 def _supply_payload(workspace_id: int, **overrides: Any) -> dict[str, Any]:
-    """FE-shaped supply payload: direction + supply_criteria top-level."""
+    """FE-faithful supply payload — mirror buildPlanSpec() supply return
+
+    (use-campaign-builder.ts): direction + supply_criteria top-level,
+    kèm icp_config zeroed + source_budget_config + launch_config vì
+    CampaignCreateInput luôn serialize đủ keys (retro Epic 43 AI-43.2).
+    """
     payload: dict[str, Any] = {
         "name": "Tìm NCC phân phối Khánh Hòa",
+        "description": None,
         "workspace_id": workspace_id,
         "direction": "supply",
         "supply_criteria": {
             "categories": ["nhà phân phối"],
             "locations": ["Khánh Hòa"],
             "require_tax_id": True,
+            "min_rating": 0,
+            "require_verified": False,
+        },
+        "query": None,
+        "icp_config": {
+            "template": "b2b_saas",
+            "target_industries": [],
+            "locations": [],
+            "company_size_range": "",
+            "tech_stack": [],
+            "intents": [],
+            "negative_keywords": [],
+            "reverse_icp_url": None,
+            "custom_instructions": None,
+            "location_profile": None,
+        },
+        "source_budget_config": {
+            "sources": [],
+            "expected_leads_target": 30,
+            "max_daily_spend_vnd": None,
+            "min_fit_score": 0,
+            "min_intent_score": 0,
+            "max_contacts_per_lead": 3,
+            "exclude_dnc": False,
+            "auto_unlock_verified_phones": False,
+        },
+        "launch_config": {
+            "schedule_type": "manual",
+            "cron_expression": None,
+            "auto_start": False,
+            "export_destination": None,
+            "notification_webhook": None,
         },
     }
     payload.update(overrides)
