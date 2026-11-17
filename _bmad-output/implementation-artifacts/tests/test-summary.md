@@ -257,7 +257,7 @@ Spec: `_bmad-output/implementation-artifacts/spec-42-10-pat-scope-sweep-remainin
 
 ## Epic 42 retro — boundary fixes (2026-11-17)
 
-- Boundary review (25 file giao nhau, diff 2,872 dòng) phát hiện 2 high — đã fix cùng commit `a8e4cb8c2`:
+- Boundary review (25 file giao nhau, diff 2,872 dòng) phát hiện 2 high — đã fix cùng commit `2411240b6`:
   1. `ingest_stream_leads_to_db`: stmt build trước `_resolve_lead_table_ids` + `rec` thiếu `table_id` → stream-path auto-table là dead code (lead NULL + table rác). Fix: reorder + `rec["table_id"]` + `on_conflict` coalesce.
   2. `generate_lead_hmac` không normalize domain → stream/radar path raw domain sinh hmac khác batch path → duplicate lead cùng entity. Fix: `normalize_domain` bên trong hmac (idempotent batch path).
 - `pytest tests/unit/lead_intelligence/test_lead_stream_buffer.py` → **8 passed** (3 regression mới: hmac normalize, stmt chứa table_id, ordering resolver→stmt qua fake session).
