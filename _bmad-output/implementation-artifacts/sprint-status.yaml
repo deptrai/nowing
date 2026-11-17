@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '11-17-2026 14:41'
+last_updated: '11-17-2026 15:57'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -1081,12 +1081,12 @@ action_items:
     action: "PAT mint: validate scopes cho moi token_kind (hien chi agent_chat); merge
       KNOWN_PAT_SCOPES + AGENT_CHAT_SCOPES thanh 1 catalog"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-42-retro-2026-11-17.md"
   - id: "epic-42-retro-item-51-reset-_synthesis_workspace_id-contextvar"
     epic: 42
     action: "Reset _synthesis_workspace_id ContextVar sau run_stream_loop — tranh
       wrong-workspace synthesis khi task context reuse"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-42-retro-2026-11-17.md"
