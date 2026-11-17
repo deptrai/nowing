@@ -264,6 +264,16 @@ _turn_accumulator: ContextVar[TurnTokenAccumulator | None] = ContextVar(
     "_turn_accumulator", default=None
 )
 
+# Epic 44.4: campaign run context — khi set, mọi ``record_token_usage`` call
+# tự tag ``call_details['campaign_run_id']`` để finalize run sum thành
+# ``campaign_runs.cost_micros``. Implicit context (zero-touch cho callers
+# trong billing.py) thay vì param-threading — downside: context "vô hình",
+# caller ngoài run context không nhìn thấy tag; reset bắt buộc bằng token
+# trong ``finally`` để không leak sang request sau trên cùng task.
+current_campaign_run_id: ContextVar[str | None] = ContextVar(
+    "current_campaign_run_id", default=None
+)
+
 
 def start_turn() -> TurnTokenAccumulator:
     """Create a fresh accumulator for the current async context and return it.
@@ -617,6 +627,13 @@ async def record_token_usage(
                 run_id = UUID(run_id)
             except ValueError:
                 run_id = None
+        # Epic 44.4: tag campaign run id nếu đang chạy trong run context.
+        # Signature giữ nguyên — contextvar set/reset bởi
+        # ``LeadGenOrchestrator.execute_and_persist``.
+        _campaign_run_tag = current_campaign_run_id.get()
+        if _campaign_run_tag:
+            call_details = dict(call_details or {})
+            call_details.setdefault("campaign_run_id", _campaign_run_tag)
         await set_request_tenant_context(
             session,
             workspace_id=workspace_id,

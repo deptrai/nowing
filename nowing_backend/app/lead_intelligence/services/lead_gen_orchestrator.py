@@ -926,7 +926,53 @@ class LeadGenOrchestrator:
         Caller truyền ``campaign`` → junction ``campaign_leads`` + finalize
         run; không truyền → 0 row campaign, vẫn được fix commit T0 ở cuối
         (leads persist durable cho cả agent path).
+
+        Epic 44.4: khi ``campaign_run_id`` có mặt, hàm set contextvar
+        ``current_campaign_run_id`` quanh toàn bộ execution rồi reset trong
+        ``finally`` — mọi ``record_token_usage`` call (callers trong
+        billing.py, zero-touch) tự tag ``call_details['campaign_run_id']`` để
+        ``finalize_campaign_run`` sum thành ``cost_micros``. Implementation
+        nằm ở :meth:`_execute_and_persist_impl`; wrapper này chỉ quản lý
+        contextvar để body không phải re-indent.
         """
+        from app.services.token_tracking_service import current_campaign_run_id
+
+        campaign_run_token = None
+        if campaign_run_id is not None:
+            campaign_run_token = current_campaign_run_id.set(str(campaign_run_id))
+        try:
+            return await self._execute_and_persist_impl(
+                session=session,
+                workspace_id=workspace_id,
+                query=query,
+                table_id=table_id,
+                user_id=user_id,
+                client_id=client_id,
+                limit=limit,
+                filters=filters,
+                campaign_spec=campaign_spec,
+                campaign=campaign,
+                campaign_run_id=campaign_run_id,
+            )
+        finally:
+            if campaign_run_token is not None:
+                current_campaign_run_id.reset(campaign_run_token)
+
+    async def _execute_and_persist_impl(
+        self,
+        session: AsyncSession,
+        workspace_id: int,
+        query: str = "",
+        table_id: str | None = None,
+        user_id: UUID | None = None,
+        client_id: str | None = None,
+        limit: int = 50,
+        filters: dict[str, Any] | None = None,
+        campaign_spec: CampaignSpec | None = None,
+        campaign: Any | None = None,
+        campaign_run_id: UUID | None = None,
+    ) -> LeadGenOrchestratorResult:
+        """Body của :meth:`execute_and_persist` (contextvar đã set bởi wrapper)."""
         from app.services.lead_batch_service import LeadBatchService
 
         effective_table_id = (

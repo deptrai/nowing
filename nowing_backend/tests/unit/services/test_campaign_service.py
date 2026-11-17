@@ -308,15 +308,21 @@ class TestFinalizeCampaignRun:
         run.campaign_id = campaign_id
         session = AsyncMock()
         session.get = AsyncMock(return_value=run)
+        # Epic 44.4: execute lần 1 = cost sum (scalar_one), lần 2 = update run,
+        # lần 3 = update campaign.
+        sum_result = MagicMock()
+        sum_result.scalar_one.return_value = 0
+        session.execute = AsyncMock(return_value=sum_result)
 
         await finalize_campaign_run(
             session, run_id=run_id, status="succeeded", stats={"a": 1}
         )
-        # 2 execute: update run + update campaign
-        assert session.execute.await_count == 2
-        stmt = str(session.execute.call_args_list[0].args[0])
+        # 3 execute: cost sum + update run + update campaign
+        assert session.execute.await_count == 3
+        assert "token_usage" in str(session.execute.call_args_list[0].args[0])
+        stmt = str(session.execute.call_args_list[1].args[0])
         assert "campaign_runs" in stmt
-        stmt2 = str(session.execute.call_args_list[1].args[0])
+        stmt2 = str(session.execute.call_args_list[2].args[0])
         assert "lead_campaigns" in stmt2
 
     @pytest.mark.asyncio
@@ -326,6 +332,9 @@ class TestFinalizeCampaignRun:
         run.campaign_id = uuid.uuid4()
         session = AsyncMock()
         session.get = AsyncMock(return_value=run)
+        sum_result = MagicMock()
+        sum_result.scalar_one.return_value = 0
+        session.execute = AsyncMock(return_value=sum_result)
 
         await finalize_campaign_run(
             session,
@@ -333,7 +342,7 @@ class TestFinalizeCampaignRun:
             status="failed",
             error="x" * 3000,  # bị truncate ở 2000
         )
-        values = session.execute.call_args_list[0].args[0].compile().params
+        values = session.execute.call_args_list[1].args[0].compile().params
         assert values["status"] == "failed"
         assert len(values["error"]) == 2000
 
@@ -341,8 +350,11 @@ class TestFinalizeCampaignRun:
     async def test_missing_run_still_no_crash(self) -> None:
         session = AsyncMock()
         session.get = AsyncMock(return_value=None)
+        sum_result = MagicMock()
+        sum_result.scalar_one.return_value = 0
+        session.execute = AsyncMock(return_value=sum_result)
         await finalize_campaign_run(
             session, run_id=uuid.uuid4(), status="failed"
         )
-        # chỉ update run, không update campaign
-        assert session.execute.await_count == 1
+        # cost sum + update run, không update campaign
+        assert session.execute.await_count == 2

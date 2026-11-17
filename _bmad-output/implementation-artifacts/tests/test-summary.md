@@ -384,3 +384,25 @@ Commit pending (sau test-summary update). Bảng mới `lead_campaigns`/`campaig
 | Alembic live (nowing_test @5432) | `upgrade 250→251` → `downgrade -1` → `upgrade head` sạch; 6 RLS policy + FORCE đúng; single head `251` | verified |
 
 **T0 resolved:** `/campaigns/execute?persist=true` trước đây KHÔNG commit (bug tiềm ẩn — leads rollback prod, test suite che bằng savepoint conftest). Fix = `session.commit()` cuối `execute_and_persist`, mọi exit path finalize run. Deviation chấp nhận: models ở `app/models/campaigns.py` (spec ghi `models/leads/campaign.py` — top-level khớp precedent `webset_campaign.py`); `open_campaign_run` set run `'running'` ngay (44.2 map `'queued'` cho response); implicit campaign `source='execute'` cho mọi `/execute` caller (phân biệt 'api' cần auth-kind detect — ghi vào triage).
+
+## Spec 44.4 — Per-run usage accounting + vertical #2 e2e (2026-11-18)
+
+Commit pending (sau test-summary update). Contextvar `current_campaign_run_id` (module-level
+trong `token_tracking_service`) — `execute_and_persist` set/reset quanh impl, `record_token_usage`
+merge `call_details['campaign_run_id']` bằng `setdefault` (signature nguyên, zero-touch callers).
+`finalize_campaign_run` sum `token_usage.cost_micros` theo JSONB path → `campaign_runs.cost_micros`
+(succeeded + failed; 0 rows → 0, không NULL — usage ≠ charge).
+
+| Test file | Cover | Kết quả |
+|---|---|---|
+| tests/unit/services/test_token_usage_campaign_tag.py (8) | USAGE_TAG/NOTAG, explicit-value precedence, no caller-dict mutation, wrapper set/reset/reset-on-failure | 8 passed |
+| tests/unit/services/test_campaign_cost_finalize.py (7) | COST_FINALIZE sum, COST_ZERO (0-not-NULL), JSONB filter, FAILED_RUN_COST | 7 passed |
+| tests/integration/campaigns/test_campaign_persistence_e2e.py (4) | E2E_SUPPLY TMĐT (junction role='supplier', cost=0 + tagged-count==0), RELAUNCH_NODUP, RENAME_SURVIVES, usage-tag→finalize `cost_micros=10_000` DB thật | 4 passed |
+| test_campaign_service.py update | TestFinalizeCampaignRun execute-count mới; xóa 2 test trùng coverage | pass |
+| Regression | integration/campaigns + unit/lead_intelligence + test_campaign_service | 438 passed |
+| Billing regression | test_billable_call + test_billing | 97 passed |
+
+**Ghi chú:** spec ghi `persist_campaign_bookkeeping` nhưng 44.1 deliver `finalize_campaign_run`
+— đặt cost sum đúng seam finalize thật. Review pass: 19 findings → 6 patch `low` applied,
+13 reject/false (triage log trong spec). Residual: `cost_micros`≈0 trên free-tier path
+(`_record_free_usage` hardcode 0); seq-scan `token_usage` mỗi finalize chấp nhận được.
