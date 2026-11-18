@@ -469,6 +469,13 @@ development_status:
   44-3-campaign-scheduler-rate-limit-guard: done
   44-4-per-run-usage-accounting-vertical-2-e2e: done
   epic-44-retrospective: done
+
+  epic-45: in-progress
+  45-1-wire-contract-reconcile-campaign-list-page: in-progress
+  45-2-campaign-detail-run-history-leads-surface: backlog
+  45-3-lifecycle-actions-schedule-editor: backlog
+  45-4-e2e-browser-ops-verify: backlog
+  epic-45-retrospective: backlog
 validation_reports:
   - story: "3.18"
     type: "code-review"

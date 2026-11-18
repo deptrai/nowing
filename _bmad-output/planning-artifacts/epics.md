@@ -5941,3 +5941,81 @@ So that dataset results flow into the same campaign/lead pipeline as every other
 - No backfill `campaign_leads` cho leads cũ — forward-only.
 - No PDPD consent pipeline, no B2C supply routing, no Maps adapter.
 - `launch_config` wire-or-drop = decision trong 44.3.
+
+## Epic 45: Campaign Productization — list/detail UI + lifecycle + schedule (Productized, FE-led) [skeleton — tech review 4-lens applied 2026-11-18]
+
+**Goal:** Epic 44 ship backend persistence nhưng "headless" — list/detail page chưa tồn tại (`leads/campaigns/` chỉ có `new/`; `listCampaigns`/`getCampaign`/`pauseCampaign`/`updateCampaign` zero call sites ngoài `use-campaign-builder.ts`), và một lớp wire drift FE↔backend chưa ai nối. Epic này sống hóa surface: contract reconcile + list page + detail/run-history + lifecycle actions + schedule editor + browser e2e.
+
+**Wire-contract gaps đã verify (review 4-lens, 12/12 CONFIRMED):**
+- **G-1 [backend]** `CampaignUpdateRequest` chỉ name+status (`campaign_routes.py:65-70`, PATCH :474-534) — `schedule_frequency`/`schedule_cron`/`max_runs` (`campaigns.py:67-69`) unreachable qua API → `status='scheduled'` + `next_run_at=None` tick vô hình (`campaign_tasks.py:173-183`). Vá: PATCH += 3 fields + **recompute `next_run_at` cả khi đổi schedule fields lẫn status** (hiện chỉ recompute khi đổi status → stale bug) + cron invalid → 422 + `status='scheduled'` không có schedule → **422** ("Cần đặt lịch trước"). POST create: map `launch_config.schedule_type='recurring'` + `cron_expression`/`start_time` → schedule_* scalars — builder "recurring" hiện lưu vào `input_payload` nhưng không wire (**dead-on-arrival**, `campaign_service.py:81-97`); decision: **WIRE** (một nguồn truth = schedule_* scalars; `launch_config` chỉ là input).
+- **G-2 [FE]** `campaignStatusSchema` thiếu `'archived'` (`campaign.types.ts:4`) — FE += enum value. (Runtime hôm nay chỉ console-error vì `base-api.service.ts:305-333` dùng `safeParse` trả raw — KHÔNG throw; sửa lại premise: save flow không hỏng crash, nhưng type-unsafe + toast mơ hồ.)
+- **G-3 [FE]** `launchCampaign` (`leads-api.service.ts:232-235`) parse `campaignSchema` nhưng backend trả run-shape `{id, campaign_id, status, trigger}` (`:601-606` — thiếu cả started_at/finished_at/stats/cost_micros/error). FE += `campaignRunSchema` (fields optional trừ id/campaign_id/status/trigger) + đổi return type; backend `_run_to_response` (:311-320) += `stats`/`cost_micros`/`error` (model đã có cột — response chỉ cần expose).
+- **G-4 [FE] (mới)** `listCampaigns` gửi `limit`/`offset` nhưng backend đọc `page`/`page_size` (`campaign_routes.py:341-360`) → **pagination âm thầm bị bỏ qua**; + thiếu param `include_implicit` → toggle 45.1 không gọi được. Sửa param names + thêm `include_implicit?: boolean`.
+- **G-5 [backend]** `campaign_to_response` (:481-504) thiếu `direction`/`source`/`next_run_at`/`schedule_*`/`skipped_by_quota`/`supply_criteria` — FE `campaignSchema` cũng thiếu các field này (`campaign.types.ts:89`) → detail page 45.2 render theo direction + supply_criteria + next_run_at **không có contract**. Vá: backend mapper += fields; FE `campaignSchema` += `direction`, `supply_criteria?`, `source?`, `next_run_at?`, `schedule_*?`, `skipped_by_quota?`, `last_run_at?` (backend đã trả nhưng schema thiếu).
+- **G-6 [backend]** archived transitions **không** được pin: `_USER_SETTABLE_STATUSES` (:57-62) cho phép archived→scheduled tự do — vá guard `archived` → khác → 422 (claim "đã pin" trong draft đầu là sai).
+- **Minor pins:** `campaignUpdateInputSchema` (FE) rộng hơn PATCH backend — reconcile trong 45.1. Resume semantics: không có resume endpoint và PATCH không set được `running` — **Resume = PATCH status='scheduled'** (yêu cầu đã có schedule; không có → UI disable + gợi Launch). 429 quota: reason hiện trong `detail` string (`campaign_service.py:48-66`) — FE hiển thị detail text, backend optionally += `quota_reason` machine-readable (nice-to-have). List mapper N+1 (2 query/campaign, `:521`) — chấp nhận v1, note. `updated_at = created_at` placeholder — note. Nav flat: entry "Chiến dịch" top-level; `isLeadsActive` endsWith cần xử lý để highlight `/leads/campaigns` (`LayoutDataProvider.tsx:309`). i18n parity test cover `leads.*` en/vi — key mới phải đồng bộ cả 2 file (`tests/leads/i18n-parity.test.ts:14`). e2e: Playwright sẵn, convention port **:8000** không phải :4445 (`playwright.config.ts:38,101` — auth storageState + helper token có sẵn).
+
+### Story 45.1: Wire-contract reconcile + Campaign list page
+
+**As a** user,
+**I want** xem danh sách campaign của workspace với trạng thái/số leads/run gần nhất,
+**So that** tôi biết workspace có những campaign nào và trạng thái từng cái.
+
+**Acceptance Criteria:**
+- **Given** `campaign.types.ts` + `leads-api.service.ts`, **When** reconcile, **Then**: `campaignStatusSchema` += `'archived'`; `campaignSchema` += `direction`, `source`, `next_run_at`, `schedule_frequency?`, `schedule_cron?`, `max_runs?`, `skipped_by_quota?`, `last_run_at?`, `supply_criteria?`; thêm `campaignRunSchema` (id/campaign_id/status/trigger bắt buộc, còn lại optional); `launchCampaign` return type → `CampaignRun`; `listCampaigns` gửi `page`/`page_size` + `include_implicit?`; `campaignUpdateInputSchema` thu về khớp PATCH backend (name/status/schedule_* sau 45.3 — giữ optional, service lọc field thừa).
+- **And** backend: `campaign_to_response` += `direction`/`source`/`next_run_at`/`schedule_*`/`skipped_by_quota`/`supply_criteria` (từ `input_payload` nếu supply, fallback spec_snapshot); `_run_to_response` += `stats`/`cost_micros`/`error`.
+- **Given** trang `leads/campaigns/page.tsx` (mới), **When** load, **Then** bảng paged `page`/`page_size`: name, status badge (đủ 7 value), direction label, collected_leads_count, last_run_at, created_at; empty state CTA "Tạo chiến dịch"; row → detail. Toggle "Hiện auto-runs" → `include_implicit=true`.
+- **And** nav entry "Chiến dịch" trong leads section + active-highlight đúng path `/leads/campaigns` (kể cả `/new`, `/[id]`).
+- **And** save-flow regression: `handleSaveCampaign` create→launch dùng `CampaignRun` return; launch fail → campaign đã tạo vẫn giữ + toast phân biệt "tạo OK, launch lỗi" (hiện toast mơ hồ).
+- **And** i18n: key mới đồng bộ en+vi (parity test pass).
+- **Implementation notes:** Ước: vừa.
+
+### Story 45.2: Campaign detail + run history page (incl. campaign→leads surface)
+
+**As a** user,
+**I want** mở một campaign xem config + lịch sử run + leads mà campaign đã tạo ra,
+**So that** tôi hiểu campaign đã chạy thế nào và sinh leads nào.
+
+**Acceptance Criteria:**
+- **Given** `leads/campaigns/[campaign_id]/page.tsx` (mới), **When** load, **Then** header: name (inline rename qua PATCH), status badge, direction, source label, next_run_at khi scheduled, skipped_by_quota>0 badge; section config readonly: demand → icp_config/source_budget_config; supply → supply_criteria render đúng.
+- **And** run history table paged (mới nhất trước): status, trigger (manual/scheduled/api), started/finished/duration, stats (total_deduplicated + supply counters), cost_micros (label "usage" — không bill), error khi failed.
+- **And** **NEW** `GET /campaigns/{id}/leads` backend endpoint (paged join `campaign_leads` → leads, trả lead fields cơ bản + `role` + `created_at`) + UI section/tab "Leads" danh sách paged; row lead → lead detail nếu có route sẵn, không thì render readonly. (Junction `campaign_leads` hiện zero reader — đây là consumer đầu tiên.)
+- **And** 404/403 state rõ ràng.
+- **Implementation notes:** Ước: vừa→lớn (1 endpoint backend mới).
+
+### Story 45.3: Lifecycle actions + schedule editor (backend PATCH mở rộng)
+
+**As a** user,
+**I want** launch/pause/resume/archive campaign và đặt lịch định kỳ từ UI,
+**So that** campaign vận hành không cần gọi API tay.
+
+**Acceptance Criteria:**
+- **Given** backend, **When** vá, **Then**: `CampaignUpdateRequest` += `schedule_frequency ∈ {hourly,daily,weekly,monthly}|null`, `schedule_cron`, `max_runs`; recompute `next_run_at` khi đổi status HOẶC schedule fields; `status='scheduled'` không schedule → 422; cron invalid → 422; `archived`→khác → **422** (guard mới); POST create map `launch_config.schedule_type='recurring'` → `schedule_cron`/`frequency` + `max_runs` nếu có.
+- **And** UI detail page: actions theo status — draft/scheduled → Launch + Schedule; running → Pause; paused → **Resume (PATCH 'scheduled', disable khi không có schedule + tooltip gợi Launch)** + Archive; completed/failed → Re-run (launch) + Archive. Confirm modal launch/archive; `isSubmitting`+Loader2 convention (`LaunchScheduleStep.tsx:255`).
+- **And** schedule editor (drawer/modal): frequency hoặc cron (client-validate cơ bản + 422 server), max_runs optional, `next_run_at` preview.
+- **And** quota UX: 429 → toast hiển thị `detail` từ server; backend += `quota_reason` (`runs_per_day`|`workspace_leads_per_day`) trong error payload nếu dễ (nice-to-have).
+- **And** archived UI: badge + filter; action buttons disable.
+- **Implementation notes:** Ước: vừa→lớn (cross-stack).
+
+### Story 45.4: E2E browser + ops verify (save/launch/list/schedule flow)
+
+**As a** PM/QA,
+**I want** toàn flow create→launch→list→detail→schedule chạy e2e trên browser thật + worker/beat thật,
+**So that** campaign surface được chứng minh end-user và scheduler production path hoạt động.
+
+**Acceptance Criteria:**
+- **Given** dev stack (backend **:8000** convention `playwright.config.ts:38`, FE), **When** e2e Playwright (storageState + token helper có sẵn), **Then** pass: tạo campaign demand → save → list → detail + run history → leads section → pause → resume(scheduled) → set daily schedule → next_run_at hiển thị → archive → list filter.
+- **And** supply e2e: builder supply → save → detail render supply_criteria → launch → run stats có supply counters.
+- **And** `include_implicit` e2e: `/execute` ngoài UI → implicit ẩn default, hiện khi toggle.
+- **And** **AI-44.2 carry-in**: celery worker consume `nowing.campaigns` + beat `check-campaign-schedules` tick thật trên dev (schedule 1 campaign daily → quan sát run 'scheduled' tự tạo hoặc log tick; nếu worker/beat không chạy được dev thì ghi blocker + verify bằng invoke task trực tiếp).
+- **And** regression: double-click save không double-create.
+- **Implementation notes:** Ước: vừa. Evidence → test-summary.
+
+### Epic 45 Non-Goals
+
+- No `match_mode="pool"` / `corpus_scope="platform_b2b"` — Platform epic.
+- No edit-spec sau create (PATCH chỉ name/status/schedule_*); no delete campaign (archive thay thế — delete chưa có API, cân nhắc epic sau); no duplicate/clone (chưa có nhu cầu — ghi rõ).
+- No charge/billing UI cho `cost_micros` — usage display only.
+- No `campaign:*` PAT scope. No `automations/campaigns` (sequences). No `webset_campaigns`.
+- No real-time run progress streaming, no bulk actions, no export list, no PDPD.
+- No optimize N+1 list mapper v1 — note known-limitation.
