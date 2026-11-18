@@ -1125,7 +1125,7 @@ action_items:
     action: "Rate-limit/abuse guard cho campaign endpoints (carry-over deferred, cần
       campaign_runs store)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-43-retro-2026-11-18.md"
   - id: "epic-44-retro-item-55-fe-reconcile-launchcampaign-run-shape-vs"
     epic: 44
