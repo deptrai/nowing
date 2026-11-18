@@ -21,6 +21,7 @@ from app.db.enums import (
 from app.lead_intelligence.services import campaign_service
 from app.lead_intelligence.services.campaign_service import (
     ConcurrentCampaignRunError,
+    campaign_to_response,
     finalize_campaign_run,
     get_or_create_campaign,
     open_campaign_run,
@@ -36,6 +37,34 @@ def _campaign(direction: str = "demand") -> MagicMock:
     c.workspace_id = 1
     c.direction = direction
     return c
+
+
+def _full_campaign(**over) -> MagicMock:
+    """Campaign mock đủ scalar fields mapper đọc (45.1)."""
+    c = _campaign(direction=over.get("direction", "demand"))
+    c.name = "Camp"
+    c.status = "draft"
+    c.input_payload = over.get("input_payload")
+    c.source = over.get("source", "created")
+    c.next_run_at = over.get("next_run_at")
+    c.schedule_frequency = over.get("schedule_frequency")
+    c.schedule_cron = over.get("schedule_cron")
+    c.max_runs = over.get("max_runs")
+    c.skipped_by_quota = over.get("skipped_by_quota", 0)
+    c.created_by = uuid.uuid4()
+    c.created_at = datetime.now(timezone.utc)
+    return c
+
+
+def _mapper_session(latest_row: tuple | None, collected: int) -> AsyncMock:
+    """Session trả lần lượt: latest run row → count leads junction."""
+    run_res = MagicMock()
+    run_res.first.return_value = latest_row
+    count_res = MagicMock()
+    count_res.scalar_one.return_value = collected
+    session = AsyncMock()
+    session.execute = AsyncMock(side_effect=[run_res, count_res])
+    return session
 
 
 # ---------------------------------------------------------------------------
@@ -366,3 +395,115 @@ class TestFinalizeCampaignRun:
         )
         # cost sum + update run, không update campaign
         assert session.execute.await_count == 2
+
+
+# ---------------------------------------------------------------------------
+# campaign_to_response — wire reconcile 45.1
+# ---------------------------------------------------------------------------
+
+
+class TestCampaignToResponse:
+    """Mapper expose direction/source/schedule_*/supply_criteria/last_run_at."""
+
+    @pytest.mark.asyncio
+    async def test_scalar_fields_and_supply_from_payload(self) -> None:
+        now = datetime.now(timezone.utc)
+        campaign = _full_campaign(
+            input_payload={
+                "icp_config": {},
+                "source_budget_config": {"sources": ["muasamcong"]},
+                "launch_config": {},
+                "supply_criteria": {
+                    "categories": ["steel"],
+                    "locations": ["HCM"],
+                },
+            },
+            next_run_at=now,
+            schedule_frequency="daily",
+            max_runs=5,
+            skipped_by_quota=2,
+        )
+        session = _mapper_session(latest_row=({"x": 1}, now), collected=7)
+
+        body = await campaign_to_response(session, campaign)
+
+        assert body["direction"] == "demand"
+        assert body["source"] == "created"
+        assert body["next_run_at"] == now.isoformat()
+        assert body["schedule_frequency"] == "daily"
+        assert body["schedule_cron"] is None
+        assert body["max_runs"] == 5
+        assert body["skipped_by_quota"] == 2
+        # input_payload thắng snapshot fallback.
+        assert body["supply_criteria"] == {
+            "categories": ["steel"],
+            "locations": ["HCM"],
+        }
+        assert body["last_run_at"] == now.isoformat()
+        assert body["collected_leads_count"] == 7
+
+    @pytest.mark.asyncio
+    async def test_supply_fallback_to_snapshot(self) -> None:
+        """MAPPER_SUPPLY — supply + payload thiếu supply_criteria → lấy từ
+        spec_snapshot run mới nhất."""
+        snapshot = {
+            "supply_criteria": {"categories": ["steel"], "locations": ["HCM"]}
+        }
+        campaign = _full_campaign(
+            direction="supply",
+            source="execute",
+            input_payload={
+                "icp_config": {},
+                "source_budget_config": {"sources": ["websets"]},
+            },
+        )
+        session = _mapper_session(latest_row=(snapshot, None), collected=0)
+
+        body = await campaign_to_response(session, campaign)
+
+        assert body["direction"] == "supply"
+        assert body["source"] == "execute"
+        assert body["supply_criteria"] == {
+            "categories": ["steel"],
+            "locations": ["HCM"],
+        }
+        assert body["last_run_at"] is None
+        assert body["skipped_by_quota"] == 0
+
+    @pytest.mark.asyncio
+    async def test_supply_missing_everywhere_is_none(self) -> None:
+        """Supply campaign nhưng cả payload lẫn snapshot đều thiếu → None."""
+        campaign = _full_campaign(
+            direction="supply",
+            input_payload={"source_budget_config": {"sources": ["websets"]}},
+        )
+        session = _mapper_session(latest_row=({}, None), collected=0)
+
+        body = await campaign_to_response(session, campaign)
+        assert body["supply_criteria"] is None
+
+    @pytest.mark.asyncio
+    async def test_demand_no_supply_fallback(self) -> None:
+        """Demand campaign KHÔNG fallback snapshot cho supply_criteria."""
+        campaign = _full_campaign(
+            direction="demand",
+            input_payload={"source_budget_config": {"sources": ["websets"]}},
+        )
+        snapshot = {"supply_criteria": {"categories": ["steel"]}}
+        session = _mapper_session(latest_row=(snapshot, None), collected=0)
+
+        body = await campaign_to_response(session, campaign)
+        assert body["supply_criteria"] is None
+
+    @pytest.mark.asyncio
+    async def test_no_runs_nullable_fields(self) -> None:
+        """Campaign chưa chạy: next_run_at/last_run_at None, skipped=0."""
+        campaign = _full_campaign(input_payload={})
+        session = _mapper_session(latest_row=None, collected=0)
+
+        body = await campaign_to_response(session, campaign)
+        assert body["last_run_at"] is None
+        assert body["next_run_at"] is None
+        assert body["skipped_by_quota"] == 0
+        # sources min-1 vẫn đảm bảo.
+        assert body["source_budget_config"]["sources"] == ["muasamcong"]

@@ -481,8 +481,15 @@ export function useCampaignBuilder({
 			const created = await leadsApiService.createCampaign(workspaceId, payload);
 			if (created) {
 				if (andLaunch) {
-					await leadsApiService.launchCampaign(workspaceId, created.id);
-					toast.success(`Đã tạo và kích hoạt chiến dịch "${created.name}" thành công!`);
+					// 45.1: launch lỗi KHÔNG rollback campaign đã tạo — toast phân biệt.
+					try {
+						await leadsApiService.launchCampaign(workspaceId, created.id);
+						toast.success(`Đã tạo và kích hoạt chiến dịch "${created.name}" thành công!`);
+					} catch (launchErr) {
+						const msg =
+							launchErr instanceof Error ? launchErr.message : "lỗi không xác định";
+						toast.error(`Tạo chiến dịch "${created.name}" thành công, launch thất bại: ${msg}`);
+					}
 				} else {
 					toast.success(`Đã lưu chiến dịch "${created.name}" dưới dạng bản nháp`);
 				}

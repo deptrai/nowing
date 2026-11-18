@@ -2,8 +2,10 @@ import {
 	type Campaign,
 	type CampaignCreateInput,
 	type CampaignListResponse,
+	type CampaignRun,
 	type CampaignUpdateInput,
 	campaignListResponseSchema,
+	campaignRunSchema,
 	campaignSchema,
 	type WorkbenchLead,
 	workbenchLeadSchema,
@@ -148,14 +150,22 @@ class LeadsApiService {
 	};
 
 	// Campaign Management APIs (Story 21.15)
+	// 45.1: params page/page_size/include_implicit khớp backend list_campaigns
+	// (trước gửi limit/offset → backend bỏ qua, pagination chết lặng).
 	listCampaigns = async (
 		workspaceId: number | string,
-		params: { limit?: number; offset?: number; status?: string } = {}
+		params: {
+			page?: number;
+			page_size?: number;
+			status?: string;
+			include_implicit?: boolean;
+		} = {}
 	): Promise<CampaignListResponse> => {
 		const qs = new URLSearchParams();
-		if (params.limit !== undefined) qs.set("limit", String(params.limit));
-		if (params.offset !== undefined) qs.set("offset", String(params.offset));
+		if (params.page !== undefined) qs.set("page", String(params.page));
+		if (params.page_size !== undefined) qs.set("page_size", String(params.page_size));
 		if (params.status) qs.set("status", params.status);
+		if (params.include_implicit) qs.set("include_implicit", "true");
 		const query = qs.toString();
 		return baseApiService.get(
 			`${base(workspaceId)}/campaigns${query ? `?${query}` : ""}`,
@@ -229,10 +239,15 @@ class LeadsApiService {
 		);
 	};
 
-	launchCampaign = async (workspaceId: number | string, campaignId: string): Promise<Campaign> => {
+	// 45.1: backend launch trả run-shape, KHÔNG phải campaign — parse
+	// campaignRunSchema (trước safeParse campaignSchema luôn fail lặng).
+	launchCampaign = async (
+		workspaceId: number | string,
+		campaignId: string
+	): Promise<CampaignRun> => {
 		return baseApiService.post(
 			`${base(workspaceId)}/campaigns/${campaignId}/launch`,
-			campaignSchema
+			campaignRunSchema
 		);
 	};
 

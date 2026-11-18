@@ -432,6 +432,19 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
     FE shape); fallback build từ ``spec_snapshot`` run mới nhất. ``sources``
     đảm bảo min-1. Wire test backend là source-of-truth.
     """
+    # Run mới nhất — 1 query gộp spec_snapshot + finished_at (45.1): phục vụ
+    # cả fallback FE shape lẫn supply_criteria + last_run_at.
+    latest_run = (
+        await session.execute(
+            select(CampaignRun.spec_snapshot, CampaignRun.finished_at)
+            .where(CampaignRun.campaign_id == campaign.id)
+            .order_by(CampaignRun.started_at.desc())
+            .limit(1)
+        )
+    ).first()
+    snapshot = (latest_run[0] if latest_run else None) or {}
+    last_finished = latest_run[1] if latest_run else None
+
     payload: dict[str, Any]
     if campaign.input_payload:
         payload = dict(campaign.input_payload)
@@ -439,15 +452,6 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
         payload.setdefault("source_budget_config", {})
         payload.setdefault("launch_config", dict(_DEFAULT_LAUNCH_CONFIG))
     else:
-        latest_run = (
-            await session.execute(
-                select(CampaignRun.spec_snapshot)
-                .where(CampaignRun.campaign_id == campaign.id)
-                .order_by(CampaignRun.started_at.desc())
-                .limit(1)
-            )
-        ).first()
-        snapshot = (latest_run[0] if latest_run else None) or {}
         payload = _spec_snapshot_to_fe_shape(snapshot)
 
     budget_cfg = payload.get("source_budget_config") or {}
@@ -455,7 +459,7 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
         budget_cfg["sources"] = ["muasamcong"]
         payload["source_budget_config"] = budget_cfg
 
-    # Đếm leads junction + run mới nhất (2 query nhẹ — không denormalize v1).
+    # Đếm leads junction (1 query nhẹ — không denormalize v1).
     collected = (
         await session.execute(
             select(func.count())
@@ -463,14 +467,12 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
             .where(CampaignLead.campaign_id == campaign.id)
         )
     ).scalar_one()
-    last_run = (
-        await session.execute(
-            select(CampaignRun.finished_at)
-            .where(CampaignRun.campaign_id == campaign.id)
-            .order_by(CampaignRun.started_at.desc())
-            .limit(1)
-        )
-    ).first()
+
+    # 45.1: supply_criteria — ưu tiên input_payload; thiếu + direction=supply
+    # → fallback spec_snapshot của run mới nhất; demand/không có → None.
+    supply_criteria = payload.get("supply_criteria")
+    if supply_criteria is None and campaign.direction == "supply":
+        supply_criteria = snapshot.get("supply_criteria")
 
     return {
         "id": str(campaign.id),
@@ -489,7 +491,18 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
         "created_by_user_id": (
             str(campaign.created_by) if campaign.created_by else None
         ),
-        "last_run_at": last_run[0].isoformat() if last_run and last_run[0] else None,
+        # Scalar campaign fields (45.1 wire reconcile).
+        "direction": campaign.direction,
+        "source": campaign.source,
+        "supply_criteria": supply_criteria,
+        "next_run_at": (
+            campaign.next_run_at.isoformat() if campaign.next_run_at else None
+        ),
+        "schedule_frequency": campaign.schedule_frequency,
+        "schedule_cron": campaign.schedule_cron,
+        "max_runs": campaign.max_runs,
+        "skipped_by_quota": campaign.skipped_by_quota or 0,
+        "last_run_at": last_finished.isoformat() if last_finished else None,
     }
 
 

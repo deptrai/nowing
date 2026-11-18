@@ -316,6 +316,8 @@ def _run_to_response(run: Any) -> dict[str, Any]:
         "trigger": run.trigger,
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "stats": run.stats or {},
+        "cost_micros": run.cost_micros,
         "error": run.error,
     }
 

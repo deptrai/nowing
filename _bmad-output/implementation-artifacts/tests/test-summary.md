@@ -453,3 +453,15 @@ sẵn, RLS scope tenant) thay vì join `campaign_runs` — tương đương spec
 Scheduler scan workspaces root (không RLS) rồi set tenant GUC từng workspace — cách duy nhất
 thấy rows qua FORCE RLS. `compute_next_run_at` nhận `runs_count` optional (spec signature chỉ
 `campaign` — cần count để enforce max_runs → caller truyền; không truyền = không check).
+
+## Spec 45.1 — Wire reconcile + campaign list page
+
+| Test | File | Kết quả |
+|---|---|---|
+| Mapper fields (scalar/payload-wins/supply-fallback/demand-no-fallback/no-runs) | tests/unit/services/test_campaign_service.py (+TestCampaignToResponse, 5 tests) | pass |
+| Route regression (archived 409, wire contract, launch run-shape stats/cost_micros) | tests/unit/routes/test_campaign_crud_routes.py | 42/42 pass |
+| Regression toàn bộ services+routes | tests/unit/services + tests/unit/routes | 2877 pass |
+| tsc --noEmit | nowing_web | clean |
+| i18n parity en/vi | leads.campaigns_* 28/28 + nav_menu.campaigns | pass (node verify — dev-server lock chặn playwright) |
+
+Ghi chú: pagination bug `limit/offset`→`page/page_size` đã vá thật (backend đọc page/page_size); `campaignStatusSchema` +`archived`; `campaignRunSchema` mới; `_run_to_response` +stats/cost_micros; `campaign_to_response` gộp latest-run query (1 thay 2). Deviation: test append 1 lần qua heredoc (verified on disk); biome pre-existing warnings.

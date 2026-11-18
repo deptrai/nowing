@@ -163,6 +163,13 @@ def _campaign(
         input_payload=(
             dict(_INPUT_PAYLOAD) if payload is _PAYLOAD_UNSET else payload
         ),
+        # Scalar fields 45.1 — mapper đọc trực tiếp.
+        source="created",
+        next_run_at=None,
+        schedule_frequency=None,
+        schedule_cron=None,
+        max_runs=None,
+        skipped_by_quota=0,
         created_by=uuid4(),
         created_at=now,
     )
@@ -231,12 +238,12 @@ def test_wire_contract_created_campaign_response(app: FastAPI):
     session = _FakeSession(
         campaigns=[campaign],
         # execute tuần tự: dup pre-select (None) → INSERT...RETURNING id →
-        # count leads (0) → last_run (None).
+        # latest run row (None — 45.1 gộp spec_snapshot+finished_at) → count.
         execute_results=[
             _FakeResult(None),
             _FakeResult((campaign.id,)),
-            _FakeResult(0),
             _FakeResult(None),
+            _FakeResult(0),
         ],
     )
     client = _client(app, session)
@@ -266,13 +273,12 @@ def test_wire_contract_implicit_campaign_fallback(app: FastAPI):
         "source_budget": {"sources": ["muasamcong"]},
         "max_total_leads": 50,
     }
-    # execute tuần tự: latest spec_snapshot → count → last_run.
+    # execute tuần tự: latest run row (spec_snapshot, finished_at) → count.
     session = _FakeSession(
         campaigns=[campaign],
         execute_results=[
-            _FakeResult((snapshot,)),
+            _FakeResult((snapshot, None)),
             _FakeResult(3),
-            _FakeResult(None),
         ],
     )
     client = _client(app, session)
@@ -363,6 +369,8 @@ def test_list_runs_newest_first_shape(app: FastAPI):
         trigger="api",
         started_at=now,
         finished_at=now,
+        stats={"total_deduplicated": 5},
+        cost_micros=1200,
         error=None,
     )
     # execute: count → rows.
@@ -377,7 +385,11 @@ def test_list_runs_newest_first_shape(app: FastAPI):
     assert res.status_code == 200, res.text
     body = res.json()
     assert set(body) == {"items", "total", "limit", "offset"}
-    assert body["items"][0]["status"] == "completed"
+    item = body["items"][0]
+    assert item["status"] == "completed"
+    # 45.1: run response expose stats/cost_micros.
+    assert item["stats"] == {"total_deduplicated": 5}
+    assert item["cost_micros"] == 1200
 
 
 def test_presets_path_precedence(app: FastAPI):

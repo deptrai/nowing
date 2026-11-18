@@ -8,6 +8,7 @@ export const campaignStatusSchema = z.enum([
 	"paused",
 	"completed",
 	"failed",
+	"archived",
 ]);
 
 export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
@@ -69,6 +70,18 @@ export const launchConfigSchema = z.object({
 
 export type LaunchConfig = z.infer<typeof launchConfigSchema>;
 
+// Supply criteria (Epic 43.5) — wire top-level cùng direction trong create payload.
+// Đặt TRƯỚC campaignSchema để 45.1 reuse trong campaign response (KHÔNG định nghĩa lại).
+export const supplyCriteriaSchema = z.object({
+	categories: z.array(z.string().trim().min(1)).min(1, "Phải chọn ít nhất 1 ngành hàng"),
+	locations: z.array(z.string().trim().min(1)).min(1, "Phải chọn ít nhất 1 địa điểm"),
+	require_tax_id: z.boolean().default(true),
+	min_rating: z.number().min(0).max(5).default(0),
+	require_verified: z.boolean().default(false),
+});
+
+export type SupplyCriteria = z.infer<typeof supplyCriteriaSchema>;
+
 export const campaignSchema = z.object({
 	id: z.string().uuid(),
 	workspace_id: z.number(),
@@ -84,24 +97,34 @@ export const campaignSchema = z.object({
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional(),
 	created_by_user_id: z.string().uuid().nullable().optional(),
+	// Epic 45.1 — wire reconcile với campaign_to_response backend.
+	direction: z.enum(["demand", "supply"]).default("demand"),
+	supply_criteria: supplyCriteriaSchema.nullable().optional(),
+	source: z.enum(["created", "execute", "api"]).optional(),
+	next_run_at: z.string().nullable().optional(),
+	schedule_frequency: z.string().nullable().optional(),
+	schedule_cron: z.string().nullable().optional(),
+	max_runs: z.number().nullable().optional(),
+	skipped_by_quota: z.number().optional(),
+	last_run_at: z.string().nullable().optional(),
 });
 
 export type Campaign = z.infer<typeof campaignSchema>;
 
-// Supply criteria (Epic 43.5) — wire top-level cùng direction trong create payload
-export const supplyCriteriaSchema = z.object({
-	categories: z
-		.array(z.string().trim().min(1))
-		.min(1, "Phải chọn ít nhất 1 ngành hàng"),
-	locations: z
-		.array(z.string().trim().min(1))
-		.min(1, "Phải chọn ít nhất 1 địa điểm"),
-	require_tax_id: z.boolean().default(true),
-	min_rating: z.number().min(0).max(5).default(0),
-	require_verified: z.boolean().default(false),
+// Epic 45.1 — shape POST /campaigns/{id}/launch + GET /campaigns/{id}/runs.
+export const campaignRunSchema = z.object({
+	id: z.string().uuid(),
+	campaign_id: z.string().uuid(),
+	status: z.string(),
+	trigger: z.string(),
+	started_at: z.string().nullable().optional(),
+	finished_at: z.string().nullable().optional(),
+	stats: z.record(z.string(), z.any()).optional(),
+	cost_micros: z.number().nullable().optional(),
+	error: z.string().nullable().optional(),
 });
 
-export type SupplyCriteria = z.infer<typeof supplyCriteriaSchema>;
+export type CampaignRun = z.infer<typeof campaignRunSchema>;
 
 export const campaignCreateInputSchema = z.object({
 	name: z.string().min(1, "Tên chiến dịch không được để trống"),

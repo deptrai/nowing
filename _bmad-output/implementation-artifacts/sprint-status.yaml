@@ -471,7 +471,7 @@ development_status:
   epic-44-retrospective: done
 
   epic-45: in-progress
-  45-1-wire-contract-reconcile-campaign-list-page: in-progress
+  45-1-wire-contract-reconcile-campaign-list-page: done
   45-2-campaign-detail-run-history-leads-surface: backlog
   45-3-lifecycle-actions-schedule-editor: backlog
   45-4-e2e-browser-ops-verify: backlog
