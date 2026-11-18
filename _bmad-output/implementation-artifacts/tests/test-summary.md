@@ -492,3 +492,26 @@ Ghi chú: pagination bug `limit/offset`→`page/page_size` đã vá thật (back
   - `celery -A app.celery_app beat -l info` (75s) → log `Scheduler: Sending due task check-campaign-schedules (check_campaign_schedules)` đúng tick phút (crontab `minute="*"`, celery_app.py:373-377); worker nhận `Task check_campaign_schedules[632f028a…] received` và `succeeded in 0.31s: {'launched': 0, 'skipped': 0, 'reaped': 0, 'completed': 0}` — loop AI-44.2 chạy đầy đủ producer→queue→consumer.
   - `alembic heads` → `251 (head)`; `alembic current` (DATABASE_URL=nowing_test) → `251 (head)` — migration campaign scalars rev 251 đã apply.
 - Deviation: port backend e2e = 8000 đúng spec; DB dùng `nowing_test` thay DB dev (5434 down, docker off); `timeout` CLI không có trên macOS → beat chạy nền + kill thủ công.
+
+## Hardening bundle post-Epic-45 (retro action items)
+
+**Commit:** 21006ec23 · **Date:** 2026-11-18 · **Scope:** 7 retro action items (AI-43.3, AI-43.4, AI-44.3, AI-44.4, AI-45.1, AI-45.2, AI-45.3)
+
+| Test file | Result |
+|---|---|
+| `tests/unit/lead_intelligence/test_supply_post_filter.py` | pass (3 seam-test rewrite — mock tầng adapter/dedup thay vì `execute_multi_source_lead_gen` vì filter đã vào generation seam) |
+| `tests/unit/tasks/test_campaign_scheduler.py` | pass (concurrent-skip test assert `skipped_concurrent` riêng) |
+| `tests/unit/services/test_campaign_service.py` + 8 file campaign khác | **137/137 pass** |
+| `tests/unit/lead_intelligence + services + tasks + routes` regression | **3722 pass, 1 skipped** |
+| `tests/integration/campaigns/` | **11/11 pass** (real PAT, nowing_test :5432) |
+| `npx tsc --noEmit` (nowing_web) | clean — kèm fix type-only bug pre-existing trong `campaign-lifecycle.spec.ts` (`Parameters<Parameters<typeof test>>` → `APIRequestContext`/`Page`) |
+
+**Changes:**
+- AI-45.1: `lead_campaigns.updated_at` (server_default now() + server_onupdate ORM) — response trước trả created_at giả.
+- AI-44.4: `skipped_concurrent` int column — tách concurrent-run skip khỏi quota counter (`campaign_tasks.py` split except).
+- AI-44.3: partial index `ix_token_usage_campaign_run_id` trên `call_details->>'campaign_run_id'` — cost rollup 44.4 không còn seq-scan.
+- Migration `252` (down_revision `251`): 3 objects trên, verified upgrade→downgrade→upgrade trên `nowing_test`.
+- AI-45.2: `list_campaigns` batch prefetch — `DISTINCT ON (campaign_id)` latest runs + grouped junction count → 4 queries/page (trước 2+2N, ~200 @ page_size=100). Single-fetch path dùng `_build_campaign_response` chung.
+- AI-43.3: supply post-filter chuyển TỪ `_execute_and_persist_impl` VÀO `execute_multi_source_lead_gen` (generation seam) → preview `persist=false` giờ cũng trả leads đã lọc + `supply_filter_counters` trong stats kể cả happy path. `deduplication_summary` giữ pre-filter count; `total_deduplicated` = post-filter count.
+- AI-43.4: orchestrator import `_spec_direction` từ registry + helper `_spec_supply_criteria` module-level — bỏ inline duck-typing.
+- AI-45.3: `campaignLeadItemSchema.lead_role` → `z.string()`; `.passthrough()` → `.catchall(z.unknown())` (zod 4.2.1 deprecation); `campaignSchema` += `skipped_concurrent`.

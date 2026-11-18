@@ -220,8 +220,12 @@ def test_tick_quota_skip_increments_counter() -> None:
 
 
 def test_tick_concurrent_skip_increments_counter() -> None:
-    """Run trước còn 'running' → ConcurrentCampaignRunError → skip + counter."""
+    """Run trước còn 'running' → ConcurrentCampaignRunError → skip + counter.
+
+    AI-44.4: concurrent skip đếm vào skipped_concurrent RIÊNG, KHÔNG đụng
+    skipped_by_quota (đó là quota N runs/day)."""
     campaign = _due_campaign()
+    campaign.skipped_concurrent = 0
     open_run = AsyncMock(
         side_effect=ConcurrentCampaignRunError(campaign.id, uuid4())
     )
@@ -234,7 +238,8 @@ def test_tick_concurrent_skip_increments_counter() -> None:
         result = check_campaign_schedules.run()
 
     assert result["skipped"] == 1
-    assert campaign.skipped_by_quota == 1
+    assert campaign.skipped_concurrent == 1
+    assert campaign.skipped_by_quota == 0
     launch_mock.apply_async.assert_not_called()
 
 

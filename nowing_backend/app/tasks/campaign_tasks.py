@@ -209,10 +209,17 @@ async def _check_campaign_schedules() -> dict[str, int]:
                         session,
                         spec_snapshot=campaign.input_payload,
                     )
-                except (CampaignQuotaExceededError, ConcurrentCampaignRunError):
+                except CampaignQuotaExceededError:
                     # Skip im lặng + counter — KHÔNG tạo run row hư (44.3 pin).
                     campaign.skipped_by_quota = (
                         campaign.skipped_by_quota or 0
+                    ) + 1
+                    skipped += 1
+                except ConcurrentCampaignRunError:
+                    # AI-44.4: concurrent-run skip khác quota — counter riêng
+                    # (trước đây cộng chung → skipped_by_quota sai nghĩa).
+                    campaign.skipped_concurrent = (
+                        getattr(campaign, "skipped_concurrent", None) or 0
                     ) + 1
                     skipped += 1
                 else:

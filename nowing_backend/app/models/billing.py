@@ -68,6 +68,15 @@ class TokenUsage(BaseModel, TimestampMixin):
             "client_id",
             "created_at",
         ),
+        # AI-44.3: per-run cost rollup (Epic 44.4) truy vấn
+        # ``call_details->>'campaign_run_id'`` — partial index tránh seq-scan.
+        Index(
+            "ix_token_usage_campaign_run_id",
+            text("(call_details->>'campaign_run_id')"),
+            postgresql_where=text(
+                "call_details->>'campaign_run_id' IS NOT NULL"
+            ),
+        ),
     )
 
     prompt_tokens = Column(Integer, nullable=False, default=0)

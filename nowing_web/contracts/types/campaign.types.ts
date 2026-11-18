@@ -106,6 +106,7 @@ export const campaignSchema = z.object({
 	schedule_cron: z.string().nullable().optional(),
 	max_runs: z.number().nullable().optional(),
 	skipped_by_quota: z.number().optional(),
+	skipped_concurrent: z.number().optional(),
 	last_run_at: z.string().nullable().optional(),
 });
 
@@ -136,16 +137,19 @@ export const campaignRunListResponseSchema = z.object({
 
 export type CampaignRunListResponse = z.infer<typeof campaignRunListResponseSchema>;
 
-// Item = LeadRead backend merge {lead_role, run_id, added_at} — passthrough giữ
+// Item = LeadRead backend merge {lead_role, run_id, added_at} — catchall giữ
 // nguyên các field còn lại của LeadRead (company_name/source/...).
+// AI-45.3: lead_role lỏng (string) — role đến từ junction, enum cứng sẽ vỡ
+// parse nếu backend thêm role mới; .catchall thay .passthrough() (deprecated
+// zod 4.2.1, strip semantics giống nhau cho unknown keys).
 export const campaignLeadItemSchema = z
 	.object({
 		id: z.string().uuid(),
-		lead_role: z.enum(["buyer", "supplier"]),
+		lead_role: z.string(),
 		run_id: z.string().uuid().nullable().optional(),
 		added_at: z.string(),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export type CampaignLeadItem = z.infer<typeof campaignLeadItemSchema>;
 

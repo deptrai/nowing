@@ -1,4 +1,9 @@
-import { expect, test } from "@playwright/test";
+import {
+	type APIRequestContext,
+	expect,
+	type Page,
+	test,
+} from "@playwright/test";
 
 import { acquireTestSession, authHeaders, BACKEND_URL } from "../helpers/api/auth";
 import { createWorkspace } from "../helpers/api/workspaces";
@@ -32,10 +37,7 @@ test.beforeAll(async ({ request }) => {
 	workspaceId = ws.id;
 });
 
-async function findCampaign(
-	request: Parameters<Parameters<typeof test>[0]>[0]["request"],
-	name: string
-) {
+async function findCampaign(request: APIRequestContext, name: string) {
 	const res = await request.get(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/campaigns`, {
 		headers: authHeaders(token),
 	});
@@ -47,7 +49,7 @@ async function findCampaign(
 }
 
 /** Wizard: fill name on step 3 and hit "Lưu bản nháp" (Save Draft). */
-async function saveDraftFromWizard(page: Parameters<Parameters<typeof test>[0]>[0]["page"], name: string) {
+async function saveDraftFromWizard(page: Page, name: string) {
 	await page.getByRole("button", { name: /Tiếp tục: Nguồn & Ngân sách/ }).click();
 	await page.getByRole("button", { name: /Tiếp tục: Launch & Kích hoạt/ }).click();
 	await page.getByPlaceholder(/SDR Outbound Q3/).fill(name);

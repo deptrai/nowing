@@ -7,6 +7,7 @@ SPARSE_DROP, OUTSIDE_LOC, DEMAND_UNTOUCHED, COUNTERS_VIZ.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -286,23 +287,50 @@ class TestExecuteAndPersistSeam:
         )
         return ingest_mock
 
+    def _setup_real_generation(
+        self,
+        orchestrator: LeadGenOrchestrator,
+        monkeypatch: pytest.MonkeyPatch,
+        leads: list[NormalizedLead],
+    ) -> None:
+        """Mock tầng adapter/scoring/dedup — giữ filter THẬT ở generation seam.
+
+        AI-43.3: post-filter đã chuyển vào execute_multi_source_lead_gen, nên
+        không được mock cả hàm đó nữa (mock sẽ bỏ qua filter hoàn toàn).
+        """
+        fake_adapter = MagicMock()
+        fake_adapter.source_name = "enterprise"
+        fake_adapter.search_leads = AsyncMock(
+            return_value=[{"raw": i} for i in range(len(leads))]
+        )
+        fake_adapter.normalize_lead = MagicMock(side_effect=list(leads))
+        monkeypatch.setattr(
+            orchestrator.registry,
+            "resolve_adapters_for_campaign",
+            MagicMock(return_value=([fake_adapter], [])),
+        )
+        monkeypatch.setattr(
+            orchestrator,
+            "_score_and_enrich",
+            AsyncMock(side_effect=lambda leads, **kw: leads),
+        )
+        monkeypatch.setattr(
+            orchestrator.deduplication_service,
+            "deduplicate_leads",
+            MagicMock(
+                side_effect=lambda leads: SimpleNamespace(unified_leads=leads)
+            ),
+        )
+
     @pytest.mark.asyncio
     async def test_supply_run_filters_and_counts(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Supply run: lead no-tax-id bị drop trước ingest_batch, counter visible."""
         ingest_mock = self._setup_ingest(monkeypatch)
-        search_result = LeadGenOrchestratorResult(
-            status="completed",
-            total_discovered=2,
-            total_deduplicated=2,
-            leads=[_lead(), _lead(tax_id=None)],
-        )
         orchestrator = LeadGenOrchestrator()
-        monkeypatch.setattr(
-            orchestrator,
-            "execute_multi_source_lead_gen",
-            AsyncMock(return_value=search_result),
+        self._setup_real_generation(
+            orchestrator, monkeypatch, [_lead(), _lead(tax_id=None)]
         )
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
 
@@ -324,17 +352,9 @@ class TestExecuteAndPersistSeam:
     ) -> None:
         """Supply run drop hết -> return sớm, không gọi ingest_batch."""
         ingest_mock = self._setup_ingest(monkeypatch)
-        search_result = LeadGenOrchestratorResult(
-            status="completed",
-            total_discovered=1,
-            total_deduplicated=1,
-            leads=[_lead(tax_id=None)],
-        )
         orchestrator = LeadGenOrchestrator()
-        monkeypatch.setattr(
-            orchestrator,
-            "execute_multi_source_lead_gen",
-            AsyncMock(return_value=search_result),
+        self._setup_real_generation(
+            orchestrator, monkeypatch, [_lead(tax_id=None)]
         )
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
 
@@ -408,21 +428,15 @@ class TestExecuteAndPersistSeam:
             "app.services.lead_batch_service.LeadBatchService",
             MagicMock(return_value=MagicMock(ingest_batch=ingest_mock)),
         )
-        search_result = LeadGenOrchestratorResult(
-            status="completed",
-            total_discovered=3,
-            total_deduplicated=3,
-            leads=[
+        orchestrator = LeadGenOrchestrator()
+        self._setup_real_generation(
+            orchestrator,
+            monkeypatch,
+            [
                 _lead(),
                 _lead(source_id="2", rating=2.0),
                 _lead(source_id="3", verified=False),
             ],
-        )
-        orchestrator = LeadGenOrchestrator()
-        monkeypatch.setattr(
-            orchestrator,
-            "execute_multi_source_lead_gen",
-            AsyncMock(return_value=search_result),
         )
         monkeypatch.setattr(orchestrator, "_assign_new_leads", AsyncMock())
 

@@ -18,7 +18,10 @@ from app.lead_intelligence.adapters.base import (
     NormalizedLead,
     RawLeadRecord,
 )
-from app.lead_intelligence.adapters.registry import LeadSourceAdapterRegistry
+from app.lead_intelligence.adapters.registry import (
+    LeadSourceAdapterRegistry,
+    _spec_direction,
+)
 from app.lead_intelligence.campaign.schemas import CampaignSpec, ICPCriteria
 from app.lead_intelligence.confidence import ConfidenceGate
 from app.lead_intelligence.services.deduplication_service import (
@@ -168,6 +171,14 @@ def _apply_supply_post_filter(
             continue
         kept.append(lead)
     return kept, counters
+
+
+def _spec_supply_criteria(spec: Any) -> Any:
+    """Đọc ``supply_criteria`` cho spec dict lẫn object — cặp với
+    ``_spec_direction`` của registry (AI-43.4: một nơi đọc direction duy nhất)."""
+    if isinstance(spec, dict):
+        return spec.get("supply_criteria")
+    return getattr(spec, "supply_criteria", None)
 
 
 class LeadGenOrchestrator:
@@ -836,6 +847,24 @@ class LeadGenOrchestrator:
             for a in adapters
         ]
 
+        # AI-43.3: supply post-filter chạy NGAY tại generation seam — preview
+        # (persist=false) lẫn persist path đều nhận leads đã lọc + counters.
+        # Trước đây chỉ chạy trong execute_and_persist → preview trả leads
+        # thô (retro-43 F3). deduplicated_count giữ pre-filter (đo dedupe);
+        # total_deduplicated = post-filter (số leads cuối trả về) — parity
+        # với semantics persist path cũ.
+        deduped_pre_filter_count = len(final_leads)
+        supply_filter_counters: dict[str, int] = {}
+        if (
+            campaign_spec is not None
+            and _spec_direction(campaign_spec) == "supply"
+        ):
+            criteria = _spec_supply_criteria(campaign_spec)
+            if criteria is not None:
+                final_leads, supply_filter_counters = _apply_supply_post_filter(
+                    final_leads, criteria
+                )
+
         # Location-match telemetry for smoke-test feedback loop.
         loc_profile_for_meta = (
             getattr(campaign_spec, "location_profile", None)
@@ -861,7 +890,7 @@ class LeadGenOrchestrator:
             location_match_metadata=location_metadata,
             deduplication_summary={
                 "raw_count": total_discovered,
-                "deduplicated_count": len(final_leads),
+                "deduplicated_count": deduped_pre_filter_count,
                 # DNC filtering is delegated to LeadBatchService at persistence time.
                 # The real suppression count is reported by execute_and_persist.
                 "dnc_suppressed_count": 0,
@@ -869,6 +898,7 @@ class LeadGenOrchestrator:
             execution_time_ms=execution_time_ms,
             source_latency_ms=source_latency_ms,
             deduplication_rate=deduplication_rate,
+            supply_filter_counters=supply_filter_counters,
         )
 
     async def _assign_new_leads(
@@ -1037,50 +1067,27 @@ class LeadGenOrchestrator:
             search_result.campaign_run_id = campaign_run_id
 
         if not search_result.leads:
-            await _finalize(
-                "succeeded",
-                stats={"ingested_count": 0, "accepted_lead_count": 0},
-            )
+            empty_stats: dict[str, Any] = {
+                "ingested_count": 0,
+                "accepted_lead_count": 0,
+            }
+            # AI-43.3: post-filter chạy upstream ở generation seam — counters
+            # đã nằm trong search_result; giữ chúng trong run stats.
+            if search_result.supply_filter_counters:
+                empty_stats["supply_filter_counters"] = (
+                    search_result.supply_filter_counters
+                )
+            await _finalize("succeeded", stats=empty_stats)
             _tag_result()
             return search_result
-
-        # Epic 43.3: supply post-filter tại persist seam — duy nhất một chỗ,
-        # sau khi leads đã chuẩn hoá, trước ingest_batch. Demand bit-for-bit.
-        supply_filter_counters: dict[str, int] | None = None
-        if (
-            campaign_spec is not None
-            and campaign_spec.direction == "supply"
-            and campaign_spec.supply_criteria is not None
-        ):
-            kept_leads, supply_filter_counters = _apply_supply_post_filter(
-                search_result.leads, campaign_spec.supply_criteria
-            )
-            search_result.leads = kept_leads
-            search_result.total_deduplicated = len(kept_leads)
-            search_result.supply_filter_counters = supply_filter_counters
-            if not kept_leads:
-                await _finalize(
-                    "succeeded",
-                    stats={
-                        "ingested_count": 0,
-                        "accepted_lead_count": 0,
-                        "supply_filter_counters": supply_filter_counters,
-                    },
-                )
-                _tag_result()
-                return search_result
 
         # Epic 43.4: supply leads được tag role/visibility qua extra_metadata
         # ngay tại build site — demand path không thêm key nào. Tag nằm trong
         # lead_dict, ingest_batch passthrough + upsert JSONB merge giữ key cũ.
         supply_tags: dict[str, Any] | None = None
         if campaign_spec is not None:
-            spec_direction = (
-                str(getattr(campaign_spec, "direction", "demand") or "demand")
-                if not isinstance(campaign_spec, dict)
-                else str(campaign_spec.get("direction") or "demand")
-            )
-            if spec_direction == "supply":
+            # AI-43.4: dùng helper chung _spec_direction thay duck-typing inline.
+            if _spec_direction(campaign_spec) == "supply":
                 spec_name = (
                     campaign_spec.get("name", "")
                     if isinstance(campaign_spec, dict)
@@ -1185,17 +1192,24 @@ class LeadGenOrchestrator:
                 else "demand"
             )
             role = "supplier" if campaign_direction == "supply" else "buyer"
+        success_stats: dict[str, Any] = {
+            "ingested_count": summary.get("ingested_count", 0),
+            "skipped_blacklisted_count": summary.get(
+                "skipped_blacklisted_count", 0
+            ),
+            "failed_count": summary.get("failed_count", 0),
+            "accepted_lead_count": len(new_lead_ids),
+            "execution_time_ms": summary.get("execution_time_ms"),
+        }
+        # AI-43.3: counters từ generation seam — observable trên cả happy path
+        # (trước đây chỉ xuất hiện ở early-return khi post-filter rỗng).
+        if search_result.supply_filter_counters:
+            success_stats["supply_filter_counters"] = (
+                search_result.supply_filter_counters
+            )
         await _finalize(
             "succeeded",
-            stats={
-                "ingested_count": summary.get("ingested_count", 0),
-                "skipped_blacklisted_count": summary.get(
-                    "skipped_blacklisted_count", 0
-                ),
-                "failed_count": summary.get("failed_count", 0),
-                "accepted_lead_count": len(new_lead_ids),
-                "execution_time_ms": summary.get("execution_time_ms"),
-            },
+            stats=success_stats,
             accepted_lead_ids=list(new_lead_ids),
             role=role,
         )

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '11-18-2026 20:37'
+last_updated: '11-18-2026 21:06'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -1118,14 +1118,14 @@ action_items:
     action: "Supply post-filter trên preview path (persist=false) hoặc document behavior
       — preview hiện trả leads unfiltered, không counters"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-43-retro-2026-11-18.md"
   - id: "epic-43-retro-item-53-consolidate-direction-read-helpers-regis"
     epic: 43
     action: "Consolidate direction-read helpers: registry _spec_direction vs orchestrator
       inline duck-typing (orchestrator.py:967-971)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-43-retro-2026-11-18.md"
   - id: "epic-43-retro-item-54-rate-limit-abuse-guard-cho-campaign-endp"
     epic: 43
@@ -1151,13 +1151,13 @@ action_items:
     epic: 44
     action: "Index token_usage call_details campaign_run_id neu run density tang"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
   - id: "epic-44-retro-item-58-tach-semantics-skipped_by_quota-counter"
     epic: 44
     action: "Tach semantics skipped_by_quota counter (quota vs concurrent)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
   - id: "epic-44-retro-item-59-carry-over-ai-43-3-preview-filter-ai-43"
     epic: 44
@@ -1171,21 +1171,21 @@ action_items:
     action: "Thêm cột updated_at (server onupdate) lên lead_campaigns hoặc bỏ field
       khỏi FE contract — mapper hiện trả created_at (campaign_service.py:490)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
   - id: "AI-45.2"
     epic: 45
     action: "Batch/denormalize last_run_at + collected_leads_count trong list page
       (2 query/campaign -> ~200 queries o page_size=100)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
   - id: "AI-45.3"
     epic: 45
     action: "campaignLeadItemSchema: lead_role enum -> z.string() long + di doi khoi
       .passthrough() deprecated (zod 4.2.1)"
     owner: "dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
   - id: "AI-45.4"
     epic: 45

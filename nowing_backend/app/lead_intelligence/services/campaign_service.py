@@ -425,26 +425,18 @@ def _spec_snapshot_to_fe_shape(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) -> dict[str, Any]:
-    """Map ``LeadCampaign`` → dict khớp FE ``campaignSchema``.
+def _build_campaign_response(
+    campaign: LeadCampaign,
+    *,
+    snapshot: dict[str, Any],
+    last_finished: Any,
+    collected: int,
+) -> dict[str, Any]:
+    """Map ``LeadCampaign`` → FE ``campaignSchema`` từ data đã prefetch.
 
-    ``input_payload`` truthy → merge scalar fields lên payload gốc (giữ nguyên
-    FE shape); fallback build từ ``spec_snapshot`` run mới nhất. ``sources``
-    đảm bảo min-1. Wire test backend là source-of-truth.
+    AI-45.2: tách khỏi ``campaign_to_response`` để ``list_campaigns`` prefetch
+    batch (2 query tổng cho cả page) thay vì 2 query/campaign (N+1).
     """
-    # Run mới nhất — 1 query gộp spec_snapshot + finished_at (45.1): phục vụ
-    # cả fallback FE shape lẫn supply_criteria + last_run_at.
-    latest_run = (
-        await session.execute(
-            select(CampaignRun.spec_snapshot, CampaignRun.finished_at)
-            .where(CampaignRun.campaign_id == campaign.id)
-            .order_by(CampaignRun.started_at.desc())
-            .limit(1)
-        )
-    ).first()
-    snapshot = (latest_run[0] if latest_run else None) or {}
-    last_finished = latest_run[1] if latest_run else None
-
     payload: dict[str, Any]
     if campaign.input_payload:
         payload = dict(campaign.input_payload)
@@ -458,15 +450,6 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
     if not (budget_cfg.get("sources") or []):
         budget_cfg["sources"] = ["muasamcong"]
         payload["source_budget_config"] = budget_cfg
-
-    # Đếm leads junction (1 query nhẹ — không denormalize v1).
-    collected = (
-        await session.execute(
-            select(func.count())
-            .select_from(CampaignLead)
-            .where(CampaignLead.campaign_id == campaign.id)
-        )
-    ).scalar_one()
 
     # 45.1: supply_criteria — ưu tiên input_payload; thiếu + direction=supply
     # → fallback spec_snapshot của run mới nhất; demand/không có → None.
@@ -487,7 +470,13 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
         "qualified_leads_count": 0,
         "estimated_cost_vnd": 0,
         "created_at": campaign.created_at.isoformat() if campaign.created_at else "",
-        "updated_at": campaign.created_at.isoformat() if campaign.created_at else None,
+        # AI-45.1: cột updated_at thật (server_onupdate=now() qua ORM UPDATE);
+        # fallback created_at cho row cũ chưa backfill/None.
+        "updated_at": (
+            (getattr(campaign, "updated_at", None) or campaign.created_at).isoformat()
+            if (getattr(campaign, "updated_at", None) or campaign.created_at)
+            else None
+        ),
         "created_by_user_id": (
             str(campaign.created_by) if campaign.created_by else None
         ),
@@ -502,8 +491,48 @@ async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) ->
         "schedule_cron": campaign.schedule_cron,
         "max_runs": campaign.max_runs,
         "skipped_by_quota": campaign.skipped_by_quota or 0,
+        # AI-44.4: counter riêng cho concurrent-run skip (409 race) — tách
+        # khỏi quota skip. getattr cho tương thích mock/SimpleNamespace.
+        "skipped_concurrent": getattr(campaign, "skipped_concurrent", 0) or 0,
         "last_run_at": last_finished.isoformat() if last_finished else None,
     }
+
+
+async def campaign_to_response(session: AsyncSession, campaign: LeadCampaign) -> dict[str, Any]:
+    """Map ``LeadCampaign`` → dict khớp FE ``campaignSchema``.
+
+    ``input_payload`` truthy → merge scalar fields lên payload gốc (giữ nguyên
+    FE shape); fallback build từ ``spec_snapshot`` run mới nhất. ``sources``
+    đảm bảo min-1. Wire test backend là source-of-truth.
+    """
+    # Run mới nhất — 1 query gộp spec_snapshot + finished_at (45.1): phục vụ
+    # cả fallback FE shape lẫn supply_criteria + last_run_at.
+    latest_run = (
+        await session.execute(
+            select(CampaignRun.spec_snapshot, CampaignRun.finished_at)
+            .where(CampaignRun.campaign_id == campaign.id)
+            .order_by(CampaignRun.started_at.desc())
+            .limit(1)
+        )
+    ).first()
+    snapshot = (latest_run[0] if latest_run else None) or {}
+    last_finished = latest_run[1] if latest_run else None
+
+    # Đếm leads junction (1 query nhẹ — không denormalize v1).
+    collected = (
+        await session.execute(
+            select(func.count())
+            .select_from(CampaignLead)
+            .where(CampaignLead.campaign_id == campaign.id)
+        )
+    ).scalar_one()
+
+    return _build_campaign_response(
+        campaign,
+        snapshot=snapshot,
+        last_finished=last_finished,
+        collected=collected,
+    )
 
 
 async def list_campaigns(
@@ -518,7 +547,8 @@ async def list_campaigns(
     """Paged list trả ``{items, total, limit, offset}`` (FE campaignListResponseSchema).
 
     Default ``source='created'``; ``?include_implicit=true`` expose cả
-    ``'execute'``/``'api'`` (44.1 implicit campaigns).
+    ``'execute'``/``'api'`` (44.1 implicit campaigns). AI-45.2: batch prefetch
+    latest-run + junction count (4 query tổng/page, trước đây 2+2N).
     """
     conditions = [LeadCampaign.workspace_id == workspace_id]
     if not include_implicit:
@@ -540,5 +570,47 @@ async def list_campaigns(
             .limit(page_size)
         )
     ).scalars().all()
-    items = [await campaign_to_response(session, c) for c in rows]
+
+    campaign_ids = [c.id for c in rows]
+    latest_map: dict[Any, tuple[Any, Any]] = {}
+    counts_map: dict[Any, int] = {}
+    if campaign_ids:
+        # DISTINCT ON (campaign_id) — latest run theo started_at mỗi campaign.
+        run_rows = (
+            await session.execute(
+                select(
+                    CampaignRun.campaign_id,
+                    CampaignRun.spec_snapshot,
+                    CampaignRun.finished_at,
+                )
+                .where(CampaignRun.campaign_id.in_(campaign_ids))
+                .order_by(
+                    CampaignRun.campaign_id,
+                    CampaignRun.started_at.desc(),
+                )
+                .distinct(CampaignRun.campaign_id)
+            )
+        ).all()
+        latest_map = {
+            r.campaign_id: (r.spec_snapshot or {}, r.finished_at)
+            for r in run_rows
+        }
+        count_rows = (
+            await session.execute(
+                select(CampaignLead.campaign_id, func.count())
+                .where(CampaignLead.campaign_id.in_(campaign_ids))
+                .group_by(CampaignLead.campaign_id)
+            )
+        ).all()
+        counts_map = dict(count_rows)
+
+    items = [
+        _build_campaign_response(
+            c,
+            snapshot=latest_map.get(c.id, ({}, None))[0],
+            last_finished=latest_map.get(c.id, ({}, None))[1],
+            collected=counts_map.get(c.id, 0),
+        )
+        for c in rows
+    ]
     return {"items": items, "total": total or 0, "limit": page_size, "offset": (page - 1) * page_size}

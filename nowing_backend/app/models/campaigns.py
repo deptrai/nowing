@@ -22,6 +22,7 @@ from sqlalchemy import (
     Index,
     Integer,
     PrimaryKeyConstraint,
+    func,
     String,
     UniqueConstraint,
 )
@@ -75,7 +76,21 @@ class LeadCampaign(Base, TimestampMixin):
     skipped_by_quota = Column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    # AI-44.4: concurrent-run skip khác quota skip — counter riêng để
+    # skipped_by_quota đúng nghĩa (quota/day exhausted, không lẫn race 409).
+    skipped_concurrent = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     created_by = Column(UUID(as_uuid=True), nullable=True)
+    # AI-45.1: updated_at thật (ORM UPDATE tự emit server_onupdate=now()).
+    # TimestampMixin chỉ có created_at → trước đây response dùng created_at làm
+    # placeholder gây misleading khi PATCH không đổi gì hiển thị.
+    updated_at = Column(
+        _TIMESTAMP,
+        nullable=True,
+        server_default=func.now(),
+        server_onupdate=func.now(),
+    )
 
 
 class CampaignRun(Base, TimestampMixin):
