@@ -176,6 +176,10 @@ export type CampaignCreateInput = z.infer<typeof campaignCreateInputSchema> & {
 
 export const campaignUpdateInputSchema = campaignCreateInputSchema.partial().extend({
 	status: campaignStatusSchema.optional(),
+	// 45.3: schedule scalars writable qua PATCH; null = clear.
+	schedule_frequency: z.enum(["once", "hourly", "daily", "weekly", "monthly", "custom"]).nullish(),
+	schedule_cron: z.string().nullish(),
+	max_runs: z.number().int().min(1).nullish(),
 });
 
 export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;

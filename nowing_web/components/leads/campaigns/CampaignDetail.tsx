@@ -1,11 +1,32 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import {
+	Archive,
+	ArrowLeft,
+	CalendarClock,
+	ChevronLeft,
+	ChevronRight,
+	Pause,
+	Play,
+	RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { toast } from "sonner";
 
+import { CampaignScheduleDialog } from "@/components/leads/campaigns/CampaignScheduleDialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,6 +142,10 @@ export function CampaignDetail({
 	const [tab, setTab] = useState<"runs" | "leads">("runs");
 	const [runsPage, setRunsPage] = useState(1);
 	const [leadsPage, setLeadsPage] = useState(1);
+	// 45.3: lifecycle actions — schedule dialog + confirm dialog + pending flag.
+	const [scheduleOpen, setScheduleOpen] = useState(false);
+	const [confirmAction, setConfirmAction] = useState<"archive" | "pause" | null>(null);
+	const [actionPending, setActionPending] = useState(false);
 
 	const campaignQuery = useQuery({
 		queryKey: ["leads-campaign", workspaceId, campaignId],
@@ -206,6 +231,50 @@ export function CampaignDetail({
 		else leadsQuery.refetch();
 	};
 
+	// 45.3: chạy action → toast success / error (409/422/429 → detail từ
+	// backend, đã map sẵn vào AppError.message) → refetch.
+	const runAction = async (fn: () => Promise<unknown>, successKey: string) => {
+		try {
+			setActionPending(true);
+			await fn();
+			toast.success(t(successKey));
+			refreshActive();
+		} catch (err) {
+			toast.error(
+				err instanceof AppError && err.message ? err.message : t("campaign_actions_error")
+			);
+		} finally {
+			setActionPending(false);
+		}
+	};
+
+	const doLaunch = () =>
+		runAction(
+			() => leadsApiService.launchCampaign(workspaceId, campaignId),
+			"campaign_actions_launched"
+		);
+	const doPause = () =>
+		runAction(
+			() => leadsApiService.pauseCampaign(workspaceId, campaignId),
+			"campaign_actions_paused"
+		);
+	const doResume = () =>
+		runAction(
+			() =>
+				leadsApiService.updateCampaign(workspaceId, campaignId, {
+					status: "scheduled",
+				}),
+			"campaign_actions_resumed"
+		);
+	const doArchive = () =>
+		runAction(
+			() =>
+				leadsApiService.updateCampaign(workspaceId, campaignId, {
+					status: "archived",
+				}),
+			"campaign_actions_archived"
+		);
+
 	return (
 		<div className="space-y-4">
 			{/* Header */}
@@ -252,14 +321,105 @@ export function CampaignDetail({
 						) : null}
 					</div>
 				</div>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={refreshActive}
-					aria-label={t("campaign_detail_refresh")}
-				>
-					<RefreshCw className="h-4 w-4" />
-				</Button>
+				{/* 45.3: action buttons theo status (matrix spec) */}
+				<div className="flex flex-wrap items-center justify-end gap-2">
+					{campaign.status === "draft" && (
+						<>
+							<Button size="sm" onClick={doLaunch} disabled={actionPending}>
+								<Play className="mr-1 h-4 w-4" />
+								{t("campaign_actions_launch")}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setScheduleOpen(true)}
+								disabled={actionPending}
+							>
+								<CalendarClock className="mr-1 h-4 w-4" />
+								{t("campaign_actions_schedule")}
+							</Button>
+						</>
+					)}
+					{campaign.status === "scheduled" && (
+						<>
+							<Button variant="outline" size="sm" onClick={doPause} disabled={actionPending}>
+								<Pause className="mr-1 h-4 w-4" />
+								{t("campaign_actions_pause")}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setScheduleOpen(true)}
+								disabled={actionPending}
+							>
+								<CalendarClock className="mr-1 h-4 w-4" />
+								{t("campaign_actions_edit_schedule")}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setConfirmAction("archive")}
+								disabled={actionPending}
+							>
+								<Archive className="mr-1 h-4 w-4" />
+								{t("campaign_actions_archive")}
+							</Button>
+						</>
+					)}
+					{campaign.status === "running" && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setConfirmAction("pause")}
+							disabled={actionPending}
+						>
+							<Pause className="mr-1 h-4 w-4" />
+							{t("campaign_actions_pause")}
+						</Button>
+					)}
+					{campaign.status === "paused" && (
+						<>
+							<Button size="sm" onClick={doResume} disabled={actionPending}>
+								<Play className="mr-1 h-4 w-4" />
+								{t("campaign_actions_resume")}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setConfirmAction("archive")}
+								disabled={actionPending}
+							>
+								<Archive className="mr-1 h-4 w-4" />
+								{t("campaign_actions_archive")}
+							</Button>
+						</>
+					)}
+					{(campaign.status === "completed" || campaign.status === "failed") && (
+						<>
+							<Button size="sm" onClick={doLaunch} disabled={actionPending}>
+								<Play className="mr-1 h-4 w-4" />
+								{t("campaign_actions_relaunch")}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setConfirmAction("archive")}
+								disabled={actionPending}
+							>
+								<Archive className="mr-1 h-4 w-4" />
+								{t("campaign_actions_archive")}
+							</Button>
+						</>
+					)}
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={refreshActive}
+						aria-label={t("campaign_detail_refresh")}
+					>
+						<RefreshCw className="h-4 w-4" />
+					</Button>
+				</div>
 			</div>
 
 			{/* Config card theo direction */}
@@ -358,13 +518,9 @@ export function CampaignDetail({
 					{runsQuery.isPending ? (
 						<Skeleton className="h-40 w-full" />
 					) : runsQuery.isError ? (
-						<p className="py-6 text-sm text-muted-foreground">
-							{t("campaign_detail_error_load")}
-						</p>
+						<p className="py-6 text-sm text-muted-foreground">{t("campaign_detail_error_load")}</p>
 					) : runsQuery.data && runsQuery.data.total === 0 ? (
-						<p className="py-6 text-sm text-muted-foreground">
-							{t("campaign_detail_runs_empty")}
-						</p>
+						<p className="py-6 text-sm text-muted-foreground">{t("campaign_detail_runs_empty")}</p>
 					) : (
 						<>
 							<Table>
@@ -374,12 +530,8 @@ export function CampaignDetail({
 										<TableHead>{t("campaign_detail_col_trigger")}</TableHead>
 										<TableHead>{t("campaign_detail_col_started")}</TableHead>
 										<TableHead>{t("campaign_detail_col_finished")}</TableHead>
-										<TableHead className="text-right">
-											{t("campaign_detail_col_leads")}
-										</TableHead>
-										<TableHead className="text-right">
-											{t("campaign_detail_col_usage")}
-										</TableHead>
+										<TableHead className="text-right">{t("campaign_detail_col_leads")}</TableHead>
+										<TableHead className="text-right">{t("campaign_detail_col_usage")}</TableHead>
 										<TableHead>{t("campaign_detail_col_error")}</TableHead>
 									</TableRow>
 								</TableHeader>
@@ -395,14 +547,9 @@ export function CampaignDetail({
 												<TableCell>{fmtDateTime(run.started_at)}</TableCell>
 												<TableCell>{fmtDateTime(run.finished_at)}</TableCell>
 												<TableCell className="text-right">{runLeadCount(run)}</TableCell>
-												<TableCell className="text-right">
-													{run.cost_micros ?? "-"}
-												</TableCell>
+												<TableCell className="text-right">{run.cost_micros ?? "-"}</TableCell>
 												<TableCell className="text-muted-foreground">
-													<span
-														className="block max-w-48 truncate"
-														title={run.error ?? undefined}
-													>
+													<span className="block max-w-48 truncate" title={run.error ?? undefined}>
 														{run.error ?? "-"}
 													</span>
 												</TableCell>
@@ -425,13 +572,9 @@ export function CampaignDetail({
 					{leadsQuery.isPending ? (
 						<Skeleton className="h-40 w-full" />
 					) : leadsQuery.isError ? (
-						<p className="py-6 text-sm text-muted-foreground">
-							{t("campaign_detail_error_load")}
-						</p>
+						<p className="py-6 text-sm text-muted-foreground">{t("campaign_detail_error_load")}</p>
 					) : leadsQuery.data && leadsQuery.data.total === 0 ? (
-						<p className="py-6 text-sm text-muted-foreground">
-							{t("campaign_detail_leads_empty")}
-						</p>
+						<p className="py-6 text-sm text-muted-foreground">{t("campaign_detail_leads_empty")}</p>
 					) : (
 						<>
 							<Table>
@@ -446,9 +589,7 @@ export function CampaignDetail({
 								<TableBody>
 									{(leadsQuery.data?.items ?? []).map((item: CampaignLeadItem) => (
 										<TableRow key={item.id}>
-											<TableCell className="font-medium">
-												{asStr(item.company_name)}
-											</TableCell>
+											<TableCell className="font-medium">{asStr(item.company_name)}</TableCell>
 											<TableCell>
 												<Badge variant="outline">{item.lead_role}</Badge>
 											</TableCell>
@@ -468,6 +609,50 @@ export function CampaignDetail({
 					)}
 				</TabsContent>
 			</Tabs>
+
+			{/* 45.3: schedule editor + confirm dialogs */}
+			<CampaignScheduleDialog
+				workspaceId={workspaceId}
+				campaign={campaign}
+				open={scheduleOpen}
+				onOpenChange={setScheduleOpen}
+				onSaved={refreshActive}
+			/>
+			<AlertDialog
+				open={confirmAction !== null}
+				onOpenChange={(open) => {
+					if (!open) setConfirmAction(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{confirmAction === "pause"
+								? t("campaign_actions_confirm_pause_title")
+								: t("campaign_actions_confirm_archive_title")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{confirmAction === "pause"
+								? t("campaign_actions_confirm_pause_desc")
+								: t("campaign_actions_confirm_archive_desc")}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>{t("campaign_actions_confirm_cancel")}</AlertDialogCancel>
+						<AlertDialogAction
+							disabled={actionPending}
+							onClick={() => {
+								const action = confirmAction;
+								setConfirmAction(null);
+								if (action === "pause") doPause();
+								else if (action === "archive") doArchive();
+							}}
+						>
+							{t("campaign_actions_confirm_ok")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

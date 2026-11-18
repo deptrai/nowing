@@ -472,3 +472,11 @@ Ghi chú: pagination bug `limit/offset`→`page/page_size` đã vá thật (back
 - FE: `campaignRunListResponseSchema`/`campaignLeadItemSchema`(.passthrough)/`campaignLeadListResponseSchema`; `listCampaignRuns` + `getCampaignLeads`; trang `leads/campaigns/[campaign_id]` + `CampaignDetail.tsx` (473 dòng — header badges, config card theo direction, Tabs Runs/Leads server-paged, 404/403/empty states); i18n en+vi +42 keys parity sạch.
 - Verify: `pytest test_campaign_leads_route.py + test_campaign_crud_routes.py` → **30 passed** (8 mới); `npx tsc --noEmit` clean; i18n parity node-check (dev-server lock — Playwright skip).
 - Stats key: `accepted_lead_count` (finalize_campaign_run, orchestrator:1196) + fallback `accepted`/`total_accepted`. `cost_micros` hiển thị raw micros.
+
+## Spec 45.3 — Lifecycle actions + Schedule editor
+
+- `CampaignUpdateRequest` += `schedule_frequency`/`schedule_cron`/`max_runs` (ge=1); helpers `_cron_is_valid` (croniter) + `_launch_schedule_from_payload` (recurring → scalars, thiếu/sai cron → 422 trước insert).
+- PATCH: archived-guard 422 (name vẫn OK); freq 'once' clear schedule; 'custom' bắt buộc cron hợp lệ; PATCH cron đơn lẻ → freq='custom'; recompute `next_run_at` qua `compute_next_run_at(runs_count)` khi đổi schedule hoặc status→'scheduled' (scheduled + next_run_at=None → 422).
+- POST create: wire `launch_config.recurring` + `cron_expression` → `schedule_*` scalars + `next_run_at` — đóng gap G-1 (scalars trước đây unreachable).
+- FE: `campaignUpdateInputSchema` += 3 fields; `CampaignScheduleDialog` mới; `CampaignDetail` button matrix theo status (draft→Chạy ngay+Lên lịch; scheduled→Tạm dừng+Chỉnh lịch+Lưu trữ; running→Tạm dừng; paused→Tiếp tục+Lưu trữ; completed/failed→Chạy lại+Lưu trữ; archived→read-only); AlertDialog confirm Archive + Pause-running; toast hiển thị detail 409/422/429; i18n en+vi +35 keys parity sạch.
+- Verify: `pytest test_campaign_crud_routes.py + test_campaign_service.py + test_campaign_leads_route.py` → **59 passed** (+9 test matrix M1–M9); `npx tsc --noEmit` clean.

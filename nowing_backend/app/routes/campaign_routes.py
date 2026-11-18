@@ -64,12 +64,75 @@ _USER_SETTABLE_STATUSES = {
     CampaignStatus.ARCHIVED.value,
 }
 
+# 45.3 G-1: frequency user settable qua PATCH; 'custom' bắt buộc schedule_cron.
+_USER_SETTABLE_FREQUENCIES = {
+    "once",
+    "hourly",
+    "daily",
+    "weekly",
+    "monthly",
+    "custom",
+}
+
+
+def _cron_is_valid(expr: str) -> bool:
+    """Validate cron bằng croniter (pattern campaign_service.compute_next_run_at)."""
+    try:
+        from croniter import croniter
+
+        croniter(expr)
+    except Exception:
+        return False
+    return True
+
+
+def _launch_schedule_from_payload(
+    payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    """45.3 T2: map ``launch_config`` trong create payload → schedule scalars.
+
+    ``schedule_type='recurring'`` → bắt buộc ``cron_expression`` hợp lệ
+    (422 khi thiếu/sai); ``max_runs`` int ≥ 1 nếu có. ``'once'``/không có
+    launch_config → ``None`` (scalars giữ default, không wire ngược).
+    """
+    launch_config = (payload or {}).get("launch_config") or {}
+    if launch_config.get("schedule_type") != "recurring":
+        return None
+    cron = launch_config.get("cron_expression")
+    if not isinstance(cron, str) or not cron.strip() or not _cron_is_valid(cron):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Lịch chạy định kỳ yêu cầu biểu thức cron hợp lệ.",
+        )
+    max_runs = launch_config.get("max_runs")
+    if max_runs is not None:
+        try:
+            max_runs = int(max_runs)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="max_runs phải là số nguyên ≥ 1.",
+            ) from exc
+        if max_runs < 1:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="max_runs phải là số nguyên ≥ 1.",
+            )
+    return {
+        "schedule_frequency": "custom",
+        "schedule_cron": cron.strip(),
+        "max_runs": max_runs,
+    }
+
 
 class CampaignUpdateRequest(BaseModel):
-    """PATCH body — chỉ name + status (spec 44.2; phần còn lại bỏ qua)."""
+    """PATCH body — name + status + schedule scalars (45.3 G-1)."""
 
     name: str | None = Field(default=None, min_length=1, max_length=300)
     status: str | None = None
+    schedule_frequency: str | None = None
+    schedule_cron: str | None = None
+    max_runs: int | None = Field(default=None, ge=1)
 
 
 class CampaignRunResponse(BaseModel):
@@ -500,6 +563,10 @@ async def create_campaign_route(
             detail=f"Cấu hình chiến dịch không hợp lệ: {exc}",
         ) from exc
 
+    # 45.3 T2: validate launch_config schedule TRƯỚC insert — recurring thiếu
+    # cron → 422, không tạo campaign (M9).
+    launch_schedule = _launch_schedule_from_payload(payload)
+
     # Dup (workspace_id, name, direction) → 409 friendly.
     existing = (
         await session.execute(
@@ -528,6 +595,14 @@ async def create_campaign_route(
         created_by=getattr(auth.user, "id", None),
         input_payload=payload,
     )
+    if launch_schedule is not None:
+        # Scalars = source of truth cho scheduler; campaign mới → runs_count=0.
+        campaign.schedule_frequency = launch_schedule["schedule_frequency"]
+        campaign.schedule_cron = launch_schedule["schedule_cron"]
+        campaign.max_runs = launch_schedule["max_runs"]
+        campaign.next_run_at = campaign_service.compute_next_run_at(
+            campaign, runs_count=0
+        )
     await session.commit()
     return await campaign_service.campaign_to_response(session, campaign)
 
@@ -543,34 +618,122 @@ async def update_campaign_route(
         RequirePermission(Permission.LEADS_WRITE.value)
     ),
 ) -> dict[str, Any]:
-    """PATCH — chỉ name + status; machine-managed statuses → 422."""
+    """PATCH — name + status + schedule scalars (45.3); machine-managed → 422."""
     await check_permission(session, auth, workspace_id, Permission.LEADS_WRITE)
     await set_request_tenant_context(session, workspace_id=workspace_id)
     campaign = await _get_campaign_or_404(session, workspace_id, campaign_id)
+    fields_set = payload.model_fields_set
 
-    if payload.status is not None:
-        if payload.status not in _USER_SETTABLE_STATUSES:
+    # 45.3 G-6: 'archived' là one-way — mọi PATCH status trên campaign đã
+    # archive → 422 (PATCH name/schedule không đụng status vẫn OK).
+    if (
+        payload.status is not None
+        and campaign.status == CampaignStatus.ARCHIVED.value
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Chiến dịch đã lưu trữ, không thể thay đổi trạng thái.",
+        )
+
+    if payload.status is not None and payload.status not in _USER_SETTABLE_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Trạng thái '{payload.status}' không hợp lệ. Chỉ chấp nhận: "
+                f"{sorted(_USER_SETTABLE_STATUSES)}."
+            ),
+        )
+
+    # ---- 45.3 G-1: apply schedule scalars (single source of truth) ----
+    recompute_needed = False
+    if payload.schedule_frequency is not None:
+        freq = payload.schedule_frequency
+        if freq not in _USER_SETTABLE_FREQUENCIES:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    f"Trạng thái '{payload.status}' không hợp lệ. Chỉ chấp nhận: "
-                    f"{sorted(_USER_SETTABLE_STATUSES)}."
+                    f"Tần suất lịch chạy '{freq}' không hợp lệ. Chỉ chấp nhận: "
+                    f"{sorted(_USER_SETTABLE_FREQUENCIES)}."
                 ),
             )
-        campaign.status = payload.status
-        # 44.3: chuyển sang 'scheduled' → recompute next_run_at từ
-        # schedule_* scalars (scheduler tick dựa vào cột này).
-        if payload.status == CampaignStatus.SCHEDULED.value:
-            runs_count = (
-                await session.execute(
-                    select(func.count())
-                    .select_from(CampaignRun)
-                    .where(CampaignRun.campaign_id == campaign.id)
-                )
-            ).scalar_one() or 0
-            campaign.next_run_at = campaign_service.compute_next_run_at(
-                campaign, runs_count=runs_count
+        if freq == "once":
+            # 'once' → clear schedule (spec: cron=None, next_run_at=None).
+            campaign.schedule_frequency = "once"
+            campaign.schedule_cron = None
+        elif freq == "custom":
+            # 'custom' bắt buộc cron hợp lệ — mới từ PATCH hoặc sẵn có.
+            cron = (
+                payload.schedule_cron
+                if "schedule_cron" in fields_set
+                else campaign.schedule_cron
             )
+            if not cron or not _cron_is_valid(cron):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Tần suất 'custom' yêu cầu biểu thức cron hợp lệ.",
+                )
+            campaign.schedule_frequency = "custom"
+            campaign.schedule_cron = cron
+        else:
+            # Frequency khác → clear cron, trừ khi PATCH gửi kèm cron mới.
+            new_cron = (
+                payload.schedule_cron if "schedule_cron" in fields_set else None
+            )
+            if new_cron is not None and not _cron_is_valid(new_cron):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Biểu thức cron không hợp lệ.",
+                )
+            campaign.schedule_frequency = freq
+            campaign.schedule_cron = new_cron
+        recompute_needed = True
+    elif "schedule_cron" in fields_set:
+        # PATCH cron đơn lẻ: null → clear; set → freq='custom' (cron thắng
+        # trong compute_next_run_at).
+        cron = payload.schedule_cron
+        if cron is None:
+            campaign.schedule_cron = None
+        else:
+            if not _cron_is_valid(cron):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Biểu thức cron không hợp lệ.",
+                )
+            campaign.schedule_cron = cron
+            campaign.schedule_frequency = "custom"
+        recompute_needed = True
+
+    if "max_runs" in fields_set:
+        campaign.max_runs = payload.max_runs  # None = unlimited; ge=1 ở schema
+        recompute_needed = True
+
+    # Mọi PATCH đổi schedule hoặc status→'scheduled' → recompute next_run_at.
+    if recompute_needed or payload.status == CampaignStatus.SCHEDULED.value:
+        runs_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(CampaignRun)
+                .where(CampaignRun.campaign_id == campaign.id)
+            )
+        ).scalar_one() or 0
+        next_run_at = campaign_service.compute_next_run_at(
+            campaign, runs_count=runs_count
+        )
+        if (
+            payload.status == CampaignStatus.SCHEDULED.value
+            and next_run_at is None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Chiến dịch chưa có lịch chạy hợp lệ — không thể chuyển "
+                    "sang 'scheduled'."
+                ),
+            )
+        campaign.next_run_at = next_run_at
+
+    if payload.status is not None:
+        campaign.status = payload.status
 
     if payload.name is not None and payload.name != campaign.name:
         clash = (

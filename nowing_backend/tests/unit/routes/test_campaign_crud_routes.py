@@ -558,6 +558,189 @@ def test_pause_from_draft_422(app: FastAPI):
 
 
 # ---------------------------------------------------------------------------
+# 45.3 — schedule scalars + archived guard (M1–M9)
+# ---------------------------------------------------------------------------
+
+
+def test_patch_schedule_custom_cron(app: FastAPI):
+    """M1: PATCH {frequency:'custom', cron} → scalars set + next_run_at."""
+    campaign = _campaign()
+    session = _FakeSession(campaigns=[campaign])
+    client = _client(app, session)
+    with _patch_rbac():
+        res = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={
+                "schedule_frequency": "custom",
+                "schedule_cron": "0 9 * * 1",
+            },
+        )
+    assert res.status_code == 200, res.text
+    assert campaign.schedule_frequency == "custom"
+    assert campaign.schedule_cron == "0 9 * * 1"
+    assert campaign.next_run_at is not None
+    assert campaign.next_run_at > datetime.now(UTC)
+
+
+def test_patch_schedule_cron_invalid_422(app: FastAPI):
+    """M2: cron xấu → 422; custom thiếu cron → 422."""
+    campaign = _campaign()
+    session = _FakeSession(campaigns=[campaign])
+    client = _client(app, session)
+    with _patch_rbac():
+        res = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={"schedule_cron": "not-cron"},
+        )
+        assert res.status_code == 422, res.text
+        res2 = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={"schedule_frequency": "custom"},
+        )
+        assert res2.status_code == 422, res2.text
+
+
+def test_patch_status_scheduled_no_schedule_422(app: FastAPI):
+    """M3: PATCH status='scheduled' khi không có freq/cron → 422."""
+    campaign = _campaign()
+    session = _FakeSession(campaigns=[campaign])
+    client = _client(app, session)
+    with _patch_rbac():
+        res = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={"status": "scheduled"},
+        )
+    assert res.status_code == 422, res.text
+
+
+def test_patch_archived_any_status_422(app: FastAPI):
+    """M4: campaign archived + PATCH status bất kỳ → 422 (one-way archive)."""
+    campaign = _campaign(status="archived")
+    session = _FakeSession(campaigns=[campaign])
+    client = _client(app, session)
+    for st in ("scheduled", "paused", "draft", "archived"):
+        with _patch_rbac():
+            res = client.patch(
+                f"/workspaces/10/campaigns/{campaign.id}",
+                json={"status": st},
+            )
+        assert res.status_code == 422, st
+    # PATCH name trên archived vẫn OK (AC3).
+    with _patch_rbac():
+        res = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={"name": "Tên mới"},
+        )
+    assert res.status_code == 200, res.text
+    assert campaign.name == "Tên mới"
+
+
+def test_patch_resume_paused_with_cron(app: FastAPI):
+    """M5: paused + cron sẵn + PATCH status='scheduled' → next_run_at ≠ None."""
+    campaign = _campaign(status="paused")
+    campaign.schedule_frequency = "custom"
+    campaign.schedule_cron = "0 8 * * *"
+    session = _FakeSession(campaigns=[campaign])
+    client = _client(app, session)
+    with _patch_rbac():
+        res = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={"status": "scheduled"},
+        )
+    assert res.status_code == 200, res.text
+    assert campaign.status == "scheduled"
+    assert campaign.next_run_at is not None
+
+
+def test_patch_frequency_change_recomputes(app: FastAPI):
+    """M6: scheduled + PATCH frequency='daily' → recompute + cron cleared."""
+    campaign = _campaign(status="scheduled")
+    campaign.schedule_frequency = "custom"
+    campaign.schedule_cron = "0 9 * * 1"
+    session = _FakeSession(campaigns=[campaign])
+    client = _client(app, session)
+    with _patch_rbac():
+        res = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={"schedule_frequency": "daily"},
+        )
+    assert res.status_code == 200, res.text
+    assert campaign.schedule_frequency == "daily"
+    assert campaign.schedule_cron is None
+    assert campaign.next_run_at is not None
+
+
+def test_patch_once_clears_schedule(app: FastAPI):
+    """M7: PATCH frequency='once' → cron=None, next_run_at=None."""
+    campaign = _campaign(status="scheduled")
+    campaign.schedule_frequency = "custom"
+    campaign.schedule_cron = "0 8 * * *"
+    campaign.next_run_at = datetime.now(UTC)
+    session = _FakeSession(campaigns=[campaign])
+    client = _client(app, session)
+    with _patch_rbac():
+        res = client.patch(
+            f"/workspaces/10/campaigns/{campaign.id}",
+            json={"schedule_frequency": "once"},
+        )
+    assert res.status_code == 200, res.text
+    assert campaign.schedule_frequency == "once"
+    assert campaign.schedule_cron is None
+    assert campaign.next_run_at is None
+
+
+def test_create_recurring_sets_schedule_scalars(app: FastAPI):
+    """M8: POST create launch_config recurring+cron → scalars + next_run_at."""
+    campaign = _campaign()
+    session = _FakeSession(
+        campaigns=[campaign],
+        # execute: dup pre-select → INSERT RETURNING id → latest run → count.
+        execute_results=[
+            _FakeResult(None),
+            _FakeResult((campaign.id,)),
+            _FakeResult(None),
+            _FakeResult(0),
+        ],
+    )
+    client = _client(app, session)
+    payload = dict(_INPUT_PAYLOAD)
+    payload["launch_config"] = {
+        **_INPUT_PAYLOAD["launch_config"],
+        "schedule_type": "recurring",
+        "cron_expression": "0 8 * * *",
+    }
+    with _patch_rbac():
+        res = client.post("/workspaces/10/campaigns", json=payload)
+    assert res.status_code == 201, res.text
+    assert campaign.schedule_frequency == "custom"
+    assert campaign.schedule_cron == "0 8 * * *"
+    assert campaign.next_run_at is not None
+    body = res.json()
+    assert body["schedule_frequency"] == "custom"
+    assert body["schedule_cron"] == "0 8 * * *"
+    assert body["next_run_at"] is not None
+
+
+def test_create_recurring_missing_cron_422(app: FastAPI):
+    """M9: recurring thiếu/sai cron_expression → 422, không query/insert gì."""
+    session = _FakeSession()
+    client = _client(app, session)
+    for bad_cron in (None, "not-a-cron"):
+        payload = dict(_INPUT_PAYLOAD)
+        payload["launch_config"] = {
+            **_INPUT_PAYLOAD["launch_config"],
+            "schedule_type": "recurring",
+            "cron_expression": bad_cron,
+        }
+        with _patch_rbac():
+            res = client.post("/workspaces/10/campaigns", json=payload)
+        assert res.status_code == 422, bad_cron
+    # 422 trước insert → không có SQL nào chạy (set_config đã bị fake bỏ qua).
+    assert session.executed_sql == []
+    assert not session.committed
+
+
+# ---------------------------------------------------------------------------
 # /execute?async=true
 # ---------------------------------------------------------------------------
 
