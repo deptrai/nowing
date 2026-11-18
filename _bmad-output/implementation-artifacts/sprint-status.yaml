@@ -470,11 +470,11 @@ development_status:
   44-4-per-run-usage-accounting-vertical-2-e2e: done
   epic-44-retrospective: done
 
-  epic-45: in-progress
+  epic-45: done
   45-1-wire-contract-reconcile-campaign-list-page: done
   45-2-campaign-detail-run-history-leads-surface: done
   45-3-lifecycle-actions-schedule-editor: done
-  45-4-e2e-browser-ops-verify: backlog
+  45-4-e2e-browser-ops-verify: done
   epic-45-retrospective: backlog
 validation_reports:
   - story: "3.18"

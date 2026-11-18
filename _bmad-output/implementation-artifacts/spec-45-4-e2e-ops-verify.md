@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready-for-dev
+status: done
 created: 2026-11-18
 context:
   - _bmad-output/implementation-artifacts/epic-45-context.md
