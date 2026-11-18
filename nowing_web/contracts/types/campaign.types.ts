@@ -126,6 +126,38 @@ export const campaignRunSchema = z.object({
 
 export type CampaignRun = z.infer<typeof campaignRunSchema>;
 
+// Epic 45.2 — paged responses GET /campaigns/{id}/runs + /campaigns/{id}/leads.
+export const campaignRunListResponseSchema = z.object({
+	items: z.array(campaignRunSchema),
+	total: z.number(),
+	limit: z.number(),
+	offset: z.number(),
+});
+
+export type CampaignRunListResponse = z.infer<typeof campaignRunListResponseSchema>;
+
+// Item = LeadRead backend merge {lead_role, run_id, added_at} — passthrough giữ
+// nguyên các field còn lại của LeadRead (company_name/source/...).
+export const campaignLeadItemSchema = z
+	.object({
+		id: z.string().uuid(),
+		lead_role: z.enum(["buyer", "supplier"]),
+		run_id: z.string().uuid().nullable().optional(),
+		added_at: z.string(),
+	})
+	.passthrough();
+
+export type CampaignLeadItem = z.infer<typeof campaignLeadItemSchema>;
+
+export const campaignLeadListResponseSchema = z.object({
+	items: z.array(campaignLeadItemSchema),
+	total: z.number(),
+	limit: z.number(),
+	offset: z.number(),
+});
+
+export type CampaignLeadListResponse = z.infer<typeof campaignLeadListResponseSchema>;
+
 export const campaignCreateInputSchema = z.object({
 	name: z.string().min(1, "Tên chiến dịch không được để trống"),
 	description: z.string().nullable().optional(),

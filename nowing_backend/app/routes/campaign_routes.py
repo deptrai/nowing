@@ -13,10 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import (
+    CampaignLead,
     CampaignRun,
     CampaignSource,
     CampaignStatus,
     CampaignTrigger,
+    Lead,
     LeadCampaign,
     Permission,
     WorkspaceMembership,
@@ -35,6 +37,7 @@ from app.lead_intelligence.campaign.schemas import (
     CampaignSpec,
     SourcePlanAllocation,
 )
+from app.lead_intelligence.schemas import LeadRead
 from app.lead_intelligence.services import campaign_service
 from app.lead_intelligence.services.campaign_service import (
     CampaignQuotaExceededError,
@@ -409,6 +412,63 @@ async def list_campaign_runs_route(
     ).scalars().all()
     return {
         "items": [_run_to_response(r) for r in rows],
+        "total": total or 0,
+        "limit": page_size,
+        "offset": (page - 1) * page_size,
+    }
+
+
+@router.get("/{workspace_id}/campaigns/{campaign_id}/leads")
+async def list_campaign_leads_route(
+    workspace_id: int,
+    campaign_id: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    session: AsyncSession = Depends(get_async_session),
+    _membership: WorkspaceMembership = Depends(
+        RequirePermission(Permission.LEADS_READ.value)
+    ),
+) -> dict[str, Any]:
+    """Leads thu qua campaign (paged join campaign_leads → leads, mới nhất trước).
+
+    Epic 45.2 — reader đầu tiên của junction ``campaign_leads``: item =
+    ``LeadRead`` + ``lead_role``/``run_id``/``added_at`` (created_at junction).
+    Composite FK bắt buộc join trên cả ``lead_id`` lẫn ``workspace_id``.
+    """
+    await set_request_tenant_context(session, workspace_id=workspace_id)
+    campaign = await _get_campaign_or_404(session, workspace_id, campaign_id)
+    total = (
+        await session.execute(
+            select(func.count())
+            .select_from(CampaignLead)
+            .where(CampaignLead.campaign_id == campaign.id)
+        )
+    ).scalar_one()
+    rows = (
+        await session.execute(
+            select(CampaignLead, Lead)
+            .join(
+                Lead,
+                (Lead.id == CampaignLead.lead_id)
+                & (Lead.workspace_id == CampaignLead.workspace_id),
+            )
+            .where(CampaignLead.campaign_id == campaign.id)
+            .order_by(CampaignLead.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).all()
+    items = []
+    for campaign_lead, lead in rows:
+        item = LeadRead.model_validate(lead).model_dump(mode="json")
+        item["lead_role"] = campaign_lead.role
+        item["run_id"] = (
+            str(campaign_lead.run_id) if campaign_lead.run_id else None
+        )
+        item["added_at"] = campaign_lead.created_at.isoformat()
+        items.append(item)
+    return {
+        "items": items,
         "total": total or 0,
         "limit": page_size,
         "offset": (page - 1) * page_size,

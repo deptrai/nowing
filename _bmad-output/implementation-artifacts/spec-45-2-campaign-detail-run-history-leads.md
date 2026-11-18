@@ -2,7 +2,7 @@
 title: 'Epic 45.2 — Campaign detail page + run history + GET /campaigns/{id}/leads'
 type: 'feature'
 created: '2026-11-18'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:

@@ -465,3 +465,10 @@ thấy rows qua FORCE RLS. `compute_next_run_at` nhận `runs_count` optional (s
 | i18n parity en/vi | leads.campaigns_* 28/28 + nav_menu.campaigns | pass (node verify — dev-server lock chặn playwright) |
 
 Ghi chú: pagination bug `limit/offset`→`page/page_size` đã vá thật (backend đọc page/page_size); `campaignStatusSchema` +`archived`; `campaignRunSchema` mới; `_run_to_response` +stats/cost_micros; `campaign_to_response` gộp latest-run query (1 thay 2). Deviation: test append 1 lần qua heredoc (verified on disk); biome pre-existing warnings.
+
+## Spec 45.2 — Campaign detail + run history + GET /campaigns/{id}/leads
+
+- Endpoint mới `GET /{ws}/campaigns/{id}/leads` (campaign_routes.py:421-478): join `CampaignLead→Lead` trên composite FK `(lead_id, workspace_id)`, item = `LeadRead` + `lead_role`/`run_id`/`added_at`, paged `page`/`page_size` — reader đầu tiên của junction `campaign_leads`.
+- FE: `campaignRunListResponseSchema`/`campaignLeadItemSchema`(.passthrough)/`campaignLeadListResponseSchema`; `listCampaignRuns` + `getCampaignLeads`; trang `leads/campaigns/[campaign_id]` + `CampaignDetail.tsx` (473 dòng — header badges, config card theo direction, Tabs Runs/Leads server-paged, 404/403/empty states); i18n en+vi +42 keys parity sạch.
+- Verify: `pytest test_campaign_leads_route.py + test_campaign_crud_routes.py` → **30 passed** (8 mới); `npx tsc --noEmit` clean; i18n parity node-check (dev-server lock — Playwright skip).
+- Stats key: `accepted_lead_count` (finalize_campaign_run, orchestrator:1196) + fallback `accepted`/`total_accepted`. `cost_micros` hiển thị raw micros.

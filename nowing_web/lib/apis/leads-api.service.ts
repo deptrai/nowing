@@ -1,10 +1,14 @@
 import {
 	type Campaign,
 	type CampaignCreateInput,
+	type CampaignLeadListResponse,
 	type CampaignListResponse,
 	type CampaignRun,
+	type CampaignRunListResponse,
 	type CampaignUpdateInput,
+	campaignLeadListResponseSchema,
 	campaignListResponseSchema,
+	campaignRunListResponseSchema,
 	campaignRunSchema,
 	campaignSchema,
 	type WorkbenchLead,
@@ -255,6 +259,37 @@ class LeadsApiService {
 		return baseApiService.post(
 			`${base(workspaceId)}/campaigns/${campaignId}/pause`,
 			campaignSchema
+		);
+	};
+
+	// Epic 45.2 — run history + campaign leads (paged server-side).
+	listCampaignRuns = async (
+		workspaceId: number | string,
+		campaignId: string,
+		params: { page?: number; page_size?: number } = {}
+	): Promise<CampaignRunListResponse> => {
+		const qs = new URLSearchParams();
+		if (params.page !== undefined) qs.set("page", String(params.page));
+		if (params.page_size !== undefined) qs.set("page_size", String(params.page_size));
+		const query = qs.toString();
+		return baseApiService.get(
+			`${base(workspaceId)}/campaigns/${campaignId}/runs${query ? `?${query}` : ""}`,
+			campaignRunListResponseSchema
+		);
+	};
+
+	getCampaignLeads = async (
+		workspaceId: number | string,
+		campaignId: string,
+		params: { page?: number; page_size?: number } = {}
+	): Promise<CampaignLeadListResponse> => {
+		const qs = new URLSearchParams();
+		if (params.page !== undefined) qs.set("page", String(params.page));
+		if (params.page_size !== undefined) qs.set("page_size", String(params.page_size));
+		const query = qs.toString();
+		return baseApiService.get(
+			`${base(workspaceId)}/campaigns/${campaignId}/leads${query ? `?${query}` : ""}`,
+			campaignLeadListResponseSchema
 		);
 	};
 
