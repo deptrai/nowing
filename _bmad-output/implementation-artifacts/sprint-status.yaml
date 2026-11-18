@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '11-18-2026 13:08'
+last_updated: '11-18-2026 20:37'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -475,7 +475,7 @@ development_status:
   45-2-campaign-detail-run-history-leads-surface: done
   45-3-lifecycle-actions-schedule-editor: done
   45-4-e2e-browser-ops-verify: done
-  epic-45-retrospective: backlog
+  epic-45-retrospective: done
 validation_reports:
   - story: "3.18"
     type: "code-review"
@@ -1138,14 +1138,14 @@ action_items:
     epic: 44
     action: "FE reconcile launchCampaign run-shape vs campaignSchema (leads-api.service.ts:232)"
     owner: "dev/fe"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
   - id: "epic-44-retro-item-56-deploy-verify-launch_campaign_run-worker"
     epic: 44
     action: "Deploy-verify launch_campaign_run worker that + check-campaign-schedules
       tick live + alembic 250→251 prod"
     owner: "ops"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
   - id: "epic-44-retro-item-57-index-token_usage-call_details-campaign_"
     epic: 44
@@ -1166,3 +1166,38 @@ action_items:
     owner: "dev/ops"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
+  - id: "AI-45.1"
+    epic: 45
+    action: "Thêm cột updated_at (server onupdate) lên lead_campaigns hoặc bỏ field
+      khỏi FE contract — mapper hiện trả created_at (campaign_service.py:490)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
+  - id: "AI-45.2"
+    epic: 45
+    action: "Batch/denormalize last_run_at + collected_leads_count trong list page
+      (2 query/campaign -> ~200 queries o page_size=100)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
+  - id: "AI-45.3"
+    epic: 45
+    action: "campaignLeadItemSchema: lead_role enum -> z.string() long + di doi khoi
+      .passthrough() deprecated (zod 4.2.1)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
+  - id: "AI-45.4"
+    epic: 45
+    action: "Dev-stack drift: backend :4445 tro DB :5434 dang down — restart docker
+      dev DB / document temp-stack e2e recipe"
+    owner: "ops"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
+  - id: "AI-45.5"
+    epic: 45
+    action: "Prod deploy checklist: alembic upgrade head -> 251 + worker/beat prod
+      verify (gop AI-42 deploy checklist)"
+    owner: "ops"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-45-retro-2026-11-18.md"
