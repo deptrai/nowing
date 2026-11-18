@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-21 07:19"
-last_updated: '11-18-2026 08:44'
+last_updated: '11-18-2026 13:08'
 # bmad-sprint-planning full run: 2026-08-20 15:15 — 0 status changes, 27-1/27-2 ready-for-dev
 # manual update 2026-09-09: split Story 21.8 into 21.8a–f per sprint-change-proposal-2026-09-09-medirus-21-8-correction.md; audit 2026-09-09: 21.8a–f done, 21.8g in-progress
 # - Parsed epics.md: 24 epics, ~160 stories.
@@ -468,7 +468,7 @@ development_status:
   44-2-campaign-crud-launch-async-run-task: done
   44-3-campaign-scheduler-rate-limit-guard: done
   44-4-per-run-usage-accounting-vertical-2-e2e: done
-  epic-44-retrospective: backlog
+  epic-44-retrospective: done
 validation_reports:
   - story: "3.18"
     type: "code-review"
@@ -1127,3 +1127,35 @@ action_items:
     owner: "dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-43-retro-2026-11-18.md"
+  - id: "epic-44-retro-item-55-fe-reconcile-launchcampaign-run-shape-vs"
+    epic: 44
+    action: "FE reconcile launchCampaign run-shape vs campaignSchema (leads-api.service.ts:232)"
+    owner: "dev/fe"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
+  - id: "epic-44-retro-item-56-deploy-verify-launch_campaign_run-worker"
+    epic: 44
+    action: "Deploy-verify launch_campaign_run worker that + check-campaign-schedules
+      tick live + alembic 250→251 prod"
+    owner: "ops"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
+  - id: "epic-44-retro-item-57-index-token_usage-call_details-campaign_"
+    epic: 44
+    action: "Index token_usage call_details campaign_run_id neu run density tang"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
+  - id: "epic-44-retro-item-58-tach-semantics-skipped_by_quota-counter"
+    epic: 44
+    action: "Tach semantics skipped_by_quota counter (quota vs concurrent)"
+    owner: "dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
+  - id: "epic-44-retro-item-59-carry-over-ai-43-3-preview-filter-ai-43"
+    epic: 44
+    action: "Carry-over AI-43.3 preview filter + AI-43.4 direction helpers + AI-42
+      deploy checklist"
+    owner: "dev/ops"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-44-retro-2026-11-18.md"
